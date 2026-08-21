@@ -59,8 +59,6 @@ export default function LoginScreen() {
               style={styles.logoImage}
               resizeMode="contain"
             />
-            <Text style={styles.appName}>TOLVEX</Text>
-            <Text style={styles.appSubtitle}>ניהול צי רכבים</Text>
           </View>
 
           {/* כרטיס זכוכית */}
