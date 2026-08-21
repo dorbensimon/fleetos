@@ -195,8 +195,8 @@ const createStyles = (COLORS: typeof LIGHT_COLORS) =>
       marginBottom: 16,
     },
     logoImageDark: {
-      width: 320,
-      height: 130,
+      width: 360,
+      height: 150,
     },
     appName: {
       fontSize: 28,
