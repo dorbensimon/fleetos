@@ -79,7 +79,7 @@ export default function LoginScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="הזן מייל או טלפון"
-                  placeholderTextColor={COLORS.grayLight}
+                  placeholderTextColor={COLORS.gray}
                   value={identifier}
                   onChangeText={setIdentifier}
                   autoCapitalize="none"
@@ -96,7 +96,7 @@ export default function LoginScreen() {
                 <TextInput
                   style={styles.passwordInput}
                   placeholder="הזן סיסמה"
-                  placeholderTextColor={COLORS.grayLight}
+                  placeholderTextColor={COLORS.gray}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1.5,
     borderColor: COLORS.inputBorder,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: COLORS.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
