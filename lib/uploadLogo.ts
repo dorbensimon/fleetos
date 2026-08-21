@@ -1,4 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
+import { File } from 'expo-file-system';
+import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
 
 export async function pickAndUploadLogo(): Promise<string | null> {
@@ -19,12 +21,12 @@ export async function pickAndUploadLogo(): Promise<string | null> {
   }
 
   const asset = result.assets[0];
-  const response = await fetch(asset.uri);
-  const blob = await response.blob();
+  const base64 = await new File(asset.uri).base64();
+  const arrayBuffer = decode(base64);
   const fileExt = asset.uri.split('.').pop()?.split('?')[0] || 'jpg';
   const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
 
-  const { error } = await supabase.storage.from('company-logos').upload(fileName, blob, {
+  const { error } = await supabase.storage.from('company-logos').upload(fileName, arrayBuffer, {
     contentType: asset.mimeType || 'image/jpeg',
     upsert: false,
   });
