@@ -63,7 +63,7 @@ export default function LoginScreen() {
           {/* כרטיס זכוכית */}
           <BlurView intensity={50} tint="light" style={styles.card}>
             <Text style={styles.label}>מייל או טלפון</Text>
-            <View style={styles.inputWrap}>
+            <BlurView intensity={35} tint="light" style={styles.inputWrap}>
               <TextInput
                 style={styles.input}
                 placeholder="הזן מייל או טלפון"
@@ -74,10 +74,10 @@ export default function LoginScreen() {
                 keyboardType="email-address"
                 textAlign="right"
               />
-            </View>
+            </BlurView>
 
             <Text style={[styles.label, { marginTop: 18 }]}>סיסמה</Text>
-            <View style={styles.inputWrap}>
+            <BlurView intensity={35} tint="light" style={styles.inputWrap}>
               <View style={styles.passwordRow}>
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                   <Ionicons
@@ -96,7 +96,7 @@ export default function LoginScreen() {
                   textAlign="right"
                 />
               </View>
-            </View>
+            </BlurView>
 
             <TouchableOpacity
               onPress={handleLogin}
@@ -167,10 +167,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   inputWrap: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   input: {
     paddingHorizontal: 16,
