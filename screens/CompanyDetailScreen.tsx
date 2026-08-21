@@ -95,6 +95,14 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   const [removeTarget, setRemoveTarget] = useState<CompanyUser | null>(null);
   const [removing, setRemoving] = useState(false);
 
+  const [resetTarget, setResetTarget] = useState<CompanyUser | null>(null);
+  const [resetForm, setResetForm] = useState({ password: '', confirmPassword: '' });
+  const [resetFieldErrors, setResetFieldErrors] = useState<Record<string, string>>({});
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const [resetSuccessOpen, setResetSuccessOpen] = useState(false);
+
   const load = useCallback(async () => {
     const { data: companyData } = await supabase
       .from('companies')
@@ -222,6 +230,55 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     await load();
   };
 
+  const validateResetForm = () => {
+    const errors: Record<string, string> = {};
+    if (!resetForm.password) errors.password = 'שדה חובה';
+    else if (resetForm.password.length < 6) errors.password = 'לפחות 6 תווים';
+    if (!resetForm.confirmPassword) errors.confirmPassword = 'שדה חובה';
+    else if (resetForm.confirmPassword !== resetForm.password)
+      errors.confirmPassword = 'הסיסמאות אינן תואמות';
+    return errors;
+  };
+
+  const resetPassword = async () => {
+    if (!resetTarget) return;
+    setResetError('');
+    const errors = validateResetForm();
+    setResetFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setResetting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
+        body: { userId: resetTarget.id, newPassword: resetForm.password },
+      });
+
+      if (error || !data?.success) {
+        let message = data?.error || 'איפוס הסיסמה נכשל';
+        if (error?.context?.json) {
+          try {
+            const body = await error.context.json();
+            if (body?.error) message = body.error;
+          } catch {}
+        }
+        console.log('reset-user-password error:', error, 'message:', message);
+        setResetError(message);
+        return;
+      }
+
+      setResetForm({ password: '', confirmPassword: '' });
+      setResetFieldErrors({});
+      setResetTarget(null);
+      setResetSuccessOpen(true);
+      await load();
+    } catch (err) {
+      console.log('reset-user-password unexpected error:', err);
+      setResetError('אירעה שגיאה. נסה שוב');
+    } finally {
+      setResetting(false);
+    }
+  };
+
   if (loading || !company) {
     return (
       <View style={styles.centerFill}>
@@ -240,6 +297,9 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="chevron-forward" size={20} color={COLORS.black} />
         </TouchableOpacity>
+        {!!company.logo_url && (
+          <Image source={{ uri: company.logo_url }} style={styles.headerLogo} resizeMode="cover" />
+        )}
         <Text style={styles.headerTitle} numberOfLines={1}>
           {company.name}
         </Text>
@@ -319,7 +379,14 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
           {admins.length === 0 ? (
             <Text style={styles.emptyText}>אין אדמינים עדיין</Text>
           ) : (
-            admins.map((u) => <UserRow key={u.id} user={u} onRemove={() => setRemoveTarget(u)} />)
+            admins.map((u) => (
+              <UserRow
+                key={u.id}
+                user={u}
+                onRemove={() => setRemoveTarget(u)}
+                onResetPassword={() => setResetTarget(u)}
+              />
+            ))
           )}
         </View>
 
@@ -328,7 +395,14 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
           {drivers.length === 0 ? (
             <Text style={styles.emptyText}>אין נהגים עדיין</Text>
           ) : (
-            drivers.map((u) => <UserRow key={u.id} user={u} onRemove={() => setRemoveTarget(u)} />)
+            drivers.map((u) => (
+              <UserRow
+                key={u.id}
+                user={u}
+                onRemove={() => setRemoveTarget(u)}
+                onResetPassword={() => setResetTarget(u)}
+              />
+            ))
           )}
         </View>
       </ScrollView>
@@ -528,15 +602,122 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
           </TouchableOpacity>
         </View>
       </CenterModal>
+
+      {/* מודאל: איפוס סיסמה */}
+      <CenterModal
+        visible={!!resetTarget}
+        onClose={() => {
+          setResetTarget(null);
+          setResetForm({ password: '', confirmPassword: '' });
+          setResetFieldErrors({});
+          setResetError('');
+        }}
+      >
+        <Text style={styles.deleteTitle}>איפוס סיסמה</Text>
+        <Text style={styles.deleteDescription}>
+          קביעת סיסמה חדשה עבור{' '}
+          <Text style={styles.deleteBold}>{resetTarget?.email || resetTarget?.full_name}</Text>. הוא
+          יתבקש לקבוע סיסמה קבועה משלו בכניסה הבאה.
+        </Text>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>סיסמה חדשה</Text>
+          <View style={[styles.fieldInputWithIcon, !!resetFieldErrors.password && styles.fieldInputError]}>
+            <TextInput
+              style={[styles.fieldInputInner, styles.fieldInputLtr]}
+              placeholder="לפחות 6 תווים"
+              placeholderTextColor={COLORS.grayLight}
+              value={resetForm.password}
+              onChangeText={(v) => setResetForm((f) => ({ ...f, password: v }))}
+              secureTextEntry={!showResetPassword}
+              autoCapitalize="none"
+              textAlign="left"
+            />
+            <TouchableOpacity onPress={() => setShowResetPassword(!showResetPassword)}>
+              <Ionicons
+                name={showResetPassword ? 'eye-outline' : 'eye-off-outline'}
+                size={18}
+                color={COLORS.grayLight}
+              />
+            </TouchableOpacity>
+          </View>
+          {!!resetFieldErrors.password && (
+            <Text style={styles.fieldErrorText}>{resetFieldErrors.password}</Text>
+          )}
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>אימות סיסמה</Text>
+          <TextInput
+            style={[
+              styles.fieldInput,
+              styles.fieldInputLtr,
+              !!resetFieldErrors.confirmPassword && styles.fieldInputError,
+            ]}
+            placeholder="הזן שוב את הסיסמה"
+            placeholderTextColor={COLORS.grayLight}
+            value={resetForm.confirmPassword}
+            onChangeText={(v) => setResetForm((f) => ({ ...f, confirmPassword: v }))}
+            secureTextEntry={!showResetPassword}
+            autoCapitalize="none"
+            textAlign="left"
+          />
+          {!!resetFieldErrors.confirmPassword && (
+            <Text style={styles.fieldErrorText}>{resetFieldErrors.confirmPassword}</Text>
+          )}
+        </View>
+
+        {!!resetError && <Text style={styles.errorText}>{resetError}</Text>}
+
+        <TouchableOpacity
+          style={[styles.primaryButton, resetting && styles.buttonDisabled]}
+          onPress={resetPassword}
+          disabled={resetting}
+        >
+          {resetting ? (
+            <ActivityIndicator color={COLORS.white} />
+          ) : (
+            <Text style={styles.primaryButtonText}>אפס סיסמה</Text>
+          )}
+        </TouchableOpacity>
+      </CenterModal>
+
+      {/* מודאל: הצלחת איפוס */}
+      <CenterModal visible={resetSuccessOpen} onClose={() => setResetSuccessOpen(false)}>
+        <View style={styles.deleteHeaderRow}>
+          <View style={[styles.deleteIconBox, { backgroundColor: COLORS.activeBg }]}>
+            <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.activeText} />
+          </View>
+          <Text style={styles.deleteTitle}>הסיסמה אופסה בהצלחה</Text>
+        </View>
+        <Text style={styles.deleteDescription}>
+          המשתמש יכול להתחבר עכשיו עם הסיסמה החדשה שקבעת, ויתבקש לקבוע סיסמה קבועה משלו בכניסה
+          הבאה.
+        </Text>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => setResetSuccessOpen(false)}>
+          <Text style={styles.primaryButtonText}>סגור</Text>
+        </TouchableOpacity>
+      </CenterModal>
     </View>
   );
 }
 
-function UserRow({ user, onRemove }: { user: CompanyUser; onRemove: () => void }) {
+function UserRow({
+  user,
+  onRemove,
+  onResetPassword,
+}: {
+  user: CompanyUser;
+  onRemove: () => void;
+  onResetPassword: () => void;
+}) {
   return (
     <View style={styles.userRow}>
       <TouchableOpacity onPress={onRemove} style={styles.userRemoveButton}>
         <Ionicons name="trash-outline" size={16} color={COLORS.red} />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={onResetPassword} style={styles.userRemoveButton}>
+        <Ionicons name="key-outline" size={16} color={COLORS.blue} />
       </TouchableOpacity>
       <View style={styles.userInfo}>
         <Text style={styles.userName}>{user.full_name || 'ללא שם'}</Text>
@@ -588,6 +769,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   backButton: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  headerLogo: { width: 32, height: 32, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border },
   headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: COLORS.black, textAlign: 'right' },
   content: { padding: 16, gap: 14 },
   card: {

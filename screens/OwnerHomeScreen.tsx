@@ -304,11 +304,15 @@ export default function OwnerHomeScreen({ navigation }: Props) {
                 activeOpacity={0.8}
                 onPress={() => navigation.navigate('CompanyDetail', { companyId: item.id })}
               >
-                <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
-                  <Text style={[styles.avatarText, { color: avatarTextColor }]}>
-                    {item.name.trim().charAt(0)}
-                  </Text>
-                </View>
+                {item.logo_url ? (
+                  <Image source={{ uri: item.logo_url }} style={styles.avatar} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
+                    <Text style={[styles.avatarText, { color: avatarTextColor }]}>
+                      {item.name.trim().charAt(0)}
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.cardBody}>
                   <View style={styles.cardTopRow}>
                     <Text style={styles.cardName} numberOfLines={1}>
