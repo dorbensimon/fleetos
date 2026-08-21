@@ -158,9 +158,11 @@ export default function LoginScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleLogin = async () => {
     setErrorMessage('');
+    setSuccessMessage('');
 
     if (!identifier.trim() || !password) {
       setErrorMessage('נא למלא מייל וסיסמה');
@@ -175,9 +177,12 @@ export default function LoginScreen({ navigation }: Props) {
       });
 
       if (authError || !authData.user) {
+        console.log('Supabase auth error:', authError?.message, authError?.status);
         setErrorMessage('מייל או סיסמה שגויים');
         return;
       }
+
+      setSuccessMessage('חשבון תקין');
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -193,6 +198,7 @@ export default function LoginScreen({ navigation }: Props) {
 
       // חשבון חדש שטרם קבע סיסמה קבועה - חייב לעשות זאת לפני כל בדיקה אחרת
       if (profile.must_change_password) {
+        await new Promise((resolve) => setTimeout(resolve, 700));
         navigation.reset({ index: 0, routes: [{ name: 'SetPassword' }] });
         return;
       }
@@ -217,6 +223,7 @@ export default function LoginScreen({ navigation }: Props) {
         }
       }
 
+      await new Promise((resolve) => setTimeout(resolve, 700));
       navigation.reset({ index: 0, routes: [{ name: ROLE_ROUTES[profile.role] }] });
     } catch {
       setErrorMessage('אירעה שגיאה. נסה שוב מאוחר יותר');
@@ -286,6 +293,7 @@ export default function LoginScreen({ navigation }: Props) {
             </TouchableOpacity>
 
             {!!errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+            {!!successMessage && <Text style={styles.successText}>{successMessage}</Text>}
 
             <ShimmerButton
               onPress={handleLogin}
@@ -425,6 +433,13 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#D70015',
     fontSize: 13,
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  successText: {
+    color: '#1E8E3E',
+    fontSize: 13,
+    fontWeight: '600',
     textAlign: 'center',
     marginTop: 16,
   },
