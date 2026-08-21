@@ -44,8 +44,9 @@ const DARK_COLORS = {
 };
 
 export default function LoginScreen() {
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+  const systemScheme = useColorScheme();
+  const [themeOverride, setThemeOverride] = useState<'light' | 'dark' | null>(null);
+  const isDark = themeOverride ? themeOverride === 'dark' : systemScheme === 'dark';
   const COLORS = isDark ? DARK_COLORS : LIGHT_COLORS;
   const blurTint = isDark ? 'dark' : 'light';
 
@@ -76,6 +77,19 @@ export default function LoginScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
+          {/* מחליף מצב תצוגה */}
+          <TouchableOpacity
+            onPress={() => setThemeOverride(isDark ? 'light' : 'dark')}
+            style={styles.themeToggle}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={isDark ? 'sunny-outline' : 'moon-outline'}
+              size={22}
+              color={COLORS.text}
+            />
+          </TouchableOpacity>
+
           {/* לוגו */}
           <View style={styles.logoWrap}>
             <Image
@@ -157,6 +171,18 @@ const createStyles = (COLORS: typeof LIGHT_COLORS) =>
       justifyContent: 'center',
       paddingHorizontal: 24,
       paddingVertical: 40,
+    },
+    themeToggle: {
+      alignSelf: 'flex-end',
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 12,
+      backgroundColor: COLORS.inputBg,
+      borderWidth: 1,
+      borderColor: COLORS.inputBorder,
     },
     logoWrap: { alignItems: 'center', marginBottom: 36 },
     logoImage: {
