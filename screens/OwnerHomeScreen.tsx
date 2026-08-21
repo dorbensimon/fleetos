@@ -260,10 +260,6 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.filterRow}>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.7}>
-          <Ionicons name="log-out-outline" size={14} color={COLORS.red} />
-          <Text style={styles.logoutButtonText}>התנתקות</Text>
-        </TouchableOpacity>
         <View style={styles.filterChipsRow}>
           {(['all', 'active', 'disabled'] as StatusFilter[]).map((f) => (
             <TouchableOpacity
@@ -277,6 +273,10 @@ export default function OwnerHomeScreen({ navigation }: Props) {
             </TouchableOpacity>
           ))}
         </View>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.7}>
+          <Ionicons name="log-out-outline" size={14} color={COLORS.red} />
+          <Text style={styles.logoutButtonText}>התנתקות</Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
