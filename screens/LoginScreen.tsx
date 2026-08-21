@@ -35,6 +35,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const handleLogin = async () => {
     // TODO: לחבר כאן ל-Supabase Auth (signInWithPassword)
@@ -69,21 +70,24 @@ export default function LoginScreen() {
           <BlurView intensity={90} tint="light" style={styles.card}>
             <Text style={styles.label}>מייל או טלפון</Text>
             <BlurView intensity={35} tint="light" style={styles.inputWrap}>
-              <TextInput
-                style={styles.input}
-                placeholder="הזן מייל או טלפון"
-                placeholderTextColor={COLORS.grayLight}
-                value={identifier}
-                onChangeText={setIdentifier}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                textAlign="right"
-              />
+              <View style={styles.inputRow}>
+                <Ionicons name="mail-outline" size={18} color={COLORS.grayLight} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="הזן מייל או טלפון"
+                  placeholderTextColor={COLORS.grayLight}
+                  value={identifier}
+                  onChangeText={setIdentifier}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  textAlign="right"
+                />
+              </View>
             </BlurView>
 
             <Text style={[styles.label, { marginTop: 18 }]}>סיסמה</Text>
             <BlurView intensity={35} tint="light" style={styles.inputWrap}>
-              <View style={styles.passwordRow}>
+              <View style={styles.inputRow}>
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                   <Ionicons
                     name={showPassword ? 'eye-outline' : 'eye-off-outline'}
@@ -100,8 +104,20 @@ export default function LoginScreen() {
                   secureTextEntry={!showPassword}
                   textAlign="right"
                 />
+                <Ionicons name="lock-closed-outline" size={18} color={COLORS.grayLight} />
               </View>
             </BlurView>
+
+            <TouchableOpacity
+              style={styles.rememberRow}
+              onPress={() => setRememberMe(!rememberMe)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                {rememberMe && <Ionicons name="checkmark" size={14} color={COLORS.white} />}
+              </View>
+              <Text style={styles.rememberText}>זכור אותי</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               onPress={handleLogin}
@@ -178,16 +194,17 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  input: {
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    fontSize: 15,
-    color: COLORS.text,
-  },
-  passwordRow: {
+  inputRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     paddingHorizontal: 16,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 13,
+    fontSize: 15,
+    color: COLORS.text,
+    marginRight: 10,
   },
   passwordInput: {
     flex: 1,
@@ -195,6 +212,30 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: COLORS.text,
     marginRight: 10,
+  },
+  rememberRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: COLORS.inputBorder,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: COLORS.blue,
+    borderColor: COLORS.blue,
+  },
+  rememberText: {
+    fontSize: 14,
+    color: COLORS.gray,
+    marginRight: 8,
   },
   button: {
     backgroundColor: COLORS.blue,
