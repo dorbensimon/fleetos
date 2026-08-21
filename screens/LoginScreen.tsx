@@ -35,7 +35,7 @@ const DARK_COLORS = {
   black: '#F5F5F7',
   gray: '#A1A1A6',
   grayLight: '#6E6E73',
-  bg: '#0A0A0C',
+  bg: '#000000',
   blue: '#0A84FF',
   white: '#FFFFFF',
   cardBg: 'rgba(120, 130, 160, 0.18)',
@@ -73,12 +73,6 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      {isDark && (
-        <>
-          <View style={styles.glowBlue} pointerEvents="none" />
-          <View style={styles.glowPurple} pointerEvents="none" />
-        </>
-      )}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
@@ -175,27 +169,7 @@ export default function LoginScreen() {
 
 const createStyles = (COLORS: typeof LIGHT_COLORS) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.bg, overflow: 'hidden' },
-    glowBlue: {
-      position: 'absolute',
-      top: -80,
-      left: -100,
-      width: 320,
-      height: 320,
-      borderRadius: 200,
-      backgroundColor: '#0A84FF',
-      opacity: 0.35,
-    },
-    glowPurple: {
-      position: 'absolute',
-      bottom: 60,
-      right: -120,
-      width: 340,
-      height: 340,
-      borderRadius: 200,
-      backgroundColor: '#8B5CF6',
-      opacity: 0.3,
-    },
+    container: { flex: 1, backgroundColor: COLORS.bg },
     scrollContent: {
       flexGrow: 1,
       justifyContent: 'center',
