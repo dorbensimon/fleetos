@@ -228,6 +228,10 @@ export default function LoginScreen() {
             הגישה למערכת מנוהלת על ידי מנהל הצי.{'\n'}
             לפתיחת חשבון פנה למנהל המערכת שלך.
           </Text>
+
+          <Text style={styles.contactText}>
+            לפניות: <Text style={styles.contactEmail}>trytolvex@gmail.com</Text>
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -375,5 +379,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 28,
     lineHeight: 18,
+  },
+  contactText: {
+    textAlign: 'center',
+    color: COLORS.gray,
+    fontSize: 12,
+    marginTop: 12,
+  },
+  contactEmail: {
+    color: COLORS.blue,
+    fontWeight: '600',
   },
 });
