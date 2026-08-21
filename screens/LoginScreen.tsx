@@ -12,7 +12,6 @@ import {
   Animated,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 // פלטת צבעים בהשראת Apple
@@ -68,11 +67,7 @@ function AnimatedField({
   const labelFontSize = anim.interpolate({ inputRange: [0, 1], outputRange: [15, 12] });
 
   return (
-    <BlurView
-      intensity={35}
-      tint="light"
-      style={[styles.inputWrap, isFocused && styles.inputWrapFocused]}
-    >
+    <View style={[styles.inputWrap, isFocused && styles.inputWrapFocused]}>
       <View style={styles.inputRow}>
         <Ionicons name={icon} size={18} color={isFocused ? COLORS.blue : COLORS.grayLight} />
         <View style={styles.inputTextArea}>
@@ -110,7 +105,7 @@ function AnimatedField({
           </TouchableOpacity>
         )}
       </View>
-    </BlurView>
+    </View>
   );
 }
 
@@ -181,13 +176,15 @@ export default function LoginScreen() {
             />
           </View>
 
-          {/* כרטיס זכוכית */}
+          {/* כרטיס */}
           <BlurView intensity={90} tint="light" style={styles.card}>
-            <LinearGradient
-              pointerEvents="none"
-              colors={['rgba(255,255,255,0.3)', 'rgba(0,0,0,0.04)']}
-              style={StyleSheet.absoluteFill}
-            />
+            <View style={styles.cardHeader}>
+              <View style={styles.avatarCircle}>
+                <Ionicons name="person" size={28} color={COLORS.blue} />
+              </View>
+              <Text style={styles.cardTitle}>ברוכים השבים</Text>
+              <Text style={styles.cardSubtitle}>התחברו כדי להמשיך</Text>
+            </View>
 
             <AnimatedField
               label="מייל או טלפון"
@@ -260,29 +257,47 @@ const styles = StyleSheet.create({
   },
   appSubtitle: { fontSize: 14, color: COLORS.gray, marginTop: 4 },
   card: {
-    borderRadius: 32,
-    padding: 28,
+    borderRadius: 24,
+    padding: 32,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    backgroundColor: COLORS.cardBg,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.1,
-    shadowRadius: 40,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 24 },
+    shadowOpacity: 0.18,
+    shadowRadius: 48,
+    elevation: 14,
+  },
+  cardHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  avatarCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(0, 113, 227, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    color: COLORS.gray,
   },
   inputWrap: {
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
-    borderRadius: 16,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: COLORS.inputBg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
   },
   inputWrapFocused: {
     borderColor: COLORS.blue,
