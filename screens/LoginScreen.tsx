@@ -191,6 +191,8 @@ export default function LoginScreen({ navigation }: Props) {
         .single<Profile>();
 
       if (profileError || !profile) {
+        console.log('Supabase profile error:', profileError?.message, profileError?.code);
+        setSuccessMessage('');
         setErrorMessage('שגיאה בטעינת פרופיל המשתמש');
         await supabase.auth.signOut();
         return;
@@ -211,12 +213,15 @@ export default function LoginScreen({ navigation }: Props) {
           .single();
 
         if (companyError || !company) {
+          console.log('Supabase company error:', companyError?.message, companyError?.code);
+          setSuccessMessage('');
           setErrorMessage('שגיאה בטעינת נתוני החברה');
           await supabase.auth.signOut();
           return;
         }
 
         if (company.status === 'disabled') {
+          setSuccessMessage('');
           setErrorMessage('החשבון מושבת זמנית');
           await supabase.auth.signOut();
           return;
@@ -225,7 +230,9 @@ export default function LoginScreen({ navigation }: Props) {
 
       await new Promise((resolve) => setTimeout(resolve, 700));
       navigation.reset({ index: 0, routes: [{ name: ROLE_ROUTES[profile.role] }] });
-    } catch {
+    } catch (err) {
+      console.log('Unexpected login error:', err);
+      setSuccessMessage('');
       setErrorMessage('אירעה שגיאה. נסה שוב מאוחר יותר');
     } finally {
       setLoading(false);
