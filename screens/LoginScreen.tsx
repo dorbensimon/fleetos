@@ -133,8 +133,8 @@ const styles = StyleSheet.create({
   },
   logoWrap: { alignItems: 'center', marginBottom: 36 },
   logoImage: {
-    width: 88,
-    height: 88,
+    width: 220,
+    height: 90,
     marginBottom: 16,
   },
   appName: {
