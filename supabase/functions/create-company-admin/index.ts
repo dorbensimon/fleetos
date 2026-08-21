@@ -1,10 +1,10 @@
 // Edge Function: create-company-admin
 // Called by the app (owner only) to create a new company + its first admin user.
+// The owner chooses the admin's password directly (no random temp password).
 // Runs with SUPABASE_SERVICE_ROLE_KEY (auto-injected by Supabase), never exposed to the client.
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyOwner } from '../_shared/verifyOwner.ts';
-import { generateTempPassword } from '../_shared/password.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -21,10 +21,17 @@ Deno.serve(async (req) => {
     }
     const { adminClient } = verify;
 
-    const { companyName, logoUrl, adminEmail } = await req.json();
+    const { companyName, logoUrl, adminEmail, adminPassword, adminPhone } = await req.json();
 
-    if (!companyName?.trim() || !adminEmail?.trim()) {
-      return new Response(JSON.stringify({ error: 'שם חברה ומייל אדמין הם שדות חובה' }), {
+    if (!companyName?.trim() || !adminEmail?.trim() || !adminPassword || !adminPhone?.trim()) {
+      return new Response(JSON.stringify({ error: 'שם חברה, מייל וסיסמת אדמין הם שדות חובה' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (adminPassword.length < 6) {
+      return new Response(JSON.stringify({ error: 'הסיסמה חייבת להכיל לפחות 6 תווים' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -43,11 +50,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const tempPassword = generateTempPassword();
-
     const { data: newUser, error: createUserError } = await adminClient.auth.admin.createUser({
       email: adminEmail.trim(),
-      password: tempPassword,
+      password: adminPassword,
       email_confirm: true,
     });
 
@@ -63,6 +68,7 @@ Deno.serve(async (req) => {
       id: newUser.user.id,
       role: 'admin',
       company_id: company.id,
+      phone: adminPhone.trim(),
       must_change_password: true,
     });
 
@@ -76,7 +82,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, companyId: company.id, tempPassword }),
+      JSON.stringify({ success: true, companyId: company.id }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch {

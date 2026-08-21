@@ -17,7 +17,6 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { supabase, Company } from '../lib/supabase';
@@ -57,7 +56,16 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const [addOpen, setAddOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const [form, setForm] = useState({ name: '', logoUrl: '', email: '', phone: '' });
+  const [form, setForm] = useState({
+    name: '',
+    logoUrl: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showPassword, setShowPassword] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoError, setLogoError] = useState('');
 
@@ -81,8 +89,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
 
-  const [tempPassword, setTempPassword] = useState<{ email: string; password: string } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
 
   const loadCompanies = useCallback(async () => {
     const { data: companiesData } = await supabase
@@ -131,6 +138,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
     setDeleteOpen(false);
     setDeleteConfirmText('');
     setCreateError('');
+    setFieldErrors({});
   };
 
   const toggleActive = async () => {
@@ -154,12 +162,24 @@ export default function OwnerHomeScreen({ navigation }: Props) {
     await loadCompanies();
   };
 
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!form.name.trim()) errors.name = 'שדה חובה';
+    if (!form.email.trim()) errors.email = 'שדה חובה';
+    if (!form.phone.trim()) errors.phone = 'שדה חובה';
+    if (!form.password) errors.password = 'שדה חובה';
+    else if (form.password.length < 6) errors.password = 'לפחות 6 תווים';
+    if (!form.confirmPassword) errors.confirmPassword = 'שדה חובה';
+    else if (form.confirmPassword !== form.password) errors.confirmPassword = 'הסיסמאות אינן תואמות';
+    return errors;
+  };
+
   const createCompany = async () => {
     setCreateError('');
-    if (!form.name.trim() || !form.email.trim()) {
-      setCreateError('נא למלא שם חברה ומייל אדמין');
-      return;
-    }
+    const errors = validateForm();
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     setCreating(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-company-admin', {
@@ -167,6 +187,8 @@ export default function OwnerHomeScreen({ navigation }: Props) {
           companyName: form.name.trim(),
           logoUrl: form.logoUrl.trim() || null,
           adminEmail: form.email.trim(),
+          adminPhone: form.phone.trim(),
+          adminPassword: form.password,
         },
       });
 
@@ -183,9 +205,10 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         return;
       }
 
-      setTempPassword({ email: form.email.trim(), password: data.tempPassword });
-      setForm({ name: '', logoUrl: '', email: '', phone: '' });
+      setForm({ name: '', logoUrl: '', email: '', phone: '', password: '', confirmPassword: '' });
+      setFieldErrors({});
       setAddOpen(false);
+      setSuccessOpen(true);
       await loadCompanies();
     } catch (err) {
       console.log('create-company-admin unexpected error:', err);
@@ -193,13 +216,6 @@ export default function OwnerHomeScreen({ navigation }: Props) {
     } finally {
       setCreating(false);
     }
-  };
-
-  const copyPassword = async () => {
-    if (!tempPassword) return;
-    await Clipboard.setStringAsync(tempPassword.password);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
   };
 
   const activeCount = companies.filter((c) => c.status === 'active').length;
@@ -341,13 +357,14 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>שם החברה</Text>
           <TextInput
-            style={styles.fieldInput}
+            style={[styles.fieldInput, !!fieldErrors.name && styles.fieldInputError]}
             placeholder="לדוגמה: אלמוג הובלות"
             placeholderTextColor={COLORS.grayLight}
             value={form.name}
             onChangeText={(v) => setForm((f) => ({ ...f, name: v }))}
             textAlign="right"
           />
+          {!!fieldErrors.name && <Text style={styles.fieldErrorText}>{fieldErrors.name}</Text>}
         </View>
 
         <View style={styles.fieldGroup}>
@@ -379,7 +396,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>מייל האדמין הראשון</Text>
           <TextInput
-            style={[styles.fieldInput, styles.fieldInputLtr]}
+            style={[styles.fieldInput, styles.fieldInputLtr, !!fieldErrors.email && styles.fieldInputError]}
             placeholder="admin@company.co.il"
             placeholderTextColor={COLORS.grayLight}
             value={form.email}
@@ -388,14 +405,13 @@ export default function OwnerHomeScreen({ navigation }: Props) {
             keyboardType="email-address"
             textAlign="left"
           />
+          {!!fieldErrors.email && <Text style={styles.fieldErrorText}>{fieldErrors.email}</Text>}
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>
-            טלפון <Text style={styles.fieldLabelOptional}>(אופציונלי)</Text>
-          </Text>
+          <Text style={styles.fieldLabel}>טלפון</Text>
           <TextInput
-            style={[styles.fieldInput, styles.fieldInputLtr]}
+            style={[styles.fieldInput, styles.fieldInputLtr, !!fieldErrors.phone && styles.fieldInputError]}
             placeholder="050-0000000"
             placeholderTextColor={COLORS.grayLight}
             value={form.phone}
@@ -403,6 +419,52 @@ export default function OwnerHomeScreen({ navigation }: Props) {
             keyboardType="phone-pad"
             textAlign="left"
           />
+          {!!fieldErrors.phone && <Text style={styles.fieldErrorText}>{fieldErrors.phone}</Text>}
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>סיסמה לאדמין</Text>
+          <View style={[styles.fieldInputWithIcon, !!fieldErrors.password && styles.fieldInputError]}>
+            <TextInput
+              style={[styles.fieldInputInner, styles.fieldInputLtr]}
+              placeholder="לפחות 6 תווים"
+              placeholderTextColor={COLORS.grayLight}
+              value={form.password}
+              onChangeText={(v) => setForm((f) => ({ ...f, password: v }))}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              textAlign="left"
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Ionicons
+                name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                size={18}
+                color={COLORS.grayLight}
+              />
+            </TouchableOpacity>
+          </View>
+          {!!fieldErrors.password && <Text style={styles.fieldErrorText}>{fieldErrors.password}</Text>}
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>אימות סיסמה</Text>
+          <TextInput
+            style={[
+              styles.fieldInput,
+              styles.fieldInputLtr,
+              !!fieldErrors.confirmPassword && styles.fieldInputError,
+            ]}
+            placeholder="הזן שוב את הסיסמה"
+            placeholderTextColor={COLORS.grayLight}
+            value={form.confirmPassword}
+            onChangeText={(v) => setForm((f) => ({ ...f, confirmPassword: v }))}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            textAlign="left"
+          />
+          {!!fieldErrors.confirmPassword && (
+            <Text style={styles.fieldErrorText}>{fieldErrors.confirmPassword}</Text>
+          )}
         </View>
 
         {!!createError && <Text style={styles.errorText}>{createError}</Text>}
@@ -419,7 +481,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
             <Text style={styles.createButtonText}>צור חברה</Text>
           )}
         </TouchableOpacity>
-        <Text style={styles.hintText}>ייווצר משתמש אדמין עם סיסמה זמנית שתוצג לך להעתקה</Text>
+        <Text style={styles.hintText}>האדמין יוכל להתחבר עם המייל והסיסמה שקבעת, ויתבקש לקבוע סיסמה קבועה משלו בכניסה הראשונה</Text>
       </BottomSheet>
 
       {/* מודאל: אישור מחיקה */}
@@ -468,7 +530,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       </CenterModal>
 
       {/* מודאל: סיסמה זמנית */}
-      <CenterModal visible={!!tempPassword} onClose={() => setTempPassword(null)}>
+      <CenterModal visible={successOpen} onClose={() => setSuccessOpen(false)}>
         <View style={styles.deleteHeaderRow}>
           <View style={[styles.deleteIconBox, { backgroundColor: COLORS.activeBg }]}>
             <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.activeText} />
@@ -476,20 +538,10 @@ export default function OwnerHomeScreen({ navigation }: Props) {
           <Text style={styles.deleteTitle}>החברה נוצרה בהצלחה</Text>
         </View>
         <Text style={styles.deleteDescription}>
-          סיסמה זמנית עבור <Text style={styles.deleteCompanyNameBold}>{tempPassword?.email}</Text>{' '}
-          — האדמין יתבקש לקבוע סיסמה קבועה בכניסה הראשונה. העתק ושלח לו את הפרטים בדרך בטוחה.
+          האדמין יכול להתחבר עכשיו עם המייל והסיסמה שקבעת, ויתבקש לקבוע סיסמה קבועה משלו בכניסה
+          הראשונה.
         </Text>
-        <View style={styles.passwordBox}>
-          <Text style={styles.passwordText}>{tempPassword?.password}</Text>
-          <TouchableOpacity onPress={copyPassword}>
-            <Ionicons
-              name={copied ? 'checkmark' : 'copy-outline'}
-              size={19}
-              color={copied ? COLORS.activeText : COLORS.gray}
-            />
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity style={styles.createButton} onPress={() => setTempPassword(null)}>
+        <TouchableOpacity style={styles.createButton} onPress={() => setSuccessOpen(false)}>
           <Text style={styles.createButtonText}>סגור</Text>
         </TouchableOpacity>
       </CenterModal>
@@ -717,6 +769,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   fieldInputLtr: { textAlign: 'left' },
+  fieldInputError: { borderColor: COLORS.red },
+  fieldErrorText: { fontSize: 11.5, color: COLORS.red, textAlign: 'right' },
+  fieldInputWithIcon: {
+    height: 48,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.fieldBg,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  fieldInputInner: {
+    flex: 1,
+    fontSize: 15,
+    color: COLORS.black,
+  },
   logoPicker: {
     height: 100,
     borderRadius: 12,
@@ -813,16 +883,4 @@ const styles = StyleSheet.create({
   deleteButtonDisabled: { backgroundColor: '#EDD9D6' },
   deleteButtonText: { color: COLORS.white, fontSize: 14.5, fontWeight: '600' },
   deleteButtonTextDisabled: { color: '#C39B95' },
-  passwordBox: {
-    height: 48,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.fieldBg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-  },
-  passwordText: { fontSize: 15, fontWeight: '600', color: COLORS.black, letterSpacing: 0.5 },
 });

@@ -12,7 +12,6 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { supabase, Company } from '../lib/supabase';
@@ -38,6 +37,7 @@ interface CompanyUser {
   id: string;
   role: 'admin' | 'driver';
   full_name: string | null;
+  phone: string | null;
   must_change_password: boolean;
   created_at: string;
   email: string | null;
@@ -79,12 +79,18 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   const [deleting, setDeleting] = useState(false);
 
   const [addAdminOpen, setAddAdminOpen] = useState(false);
-  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminForm, setNewAdminForm] = useState({
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [newAdminFieldErrors, setNewAdminFieldErrors] = useState<Record<string, string>>({});
+  const [showNewAdminPassword, setShowNewAdminPassword] = useState(false);
   const [addingAdmin, setAddingAdmin] = useState(false);
   const [addAdminError, setAddAdminError] = useState('');
 
-  const [tempPassword, setTempPassword] = useState<{ email: string; password: string } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [addAdminSuccessOpen, setAddAdminSuccessOpen] = useState(false);
 
   const [removeTarget, setRemoveTarget] = useState<CompanyUser | null>(null);
   const [removing, setRemoving] = useState(false);
@@ -154,16 +160,33 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     navigation.goBack();
   };
 
+  const validateNewAdminForm = () => {
+    const errors: Record<string, string> = {};
+    if (!newAdminForm.email.trim()) errors.email = 'שדה חובה';
+    if (!newAdminForm.phone.trim()) errors.phone = 'שדה חובה';
+    if (!newAdminForm.password) errors.password = 'שדה חובה';
+    else if (newAdminForm.password.length < 6) errors.password = 'לפחות 6 תווים';
+    if (!newAdminForm.confirmPassword) errors.confirmPassword = 'שדה חובה';
+    else if (newAdminForm.confirmPassword !== newAdminForm.password)
+      errors.confirmPassword = 'הסיסמאות אינן תואמות';
+    return errors;
+  };
+
   const addAdmin = async () => {
     setAddAdminError('');
-    if (!newAdminEmail.trim()) {
-      setAddAdminError('נא להזין מייל');
-      return;
-    }
+    const errors = validateNewAdminForm();
+    setNewAdminFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     setAddingAdmin(true);
     try {
       const { data, error } = await supabase.functions.invoke('add-company-admin', {
-        body: { companyId, adminEmail: newAdminEmail.trim() },
+        body: {
+          companyId,
+          adminEmail: newAdminForm.email.trim(),
+          adminPhone: newAdminForm.phone.trim(),
+          adminPassword: newAdminForm.password,
+        },
       });
       if (error || !data?.success) {
         let message = data?.error || 'הוספת האדמין נכשלה';
@@ -177,9 +200,10 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         setAddAdminError(message);
         return;
       }
-      setTempPassword({ email: newAdminEmail.trim(), password: data.tempPassword });
-      setNewAdminEmail('');
+      setNewAdminForm({ email: '', phone: '', password: '', confirmPassword: '' });
+      setNewAdminFieldErrors({});
       setAddAdminOpen(false);
+      setAddAdminSuccessOpen(true);
       await load();
     } catch (err) {
       console.log('add-company-admin unexpected error:', err);
@@ -187,13 +211,6 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     } finally {
       setAddingAdmin(false);
     }
-  };
-
-  const copyPassword = async () => {
-    if (!tempPassword) return;
-    await Clipboard.setStringAsync(tempPassword.password);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
   };
 
   const removeUser = async () => {
@@ -363,22 +380,105 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       </CenterModal>
 
       {/* מודאל: הוספת אדמין */}
-      <CenterModal visible={addAdminOpen} onClose={() => setAddAdminOpen(false)}>
+      <CenterModal
+        visible={addAdminOpen}
+        onClose={() => {
+          setAddAdminOpen(false);
+          setNewAdminFieldErrors({});
+        }}
+      >
         <Text style={styles.deleteTitle}>הוספת אדמין</Text>
+
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>מייל האדמין</Text>
           <TextInput
-            style={[styles.fieldInput, styles.fieldInputLtr]}
+            style={[
+              styles.fieldInput,
+              styles.fieldInputLtr,
+              !!newAdminFieldErrors.email && styles.fieldInputError,
+            ]}
             placeholder="admin@company.co.il"
             placeholderTextColor={COLORS.grayLight}
-            value={newAdminEmail}
-            onChangeText={setNewAdminEmail}
+            value={newAdminForm.email}
+            onChangeText={(v) => setNewAdminForm((f) => ({ ...f, email: v }))}
             autoCapitalize="none"
             keyboardType="email-address"
             textAlign="left"
           />
+          {!!newAdminFieldErrors.email && (
+            <Text style={styles.fieldErrorText}>{newAdminFieldErrors.email}</Text>
+          )}
         </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>טלפון</Text>
+          <TextInput
+            style={[
+              styles.fieldInput,
+              styles.fieldInputLtr,
+              !!newAdminFieldErrors.phone && styles.fieldInputError,
+            ]}
+            placeholder="050-0000000"
+            placeholderTextColor={COLORS.grayLight}
+            value={newAdminForm.phone}
+            onChangeText={(v) => setNewAdminForm((f) => ({ ...f, phone: v }))}
+            keyboardType="phone-pad"
+            textAlign="left"
+          />
+          {!!newAdminFieldErrors.phone && (
+            <Text style={styles.fieldErrorText}>{newAdminFieldErrors.phone}</Text>
+          )}
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>סיסמה לאדמין</Text>
+          <View style={[styles.fieldInputWithIcon, !!newAdminFieldErrors.password && styles.fieldInputError]}>
+            <TextInput
+              style={[styles.fieldInputInner, styles.fieldInputLtr]}
+              placeholder="לפחות 6 תווים"
+              placeholderTextColor={COLORS.grayLight}
+              value={newAdminForm.password}
+              onChangeText={(v) => setNewAdminForm((f) => ({ ...f, password: v }))}
+              secureTextEntry={!showNewAdminPassword}
+              autoCapitalize="none"
+              textAlign="left"
+            />
+            <TouchableOpacity onPress={() => setShowNewAdminPassword(!showNewAdminPassword)}>
+              <Ionicons
+                name={showNewAdminPassword ? 'eye-outline' : 'eye-off-outline'}
+                size={18}
+                color={COLORS.grayLight}
+              />
+            </TouchableOpacity>
+          </View>
+          {!!newAdminFieldErrors.password && (
+            <Text style={styles.fieldErrorText}>{newAdminFieldErrors.password}</Text>
+          )}
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>אימות סיסמה</Text>
+          <TextInput
+            style={[
+              styles.fieldInput,
+              styles.fieldInputLtr,
+              !!newAdminFieldErrors.confirmPassword && styles.fieldInputError,
+            ]}
+            placeholder="הזן שוב את הסיסמה"
+            placeholderTextColor={COLORS.grayLight}
+            value={newAdminForm.confirmPassword}
+            onChangeText={(v) => setNewAdminForm((f) => ({ ...f, confirmPassword: v }))}
+            secureTextEntry={!showNewAdminPassword}
+            autoCapitalize="none"
+            textAlign="left"
+          />
+          {!!newAdminFieldErrors.confirmPassword && (
+            <Text style={styles.fieldErrorText}>{newAdminFieldErrors.confirmPassword}</Text>
+          )}
+        </View>
+
         {!!addAdminError && <Text style={styles.errorText}>{addAdminError}</Text>}
+
         <TouchableOpacity
           style={[styles.primaryButton, addingAdmin && styles.buttonDisabled]}
           onPress={addAdmin}
@@ -388,8 +488,8 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         </TouchableOpacity>
       </CenterModal>
 
-      {/* מודאל: סיסמה זמנית */}
-      <CenterModal visible={!!tempPassword} onClose={() => setTempPassword(null)}>
+      {/* מודאל: הצלחה */}
+      <CenterModal visible={addAdminSuccessOpen} onClose={() => setAddAdminSuccessOpen(false)}>
         <View style={styles.deleteHeaderRow}>
           <View style={[styles.deleteIconBox, { backgroundColor: COLORS.activeBg }]}>
             <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.activeText} />
@@ -397,20 +497,10 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
           <Text style={styles.deleteTitle}>האדמין נוסף בהצלחה</Text>
         </View>
         <Text style={styles.deleteDescription}>
-          סיסמה זמנית עבור <Text style={styles.deleteBold}>{tempPassword?.email}</Text> — האדמין
-          יתבקש לקבוע סיסמה קבועה בכניסה הראשונה. העתק ושלח לו את הפרטים בדרך בטוחה.
+          האדמין יכול להתחבר עכשיו עם המייל והסיסמה שקבעת, ויתבקש לקבוע סיסמה קבועה משלו בכניסה
+          הראשונה.
         </Text>
-        <View style={styles.passwordBox}>
-          <Text style={styles.passwordText}>{tempPassword?.password}</Text>
-          <TouchableOpacity onPress={copyPassword}>
-            <Ionicons
-              name={copied ? 'checkmark' : 'copy-outline'}
-              size={19}
-              color={copied ? COLORS.activeText : COLORS.gray}
-            />
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity style={styles.primaryButton} onPress={() => setTempPassword(null)}>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => setAddAdminSuccessOpen(false)}>
           <Text style={styles.primaryButtonText}>סגור</Text>
         </TouchableOpacity>
       </CenterModal>
@@ -451,6 +541,7 @@ function UserRow({ user, onRemove }: { user: CompanyUser; onRemove: () => void }
       <View style={styles.userInfo}>
         <Text style={styles.userName}>{user.full_name || 'ללא שם'}</Text>
         <Text style={styles.userEmail}>{user.email || '—'}</Text>
+        {!!user.phone && <Text style={styles.userEmail}>{user.phone}</Text>}
       </View>
       {user.must_change_password && (
         <View style={styles.pendingBadge}>
@@ -520,6 +611,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   fieldInputLtr: { textAlign: 'left' },
+  fieldInputError: { borderColor: COLORS.red },
+  fieldErrorText: { fontSize: 11.5, color: COLORS.red, textAlign: 'right' },
+  fieldInputWithIcon: {
+    height: 46,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.fieldBg,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  fieldInputInner: {
+    flex: 1,
+    fontSize: 15,
+    color: COLORS.black,
+  },
   logoPicker: {
     height: 90,
     borderRadius: 12,
@@ -656,16 +765,4 @@ const styles = StyleSheet.create({
   deleteButtonDisabled: { backgroundColor: '#EDD9D6' },
   deleteButtonText: { color: COLORS.white, fontSize: 14.5, fontWeight: '600' },
   deleteButtonTextDisabled: { color: '#C39B95' },
-  passwordBox: {
-    height: 48,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.fieldBg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-  },
-  passwordText: { fontSize: 15, fontWeight: '600', color: COLORS.black, letterSpacing: 0.5 },
 });

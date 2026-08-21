@@ -1,9 +1,9 @@
 // Edge Function: add-company-admin
 // Called by the app (owner only) to add another admin to an existing company.
+// The owner chooses the admin's password directly (no random temp password).
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyOwner } from '../_shared/verifyOwner.ts';
-import { generateTempPassword } from '../_shared/password.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -20,10 +20,17 @@ Deno.serve(async (req) => {
     }
     const { adminClient } = verify;
 
-    const { companyId, adminEmail } = await req.json();
+    const { companyId, adminEmail, adminPassword, adminPhone } = await req.json();
 
-    if (!companyId || !adminEmail?.trim()) {
-      return new Response(JSON.stringify({ error: 'חסרים פרטים' }), {
+    if (!companyId || !adminEmail?.trim() || !adminPassword || !adminPhone?.trim()) {
+      return new Response(JSON.stringify({ error: 'מייל, טלפון וסיסמת אדמין הם שדות חובה' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (adminPassword.length < 6) {
+      return new Response(JSON.stringify({ error: 'הסיסמה חייבת להכיל לפחות 6 תווים' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -42,11 +49,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const tempPassword = generateTempPassword();
-
     const { data: newUser, error: createUserError } = await adminClient.auth.admin.createUser({
       email: adminEmail.trim(),
-      password: tempPassword,
+      password: adminPassword,
       email_confirm: true,
     });
 
@@ -61,6 +66,7 @@ Deno.serve(async (req) => {
       id: newUser.user.id,
       role: 'admin',
       company_id: companyId,
+      phone: adminPhone.trim(),
       must_change_password: true,
     });
 
@@ -72,7 +78,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ success: true, tempPassword }), {
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

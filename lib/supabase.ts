@@ -22,6 +22,7 @@ export interface Profile {
   company_id: string | null;
   job_title: string | null;
   full_name: string | null;
+  phone: string | null;
   must_change_password: boolean;
   created_at: string;
 }
