@@ -1,6 +1,5 @@
-// Edge Function: create-company-admin
-// Called by the app (owner only) to create a new company + its first admin user.
-// Runs with SUPABASE_SERVICE_ROLE_KEY (auto-injected by Supabase), never exposed to the client.
+// Edge Function: add-company-admin
+// Called by the app (owner only) to add another admin to an existing company.
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyOwner } from '../_shared/verifyOwner.ts';
@@ -21,10 +20,10 @@ Deno.serve(async (req) => {
     }
     const { adminClient } = verify;
 
-    const { companyName, logoUrl, adminEmail } = await req.json();
+    const { companyId, adminEmail } = await req.json();
 
-    if (!companyName?.trim() || !adminEmail?.trim()) {
-      return new Response(JSON.stringify({ error: 'שם חברה ומייל אדמין הם שדות חובה' }), {
+    if (!companyId || !adminEmail?.trim()) {
+      return new Response(JSON.stringify({ error: 'חסרים פרטים' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -32,13 +31,13 @@ Deno.serve(async (req) => {
 
     const { data: company, error: companyError } = await adminClient
       .from('companies')
-      .insert({ name: companyName.trim(), logo_url: logoUrl?.trim() || null, status: 'active' })
-      .select()
+      .select('id')
+      .eq('id', companyId)
       .single();
 
     if (companyError || !company) {
-      return new Response(JSON.stringify({ error: 'יצירת החברה נכשלה' }), {
-        status: 500,
+      return new Response(JSON.stringify({ error: 'החברה לא נמצאה' }), {
+        status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -52,9 +51,8 @@ Deno.serve(async (req) => {
     });
 
     if (createUserError || !newUser.user) {
-      await adminClient.from('companies').delete().eq('id', company.id);
       return new Response(
-        JSON.stringify({ error: createUserError?.message || 'יצירת משתמש האדמין נכשלה' }),
+        JSON.stringify({ error: createUserError?.message || 'יצירת המשתמש נכשלה' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -62,23 +60,22 @@ Deno.serve(async (req) => {
     const { error: profileInsertError } = await adminClient.from('profiles').insert({
       id: newUser.user.id,
       role: 'admin',
-      company_id: company.id,
+      company_id: companyId,
       must_change_password: true,
     });
 
     if (profileInsertError) {
       await adminClient.auth.admin.deleteUser(newUser.user.id);
-      await adminClient.from('companies').delete().eq('id', company.id);
       return new Response(JSON.stringify({ error: 'יצירת פרופיל האדמין נכשלה' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    return new Response(
-      JSON.stringify({ success: true, companyId: company.id, tempPassword }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ success: true, tempPassword }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch {
     return new Response(JSON.stringify({ error: 'אירעה שגיאה בלתי צפויה' }), {
       status: 500,

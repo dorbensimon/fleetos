@@ -4,4 +4,5 @@ export type RootStackParamList = {
   OwnerHome: undefined;
   AdminHome: undefined;
   DriverHome: undefined;
+  CompanyDetail: { companyId: string };
 };

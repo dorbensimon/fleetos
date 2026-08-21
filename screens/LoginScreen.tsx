@@ -15,7 +15,8 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { supabase, Profile, UserRole } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { resolveRouteForUser } from '../lib/session';
 
 // פלטת צבעים בהשראת Apple
 const COLORS = {
@@ -145,12 +146,6 @@ function ShimmerButton({ onPress, disabled, label }: { onPress: () => void; disa
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
-const ROLE_ROUTES: Record<UserRole, keyof RootStackParamList> = {
-  owner: 'OwnerHome',
-  admin: 'AdminHome',
-  driver: 'DriverHome',
-};
-
 export default function LoginScreen({ navigation }: Props) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -184,52 +179,16 @@ export default function LoginScreen({ navigation }: Props) {
 
       setSuccessMessage('חשבון תקין');
 
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authData.user.id)
-        .single<Profile>();
+      const result = await resolveRouteForUser(authData.user.id);
 
-      if (profileError || !profile) {
-        console.log('Supabase profile error:', profileError?.message, profileError?.code);
+      if (!result.ok) {
         setSuccessMessage('');
-        setErrorMessage('שגיאה בטעינת פרופיל המשתמש');
-        await supabase.auth.signOut();
+        setErrorMessage(result.error);
         return;
-      }
-
-      // חשבון חדש שטרם קבע סיסמה קבועה - חייב לעשות זאת לפני כל בדיקה אחרת
-      if (profile.must_change_password) {
-        await new Promise((resolve) => setTimeout(resolve, 700));
-        navigation.reset({ index: 0, routes: [{ name: 'SetPassword' }] });
-        return;
-      }
-
-      if (profile.role !== 'owner' && profile.company_id) {
-        const { data: company, error: companyError } = await supabase
-          .from('companies')
-          .select('status')
-          .eq('id', profile.company_id)
-          .single();
-
-        if (companyError || !company) {
-          console.log('Supabase company error:', companyError?.message, companyError?.code);
-          setSuccessMessage('');
-          setErrorMessage('שגיאה בטעינת נתוני החברה');
-          await supabase.auth.signOut();
-          return;
-        }
-
-        if (company.status === 'disabled') {
-          setSuccessMessage('');
-          setErrorMessage('החשבון מושבת זמנית');
-          await supabase.auth.signOut();
-          return;
-        }
       }
 
       await new Promise((resolve) => setTimeout(resolve, 700));
-      navigation.reset({ index: 0, routes: [{ name: ROLE_ROUTES[profile.role] }] });
+      navigation.reset({ index: 0, routes: [{ name: result.route }] });
     } catch (err) {
       console.log('Unexpected login error:', err);
       setSuccessMessage('');

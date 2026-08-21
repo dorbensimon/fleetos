@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
 import { supabase, Company } from '../lib/supabase';
 
 const COLORS = {
@@ -35,11 +37,16 @@ const COLORS = {
 const AVATAR_PALETTE = ['#0088CC', '#000000', '#666666', '#979797'];
 
 type CompanyRow = Company & { admins: number; drivers: number };
+type StatusFilter = 'all' | 'active' | 'disabled';
 
-export default function OwnerHomeScreen() {
+type Props = NativeStackScreenProps<RootStackParamList, 'OwnerHome'>;
+
+export default function OwnerHomeScreen({ navigation }: Props) {
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   const [menuCompany, setMenuCompany] = useState<CompanyRow | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -167,6 +174,12 @@ export default function OwnerHomeScreen() {
   const activeCount = companies.filter((c) => c.status === 'active').length;
   const deleteMatches = !!menuCompany && deleteConfirmText.trim() === menuCompany.name;
 
+  const filteredCompanies = companies.filter((c) => {
+    const matchesSearch = c.name.toLowerCase().includes(search.trim().toLowerCase());
+    const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
@@ -182,19 +195,45 @@ export default function OwnerHomeScreen() {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.searchBar}>
+        <Ionicons name="search" size={16} color={COLORS.grayLight} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="חיפוש לפי שם חברה"
+          placeholderTextColor={COLORS.grayLight}
+          value={search}
+          onChangeText={setSearch}
+          textAlign="right"
+        />
+      </View>
+
+      <View style={styles.filterRow}>
+        {(['all', 'active', 'disabled'] as StatusFilter[]).map((f) => (
+          <TouchableOpacity
+            key={f}
+            style={[styles.filterChip, statusFilter === f && styles.filterChipActive]}
+            onPress={() => setStatusFilter(f)}
+          >
+            <Text style={[styles.filterChipText, statusFilter === f && styles.filterChipTextActive]}>
+              {f === 'all' ? 'הכל' : f === 'active' ? 'פעיל' : 'מושבת'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {loading ? (
         <View style={styles.centerFill}>
           <ActivityIndicator color={COLORS.blue} />
         </View>
       ) : (
         <FlatList
-          data={companies}
+          data={filteredCompanies}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
             <View style={styles.centerFill}>
-              <Text style={styles.emptyText}>אין עדיין חברות רשומות</Text>
+              <Text style={styles.emptyText}>לא נמצאו חברות</Text>
             </View>
           }
           renderItem={({ item, index }) => {
@@ -202,7 +241,11 @@ export default function OwnerHomeScreen() {
             const avatarColor = active ? AVATAR_PALETTE[index % AVATAR_PALETTE.length] : '#E6E6E6';
             const avatarTextColor = active ? COLORS.white : COLORS.grayLight;
             return (
-              <View style={styles.card}>
+              <TouchableOpacity
+                style={styles.card}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('CompanyDetail', { companyId: item.id })}
+              >
                 <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
                   <Text style={[styles.avatarText, { color: avatarTextColor }]}>
                     {item.name.trim().charAt(0)}
@@ -233,7 +276,7 @@ export default function OwnerHomeScreen() {
                 <TouchableOpacity style={styles.menuButton} onPress={() => setMenuCompany(item)}>
                   <Ionicons name="ellipsis-vertical" size={18} color={COLORS.grayLight} />
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             );
           }}
         />
@@ -494,6 +537,34 @@ const styles = StyleSheet.create({
   },
   addButtonText: { color: COLORS.white, fontSize: 13.5, fontWeight: '600' },
   listContent: { padding: 16, gap: 10 },
+  searchBar: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 14,
+    height: 42,
+    borderRadius: 11,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+  },
+  searchInput: { flex: 1, fontSize: 14, color: COLORS.black },
+  filterRow: { flexDirection: 'row-reverse', gap: 8, marginHorizontal: 16, marginTop: 10 },
+  filterChip: {
+    paddingHorizontal: 14,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterChipActive: { backgroundColor: COLORS.blue, borderColor: COLORS.blue },
+  filterChipText: { fontSize: 12.5, fontWeight: '600', color: COLORS.gray },
+  filterChipTextActive: { color: COLORS.white },
   card: {
     backgroundColor: COLORS.white,
     borderRadius: 14,
