@@ -11,12 +11,14 @@ import {
   Pressable,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { supabase, Company } from '../lib/supabase';
+import { pickAndUploadLogo } from '../lib/uploadLogo';
 
 const COLORS = {
   screenBg: '#EEEEEE',
@@ -53,6 +55,23 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [form, setForm] = useState({ name: '', logoUrl: '', email: '', phone: '' });
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoError, setLogoError] = useState('');
+
+  const handlePickLogo = async () => {
+    setLogoError('');
+    setUploadingLogo(true);
+    try {
+      const url = await pickAndUploadLogo();
+      if (url) {
+        setForm((f) => ({ ...f, logoUrl: url }));
+      }
+    } catch (err: any) {
+      setLogoError(err?.message || 'העלאת הלוגו נכשלה');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
   const [createError, setCreateError] = useState('');
   const [creating, setCreating] = useState(false);
 
@@ -320,16 +339,24 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>קישור ללוגו (אופציונלי)</Text>
-          <TextInput
-            style={[styles.fieldInput, styles.fieldInputLtr]}
-            placeholder="https://..."
-            placeholderTextColor={COLORS.grayLight}
-            value={form.logoUrl}
-            onChangeText={(v) => setForm((f) => ({ ...f, logoUrl: v }))}
-            autoCapitalize="none"
-            textAlign="left"
-          />
+          <Text style={styles.fieldLabel}>לוגו החברה (אופציונלי)</Text>
+          <TouchableOpacity style={styles.logoPicker} onPress={handlePickLogo} disabled={uploadingLogo}>
+            {uploadingLogo ? (
+              <ActivityIndicator color={COLORS.blue} />
+            ) : form.logoUrl ? (
+              <>
+                <Image source={{ uri: form.logoUrl }} style={styles.logoPreview} />
+                <Text style={styles.logoPickerChangeText}>שנה תמונה</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="cloud-upload-outline" size={22} color={COLORS.grayLight} />
+                <Text style={styles.logoPickerText}>העלאת לוגו</Text>
+                <Text style={styles.logoPickerHint}>PNG או JPG</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          {!!logoError && <Text style={styles.errorText}>{logoError}</Text>}
         </View>
 
         <View style={styles.fieldGroup}>
@@ -661,6 +688,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   fieldInputLtr: { textAlign: 'left' },
+  logoPicker: {
+    height: 100,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderStyle: 'dashed',
+    backgroundColor: COLORS.fieldBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  logoPickerText: { fontSize: 13, color: COLORS.gray },
+  logoPickerHint: { fontSize: 11.5, color: COLORS.grayLight },
+  logoPreview: { width: 56, height: 56, borderRadius: 12 },
+  logoPickerChangeText: { fontSize: 12, color: COLORS.blue, fontWeight: '600', marginTop: 4 },
   fieldInputMatch: { borderColor: COLORS.activeText },
   errorText: { color: COLORS.red, fontSize: 13, textAlign: 'center' },
   createButton: {

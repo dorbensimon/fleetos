@@ -9,12 +9,14 @@ import {
   Modal,
   Pressable,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { supabase, Company } from '../lib/supabase';
+import { pickAndUploadLogo } from '../lib/uploadLogo';
 
 const COLORS = {
   screenBg: '#EEEEEE',
@@ -52,6 +54,23 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
 
   const [name, setName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoError, setLogoError] = useState('');
+
+  const handlePickLogo = async () => {
+    setLogoError('');
+    setUploadingLogo(true);
+    try {
+      const url = await pickAndUploadLogo();
+      if (url) {
+        setLogoUrl(url);
+      }
+    } catch (err: any) {
+      setLogoError(err?.message || 'העלאת הלוגו נכשלה');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -215,16 +234,23 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>קישור ללוגו</Text>
-            <TextInput
-              style={[styles.fieldInput, styles.fieldInputLtr]}
-              value={logoUrl}
-              onChangeText={setLogoUrl}
-              autoCapitalize="none"
-              textAlign="left"
-              placeholder="https://..."
-              placeholderTextColor={COLORS.grayLight}
-            />
+            <Text style={styles.fieldLabel}>לוגו החברה</Text>
+            <TouchableOpacity style={styles.logoPicker} onPress={handlePickLogo} disabled={uploadingLogo}>
+              {uploadingLogo ? (
+                <ActivityIndicator color={COLORS.blue} />
+              ) : logoUrl ? (
+                <>
+                  <Image source={{ uri: logoUrl }} style={styles.logoPreview} />
+                  <Text style={styles.logoPickerChangeText}>שנה תמונה</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="cloud-upload-outline" size={22} color={COLORS.grayLight} />
+                  <Text style={styles.logoPickerText}>העלאת לוגו</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            {!!logoError && <Text style={styles.errorText}>{logoError}</Text>}
           </View>
 
           {!!saveError && <Text style={styles.errorText}>{saveError}</Text>}
@@ -480,6 +506,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   fieldInputLtr: { textAlign: 'left' },
+  logoPicker: {
+    height: 90,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderStyle: 'dashed',
+    backgroundColor: COLORS.fieldBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  logoPickerText: { fontSize: 13, color: COLORS.gray },
+  logoPreview: { width: 52, height: 52, borderRadius: 12 },
+  logoPickerChangeText: { fontSize: 12, color: COLORS.blue, fontWeight: '600', marginTop: 4 },
   fieldInputMatch: { borderColor: COLORS.activeText },
   errorText: { color: COLORS.red, fontSize: 13, textAlign: 'center' },
   primaryButton: {
