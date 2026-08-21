@@ -9,16 +9,20 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 
-// פלטת צבעים
+// פלטת צבעים בהשראת Apple
 const COLORS = {
-  black: '#000000',
-  gray: '#666666',
-  grayLight: '#979797',
-  bg: '#EEEEEE',
-  blue: '#0088CC',
+  black: '#1D1D1F',
+  gray: '#6E6E73',
+  grayLight: '#AEAEB2',
+  bg: '#F5F5F7',
+  blue: '#0071E3',
+  blueDark: '#0058B8',
   white: '#FFFFFF',
+  border: 'rgba(0, 0, 0, 0.08)',
+  glassBorder: 'rgba(255, 255, 255, 0.6)',
 };
 
 export default function LoginScreen() {
@@ -49,15 +53,15 @@ export default function LoginScreen() {
         >
           {/* לוגו */}
           <View style={styles.logoWrap}>
-            <View style={styles.logoBox}>
-              <Ionicons name="bus" size={32} color={COLORS.white} />
-            </View>
+            <BlurView intensity={40} tint="light" style={styles.logoBox}>
+              <Text style={styles.logoLetter}>F</Text>
+            </BlurView>
             <Text style={styles.appName}>FleetOS</Text>
             <Text style={styles.appSubtitle}>ניהול צי רכבים</Text>
           </View>
 
-          {/* כרטיס */}
-          <View style={styles.card}>
+          {/* כרטיס זכוכית */}
+          <BlurView intensity={50} tint="light" style={styles.card}>
             <Text style={styles.label}>מייל או טלפון</Text>
             <View style={styles.inputWrap}>
               <TextInput
@@ -104,7 +108,7 @@ export default function LoginScreen() {
                 {loading ? 'מתחבר...' : 'התחברות'}
               </Text>
             </TouchableOpacity>
-          </View>
+          </BlurView>
 
           <Text style={styles.footerText}>
             הגישה למערכת מנוהלת על ידי מנהל הצי.{'\n'}
@@ -126,66 +130,83 @@ const styles = StyleSheet.create({
   },
   logoWrap: { alignItems: 'center', marginBottom: 36 },
   logoBox: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
+    width: 76,
+    height: 76,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
-    backgroundColor: COLORS.black,
-  },
-  appName: { fontSize: 26, fontWeight: '700', color: COLORS.black },
-  appSubtitle: { fontSize: 13, color: COLORS.gray, marginTop: 4 },
-  card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    padding: 22,
+    marginBottom: 16,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: COLORS.glassBorder,
+  },
+  logoLetter: {
+    fontSize: 32,
+    fontWeight: '600',
+    color: COLORS.blue,
+  },
+  appName: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: COLORS.black,
+    letterSpacing: -0.5,
+  },
+  appSubtitle: { fontSize: 14, color: COLORS.gray, marginTop: 4 },
+  card: {
+    borderRadius: 24,
+    padding: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
   },
   label: {
     fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.black,
+    fontWeight: '500',
+    color: COLORS.gray,
     textAlign: 'right',
     marginBottom: 8,
   },
   inputWrap: {
     borderWidth: 1,
-    borderColor: '#DDDDDD',
-    borderRadius: 10,
-    backgroundColor: COLORS.white,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
   input: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    fontSize: 15,
     color: COLORS.black,
   },
   passwordRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
   },
   passwordInput: {
     flex: 1,
-    paddingVertical: 12,
-    fontSize: 14,
+    paddingVertical: 13,
+    fontSize: 15,
     color: COLORS.black,
-    marginRight: 8,
+    marginRight: 10,
   },
   button: {
     backgroundColor: COLORS.blue,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 24,
+    marginTop: 26,
+    shadowColor: COLORS.blue,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  buttonText: { color: COLORS.white, fontWeight: '700', fontSize: 15 },
+  buttonText: { color: COLORS.white, fontWeight: '600', fontSize: 16, letterSpacing: -0.2 },
   footerText: {
     textAlign: 'center',
     color: COLORS.gray,
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 28,
     lineHeight: 18,
   },
