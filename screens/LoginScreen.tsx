@@ -182,7 +182,6 @@ export default function LoginScreen() {
               <View style={styles.avatarCircle}>
                 <Ionicons name="person" size={28} color={COLORS.blue} />
               </View>
-              <Text style={styles.cardTitle}>ברוכים השבים</Text>
               <Text style={styles.cardSubtitle}>התחברו כדי להמשיך</Text>
             </View>
 
@@ -335,7 +334,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: COLORS.inputBorder,
+    borderColor: 'rgba(0, 0, 0, 0.25)',
     backgroundColor: COLORS.white,
     alignItems: 'center',
     justifyContent: 'center',
