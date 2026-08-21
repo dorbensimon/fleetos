@@ -348,7 +348,12 @@ export default function OwnerHomeScreen({ navigation }: Props) {
               <ActivityIndicator color={COLORS.blue} />
             ) : form.logoUrl ? (
               <>
-                <Image source={{ uri: form.logoUrl }} style={styles.logoPreview} />
+                <View style={styles.logoPreviewWrap}>
+                  <Image source={{ uri: form.logoUrl }} style={styles.logoPreview} resizeMode="cover" />
+                  <View style={styles.logoUploadedBadge}>
+                    <Ionicons name="checkmark" size={11} color={COLORS.white} />
+                  </View>
+                </View>
                 <Text style={styles.logoPickerChangeText}>שנה תמונה</Text>
               </>
             ) : (
@@ -716,8 +721,28 @@ const styles = StyleSheet.create({
   },
   logoPickerText: { fontSize: 13, color: COLORS.gray },
   logoPickerHint: { fontSize: 11.5, color: COLORS.grayLight },
-  logoPreview: { width: 56, height: 56, borderRadius: 12 },
-  logoPickerChangeText: { fontSize: 12, color: COLORS.blue, fontWeight: '600', marginTop: 4 },
+  logoPreviewWrap: { width: 52, height: 52 },
+  logoPreview: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  logoUploadedBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: COLORS.activeText,
+    borderWidth: 2,
+    borderColor: COLORS.fieldBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoPickerChangeText: { fontSize: 12, color: COLORS.blue, fontWeight: '600', marginTop: 6 },
   fieldInputMatch: { borderColor: COLORS.activeText },
   errorText: { color: COLORS.red, fontSize: 13, textAlign: 'center' },
   createButton: {
