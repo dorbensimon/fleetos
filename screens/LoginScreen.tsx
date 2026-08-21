@@ -22,8 +22,10 @@ const LIGHT_COLORS = {
   bg: '#F5F5F7',
   blue: '#0071E3',
   white: '#FFFFFF',
-  cardBg: 'rgba(255, 255, 255, 0.2)',
+  cardBg: 'rgba(255, 255, 255, 0.35)',
   cardBorder: 'rgba(255, 255, 255, 0.7)',
+  cardBorderStrong: 'rgba(255, 255, 255, 0.85)',
+  cardBorderHighlight: 'rgba(255, 255, 255, 1)',
   inputBg: 'rgba(255, 255, 255, 0.25)',
   inputBorder: 'rgba(255, 255, 255, 0.7)',
   text: '#1D1D1F',
@@ -36,10 +38,12 @@ const DARK_COLORS = {
   bg: '#000000',
   blue: '#0A84FF',
   white: '#FFFFFF',
-  cardBg: 'rgba(255, 255, 255, 0.08)',
-  cardBorder: 'rgba(255, 255, 255, 0.15)',
-  inputBg: 'rgba(255, 255, 255, 0.06)',
-  inputBorder: 'rgba(255, 255, 255, 0.15)',
+  cardBg: 'rgba(255, 255, 255, 0.12)',
+  cardBorder: 'rgba(255, 255, 255, 0.2)',
+  cardBorderStrong: 'rgba(255, 255, 255, 0.35)',
+  cardBorderHighlight: 'rgba(255, 255, 255, 0.55)',
+  inputBg: 'rgba(255, 255, 255, 0.08)',
+  inputBorder: 'rgba(255, 255, 255, 0.2)',
   text: '#F5F5F7',
 };
 
@@ -104,7 +108,7 @@ export default function LoginScreen() {
           </View>
 
           {/* כרטיס זכוכית */}
-          <BlurView intensity={50} tint={blurTint} style={styles.card}>
+          <BlurView intensity={90} tint={blurTint} style={styles.card}>
             <Text style={styles.label}>מייל או טלפון</Text>
             <BlurView intensity={35} tint={blurTint} style={styles.inputWrap}>
               <TextInput
@@ -201,14 +205,16 @@ const createStyles = (COLORS: typeof LIGHT_COLORS) =>
       borderRadius: 28,
       padding: 24,
       overflow: 'hidden',
-      borderWidth: 1.5,
-      borderColor: COLORS.cardBorder,
+      borderWidth: 2,
+      borderColor: COLORS.cardBorderStrong,
+      borderTopColor: COLORS.cardBorderHighlight,
+      borderLeftColor: COLORS.cardBorderHighlight,
       backgroundColor: COLORS.cardBg,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.1,
-      shadowRadius: 20,
-      elevation: 6,
+      shadowOffset: { width: 0, height: 14 },
+      shadowOpacity: 0.22,
+      shadowRadius: 30,
+      elevation: 12,
     },
     label: {
       fontSize: 13,
