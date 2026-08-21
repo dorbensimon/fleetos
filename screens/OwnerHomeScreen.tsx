@@ -218,6 +218,11 @@ export default function OwnerHomeScreen({ navigation }: Props) {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+  };
+
   const activeCount = companies.filter((c) => c.status === 'active').length;
   const deleteMatches = !!menuCompany && deleteConfirmText.trim() === menuCompany.name;
 
@@ -255,17 +260,23 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       </View>
 
       <View style={styles.filterRow}>
-        {(['all', 'active', 'disabled'] as StatusFilter[]).map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterChip, statusFilter === f && styles.filterChipActive]}
-            onPress={() => setStatusFilter(f)}
-          >
-            <Text style={[styles.filterChipText, statusFilter === f && styles.filterChipTextActive]}>
-              {f === 'all' ? 'הכל' : f === 'active' ? 'פעיל' : 'מושבת'}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.7}>
+          <Ionicons name="log-out-outline" size={14} color={COLORS.red} />
+          <Text style={styles.logoutButtonText}>התנתקות</Text>
+        </TouchableOpacity>
+        <View style={styles.filterChipsRow}>
+          {(['all', 'active', 'disabled'] as StatusFilter[]).map((f) => (
+            <TouchableOpacity
+              key={f}
+              style={[styles.filterChip, statusFilter === f && styles.filterChipActive]}
+              onPress={() => setStatusFilter(f)}
+            >
+              <Text style={[styles.filterChipText, statusFilter === f && styles.filterChipTextActive]}>
+                {f === 'all' ? 'הכל' : f === 'active' ? 'פעיל' : 'מושבת'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {loading ? (
@@ -657,7 +668,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   searchInput: { flex: 1, fontSize: 14, color: COLORS.black },
-  filterRow: { flexDirection: 'row-reverse', gap: 8, marginHorizontal: 16, marginTop: 10 },
+  filterRow: {
+    flexDirection: 'row-reverse',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 10,
+  },
+  filterChipsRow: { flexDirection: 'row-reverse', gap: 8 },
+  logoutButton: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+    height: 32,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EDD9D6',
+    backgroundColor: COLORS.white,
+  },
+  logoutButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.red },
   filterChip: {
     paddingHorizontal: 14,
     height: 32,
