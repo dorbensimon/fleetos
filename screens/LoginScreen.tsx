@@ -55,7 +55,7 @@ export default function LoginScreen() {
           {/* לוגו */}
           <View style={styles.logoWrap}>
             <Image
-              source={require('../images/TOLVEX-LOGO.jpg')}
+              source={require('../images/TOLVEX-LOGO.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />
