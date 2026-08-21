@@ -13,6 +13,9 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
+import { supabase, Profile, UserRole } from '../lib/supabase';
 
 // פלטת צבעים בהשראת Apple
 const COLORS = {
@@ -140,18 +143,83 @@ function ShimmerButton({ onPress, disabled, label }: { onPress: () => void; disa
   );
 }
 
-export default function LoginScreen() {
+type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
+
+const ROLE_ROUTES: Record<UserRole, keyof RootStackParamList> = {
+  owner: 'OwnerHome',
+  admin: 'AdminHome',
+  driver: 'DriverHome',
+};
+
+export default function LoginScreen({ navigation }: Props) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleLogin = async () => {
-    // TODO: לחבר כאן ל-Supabase Auth (signInWithPassword)
+    setErrorMessage('');
+
+    if (!identifier.trim() || !password) {
+      setErrorMessage('נא למלא מייל וסיסמה');
+      return;
+    }
+
     setLoading(true);
     try {
-      // await supabase.auth.signInWithPassword({ email: identifier, password })
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: identifier.trim(),
+        password,
+      });
+
+      if (authError || !authData.user) {
+        setErrorMessage('מייל או סיסמה שגויים');
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single<Profile>();
+
+      if (profileError || !profile) {
+        setErrorMessage('שגיאה בטעינת פרופיל המשתמש');
+        await supabase.auth.signOut();
+        return;
+      }
+
+      // חשבון חדש שטרם קבע סיסמה קבועה - חייב לעשות זאת לפני כל בדיקה אחרת
+      if (profile.must_change_password) {
+        navigation.reset({ index: 0, routes: [{ name: 'SetPassword' }] });
+        return;
+      }
+
+      if (profile.role !== 'owner' && profile.company_id) {
+        const { data: company, error: companyError } = await supabase
+          .from('companies')
+          .select('status')
+          .eq('id', profile.company_id)
+          .single();
+
+        if (companyError || !company) {
+          setErrorMessage('שגיאה בטעינת נתוני החברה');
+          await supabase.auth.signOut();
+          return;
+        }
+
+        if (company.status === 'disabled') {
+          setErrorMessage('החשבון מושבת זמנית');
+          await supabase.auth.signOut();
+          return;
+        }
+      }
+
+      navigation.reset({ index: 0, routes: [{ name: ROLE_ROUTES[profile.role] }] });
+    } catch {
+      setErrorMessage('אירעה שגיאה. נסה שוב מאוחר יותר');
     } finally {
       setLoading(false);
     }
@@ -216,6 +284,8 @@ export default function LoginScreen() {
               </View>
               <Text style={styles.rememberText}>זכור אותי</Text>
             </TouchableOpacity>
+
+            {!!errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
             <ShimmerButton
               onPress={handleLogin}
@@ -351,6 +421,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.gray,
     marginRight: 8,
+  },
+  errorText: {
+    color: '#D70015',
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 16,
   },
   button: {
     backgroundColor: COLORS.blue,
