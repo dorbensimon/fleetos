@@ -166,14 +166,23 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         body: { companyId, adminEmail: newAdminEmail.trim() },
       });
       if (error || !data?.success) {
-        setAddAdminError(data?.error || 'הוספת האדמין נכשלה');
+        let message = data?.error || 'הוספת האדמין נכשלה';
+        if (error?.context?.json) {
+          try {
+            const body = await error.context.json();
+            if (body?.error) message = body.error;
+          } catch {}
+        }
+        console.log('add-company-admin error:', error, 'message:', message);
+        setAddAdminError(message);
         return;
       }
       setTempPassword({ email: newAdminEmail.trim(), password: data.tempPassword });
       setNewAdminEmail('');
       setAddAdminOpen(false);
       await load();
-    } catch {
+    } catch (err) {
+      console.log('add-company-admin unexpected error:', err);
       setAddAdminError('אירעה שגיאה. נסה שוב');
     } finally {
       setAddingAdmin(false);

@@ -171,7 +171,15 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       });
 
       if (error || !data?.success) {
-        setCreateError(data?.error || 'יצירת החברה נכשלה');
+        let message = data?.error || 'יצירת החברה נכשלה';
+        if (error?.context?.json) {
+          try {
+            const body = await error.context.json();
+            if (body?.error) message = body.error;
+          } catch {}
+        }
+        console.log('create-company-admin error:', error, 'message:', message);
+        setCreateError(message);
         return;
       }
 
@@ -179,7 +187,8 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       setForm({ name: '', logoUrl: '', email: '', phone: '' });
       setAddOpen(false);
       await loadCompanies();
-    } catch {
+    } catch (err) {
+      console.log('create-company-admin unexpected error:', err);
       setCreateError('אירעה שגיאה. נסה שוב');
     } finally {
       setCreating(false);
