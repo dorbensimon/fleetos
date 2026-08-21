@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,10 +54,12 @@ export default function LoginScreen() {
         >
           {/* לוגו */}
           <View style={styles.logoWrap}>
-            <BlurView intensity={40} tint="light" style={styles.logoBox}>
-              <Text style={styles.logoLetter}>F</Text>
-            </BlurView>
-            <Text style={styles.appName}>FleetOS</Text>
+            <Image
+              source={require('../images/TOLVEX-LOGO.jfif')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.appName}>TOLVEX</Text>
             <Text style={styles.appSubtitle}>ניהול צי רכבים</Text>
           </View>
 
@@ -129,21 +132,10 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   logoWrap: { alignItems: 'center', marginBottom: 36 },
-  logoBox: {
-    width: 76,
-    height: 76,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoImage: {
+    width: 88,
+    height: 88,
     marginBottom: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.glassBorder,
-  },
-  logoLetter: {
-    fontSize: 32,
-    fontWeight: '600',
-    color: COLORS.blue,
   },
   appName: {
     fontSize: 28,
