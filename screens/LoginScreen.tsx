@@ -102,7 +102,7 @@ export default function LoginScreen() {
                   ? require('../images/TOLVEX-LOGO-DARK.jpg')
                   : require('../images/TOLVEX-LOGO.png')
               }
-              style={styles.logoImage}
+              style={[styles.logoImage, isDark && styles.logoImageDark]}
               resizeMode="contain"
             />
           </View>
@@ -193,6 +193,10 @@ const createStyles = (COLORS: typeof LIGHT_COLORS) =>
       width: 220,
       height: 90,
       marginBottom: 16,
+    },
+    logoImageDark: {
+      width: 320,
+      height: 130,
     },
     appName: {
       fontSize: 28,
