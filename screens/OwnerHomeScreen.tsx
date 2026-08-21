@@ -511,17 +511,16 @@ function BottomSheet({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <Pressable style={styles.overlay} onPress={onClose}>
-          <Animated.View
-            style={[styles.sheetContainer, { transform: [{ translateY }], maxHeight: '85%' }]}
-            onStartShouldSetResponder={() => true}
-          >
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.sheetContentContainer}
-            >
-              {children}
-            </ScrollView>
+          <Animated.View style={[styles.sheetContainer, { transform: [{ translateY }], maxHeight: '85%' }]}>
+            <Pressable onPress={(e) => e.stopPropagation()}>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.sheetContentContainer}
+              >
+                {children}
+              </ScrollView>
+            </Pressable>
           </Animated.View>
         </Pressable>
       </KeyboardAvoidingView>
@@ -542,9 +541,9 @@ function CenterModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.centerOverlay} onPress={onClose}>
-        <View style={styles.centerModal} onStartShouldSetResponder={() => true}>
+        <Pressable style={styles.centerModal} onPress={(e) => e.stopPropagation()}>
           {children}
-        </View>
+        </Pressable>
       </Pressable>
     </Modal>
   );

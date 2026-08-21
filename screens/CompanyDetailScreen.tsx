@@ -460,9 +460,9 @@ function CenterModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.centerOverlay} onPress={onClose}>
-        <View style={styles.centerModal} onStartShouldSetResponder={() => true}>
+        <Pressable style={styles.centerModal} onPress={(e) => e.stopPropagation()}>
           {children}
-        </View>
+        </Pressable>
       </Pressable>
     </Modal>
   );
