@@ -12,6 +12,9 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -503,14 +506,25 @@ function BottomSheet({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Animated.View
-          style={[styles.sheetContainer, { transform: [{ translateY }] }]}
-          onStartShouldSetResponder={() => true}
-        >
-          {children}
-        </Animated.View>
-      </Pressable>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Pressable style={styles.overlay} onPress={onClose}>
+          <Animated.View
+            style={[styles.sheetContainer, { transform: [{ translateY }], maxHeight: '85%' }]}
+            onStartShouldSetResponder={() => true}
+          >
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.sheetContentContainer}
+            >
+              {children}
+            </ScrollView>
+          </Animated.View>
+        </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -642,6 +656,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+  },
+  sheetContentContainer: {
     padding: 20,
     paddingBottom: 34,
     gap: 14,
