@@ -394,7 +394,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>מייל האדמין הראשון</Text>
+          <Text style={styles.fieldLabel}>מייל אדמין</Text>
           <TextInput
             style={[styles.fieldInput, styles.fieldInputLtr, !!fieldErrors.email && styles.fieldInputError]}
             placeholder="admin@company.co.il"
