@@ -6,13 +6,13 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Screen,
   AppText,
-  SearchBar,
   FilterChips,
   LoadingState,
   EmptyState,
   ExpiryBadge,
   Badge,
   AdminBottomBar,
+  AdminGlassHeader,
 } from '../../components/ui';
 import {
   COLORS,
@@ -119,16 +119,13 @@ export default function VehiclesScreen() {
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <AppText weight="bold" style={styles.headerTitle}>
-              ניהול הצי
-            </AppText>
-            <AppText style={styles.headerSubtitle}>{counts.all} רכבים בצי</AppText>
-          </View>
-        </View>
-      </View>
+      <AdminGlassHeader
+        title="ניהול הצי"
+        subtitle={`${counts.all} רכבים בצי`}
+        query={search}
+        onChangeQuery={setSearch}
+        searchPlaceholder="חיפוש לפי מספר רישוי"
+      />
 
       <View style={styles.segment}>
         <TouchableOpacity
@@ -150,11 +147,6 @@ export default function VehiclesScreen() {
       </View>
 
       <View style={styles.controls}>
-        <SearchBar
-          placeholder="חיפוש לפי מספר רישוי, דגם או קוד פנימי"
-          value={search}
-          onChangeText={setSearch}
-        />
         <FilterChips<StatusFilter>
           value={status}
           onChange={setStatus}
@@ -258,20 +250,6 @@ function MetaBadge({ label, date }: { label: string; date: string | null }) {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    paddingTop: 56,
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.md,
-    backgroundColor: COLORS.card,
-  },
-  headerTop: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerTitle: { fontSize: 19 },
-  headerSubtitle: { fontSize: 12.5, color: COLORS.textMuted, marginTop: 1 },
-
   segment: {
     flexDirection: 'row-reverse',
     borderRadius: RADIUS.md,

@@ -14,11 +14,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Screen,
   AppText,
-  SearchBar,
   FilterChips,
   LoadingState,
   EmptyState,
   AdminBottomBar,
+  AdminGlassHeader,
 } from '../../components/ui';
 import {
   COLORS,
@@ -128,26 +128,17 @@ export default function DriversScreen() {
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <AppText weight="bold" style={styles.headerTitle}>
-              ניהול צוות נהגים
-            </AppText>
-            <AppText style={styles.headerSubtitle}>{counts.all} נהגים פעילים</AppText>
-          </View>
-        </View>
-
-        <SearchBar
-          placeholder="חפש לפי שם, ת.ז או מספר עובד"
-          value={search}
-          onChangeText={setSearch}
-        />
-      </View>
+      <AdminGlassHeader
+        title="ניהול צוות נהגים"
+        subtitle={`${counts.all} נהגים פעילים`}
+        query={search}
+        onChangeQuery={setSearch}
+        searchPlaceholder="חפש לפי שם, ת.ז או מספר עובד"
+      />
 
       <View style={styles.kpiRow}>
         <View style={styles.kpiCard}>
-          <Ionicons name="people-outline" size={18} color={COLORS.accent} />
+          <Ionicons name="people-outline" size={17} color={COLORS.accent} />
           <AppText weight="bold" style={styles.kpiLabel}>
             נהגים פעילים
           </AppText>
@@ -159,7 +150,7 @@ export default function DriversScreen() {
         </View>
 
         <View style={styles.kpiCard}>
-          <Ionicons name="warning-outline" size={18} color={COLORS.dangerText} />
+          <Ionicons name="warning-outline" size={17} color={COLORS.dangerText} />
           <AppText weight="bold" style={styles.kpiLabel}>
             רישיון פג בקרוב
           </AppText>
@@ -171,7 +162,7 @@ export default function DriversScreen() {
         </View>
 
         <TouchableOpacity style={styles.kpiCard} activeOpacity={0.8} onPress={exportReport}>
-          <Ionicons name="document-text-outline" size={18} color={COLORS.textMuted} />
+          <Ionicons name="document-text-outline" size={17} color={COLORS.textMuted} />
           <AppText weight="bold" style={styles.kpiLabel}>
             ייצוא דוח
           </AppText>
@@ -291,17 +282,6 @@ export default function DriversScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    paddingTop: 56,
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.md,
-    backgroundColor: COLORS.card,
-    gap: SPACING.md,
-  },
-  headerTop: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
-  headerTitle: { fontSize: 19 },
-  headerSubtitle: { fontSize: 12.5, color: COLORS.textMuted, marginTop: 1 },
-
   kpiRow: {
     flexDirection: 'row-reverse',
     gap: SPACING.sm,
@@ -310,22 +290,29 @@ const styles = StyleSheet.create({
   },
   kpiCard: {
     flex: 1,
+    position: 'relative',
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
     paddingVertical: 12,
     paddingHorizontal: 9,
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
     ...SUBTLE_SHADOW,
   },
-  kpiLabel: { fontSize: 10.5, textAlign: 'center', lineHeight: 13 },
+  kpiLabel: { fontSize: 11, lineHeight: 13, flexShrink: 1 },
   kpiBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -6,
     minWidth: 20,
     height: 20,
     paddingHorizontal: 5,
     borderRadius: RADIUS.pill,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.card,
   },
   kpiBadgeText: { fontSize: 11, color: COLORS.textInverse },
 
