@@ -243,7 +243,7 @@ export function FilterChips<T extends string>({
   value,
   onChange,
 }: {
-  options: { value: T; label: string; count?: number }[];
+  options: { value: T; label: string; count?: number; badgeColor?: string }[];
   value: T;
   onChange: (v: T) => void;
 }) {
@@ -262,7 +262,9 @@ export function FilterChips<T extends string>({
               {opt.label}
             </AppText>
             {opt.count !== undefined && (
-              <View style={styles.chipBadge}>
+              <View
+                style={[styles.chipBadge, opt.badgeColor ? { backgroundColor: opt.badgeColor } : null]}
+              >
                 <AppText weight="bold" style={styles.chipBadgeText}>
                   {opt.count}
                 </AppText>

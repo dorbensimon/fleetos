@@ -185,10 +185,25 @@ export default function DriversScreen() {
                   value={filter}
                   onChange={setFilter}
                   options={[
-                    { value: 'all', label: 'הכל', count: counts.all },
-                    { value: 'soon', label: 'רישיון קרוב לפוג', count: counts.soon },
-                    { value: 'expired', label: 'רישיון פג', count: counts.expired },
-                    { value: 'no_vehicle', label: 'ללא רכב', count: counts.noVehicle },
+                    { value: 'all', label: 'הכל', count: counts.all, badgeColor: COLORS.accent },
+                    {
+                      value: 'soon',
+                      label: 'רישיון קרוב לפוג',
+                      count: counts.soon,
+                      badgeColor: COLORS.warnText,
+                    },
+                    {
+                      value: 'expired',
+                      label: 'רישיון פג',
+                      count: counts.expired,
+                      badgeColor: COLORS.dangerText,
+                    },
+                    {
+                      value: 'no_vehicle',
+                      label: 'ללא רכב',
+                      count: counts.noVehicle,
+                      badgeColor: COLORS.neutralText,
+                    },
                   ]}
                 />
               </View>
