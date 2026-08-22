@@ -111,6 +111,51 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   const [resetError, setResetError] = useState('');
   const [resetSuccessOpen, setResetSuccessOpen] = useState(false);
 
+  const [editTarget, setEditTarget] = useState<CompanyUser | null>(null);
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '' });
+  const [editFieldErrors, setEditFieldErrors] = useState<Record<string, string>>({});
+  const [editing, setEditing] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  const openEdit = (user: CompanyUser) => {
+    const [firstName, ...rest] = (user.full_name || '').trim().split(/\s+/);
+    setEditForm({
+      firstName: user.full_name ? firstName : '',
+      lastName: user.full_name ? rest.join(' ') : '',
+      phone: user.phone || '',
+    });
+    setEditFieldErrors({});
+    setEditError('');
+    setEditTarget(user);
+  };
+
+  const saveEdit = async () => {
+    if (!editTarget) return;
+    const errors: Record<string, string> = {};
+    if (!editForm.firstName.trim()) errors.firstName = 'שדה חובה';
+    if (!editForm.lastName.trim()) errors.lastName = 'שדה חובה';
+    if (!editForm.phone.trim()) errors.phone = 'שדה חובה';
+    setEditFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setEditing(true);
+    setEditError('');
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: `${editForm.firstName.trim()} ${editForm.lastName.trim()}`.trim(),
+        phone: editForm.phone.trim(),
+      })
+      .eq('id', editTarget.id);
+    setEditing(false);
+    if (error) {
+      setEditError('שמירת השינויים נכשלה');
+      return;
+    }
+    setEditTarget(null);
+    await load();
+  };
+
   const load = useCallback(async () => {
     const { data: companyData } = await supabase
       .from('companies')
@@ -489,6 +534,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
                 user={u}
                 onRemove={() => setRemoveTarget(u)}
                 onResetPassword={() => setResetTarget(u)}
+                onEdit={() => openEdit(u)}
               />
             ))
           )}
@@ -505,6 +551,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
                 user={u}
                 onRemove={() => setRemoveTarget(u)}
                 onResetPassword={() => setResetTarget(u)}
+                onEdit={() => openEdit(u)}
               />
             ))
           )}
@@ -836,6 +883,59 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
           <Text style={styles.primaryButtonText}>סגור</Text>
         </TouchableOpacity>
       </CenterModal>
+
+      {/* מודאל: עריכת פרטי משתמש */}
+      <CenterModal visible={!!editTarget} onClose={() => setEditTarget(null)}>
+        <Text style={styles.deleteTitle}>עריכת פרטים</Text>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>שם פרטי</Text>
+          <TextInput
+            style={[styles.fieldInput, !!editFieldErrors.firstName && styles.fieldInputError]}
+            value={editForm.firstName}
+            onChangeText={(v) => setEditForm((f) => ({ ...f, firstName: v }))}
+            textAlign="right"
+          />
+          {!!editFieldErrors.firstName && (
+            <Text style={styles.fieldErrorText}>{editFieldErrors.firstName}</Text>
+          )}
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>שם משפחה</Text>
+          <TextInput
+            style={[styles.fieldInput, !!editFieldErrors.lastName && styles.fieldInputError]}
+            value={editForm.lastName}
+            onChangeText={(v) => setEditForm((f) => ({ ...f, lastName: v }))}
+            textAlign="right"
+          />
+          {!!editFieldErrors.lastName && (
+            <Text style={styles.fieldErrorText}>{editFieldErrors.lastName}</Text>
+          )}
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>טלפון</Text>
+          <TextInput
+            style={[styles.fieldInput, styles.fieldInputLtr, !!editFieldErrors.phone && styles.fieldInputError]}
+            value={editForm.phone}
+            onChangeText={(v) => setEditForm((f) => ({ ...f, phone: v }))}
+            keyboardType="phone-pad"
+            textAlign="left"
+          />
+          {!!editFieldErrors.phone && <Text style={styles.fieldErrorText}>{editFieldErrors.phone}</Text>}
+        </View>
+
+        {!!editError && <Text style={styles.errorText}>{editError}</Text>}
+
+        <TouchableOpacity
+          style={[styles.primaryButton, editing && styles.buttonDisabled]}
+          onPress={saveEdit}
+          disabled={editing}
+        >
+          {editing ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.primaryButtonText}>שמור</Text>}
+        </TouchableOpacity>
+      </CenterModal>
     </View>
   );
 }
@@ -844,10 +944,12 @@ function UserRow({
   user,
   onRemove,
   onResetPassword,
+  onEdit,
 }: {
   user: CompanyUser;
   onRemove: () => void;
   onResetPassword: () => void;
+  onEdit: () => void;
 }) {
   return (
     <View style={styles.userRow}>
@@ -856,6 +958,9 @@ function UserRow({
       </TouchableOpacity>
       <TouchableOpacity onPress={onResetPassword} style={styles.userRemoveButton}>
         <Ionicons name="key-outline" size={16} color={COLORS.blue} />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={onEdit} style={styles.userRemoveButton}>
+        <Ionicons name="pencil-outline" size={16} color={COLORS.gray} />
       </TouchableOpacity>
       <View style={styles.userInfo}>
         <Text style={styles.userName}>{user.full_name || 'ללא שם'}</Text>
