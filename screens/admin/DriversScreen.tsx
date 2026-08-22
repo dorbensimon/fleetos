@@ -19,7 +19,6 @@ import {
   EmptyState,
   AdminBottomBar,
   AdminGlassHeader,
-  DriversVehiclesToggle,
 } from '../../components/ui';
 import {
   COLORS,
@@ -133,11 +132,8 @@ export default function DriversScreen() {
         query={search}
         onChangeQuery={setSearch}
         searchPlaceholder="חפש לפי שם, ת.ז או מספר עובד"
-      />
-
-      <DriversVehiclesToggle
-        value="drivers"
-        onChange={(v) => v === 'vehicles' && navigation.navigate('Vehicles')}
+        toggleValue="drivers"
+        onToggleChange={(v) => v === 'vehicles' && navigation.navigate('Vehicles')}
       />
 
       {loading ? (

@@ -4,22 +4,28 @@ import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AdminMenuButton } from './AdminMenuButton';
+import DriversVehiclesToggle, { ToggleValue } from './DriversVehiclesToggle';
 import { COLORS, FONT } from '../../lib/theme';
 
 /**
  * The frosted-glass banner every admin screen opens with: the hamburger
- * menu top-left and the search field right under it — one glass surface,
- * not stacked cards. No title/subtitle — this stays fixed on screen
- * while everything else (KPIs, filters, list) scrolls underneath it.
+ * menu top-left, the search field right under it, and the drivers/
+ * vehicles toggle right under that — one glass surface, not stacked
+ * sections. No title/subtitle — this stays fixed on screen while
+ * everything else (KPIs, filters, list) scrolls underneath it.
  */
 export function AdminGlassHeader({
   query,
   onChangeQuery,
   searchPlaceholder,
+  toggleValue,
+  onToggleChange,
 }: {
   query: string;
   onChangeQuery: (v: string) => void;
   searchPlaceholder: string;
+  toggleValue: ToggleValue;
+  onToggleChange: (v: ToggleValue) => void;
 }) {
   const insets = useSafeAreaInsets();
 
@@ -44,6 +50,8 @@ export function AdminGlassHeader({
             textAlign="right"
           />
         </View>
+
+        <DriversVehiclesToggle value={toggleValue} onChange={onToggleChange} />
       </View>
     </View>
   );

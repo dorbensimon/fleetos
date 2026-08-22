@@ -106,8 +106,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row-reverse',
     gap: 10,
-    marginHorizontal: 20,
-    marginTop: 12,
+    marginTop: 14,
   },
   btn: {
     flex: 1,

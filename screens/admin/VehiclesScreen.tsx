@@ -13,7 +13,6 @@ import {
   Badge,
   AdminBottomBar,
   AdminGlassHeader,
-  DriversVehiclesToggle,
 } from '../../components/ui';
 import {
   COLORS,
@@ -124,11 +123,8 @@ export default function VehiclesScreen() {
         query={search}
         onChangeQuery={setSearch}
         searchPlaceholder="חיפוש לפי מספר רישוי"
-      />
-
-      <DriversVehiclesToggle
-        value="vehicles"
-        onChange={(v) => v === 'drivers' && navigation.navigate('AdminHome')}
+        toggleValue="vehicles"
+        onToggleChange={(v) => v === 'drivers' && navigation.navigate('AdminHome')}
       />
 
       {loading ? (
