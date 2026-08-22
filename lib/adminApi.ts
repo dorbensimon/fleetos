@@ -303,6 +303,37 @@ export async function deleteDriver(
   return { ok: true };
 }
 
+/**
+ * Resets a driver's password and forces them to set their own new one
+ * on next login (must_change_password=true) — same flow as when the
+ * account was first created.
+ */
+export async function resetDriverPassword(
+  driverId: string,
+  companyId: string,
+  newPassword: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data, error } = await supabase.functions.invoke('reset-user-password', {
+    body: { userId: driverId, newPassword, companyId },
+  });
+
+  if (error || !data?.success) {
+    let message = data?.error || 'איפוס הסיסמה נכשל';
+    const ctx = (error as any)?.context;
+    if (ctx?.json) {
+      try {
+        const body = await ctx.json();
+        if (body?.error) message = body.error;
+      } catch {
+        /* keep the generic message */
+      }
+    }
+    return { ok: false, error: message };
+  }
+
+  return { ok: true };
+}
+
 /* ------------------------------------------------------------------ */
 /* Compliance                                                          */
 /* ------------------------------------------------------------------ */

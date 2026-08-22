@@ -1,12 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, ScrollView, Modal, Pressable, TextInput } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, ScreenHeader, AppText, PressableCard, LoadingState } from '../../components/ui';
+import { Screen, ScreenHeader, AppText, PressableCard, LoadingState, PrimaryButton } from '../../components/ui';
 import { COLORS, RADIUS, SPACING, CARD_SHADOW, expiryState, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { getDriver, deleteDriver, DriverRow } from '../../lib/adminApi';
+import { getDriver, deleteDriver, resetDriverPassword, DriverRow } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -39,6 +39,41 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetConfirm, setResetConfirm] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetting, setResetting] = useState(false);
+
+  const closeReset = () => {
+    setResetOpen(false);
+    setResetPassword('');
+    setResetConfirm('');
+    setResetError('');
+  };
+
+  const submitReset = async () => {
+    if (!companyId) return;
+    if (resetPassword.length < 6) {
+      setResetError('הסיסמה חייבת להכיל לפחות 6 תווים');
+      return;
+    }
+    if (resetPassword !== resetConfirm) {
+      setResetError('הסיסמאות אינן תואמות');
+      return;
+    }
+    setResetError('');
+    setResetting(true);
+    const result = await resetDriverPassword(driverId, companyId, resetPassword);
+    setResetting(false);
+    if (!result.ok) {
+      setResetError(result.error);
+      return;
+    }
+    closeReset();
+    Alert.alert('הסיסמה אופסה', 'הנהג יתבקש לקבוע סיסמה קבועה משלו בכניסה הבאה.');
+  };
 
   const confirmDelete = () => {
     Alert.alert(
@@ -170,6 +205,16 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
               <Ionicons name="chevron-back" size={16} color={COLORS.textFaint} />
             </TouchableOpacity>
 
+            <TouchableOpacity style={styles.menuRow} activeOpacity={0.7} onPress={() => setResetOpen(true)}>
+              <View style={styles.menuIcon}>
+                <Ionicons name="key-outline" size={17} color={COLORS.accent} />
+              </View>
+              <AppText weight="bold" style={styles.menuLabel} numberOfLines={1}>
+                איפוס סיסמה לנהג
+              </AppText>
+              <Ionicons name="chevron-back" size={16} color={COLORS.textFaint} />
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.menuRow}
               activeOpacity={0.7}
@@ -186,6 +231,57 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
           </View>
         </ScrollView>
       )}
+
+      <Modal visible={resetOpen} transparent animationType="fade" onRequestClose={closeReset}>
+        <Pressable style={styles.resetOverlay} onPress={closeReset}>
+          <Pressable style={styles.resetModal} onPress={(e) => e.stopPropagation()}>
+            <AppText weight="bold" style={styles.resetTitle}>
+              איפוס סיסמה
+            </AppText>
+            <AppText style={styles.resetSubtitle}>
+              קביעת סיסמה חדשה עבור {driver?.full_name ?? 'הנהג'}. הוא יתבקש לקבוע סיסמה קבועה משלו
+              בכניסה הבאה, ולא יוכל להתחבר לפני כן.
+            </AppText>
+
+            <TextInput
+              style={styles.resetInput}
+              value={resetPassword}
+              onChangeText={setResetPassword}
+              placeholder="סיסמה חדשה (לפחות 6 תווים)"
+              placeholderTextColor={COLORS.textFaint}
+              secureTextEntry
+              autoCapitalize="none"
+              textAlign="left"
+            />
+            <TextInput
+              style={styles.resetInput}
+              value={resetConfirm}
+              onChangeText={setResetConfirm}
+              placeholder="אימות סיסמה"
+              placeholderTextColor={COLORS.textFaint}
+              secureTextEntry
+              autoCapitalize="none"
+              textAlign="left"
+            />
+
+            {!!resetError && <AppText style={styles.resetError}>{resetError}</AppText>}
+
+            <View style={styles.resetActions}>
+              <TouchableOpacity style={styles.resetCancel} onPress={closeReset} disabled={resetting}>
+                <AppText weight="bold" style={styles.resetCancelText}>
+                  ביטול
+                </AppText>
+              </TouchableOpacity>
+              <PrimaryButton
+                label="אפס סיסמה"
+                onPress={submitReset}
+                loading={resetting}
+                style={styles.resetConfirmBtn}
+              />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
@@ -240,4 +336,44 @@ const styles = StyleSheet.create({
   menuLabelDanger: { color: COLORS.dangerText },
   licenseBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADIUS.pill },
   licenseBadgeText: { fontSize: 11 },
+
+  resetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.xl,
+  },
+  resetModal: {
+    width: '100%',
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    gap: SPACING.sm,
+  },
+  resetTitle: { fontSize: 16.5, color: COLORS.text, textAlign: 'right' },
+  resetSubtitle: { fontSize: 12.5, color: COLORS.textMuted, textAlign: 'right', lineHeight: 18 },
+  resetInput: {
+    height: 48,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.fieldBorder,
+    backgroundColor: COLORS.field,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: COLORS.text,
+  },
+  resetError: { fontSize: 12.5, color: COLORS.dangerText, textAlign: 'center' },
+  resetActions: { flexDirection: 'row-reverse', gap: SPACING.sm, marginTop: SPACING.xs },
+  resetCancel: {
+    flex: 1,
+    height: 48,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.fieldBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resetCancelText: { fontSize: 14, color: COLORS.text },
+  resetConfirmBtn: { flex: 1.4 },
 });

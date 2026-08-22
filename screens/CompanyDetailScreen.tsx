@@ -331,7 +331,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     setResetting(true);
     try {
       const { data, error } = await supabase.functions.invoke('reset-user-password', {
-        body: { userId: resetTarget.id, newPassword: resetForm.password },
+        body: { userId: resetTarget.id, newPassword: resetForm.password, companyId },
       });
 
       if (error || !data?.success) {
