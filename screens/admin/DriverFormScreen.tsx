@@ -7,7 +7,7 @@ import { DateField } from '../../components/ui/DateField';
 import { COLORS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
-import { getDriver, updateDriver, createDriverAccount } from '../../lib/adminApi';
+import { getDriver, updateDriver, createDriverAccount, listDepartments } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
 
 const LICENSE_CLASS_OPTIONS = [
@@ -43,6 +43,7 @@ interface FormState {
   license_classes: string;
   license_classes_2: string;
   license_expiry: string;
+  department_id: string | null;
 }
 
 const EMPTY: FormState = {
@@ -55,6 +56,7 @@ const EMPTY: FormState = {
   license_classes: '',
   license_classes_2: '',
   license_expiry: '',
+  department_id: null,
 };
 
 export default function DriverFormScreen({ route, navigation }: Props) {
@@ -63,6 +65,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
   const { companyId } = useCompany();
 
   const [form, setForm] = useState<FormState>(EMPTY);
+  const [departments, setDepartments] = useState<{ value: string; label: string }[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
@@ -71,6 +74,11 @@ export default function DriverFormScreen({ route, navigation }: Props) {
     setForm((f) => ({ ...f, [key]: value }));
 
   const load = useCallback(async () => {
+    if (companyId) {
+      const deps = await listDepartments(companyId);
+      setDepartments(deps.map((d) => ({ value: d.id, label: d.name })));
+    }
+
     if (!driverId) return;
     const d = await getDriver(driverId);
     if (d) {
@@ -88,12 +96,12 @@ export default function DriverFormScreen({ route, navigation }: Props) {
         license_classes: firstClass ?? '',
         license_classes_2: secondClass ?? '',
         license_expiry: d.license_expiry ?? '',
+        department_id: d.department_id,
       });
     }
-  }, [driverId]);
+  }, [driverId, companyId]);
 
   useEffect(() => {
-    if (!isEdit) return;
     (async () => {
       setLoading(true);
       try {
@@ -102,7 +110,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
         setLoading(false);
       }
     })();
-  }, [isEdit, load]);
+  }, [load]);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -139,6 +147,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           employee_number: form.employee_number.trim(),
           license_classes: licenseClasses,
           license_expiry: form.license_expiry.trim(),
+          department_id: form.department_id,
         });
       } else {
         // The CompanyContext value can still be mid-fetch the moment this
@@ -172,6 +181,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
             employee_number: form.employee_number.trim(),
             license_classes: licenseClasses,
             license_expiry: form.license_expiry.trim(),
+            department_id: form.department_id,
           },
         });
         if (!result.ok) {
@@ -234,6 +244,16 @@ export default function DriverFormScreen({ route, navigation }: Props) {
                 value={form.employee_number}
                 onChangeText={(v) => set('employee_number', v)}
                 hasError={!!errors.employee_number}
+              />
+            </Field>
+
+            <Field label="מחלקה" optional>
+              <Select
+                value={form.department_id}
+                onChange={(v) => set('department_id', v)}
+                options={departments}
+                placeholder={departments.length ? 'בחר מחלקה' : 'לא הוגדרו מחלקות'}
+                allowClear
               />
             </Field>
           </Card>
