@@ -40,6 +40,7 @@ interface FormState {
   national_id: string;
   employee_number: string;
   license_classes: string;
+  license_classes_2: string;
   license_expiry: string;
 }
 
@@ -51,6 +52,7 @@ const EMPTY: FormState = {
   national_id: '',
   employee_number: '',
   license_classes: '',
+  license_classes_2: '',
   license_expiry: '',
 };
 
@@ -71,6 +73,10 @@ export default function DriverFormScreen({ route, navigation }: Props) {
     if (!driverId) return;
     const d = await getDriver(driverId);
     if (d) {
+      const [firstClass, secondClass] = (d.license_classes ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
       setForm({
         full_name: d.full_name ?? '',
         phone: d.phone ?? '',
@@ -78,7 +84,8 @@ export default function DriverFormScreen({ route, navigation }: Props) {
         password: '',
         national_id: d.national_id ?? '',
         employee_number: d.employee_number ?? '',
-        license_classes: d.license_classes ?? '',
+        license_classes: firstClass ?? '',
+        license_classes_2: secondClass ?? '',
         license_expiry: d.license_expiry ?? '',
       });
     }
@@ -116,6 +123,11 @@ export default function DriverFormScreen({ route, navigation }: Props) {
     setErrors(e);
     if (Object.keys(e).length > 0) return;
 
+    const licenseClasses = [form.license_classes, form.license_classes_2]
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join(', ');
+
     setSaving(true);
     try {
       if (isEdit) {
@@ -124,7 +136,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           phone: form.phone.trim(),
           national_id: form.national_id.trim(),
           employee_number: form.employee_number.trim(),
-          license_classes: form.license_classes.trim(),
+          license_classes: licenseClasses,
           license_expiry: form.license_expiry.trim(),
         });
       } else {
@@ -138,7 +150,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           details: {
             national_id: form.national_id.trim(),
             employee_number: form.employee_number.trim(),
-            license_classes: form.license_classes.trim(),
+            license_classes: licenseClasses,
             license_expiry: form.license_expiry.trim(),
           },
         });
@@ -214,12 +226,27 @@ export default function DriverFormScreen({ route, navigation }: Props) {
             <Field label="דרגת רישיון" error={errors.license_classes}>
               <Select
                 value={form.license_classes || null}
-                onChange={(v) => set('license_classes', v ?? '')}
+                onChange={(v) => {
+                  set('license_classes', v ?? '');
+                  if (!v) set('license_classes_2', '');
+                }}
                 options={LICENSE_CLASS_OPTIONS}
                 placeholder="בחר דרגת רישיון"
                 hasError={!!errors.license_classes}
               />
             </Field>
+
+            {!!form.license_classes && (
+              <Field label="דרגת רישיון נוספת" optional>
+                <Select
+                  value={form.license_classes_2 || null}
+                  onChange={(v) => set('license_classes_2', v ?? '')}
+                  options={LICENSE_CLASS_OPTIONS.filter((o) => o.value !== form.license_classes)}
+                  placeholder="בחר דרגה נוספת (אם יש)"
+                  allowClear
+                />
+              </Field>
+            )}
 
             <Field label="תוקף רישיון" error={errors.license_expiry}>
               <DateField
