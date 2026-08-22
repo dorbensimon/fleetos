@@ -14,6 +14,7 @@ export type RootStackParamList = {
   DriverPersonalDetails: { driverId: string };
   DriverForm: { driverId?: string };
   Departments: undefined;
+  AdminProfile: undefined;
   DocumentCategory: {
     ownerType: 'driver' | 'vehicle';
     ownerId: string;

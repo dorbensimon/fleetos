@@ -15,6 +15,7 @@ import VehicleFormScreen from './screens/admin/VehicleFormScreen';
 import DriverDetailScreen from './screens/admin/DriverDetailScreen';
 import DriverFormScreen from './screens/admin/DriverFormScreen';
 import DepartmentsScreen from './screens/admin/DepartmentsScreen';
+import AdminProfileScreen from './screens/admin/AdminProfileScreen';
 import DocumentCategoryScreen from './screens/admin/DocumentCategoryScreen';
 import DriverPersonalDetailsScreen from './screens/admin/DriverPersonalDetailsScreen';
 import { RootStackParamList } from './navigation/types';
@@ -71,6 +72,7 @@ export default function App() {
           <Stack.Screen name="DriverDetail" component={DriverDetailScreen} />
           <Stack.Screen name="DriverForm" component={DriverFormScreen} />
           <Stack.Screen name="Departments" component={DepartmentsScreen} />
+          <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
           <Stack.Screen name="DocumentCategory" component={DocumentCategoryScreen} />
           <Stack.Screen name="DriverPersonalDetails" component={DriverPersonalDetailsScreen} />
         </Stack.Navigator>

@@ -38,6 +38,20 @@ export function AdminMenuButton() {
                 activeOpacity={0.7}
                 onPress={() => {
                   setMenuOpen(false);
+                  navigation.navigate('AdminProfile');
+                }}
+              >
+                <Ionicons name="person-outline" size={19} color={COLORS.text} />
+                <AppText weight="bold" style={styles.menuItemTextNeutral}>
+                  הפרטים שלי
+                </AppText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                activeOpacity={0.7}
+                onPress={() => {
+                  setMenuOpen(false);
                   navigation.navigate('Departments');
                 }}
               >
