@@ -4,9 +4,9 @@ import { COLORS, FONT } from '../../lib/theme';
 
 /**
  * React Native has no global font setting, so every piece of text in the
- * admin module goes through this component. It applies Rubik and the
+ * admin module goes through this component. It applies Heebo and the
  * default text colour, and switches to the bold face when `weight="bold"`
- * — using fontWeight alone would not pick the right Rubik file.
+ * — using fontWeight alone would not pick the right Heebo file.
  */
 export interface AppTextProps extends TextProps {
   weight?: 'regular' | 'bold';

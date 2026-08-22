@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useFonts, Rubik_400Regular, Rubik_700Bold } from '@expo-google-fonts/rubik';
+import { useFonts, Heebo_400Regular, Heebo_700Bold } from '@expo-google-fonts/heebo';
 import LoginScreen from './screens/LoginScreen';
 import SetPasswordScreen from './screens/SetPasswordScreen';
 import OwnerHomeScreen from './screens/OwnerHomeScreen';
@@ -24,7 +24,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList | null>(null);
 
-  const [fontsLoaded] = useFonts({ Rubik_400Regular, Rubik_700Bold });
+  const [fontsLoaded] = useFonts({ Heebo_400Regular, Heebo_700Bold });
 
   useEffect(() => {
     (async () => {
