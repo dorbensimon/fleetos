@@ -1,20 +1,37 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, ScreenHeader, AppText, Card, InfoRow, LoadingState, SecondaryButton } from '../../components/ui';
-import { COLORS, SPACING } from '../../lib/theme';
+import { Screen, ScreenHeader, AppText, Card, LoadingState, SecondaryButton } from '../../components/ui';
+import { COLORS, RADIUS, SPACING, CARD_SHADOW, expiryState, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, deleteDriver, DriverRow } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
- * A5 — placeholder. Full tabs (documents, certifications, assigned
- * vehicle history) come next; for now this proves the navigation and
- * shows the fields already in the database.
+ * A5 — "כרטיס נהג": a compact identity summary up top, then a flat menu
+ * of document/record categories below it. Each row opens the same
+ * generic DocumentCategoryScreen scoped to its own category, rather
+ * than eleven bespoke screens for what is really one shape repeated.
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverDetail'>;
+
+type MenuItem = { key: string; label: string; icon: React.ComponentProps<typeof Ionicons>['name'] };
+
+const MENU: MenuItem[] = [
+  { key: 'license_docs', label: 'מסמכי רישיון נהיגה', icon: 'card-outline' },
+  { key: 'driver_file', label: 'תיק נהג', icon: 'folder-outline' },
+  { key: 'notes_feedback', label: 'הערות לנהג ותגובות הנהג', icon: 'chatbubble-ellipses-outline' },
+  { key: 'traffic_reports', label: 'דוחות תעבורה', icon: 'alert-circle-outline' },
+  { key: 'procedure_6', label: 'נוהל 6', icon: 'shield-checkmark-outline' },
+  { key: 'certifications', label: 'הסמכות והכשרות', icon: 'ribbon-outline' },
+  { key: 'accompanying_drivers', label: 'נהגים נלווים', icon: 'people-outline' },
+  { key: 'hazmat', label: 'חומרים מסוכנים', icon: 'warning-outline' },
+  { key: 'trainings', label: 'הדרכות והכשרות', icon: 'school-outline' },
+  { key: 'general', label: 'מסמכים כלליים', icon: 'document-text-outline' },
+  { key: 'transport_info', label: 'מסמכי מידע תעבורתי', icon: 'information-circle-outline' },
+];
 
 export default function DriverDetailScreen({ route, navigation }: Props) {
   const { driverId } = route.params;
@@ -65,20 +82,28 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     }, [driverId])
   );
 
+  const openCategory = (item: MenuItem) => {
+    navigation.navigate('DocumentCategory', {
+      ownerType: 'driver',
+      ownerId: driverId,
+      category: item.key,
+      title: item.label,
+    });
+  };
+
+  const licenseState = expiryState(driver?.license_expiry);
+  const licenseColor =
+    licenseState === 'expired' ? COLORS.dangerText : licenseState === 'soon' ? COLORS.warnText : COLORS.okText;
+
   return (
     <Screen>
       <ScreenHeader
-        title={driver?.full_name ?? 'תיק נהג'}
-        subtitle={driver?.national_id ? `ת.ז ${driver.national_id}` : undefined}
+        title="כרטיס נהג"
+        subtitle={driver?.full_name ?? undefined}
         onBack={() => navigation.goBack()}
         right={
           <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={confirmDelete}
-              disabled={deleting}
-              hitSlop={8}
-            >
+            <TouchableOpacity style={styles.deleteButton} onPress={confirmDelete} disabled={deleting} hitSlop={8}>
               <Ionicons name="trash-outline" size={17} color={COLORS.dangerText} />
             </TouchableOpacity>
             <SecondaryButton
@@ -93,28 +118,64 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       {loading ? (
         <LoadingState />
       ) : (
-        <View style={styles.content}>
-          <Card style={styles.card}>
-            <InfoRow label="חברה" value={company?.name} />
-            <InfoRow label="מספר עובד" value={driver?.employee_number} />
-            <InfoRow label="טלפון" value={driver?.phone} />
-            <InfoRow label="דרגת רישיון" value={driver?.license_classes} />
-            <InfoRow label="תוקף רישיון" value={driver?.license_expiry} />
-            <InfoRow label="רכב משויך" value={driver?.vehicle_plate} />
+        <ScrollView contentContainerStyle={styles.content}>
+          <Card style={styles.summaryCard}>
+            <View style={styles.avatar}>
+              <AppText weight="bold" style={styles.avatarText}>
+                {(driver?.full_name ?? '?').trim().charAt(0)}
+              </AppText>
+            </View>
+            <View style={styles.summaryText}>
+              <AppText weight="bold" style={styles.summaryName} numberOfLines={1}>
+                {driver?.full_name ?? 'ללא שם'}
+              </AppText>
+              <AppText style={styles.summarySub} numberOfLines={1}>
+                {[company?.name, driver?.national_id ? `ת.ז ${driver.national_id}` : null]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </AppText>
+              <AppText style={styles.summarySub} numberOfLines={1}>
+                {[driver?.phone, driver?.vehicle_plate ? `רכב ${driver.vehicle_plate}` : 'ללא רכב']
+                  .filter(Boolean)
+                  .join(' · ')}
+              </AppText>
+            </View>
           </Card>
-          <AppText style={styles.note}>
-            מסמכים, הכשרות והיסטוריית רכבים יתווספו כאן בהמשך.
-          </AppText>
-        </View>
+
+          <View style={styles.menuList}>
+            {MENU.map((item) => (
+              <TouchableOpacity
+                key={item.key}
+                style={styles.menuRow}
+                activeOpacity={0.7}
+                onPress={() => openCategory(item)}
+              >
+                <View style={styles.menuIcon}>
+                  <Ionicons name={item.icon} size={17} color={COLORS.accent} />
+                </View>
+                <AppText weight="bold" style={styles.menuLabel} numberOfLines={1}>
+                  {item.label}
+                </AppText>
+                {item.key === 'license_docs' && !!driver?.license_expiry && (
+                  <View style={[styles.licenseBadge, { backgroundColor: `${licenseColor}1A` }]}>
+                    <AppText weight="bold" style={[styles.licenseBadgeText, { color: licenseColor }]}>
+                      {formatDate(driver.license_expiry)}
+                    </AppText>
+                  </View>
+                )}
+                <Ionicons name="chevron-back" size={16} color={COLORS.textFaint} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
       )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: SPACING.lg, gap: SPACING.md },
-  card: { gap: 4 },
-  note: { fontSize: 12.5, color: COLORS.textFaint, textAlign: 'center', marginTop: SPACING.sm },
+  content: { padding: SPACING.lg, gap: SPACING.lg, paddingBottom: 48 },
+
   headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.sm },
   deleteButton: {
     width: 36,
@@ -124,4 +185,50 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  summaryCard: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: SPACING.md,
+    padding: SPACING.md,
+  },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: COLORS.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: { fontSize: 20, color: COLORS.accent },
+  summaryText: { flex: 1, gap: 2 },
+  summaryName: { fontSize: 16.5 },
+  summarySub: { fontSize: 12.5, color: COLORS.textMuted },
+
+  menuList: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
+    ...CARD_SHADOW,
+  },
+  menuRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
+  },
+  menuIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: COLORS.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuLabel: { flex: 1, fontSize: 14.5, color: COLORS.text, textAlign: 'right' },
+  licenseBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADIUS.pill },
+  licenseBadgeText: { fontSize: 11 },
 });

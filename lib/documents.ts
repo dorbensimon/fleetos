@@ -140,14 +140,18 @@ export async function uploadDocument(params: {
 
 export async function listDocuments(
   ownerType: OwnerType,
-  ownerId: string
+  ownerId: string,
+  category?: string
 ): Promise<DocumentRow[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from('documents')
     .select('*')
     .eq('owner_type', ownerType)
-    .eq('owner_id', ownerId)
-    .order('created_at', { ascending: false });
+    .eq('owner_id', ownerId);
+
+  if (category) query = query.eq('category', category);
+
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) throw error;
   return (data ?? []) as DocumentRow[];
