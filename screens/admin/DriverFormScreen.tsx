@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'r
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Screen, Card, AppText, ScreenHeader, LoadingState, Field, Input, InputLtr, PrimaryButton } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
+import { DateField } from '../../components/ui/DateField';
 import { COLORS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, updateDriver, createDriverAccount } from '../../lib/adminApi';
@@ -218,10 +219,9 @@ export default function DriverFormScreen({ route, navigation }: Props) {
             </Field>
 
             <Field label="תוקף רישיון" error={errors.license_expiry}>
-              <InputLtr
-                value={form.license_expiry}
-                onChangeText={(v) => set('license_expiry', v)}
-                placeholder="YYYY-MM-DD"
+              <DateField
+                value={form.license_expiry || null}
+                onChange={(iso) => set('license_expiry', iso ?? '')}
                 hasError={!!errors.license_expiry}
               />
             </Field>
