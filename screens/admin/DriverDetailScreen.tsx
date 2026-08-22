@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-nat
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, ScreenHeader, AppText, PressableCard, LoadingState, SecondaryButton } from '../../components/ui';
+import { Screen, ScreenHeader, AppText, PressableCard, LoadingState } from '../../components/ui';
 import { COLORS, RADIUS, SPACING, CARD_SHADOW, expiryState, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, deleteDriver, DriverRow } from '../../lib/adminApi';
@@ -97,23 +97,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
 
   return (
     <Screen>
-      <ScreenHeader
-        title="כרטיס נהג"
-        subtitle={driver?.full_name ?? undefined}
-        onBack={() => navigation.goBack()}
-        right={
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.deleteButton} onPress={confirmDelete} disabled={deleting} hitSlop={8}>
-              <Ionicons name="trash-outline" size={17} color={COLORS.dangerText} />
-            </TouchableOpacity>
-            <SecondaryButton
-              label="עריכה"
-              icon="pencil-outline"
-              onPress={() => navigation.navigate('DriverForm', { driverId })}
-            />
-          </View>
-        }
-      />
+      <ScreenHeader title="כרטיס נהג" subtitle={driver?.full_name ?? undefined} onBack={() => navigation.goBack()} />
 
       {loading ? (
         <LoadingState />
@@ -171,6 +155,34 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
                 <Ionicons name="chevron-back" size={16} color={COLORS.textFaint} />
               </TouchableOpacity>
             ))}
+
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('DriverForm', { driverId })}
+            >
+              <View style={styles.menuIcon}>
+                <Ionicons name="pencil-outline" size={17} color={COLORS.accent} />
+              </View>
+              <AppText weight="bold" style={styles.menuLabel} numberOfLines={1}>
+                עריכת פרטי הנהג
+              </AppText>
+              <Ionicons name="chevron-back" size={16} color={COLORS.textFaint} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuRow}
+              activeOpacity={0.7}
+              onPress={confirmDelete}
+              disabled={deleting}
+            >
+              <View style={[styles.menuIcon, styles.menuIconDanger]}>
+                <Ionicons name="trash-outline" size={17} color={COLORS.dangerText} />
+              </View>
+              <AppText weight="bold" style={[styles.menuLabel, styles.menuLabelDanger]} numberOfLines={1}>
+                מחיקת נהג
+              </AppText>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       )}
@@ -180,16 +192,6 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   content: { padding: SPACING.lg, gap: SPACING.lg, paddingBottom: 48 },
-
-  headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.sm },
-  deleteButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.dangerBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 
   summaryCard: {
     flexDirection: 'row-reverse',
@@ -234,6 +236,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   menuLabel: { flex: 1, fontSize: 14.5, color: COLORS.text, textAlign: 'right' },
+  menuIconDanger: { backgroundColor: COLORS.dangerBg },
+  menuLabelDanger: { color: COLORS.dangerText },
   licenseBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADIUS.pill },
   licenseBadgeText: { fontSize: 11 },
 });
