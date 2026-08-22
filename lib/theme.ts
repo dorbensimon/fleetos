@@ -14,7 +14,7 @@
 
 export const COLORS = {
   // text
-  text: '#000000',
+  text: '#1A1A1A',
   textMuted: '#666666',
   textFaint: '#979797',
   textInverse: '#FFFFFF',

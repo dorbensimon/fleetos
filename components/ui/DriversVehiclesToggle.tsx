@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   btnActiveInner: {
     flex: 1,
     borderRadius: PILL,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: COLORS.text,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.22)',
     flexDirection: 'row-reverse',
