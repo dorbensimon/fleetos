@@ -6,6 +6,7 @@ import { Select } from '../../components/ui/Select';
 import { DateField } from '../../components/ui/DateField';
 import { COLORS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
+import { supabase } from '../../lib/supabase';
 import { getDriver, updateDriver, createDriverAccount } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
 
@@ -140,12 +141,28 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           license_expiry: form.license_expiry.trim(),
         });
       } else {
-        if (!companyId) {
+        // The CompanyContext value can still be mid-fetch the moment this
+        // screen mounts (its load() runs in a useEffect, after first
+        // render) — refetch directly here rather than trusting a value
+        // that may not have resolved yet.
+        let activeCompanyId = companyId;
+        if (!activeCompanyId) {
+          const { data: auth } = await supabase.auth.getUser();
+          if (auth.user) {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('company_id')
+              .eq('id', auth.user.id)
+              .single();
+            activeCompanyId = prof?.company_id ?? null;
+          }
+        }
+        if (!activeCompanyId) {
           Alert.alert('שמירה נכשלה', 'לא נמצאה חברה משויכת לחשבון שלך. נסה להתחבר מחדש');
           return;
         }
         const result = await createDriverAccount({
-          companyId,
+          companyId: activeCompanyId,
           email: form.email.trim(),
           password: form.password,
           fullName: form.full_name.trim(),
