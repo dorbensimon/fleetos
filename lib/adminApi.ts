@@ -98,6 +98,16 @@ export interface Department {
   name: string;
 }
 
+export interface Notification {
+  id: string;
+  company_id: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  message: string;
+  read_at: string | null;
+  created_at: string;
+}
+
 /* ------------------------------------------------------------------ */
 /* Vehicles                                                            */
 /* ------------------------------------------------------------------ */
@@ -341,6 +351,43 @@ export async function getUserEmail(userId: string, companyId: string): Promise<s
   });
   if (error || !data?.success) return null;
   return data.email ?? null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Notifications                                                       */
+/* ------------------------------------------------------------------ */
+
+export async function listNotifications(companyId: string): Promise<Notification[]> {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as Notification[];
+}
+
+export async function countUnreadNotifications(companyId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('company_id', companyId)
+    .is('read_at', null);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** Marks every currently-unread notification as read (called when the notifications screen opens). */
+export async function markAllNotificationsRead(companyId: string) {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('company_id', companyId)
+    .is('read_at', null);
+
+  if (error) throw error;
 }
 
 /* ------------------------------------------------------------------ */

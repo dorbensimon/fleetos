@@ -1,21 +1,42 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppText } from './Text';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
 import { supabase } from '../../lib/supabase';
+import { useCompany } from '../../lib/CompanyContext';
+import { countUnreadNotifications } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
  * The hamburger button that lives in every admin header's top-left
- * corner. Only holds "log out" today — more account-level actions land
- * in this same menu later.
+ * corner. The bell badge is red with the unread count while there are
+ * unread notifications, and turns grey once it's 0 — refetched on
+ * every focus so it updates right after leaving the Notifications
+ * screen (which is what actually marks things read).
  */
 export function AdminMenuButton() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { companyId } = useCompany();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+
+  const refreshUnread = useCallback(async () => {
+    if (!companyId) return;
+    setUnread(await countUnreadNotifications(companyId));
+  }, [companyId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshUnread();
+    }, [refreshUnread])
+  );
+
+  useEffect(() => {
+    refreshUnread();
+  }, [refreshUnread]);
 
   const logout = async () => {
     setMenuOpen(false);
@@ -33,6 +54,27 @@ export function AdminMenuButton() {
         <Pressable style={styles.overlay} onPress={() => setMenuOpen(false)}>
           <View style={styles.menuAnchor}>
             <Pressable style={styles.menu} onPress={(e) => e.stopPropagation()}>
+              <TouchableOpacity
+                style={styles.menuItem}
+                activeOpacity={0.7}
+                onPress={() => {
+                  setMenuOpen(false);
+                  navigation.navigate('Notifications');
+                }}
+              >
+                <View style={styles.bellWrap}>
+                  <Ionicons name="notifications-outline" size={19} color={COLORS.text} />
+                  <View style={[styles.badge, unread === 0 && styles.badgeRead]}>
+                    <AppText weight="bold" style={styles.badgeText}>
+                      {unread}
+                    </AppText>
+                  </View>
+                </View>
+                <AppText weight="bold" style={styles.menuItemTextNeutral}>
+                  התראות
+                </AppText>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.menuItem}
                 activeOpacity={0.7}
@@ -111,4 +153,20 @@ const styles = StyleSheet.create({
   menuItemText: { fontSize: 14.5, color: COLORS.dangerText },
   menuItemTextNeutral: { fontSize: 14.5, color: COLORS.text },
   menuDivider: { height: 1, backgroundColor: COLORS.divider, marginVertical: 4 },
+
+  bellWrap: { position: 'relative' },
+  badge: {
+    position: 'absolute',
+    top: -7,
+    right: -9,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    borderRadius: 8,
+    backgroundColor: COLORS.dangerText,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeRead: { backgroundColor: COLORS.textFaint },
+  badgeText: { fontSize: 9.5, color: COLORS.textInverse },
 });

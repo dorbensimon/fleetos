@@ -15,6 +15,7 @@ export type RootStackParamList = {
   DriverForm: { driverId?: string };
   Departments: undefined;
   AdminProfile: undefined;
+  Notifications: undefined;
   DocumentCategory: {
     ownerType: 'driver' | 'vehicle';
     ownerId: string;

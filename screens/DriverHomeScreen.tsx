@@ -58,9 +58,8 @@ export default function DriverHomeScreen({ navigation }: Props) {
     <Screen>
       <View style={[styles.topRow, { paddingTop: insets.top + 14 }]}>
         <View style={styles.greetingWrap}>
-          <AppText style={styles.greetingSmall}>{timeGreeting()},</AppText>
           <AppText weight="bold" style={styles.greetingName} numberOfLines={1}>
-            {firstName || 'נהג'}
+            {timeGreeting()}, {firstName || 'נהג'}
           </AppText>
         </View>
         <DriverMenuButton />
@@ -140,8 +139,7 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.md,
   },
   greetingWrap: { alignItems: 'flex-end' },
-  greetingSmall: { fontSize: 13, color: COLORS.textMuted },
-  greetingName: { fontSize: 20, marginTop: 1 },
+  greetingName: { fontSize: 20 },
 
   content: { padding: SPACING.lg, gap: SPACING.md },
 
