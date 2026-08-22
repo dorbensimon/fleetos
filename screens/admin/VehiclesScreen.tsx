@@ -142,7 +142,7 @@ export default function VehiclesScreen() {
                 onChange={setStatus}
                 options={[
                   { value: 'all', label: 'הכל', count: counts.all, badgeColor: COLORS.accent },
-                  { value: 'active', label: 'פעיל', count: counts.active, badgeColor: COLORS.okText },
+                  { value: 'active', label: 'פעיל', count: counts.active, badgeColor: '#5CAE87' },
                   {
                     value: 'maintenance',
                     label: 'בטיפול',
