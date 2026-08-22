@@ -1,14 +1,7 @@
-import React, { useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  Animated,
-  LayoutChangeEvent,
-  Platform,
-} from 'react-native';
+import React from 'react';
+import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { FONT } from '../../lib/theme';
 
 /**
@@ -16,6 +9,13 @@ import { FONT } from '../../lib/theme';
  * separate stack screen, not tab content, so this is used "controlled"
  * — `value` reflects whichever screen mounted it, and `onChange` fires
  * navigation rather than local state.
+ *
+ * Neumorphic soft-UI buttons (ref: Uiverse.io by ke1221): the selected
+ * one stays permanently in the "pressed in" state rather than only on
+ * touch — that's how it shows which one is active. React Native can't
+ * do a real inset box-shadow, so the pressed look is faked with a
+ * diagonal gradient overlay (dark corner where the shadow would sit,
+ * light corner opposite) instead of an outward shadow.
  */
 
 export type ToggleValue = 'drivers' | 'vehicles';
@@ -25,99 +25,106 @@ type Props = {
   onChange?: (v: ToggleValue) => void;
 };
 
-const PAD = 4;
-
-export default function DriversVehiclesToggle({ value, onChange }: Props) {
-  const [internal, setInternal] = useState<ToggleValue>('drivers');
-  const active = value ?? internal;
-  const [trackW, setTrackW] = useState(0);
-  const x = useRef(new Animated.Value(0)).current;
-
-  const half = trackW > 0 ? (trackW - PAD * 2) / 2 : 0;
-
-  const select = (v: ToggleValue) => {
-    if (value === undefined) setInternal(v);
-    onChange?.(v);
-    Animated.spring(x, {
-      toValue: v === 'drivers' ? 0 : -half, // RTL: נהגים בימין
-      useNativeDriver: true,
-      speed: 18,
-      bounciness: 4,
-    }).start();
-  };
-
-  const onTrackLayout = (e: LayoutChangeEvent) => setTrackW(e.nativeEvent.layout.width);
-
+export default function DriversVehiclesToggle({ value = 'drivers', onChange }: Props) {
   return (
-    <View style={styles.track} onLayout={onTrackLayout}>
-      {half > 0 && (
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.thumb, { width: half, transform: [{ translateX: x }] }]}
-        />
-      )}
-
-      <Pressable style={styles.item} onPress={() => select('drivers')}>
-        <Feather name="users" size={15} color={active === 'drivers' ? '#000000' : '#7C7C7C'} />
-        <Text style={active === 'drivers' ? styles.labelOn : styles.labelOff}>נהגים</Text>
-      </Pressable>
-
-      <Pressable style={styles.item} onPress={() => select('vehicles')}>
-        <MaterialCommunityIcons
-          name="car-outline"
-          size={17}
-          color={active === 'vehicles' ? '#000000' : '#7C7C7C'}
-        />
-        <Text style={active === 'vehicles' ? styles.labelOn : styles.labelOff}>רכבים</Text>
-      </Pressable>
+    <View style={styles.row}>
+      <ToggleButton
+        label="נהגים"
+        active={value === 'drivers'}
+        onPress={() => onChange?.('drivers')}
+        icon={(color) => <Feather name="users" size={15} color={color} />}
+      />
+      <ToggleButton
+        label="רכבים"
+        active={value === 'vehicles'}
+        onPress={() => onChange?.('vehicles')}
+        icon={(color) => <MaterialCommunityIcons name="car-outline" size={17} color={color} />}
+      />
     </View>
   );
 }
 
+function ToggleButton({
+  label,
+  active,
+  onPress,
+  icon,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  icon: (color: string) => React.ReactNode;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.btn, active ? styles.btnActive : styles.btnRaised]}
+    >
+      {active && (
+        <LinearGradient
+          pointerEvents="none"
+          colors={['rgba(0,0,0,0.14)', 'rgba(255,255,255,0.55)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.pressedOverlay}
+        />
+      )}
+      {icon(active ? '#090909' : '#666666')}
+      <Text style={active ? styles.labelActive : styles.label}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const RADIUS = 12;
+
 const styles = StyleSheet.create({
-  track: {
+  row: {
     flexDirection: 'row-reverse',
-    height: 52,
-    padding: PAD,
-    borderRadius: 16,
-    backgroundColor: '#E6E6E6',
+    gap: 10,
     marginHorizontal: 20,
     marginTop: 12,
   },
-  thumb: {
-    position: 'absolute',
-    top: PAD,
-    right: PAD,
-    bottom: PAD,
-    borderRadius: 13,
-    backgroundColor: '#FFFFFF',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.14,
-        shadowOffset: { width: 0, height: 3 },
-        shadowRadius: 8,
-      },
-      android: { elevation: 4 },
-    }),
-  },
-  item: {
+  btn: {
     flex: 1,
+    height: 48,
+    borderRadius: RADIUS,
+    backgroundColor: '#E8E8E8',
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
+    overflow: 'hidden',
   },
-  labelOn: {
-    fontFamily: FONT.bold,
-    fontSize: 15,
-    color: '#000000',
+  btnRaised: {
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.16,
+        shadowOffset: { width: 4, height: 4 },
+        shadowRadius: 7,
+      },
+      android: { elevation: 5 },
+    }),
+    borderWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.85)',
+    borderLeftColor: 'rgba(255,255,255,0.85)',
+    borderRightColor: 'rgba(0,0,0,0.04)',
+    borderBottomColor: 'rgba(0,0,0,0.04)',
+  },
+  btnActive: {
+    // no outward shadow — this is what reads as "pressed in"
+  },
+  pressedOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: RADIUS },
+  label: {
+    fontFamily: FONT.regular,
+    fontSize: 14.5,
+    color: '#666666',
     writingDirection: 'rtl',
   },
-  labelOff: {
-    fontFamily: FONT.regular,
-    fontSize: 15,
-    color: '#7C7C7C',
+  labelActive: {
+    fontFamily: FONT.bold,
+    fontSize: 14.5,
+    color: '#090909',
     writingDirection: 'rtl',
   },
 });
