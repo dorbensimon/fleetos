@@ -10,12 +10,11 @@ import { FONT } from '../../lib/theme';
  * — `value` reflects whichever screen mounted it, and `onChange` fires
  * navigation rather than local state.
  *
- * Neumorphic soft-UI buttons (ref: Uiverse.io by ke1221): the selected
- * one stays permanently in the "pressed in" state rather than only on
- * touch — that's how it shows which one is active. React Native can't
- * do a real inset box-shadow, so the pressed look is faked with a
- * diagonal gradient overlay (dark corner where the shadow would sit,
- * light corner opposite) instead of an outward shadow.
+ * Styled after a glossy dark pill button (ref: Uiverse.io by
+ * FColombati) — but React Native has no clip-path, no stacked inset
+ * shadows, no mix-blend-mode, so this is an achievable approximation:
+ * a solid black pill with one soft top highlight gradient and a real
+ * drop shadow for the selected option, plain white for the other.
  */
 
 export type ToggleValue = 'drivers' | 'vehicles';
@@ -58,24 +57,24 @@ function ToggleButton({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.btn, active ? styles.btnActive : styles.btnRaised]}
+      style={[styles.btn, active ? styles.btnActive : styles.btnInactive]}
     >
       {active && (
         <LinearGradient
           pointerEvents="none"
-          colors={['rgba(0,0,0,0.14)', 'rgba(255,255,255,0.55)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.pressedOverlay}
+          colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.gloss}
         />
       )}
-      {icon(active ? '#090909' : '#666666')}
+      {icon(active ? '#FFFFFF' : '#8A8A8A')}
       <Text style={active ? styles.labelActive : styles.label}>{label}</Text>
     </Pressable>
   );
 }
 
-const RADIUS = 12;
+const PILL = 24;
 
 const styles = StyleSheet.create({
   row: {
@@ -87,44 +86,48 @@ const styles = StyleSheet.create({
   btn: {
     flex: 1,
     height: 48,
-    borderRadius: RADIUS,
-    backgroundColor: '#E8E8E8',
+    borderRadius: PILL,
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
     overflow: 'hidden',
   },
-  btnRaised: {
+  btnInactive: {
+    backgroundColor: '#FFFFFF',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOpacity: 0.16,
-        shadowOffset: { width: 4, height: 4 },
-        shadowRadius: 7,
+        shadowOpacity: 0.08,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 6,
       },
-      android: { elevation: 5 },
+      android: { elevation: 2 },
     }),
-    borderWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.85)',
-    borderLeftColor: 'rgba(255,255,255,0.85)',
-    borderRightColor: 'rgba(0,0,0,0.04)',
-    borderBottomColor: 'rgba(0,0,0,0.04)',
   },
   btnActive: {
-    // no outward shadow — this is what reads as "pressed in"
+    backgroundColor: '#0D0D0D',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.35,
+        shadowOffset: { width: 0, height: 6 },
+        shadowRadius: 14,
+      },
+      android: { elevation: 8 },
+    }),
   },
-  pressedOverlay: { ...StyleSheet.absoluteFillObject, borderRadius: RADIUS },
+  gloss: { position: 'absolute', top: 0, left: 0, right: 0, height: '58%' },
   label: {
     fontFamily: FONT.regular,
-    fontSize: 14.5,
-    color: '#666666',
+    fontSize: 14,
+    color: '#8A8A8A',
     writingDirection: 'rtl',
   },
   labelActive: {
     fontFamily: FONT.bold,
-    fontSize: 14.5,
-    color: '#090909',
+    fontSize: 14,
+    color: '#FFFFFF',
     writingDirection: 'rtl',
   },
 });
