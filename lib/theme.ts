@@ -62,8 +62,8 @@ export const SUBTLE_SHADOW = {
 } as const;
 
 export const FONT = {
-  regular: 'Heebo_400Regular',
-  bold: 'Heebo_700Bold',
+  regular: 'Arimo_400Regular',
+  bold: 'Arimo_700Bold',
 } as const;
 
 export const RADIUS = {
