@@ -6,7 +6,7 @@ import { Screen, ScreenHeader, AppText, Card, InfoRow, LoadingState, SecondaryBu
 import { Select } from '../../components/ui/Select';
 import { COLORS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { getDriver, listVehicles, updateVehicle, DriverRow, Vehicle } from '../../lib/adminApi';
+import { getDriver, listVehicles, updateVehicle, listDepartments, DriverRow, Vehicle, Department } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -26,14 +26,20 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
   const { companyId, company } = useCompany();
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingVehicle, setEditingVehicle] = useState(false);
   const [savingVehicle, setSavingVehicle] = useState(false);
 
   const load = useCallback(async () => {
-    const [d, v] = await Promise.all([getDriver(driverId), companyId ? listVehicles(companyId) : []]);
+    const [d, v, deps] = await Promise.all([
+      getDriver(driverId),
+      companyId ? listVehicles(companyId) : [],
+      companyId ? listDepartments(companyId) : [],
+    ]);
     setDriver(d);
     setVehicles(v);
+    setDepartments(deps);
   }, [driverId, companyId]);
 
   useFocusEffect(
@@ -51,6 +57,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
   );
 
   const currentVehicle = vehicles.find((v) => v.primary_driver_id === driverId) ?? null;
+  const departmentName = departments.find((d) => d.id === driver?.department_id)?.name ?? null;
 
   const changeVehicle = async (vehicleId: string | null) => {
     setSavingVehicle(true);
@@ -94,6 +101,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
           <InfoRow label="טלפון" value={driver?.phone} />
           <InfoRow label="תעודת זהות" value={driver?.national_id} />
           <InfoRow label="מספר עובד" value={driver?.employee_number} />
+          <InfoRow label="מחלקה" value={departmentName} />
           <InfoRow label="דרגת רישיון" value={driver?.license_classes} />
           <InfoRow label="תוקף רישיון" value={driver?.license_expiry} />
 
