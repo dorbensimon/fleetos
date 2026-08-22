@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-nat
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, ScreenHeader, AppText, Card, LoadingState, SecondaryButton } from '../../components/ui';
+import { Screen, ScreenHeader, AppText, PressableCard, LoadingState, SecondaryButton } from '../../components/ui';
 import { COLORS, RADIUS, SPACING, CARD_SHADOW, expiryState, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, deleteDriver, DriverRow } from '../../lib/adminApi';
@@ -119,21 +119,20 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
         <LoadingState />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
-          <Card style={styles.summaryCard}>
+          <PressableCard
+            style={styles.summaryCard}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('DriverPersonalDetails', { driverId })}
+          >
             <View style={styles.avatar}>
               <AppText weight="bold" style={styles.avatarText}>
                 {(driver?.full_name ?? '?').trim().charAt(0)}
               </AppText>
             </View>
             <View style={styles.summaryText}>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('DriverPersonalDetails', { driverId })}
-              >
-                <AppText weight="bold" style={styles.summaryName} numberOfLines={1}>
-                  {driver?.full_name ?? 'ללא שם'}
-                </AppText>
-              </TouchableOpacity>
+              <AppText weight="bold" style={styles.summaryName} numberOfLines={1}>
+                {driver?.full_name ?? 'ללא שם'}
+              </AppText>
               <AppText style={styles.summarySub} numberOfLines={1}>
                 {[company?.name, driver?.national_id ? `ת.ז ${driver.national_id}` : null]
                   .filter(Boolean)
@@ -145,7 +144,8 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
                   .join(' · ')}
               </AppText>
             </View>
-          </Card>
+            <Ionicons name="chevron-back" size={16} color={COLORS.textFaint} />
+          </PressableCard>
 
           <View style={styles.menuList}>
             {MENU.map((item) => (
