@@ -31,6 +31,7 @@ export function AdminGlassHeader({
 }) {
   const insets = useSafeAreaInsets();
   const { profile } = useCompany();
+  const firstName = profile?.full_name?.trim().split(/\s+/)[0];
 
   return (
     <View style={styles.wrap}>
@@ -41,7 +42,7 @@ export function AdminGlassHeader({
         <View style={styles.topRow}>
           <View style={styles.greetingWrap}>
             <AppText style={styles.greeting} numberOfLines={1}>
-              שלום, {profile?.full_name || 'אדמין'}
+              שלום, {firstName || 'אדמין'}
             </AppText>
           </View>
           <AdminMenuButton />
