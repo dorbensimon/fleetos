@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   Linking,
   Alert,
+  Modal,
+  Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -32,6 +35,7 @@ import {
 } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listDrivers, DriverRow } from '../../lib/adminApi';
+import { exportDriversReport, REPORT_CATEGORIES, ReportCategory } from '../../lib/driverReport';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -47,13 +51,15 @@ type LicenseFilter = 'all' | 'valid' | 'soon' | 'expired' | 'no_vehicle';
 
 export default function DriversScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { companyId } = useCompany();
+  const { companyId, company } = useCompany();
 
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<LicenseFilter>('all');
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [exportingCategory, setExportingCategory] = useState<ReportCategory | null>(null);
 
   const load = useCallback(async () => {
     if (!companyId) return;
@@ -123,8 +129,17 @@ export default function DriversScreen() {
     Linking.openURL(`tel:${phone.replace(/[^\d+]/g, '')}`);
   };
 
-  const exportReport = () => {
-    Alert.alert('ייצוא דוח', 'האפשרות תהיה זמינה בקרוב');
+  const runExport = async (category: ReportCategory) => {
+    if (!company) return;
+    setExportingCategory(category);
+    try {
+      await exportDriversReport(company, drivers, category);
+      setExportMenuOpen(false);
+    } catch (err: any) {
+      Alert.alert('ייצוא הדוח נכשל', String(err?.message ?? 'נסה שוב'));
+    } finally {
+      setExportingCategory(null);
+    }
   };
 
   return (
@@ -148,7 +163,11 @@ export default function DriversScreen() {
           ListHeaderComponent={
             <>
               <View style={styles.kpiRow}>
-                <TouchableOpacity style={styles.kpiCard} activeOpacity={0.8} onPress={exportReport}>
+                <TouchableOpacity
+                  style={styles.kpiCard}
+                  activeOpacity={0.8}
+                  onPress={() => setExportMenuOpen(true)}
+                >
                   <Ionicons name="document-text-outline" size={17} color={COLORS.textMuted} />
                   <AppText weight="bold" style={styles.kpiLabel}>
                     ייצוא דוח
@@ -268,6 +287,50 @@ export default function DriversScreen() {
           }}
         />
       )}
+
+      <Modal
+        visible={exportMenuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setExportMenuOpen(false)}
+      >
+        <Pressable style={styles.exportOverlay} onPress={() => setExportMenuOpen(false)}>
+          <Pressable style={styles.exportSheet} onPress={(e) => e.stopPropagation()}>
+            <AppText weight="bold" style={styles.exportTitle}>
+              ייצוא דוח נהגים
+            </AppText>
+            <AppText style={styles.exportSubtitle}>בחר את קבוצת הנהגים לדוח</AppText>
+
+            {REPORT_CATEGORIES.map((cat) => (
+              <TouchableOpacity
+                key={cat.value}
+                style={styles.exportRow}
+                activeOpacity={0.7}
+                disabled={!!exportingCategory}
+                onPress={() => runExport(cat.value)}
+              >
+                <View style={styles.exportRowIcon}>
+                  {exportingCategory === cat.value ? (
+                    <ActivityIndicator size="small" color={COLORS.accent} />
+                  ) : (
+                    <Ionicons name={cat.icon as any} size={18} color={COLORS.accent} />
+                  )}
+                </View>
+                <AppText weight="bold" style={styles.exportRowLabel}>
+                  {cat.label}
+                </AppText>
+                <Ionicons name="chevron-back" size={16} color={COLORS.textFaint} />
+              </TouchableOpacity>
+            ))}
+
+            <TouchableOpacity style={styles.exportCancel} onPress={() => setExportMenuOpen(false)}>
+              <AppText weight="bold" style={styles.exportCancelText}>
+                ביטול
+              </AppText>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
@@ -365,4 +428,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
+  exportOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  exportSheet: {
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: RADIUS.lg,
+    borderTopRightRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xl,
+    gap: SPACING.sm,
+  },
+  exportTitle: { fontSize: 16, color: COLORS.text, textAlign: 'right' },
+  exportSubtitle: { fontSize: 12.5, color: COLORS.textMuted, textAlign: 'right', marginBottom: SPACING.sm },
+  exportRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: SPACING.md,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
+  },
+  exportRowIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exportRowLabel: { flex: 1, fontSize: 14.5, color: COLORS.text, textAlign: 'right' },
+  exportCancel: {
+    marginTop: SPACING.sm,
+    height: 46,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.field,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exportCancelText: { fontSize: 14, color: COLORS.textMuted },
 });

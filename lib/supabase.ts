@@ -34,5 +34,9 @@ export interface Company {
   status: 'active' | 'disabled';
   company_type: 'בע״מ' | 'עוסק מורשה' | null;
   business_id: string | null;
+  address: string | null;
+  phone: string | null;
+  safety_officer_name: string | null;
+  safety_officer_phone: string | null;
   created_at: string;
 }

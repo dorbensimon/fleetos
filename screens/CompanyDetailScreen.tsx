@@ -54,6 +54,12 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
 
   const [name, setName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [companyType, setCompanyType] = useState<'' | 'בע״מ' | 'עוסק מורשה'>('');
+  const [businessId, setBusinessId] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [safetyOfficerName, setSafetyOfficerName] = useState('');
+  const [safetyOfficerPhone, setSafetyOfficerPhone] = useState('');
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoError, setLogoError] = useState('');
 
@@ -116,6 +122,12 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       setCompany(companyData);
       setName(companyData.name);
       setLogoUrl(companyData.logo_url || '');
+      setCompanyType(companyData.company_type || '');
+      setBusinessId(companyData.business_id || '');
+      setAddress(companyData.address || '');
+      setPhone(companyData.phone || '');
+      setSafetyOfficerName(companyData.safety_officer_name || '');
+      setSafetyOfficerPhone(companyData.safety_officer_phone || '');
     }
 
     const { data: usersData, error } = await supabase.functions.invoke('list-company-users', {
@@ -135,7 +147,16 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     })();
   }, [load]);
 
-  const hasChanges = company && (name.trim() !== company.name || logoUrl.trim() !== (company.logo_url || ''));
+  const hasChanges =
+    company &&
+    (name.trim() !== company.name ||
+      logoUrl.trim() !== (company.logo_url || '') ||
+      companyType !== (company.company_type || '') ||
+      businessId.trim() !== (company.business_id || '') ||
+      address.trim() !== (company.address || '') ||
+      phone.trim() !== (company.phone || '') ||
+      safetyOfficerName.trim() !== (company.safety_officer_name || '') ||
+      safetyOfficerPhone.trim() !== (company.safety_officer_phone || ''));
 
   const saveChanges = async () => {
     if (!company || !name.trim()) return;
@@ -143,7 +164,16 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     setSaving(true);
     const { error } = await supabase
       .from('companies')
-      .update({ name: name.trim(), logo_url: logoUrl.trim() || null })
+      .update({
+        name: name.trim(),
+        logo_url: logoUrl.trim() || null,
+        company_type: companyType || null,
+        business_id: businessId.trim() || null,
+        address: address.trim() || null,
+        phone: phone.trim() || null,
+        safety_officer_name: safetyOfficerName.trim() || null,
+        safety_officer_phone: safetyOfficerPhone.trim() || null,
+      })
       .eq('id', company.id);
     setSaving(false);
     if (error) {
@@ -348,6 +378,74 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
               )}
             </TouchableOpacity>
             {!!logoError && <Text style={styles.errorText}>{logoError}</Text>}
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>סוג חברה</Text>
+            <View style={styles.companyTypeRow}>
+              {(['בע״מ', 'עוסק מורשה'] as const).map((type) => {
+                const active = companyType === type;
+                return (
+                  <TouchableOpacity
+                    key={type}
+                    style={[styles.companyTypeChip, active && styles.companyTypeChipActive]}
+                    onPress={() => setCompanyType(active ? '' : type)}
+                  >
+                    <Text style={[styles.companyTypeChipText, active && styles.companyTypeChipTextActive]}>
+                      {type}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>ח.פ / ע.מ</Text>
+            <TextInput
+              style={[styles.fieldInput, styles.fieldInputLtr]}
+              value={businessId}
+              onChangeText={setBusinessId}
+              keyboardType="number-pad"
+              textAlign="left"
+            />
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>כתובת החברה</Text>
+            <TextInput style={styles.fieldInput} value={address} onChangeText={setAddress} textAlign="right" />
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>טלפון החברה</Text>
+            <TextInput
+              style={[styles.fieldInput, styles.fieldInputLtr]}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              textAlign="left"
+            />
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>שם קצין הרכב</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={safetyOfficerName}
+              onChangeText={setSafetyOfficerName}
+              textAlign="right"
+            />
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>נייד קצין הרכב</Text>
+            <TextInput
+              style={[styles.fieldInput, styles.fieldInputLtr]}
+              value={safetyOfficerPhone}
+              onChangeText={setSafetyOfficerPhone}
+              keyboardType="phone-pad"
+              textAlign="left"
+            />
           </View>
 
           {!!saveError && <Text style={styles.errorText}>{saveError}</Text>}
@@ -835,6 +933,20 @@ const styles = StyleSheet.create({
   fieldInputLtr: { textAlign: 'left' },
   fieldInputError: { borderColor: COLORS.red },
   fieldErrorText: { fontSize: 11.5, color: COLORS.red, textAlign: 'right' },
+  companyTypeRow: { flexDirection: 'row-reverse', gap: 9 },
+  companyTypeChip: {
+    flex: 1,
+    height: 44,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.fieldBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  companyTypeChipActive: { borderColor: COLORS.blue, backgroundColor: COLORS.blue },
+  companyTypeChipText: { fontSize: 13.5, fontWeight: '600', color: COLORS.gray },
+  companyTypeChipTextActive: { color: COLORS.white },
   fieldInputWithIcon: {
     height: 46,
     borderRadius: 11,
