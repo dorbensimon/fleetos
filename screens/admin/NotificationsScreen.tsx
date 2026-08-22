@@ -1,20 +1,20 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, SecondaryButton } from '../../components/ui';
 import { COLORS, SPACING, CARD_SHADOW } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { listNotifications, markAllNotificationsRead, Notification } from '../../lib/adminApi';
+import { listNotifications, markNotificationRead, markAllNotificationsRead, Notification } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
  * Logs every driver self-edit (name/phone/ID/license/department) so
  * admins keep visibility even though drivers can now change those
- * fields themselves. Opening this screen is what marks everything
- * read — the unread count in the hamburger menu only drops once the
- * admin has actually looked, not just because the bell was tapped.
+ * fields themselves. The unread count only drops when the admin opens
+ * a specific notification, or taps "קרא הכל" — just viewing this list
+ * does NOT mark anything read on its own.
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
 
@@ -46,13 +46,26 @@ export default function NotificationsScreen({ navigation }: Props) {
         setItems(rows);
         setUnreadIds(new Set(rows.filter((r) => !r.read_at).map((r) => r.id)));
         setLoading(false);
-        await markAllNotificationsRead(companyId);
       })();
       return () => {
         active = false;
       };
     }, [companyId])
   );
+
+  const openNotification = async (n: Notification) => {
+    if (!unreadIds.has(n.id)) return;
+    setUnreadIds((prev) => {
+      const next = new Set(prev);
+      next.delete(n.id);
+      return next;
+    });
+    try {
+      await markNotificationRead(n.id);
+    } catch {
+      // Best-effort — already reflected locally.
+    }
+  };
 
   const markAllRead = async () => {
     if (!companyId || unreadIds.size === 0) return;
@@ -81,18 +94,20 @@ export default function NotificationsScreen({ navigation }: Props) {
       ) : (
         <View style={styles.content}>
           {items.map((n) => (
-            <Card key={n.id} style={[styles.row, unreadIds.has(n.id) && styles.rowUnread]}>
-              <View style={styles.icon}>
-                <Ionicons name="person-circle-outline" size={20} color={COLORS.accent} />
-              </View>
-              <View style={styles.textWrap}>
-                <AppText weight="bold" style={styles.message}>
-                  {n.message}
-                </AppText>
-                <AppText style={styles.time}>{timeAgo(n.created_at)}</AppText>
-              </View>
-              {unreadIds.has(n.id) && <View style={styles.unreadDot} />}
-            </Card>
+            <TouchableOpacity key={n.id} activeOpacity={0.7} onPress={() => openNotification(n)}>
+              <Card style={[styles.row, unreadIds.has(n.id) && styles.rowUnread]}>
+                <View style={styles.icon}>
+                  <Ionicons name="person-circle-outline" size={20} color={COLORS.accent} />
+                </View>
+                <View style={styles.textWrap}>
+                  <AppText weight="bold" style={styles.message}>
+                    {n.message}
+                  </AppText>
+                  <AppText style={styles.time}>{timeAgo(n.created_at)}</AppText>
+                </View>
+                {unreadIds.has(n.id) && <View style={styles.unreadDot} />}
+              </Card>
+            </TouchableOpacity>
           ))}
         </View>
       )}

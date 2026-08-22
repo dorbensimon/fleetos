@@ -391,7 +391,18 @@ export async function countUnreadNotifications(companyId: string): Promise<numbe
   return count ?? 0;
 }
 
-/** Marks every currently-unread notification as read (called when the notifications screen opens). */
+/** Marks a single notification as read — used when the admin opens that specific notification. */
+export async function markNotificationRead(notificationId: string) {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', notificationId)
+    .is('read_at', null);
+
+  if (error) throw error;
+}
+
+/** Marks every currently-unread notification as read — only via an explicit "קרא הכל" action. */
 export async function markAllNotificationsRead(companyId: string) {
   const { error } = await supabase
     .from('notifications')
