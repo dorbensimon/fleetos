@@ -141,10 +141,20 @@ export default function VehiclesScreen() {
                 value={status}
                 onChange={setStatus}
                 options={[
-                  { value: 'all', label: 'הכל', count: counts.all },
-                  { value: 'active', label: 'פעיל', count: counts.active },
-                  { value: 'maintenance', label: 'בטיפול', count: counts.maintenance },
-                  { value: 'disabled', label: 'מושבת', count: counts.disabled },
+                  { value: 'all', label: 'הכל', count: counts.all, badgeColor: COLORS.accent },
+                  { value: 'active', label: 'פעיל', count: counts.active, badgeColor: COLORS.okText },
+                  {
+                    value: 'maintenance',
+                    label: 'בטיפול',
+                    count: counts.maintenance,
+                    badgeColor: COLORS.warnText,
+                  },
+                  {
+                    value: 'disabled',
+                    label: 'מושבת',
+                    count: counts.disabled,
+                    badgeColor: COLORS.dangerText,
+                  },
                 ]}
               />
             </View>
