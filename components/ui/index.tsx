@@ -243,7 +243,13 @@ export function FilterChips<T extends string>({
   value,
   onChange,
 }: {
-  options: { value: T; label: string; count?: number; badgeColor?: string }[];
+  options: {
+    value: T;
+    label: string;
+    count?: number;
+    badgeColor?: string;
+    icon?: React.ComponentProps<typeof Ionicons>['name'];
+  }[];
   value: T;
   onChange: (v: T) => void;
 }) {
@@ -258,7 +264,14 @@ export function FilterChips<T extends string>({
             activeOpacity={0.8}
             style={[styles.chip, active && styles.chipActive]}
           >
-            <AppText weight="bold" style={[styles.chipText, active && styles.chipTextActive]}>
+            {!!opt.icon && (
+              <Ionicons name={opt.icon} size={14} color={opt.badgeColor ?? COLORS.textMuted} />
+            )}
+            <AppText
+              weight="bold"
+              numberOfLines={1}
+              style={[styles.chipText, active && styles.chipTextActive]}
+            >
               {opt.label}
             </AppText>
             {opt.count !== undefined && (
@@ -422,15 +435,18 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 14, fontFamily: FONT.regular, color: COLORS.text },
 
-  chipRow: { flexDirection: 'row-reverse', gap: SPACING.sm, flexWrap: 'wrap' },
+  chipRow: { flexDirection: 'row-reverse', gap: SPACING.sm },
   chip: {
+    flex: 1,
     position: 'relative',
     height: 34,
-    paddingHorizontal: 14,
+    paddingHorizontal: 8,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.card,
+    flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 5,
     ...SUBTLE_SHADOW,
   },
   chipActive: { backgroundColor: COLORS.text },

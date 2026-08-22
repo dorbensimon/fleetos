@@ -148,30 +148,6 @@ export default function DriversScreen() {
           ListHeaderComponent={
             <>
               <View style={styles.kpiRow}>
-                <View style={styles.kpiCard}>
-                  <Ionicons name="people-outline" size={17} color={COLORS.accent} />
-                  <AppText weight="bold" style={styles.kpiLabel}>
-                    נהגים פעילים
-                  </AppText>
-                  <View style={[styles.kpiBadge, { backgroundColor: COLORS.accent }]}>
-                    <AppText weight="bold" style={styles.kpiBadgeText}>
-                      {counts.all}
-                    </AppText>
-                  </View>
-                </View>
-
-                <View style={styles.kpiCard}>
-                  <Ionicons name="warning-outline" size={17} color={COLORS.dangerText} />
-                  <AppText weight="bold" style={styles.kpiLabel}>
-                    רישיון פג בקרוב
-                  </AppText>
-                  <View style={[styles.kpiBadge, { backgroundColor: COLORS.dangerText }]}>
-                    <AppText weight="bold" style={styles.kpiBadgeText}>
-                      {counts.soon}
-                    </AppText>
-                  </View>
-                </View>
-
                 <TouchableOpacity style={styles.kpiCard} activeOpacity={0.8} onPress={exportReport}>
                   <Ionicons name="document-text-outline" size={17} color={COLORS.textMuted} />
                   <AppText weight="bold" style={styles.kpiLabel}>
@@ -185,24 +161,33 @@ export default function DriversScreen() {
                   value={filter}
                   onChange={setFilter}
                   options={[
-                    { value: 'all', label: 'הכל', count: counts.all, badgeColor: COLORS.accent },
+                    {
+                      value: 'all',
+                      label: 'הכל',
+                      count: counts.all,
+                      badgeColor: COLORS.accent,
+                      icon: 'people-outline',
+                    },
                     {
                       value: 'soon',
                       label: 'רישיון קרוב לפוג',
                       count: counts.soon,
                       badgeColor: COLORS.warnText,
+                      icon: 'hourglass-outline',
                     },
                     {
                       value: 'expired',
                       label: 'רישיון פג',
                       count: counts.expired,
                       badgeColor: COLORS.dangerText,
+                      icon: 'warning',
                     },
                     {
                       value: 'no_vehicle',
                       label: 'ללא רכב',
                       count: counts.noVehicle,
                       badgeColor: COLORS.neutralText,
+                      icon: 'ban-outline',
                     },
                   ]}
                 />
