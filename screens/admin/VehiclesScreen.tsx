@@ -13,6 +13,7 @@ import {
   Badge,
   AdminBottomBar,
   AdminGlassHeader,
+  AdminSegmentSwitch,
 } from '../../components/ui';
 import {
   COLORS,
@@ -127,24 +128,18 @@ export default function VehiclesScreen() {
         searchPlaceholder="חיפוש לפי מספר רישוי"
       />
 
-      <View style={styles.segment}>
-        <TouchableOpacity
-          style={styles.segmentBtn}
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('AdminHome')}
-        >
-          <Ionicons name="people-outline" size={15} color={COLORS.textMuted} />
-          <AppText weight="bold" style={styles.segmentText}>
-            נהגים
-          </AppText>
-        </TouchableOpacity>
-        <View style={[styles.segmentBtn, styles.segmentBtnActive]}>
-          <Ionicons name="car" size={15} color={COLORS.text} />
-          <AppText weight="bold" style={styles.segmentTextActive}>
-            רכבים
-          </AppText>
-        </View>
-      </View>
+      <AdminSegmentSwitch
+        items={[
+          {
+            key: 'drivers',
+            label: 'נהגים',
+            icon: 'people-outline',
+            active: false,
+            onPress: () => navigation.navigate('AdminHome'),
+          },
+          { key: 'vehicles', label: 'רכבים', icon: 'car', active: true, onPress: () => {} },
+        ]}
+      />
 
       <View style={styles.controls}>
         <FilterChips<StatusFilter>
@@ -250,28 +245,6 @@ function MetaBadge({ label, date }: { label: string; date: string | null }) {
 }
 
 const styles = StyleSheet.create({
-  segment: {
-    flexDirection: 'row-reverse',
-    borderRadius: RADIUS.md,
-    padding: 3,
-    marginHorizontal: SPACING.lg,
-    marginTop: SPACING.md,
-    backgroundColor: COLORS.card,
-    ...SUBTLE_SHADOW,
-  },
-  segmentBtn: {
-    flex: 1,
-    height: 38,
-    borderRadius: RADIUS.sm,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  segmentBtnActive: { backgroundColor: COLORS.accentSoft },
-  segmentText: { fontSize: 13, color: COLORS.textMuted },
-  segmentTextActive: { fontSize: 13, color: COLORS.text },
-
   controls: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, gap: SPACING.md },
 
   list: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 110 },

@@ -19,6 +19,7 @@ import {
   EmptyState,
   AdminBottomBar,
   AdminGlassHeader,
+  AdminSegmentSwitch,
 } from '../../components/ui';
 import {
   COLORS,
@@ -169,24 +170,18 @@ export default function DriversScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.segment}>
-        <View style={[styles.segmentBtn, styles.segmentBtnActive]}>
-          <Ionicons name="people" size={15} color={COLORS.text} />
-          <AppText weight="bold" style={styles.segmentTextActive}>
-            נהגים
-          </AppText>
-        </View>
-        <TouchableOpacity
-          style={styles.segmentBtn}
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('Vehicles')}
-        >
-          <Ionicons name="car-outline" size={15} color={COLORS.textMuted} />
-          <AppText weight="bold" style={styles.segmentText}>
-            רכבים
-          </AppText>
-        </TouchableOpacity>
-      </View>
+      <AdminSegmentSwitch
+        items={[
+          { key: 'drivers', label: 'נהגים', icon: 'people', active: true, onPress: () => {} },
+          {
+            key: 'vehicles',
+            label: 'רכבים',
+            icon: 'car-outline',
+            active: false,
+            onPress: () => navigation.navigate('Vehicles'),
+          },
+        ]}
+      />
 
       <View style={styles.chipsWrap}>
         <FilterChips<LicenseFilter>
@@ -315,28 +310,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.card,
   },
   kpiBadgeText: { fontSize: 11, color: COLORS.textInverse },
-
-  segment: {
-    flexDirection: 'row-reverse',
-    borderRadius: RADIUS.md,
-    padding: 3,
-    marginHorizontal: SPACING.lg,
-    marginTop: SPACING.md,
-    backgroundColor: COLORS.card,
-    ...SUBTLE_SHADOW,
-  },
-  segmentBtn: {
-    flex: 1,
-    height: 38,
-    borderRadius: RADIUS.sm,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  segmentBtnActive: { backgroundColor: COLORS.accentSoft },
-  segmentText: { fontSize: 13, color: COLORS.textMuted },
-  segmentTextActive: { fontSize: 13, color: COLORS.text },
 
   chipsWrap: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md },
 

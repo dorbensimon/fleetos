@@ -26,6 +26,7 @@ export { AppText } from './Text';
 export { AdminBottomBar } from './AdminBottomBar';
 export { AdminGlassHeader } from './AdminGlassHeader';
 export { AdminMenuButton } from './AdminMenuButton';
+export { AdminSegmentSwitch } from './AdminSegmentSwitch';
 
 /* ------------------------------------------------------------------ */
 /* Screen                                                              */
