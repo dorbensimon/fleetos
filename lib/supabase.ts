@@ -32,5 +32,7 @@ export interface Company {
   name: string;
   logo_url: string | null;
   status: 'active' | 'disabled';
+  company_type: 'בע״מ' | 'עוסק מורשה' | null;
+  business_id: string | null;
   created_at: string;
 }

@@ -21,8 +21,17 @@ Deno.serve(async (req) => {
     }
     const { adminClient } = verify;
 
-    const { companyName, logoUrl, adminFirstName, adminLastName, adminEmail, adminPassword, adminPhone } =
-      await req.json();
+    const {
+      companyName,
+      logoUrl,
+      companyType,
+      businessId,
+      adminFirstName,
+      adminLastName,
+      adminEmail,
+      adminPassword,
+      adminPhone,
+    } = await req.json();
 
     if (
       !companyName?.trim() ||
@@ -47,7 +56,13 @@ Deno.serve(async (req) => {
 
     const { data: company, error: companyError } = await adminClient
       .from('companies')
-      .insert({ name: companyName.trim(), logo_url: logoUrl?.trim() || null, status: 'active' })
+      .insert({
+        name: companyName.trim(),
+        logo_url: logoUrl?.trim() || null,
+        company_type: companyType || null,
+        business_id: businessId?.trim() || null,
+        status: 'active',
+      })
       .select()
       .single();
 

@@ -59,6 +59,8 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const [form, setForm] = useState({
     name: '',
     logoUrl: '',
+    companyType: '' as '' | 'בע״מ' | 'עוסק מורשה',
+    businessId: '',
     adminFirstName: '',
     adminLastName: '',
     email: '',
@@ -190,6 +192,8 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         body: {
           companyName: form.name.trim(),
           logoUrl: form.logoUrl.trim() || null,
+          companyType: form.companyType || null,
+          businessId: form.businessId.trim() || null,
           adminFirstName: form.adminFirstName.trim(),
           adminLastName: form.adminLastName.trim(),
           adminEmail: form.email.trim(),
@@ -214,6 +218,8 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       setForm({
         name: '',
         logoUrl: '',
+        companyType: '',
+        businessId: '',
         adminFirstName: '',
         adminLastName: '',
         email: '',
@@ -421,6 +427,39 @@ export default function OwnerHomeScreen({ navigation }: Props) {
             )}
           </TouchableOpacity>
           {!!logoError && <Text style={styles.errorText}>{logoError}</Text>}
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>סוג חברה (אופציונלי)</Text>
+          <View style={styles.companyTypeRow}>
+            {(['בע״מ', 'עוסק מורשה'] as const).map((type) => {
+              const active = form.companyType === type;
+              return (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.companyTypeChip, active && styles.companyTypeChipActive]}
+                  onPress={() => setForm((f) => ({ ...f, companyType: active ? '' : type }))}
+                >
+                  <Text style={[styles.companyTypeChipText, active && styles.companyTypeChipTextActive]}>
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>ח.פ / ע.מ (אופציונלי)</Text>
+          <TextInput
+            style={[styles.fieldInput, styles.fieldInputLtr]}
+            placeholder="512345678"
+            placeholderTextColor={COLORS.grayLight}
+            value={form.businessId}
+            onChangeText={(v) => setForm((f) => ({ ...f, businessId: v }))}
+            keyboardType="number-pad"
+            textAlign="left"
+          />
         </View>
 
         <View style={styles.fieldGroup}>
@@ -850,6 +889,20 @@ const styles = StyleSheet.create({
   fieldInputLtr: { textAlign: 'left' },
   fieldInputError: { borderColor: COLORS.red },
   fieldErrorText: { fontSize: 11.5, color: COLORS.red, textAlign: 'right' },
+  companyTypeRow: { flexDirection: 'row-reverse', gap: 9 },
+  companyTypeChip: {
+    flex: 1,
+    height: 44,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.fieldBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  companyTypeChipActive: { borderColor: COLORS.blue, backgroundColor: COLORS.blue },
+  companyTypeChipText: { fontSize: 13.5, fontWeight: '600', color: COLORS.gray },
+  companyTypeChipTextActive: { color: COLORS.white },
   fieldInputWithIcon: {
     height: 48,
     borderRadius: 11,
