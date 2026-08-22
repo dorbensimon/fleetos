@@ -57,13 +57,12 @@ function ToggleButton({
   onPress: () => void;
   icon: (color: string) => React.ReactNode;
 }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.btn, active ? styles.btnActive : styles.btnRaised]}
-    >
-      {active ? (
-        <>
+  if (active) {
+    // Outer view carries the glow shadow (must NOT clip, so no overflow:hidden
+    // here) — the inner view is the rounded, clipped black pill itself.
+    return (
+      <Pressable onPress={onPress} style={styles.btnActiveOuter}>
+        <View style={styles.btnActiveInner}>
           <LinearGradient
             pointerEvents="none"
             colors={['rgba(0,0,0,0.22)', 'rgba(0,0,0,0)']}
@@ -78,22 +77,25 @@ function ToggleButton({
             end={{ x: 1, y: 0.5 }}
             style={styles.sideRight}
           />
-        </>
-      ) : (
-        <>
-          <LinearGradient
-            pointerEvents="none"
-            colors={['#F5F5F5', '#DADADA']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={styles.borderRaised} pointerEvents="none" />
-        </>
-      )}
+          {icon(COLORS.textInverse)}
+          <Text style={styles.labelActive}>{label}</Text>
+        </View>
+      </Pressable>
+    );
+  }
 
-      {icon(active ? COLORS.textInverse : '#6B6B6B')}
-      <Text style={active ? styles.labelActive : styles.label}>{label}</Text>
+  return (
+    <Pressable onPress={onPress} style={[styles.btn, styles.btnRaised]}>
+      <LinearGradient
+        pointerEvents="none"
+        colors={['#F5F5F5', '#DADADA']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.borderRaised} pointerEvents="none" />
+      {icon('#6B6B6B')}
+      <Text style={styles.label}>{label}</Text>
     </Pressable>
   );
 }
@@ -137,17 +139,31 @@ const styles = StyleSheet.create({
     borderRightColor: 'rgba(0,0,0,0.12)',
     borderBottomColor: 'rgba(0,0,0,0.12)',
   },
-  btnActive: {
-    backgroundColor: COLORS.accent,
+  btnActiveOuter: {
+    flex: 1,
+    height: 48,
+    borderRadius: PILL,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.55,
         shadowOffset: { width: 0, height: 0 },
-        shadowRadius: 10,
+        shadowRadius: 9,
       },
-      android: { elevation: 6 },
+      android: { elevation: 8 },
     }),
+  },
+  btnActiveInner: {
+    flex: 1,
+    borderRadius: PILL,
+    backgroundColor: '#0A0A0A',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    overflow: 'hidden',
   },
   sideLeft: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 16 },
   sideRight: { position: 'absolute', top: 0, bottom: 0, right: 0, width: 16 },

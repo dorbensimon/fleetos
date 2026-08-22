@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from './Text';
 import { AdminMenuButton } from './AdminMenuButton';
-import { COLORS } from '../../lib/theme';
+import { COLORS, FONT } from '../../lib/theme';
 
 /**
  * The frosted-glass banner every admin screen opens with: title,
@@ -44,12 +44,12 @@ export function AdminGlassHeader({
         </View>
 
         <View style={styles.search}>
-          <Ionicons name="search" size={17} color={COLORS.textMuted} />
+          <Ionicons name="search" size={17} color={COLORS.text} />
           <TextInput
             value={query}
             onChangeText={onChangeQuery}
             placeholder={searchPlaceholder}
-            placeholderTextColor={COLORS.textFaint}
+            placeholderTextColor={COLORS.text}
             style={styles.input}
             textAlign="right"
           />
@@ -102,5 +102,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 5,
   },
-  input: { flex: 1, fontSize: 15.5, color: COLORS.text, textAlign: 'right', padding: 0 },
+  input: {
+    flex: 1,
+    fontSize: 15.5,
+    color: COLORS.text,
+    fontFamily: FONT.bold,
+    textAlign: 'right',
+    padding: 0,
+  },
 });
