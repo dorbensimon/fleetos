@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   FlatList,
@@ -6,12 +6,10 @@ import {
   RefreshControl,
   TouchableOpacity,
   Linking,
-  Animated,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, CompositeNavigationProp, useNavigation } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Screen,
@@ -20,6 +18,7 @@ import {
   FilterChips,
   LoadingState,
   EmptyState,
+  AdminBottomBar,
 } from '../../components/ui';
 import {
   COLORS,
@@ -32,26 +31,21 @@ import {
 } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listDrivers, DriverRow } from '../../lib/adminApi';
-import { AdminTabParamList, RootStackParamList } from '../../navigation/types';
+import { RootStackParamList } from '../../navigation/types';
 
 /**
- * A4 — the driver list.
+ * A4 — the driver list. Also the screen an admin lands on after login
+ * (route "AdminHome").
  *
  * The one-tap call button matters here: fleet managers are usually
  * chasing a specific driver, and making them copy a number out of the
- * app defeats the purpose. The floating "add driver" button hides while
- * scrolling so it never sits on top of a card the manager is reading.
+ * app defeats the purpose.
  */
 
 type LicenseFilter = 'all' | 'valid' | 'soon' | 'expired' | 'no_vehicle';
 
-type Nav = CompositeNavigationProp<
-  BottomTabNavigationProp<AdminTabParamList, 'Drivers'>,
-  NativeStackNavigationProp<RootStackParamList>
->;
-
 export default function DriversScreen() {
-  const navigation = useNavigation<Nav>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { companyId } = useCompany();
 
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
@@ -59,9 +53,6 @@ export default function DriversScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<LicenseFilter>('all');
-
-  const fabAnim = useRef(new Animated.Value(0)).current;
-  const lastOffset = useRef(0);
 
   const load = useCallback(async () => {
     if (!companyId) return;
@@ -89,19 +80,6 @@ export default function DriversScreen() {
     setRefreshing(true);
     await load();
     setRefreshing(false);
-  };
-
-  const onScroll = (e: any) => {
-    const y = e.nativeEvent.contentOffset.y;
-    const goingDown = y > lastOffset.current + 4;
-    const goingUp = y < lastOffset.current - 4;
-    lastOffset.current = y;
-
-    if (goingDown && y > 20) {
-      Animated.timing(fabAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-    } else if (goingUp || y <= 20) {
-      Animated.timing(fabAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start();
-    }
   };
 
   const filtered = useMemo(() => {
@@ -239,8 +217,6 @@ export default function DriversScreen() {
           data={filtered}
           keyExtractor={(d) => d.id}
           contentContainerStyle={styles.list}
-          onScroll={onScroll}
-          scrollEventThrottle={16}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
             <EmptyState
@@ -305,31 +281,11 @@ export default function DriversScreen() {
         />
       )}
 
-      <Animated.View
-        pointerEvents="box-none"
-        style={[
-          styles.fabWrap,
-          {
-            transform: [
-              {
-                translateY: fabAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 100] }),
-              },
-            ],
-            opacity: fabAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.fab}
-          activeOpacity={0.85}
-          onPress={() => navigation.navigate('DriverForm', {})}
-        >
-          <Ionicons name="add" size={18} color={COLORS.textInverse} />
-          <AppText weight="bold" style={styles.fabText}>
-            הוסף נהג חדש
-          </AppText>
-        </TouchableOpacity>
-      </Animated.View>
+      <AdminBottomBar
+        actionLabel="הוסף נהג חדש"
+        actionIcon="add"
+        onAction={() => navigation.navigate('DriverForm', {})}
+      />
     </Screen>
   );
 }
@@ -453,28 +409,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  fabWrap: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: SPACING.lg,
-    paddingBottom: 30,
-  },
-  fab: {
-    height: 54,
-    borderRadius: RADIUS.lg,
-    backgroundColor: COLORS.text,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.22,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
-  },
-  fabText: { color: COLORS.textInverse, fontSize: 15 },
 });

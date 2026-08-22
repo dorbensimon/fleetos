@@ -23,6 +23,7 @@ import {
 } from '../../lib/theme';
 
 export { AppText } from './Text';
+export { AdminBottomBar } from './AdminBottomBar';
 
 /* ------------------------------------------------------------------ */
 /* Screen                                                              */

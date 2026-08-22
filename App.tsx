@@ -6,9 +6,10 @@ import { useFonts, Rubik_400Regular, Rubik_700Bold } from '@expo-google-fonts/ru
 import LoginScreen from './screens/LoginScreen';
 import SetPasswordScreen from './screens/SetPasswordScreen';
 import OwnerHomeScreen from './screens/OwnerHomeScreen';
-import AdminHomeScreen from './screens/AdminHomeScreen';
 import DriverHomeScreen from './screens/DriverHomeScreen';
 import CompanyDetailScreen from './screens/CompanyDetailScreen';
+import DriversScreen from './screens/admin/DriversScreen';
+import VehiclesScreen from './screens/admin/VehiclesScreen';
 import VehicleDetailScreen from './screens/admin/VehicleDetailScreen';
 import VehicleFormScreen from './screens/admin/VehicleFormScreen';
 import DriverDetailScreen from './screens/admin/DriverDetailScreen';
@@ -55,11 +56,13 @@ export default function App() {
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
           <Stack.Screen name="OwnerHome" component={OwnerHomeScreen} />
-          <Stack.Screen name="AdminHome" component={AdminHomeScreen} />
           <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
           <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />
 
-          {/* Admin module */}
+          {/* Admin module — no tab bar; AdminHome (drivers) and Vehicles
+              switch to each other via the segmented control in their headers. */}
+          <Stack.Screen name="AdminHome" component={DriversScreen} />
+          <Stack.Screen name="Vehicles" component={VehiclesScreen} />
           <Stack.Screen name="VehicleDetail" component={VehicleDetailScreen} />
           <Stack.Screen name="VehicleForm" component={VehicleFormScreen} />
           <Stack.Screen name="DriverDetail" component={DriverDetailScreen} />

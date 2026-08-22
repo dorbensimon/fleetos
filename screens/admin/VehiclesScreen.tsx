@@ -12,12 +12,14 @@ import {
   EmptyState,
   ExpiryBadge,
   Badge,
+  AdminBottomBar,
 } from '../../components/ui';
 import {
   COLORS,
   RADIUS,
   SPACING,
   CARD_SHADOW,
+  SUBTLE_SHADOW,
   expiryState,
   formatDate,
 } from '../../lib/theme';
@@ -119,19 +121,31 @@ export default function VehiclesScreen() {
     <Screen>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <AppText weight="bold" style={styles.headerTitle}>
+          <View>
+            <AppText weight="bold" style={styles.headerTitle}>
+              ניהול הצי
+            </AppText>
+            <AppText style={styles.headerSubtitle}>{counts.all} רכבים בצי</AppText>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.segment}>
+        <TouchableOpacity
+          style={styles.segmentBtn}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('AdminHome')}
+        >
+          <Ionicons name="people-outline" size={15} color={COLORS.textMuted} />
+          <AppText weight="bold" style={styles.segmentText}>
+            נהגים
+          </AppText>
+        </TouchableOpacity>
+        <View style={[styles.segmentBtn, styles.segmentBtnActive]}>
+          <Ionicons name="car" size={15} color={COLORS.text} />
+          <AppText weight="bold" style={styles.segmentTextActive}>
             רכבים
           </AppText>
-          <TouchableOpacity
-            style={styles.addBtn}
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate('VehicleForm', {})}
-          >
-            <Ionicons name="add" size={17} color={COLORS.textInverse} />
-            <AppText weight="bold" style={styles.addBtnText}>
-              רכב חדש
-            </AppText>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -221,6 +235,12 @@ export default function VehiclesScreen() {
           }}
         />
       )}
+
+      <AdminBottomBar
+        actionLabel="רכב חדש"
+        actionIcon="add"
+        onAction={() => navigation.navigate('VehicleForm', {})}
+      />
     </Screen>
   );
 }
@@ -249,21 +269,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerTitle: { fontSize: 23 },
-  addBtn: {
+  headerTitle: { fontSize: 19 },
+  headerSubtitle: { fontSize: 12.5, color: COLORS.textMuted, marginTop: 1 },
+
+  segment: {
+    flexDirection: 'row-reverse',
+    borderRadius: RADIUS.md,
+    padding: 3,
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.md,
+    backgroundColor: COLORS.card,
+    ...SUBTLE_SHADOW,
+  },
+  segmentBtn: {
+    flex: 1,
+    height: 38,
+    borderRadius: RADIUS.sm,
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 5,
-    height: 38,
-    paddingHorizontal: 14,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.accent,
+    justifyContent: 'center',
+    gap: 6,
   },
-  addBtnText: { color: COLORS.textInverse, fontSize: 13.5 },
+  segmentBtnActive: { backgroundColor: COLORS.accentSoft },
+  segmentText: { fontSize: 13, color: COLORS.textMuted },
+  segmentTextActive: { fontSize: 13, color: COLORS.text },
 
   controls: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, gap: SPACING.md },
 
-  list: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 40 },
+  list: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 110 },
 
   card: {
     backgroundColor: COLORS.card,
