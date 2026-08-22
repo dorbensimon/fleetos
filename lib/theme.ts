@@ -126,6 +126,19 @@ export const EXPIRY_STYLE: Record<ExpiryState, { bg: string; fg: string; label: 
   missing: { bg: COLORS.neutralBg, fg: COLORS.neutralText, label: 'חסר' },
 };
 
+/** Days remaining until an expiry date (negative once it's passed). `null` when the date is empty/invalid. */
+export function daysUntilExpiry(date: string | null | undefined): number | null {
+  if (!date) return null;
+  const target = new Date(date);
+  if (Number.isNaN(target.getTime())) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  target.setHours(0, 0, 0, 0);
+
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+}
+
 /** Formats an ISO date as DD/MM/YYYY, or an em dash when empty. */
 export function formatDate(date: string | null | undefined): string {
   if (!date) return '—';

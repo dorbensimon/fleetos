@@ -27,6 +27,7 @@ import {
   CARD_SHADOW,
   SUBTLE_SHADOW,
   expiryState,
+  daysUntilExpiry,
   formatDate,
 } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
@@ -210,11 +211,16 @@ export default function DriversScreen() {
           renderItem={({ item }) => {
             const state = expiryState(item.license_expiry);
             const warn = state === 'soon' || state === 'expired';
-            const licenseText = item.license_expiry
-              ? state === 'expired'
-                ? `רישיון פג ב-${formatDate(item.license_expiry)}`
-                : `רישיון בתוקף עד ${formatDate(item.license_expiry)}`
-              : 'ללא תוקף רישיון';
+            const days = daysUntilExpiry(item.license_expiry);
+            const licenseText = !item.license_expiry
+              ? 'ללא תוקף רישיון'
+              : state === 'expired'
+              ? 'רישיון פג תוקף'
+              : state === 'soon'
+              ? `רישיון יפוג בעוד ${days} ${days === 1 ? 'יום' : 'ימים'}`
+              : `רישיון בתוקף עד ${formatDate(item.license_expiry)}`;
+            const licenseColor =
+              state === 'expired' ? COLORS.dangerText : state === 'soon' ? COLORS.warnText : COLORS.okText;
 
             return (
               <TouchableOpacity
@@ -245,8 +251,8 @@ export default function DriversScreen() {
                     {item.national_id ? `ת.ז ${item.national_id}` : 'ללא ת.ז'}
                   </AppText>
                   <View style={styles.licenseRow}>
-                    <View style={[styles.dot, { backgroundColor: warn ? COLORS.warnText : COLORS.okText }]} />
-                    <AppText style={[styles.licenseText, warn && styles.licenseTextWarn]} numberOfLines={1}>
+                    <View style={[styles.dot, { backgroundColor: licenseColor }]} />
+                    <AppText style={[styles.licenseText, { color: licenseColor }]} numberOfLines={1}>
                       {licenseText}
                     </AppText>
                   </View>
@@ -349,8 +355,7 @@ const styles = StyleSheet.create({
   cardSubtitle: { fontSize: 12, color: COLORS.textFaint },
   licenseRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, marginTop: 1 },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  licenseText: { fontSize: 11, color: COLORS.textMuted },
-  licenseTextWarn: { color: COLORS.warnText },
+  licenseText: { fontSize: 11 },
 
   callBtn: {
     width: 36,
