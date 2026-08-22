@@ -3,7 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState } from '../../components/ui';
+import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, SecondaryButton } from '../../components/ui';
 import { COLORS, SPACING, CARD_SHADOW } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listNotifications, markAllNotificationsRead, Notification } from '../../lib/adminApi';
@@ -54,9 +54,25 @@ export default function NotificationsScreen({ navigation }: Props) {
     }, [companyId])
   );
 
+  const markAllRead = async () => {
+    if (!companyId || unreadIds.size === 0) return;
+    setUnreadIds(new Set());
+    try {
+      await markAllNotificationsRead(companyId);
+    } catch {
+      // Best-effort — the screen already shows everything as read locally.
+    }
+  };
+
   return (
     <Screen>
-      <ScreenHeader title="התראות" onBack={() => navigation.goBack()} />
+      <ScreenHeader
+        title="התראות"
+        onBack={() => navigation.goBack()}
+        right={
+          unreadIds.size > 0 ? <SecondaryButton label="קרא הכל" icon="checkmark-done-outline" onPress={markAllRead} /> : undefined
+        }
+      />
 
       {loading ? (
         <LoadingState />
