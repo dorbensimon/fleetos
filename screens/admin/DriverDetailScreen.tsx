@@ -126,9 +126,14 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
               </AppText>
             </View>
             <View style={styles.summaryText}>
-              <AppText weight="bold" style={styles.summaryName} numberOfLines={1}>
-                {driver?.full_name ?? 'ללא שם'}
-              </AppText>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('DriverPersonalDetails', { driverId })}
+              >
+                <AppText weight="bold" style={styles.summaryName} numberOfLines={1}>
+                  {driver?.full_name ?? 'ללא שם'}
+                </AppText>
+              </TouchableOpacity>
               <AppText style={styles.summarySub} numberOfLines={1}>
                 {[company?.name, driver?.national_id ? `ת.ז ${driver.national_id}` : null]
                   .filter(Boolean)

@@ -16,6 +16,7 @@ import DriverDetailScreen from './screens/admin/DriverDetailScreen';
 import DriverFormScreen from './screens/admin/DriverFormScreen';
 import DepartmentsScreen from './screens/admin/DepartmentsScreen';
 import DocumentCategoryScreen from './screens/admin/DocumentCategoryScreen';
+import DriverPersonalDetailsScreen from './screens/admin/DriverPersonalDetailsScreen';
 import { RootStackParamList } from './navigation/types';
 import { supabase } from './lib/supabase';
 import { resolveRouteForUser } from './lib/session';
@@ -71,6 +72,7 @@ export default function App() {
           <Stack.Screen name="DriverForm" component={DriverFormScreen} />
           <Stack.Screen name="Departments" component={DepartmentsScreen} />
           <Stack.Screen name="DocumentCategory" component={DocumentCategoryScreen} />
+          <Stack.Screen name="DriverPersonalDetails" component={DriverPersonalDetailsScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </CompanyProvider>
