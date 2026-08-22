@@ -64,14 +64,12 @@ function ToggleButton({
       <Pressable onPress={onPress} style={styles.btnActiveOuter}>
         <View style={styles.btnActiveInner}>
           <LinearGradient
-            pointerEvents="none"
             colors={['rgba(0,0,0,0.22)', 'rgba(0,0,0,0)']}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={styles.sideLeft}
           />
           <LinearGradient
-            pointerEvents="none"
             colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.22)']}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
@@ -87,13 +85,12 @@ function ToggleButton({
   return (
     <Pressable onPress={onPress} style={[styles.btn, styles.btnRaised]}>
       <LinearGradient
-        pointerEvents="none"
         colors={['#FBFBFB', '#EAEAEA']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, styles.noPointerEvents]}
       />
-      <View style={styles.borderRaised} pointerEvents="none" />
+      <View style={styles.borderRaised} />
       {icon('#6B6B6B')}
       <Text style={styles.label}>{label}</Text>
     </Pressable>
@@ -137,7 +134,9 @@ const styles = StyleSheet.create({
     borderLeftColor: 'rgba(255,255,255,0.9)',
     borderRightColor: 'rgba(0,0,0,0.12)',
     borderBottomColor: 'rgba(0,0,0,0.12)',
+    pointerEvents: 'none',
   },
+  noPointerEvents: { pointerEvents: 'none' },
   btnActiveOuter: {
     flex: 1,
     height: 48,
@@ -164,8 +163,8 @@ const styles = StyleSheet.create({
     gap: 7,
     overflow: 'hidden',
   },
-  sideLeft: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 16 },
-  sideRight: { position: 'absolute', top: 0, bottom: 0, right: 0, width: 16 },
+  sideLeft: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 16, pointerEvents: 'none' },
+  sideRight: { position: 'absolute', top: 0, bottom: 0, right: 0, width: 16, pointerEvents: 'none' },
   label: {
     fontFamily: FONT.regular,
     fontSize: 14,

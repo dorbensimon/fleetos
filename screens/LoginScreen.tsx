@@ -137,8 +137,7 @@ function ShimmerButton({ onPress, disabled, label }: { onPress: () => void; disa
     <TouchableOpacity onPress={onPress} disabled={disabled} activeOpacity={0.85} style={styles.button}>
       <Text style={styles.buttonText}>{label}</Text>
       <Animated.View
-        pointerEvents="none"
-        style={[styles.shimmer, { transform: [{ translateX }, { rotate: '20deg' }] }]}
+        style={[styles.shimmer, { transform: [{ translateX }, { rotate: '20deg' }], pointerEvents: 'none' }]}
       />
     </TouchableOpacity>
   );
