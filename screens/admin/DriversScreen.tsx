@@ -130,63 +130,15 @@ export default function DriversScreen() {
   return (
     <Screen>
       <AdminGlassHeader
-        title="ניהול צוות נהגים"
-        subtitle={`${counts.all} נהגים פעילים`}
         query={search}
         onChangeQuery={setSearch}
         searchPlaceholder="חפש לפי שם, ת.ז או מספר עובד"
       />
 
-      <View style={styles.kpiRow}>
-        <View style={styles.kpiCard}>
-          <Ionicons name="people-outline" size={17} color={COLORS.accent} />
-          <AppText weight="bold" style={styles.kpiLabel}>
-            נהגים פעילים
-          </AppText>
-          <View style={[styles.kpiBadge, { backgroundColor: COLORS.accent }]}>
-            <AppText weight="bold" style={styles.kpiBadgeText}>
-              {counts.all}
-            </AppText>
-          </View>
-        </View>
-
-        <View style={styles.kpiCard}>
-          <Ionicons name="warning-outline" size={17} color={COLORS.dangerText} />
-          <AppText weight="bold" style={styles.kpiLabel}>
-            רישיון פג בקרוב
-          </AppText>
-          <View style={[styles.kpiBadge, { backgroundColor: COLORS.dangerText }]}>
-            <AppText weight="bold" style={styles.kpiBadgeText}>
-              {counts.soon}
-            </AppText>
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.kpiCard} activeOpacity={0.8} onPress={exportReport}>
-          <Ionicons name="document-text-outline" size={17} color={COLORS.textMuted} />
-          <AppText weight="bold" style={styles.kpiLabel}>
-            ייצוא דוח
-          </AppText>
-        </TouchableOpacity>
-      </View>
-
       <DriversVehiclesToggle
         value="drivers"
         onChange={(v) => v === 'vehicles' && navigation.navigate('Vehicles')}
       />
-
-      <View style={styles.chipsWrap}>
-        <FilterChips<LicenseFilter>
-          value={filter}
-          onChange={setFilter}
-          options={[
-            { value: 'all', label: 'הכל', count: counts.all },
-            { value: 'soon', label: 'רישיון קרוב לפוג', count: counts.soon },
-            { value: 'expired', label: 'רישיון פג', count: counts.expired },
-            { value: 'no_vehicle', label: 'ללא רכב', count: counts.noVehicle },
-          ]}
-        />
-      </View>
 
       {loading ? (
         <LoadingState />
@@ -196,6 +148,55 @@ export default function DriversScreen() {
           keyExtractor={(d) => d.id}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListHeaderComponent={
+            <>
+              <View style={styles.kpiRow}>
+                <View style={styles.kpiCard}>
+                  <Ionicons name="people-outline" size={17} color={COLORS.accent} />
+                  <AppText weight="bold" style={styles.kpiLabel}>
+                    נהגים פעילים
+                  </AppText>
+                  <View style={[styles.kpiBadge, { backgroundColor: COLORS.accent }]}>
+                    <AppText weight="bold" style={styles.kpiBadgeText}>
+                      {counts.all}
+                    </AppText>
+                  </View>
+                </View>
+
+                <View style={styles.kpiCard}>
+                  <Ionicons name="warning-outline" size={17} color={COLORS.dangerText} />
+                  <AppText weight="bold" style={styles.kpiLabel}>
+                    רישיון פג בקרוב
+                  </AppText>
+                  <View style={[styles.kpiBadge, { backgroundColor: COLORS.dangerText }]}>
+                    <AppText weight="bold" style={styles.kpiBadgeText}>
+                      {counts.soon}
+                    </AppText>
+                  </View>
+                </View>
+
+                <TouchableOpacity style={styles.kpiCard} activeOpacity={0.8} onPress={exportReport}>
+                  <Ionicons name="document-text-outline" size={17} color={COLORS.textMuted} />
+                  <AppText weight="bold" style={styles.kpiLabel}>
+                    ייצוא דוח
+                  </AppText>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.chipsWrap}>
+                <FilterChips<LicenseFilter>
+                  value={filter}
+                  onChange={setFilter}
+                  options={[
+                    { value: 'all', label: 'הכל', count: counts.all },
+                    { value: 'soon', label: 'רישיון קרוב לפוג', count: counts.soon },
+                    { value: 'expired', label: 'רישיון פג', count: counts.expired },
+                    { value: 'no_vehicle', label: 'ללא רכב', count: counts.noVehicle },
+                  ]}
+                />
+              </View>
+            </>
+          }
           ListEmptyComponent={
             <EmptyState
               icon="people-outline"
@@ -305,12 +306,13 @@ const styles = StyleSheet.create({
 
   chipsWrap: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md },
 
-  list: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 110 },
+  list: { paddingTop: SPACING.md, gap: SPACING.md, paddingBottom: 110 },
 
   card: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
+    marginHorizontal: SPACING.lg,
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: SPACING.md,

@@ -3,24 +3,20 @@ import { View, TextInput, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText } from './Text';
 import { AdminMenuButton } from './AdminMenuButton';
 import { COLORS, FONT } from '../../lib/theme';
 
 /**
- * The frosted-glass banner every admin screen opens with: title,
- * subtitle, the hamburger menu top-left, and the search field right
- * under the title — one glass surface, not stacked cards.
+ * The frosted-glass banner every admin screen opens with: the hamburger
+ * menu top-left and the search field right under it — one glass surface,
+ * not stacked cards. No title/subtitle — this stays fixed on screen
+ * while everything else (KPIs, filters, list) scrolls underneath it.
  */
 export function AdminGlassHeader({
-  title,
-  subtitle,
   query,
   onChangeQuery,
   searchPlaceholder,
 }: {
-  title: string;
-  subtitle: string;
   query: string;
   onChangeQuery: (v: string) => void;
   searchPlaceholder: string;
@@ -34,12 +30,6 @@ export function AdminGlassHeader({
 
       <View style={[styles.content, { paddingTop: insets.top + 14 }]}>
         <View style={styles.topRow}>
-          <View style={styles.titles}>
-            <AppText weight="bold" style={styles.title}>
-              {title}
-            </AppText>
-            <AppText style={styles.subtitle}>{subtitle}</AppText>
-          </View>
           <AdminMenuButton />
         </View>
 
@@ -82,12 +72,9 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+    justifyContent: 'flex-end',
+    marginBottom: 12,
   },
-  titles: { alignItems: 'flex-end' },
-  title: { fontSize: 19, color: COLORS.text, letterSpacing: -0.2 },
-  subtitle: { fontSize: 12.5, color: COLORS.textMuted, marginTop: 1 },
   search: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

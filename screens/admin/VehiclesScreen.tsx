@@ -121,8 +121,6 @@ export default function VehiclesScreen() {
   return (
     <Screen>
       <AdminGlassHeader
-        title="ניהול הצי"
-        subtitle={`${counts.all} רכבים בצי`}
         query={search}
         onChangeQuery={setSearch}
         searchPlaceholder="חיפוש לפי מספר רישוי"
@@ -133,19 +131,6 @@ export default function VehiclesScreen() {
         onChange={(v) => v === 'drivers' && navigation.navigate('AdminHome')}
       />
 
-      <View style={styles.controls}>
-        <FilterChips<StatusFilter>
-          value={status}
-          onChange={setStatus}
-          options={[
-            { value: 'all', label: 'הכל', count: counts.all },
-            { value: 'active', label: 'פעיל', count: counts.active },
-            { value: 'maintenance', label: 'בטיפול', count: counts.maintenance },
-            { value: 'disabled', label: 'מושבת', count: counts.disabled },
-          ]}
-        />
-      </View>
-
       {loading ? (
         <LoadingState />
       ) : (
@@ -154,6 +139,20 @@ export default function VehiclesScreen() {
           keyExtractor={(v) => v.id}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListHeaderComponent={
+            <View style={styles.controls}>
+              <FilterChips<StatusFilter>
+                value={status}
+                onChange={setStatus}
+                options={[
+                  { value: 'all', label: 'הכל', count: counts.all },
+                  { value: 'active', label: 'פעיל', count: counts.active },
+                  { value: 'maintenance', label: 'בטיפול', count: counts.maintenance },
+                  { value: 'disabled', label: 'מושבת', count: counts.disabled },
+                ]}
+              />
+            </View>
+          }
           ListEmptyComponent={
             <EmptyState
               icon="car-outline"
@@ -239,12 +238,13 @@ function MetaBadge({ label, date }: { label: string; date: string | null }) {
 const styles = StyleSheet.create({
   controls: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, gap: SPACING.md },
 
-  list: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 110 },
+  list: { paddingTop: SPACING.md, gap: SPACING.md, paddingBottom: 110 },
 
   card: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,
+    marginHorizontal: SPACING.lg,
     gap: SPACING.md,
     ...CARD_SHADOW,
   },
