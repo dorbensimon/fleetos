@@ -26,7 +26,8 @@ export { AppText } from './Text';
 export { AdminBottomBar } from './AdminBottomBar';
 export { AdminGlassHeader } from './AdminGlassHeader';
 export { AdminMenuButton } from './AdminMenuButton';
-export { AdminSegmentSwitch } from './AdminSegmentSwitch';
+export { default as DriversVehiclesToggle } from './DriversVehiclesToggle';
+export type { ToggleValue } from './DriversVehiclesToggle';
 
 /* ------------------------------------------------------------------ */
 /* Screen                                                              */

@@ -13,7 +13,7 @@ import {
   Badge,
   AdminBottomBar,
   AdminGlassHeader,
-  AdminSegmentSwitch,
+  DriversVehiclesToggle,
 } from '../../components/ui';
 import {
   COLORS,
@@ -128,17 +128,9 @@ export default function VehiclesScreen() {
         searchPlaceholder="חיפוש לפי מספר רישוי"
       />
 
-      <AdminSegmentSwitch
-        items={[
-          {
-            key: 'drivers',
-            label: 'נהגים',
-            icon: 'people-outline',
-            active: false,
-            onPress: () => navigation.navigate('AdminHome'),
-          },
-          { key: 'vehicles', label: 'רכבים', icon: 'car', active: true, onPress: () => {} },
-        ]}
+      <DriversVehiclesToggle
+        value="vehicles"
+        onChange={(v) => v === 'drivers' && navigation.navigate('AdminHome')}
       />
 
       <View style={styles.controls}>

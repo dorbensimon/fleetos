@@ -19,7 +19,7 @@ import {
   EmptyState,
   AdminBottomBar,
   AdminGlassHeader,
-  AdminSegmentSwitch,
+  DriversVehiclesToggle,
 } from '../../components/ui';
 import {
   COLORS,
@@ -170,17 +170,9 @@ export default function DriversScreen() {
         </TouchableOpacity>
       </View>
 
-      <AdminSegmentSwitch
-        items={[
-          { key: 'drivers', label: 'נהגים', icon: 'people', active: true, onPress: () => {} },
-          {
-            key: 'vehicles',
-            label: 'רכבים',
-            icon: 'car-outline',
-            active: false,
-            onPress: () => navigation.navigate('Vehicles'),
-          },
-        ]}
+      <DriversVehiclesToggle
+        value="drivers"
+        onChange={(v) => v === 'vehicles' && navigation.navigate('Vehicles')}
       />
 
       <View style={styles.chipsWrap}>
