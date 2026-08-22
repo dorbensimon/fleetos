@@ -140,7 +140,10 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           license_expiry: form.license_expiry.trim(),
         });
       } else {
-        if (!companyId) return;
+        if (!companyId) {
+          Alert.alert('שמירה נכשלה', 'לא נמצאה חברה משויכת לחשבון שלך. נסה להתחבר מחדש');
+          return;
+        }
         const result = await createDriverAccount({
           companyId,
           email: form.email.trim(),
