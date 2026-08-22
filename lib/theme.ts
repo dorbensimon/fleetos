@@ -33,8 +33,8 @@ export const COLORS = {
   fieldBorder: '#E2E2E2',
 
   // semantic status
-  okBg: '#E6F6EF',
-  okText: '#1E8E63',
+  okBg: '#E9F1EC',
+  okText: '#5C8A6E',
   warnBg: '#FDF3E2',
   warnText: '#A9720F',
   dangerBg: '#F8E7E5',
