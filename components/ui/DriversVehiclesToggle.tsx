@@ -10,12 +10,14 @@ import { COLORS, FONT } from '../../lib/theme';
  * — `value` reflects whichever screen mounted it, and `onChange` fires
  * navigation rather than local state.
  *
- * The selected pill is one flat accent colour — no gradient. The
- * "pressed into the page" read comes from two things only: a soft
- * shadow ring sitting *around* the pill (shadowOffset 0,0 spreads the
- * shadow evenly on iOS instead of favouring one side), and a thin dark
- * shade along its own left/right inner edges — the centre stays flat
- * and uniform.
+ * Inactive pill: raised metal look (light diagonal gradient, bright
+ * top-left / dark bottom-right border, outer drop shadow) — untouched
+ * since it was already right, only the label got darker.
+ *
+ * Active pill: one flat accent colour, no gradient — "pressed into the
+ * page" comes from a shadow ring around the whole pill (shadowOffset
+ * 0,0 spreads it evenly) plus a thin dark shade along its own left/
+ * right inner edges only, so the centre stays flat and uniform.
  */
 
 export type ToggleValue = 'drivers' | 'vehicles';
@@ -58,9 +60,9 @@ function ToggleButton({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.btn, active ? styles.btnActive : styles.btnInactive]}
+      style={[styles.btn, active ? styles.btnActive : styles.btnRaised]}
     >
-      {active && (
+      {active ? (
         <>
           <LinearGradient
             pointerEvents="none"
@@ -77,9 +79,20 @@ function ToggleButton({
             style={styles.sideRight}
           />
         </>
+      ) : (
+        <>
+          <LinearGradient
+            pointerEvents="none"
+            colors={['#F5F5F5', '#DADADA']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.borderRaised} pointerEvents="none" />
+        </>
       )}
 
-      {icon(active ? COLORS.textInverse : '#4A4A4A')}
+      {icon(active ? COLORS.textInverse : '#6B6B6B')}
       <Text style={active ? styles.labelActive : styles.label}>{label}</Text>
     </Pressable>
   );
@@ -104,17 +117,25 @@ const styles = StyleSheet.create({
     gap: 7,
     overflow: 'hidden',
   },
-  btnInactive: {
-    backgroundColor: COLORS.card,
+  btnRaised: {
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOpacity: 0.08,
-        shadowOffset: { width: 0, height: 2 },
-        shadowRadius: 6,
+        shadowOpacity: 0.2,
+        shadowOffset: { width: 1, height: 1 },
+        shadowRadius: 5,
       },
-      android: { elevation: 2 },
+      android: { elevation: 4 },
     }),
+  },
+  borderRaised: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: PILL,
+    borderWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.9)',
+    borderLeftColor: 'rgba(255,255,255,0.9)',
+    borderRightColor: 'rgba(0,0,0,0.12)',
+    borderBottomColor: 'rgba(0,0,0,0.12)',
   },
   btnActive: {
     backgroundColor: COLORS.accent,
@@ -133,7 +154,7 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: FONT.regular,
     fontSize: 14,
-    color: '#4A4A4A',
+    color: '#3A3A3A',
     writingDirection: 'rtl',
   },
   labelActive: {
