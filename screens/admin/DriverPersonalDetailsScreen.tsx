@@ -6,7 +6,16 @@ import { Screen, ScreenHeader, AppText, Card, InfoRow, LoadingState, SecondaryBu
 import { Select } from '../../components/ui/Select';
 import { COLORS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { getDriver, listVehicles, updateVehicle, listDepartments, DriverRow, Vehicle, Department } from '../../lib/adminApi';
+import {
+  getDriver,
+  listVehicles,
+  updateVehicle,
+  listDepartments,
+  getUserEmail,
+  DriverRow,
+  Vehicle,
+  Department,
+} from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -27,19 +36,22 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingVehicle, setEditingVehicle] = useState(false);
   const [savingVehicle, setSavingVehicle] = useState(false);
 
   const load = useCallback(async () => {
-    const [d, v, deps] = await Promise.all([
+    const [d, v, deps, mail] = await Promise.all([
       getDriver(driverId),
       companyId ? listVehicles(companyId) : [],
       companyId ? listDepartments(companyId) : [],
+      companyId ? getUserEmail(driverId, companyId) : null,
     ]);
     setDriver(d);
     setVehicles(v);
     setDepartments(deps);
+    setEmail(mail);
   }, [driverId, companyId]);
 
   useFocusEffect(
@@ -98,6 +110,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
         <Card style={styles.card}>
           <InfoRow label="שם מלא" value={driver?.full_name} />
           <InfoRow label="חברה" value={company?.name} />
+          <InfoRow label="מייל להתחברות" value={email} />
           <InfoRow label="טלפון" value={driver?.phone} />
           <InfoRow label="תעודת זהות" value={driver?.national_id} />
           <InfoRow label="מספר עובד" value={driver?.employee_number} />

@@ -334,6 +334,15 @@ export async function resetDriverPassword(
   return { ok: true };
 }
 
+/** The login email of a driver/admin — not on `profiles`, only in auth.users. */
+export async function getUserEmail(userId: string, companyId: string): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke('get-user-email', {
+    body: { userId, companyId },
+  });
+  if (error || !data?.success) return null;
+  return data.email ?? null;
+}
+
 /* ------------------------------------------------------------------ */
 /* Compliance                                                          */
 /* ------------------------------------------------------------------ */
