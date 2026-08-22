@@ -77,19 +77,19 @@ function ToggleButton({
       />
 
       {active ? (
-        <>
-          <LinearGradient
-            pointerEvents="none"
-            colors={['rgba(0,0,0,0.35)', 'rgba(0,0,0,0)']}
-            style={styles.edgeTop}
-          />
-          <LinearGradient
-            pointerEvents="none"
-            colors={['rgba(0,0,0,0)', 'rgba(255,255,255,0.55)']}
-            style={styles.edgeBottom}
-          />
-          <View style={styles.borderSunken} pointerEvents="none" />
-        </>
+        <LinearGradient
+          pointerEvents="none"
+          colors={[
+            'rgba(0,0,0,0.30)',
+            'rgba(0,0,0,0.08)',
+            'rgba(255,255,255,0.05)',
+            'rgba(255,255,255,0.35)',
+          ]}
+          locations={[0, 0.35, 0.65, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
       ) : (
         <View style={styles.borderRaised} pointerEvents="none" />
       )}
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
       ios: {
         shadowColor: '#000',
         shadowOpacity: 0.2,
-        shadowOffset: { width: 2, height: 3 },
+        shadowOffset: { width: 1, height: 1 },
         shadowRadius: 5,
       },
       android: { elevation: 4 },
@@ -142,17 +142,6 @@ const styles = StyleSheet.create({
     borderRightColor: 'rgba(0,0,0,0.12)',
     borderBottomColor: 'rgba(0,0,0,0.12)',
   },
-  borderSunken: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: PILL,
-    borderWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.3)',
-    borderLeftColor: 'rgba(0,0,0,0.3)',
-    borderRightColor: 'rgba(255,255,255,0.5)',
-    borderBottomColor: 'rgba(255,255,255,0.5)',
-  },
-  edgeTop: { position: 'absolute', top: 0, left: 0, right: 0, height: 14 },
-  edgeBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 14 },
   label: {
     fontFamily: FONT.regular,
     fontSize: 14,
