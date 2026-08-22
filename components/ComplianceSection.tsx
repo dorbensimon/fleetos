@@ -31,6 +31,7 @@ import {
   getDocumentUrl,
   pickImage,
   captureImage,
+  scanDocument,
   pickFile,
 } from '../lib/documents';
 
@@ -117,11 +118,13 @@ export function ComplianceSection({
   };
 
   const addDocument = async (def: ComplianceItemDef) => {
-    const choose = async (source: 'camera' | 'gallery' | 'file') => {
+    const choose = async (source: 'scan' | 'camera' | 'gallery' | 'file') => {
       setBusyItem(def.itemType);
       try {
         const file =
-          source === 'camera'
+          source === 'scan'
+            ? await scanDocument()
+            : source === 'camera'
             ? await captureImage()
             : source === 'gallery'
             ? await pickImage()
@@ -154,6 +157,7 @@ export function ComplianceSection({
     }
 
     Alert.alert('הוספת מסמך', def.label, [
+      { text: 'סרוק מסמך', onPress: () => choose('scan') },
       { text: 'צלם מסמך', onPress: () => choose('camera') },
       { text: 'בחר תמונה', onPress: () => choose('gallery') },
       { text: 'בחר קובץ', onPress: () => choose('file') },
@@ -345,24 +349,46 @@ function GeneralDocuments({
   const [busy, setBusy] = useState(false);
 
   const add = async () => {
-    setBusy(true);
-    try {
-      const file = await pickFile();
-      if (!file) return;
-      await uploadDocument({
-        companyId,
-        ownerType,
-        ownerId,
-        category: 'general',
-        title: 'מסמך כללי',
-        file,
-      });
-      await onChanged();
-    } catch (err: any) {
-      Alert.alert('העלאה נכשלה', err?.message ?? 'נסה שוב');
-    } finally {
-      setBusy(false);
+    const choose = async (source: 'scan' | 'camera' | 'gallery' | 'file') => {
+      setBusy(true);
+      try {
+        const file =
+          source === 'scan'
+            ? await scanDocument()
+            : source === 'camera'
+            ? await captureImage()
+            : source === 'gallery'
+            ? await pickImage()
+            : await pickFile();
+        if (!file) return;
+        await uploadDocument({
+          companyId,
+          ownerType,
+          ownerId,
+          category: 'general',
+          title: 'מסמך כללי',
+          file,
+        });
+        await onChanged();
+      } catch (err: any) {
+        Alert.alert('העלאה נכשלה', err?.message ?? 'נסה שוב');
+      } finally {
+        setBusy(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      await choose('file');
+      return;
     }
+
+    Alert.alert('הוספת מסמך', 'מסמך כללי', [
+      { text: 'סרוק מסמך', onPress: () => choose('scan') },
+      { text: 'צלם מסמך', onPress: () => choose('camera') },
+      { text: 'בחר תמונה', onPress: () => choose('gallery') },
+      { text: 'בחר קובץ', onPress: () => choose('file') },
+      { text: 'ביטול', style: 'cancel' },
+    ]);
   };
 
   const remove = (doc: DocumentRow) => {

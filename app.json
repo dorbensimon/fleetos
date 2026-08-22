@@ -34,7 +34,13 @@
         }
       ],
       "expo-font",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "react-native-document-scanner-plugin",
+        {
+          "cameraPermission": "האפליקציה צריכה גישה למצלמה כדי לסרוק מסמכים."
+        }
+      ]
     ]
   }
 }

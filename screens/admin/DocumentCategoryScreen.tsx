@@ -14,6 +14,7 @@ import {
   getDocumentUrl,
   pickImage,
   captureImage,
+  scanDocument,
   pickFile,
 } from '../../lib/documents';
 import { RootStackParamList } from '../../navigation/types';
@@ -59,11 +60,17 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const addDocument = async () => {
     if (!companyId) return;
 
-    const choose = async (source: 'camera' | 'gallery' | 'file') => {
+    const choose = async (source: 'scan' | 'camera' | 'gallery' | 'file') => {
       setUploading(true);
       try {
         const file =
-          source === 'camera' ? await captureImage() : source === 'gallery' ? await pickImage() : await pickFile();
+          source === 'scan'
+            ? await scanDocument()
+            : source === 'camera'
+            ? await captureImage()
+            : source === 'gallery'
+            ? await pickImage()
+            : await pickFile();
         if (!file) return;
 
         await uploadDocument({ companyId, ownerType, ownerId, category, title, file });
@@ -81,6 +88,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
     }
 
     Alert.alert('הוספת מסמך', title, [
+      { text: 'סרוק מסמך', onPress: () => choose('scan') },
       { text: 'צלם מסמך', onPress: () => choose('camera') },
       { text: 'בחר תמונה', onPress: () => choose('gallery') },
       { text: 'בחר קובץ', onPress: () => choose('file') },
