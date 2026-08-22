@@ -18,7 +18,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DriverDetail'>;
 
 export default function DriverDetailScreen({ route, navigation }: Props) {
   const { driverId } = route.params;
-  const { companyId } = useCompany();
+  const { companyId, company } = useCompany();
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -95,6 +95,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       ) : (
         <View style={styles.content}>
           <Card style={styles.card}>
+            <InfoRow label="חברה" value={company?.name} />
             <InfoRow label="מספר עובד" value={driver?.employee_number} />
             <InfoRow label="טלפון" value={driver?.phone} />
             <InfoRow label="דרגת רישיון" value={driver?.license_classes} />
