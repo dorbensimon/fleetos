@@ -40,11 +40,9 @@ export function AdminGlassHeader({
       <View style={[styles.content, { paddingTop: insets.top + 14 }]}>
         <View style={styles.topRow}>
           <View style={styles.greetingWrap}>
-            {!!profile?.full_name && (
-              <AppText style={styles.greeting} numberOfLines={1}>
-                שלום, {profile.full_name}
-              </AppText>
-            )}
+            <AppText style={styles.greeting} numberOfLines={1}>
+              שלום, {profile?.full_name || 'אדמין'}
+            </AppText>
           </View>
           <AdminMenuButton />
         </View>
