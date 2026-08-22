@@ -3,9 +3,11 @@ import { View, TextInput, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppText } from './Text';
 import { AdminMenuButton } from './AdminMenuButton';
 import DriversVehiclesToggle, { ToggleValue } from './DriversVehiclesToggle';
 import { COLORS, FONT } from '../../lib/theme';
+import { useCompany } from '../../lib/CompanyContext';
 
 /**
  * The frosted-glass banner every admin screen opens with: the hamburger
@@ -28,6 +30,7 @@ export function AdminGlassHeader({
   onToggleChange: (v: ToggleValue) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const { profile } = useCompany();
 
   return (
     <View style={styles.wrap}>
@@ -36,6 +39,13 @@ export function AdminGlassHeader({
 
       <View style={[styles.content, { paddingTop: insets.top + 14 }]}>
         <View style={styles.topRow}>
+          <View style={styles.greetingWrap}>
+            {!!profile?.full_name && (
+              <AppText style={styles.greeting} numberOfLines={1}>
+                שלום, {profile.full_name}
+              </AppText>
+            )}
+          </View>
           <AdminMenuButton />
         </View>
 
@@ -80,8 +90,14 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    gap: 10,
     marginBottom: 12,
+  },
+  greetingWrap: { flex: 1 },
+  greeting: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    textAlign: 'right',
   },
   search: {
     flexDirection: 'row-reverse',
