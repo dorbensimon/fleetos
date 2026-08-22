@@ -37,7 +37,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
       let active = true;
       (async () => {
         setLoading(true);
-        const { data } = await supabase.auth.getUser();
+        const [{ data }] = await Promise.all([supabase.auth.getUser(), refresh()]);
         if (active) {
           setEmail(data.user?.email ?? null);
           setLoading(false);
@@ -46,6 +46,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
       return () => {
         active = false;
       };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
   );
 
