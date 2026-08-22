@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FONT } from '../../lib/theme';
+import { COLORS, FONT } from '../../lib/theme';
 
 /**
  * The drivers/vehicles switch under each admin header. Each option is a
@@ -10,20 +10,12 @@ import { FONT } from '../../lib/theme';
  * — `value` reflects whichever screen mounted it, and `onChange` fires
  * navigation rather than local state.
  *
- * Styled after a glossy metal pill (ref: Uiverse.io by FColombati),
- * adapted for what React Native can actually do — no stacked inset
- * shadows, no clip-path, no mix-blend-mode. The "pressed into the
- * page" read comes from flipping where light and shadow sit:
- *
- *   raised (inactive): light gradient, outer drop shadow, bright edge
- *                       top-left, dark edge bottom-right — a bump
- *                       catching light from the top-left.
- *   sunken (active):   darker gradient, no outer shadow, dark edge
- *                       top-left, bright edge bottom-right (reversed —
- *                       the rim blocks light from the near wall, the
- *                       far wall catches the bounce), plus two thin
- *                       edge gradients (dark top strip, light bottom
- *                       strip) to sell the pit.
+ * The selected pill is one flat accent colour — no gradient. The
+ * "pressed into the page" read comes from two things only: a soft
+ * shadow ring sitting *around* the pill (shadowOffset 0,0 spreads the
+ * shadow evenly on iOS instead of favouring one side), and a thin dark
+ * shade along its own left/right inner edges — the centre stays flat
+ * and uniform.
  */
 
 export type ToggleValue = 'drivers' | 'vehicles';
@@ -66,35 +58,28 @@ function ToggleButton({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.btn, active ? styles.btnSunken : styles.btnRaised]}
+      style={[styles.btn, active ? styles.btnActive : styles.btnInactive]}
     >
-      <LinearGradient
-        pointerEvents="none"
-        colors={active ? ['#AFAFAF', '#8C8C8C'] : ['#F5F5F5', '#DADADA']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
-      {active ? (
-        <LinearGradient
-          pointerEvents="none"
-          colors={[
-            'rgba(0,0,0,0.30)',
-            'rgba(0,0,0,0.08)',
-            'rgba(255,255,255,0.05)',
-            'rgba(255,255,255,0.35)',
-          ]}
-          locations={[0, 0.35, 0.65, 1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-      ) : (
-        <View style={styles.borderRaised} pointerEvents="none" />
+      {active && (
+        <>
+          <LinearGradient
+            pointerEvents="none"
+            colors={['rgba(0,0,0,0.22)', 'rgba(0,0,0,0)']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.sideLeft}
+          />
+          <LinearGradient
+            pointerEvents="none"
+            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.22)']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.sideRight}
+          />
+        </>
       )}
 
-      {icon(active ? '#2A2A2A' : '#6B6B6B')}
+      {icon(active ? COLORS.textInverse : '#4A4A4A')}
       <Text style={active ? styles.labelActive : styles.label}>{label}</Text>
     </Pressable>
   );
@@ -119,39 +104,42 @@ const styles = StyleSheet.create({
     gap: 7,
     overflow: 'hidden',
   },
-  btnRaised: {
+  btnInactive: {
+    backgroundColor: COLORS.card,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowOffset: { width: 1, height: 1 },
-        shadowRadius: 5,
+        shadowOpacity: 0.08,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 6,
       },
-      android: { elevation: 4 },
+      android: { elevation: 2 },
     }),
   },
-  btnSunken: {
-    // no outer shadow at all — that absence is what reads as "flush / pushed in"
+  btnActive: {
+    backgroundColor: COLORS.accent,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.3,
+        shadowOffset: { width: 0, height: 0 },
+        shadowRadius: 10,
+      },
+      android: { elevation: 6 },
+    }),
   },
-  borderRaised: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: PILL,
-    borderWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.9)',
-    borderLeftColor: 'rgba(255,255,255,0.9)',
-    borderRightColor: 'rgba(0,0,0,0.12)',
-    borderBottomColor: 'rgba(0,0,0,0.12)',
-  },
+  sideLeft: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 16 },
+  sideRight: { position: 'absolute', top: 0, bottom: 0, right: 0, width: 16 },
   label: {
     fontFamily: FONT.regular,
     fontSize: 14,
-    color: '#6B6B6B',
+    color: '#4A4A4A',
     writingDirection: 'rtl',
   },
   labelActive: {
     fontFamily: FONT.bold,
     fontSize: 14,
-    color: '#2A2A2A',
+    color: COLORS.textInverse,
     writingDirection: 'rtl',
   },
 });
