@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useFonts, Arimo_400Regular, Arimo_700Bold } from '@expo-google-fonts/arimo';
+import { useFonts, Assistant_400Regular, Assistant_700Bold } from '@expo-google-fonts/assistant';
 import LoginScreen from './screens/LoginScreen';
 import SetPasswordScreen from './screens/SetPasswordScreen';
 import OwnerHomeScreen from './screens/OwnerHomeScreen';
@@ -26,7 +26,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList | null>(null);
 
-  const [fontsLoaded] = useFonts({ Arimo_400Regular, Arimo_700Bold });
+  const [fontsLoaded] = useFonts({ Assistant_400Regular, Assistant_700Bold });
 
   useEffect(() => {
     (async () => {
