@@ -394,3 +394,13 @@ export async function createDepartment(companyId: string, name: string) {
   if (error) throw error;
   return data as Department;
 }
+
+export async function updateDepartment(departmentId: string, name: string) {
+  const { error } = await supabase.from('departments').update({ name }).eq('id', departmentId);
+  if (error) throw error;
+}
+
+export async function deleteDepartment(departmentId: string) {
+  const { error } = await supabase.from('departments').delete().eq('id', departmentId);
+  if (error) throw error;
+}

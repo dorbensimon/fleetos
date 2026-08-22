@@ -33,6 +33,22 @@ export function AdminMenuButton() {
         <Pressable style={styles.overlay} onPress={() => setMenuOpen(false)}>
           <View style={styles.menuAnchor}>
             <Pressable style={styles.menu} onPress={(e) => e.stopPropagation()}>
+              <TouchableOpacity
+                style={styles.menuItem}
+                activeOpacity={0.7}
+                onPress={() => {
+                  setMenuOpen(false);
+                  navigation.navigate('Departments');
+                }}
+              >
+                <Ionicons name="business-outline" size={19} color={COLORS.text} />
+                <AppText weight="bold" style={styles.menuItemTextNeutral}>
+                  מחלקות
+                </AppText>
+              </TouchableOpacity>
+
+              <View style={styles.menuDivider} />
+
               <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={logout}>
                 <Ionicons name="log-out-outline" size={19} color={COLORS.dangerText} />
                 <AppText weight="bold" style={styles.menuItemText}>
@@ -79,4 +95,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
   },
   menuItemText: { fontSize: 14.5, color: COLORS.dangerText },
+  menuItemTextNeutral: { fontSize: 14.5, color: COLORS.text },
+  menuDivider: { height: 1, backgroundColor: COLORS.divider, marginVertical: 4 },
 });
