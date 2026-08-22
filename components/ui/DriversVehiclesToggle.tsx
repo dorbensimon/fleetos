@@ -88,7 +88,7 @@ function ToggleButton({
     <Pressable onPress={onPress} style={[styles.btn, styles.btnRaised]}>
       <LinearGradient
         pointerEvents="none"
-        colors={['#F5F5F5', '#DADADA']}
+        colors={['#FBFBFB', '#EAEAEA']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
