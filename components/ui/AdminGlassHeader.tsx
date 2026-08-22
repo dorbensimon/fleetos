@@ -9,6 +9,14 @@ import DriversVehiclesToggle, { ToggleValue } from './DriversVehiclesToggle';
 import { COLORS, FONT } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 
+function timeGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'בוקר טוב';
+  if (hour >= 12 && hour < 18) return 'צהריים טובים';
+  if (hour >= 18 && hour < 22) return 'ערב טוב';
+  return 'לילה טוב';
+}
+
 /**
  * The frosted-glass banner every admin screen opens with: the hamburger
  * menu top-left, the search field right under it, and the drivers/
@@ -42,7 +50,7 @@ export function AdminGlassHeader({
         <View style={styles.topRow}>
           <View style={styles.greetingWrap}>
             <AppText style={styles.greeting} numberOfLines={1}>
-              שלום, {firstName || 'אדמין'}
+              {timeGreeting()}, {firstName || 'אדמין'}
             </AppText>
           </View>
           <AdminMenuButton />
