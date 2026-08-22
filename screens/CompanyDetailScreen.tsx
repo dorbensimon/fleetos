@@ -627,7 +627,11 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         </View>
         <Text style={styles.deleteDescription}>
           הסרת <Text style={styles.deleteBold}>{removeTarget?.email || removeTarget?.full_name}</Text>{' '}
-          תמחק את המשתמש לצמיתות, כולל גישתו למערכת. הפעולה אינה ניתנת לשחזור.
+          תמחק את המשתמש לצמיתות, כולל גישתו למערכת.
+          {removeTarget?.role === 'admin'
+            ? ' כל הנהגים של החברה הזו יימחקו לצמיתות יחד איתו.'
+            : ''}{' '}
+          הפעולה אינה ניתנת לשחזור.
         </Text>
         <View style={styles.deleteButtonsRow}>
           <TouchableOpacity style={styles.cancelButton} onPress={() => setRemoveTarget(null)}>

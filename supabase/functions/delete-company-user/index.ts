@@ -1,5 +1,7 @@
 // Edge Function: delete-company-user
 // Called by the app (owner only) to fully remove an admin/driver: Auth user + profile row.
+// Deleting an admin cascades: every driver in that admin's company is
+// permanently deleted too, since a company with no admin can't be managed.
 // Irreversible.
 
 import { corsHeaders } from '../_shared/cors.ts';
@@ -27,6 +29,25 @@ Deno.serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    const { data: target } = await adminClient
+      .from('profiles')
+      .select('role, company_id')
+      .eq('id', userId)
+      .single();
+
+    if (target?.role === 'admin' && target.company_id) {
+      const { data: drivers } = await adminClient
+        .from('profiles')
+        .select('id')
+        .eq('role', 'driver')
+        .eq('company_id', target.company_id);
+
+      for (const driver of drivers ?? []) {
+        await adminClient.from('profiles').delete().eq('id', driver.id);
+        await adminClient.auth.admin.deleteUser(driver.id);
+      }
     }
 
     await adminClient.from('profiles').delete().eq('id', userId);

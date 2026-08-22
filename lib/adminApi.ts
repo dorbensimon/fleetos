@@ -273,6 +273,36 @@ export async function createDriverAccount(payload: {
   return { ok: true, driverId: data.driverId };
 }
 
+/**
+ * Permanently removes a driver's account. Only the admin of the same
+ * company (or the owner) may do this — enforced server-side, not just
+ * by hiding the button.
+ */
+export async function deleteDriver(
+  driverId: string,
+  companyId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data, error } = await supabase.functions.invoke('delete-company-driver', {
+    body: { driverId, companyId },
+  });
+
+  if (error || !data?.success) {
+    let message = data?.error || 'מחיקת הנהג נכשלה';
+    const ctx = (error as any)?.context;
+    if (ctx?.json) {
+      try {
+        const body = await ctx.json();
+        if (body?.error) message = body.error;
+      } catch {
+        /* keep the generic message */
+      }
+    }
+    return { ok: false, error: message };
+  }
+
+  return { ok: true };
+}
+
 /* ------------------------------------------------------------------ */
 /* Compliance                                                          */
 /* ------------------------------------------------------------------ */
