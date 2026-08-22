@@ -265,11 +265,15 @@ export function FilterChips<T extends string>({
             style={[styles.chip, active && styles.chipActive]}
           >
             {!!opt.icon && (
-              <Ionicons name={opt.icon} size={14} color={opt.badgeColor ?? COLORS.textMuted} />
+              <Ionicons
+                name={opt.icon}
+                size={16}
+                color={active ? COLORS.textInverse : opt.badgeColor ?? COLORS.textMuted}
+              />
             )}
             <AppText
               weight="bold"
-              numberOfLines={1}
+              numberOfLines={2}
               style={[styles.chipText, active && styles.chipTextActive]}
             >
               {opt.label}
@@ -435,22 +439,23 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 14, fontFamily: FONT.regular, color: COLORS.text },
 
-  chipRow: { flexDirection: 'row-reverse', gap: SPACING.sm },
+  chipRow: { flexDirection: 'row-reverse', gap: SPACING.sm, alignItems: 'stretch' },
   chip: {
     flex: 1,
     position: 'relative',
-    height: 34,
-    paddingHorizontal: 8,
-    borderRadius: RADIUS.pill,
+    minHeight: 58,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.card,
-    flexDirection: 'row-reverse',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
+    gap: 4,
     ...SUBTLE_SHADOW,
   },
   chipActive: { backgroundColor: COLORS.text },
-  chipText: { fontSize: 12.5, color: COLORS.textMuted },
+  chipText: { fontSize: 11, color: COLORS.textMuted, textAlign: 'center' },
   chipTextActive: { color: COLORS.textInverse },
   chipBadge: {
     position: 'absolute',
