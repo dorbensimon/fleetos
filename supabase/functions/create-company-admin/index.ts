@@ -21,13 +21,21 @@ Deno.serve(async (req) => {
     }
     const { adminClient } = verify;
 
-    const { companyName, logoUrl, adminEmail, adminPassword, adminPhone } = await req.json();
+    const { companyName, logoUrl, adminFirstName, adminLastName, adminEmail, adminPassword, adminPhone } =
+      await req.json();
 
-    if (!companyName?.trim() || !adminEmail?.trim() || !adminPassword || !adminPhone?.trim()) {
-      return new Response(JSON.stringify({ error: 'שם חברה, מייל וסיסמת אדמין הם שדות חובה' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (
+      !companyName?.trim() ||
+      !adminFirstName?.trim() ||
+      !adminLastName?.trim() ||
+      !adminEmail?.trim() ||
+      !adminPassword ||
+      !adminPhone?.trim()
+    ) {
+      return new Response(
+        JSON.stringify({ error: 'שם חברה, שם פרטי ומשפחה, מייל וסיסמת אדמין הם שדות חובה' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     if (adminPassword.length < 6) {
@@ -68,6 +76,7 @@ Deno.serve(async (req) => {
       id: newUser.user.id,
       role: 'admin',
       company_id: company.id,
+      full_name: `${adminFirstName.trim()} ${adminLastName.trim()}`.trim(),
       phone: adminPhone.trim(),
       must_change_password: true,
     });

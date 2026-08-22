@@ -80,6 +80,8 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
 
   const [addAdminOpen, setAddAdminOpen] = useState(false);
   const [newAdminForm, setNewAdminForm] = useState({
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     password: '',
@@ -170,6 +172,8 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
 
   const validateNewAdminForm = () => {
     const errors: Record<string, string> = {};
+    if (!newAdminForm.firstName.trim()) errors.firstName = 'שדה חובה';
+    if (!newAdminForm.lastName.trim()) errors.lastName = 'שדה חובה';
     if (!newAdminForm.email.trim()) errors.email = 'שדה חובה';
     if (!newAdminForm.phone.trim()) errors.phone = 'שדה חובה';
     if (!newAdminForm.password) errors.password = 'שדה חובה';
@@ -191,6 +195,8 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       const { data, error } = await supabase.functions.invoke('add-company-admin', {
         body: {
           companyId,
+          adminFirstName: newAdminForm.firstName.trim(),
+          adminLastName: newAdminForm.lastName.trim(),
           adminEmail: newAdminForm.email.trim(),
           adminPhone: newAdminForm.phone.trim(),
           adminPassword: newAdminForm.password,
@@ -208,7 +214,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         setAddAdminError(message);
         return;
       }
-      setNewAdminForm({ email: '', phone: '', password: '', confirmPassword: '' });
+      setNewAdminForm({ firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: '' });
       setNewAdminFieldErrors({});
       setAddAdminOpen(false);
       setAddAdminSuccessOpen(true);
@@ -462,6 +468,36 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         }}
       >
         <Text style={styles.deleteTitle}>הוספת אדמין</Text>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>שם פרטי</Text>
+          <TextInput
+            style={[styles.fieldInput, !!newAdminFieldErrors.firstName && styles.fieldInputError]}
+            placeholder="לדוגמה: דוד"
+            placeholderTextColor={COLORS.grayLight}
+            value={newAdminForm.firstName}
+            onChangeText={(v) => setNewAdminForm((f) => ({ ...f, firstName: v }))}
+            textAlign="right"
+          />
+          {!!newAdminFieldErrors.firstName && (
+            <Text style={styles.fieldErrorText}>{newAdminFieldErrors.firstName}</Text>
+          )}
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>שם משפחה</Text>
+          <TextInput
+            style={[styles.fieldInput, !!newAdminFieldErrors.lastName && styles.fieldInputError]}
+            placeholder="לדוגמה: כהן"
+            placeholderTextColor={COLORS.grayLight}
+            value={newAdminForm.lastName}
+            onChangeText={(v) => setNewAdminForm((f) => ({ ...f, lastName: v }))}
+            textAlign="right"
+          />
+          {!!newAdminFieldErrors.lastName && (
+            <Text style={styles.fieldErrorText}>{newAdminFieldErrors.lastName}</Text>
+          )}
+        </View>
 
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>מייל האדמין</Text>

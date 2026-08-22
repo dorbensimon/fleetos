@@ -59,6 +59,8 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const [form, setForm] = useState({
     name: '',
     logoUrl: '',
+    adminFirstName: '',
+    adminLastName: '',
     email: '',
     phone: '',
     password: '',
@@ -165,6 +167,8 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const validateForm = () => {
     const errors: Record<string, string> = {};
     if (!form.name.trim()) errors.name = 'שדה חובה';
+    if (!form.adminFirstName.trim()) errors.adminFirstName = 'שדה חובה';
+    if (!form.adminLastName.trim()) errors.adminLastName = 'שדה חובה';
     if (!form.email.trim()) errors.email = 'שדה חובה';
     if (!form.phone.trim()) errors.phone = 'שדה חובה';
     if (!form.password) errors.password = 'שדה חובה';
@@ -186,6 +190,8 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         body: {
           companyName: form.name.trim(),
           logoUrl: form.logoUrl.trim() || null,
+          adminFirstName: form.adminFirstName.trim(),
+          adminLastName: form.adminLastName.trim(),
           adminEmail: form.email.trim(),
           adminPhone: form.phone.trim(),
           adminPassword: form.password,
@@ -205,7 +211,16 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         return;
       }
 
-      setForm({ name: '', logoUrl: '', email: '', phone: '', password: '', confirmPassword: '' });
+      setForm({
+        name: '',
+        logoUrl: '',
+        adminFirstName: '',
+        adminLastName: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: '',
+      });
       setFieldErrors({});
       setAddOpen(false);
       setSuccessOpen(true);
@@ -406,6 +421,36 @@ export default function OwnerHomeScreen({ navigation }: Props) {
             )}
           </TouchableOpacity>
           {!!logoError && <Text style={styles.errorText}>{logoError}</Text>}
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>שם פרטי של האדמין</Text>
+          <TextInput
+            style={[styles.fieldInput, !!fieldErrors.adminFirstName && styles.fieldInputError]}
+            placeholder="לדוגמה: דוד"
+            placeholderTextColor={COLORS.grayLight}
+            value={form.adminFirstName}
+            onChangeText={(v) => setForm((f) => ({ ...f, adminFirstName: v }))}
+            textAlign="right"
+          />
+          {!!fieldErrors.adminFirstName && (
+            <Text style={styles.fieldErrorText}>{fieldErrors.adminFirstName}</Text>
+          )}
+        </View>
+
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>שם משפחה של האדמין</Text>
+          <TextInput
+            style={[styles.fieldInput, !!fieldErrors.adminLastName && styles.fieldInputError]}
+            placeholder="לדוגמה: כהן"
+            placeholderTextColor={COLORS.grayLight}
+            value={form.adminLastName}
+            onChangeText={(v) => setForm((f) => ({ ...f, adminLastName: v }))}
+            textAlign="right"
+          />
+          {!!fieldErrors.adminLastName && (
+            <Text style={styles.fieldErrorText}>{fieldErrors.adminLastName}</Text>
+          )}
         </View>
 
         <View style={styles.fieldGroup}>
