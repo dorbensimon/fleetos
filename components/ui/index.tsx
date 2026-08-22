@@ -260,8 +260,14 @@ export function FilterChips<T extends string>({
           >
             <AppText weight="bold" style={[styles.chipText, active && styles.chipTextActive]}>
               {opt.label}
-              {opt.count !== undefined ? ` · ${opt.count}` : ''}
             </AppText>
+            {opt.count !== undefined && (
+              <View style={styles.chipBadge}>
+                <AppText weight="bold" style={styles.chipBadgeText}>
+                  {opt.count}
+                </AppText>
+              </View>
+            )}
           </TouchableOpacity>
         );
       })}
@@ -416,6 +422,7 @@ const styles = StyleSheet.create({
 
   chipRow: { flexDirection: 'row-reverse', gap: SPACING.sm, flexWrap: 'wrap' },
   chip: {
+    position: 'relative',
     height: 34,
     paddingHorizontal: 14,
     borderRadius: RADIUS.pill,
@@ -427,6 +434,21 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: COLORS.text },
   chipText: { fontSize: 12.5, color: COLORS.textMuted },
   chipTextActive: { color: COLORS.textInverse },
+  chipBadge: {
+    position: 'absolute',
+    top: -7,
+    right: -7,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    backgroundColor: COLORS.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.card,
+  },
+  chipBadgeText: { fontSize: 10, color: COLORS.textInverse },
 
   centered: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48, gap: 8 },
   emptyTitle: { fontSize: 14.5, color: COLORS.textMuted, marginTop: 4 },
