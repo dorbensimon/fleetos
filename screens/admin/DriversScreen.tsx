@@ -202,7 +202,7 @@ export default function DriversScreen() {
           }
           ListFooterComponent={
             <AdminBottomBar
-              actionLabel="הוסף נהג חדש"
+              actionLabel="נהג חדש"
               actionIcon="add"
               onAction={() => navigation.navigate('DriverForm', {})}
             />
