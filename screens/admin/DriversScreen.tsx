@@ -200,6 +200,13 @@ export default function DriversScreen() {
               hint={drivers.length === 0 ? 'הוסף את הנהג הראשון של החברה' : undefined}
             />
           }
+          ListFooterComponent={
+            <AdminBottomBar
+              actionLabel="הוסף נהג חדש"
+              actionIcon="add"
+              onAction={() => navigation.navigate('DriverForm', {})}
+            />
+          }
           renderItem={({ item }) => {
             const state = expiryState(item.license_expiry);
             const warn = state === 'soon' || state === 'expired';
@@ -255,12 +262,6 @@ export default function DriversScreen() {
           }}
         />
       )}
-
-      <AdminBottomBar
-        actionLabel="הוסף נהג חדש"
-        actionIcon="add"
-        onAction={() => navigation.navigate('DriverForm', {})}
-      />
     </Screen>
   );
 }
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
 
   chipsWrap: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md },
 
-  list: { paddingTop: SPACING.md, gap: SPACING.md, paddingBottom: 110 },
+  list: { paddingTop: SPACING.md, gap: SPACING.md, paddingBottom: 28 },
 
   card: {
     backgroundColor: COLORS.card,

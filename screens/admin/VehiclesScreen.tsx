@@ -156,6 +156,13 @@ export default function VehiclesScreen() {
               hint={vehicles.length === 0 ? 'הוסף את הרכב הראשון של החברה' : undefined}
             />
           }
+          ListFooterComponent={
+            <AdminBottomBar
+              actionLabel="רכב חדש"
+              actionIcon="add"
+              onAction={() => navigation.navigate('VehicleForm', {})}
+            />
+          }
           renderItem={({ item }) => {
             const insurance = expiryOf(item.id, 'insurance_mandatory');
             const test = expiryOf(item.id, 'annual_test');
@@ -209,12 +216,6 @@ export default function VehiclesScreen() {
           }}
         />
       )}
-
-      <AdminBottomBar
-        actionLabel="רכב חדש"
-        actionIcon="add"
-        onAction={() => navigation.navigate('VehicleForm', {})}
-      />
     </Screen>
   );
 }
@@ -234,7 +235,7 @@ function MetaBadge({ label, date }: { label: string; date: string | null }) {
 const styles = StyleSheet.create({
   controls: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, gap: SPACING.md },
 
-  list: { paddingTop: SPACING.md, gap: SPACING.md, paddingBottom: 110 },
+  list: { paddingTop: SPACING.md, gap: SPACING.md, paddingBottom: 28 },
 
   card: {
     backgroundColor: COLORS.card,
