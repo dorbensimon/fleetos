@@ -44,12 +44,12 @@ export function AdminGlassHeader({
         </View>
 
         <View style={styles.search}>
-          <Ionicons name="search" size={17} color={COLORS.text} />
+          <Ionicons name="search" size={17} color={COLORS.textMuted} />
           <TextInput
             value={query}
             onChangeText={onChangeQuery}
             placeholder={searchPlaceholder}
-            placeholderTextColor={COLORS.text}
+            placeholderTextColor={COLORS.textMuted}
             style={styles.input}
             textAlign="right"
           />
@@ -105,8 +105,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15.5,
-    color: COLORS.text,
-    fontFamily: FONT.bold,
+    color: COLORS.textMuted,
+    fontFamily: FONT.regular,
     textAlign: 'right',
     padding: 0,
   },
