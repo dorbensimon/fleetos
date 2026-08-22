@@ -139,6 +139,15 @@ export function daysUntilExpiry(date: string | null | undefined): number | null 
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
+/** Time-of-day greeting word, computed from the device clock. */
+export function timeGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'בוקר טוב';
+  if (hour >= 12 && hour < 18) return 'צהריים טובים';
+  if (hour >= 18 && hour < 22) return 'ערב טוב';
+  return 'לילה טוב';
+}
+
 /** Formats an ISO date as DD/MM/YYYY, or an em dash when empty. */
 export function formatDate(date: string | null | undefined): string {
   if (!date) return '—';

@@ -21,4 +21,9 @@ export type RootStackParamList = {
     category: string;
     title: string;
   };
+
+  // Driver module
+  DriverVehicle: undefined;
+  DriverDocuments: undefined;
+  DriverProfile: undefined;
 };

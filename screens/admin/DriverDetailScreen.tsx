@@ -7,6 +7,7 @@ import { Screen, ScreenHeader, AppText, PressableCard, LoadingState, PrimaryButt
 import { COLORS, RADIUS, SPACING, CARD_SHADOW, expiryState, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, deleteDriver, resetDriverPassword, DriverRow } from '../../lib/adminApi';
+import { DRIVER_DOCUMENT_CATEGORIES, DriverDocCategory } from '../../lib/driverDocumentCategories';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -14,24 +15,11 @@ import { RootStackParamList } from '../../navigation/types';
  * of document/record categories below it. Each row opens the same
  * generic DocumentCategoryScreen scoped to its own category, rather
  * than eleven bespoke screens for what is really one shape repeated.
+ * The category list is shared with the driver's own "המסמכים שלי" menu.
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverDetail'>;
 
-type MenuItem = { key: string; label: string; icon: React.ComponentProps<typeof Ionicons>['name'] };
-
-const MENU: MenuItem[] = [
-  { key: 'license_docs', label: 'מסמכי רישיון נהיגה', icon: 'card-outline' },
-  { key: 'driver_file', label: 'תיק נהג', icon: 'folder-outline' },
-  { key: 'notes_feedback', label: 'הערות לנהג ותגובות הנהג', icon: 'chatbubble-ellipses-outline' },
-  { key: 'traffic_reports', label: 'דוחות תעבורה', icon: 'alert-circle-outline' },
-  { key: 'procedure_6', label: 'נוהל 6', icon: 'shield-checkmark-outline' },
-  { key: 'certifications', label: 'הסמכות והכשרות', icon: 'ribbon-outline' },
-  { key: 'accompanying_drivers', label: 'נהגים נלווים', icon: 'people-outline' },
-  { key: 'hazmat', label: 'חומרים מסוכנים', icon: 'warning-outline' },
-  { key: 'trainings', label: 'הדרכות והכשרות', icon: 'school-outline' },
-  { key: 'general', label: 'מסמכים כלליים', icon: 'document-text-outline' },
-  { key: 'transport_info', label: 'מסמכי מידע תעבורתי', icon: 'information-circle-outline' },
-];
+const MENU = DRIVER_DOCUMENT_CATEGORIES;
 
 export default function DriverDetailScreen({ route, navigation }: Props) {
   const { driverId } = route.params;
@@ -117,7 +105,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     }, [driverId])
   );
 
-  const openCategory = (item: MenuItem) => {
+  const openCategory = (item: DriverDocCategory) => {
     navigation.navigate('DocumentCategory', {
       ownerType: 'driver',
       ownerId: driverId,

@@ -6,16 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from './Text';
 import { AdminMenuButton } from './AdminMenuButton';
 import DriversVehiclesToggle, { ToggleValue } from './DriversVehiclesToggle';
-import { COLORS, FONT } from '../../lib/theme';
+import { COLORS, FONT, timeGreeting } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-
-function timeGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) return 'בוקר טוב';
-  if (hour >= 12 && hour < 18) return 'צהריים טובים';
-  if (hour >= 18 && hour < 22) return 'ערב טוב';
-  return 'לילה טוב';
-}
 
 /**
  * The frosted-glass banner every admin screen opens with: the hamburger

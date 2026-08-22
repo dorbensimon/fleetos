@@ -18,6 +18,9 @@ import DepartmentsScreen from './screens/admin/DepartmentsScreen';
 import AdminProfileScreen from './screens/admin/AdminProfileScreen';
 import DocumentCategoryScreen from './screens/admin/DocumentCategoryScreen';
 import DriverPersonalDetailsScreen from './screens/admin/DriverPersonalDetailsScreen';
+import DriverVehicleScreen from './screens/driver/DriverVehicleScreen';
+import DriverDocumentsScreen from './screens/driver/DriverDocumentsScreen';
+import DriverProfileScreen from './screens/driver/DriverProfileScreen';
 import { RootStackParamList } from './navigation/types';
 import { supabase } from './lib/supabase';
 import { resolveRouteForUser } from './lib/session';
@@ -75,6 +78,11 @@ export default function App() {
           <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
           <Stack.Screen name="DocumentCategory" component={DocumentCategoryScreen} />
           <Stack.Screen name="DriverPersonalDetails" component={DriverPersonalDetailsScreen} />
+
+          {/* Driver module */}
+          <Stack.Screen name="DriverVehicle" component={DriverVehicleScreen} />
+          <Stack.Screen name="DriverDocuments" component={DriverDocumentsScreen} />
+          <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </CompanyProvider>
