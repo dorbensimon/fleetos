@@ -32,7 +32,9 @@
         {
           "photosPermission": "האפליקציה צריכה גישה לתמונות כדי להעלות לוגו חברה."
         }
-      ]
+      ],
+      "expo-font",
+      "@react-native-community/datetimepicker"
     ]
   }
 }
