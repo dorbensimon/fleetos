@@ -9,7 +9,6 @@ import {
   FilterChips,
   LoadingState,
   EmptyState,
-  ExpiryBadge,
   Badge,
   AdminBottomBar,
   AdminGlassHeader,
@@ -22,6 +21,7 @@ import {
   SUBTLE_SHADOW,
   expiryState,
   formatDate,
+  EXPIRY_STYLE,
 } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
@@ -217,7 +217,7 @@ export default function VehiclesScreen() {
                       {[item.manufacturer, item.model].filter(Boolean).join(' ') || 'ללא דגם'}
                     </AppText>
                     <AppText style={styles.cardSubtitle} numberOfLines={1}>
-                      {VEHICLE_TYPE_LABELS[item.vehicle_type] ?? item.vehicle_type}
+                      {`סוג: ${VEHICLE_TYPE_LABELS[item.vehicle_type] ?? item.vehicle_type}`}
                       {driverName ? ` · נהג: ${driverName}` : ' · ללא נהג'}
                     </AppText>
                   </View>
@@ -260,13 +260,38 @@ export default function VehiclesScreen() {
 }
 
 function MetaBadge({ label, date }: { label: string; date: string | null }) {
+  const state = expiryState(date);
+  const style = EXPIRY_STYLE[state];
+
+  const icon: keyof typeof Ionicons.glyphMap =
+    state === 'ok'
+      ? 'checkmark-circle'
+      : state === 'soon'
+        ? 'hourglass-outline'
+        : state === 'expired'
+          ? 'alert-circle'
+          : 'help-circle-outline';
+
+  const text =
+    state === 'ok'
+      ? ''
+      : state === 'soon'
+        ? formatDate(date!)
+        : state === 'expired'
+          ? `פג תוקף · ${formatDate(date!)}`
+          : 'חסר';
+
   return (
     <View style={styles.metaItem}>
       <AppText style={styles.metaLabel}>{label}</AppText>
-      <ExpiryBadge
-        state={expiryState(date)}
-        label={date ? formatDate(date) : 'חסר'}
-      />
+      <View style={[styles.expiryPill, { backgroundColor: style.bg }]}>
+        <Ionicons name={icon} size={14} color={style.fg} />
+        {!!text && (
+          <AppText weight="bold" style={[styles.expiryPillText, { color: style.fg }]}>
+            {text}
+          </AppText>
+        )}
+      </View>
     </View>
   );
 }
@@ -315,6 +340,15 @@ const styles = StyleSheet.create({
   },
   metaItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
   metaLabel: { fontSize: 12, color: COLORS.textMuted },
+  expiryPill: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  expiryPillText: { fontSize: 12 },
 
   restoreBtn: {
     alignItems: 'center',
