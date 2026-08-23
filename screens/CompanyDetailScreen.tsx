@@ -16,6 +16,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { supabase, Company } from '../lib/supabase';
 import { pickAndUploadLogo } from '../lib/uploadLogo';
+import { isValidIsraeliPhone, isValidEmail, formatIsraeliPhone } from '../lib/validation';
 
 const COLORS = {
   screenBg: '#EEEEEE',
@@ -135,6 +136,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     if (!editForm.firstName.trim()) errors.firstName = 'שדה חובה';
     if (!editForm.lastName.trim()) errors.lastName = 'שדה חובה';
     if (!editForm.phone.trim()) errors.phone = 'שדה חובה';
+    else if (!isValidIsraeliPhone(editForm.phone)) errors.phone = 'מספר טלפון לא תקין';
     setEditFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -250,7 +252,9 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     if (!newAdminForm.firstName.trim()) errors.firstName = 'שדה חובה';
     if (!newAdminForm.lastName.trim()) errors.lastName = 'שדה חובה';
     if (!newAdminForm.email.trim()) errors.email = 'שדה חובה';
+    else if (!isValidEmail(newAdminForm.email)) errors.email = 'כתובת מייל לא תקינה';
     if (!newAdminForm.phone.trim()) errors.phone = 'שדה חובה';
+    else if (!isValidIsraeliPhone(newAdminForm.phone)) errors.phone = 'מספר טלפון לא תקין';
     if (!newAdminForm.password) errors.password = 'שדה חובה';
     else if (newAdminForm.password.length < 6) errors.password = 'לפחות 6 תווים';
     if (!newAdminForm.confirmPassword) errors.confirmPassword = 'שדה חובה';
@@ -466,8 +470,9 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
             <TextInput
               style={[styles.fieldInput, styles.fieldInputLtr]}
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={(v) => setPhone(formatIsraeliPhone(v))}
               keyboardType="phone-pad"
+              maxLength={11}
               textAlign="left"
             />
           </View>
@@ -487,8 +492,9 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
             <TextInput
               style={[styles.fieldInput, styles.fieldInputLtr]}
               value={safetyOfficerPhone}
-              onChangeText={setSafetyOfficerPhone}
+              onChangeText={(v) => setSafetyOfficerPhone(formatIsraeliPhone(v))}
               keyboardType="phone-pad"
+              maxLength={11}
               textAlign="left"
             />
           </View>
@@ -676,8 +682,9 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
             placeholder="050-0000000"
             placeholderTextColor={COLORS.grayLight}
             value={newAdminForm.phone}
-            onChangeText={(v) => setNewAdminForm((f) => ({ ...f, phone: v }))}
+            onChangeText={(v) => setNewAdminForm((f) => ({ ...f, phone: formatIsraeliPhone(v) }))}
             keyboardType="phone-pad"
+            maxLength={11}
             textAlign="left"
           />
           {!!newAdminFieldErrors.phone && (
@@ -919,8 +926,9 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
           <TextInput
             style={[styles.fieldInput, styles.fieldInputLtr, !!editFieldErrors.phone && styles.fieldInputError]}
             value={editForm.phone}
-            onChangeText={(v) => setEditForm((f) => ({ ...f, phone: v }))}
+            onChangeText={(v) => setEditForm((f) => ({ ...f, phone: formatIsraeliPhone(v) }))}
             keyboardType="phone-pad"
+            maxLength={11}
             textAlign="left"
           />
           {!!editFieldErrors.phone && <Text style={styles.fieldErrorText}>{editFieldErrors.phone}</Text>}

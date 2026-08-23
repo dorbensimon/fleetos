@@ -62,6 +62,7 @@ export interface DriverRow extends DriverDetails {
   job_title: string | null;
   email?: string | null;
   vehicle_plate?: string | null;
+  vehicle_id?: string | null;
 }
 
 export interface ComplianceItem {
@@ -174,21 +175,53 @@ export async function listDrivers(companyId: string): Promise<DriverRow[]> {
 
   const [{ data: profiles }, { data: vehicles }] = await Promise.all([
     supabase.from('profiles').select('id, full_name, phone, job_title').in('id', ids),
-    supabase.from('vehicles').select('plate_number, primary_driver_id').in('primary_driver_id', ids),
+    supabase.from('vehicles').select('id, plate_number, primary_driver_id').in('primary_driver_id', ids),
   ]);
 
   const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
-  const plateByDriver = new Map(
-    (vehicles ?? []).map((v: any) => [v.primary_driver_id, v.plate_number])
-  );
+  const vehicleByDriver = new Map((vehicles ?? []).map((v: any) => [v.primary_driver_id, v]));
 
   return rows.map((r) => ({
     ...r,
     full_name: profileById.get(r.id)?.full_name ?? null,
     phone: profileById.get(r.id)?.phone ?? null,
     job_title: profileById.get(r.id)?.job_title ?? null,
-    vehicle_plate: plateByDriver.get(r.id) ?? null,
+    vehicle_plate: vehicleByDriver.get(r.id)?.plate_number ?? null,
+    vehicle_id: vehicleByDriver.get(r.id)?.id ?? null,
   }));
+}
+
+/**
+ * Display names (plus license grade) for a set of driver ids, straight
+ * from `profiles` and `driver_details`.
+ *
+ * The fleet list needs this rather than `listDrivers`: a vehicle's
+ * `primary_driver_id` points at `profiles`, so a driver who is archived
+ * — or who has no `driver_details` row yet — still has to show up by
+ * name on the vehicle card instead of silently reading "ללא נהג".
+ */
+export interface DriverInfo {
+  full_name: string;
+  license_classes: string | null;
+}
+
+export async function listDriverNames(driverIds: string[]): Promise<Map<string, DriverInfo>> {
+  const ids = [...new Set(driverIds)];
+  if (ids.length === 0) return new Map();
+
+  const [{ data: profiles }, { data: details }] = await Promise.all([
+    supabase.from('profiles').select('id, full_name').in('id', ids),
+    supabase.from('driver_details').select('id, license_classes').in('id', ids),
+  ]);
+
+  const licenseById = new Map((details ?? []).map((d: any) => [d.id as string, d.license_classes ?? null]));
+
+  return new Map(
+    (profiles ?? []).map((p: any) => [
+      p.id as string,
+      { full_name: (p.full_name as string) ?? 'ללא שם', license_classes: licenseById.get(p.id) ?? null },
+    ])
+  );
 }
 
 export async function getDriver(driverId: string): Promise<DriverRow | null> {

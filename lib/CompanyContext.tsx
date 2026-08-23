@@ -69,6 +69,18 @@ export function CompanyProvider({
   useEffect(() => {
     setLoading(true);
     load();
+
+    // Re-fetch whenever the signed-in user changes (sign-out then sign-in
+    // as a different admin/driver without a full app reload) — otherwise
+    // the previous user's profile stays cached and the greeting sticks to
+    // their name.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setLoading(true);
+      setProfile((prev) => (session?.user?.id === prev?.id ? prev : null));
+      load();
+    });
+
+    return () => sub.subscription.unsubscribe();
   }, [load]);
 
   const value = useMemo<CompanyContextValue>(

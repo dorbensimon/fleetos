@@ -33,14 +33,16 @@
           "photosPermission": "האפליקציה צריכה גישה לתמונות כדי להעלות לוגו חברה."
         }
       ],
-      "expo-font",
-      "@react-native-community/datetimepicker",
       [
-        "react-native-document-scanner-plugin",
+        "expo-media-library",
         {
-          "cameraPermission": "האפליקציה צריכה גישה למצלמה כדי לסרוק מסמכים."
+          "photosPermission": "האפליקציה צריכה גישה לתמונות כדי לשמור מסמכים במכשיר.",
+          "savePhotosPermission": "האפליקציה שומרת מסמכים ותמונות בגלריה של המכשיר.",
+          "isAccessMediaLocationEnabled": false
         }
-      ]
+      ],
+      "expo-font",
+      "@react-native-community/datetimepicker"
     ]
   }
 }

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from './Text';
 import { AdminMenuButton } from './AdminMenuButton';
+import { NotificationBellButton } from './NotificationBellButton';
 import DriversVehiclesToggle, { ToggleValue } from './DriversVehiclesToggle';
 import { COLORS, FONT, timeGreeting } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
@@ -45,7 +46,10 @@ export function AdminGlassHeader({
               {timeGreeting()}, {firstName || 'אדמין'}
             </AppText>
           </View>
-          <AdminMenuButton />
+          <View style={styles.menuGroup}>
+            <AdminMenuButton />
+            <NotificationBellButton />
+          </View>
         </View>
 
         <View style={styles.search}>
@@ -93,6 +97,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   greetingWrap: { flex: 1 },
+  menuGroup: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   greeting: {
     fontSize: 13,
     color: COLORS.textMuted,

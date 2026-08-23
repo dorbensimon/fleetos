@@ -2,6 +2,9 @@ import React from 'react';
 import {
   View,
   ViewProps,
+  ViewStyle,
+  StyleProp,
+  TextStyle,
   StyleSheet,
   TouchableOpacity,
   TouchableOpacityProps,
@@ -21,11 +24,13 @@ import {
   ExpiryState,
   EXPIRY_STYLE,
 } from '../../lib/theme';
+import { useSwipeBackGesture } from './useSwipeBackGesture';
 
 export { AppText } from './Text';
 export { AdminBottomBar } from './AdminBottomBar';
 export { AdminGlassHeader } from './AdminGlassHeader';
 export { AdminMenuButton } from './AdminMenuButton';
+export { NotificationBellButton } from './NotificationBellButton';
 export { DriverMenuButton } from './DriverMenuButton';
 export { default as DriversVehiclesToggle } from './DriversVehiclesToggle';
 export type { ToggleValue } from './DriversVehiclesToggle';
@@ -35,7 +40,8 @@ export type { ToggleValue } from './DriversVehiclesToggle';
 /* ------------------------------------------------------------------ */
 
 export function Screen({ style, ...rest }: ViewProps) {
-  return <View {...rest} style={[styles.screen, style]} />;
+  const swipeBackHandlers = useSwipeBackGesture();
+  return <View {...swipeBackHandlers} {...rest} style={[styles.screen, style]} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -95,14 +101,24 @@ export function Badge({
   label,
   bg,
   fg,
+  style,
+  textStyle,
+  numberOfLines,
 }: {
   label: string;
   bg: string;
   fg: string;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
+  numberOfLines?: number;
 }) {
   return (
-    <View style={[styles.badge, { backgroundColor: bg }]}>
-      <AppText weight="bold" style={[styles.badgeText, { color: fg }]}>
+    <View style={[styles.badge, { backgroundColor: bg }, style]}>
+      <AppText
+        weight="bold"
+        style={[styles.badgeText, { color: fg }, textStyle]}
+        numberOfLines={numberOfLines}
+      >
         {label}
       </AppText>
     </View>
@@ -110,9 +126,30 @@ export function Badge({
 }
 
 /** Badge driven by an expiry date's state. */
-export function ExpiryBadge({ state, label }: { state: ExpiryState; label?: string }) {
+export function ExpiryBadge({
+  state,
+  label,
+  style,
+  textStyle,
+  numberOfLines,
+}: {
+  state: ExpiryState;
+  label?: string;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
+  numberOfLines?: number;
+}) {
   const s = EXPIRY_STYLE[state];
-  return <Badge label={label ?? s.label} bg={s.bg} fg={s.fg} />;
+  return (
+    <Badge
+      label={label ?? s.label}
+      bg={s.bg}
+      fg={s.fg}
+      style={style}
+      textStyle={textStyle}
+      numberOfLines={numberOfLines}
+    />
+  );
 }
 
 /* ------------------------------------------------------------------ */
