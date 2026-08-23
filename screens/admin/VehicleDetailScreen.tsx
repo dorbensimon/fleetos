@@ -64,6 +64,12 @@ const num = (s: string): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
+/** Adds thousand separators as you type, so 74315 reads as 74,315. */
+const formatKm = (s: string): string => {
+  const digits = s.replace(/\D/g, '');
+  return digits ? Number(digits).toLocaleString() : '';
+};
+
 interface MaintForm {
   odometer: string;
   last_service_km: string;
@@ -103,21 +109,21 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     setEditingMaintenance(true);
   };
 
-  const setLastServiceKm = (value: string) => setMaintForm((f) => ({ ...f, last_service_km: value }));
+  const setOdometer = (value: string) => setMaintForm((f) => ({ ...f, odometer: value }));
   const setNextServiceKm = (value: string) => setMaintForm((f) => ({ ...f, next_service_km: value }));
 
   /**
-   * The only auto-fill left: once both the odometer reading and the
-   * service interval are known, "ק״מ לטיפול הבא" is odometer + interval,
-   * recomputed on every change to either of those two. Nothing else is
-   * derived automatically.
+   * The only auto-fill left: once both the last-service reading and the
+   * service interval are known, "ק״מ לטיפול הבא" is last_service_km +
+   * interval, recomputed on every change to either of those two. Nothing
+   * else is derived automatically.
    */
-  const setOdometer = (value: string) => {
+  const setLastServiceKm = (value: string) => {
     setMaintForm((f) => {
-      const next = { ...f, odometer: value };
-      const odo = num(value);
+      const next = { ...f, last_service_km: value };
+      const last = num(value);
       const interval = num(next.service_interval_km);
-      if (odo != null && interval != null) next.next_service_km = String(odo + interval);
+      if (last != null && interval != null) next.next_service_km = String(last + interval);
       return next;
     });
   };
@@ -125,9 +131,9 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const setServiceIntervalKm = (value: string) => {
     setMaintForm((f) => {
       const next = { ...f, service_interval_km: value };
-      const odo = num(next.odometer);
+      const last = num(next.last_service_km);
       const interval = num(value);
-      if (odo != null && interval != null) next.next_service_km = String(odo + interval);
+      if (last != null && interval != null) next.next_service_km = String(last + interval);
       return next;
     });
   };
@@ -356,21 +362,33 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
             {editingMaintenance ? (
               <>
                 <Field label="מד אוץ נוכחי (ק״מ)">
-                  <InputLtr value={maintForm.odometer} onChangeText={setOdometer} keyboardType="number-pad" />
+                  <InputLtr
+                    value={formatKm(maintForm.odometer)}
+                    onChangeText={(v) => setOdometer(v.replace(/\D/g, ''))}
+                    keyboardType="number-pad"
+                  />
                 </Field>
                 <Field label="ק״מ בטיפול האחרון">
-                  <InputLtr value={maintForm.last_service_km} onChangeText={setLastServiceKm} keyboardType="number-pad" />
+                  <InputLtr
+                    value={formatKm(maintForm.last_service_km)}
+                    onChangeText={(v) => setLastServiceKm(v.replace(/\D/g, ''))}
+                    keyboardType="number-pad"
+                  />
                 </Field>
                 <Field label="טווח ק״מ בין טיפולים">
                   <InputLtr
-                    value={maintForm.service_interval_km}
-                    onChangeText={setServiceIntervalKm}
+                    value={formatKm(maintForm.service_interval_km)}
+                    onChangeText={(v) => setServiceIntervalKm(v.replace(/\D/g, ''))}
                     keyboardType="number-pad"
-                    placeholder="למשל 20000"
+                    placeholder="למשל 20,000"
                   />
                 </Field>
                 <Field label="ק״מ לטיפול הבא">
-                  <InputLtr value={maintForm.next_service_km} onChangeText={setNextServiceKm} keyboardType="number-pad" />
+                  <InputLtr
+                    value={formatKm(maintForm.next_service_km)}
+                    onChangeText={(v) => setNextServiceKm(v.replace(/\D/g, ''))}
+                    keyboardType="number-pad"
+                  />
                 </Field>
                 <View style={styles.actions}>
                   <SecondaryButton
