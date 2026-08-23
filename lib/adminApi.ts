@@ -61,6 +61,7 @@ export interface DriverRow extends DriverDetails {
   phone: string | null;
   job_title: string | null;
   email?: string | null;
+  vehicle_id?: string | null;
   vehicle_plate?: string | null;
 }
 
@@ -112,13 +113,11 @@ export interface Notification {
 /* Vehicles                                                            */
 /* ------------------------------------------------------------------ */
 
-export async function listVehicles(companyId: string): Promise<Vehicle[]> {
-  const { data, error } = await supabase
-    .from('vehicles')
-    .select('*')
-    .eq('company_id', companyId)
-    .neq('status', 'archived')
-    .order('created_at', { ascending: false });
+export async function listVehicles(companyId: string, includeArchived = false): Promise<Vehicle[]> {
+  let query = supabase.from('vehicles').select('*').eq('company_id', companyId);
+  if (!includeArchived) query = query.neq('status', 'archived');
+
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) throw error;
   return (data ?? []) as Vehicle[];
@@ -174,20 +173,19 @@ export async function listDrivers(companyId: string): Promise<DriverRow[]> {
 
   const [{ data: profiles }, { data: vehicles }] = await Promise.all([
     supabase.from('profiles').select('id, full_name, phone, job_title').in('id', ids),
-    supabase.from('vehicles').select('plate_number, primary_driver_id').in('primary_driver_id', ids),
+    supabase.from('vehicles').select('id, plate_number, primary_driver_id').in('primary_driver_id', ids),
   ]);
 
   const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
-  const plateByDriver = new Map(
-    (vehicles ?? []).map((v: any) => [v.primary_driver_id, v.plate_number])
-  );
+  const vehicleByDriver = new Map((vehicles ?? []).map((v: any) => [v.primary_driver_id, v]));
 
   return rows.map((r) => ({
     ...r,
     full_name: profileById.get(r.id)?.full_name ?? null,
     phone: profileById.get(r.id)?.phone ?? null,
     job_title: profileById.get(r.id)?.job_title ?? null,
-    vehicle_plate: plateByDriver.get(r.id) ?? null,
+    vehicle_id: vehicleByDriver.get(r.id)?.id ?? null,
+    vehicle_plate: vehicleByDriver.get(r.id)?.plate_number ?? null,
   }));
 }
 
@@ -201,7 +199,7 @@ export async function getDriver(driverId: string): Promise<DriverRow | null> {
 
   const { data: vehicle } = await supabase
     .from('vehicles')
-    .select('plate_number')
+    .select('id, plate_number')
     .eq('primary_driver_id', driverId)
     .maybeSingle();
 
@@ -210,6 +208,7 @@ export async function getDriver(driverId: string): Promise<DriverRow | null> {
     full_name: (profile as any)?.full_name ?? null,
     phone: (profile as any)?.phone ?? null,
     job_title: (profile as any)?.job_title ?? null,
+    vehicle_id: (vehicle as any)?.id ?? null,
     vehicle_plate: (vehicle as any)?.plate_number ?? null,
   };
 }

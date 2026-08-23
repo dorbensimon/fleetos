@@ -12,20 +12,25 @@ import {
   InfoRow,
   SecondaryButton,
   Badge,
+  ExpiryBadge,
 } from '../../components/ui';
 import { ComplianceSection } from '../../components/ComplianceSection';
-import { COLORS, RADIUS, SPACING, formatDate } from '../../lib/theme';
+import { COLORS, RADIUS, SPACING, formatDate, expiryState, ExpiryState } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
   getVehicle,
   getDriver,
   archiveVehicle,
   listDepartments,
+  listCompliance,
   Vehicle,
   DriverRow,
   Department,
+  ComplianceItem,
 } from '../../lib/adminApi';
 import { VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../lib/compliance';
+import { formatPlate } from '../../lib/plate';
+import { formatPhone } from '../../lib/phone';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -54,6 +59,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [compliance, setCompliance] = useState<ComplianceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('general');
 
@@ -62,6 +68,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     setVehicle(v);
     setDriver(v?.primary_driver_id ? await getDriver(v.primary_driver_id) : null);
     if (companyId) setDepartments(await listDepartments(companyId));
+    setCompliance(await listCompliance('vehicle', vehicleId));
   }, [vehicleId, companyId]);
 
   useFocusEffect(
@@ -84,7 +91,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const confirmArchive = () => {
     Alert.alert(
       'העברה לארכיון',
-      `להעביר את ${vehicle?.plate_number} לארכיון? הרכב יוסתר מהרשימה אך הנתונים יישמרו.`,
+      `להעביר את ${formatPlate(vehicle?.plate_number)} לארכיון? הרכב יוסתר מהרשימה אך הנתונים יישמרו.`,
       [
         { text: 'ביטול', style: 'cancel' },
         {
@@ -124,12 +131,23 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
 
   const kmToService =
     vehicle.next_service_km != null ? vehicle.next_service_km - vehicle.odometer : null;
+  const serviceState: ExpiryState =
+    kmToService == null ? 'missing' : kmToService <= 0 ? 'expired' : kmToService <= 1000 ? 'soon' : 'ok';
+  const serviceLabel =
+    kmToService == null
+      ? 'חסר'
+      : kmToService <= 0
+      ? `חריגה ${Math.abs(kmToService).toLocaleString()} ק״מ`
+      : `${kmToService.toLocaleString()} ק״מ`;
+  const insuranceDate =
+    compliance.find((c) => c.item_type === 'insurance_mandatory')?.expiry_date ?? null;
+  const testDate = compliance.find((c) => c.item_type === 'annual_test')?.expiry_date ?? null;
 
   return (
     <Screen>
       <ScreenHeader
-        title={[vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || vehicle.plate_number}
-        subtitle={`${vehicle.plate_number} · ${
+        title={[vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || formatPlate(vehicle.plate_number)}
+        subtitle={`${formatPlate(vehicle.plate_number)} · ${
           VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type
         }`}
         onBack={() => navigation.goBack()}
@@ -162,6 +180,21 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
         ))}
       </View>
 
+      <View style={styles.badgeRow}>
+        <View style={styles.badgeItem}>
+          <AppText style={styles.badgeLabel}>ביטוח</AppText>
+          <ExpiryBadge state={expiryState(insuranceDate)} label={insuranceDate ? formatDate(insuranceDate) : 'חסר'} />
+        </View>
+        <View style={styles.badgeItem}>
+          <AppText style={styles.badgeLabel}>טסט</AppText>
+          <ExpiryBadge state={expiryState(testDate)} label={testDate ? formatDate(testDate) : 'חסר'} />
+        </View>
+        <View style={styles.badgeItem}>
+          <AppText style={styles.badgeLabel}>טיפול</AppText>
+          <ExpiryBadge state={serviceState} label={serviceLabel} />
+        </View>
+      </View>
+
       <ScrollView contentContainerStyle={styles.content}>
         {tab === 'general' && (
           <>
@@ -176,7 +209,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
                   fg={vehicle.status === 'active' ? COLORS.okText : COLORS.neutralText}
                 />
               </View>
-              <InfoRow label="מספר רישוי" value={vehicle.plate_number} />
+              <InfoRow label="מספר רישוי" value={formatPlate(vehicle.plate_number)} />
               <InfoRow label="יצרן" value={vehicle.manufacturer} />
               <InfoRow label="דגם" value={vehicle.model} />
               <InfoRow label="סוג" value={VEHICLE_TYPE_LABELS[vehicle.vehicle_type]} />
@@ -287,7 +320,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
                     {driver.full_name ?? 'ללא שם'}
                   </AppText>
                   <AppText style={styles.driverMeta}>
-                    {driver.phone ?? '—'}
+                    {driver.phone ? formatPhone(driver.phone) : '—'}
                     {driver.license_classes ? ` · דרגה ${driver.license_classes}` : ''}
                   </AppText>
                 </View>
@@ -317,6 +350,19 @@ const styles = StyleSheet.create({
   tabActive: { borderBottomColor: COLORS.accent },
   tabText: { fontSize: 13.5, color: COLORS.textFaint },
   tabTextActive: { color: COLORS.text },
+
+  badgeRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.card,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  badgeItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  badgeLabel: { fontSize: 12, color: COLORS.textMuted },
 
   content: { padding: SPACING.lg, gap: SPACING.lg, paddingBottom: 40 },
   cardTitle: { fontSize: 15.5, marginBottom: 4 },

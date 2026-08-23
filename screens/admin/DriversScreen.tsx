@@ -36,6 +36,7 @@ import {
 import { useCompany } from '../../lib/CompanyContext';
 import { listDrivers, DriverRow } from '../../lib/adminApi';
 import { exportDriversReport, REPORT_CATEGORIES, ReportCategory } from '../../lib/driverReport';
+import { formatPlate } from '../../lib/plate';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -275,6 +276,19 @@ export default function DriversScreen() {
                       {licenseText}
                     </AppText>
                   </View>
+                  {item.vehicle_id && item.vehicle_plate && (
+                    <TouchableOpacity
+                      hitSlop={4}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        navigation.navigate('VehicleDetail', { vehicleId: item.vehicle_id! });
+                      }}
+                    >
+                      <AppText style={styles.vehicleLink} numberOfLines={1}>
+                        רכב: {formatPlate(item.vehicle_plate)}
+                      </AppText>
+                    </TouchableOpacity>
+                  )}
                 </View>
 
                 {!!item.phone && (
@@ -419,6 +433,7 @@ const styles = StyleSheet.create({
   licenseRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, marginTop: 1 },
   dot: { width: 6, height: 6, borderRadius: 3 },
   licenseText: { fontSize: 11 },
+  vehicleLink: { fontSize: 11.5, color: COLORS.accent, marginTop: 3 },
 
   callBtn: {
     width: 36,

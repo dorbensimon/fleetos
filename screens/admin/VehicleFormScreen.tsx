@@ -11,6 +11,7 @@ import {
   Input,
   InputLtr,
   PrimaryButton,
+  AutocompleteInput,
 } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
 import { COLORS, SPACING } from '../../lib/theme';
@@ -26,6 +27,8 @@ import {
   VehicleType,
 } from '../../lib/adminApi';
 import { VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../lib/compliance';
+import { ISRAEL_COMMON_MANUFACTURERS } from '../../lib/manufacturers';
+import { formatPlate } from '../../lib/plate';
 import { RootStackParamList } from '../../navigation/types';
 
 /** Add / edit a vehicle. Expiry dates are not here — they live in the documents tab. */
@@ -92,6 +95,35 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
+  /**
+   * Which of the three service-km fields the admin has typed into
+   * directly. Auto-fill only ever writes to a field outside this set, so
+   * it recomputes on every keystroke without fighting a value the admin
+   * entered themselves. Clearing a field removes it from the set, making
+   * it derivable again.
+   */
+  const kmTouched = React.useRef(new Set<'last_service_km' | 'service_interval_km' | 'next_service_km'>());
+
+  const setKm = (key: 'last_service_km' | 'service_interval_km' | 'next_service_km', value: string) => {
+    if (value.trim() === '') kmTouched.current.delete(key);
+    else kmTouched.current.add(key);
+
+    setForm((f) => {
+      const next = { ...f, [key]: value };
+      const last = num(next.last_service_km);
+      const interval = num(next.service_interval_km);
+      const target = num(next.next_service_km);
+
+      if (last != null && interval != null && !kmTouched.current.has('next_service_km')) {
+        next.next_service_km = String(last + interval);
+      } else if (last != null && target != null && !kmTouched.current.has('service_interval_km')) {
+        const diff = target - last;
+        next.service_interval_km = diff > 0 ? String(diff) : '';
+      }
+      return next;
+    });
+  };
+
   const load = useCallback(async () => {
     if (!companyId) return;
 
@@ -102,6 +134,11 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     if (vehicleId) {
       const v = await getVehicle(vehicleId);
       if (v) {
+        kmTouched.current = new Set(
+          (['last_service_km', 'service_interval_km', 'next_service_km'] as const).filter(
+            (k) => v[k] != null && v[k] !== 0
+          )
+        );
         setForm({
           plate_number: v.plate_number,
           vehicle_type: v.vehicle_type,
@@ -220,8 +257,8 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
 
             <Field label="מספר רישוי" error={errors.plate_number}>
               <InputLtr
-                value={form.plate_number}
-                onChangeText={(v) => set('plate_number', v)}
+                value={formatPlate(form.plate_number)}
+                onChangeText={(v) => set('plate_number', v.replace(/\D/g, ''))}
                 placeholder="12-345-67"
                 keyboardType="number-pad"
                 hasError={!!errors.plate_number}
@@ -240,7 +277,11 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             </Field>
 
             <Field label="יצרן" optional>
-              <Input value={form.manufacturer} onChangeText={(v) => set('manufacturer', v)} />
+              <AutocompleteInput
+                value={form.manufacturer}
+                onChangeText={(v) => set('manufacturer', v)}
+                options={ISRAEL_COMMON_MANUFACTURERS}
+              />
             </Field>
 
             <Field label="דגם" optional>
@@ -338,7 +379,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             <Field label="ק״מ בטיפול האחרון" optional>
               <InputLtr
                 value={form.last_service_km}
-                onChangeText={(v) => set('last_service_km', v)}
+                onChangeText={(v) => setKm('last_service_km', v)}
                 keyboardType="number-pad"
               />
             </Field>
@@ -346,7 +387,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             <Field label="טווח ק״מ בין טיפולים" optional>
               <InputLtr
                 value={form.service_interval_km}
-                onChangeText={(v) => set('service_interval_km', v)}
+                onChangeText={(v) => setKm('service_interval_km', v)}
                 keyboardType="number-pad"
                 placeholder="למשל 20000"
               />
@@ -355,7 +396,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             <Field label="ק״מ לטיפול הבא" optional>
               <InputLtr
                 value={form.next_service_km}
-                onChangeText={(v) => set('next_service_km', v)}
+                onChangeText={(v) => setKm('next_service_km', v)}
                 keyboardType="number-pad"
               />
             </Field>

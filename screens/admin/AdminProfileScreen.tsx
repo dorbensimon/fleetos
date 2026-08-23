@@ -17,6 +17,7 @@ import {
 import { SPACING, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
+import { formatPhone, isValidIsraeliPhone } from '../../lib/phone';
 import { RootStackParamList } from '../../navigation/types';
 
 /** The logged-in admin's own details, reached from the hamburger menu. */
@@ -67,6 +68,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
     if (!form.firstName.trim()) e.firstName = 'שדה חובה';
     if (!form.lastName.trim()) e.lastName = 'שדה חובה';
     if (!form.phone.trim()) e.phone = 'שדה חובה';
+    else if (!isValidIsraeliPhone(form.phone)) e.phone = 'מספר טלפון לא תקין';
     setErrors(e);
     if (Object.keys(e).length > 0) return;
 
@@ -123,8 +125,9 @@ export default function AdminProfileScreen({ navigation }: Props) {
               </Field>
               <Field label="טלפון" error={errors.phone}>
                 <InputLtr
-                  value={form.phone}
-                  onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))}
+                  value={formatPhone(form.phone)}
+                  onChangeText={(v) => setForm((f) => ({ ...f, phone: v.replace(/\D/g, '') }))}
+                  placeholder="052-7898655"
                   keyboardType="phone-pad"
                   hasError={!!errors.phone}
                 />
@@ -139,7 +142,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
             <Card style={styles.card}>
               <InfoRow label="שם מלא" value={profile?.full_name} />
               <InfoRow label="אימייל" value={email} />
-              <InfoRow label="טלפון" value={profile?.phone} />
+              <InfoRow label="טלפון" value={profile?.phone ? formatPhone(profile.phone) : null} />
               <InfoRow label="תפקיד" value="אדמין" />
             </Card>
           )}
@@ -149,7 +152,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
             <InfoRow label="סוג חברה" value={company?.company_type} />
             <InfoRow label="ח.פ / ע.מ" value={company?.business_id} />
             <InfoRow label="כתובת החברה" value={company?.address} />
-            <InfoRow label="טלפון החברה" value={company?.phone} />
+            <InfoRow label="טלפון החברה" value={company?.phone ? formatPhone(company.phone) : null} />
           </Card>
 
           <Card style={styles.card}>

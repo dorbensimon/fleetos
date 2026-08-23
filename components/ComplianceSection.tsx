@@ -9,7 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { AppText, Card, ExpiryBadge } from './ui';
+import { AppText, Card, ExpiryBadge, PrimaryButton } from './ui';
 import { DateField } from './ui/DateField';
 import { COLORS, RADIUS, SPACING, expiryState, formatDate } from '../lib/theme';
 import {
@@ -28,10 +28,10 @@ import {
   listDocuments,
   uploadDocument,
   deleteDocument,
+  downloadDocument,
   getDocumentUrl,
   pickImage,
   captureImage,
-  scanDocument,
   pickFile,
 } from '../lib/documents';
 
@@ -60,6 +60,14 @@ export function ComplianceSection({
   const [expanded, setExpanded] = useState<string | null>(null);
   const [busyItem, setBusyItem] = useState<string | null>(null);
 
+  // Date edits are staged here and only sent to the server when the admin
+  // taps "אישור" — picking a date used to save instantly, which meant one
+  // slip of the finger silently overwrote the real date.
+  const [drafts, setDrafts] = useState<Record<string, { last_date?: string | null; expiry_date?: string | null }>>(
+    {}
+  );
+  const [savingItem, setSavingItem] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     const [complianceRows, documentRows] = await Promise.all([
       listCompliance(ownerType, ownerId),
@@ -80,26 +88,18 @@ export function ComplianceSection({
     })();
   }, [load]);
 
-  const saveDate = async (
-    def: ComplianceItemDef,
-    field: 'expiry_date' | 'last_date',
-    iso: string | null
-  ) => {
-    const existing = items.get(def.itemType);
-    // Optimistic: the row updates instantly, then we persist.
-    const next: ComplianceItem = {
-      id: existing?.id ?? `temp-${def.itemType}`,
-      company_id: companyId,
-      owner_type: ownerType,
-      owner_id: ownerId,
-      category: def.category,
-      item_type: def.itemType,
-      last_date: field === 'last_date' ? iso : existing?.last_date ?? null,
-      expiry_date: field === 'expiry_date' ? iso : existing?.expiry_date ?? null,
-      notes: existing?.notes ?? null,
-    };
-    setItems((prev) => new Map(prev).set(def.itemType, next));
+  const setDraftDate = (def: ComplianceItemDef, field: 'expiry_date' | 'last_date', iso: string | null) => {
+    setDrafts((prev) => ({ ...prev, [def.itemType]: { ...prev[def.itemType], [field]: iso } }));
+  };
 
+  const confirmDates = async (def: ComplianceItemDef) => {
+    const draft = drafts[def.itemType];
+    if (!draft) return;
+    const existing = items.get(def.itemType);
+    const lastDate = draft.last_date !== undefined ? draft.last_date : existing?.last_date ?? null;
+    const expiryDate = draft.expiry_date !== undefined ? draft.expiry_date : existing?.expiry_date ?? null;
+
+    setSavingItem(def.itemType);
     try {
       await upsertCompliance({
         companyId,
@@ -107,24 +107,28 @@ export function ComplianceSection({
         ownerId,
         category: def.category,
         itemType: def.itemType,
-        lastDate: next.last_date,
-        expiryDate: next.expiry_date,
+        lastDate,
+        expiryDate,
+      });
+      setDrafts((prev) => {
+        const next = { ...prev };
+        delete next[def.itemType];
+        return next;
       });
       await load();
     } catch {
       Alert.alert('שמירה נכשלה', 'לא הצלחנו לשמור את התאריך. נסה שוב.');
-      await load();
+    } finally {
+      setSavingItem(null);
     }
   };
 
   const addDocument = async (def: ComplianceItemDef) => {
-    const choose = async (source: 'scan' | 'camera' | 'gallery' | 'file') => {
+    const choose = async (source: 'camera' | 'gallery' | 'file') => {
       setBusyItem(def.itemType);
       try {
         const file =
-          source === 'scan'
-            ? await scanDocument()
-            : source === 'camera'
+          source === 'camera'
             ? await captureImage()
             : source === 'gallery'
             ? await pickImage()
@@ -157,7 +161,6 @@ export function ComplianceSection({
     }
 
     Alert.alert('הוספת מסמך', def.label, [
-      { text: 'סרוק מסמך', onPress: () => choose('scan') },
       { text: 'צלם מסמך', onPress: () => choose('camera') },
       { text: 'בחר תמונה', onPress: () => choose('gallery') },
       { text: 'בחר קובץ', onPress: () => choose('file') },
@@ -172,6 +175,14 @@ export function ComplianceSection({
       return;
     }
     Linking.openURL(url);
+  };
+
+  const downloadDoc = async (doc: DocumentRow) => {
+    try {
+      await downloadDocument(doc);
+    } catch (err: any) {
+      Alert.alert('ההורדה נכשלה', err?.message ?? 'נסה שוב');
+    }
   };
 
   const removeDocument = (doc: DocumentRow) => {
@@ -215,6 +226,14 @@ export function ComplianceSection({
             const item = items.get(def.itemType);
             const itemDocs = docs.filter((d) => d.title === def.label);
             const isOpen = expanded === def.itemType;
+            const draft = drafts[def.itemType];
+            const currentLastDate = draft?.last_date !== undefined ? draft.last_date : item?.last_date ?? null;
+            const currentExpiryDate =
+              draft?.expiry_date !== undefined ? draft.expiry_date : item?.expiry_date ?? null;
+            const isDirty =
+              !!draft &&
+              ((draft.last_date !== undefined && draft.last_date !== (item?.last_date ?? null)) ||
+                (draft.expiry_date !== undefined && draft.expiry_date !== (item?.expiry_date ?? null)));
 
             return (
               <View key={def.itemType} style={styles.item}>
@@ -251,8 +270,8 @@ export function ComplianceSection({
                         <AppText style={styles.dateLabel}>בדיקה אחרונה</AppText>
                         <View style={styles.dateInput}>
                           <DateField
-                            value={item?.last_date ?? null}
-                            onChange={(iso) => saveDate(def, 'last_date', iso)}
+                            value={currentLastDate}
+                            onChange={(iso) => setDraftDate(def, 'last_date', iso)}
                           />
                         </View>
                       </View>
@@ -264,17 +283,24 @@ export function ComplianceSection({
                       </AppText>
                       <View style={styles.dateInput}>
                         <DateField
-                          value={item?.expiry_date ?? null}
-                          onChange={(iso) => saveDate(def, 'expiry_date', iso)}
+                          value={currentExpiryDate}
+                          onChange={(iso) => setDraftDate(def, 'expiry_date', iso)}
                         />
                       </View>
                     </View>
 
+                    {isDirty && (
+                      <PrimaryButton
+                        label="אישור"
+                        icon="checkmark-outline"
+                        style={styles.confirmBtn}
+                        loading={savingItem === def.itemType}
+                        onPress={() => confirmDates(def)}
+                      />
+                    )}
+
                     {itemDocs.map((doc) => (
                       <View key={doc.id} style={styles.docRow}>
-                        <TouchableOpacity onPress={() => removeDocument(doc)} hitSlop={8}>
-                          <Ionicons name="trash-outline" size={16} color={COLORS.dangerText} />
-                        </TouchableOpacity>
                         <TouchableOpacity
                           style={styles.docNameWrap}
                           onPress={() => openDocument(doc)}
@@ -292,6 +318,12 @@ export function ComplianceSection({
                           <AppText style={styles.docName} numberOfLines={1}>
                             {doc.file_name ?? doc.title}
                           </AppText>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => downloadDoc(doc)} hitSlop={8}>
+                          <Ionicons name="download-outline" size={16} color={COLORS.accent} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => removeDocument(doc)} hitSlop={8}>
+                          <Ionicons name="trash-outline" size={16} color={COLORS.dangerText} />
                         </TouchableOpacity>
                       </View>
                     ))}
@@ -349,13 +381,11 @@ function GeneralDocuments({
   const [busy, setBusy] = useState(false);
 
   const add = async () => {
-    const choose = async (source: 'scan' | 'camera' | 'gallery' | 'file') => {
+    const choose = async (source: 'camera' | 'gallery' | 'file') => {
       setBusy(true);
       try {
         const file =
-          source === 'scan'
-            ? await scanDocument()
-            : source === 'camera'
+          source === 'camera'
             ? await captureImage()
             : source === 'gallery'
             ? await pickImage()
@@ -383,7 +413,6 @@ function GeneralDocuments({
     }
 
     Alert.alert('הוספת מסמך', 'מסמך כללי', [
-      { text: 'סרוק מסמך', onPress: () => choose('scan') },
       { text: 'צלם מסמך', onPress: () => choose('camera') },
       { text: 'בחר תמונה', onPress: () => choose('gallery') },
       { text: 'בחר קובץ', onPress: () => choose('file') },
@@ -414,6 +443,14 @@ function GeneralDocuments({
     if (url) Linking.openURL(url);
   };
 
+  const download = async (doc: DocumentRow) => {
+    try {
+      await downloadDocument(doc);
+    } catch (err: any) {
+      Alert.alert('ההורדה נכשלה', err?.message ?? 'נסה שוב');
+    }
+  };
+
   return (
     <Card style={styles.card}>
       <View style={styles.groupHead}>
@@ -429,9 +466,6 @@ function GeneralDocuments({
 
       {docs.map((doc) => (
         <View key={doc.id} style={styles.docRow}>
-          <TouchableOpacity onPress={() => remove(doc)} hitSlop={8}>
-            <Ionicons name="trash-outline" size={16} color={COLORS.dangerText} />
-          </TouchableOpacity>
           <TouchableOpacity style={styles.docNameWrap} onPress={() => open(doc)} activeOpacity={0.7}>
             <Ionicons
               name={doc.mime_type?.includes('pdf') ? 'document-text-outline' : 'image-outline'}
@@ -441,6 +475,12 @@ function GeneralDocuments({
             <AppText style={styles.docName} numberOfLines={1}>
               {doc.file_name ?? doc.title}
             </AppText>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => download(doc)} hitSlop={8}>
+            <Ionicons name="download-outline" size={16} color={COLORS.accent} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => remove(doc)} hitSlop={8}>
+            <Ionicons name="trash-outline" size={16} color={COLORS.dangerText} />
           </TouchableOpacity>
         </View>
       ))}
@@ -486,6 +526,7 @@ const styles = StyleSheet.create({
   dateRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.md },
   dateLabel: { fontSize: 12.5, color: COLORS.textMuted, width: 88 },
   dateInput: { flex: 1 },
+  confirmBtn: { marginTop: 2 },
 
   docRow: {
     flexDirection: 'row-reverse',

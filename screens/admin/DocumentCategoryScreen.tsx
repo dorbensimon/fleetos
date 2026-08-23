@@ -14,8 +14,8 @@ import {
   getDocumentUrl,
   pickImage,
   captureImage,
-  scanDocument,
   pickFile,
+  downloadDocument,
 } from '../../lib/documents';
 import { RootStackParamList } from '../../navigation/types';
 
@@ -60,13 +60,11 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const addDocument = async () => {
     if (!companyId) return;
 
-    const choose = async (source: 'scan' | 'camera' | 'gallery' | 'file') => {
+    const choose = async (source: 'camera' | 'gallery' | 'file') => {
       setUploading(true);
       try {
         const file =
-          source === 'scan'
-            ? await scanDocument()
-            : source === 'camera'
+          source === 'camera'
             ? await captureImage()
             : source === 'gallery'
             ? await pickImage()
@@ -88,7 +86,6 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
     }
 
     Alert.alert('הוספת מסמך', title, [
-      { text: 'סרוק מסמך', onPress: () => choose('scan') },
       { text: 'צלם מסמך', onPress: () => choose('camera') },
       { text: 'בחר תמונה', onPress: () => choose('gallery') },
       { text: 'בחר קובץ', onPress: () => choose('file') },
@@ -103,6 +100,14 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       return;
     }
     Linking.openURL(url);
+  };
+
+  const downloadDoc = async (doc: DocumentRow) => {
+    try {
+      await downloadDocument(doc);
+    } catch (err: any) {
+      Alert.alert('ההורדה נכשלה', err?.message ?? 'נסה שוב');
+    }
   };
 
   const removeDocument = (doc: DocumentRow) => {
@@ -140,9 +145,6 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
           ) : (
             docs.map((doc) => (
               <Card key={doc.id} style={styles.docCard}>
-                <TouchableOpacity onPress={() => removeDocument(doc)} hitSlop={8}>
-                  <Ionicons name="trash-outline" size={17} color={COLORS.dangerText} />
-                </TouchableOpacity>
                 <TouchableOpacity style={styles.docInfo} onPress={() => openDocument(doc)} activeOpacity={0.7}>
                   <View style={styles.docIcon}>
                     <Ionicons
@@ -157,6 +159,12 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
                     </AppText>
                     <AppText style={styles.docDate}>{formatDate(doc.created_at)}</AppText>
                   </View>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => downloadDoc(doc)} hitSlop={8}>
+                  <Ionicons name="download-outline" size={17} color={COLORS.accent} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => removeDocument(doc)} hitSlop={8}>
+                  <Ionicons name="trash-outline" size={17} color={COLORS.dangerText} />
                 </TouchableOpacity>
               </Card>
             ))

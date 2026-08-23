@@ -28,10 +28,12 @@ import {
   listVehicles,
   listComplianceForOwners,
   listDrivers,
+  updateVehicle,
   Vehicle,
   ComplianceItem,
 } from '../../lib/adminApi';
 import { VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../lib/compliance';
+import { formatPlate } from '../../lib/plate';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -42,7 +44,7 @@ import { RootStackParamList } from '../../navigation/types';
  * (insurance and annual test) as colour-coded badges.
  */
 
-type StatusFilter = 'all' | 'active' | 'maintenance' | 'disabled';
+type StatusFilter = 'all' | 'active' | 'maintenance' | 'disabled' | 'archived';
 
 export default function VehiclesScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -58,7 +60,7 @@ export default function VehiclesScreen() {
 
   const load = useCallback(async () => {
     if (!companyId) return;
-    const rows = await listVehicles(companyId);
+    const rows = await listVehicles(companyId, true);
     setVehicles(rows);
     setCompliance(await listComplianceForOwners('vehicle', rows.map((v) => v.id)));
 
@@ -92,7 +94,7 @@ export default function VehiclesScreen() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return vehicles.filter((v) => {
-      const matchesStatus = status === 'all' || v.status === status;
+      const matchesStatus = status === 'all' ? v.status !== 'archived' : v.status === status;
       if (!matchesStatus) return false;
       if (!q) return true;
       return (
@@ -106,13 +108,19 @@ export default function VehiclesScreen() {
 
   const counts = useMemo(
     () => ({
-      all: vehicles.length,
+      all: vehicles.filter((v) => v.status !== 'archived').length,
       active: vehicles.filter((v) => v.status === 'active').length,
       maintenance: vehicles.filter((v) => v.status === 'maintenance').length,
       disabled: vehicles.filter((v) => v.status === 'disabled').length,
+      archived: vehicles.filter((v) => v.status === 'archived').length,
     }),
     [vehicles]
   );
+
+  const restore = async (vehicleId: string) => {
+    await updateVehicle(vehicleId, { status: 'active' });
+    await load();
+  };
 
   const expiryOf = (vehicleId: string, itemType: string) =>
     compliance.get(vehicleId)?.find((c) => c.item_type === itemType)?.expiry_date ?? null;
@@ -155,6 +163,12 @@ export default function VehiclesScreen() {
                     count: counts.disabled,
                     badgeColor: COLORS.dangerText,
                   },
+                  {
+                    value: 'archived',
+                    label: 'בארכיון',
+                    count: counts.archived,
+                    badgeColor: COLORS.textFaint,
+                  },
                 ]}
               />
             </View>
@@ -194,7 +208,7 @@ export default function VehiclesScreen() {
                       </AppText>
                     </View>
                     <AppText weight="bold" style={styles.plateText}>
-                      {item.plate_number}
+                      {formatPlate(item.plate_number)}
                     </AppText>
                   </View>
 
@@ -204,7 +218,7 @@ export default function VehiclesScreen() {
                     </AppText>
                     <AppText style={styles.cardSubtitle} numberOfLines={1}>
                       {VEHICLE_TYPE_LABELS[item.vehicle_type] ?? item.vehicle_type}
-                      {driverName ? ` · ${driverName}` : ' · ללא נהג'}
+                      {driverName ? ` · נהג: ${driverName}` : ' · ללא נהג'}
                     </AppText>
                   </View>
 
@@ -217,10 +231,25 @@ export default function VehiclesScreen() {
                   )}
                 </View>
 
-                <View style={styles.cardMeta}>
-                  <MetaBadge label="ביטוח" date={insurance} />
-                  <MetaBadge label="טסט" date={test} />
-                </View>
+                {item.status === 'archived' ? (
+                  <TouchableOpacity
+                    style={styles.restoreBtn}
+                    activeOpacity={0.8}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      restore(item.id);
+                    }}
+                  >
+                    <AppText weight="bold" style={styles.restoreText}>
+                      שחזר מארכיון
+                    </AppText>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.cardMeta}>
+                    <MetaBadge label="ביטוח" date={insurance} />
+                    <MetaBadge label="טסט" date={test} />
+                  </View>
+                )}
               </TouchableOpacity>
             );
           }}
@@ -286,4 +315,16 @@ const styles = StyleSheet.create({
   },
   metaItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
   metaLabel: { fontSize: 12, color: COLORS.textMuted },
+
+  restoreBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 38,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.accentSoft,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
+    marginTop: 2,
+  },
+  restoreText: { fontSize: 13, color: COLORS.accent },
 });

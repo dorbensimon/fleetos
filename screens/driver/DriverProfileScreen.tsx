@@ -20,6 +20,7 @@ import { SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
 import { getDriver, updateDriver, listDepartments, DriverRow, Department } from '../../lib/adminApi';
+import { formatPhone, isValidIsraeliPhone } from '../../lib/phone';
 import { RootStackParamList } from '../../navigation/types';
 
 const LICENSE_CLASS_OPTIONS = [
@@ -140,6 +141,7 @@ export default function DriverProfileScreen({ navigation }: Props) {
     if (!form.firstName.trim()) e.firstName = 'שדה חובה';
     if (!form.lastName.trim()) e.lastName = 'שדה חובה';
     if (!form.phone.trim()) e.phone = 'שדה חובה';
+    else if (!isValidIsraeliPhone(form.phone)) e.phone = 'מספר טלפון לא תקין';
     if (!form.national_id.trim()) e.national_id = 'שדה חובה';
     if (!form.employee_number.trim()) e.employee_number = 'שדה חובה';
     if (!form.license_classes.trim()) e.license_classes = 'שדה חובה';
@@ -199,8 +201,9 @@ export default function DriverProfileScreen({ navigation }: Props) {
             </Field>
             <Field label="טלפון" error={errors.phone}>
               <InputLtr
-                value={form.phone}
-                onChangeText={(v) => set('phone', v)}
+                value={formatPhone(form.phone)}
+                onChangeText={(v) => set('phone', v.replace(/\D/g, ''))}
+                placeholder="052-7898655"
                 keyboardType="phone-pad"
                 hasError={!!errors.phone}
               />
@@ -274,7 +277,7 @@ export default function DriverProfileScreen({ navigation }: Props) {
           <Card style={styles.card}>
             <InfoRow label="שם מלא" value={driver?.full_name} />
             <InfoRow label="אימייל" value={email} />
-            <InfoRow label="טלפון" value={driver?.phone} />
+            <InfoRow label="טלפון" value={driver?.phone ? formatPhone(driver.phone) : null} />
             <InfoRow label="חברה" value={company?.name} />
           </Card>
 

@@ -1,8 +1,8 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { File } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { File, Paths } from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
-import DocumentScanner from 'react-native-document-scanner-plugin';
 import { supabase } from './supabase';
 import { DocumentRow, OwnerType } from './adminApi';
 
@@ -41,23 +41,6 @@ export async function pickImage(): Promise<PickedFile | null> {
     uri: asset.uri,
     name: asset.fileName || `scan-${Date.now()}.${ext}`,
     mimeType: asset.mimeType || 'image/jpeg',
-  };
-}
-
-/**
- * Opens the phone's native document scanner — VisionKit on iOS, ML Kit
- * Document Scanner on Android — which auto-detects the page edges,
- * corrects perspective, and crops it, unlike a plain photo. Not
- * available on web or inside Expo Go (needs a custom dev client).
- */
-export async function scanDocument(): Promise<PickedFile | null> {
-  const { scannedImages } = await DocumentScanner.scanDocument({ maxNumDocuments: 1 });
-  if (!scannedImages || scannedImages.length === 0) return null;
-
-  return {
-    uri: scannedImages[0],
-    name: `scan-${Date.now()}.jpg`,
-    mimeType: 'image/jpeg',
   };
 }
 
@@ -190,4 +173,24 @@ export async function getDocumentUrl(doc: DocumentRow): Promise<string | null> {
 
   if (error) return null;
   return data.signedUrl;
+}
+
+/**
+ * Downloads a document to the device and opens the share sheet, so the
+ * user can save it wherever they want (Files, gallery, another app) —
+ * distinct from `getDocumentUrl`, which is for viewing it in place.
+ */
+export async function downloadDocument(doc: DocumentRow): Promise<void> {
+  const url = await getDocumentUrl(doc);
+  if (!url) throw new Error('לא ניתן להוריד את המסמך כרגע');
+
+  const response = await fetch(url);
+  const buffer = new Uint8Array(await response.arrayBuffer());
+
+  const file = new File(Paths.cache, doc.file_name ?? doc.title);
+  file.write(buffer);
+
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(file.uri, { mimeType: doc.mime_type ?? undefined });
+  }
 }

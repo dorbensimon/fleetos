@@ -3,6 +3,8 @@ import * as Sharing from 'expo-sharing';
 import { Company } from './supabase';
 import { DriverRow } from './adminApi';
 import { expiryState, formatDate } from './theme';
+import { formatPlate } from './plate';
+import { formatPhone } from './phone';
 
 export type ReportCategory = 'all' | 'soon' | 'expired' | 'no_vehicle';
 
@@ -53,11 +55,11 @@ function buildHtml(company: Company, drivers: DriverRow[], category: ReportCateg
         <tr>
           <td>${esc(d.full_name) || '—'}</td>
           <td class="ltr">${esc(d.national_id) || '—'}</td>
-          <td class="ltr">${esc(d.phone) || '—'}</td>
+          <td class="ltr">${esc(d.phone ? formatPhone(d.phone) : null) || '—'}</td>
           <td>${esc(d.license_classes) || '—'}</td>
           <td>${d.license_expiry ? esc(formatDate(d.license_expiry)) : '—'}</td>
           <td><span class="status status-${expiryState(d.license_expiry)}">${licenseStatusLabel(d)}</span></td>
-          <td class="ltr">${esc(d.vehicle_plate) || '—'}</td>
+          <td class="ltr">${esc(d.vehicle_plate ? formatPlate(d.vehicle_plate) : null) || '—'}</td>
         </tr>`
     )
     .join('');

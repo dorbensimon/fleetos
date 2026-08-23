@@ -21,6 +21,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { supabase, Company } from '../lib/supabase';
 import { pickAndUploadLogo } from '../lib/uploadLogo';
+import { formatPhone, isValidIsraeliPhone } from '../lib/phone';
+import { isValidEmail } from '../lib/validation';
 
 const COLORS = {
   screenBg: '#EEEEEE',
@@ -172,7 +174,9 @@ export default function OwnerHomeScreen({ navigation }: Props) {
     if (!form.adminFirstName.trim()) errors.adminFirstName = 'שדה חובה';
     if (!form.adminLastName.trim()) errors.adminLastName = 'שדה חובה';
     if (!form.email.trim()) errors.email = 'שדה חובה';
+    else if (!isValidEmail(form.email)) errors.email = 'כתובת מייל לא תקינה';
     if (!form.phone.trim()) errors.phone = 'שדה חובה';
+    else if (!isValidIsraeliPhone(form.phone)) errors.phone = 'מספר טלפון לא תקין';
     if (!form.password) errors.password = 'שדה חובה';
     else if (form.password.length < 6) errors.password = 'לפחות 6 תווים';
     if (!form.confirmPassword) errors.confirmPassword = 'שדה חובה';
@@ -513,8 +517,8 @@ export default function OwnerHomeScreen({ navigation }: Props) {
             style={[styles.fieldInput, styles.fieldInputLtr, !!fieldErrors.phone && styles.fieldInputError]}
             placeholder="050-0000000"
             placeholderTextColor={COLORS.grayLight}
-            value={form.phone}
-            onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))}
+            value={formatPhone(form.phone)}
+            onChangeText={(v) => setForm((f) => ({ ...f, phone: v.replace(/\D/g, '') }))}
             keyboardType="phone-pad"
             textAlign="left"
           />

@@ -8,6 +8,8 @@ import { COLORS, RADIUS, SPACING, CARD_SHADOW, expiryState, formatDate } from '.
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, deleteDriver, resetDriverPassword, DriverRow } from '../../lib/adminApi';
 import { DRIVER_DOCUMENT_CATEGORIES, DriverDocCategory } from '../../lib/driverDocumentCategories';
+import { formatPlate } from '../../lib/plate';
+import { formatPhone } from '../../lib/phone';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -146,7 +148,10 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
                   .join(' · ')}
               </AppText>
               <AppText style={styles.summarySub} numberOfLines={1}>
-                {[driver?.phone, driver?.vehicle_plate ? `רכב ${driver.vehicle_plate}` : 'ללא רכב']
+                {[
+                  driver?.phone ? formatPhone(driver.phone) : null,
+                  driver?.vehicle_plate ? `רכב ${formatPlate(driver.vehicle_plate)}` : 'ללא רכב',
+                ]
                   .filter(Boolean)
                   .join(' · ')}
               </AppText>
