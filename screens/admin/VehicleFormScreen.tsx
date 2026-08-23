@@ -13,11 +13,7 @@ import {
   PrimaryButton,
 } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
-import { MonthYearField } from '../../components/ui/MonthYearField';
-import { AutocompleteInput } from '../../components/ui/AutocompleteInput';
-import { suggestManufacturers } from '../../lib/manufacturers';
 import { COLORS, SPACING } from '../../lib/theme';
-import { formatPlate } from '../../lib/plate';
 import { useCompany } from '../../lib/CompanyContext';
 import {
   getVehicle,
@@ -43,8 +39,8 @@ interface FormState {
   model: string;
   internal_code: string;
   vin: string;
-  production_year: number | null;
-  production_month: number | null;
+  production_year: string;
+  production_month: string;
   usage_type: string;
   status: VehicleStatus;
   department_id: string | null;
@@ -62,8 +58,8 @@ const EMPTY: FormState = {
   model: '',
   internal_code: '',
   vin: '',
-  production_year: null,
-  production_month: null,
+  production_year: '',
+  production_month: '',
   usage_type: '',
   status: 'active',
   department_id: null,
@@ -87,7 +83,6 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   const { companyId } = useCompany();
 
   const [form, setForm] = useState<FormState>(EMPTY);
-  const [original, setOriginal] = useState<Vehicle | null>(null);
   const [departments, setDepartments] = useState<{ value: string; label: string }[]>([]);
   const [drivers, setDrivers] = useState<{ value: string; label: string }[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -96,42 +91,6 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
-
-  /**
-   * The three service numbers are one equation:
-   *   ק״מ בטיפול האחרון + טווח בין טיפולים = ק״מ לטיפול הבא
-   *
-   * Whichever two the admin fills in, the third is derived — nobody
-   * should be doing this arithmetic by hand, and a manual result that
-   * disagrees with the other two fields is simply a typo waiting to
-   * mislead the "יתרה לטיפול" counter.
-   */
-  const setServiceField = (
-    key: 'last_service_km' | 'service_interval_km' | 'next_service_km',
-    value: string
-  ) =>
-    setForm((f) => {
-      const next = { ...f, [key]: value };
-
-      const last = num(next.last_service_km);
-      const interval = num(next.service_interval_km);
-      const target = num(next.next_service_km);
-
-      if (key === 'service_interval_km' && last != null && interval != null) {
-        next.next_service_km = String(last + interval);
-      } else if (key === 'next_service_km' && last != null && target != null) {
-        // A next-service reading below the last service is not a range.
-        next.service_interval_km = target > last ? String(target - last) : '';
-      } else if (key === 'last_service_km' && last != null) {
-        if (interval != null) {
-          next.next_service_km = String(last + interval);
-        } else if (target != null && target > last) {
-          next.service_interval_km = String(target - last);
-        }
-      }
-
-      return next;
-    });
 
   const load = useCallback(async () => {
     if (!companyId) return;
@@ -143,19 +102,15 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     if (vehicleId) {
       const v = await getVehicle(vehicleId);
       if (v) {
-        setOriginal(v);
         setForm({
-          // Rows saved before the mask existed still come back unhyphenated.
-          plate_number: /^[\d-]*$/.test(v.plate_number)
-            ? formatPlate(v.plate_number)
-            : v.plate_number,
+          plate_number: v.plate_number,
           vehicle_type: v.vehicle_type,
           manufacturer: v.manufacturer ?? '',
           model: v.model ?? '',
           internal_code: v.internal_code ?? '',
           vin: v.vin ?? '',
-          production_year: v.production_year ?? null,
-          production_month: v.production_month ?? null,
+          production_year: v.production_year ? String(v.production_year) : '',
+          production_month: v.production_month ? String(v.production_month) : '',
           usage_type: v.usage_type ?? '',
           status: v.status,
           department_id: v.department_id,
@@ -183,23 +138,15 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!form.plate_number.trim()) e.plate_number = 'שדה חובה';
-    // Production date can no longer be typed wrong — it comes from a picker.
+    const year = num(form.production_year);
+    if (form.production_year.trim() && (year === null || year < 1950 || year > 2100)) {
+      e.production_year = 'שנה לא תקינה';
+    }
+    const month = num(form.production_month);
+    if (form.production_month.trim() && (month === null || month < 1 || month > 12)) {
+      e.production_month = 'חודש חייב להיות 1–12';
+    }
     return e;
-  };
-
-  /**
-   * Whether anything in the operations/maintenance block moved. Only then
-   * does "עודכן לאחרונה" get restamped, so an unrelated edit (a new
-   * nickname, a department change) does not fake a fresh odometer reading.
-   */
-  const maintenanceChanged = (payload: Partial<Vehicle>) => {
-    if (!original) return true;
-    return (
-      payload.odometer !== original.odometer ||
-      payload.last_service_km !== original.last_service_km ||
-      payload.service_interval_km !== original.service_interval_km ||
-      payload.next_service_km !== original.next_service_km
-    );
   };
 
   const save = async () => {
@@ -217,8 +164,8 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         model: form.model.trim() || null,
         internal_code: form.internal_code.trim() || null,
         vin: form.vin.trim() || null,
-        production_year: form.production_year,
-        production_month: form.production_month,
+        production_year: num(form.production_year),
+        production_month: num(form.production_month),
         usage_type: form.usage_type.trim() || null,
         status: form.status,
         department_id: form.department_id,
@@ -228,10 +175,6 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         service_interval_km: num(form.service_interval_km),
         next_service_km: num(form.next_service_km),
       };
-
-      if (maintenanceChanged(payload)) {
-        payload.odometer_updated_at = new Date().toISOString();
-      }
 
       if (isEdit) {
         await updateVehicle(vehicleId!, payload);
@@ -278,10 +221,9 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             <Field label="מספר רישוי" error={errors.plate_number}>
               <InputLtr
                 value={form.plate_number}
-                onChangeText={(v) => set('plate_number', formatPlate(v))}
+                onChangeText={(v) => set('plate_number', v)}
                 placeholder="12-345-67"
                 keyboardType="number-pad"
-                maxLength={10}
                 hasError={!!errors.plate_number}
               />
             </Field>
@@ -298,14 +240,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             </Field>
 
             <Field label="יצרן" optional>
-              <AutocompleteInput
-                value={form.manufacturer}
-                onChangeText={(v) => set('manufacturer', v)}
-                placeholder="התחל להקליד — למשל טויוטה"
-                suggest={(q) =>
-                  suggestManufacturers(q).map((m) => ({ value: m.he, hint: m.en }))
-                }
-              />
+              <Input value={form.manufacturer} onChangeText={(v) => set('manufacturer', v)} />
             </Field>
 
             <Field label="דגם" optional>
@@ -320,16 +255,30 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
               <InputLtr value={form.vin} onChangeText={(v) => set('vin', v)} />
             </Field>
 
-            <Field label="תאריך ייצור" optional>
-              <MonthYearField
-                year={form.production_year}
-                month={form.production_month}
-                onChange={(year, month) =>
-                  setForm((f) => ({ ...f, production_year: year, production_month: month }))
-                }
-                placeholder="בחר חודש ושנת ייצור"
-              />
-            </Field>
+            <View style={styles.row}>
+              <View style={styles.rowItem}>
+                <Field label="שנת ייצור" optional error={errors.production_year}>
+                  <InputLtr
+                    value={form.production_year}
+                    onChangeText={(v) => set('production_year', v)}
+                    keyboardType="number-pad"
+                    placeholder="2020"
+                    hasError={!!errors.production_year}
+                  />
+                </Field>
+              </View>
+              <View style={styles.rowItem}>
+                <Field label="חודש" optional error={errors.production_month}>
+                  <InputLtr
+                    value={form.production_month}
+                    onChangeText={(v) => set('production_month', v)}
+                    keyboardType="number-pad"
+                    placeholder="1–12"
+                    hasError={!!errors.production_month}
+                  />
+                </Field>
+              </View>
+            </View>
           </Card>
 
           <Card style={styles.card}>
@@ -389,7 +338,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             <Field label="ק״מ בטיפול האחרון" optional>
               <InputLtr
                 value={form.last_service_km}
-                onChangeText={(v) => setServiceField('last_service_km', v)}
+                onChangeText={(v) => set('last_service_km', v)}
                 keyboardType="number-pad"
               />
             </Field>
@@ -397,7 +346,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             <Field label="טווח ק״מ בין טיפולים" optional>
               <InputLtr
                 value={form.service_interval_km}
-                onChangeText={(v) => setServiceField('service_interval_km', v)}
+                onChangeText={(v) => set('service_interval_km', v)}
                 keyboardType="number-pad"
                 placeholder="למשל 20000"
               />
@@ -406,14 +355,10 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             <Field label="ק״מ לטיפול הבא" optional>
               <InputLtr
                 value={form.next_service_km}
-                onChangeText={(v) => setServiceField('next_service_km', v)}
+                onChangeText={(v) => set('next_service_km', v)}
                 keyboardType="number-pad"
               />
             </Field>
-
-            <AppText style={styles.hint}>
-              מילוי שניים מהשדות משלים את השלישי אוטומטית
-            </AppText>
           </Card>
 
           <PrimaryButton
@@ -433,5 +378,4 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 15.5, color: COLORS.text },
   row: { flexDirection: 'row-reverse', gap: SPACING.md },
   rowItem: { flex: 1 },
-  hint: { fontSize: 11.5, color: COLORS.textFaint, textAlign: 'right' },
 });

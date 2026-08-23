@@ -2,9 +2,9 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
+import DocumentScanner from 'react-native-document-scanner-plugin';
 import { supabase } from './supabase';
 import { DocumentRow, OwnerType } from './adminApi';
-import { SaveOutcome, saveFileToDevice } from './saveToDevice';
 
 /**
  * Documents live in a PRIVATE storage bucket, unlike company logos.
@@ -41,6 +41,23 @@ export async function pickImage(): Promise<PickedFile | null> {
     uri: asset.uri,
     name: asset.fileName || `scan-${Date.now()}.${ext}`,
     mimeType: asset.mimeType || 'image/jpeg',
+  };
+}
+
+/**
+ * Opens the phone's native document scanner — VisionKit on iOS, ML Kit
+ * Document Scanner on Android — which auto-detects the page edges,
+ * corrects perspective, and crops it, unlike a plain photo. Not
+ * available on web or inside Expo Go (needs a custom dev client).
+ */
+export async function scanDocument(): Promise<PickedFile | null> {
+  const { scannedImages } = await DocumentScanner.scanDocument({ maxNumDocuments: 1 });
+  if (!scannedImages || scannedImages.length === 0) return null;
+
+  return {
+    uri: scannedImages[0],
+    name: `scan-${Date.now()}.jpg`,
+    mimeType: 'image/jpeg',
   };
 }
 
@@ -165,40 +182,12 @@ export async function deleteDocument(doc: DocumentRow) {
   await supabase.storage.from(BUCKET).remove([doc.file_path]);
 }
 
-/**
- * Short-lived URL for viewing or downloading a document.
- *
- * With `forDownload` the URL carries a Content-Disposition attachment
- * header, so a browser saves it instead of rendering it in a tab.
- */
-export async function getDocumentUrl(
-  doc: DocumentRow,
-  options?: { forDownload?: boolean }
-): Promise<string | null> {
+/** Short-lived URL for viewing or downloading a document. */
+export async function getDocumentUrl(doc: DocumentRow): Promise<string | null> {
   const { data, error } = await supabase.storage
     .from(BUCKET)
-    .createSignedUrl(
-      doc.file_path,
-      SIGNED_URL_TTL_SECONDS,
-      options?.forDownload ? { download: doc.file_name ?? doc.title } : undefined
-    );
+    .createSignedUrl(doc.file_path, SIGNED_URL_TTL_SECONDS);
 
   if (error) return null;
   return data.signedUrl;
-}
-
-/**
- * Exports a document to the device: images land in the phone's gallery,
- * everything else goes through the share sheet (and on web both are a
- * plain browser download).
- */
-export async function saveDocumentToDevice(doc: DocumentRow): Promise<SaveOutcome> {
-  const url = await getDocumentUrl(doc, { forDownload: true });
-  if (!url) throw new Error('לא ניתן להוריד את המסמך כרגע');
-
-  return saveFileToDevice({
-    url,
-    fileName: doc.file_name ?? doc.title,
-    mimeType: doc.mime_type,
-  });
 }

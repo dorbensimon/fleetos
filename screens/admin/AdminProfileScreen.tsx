@@ -17,7 +17,6 @@ import {
 import { SPACING, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
-import { isValidIsraeliPhone, formatIsraeliPhone } from '../../lib/validation';
 import { RootStackParamList } from '../../navigation/types';
 
 /** The logged-in admin's own details, reached from the hamburger menu. */
@@ -68,7 +67,6 @@ export default function AdminProfileScreen({ navigation }: Props) {
     if (!form.firstName.trim()) e.firstName = 'שדה חובה';
     if (!form.lastName.trim()) e.lastName = 'שדה חובה';
     if (!form.phone.trim()) e.phone = 'שדה חובה';
-    else if (!isValidIsraeliPhone(form.phone)) e.phone = 'מספר טלפון לא תקין';
     setErrors(e);
     if (Object.keys(e).length > 0) return;
 
@@ -126,9 +124,8 @@ export default function AdminProfileScreen({ navigation }: Props) {
               <Field label="טלפון" error={errors.phone}>
                 <InputLtr
                   value={form.phone}
-                  onChangeText={(v) => setForm((f) => ({ ...f, phone: formatIsraeliPhone(v) }))}
+                  onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))}
                   keyboardType="phone-pad"
-                  maxLength={11}
                   hasError={!!errors.phone}
                 />
               </Field>

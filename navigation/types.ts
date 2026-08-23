@@ -8,7 +8,7 @@ export type RootStackParamList = {
 
   // Admin module
   Vehicles: undefined;
-  VehicleDetail: { vehicleId: string; tab?: 'general' | 'maintenance' | 'documents' | 'drivers' };
+  VehicleDetail: { vehicleId: string };
   VehicleForm: { vehicleId?: string };
   DriverDetail: { driverId: string };
   DriverPersonalDetails: { driverId: string };

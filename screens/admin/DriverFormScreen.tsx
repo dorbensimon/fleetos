@@ -8,7 +8,6 @@ import { COLORS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
 import { getDriver, updateDriver, createDriverAccount, listDepartments } from '../../lib/adminApi';
-import { isValidIsraeliPhone, isValidEmail, formatIsraeliPhone } from '../../lib/validation';
 import { RootStackParamList } from '../../navigation/types';
 
 const LICENSE_CLASS_OPTIONS = [
@@ -117,14 +116,12 @@ export default function DriverFormScreen({ route, navigation }: Props) {
     const e: Record<string, string> = {};
     if (!form.full_name.trim()) e.full_name = 'שדה חובה';
     if (!form.phone.trim()) e.phone = 'שדה חובה';
-    else if (!isValidIsraeliPhone(form.phone)) e.phone = 'מספר טלפון לא תקין';
     if (!form.national_id.trim()) e.national_id = 'שדה חובה';
     if (!form.employee_number.trim()) e.employee_number = 'שדה חובה';
     if (!form.license_classes.trim()) e.license_classes = 'שדה חובה';
     if (!form.license_expiry.trim()) e.license_expiry = 'שדה חובה';
     if (!isEdit) {
       if (!form.email.trim()) e.email = 'שדה חובה';
-      else if (!isValidEmail(form.email)) e.email = 'כתובת מייל לא תקינה';
       if (!form.password || form.password.length < 6) e.password = 'לפחות 6 תווים';
     }
     return e;
@@ -227,9 +224,8 @@ export default function DriverFormScreen({ route, navigation }: Props) {
             <Field label="טלפון" error={errors.phone}>
               <InputLtr
                 value={form.phone}
-                onChangeText={(v) => set('phone', formatIsraeliPhone(v))}
+                onChangeText={(v) => set('phone', v)}
                 keyboardType="phone-pad"
-                maxLength={11}
                 hasError={!!errors.phone}
               />
             </Field>

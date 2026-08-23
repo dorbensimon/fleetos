@@ -12,9 +12,9 @@ import {
   uploadDocument,
   deleteDocument,
   getDocumentUrl,
-  saveDocumentToDevice,
   pickImage,
   captureImage,
+  scanDocument,
   pickFile,
 } from '../../lib/documents';
 import { RootStackParamList } from '../../navigation/types';
@@ -35,7 +35,6 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [savingId, setSavingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setDocs(await listDocuments(ownerType, ownerId, category));
@@ -61,11 +60,13 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const addDocument = async () => {
     if (!companyId) return;
 
-    const choose = async (source: 'camera' | 'gallery' | 'file') => {
+    const choose = async (source: 'scan' | 'camera' | 'gallery' | 'file') => {
       setUploading(true);
       try {
         const file =
-          source === 'camera'
+          source === 'scan'
+            ? await scanDocument()
+            : source === 'camera'
             ? await captureImage()
             : source === 'gallery'
             ? await pickImage()
@@ -87,6 +88,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
     }
 
     Alert.alert('הוספת מסמך', title, [
+      { text: 'סרוק מסמך', onPress: () => choose('scan') },
       { text: 'צלם מסמך', onPress: () => choose('camera') },
       { text: 'בחר תמונה', onPress: () => choose('gallery') },
       { text: 'בחר קובץ', onPress: () => choose('file') },
@@ -101,23 +103,6 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       return;
     }
     Linking.openURL(url);
-  };
-
-  const saveDocument = async (doc: DocumentRow) => {
-    setSavingId(doc.id);
-    try {
-      const outcome = await saveDocumentToDevice(doc);
-      if (outcome === 'gallery') {
-        Alert.alert('נשמר בגלריה', 'הקובץ נשמר בגלריית התמונות של המכשיר');
-      } else if (outcome === 'downloaded') {
-        Alert.alert('הורדה הושלמה', 'הקובץ ירד למכשיר');
-      }
-      // 'shared' — the share sheet already told the user what happened.
-    } catch (err: any) {
-      Alert.alert('השמירה נכשלה', err?.message ?? 'נסה שוב');
-    } finally {
-      setSavingId(null);
-    }
   };
 
   const removeDocument = (doc: DocumentRow) => {
@@ -155,6 +140,9 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
           ) : (
             docs.map((doc) => (
               <Card key={doc.id} style={styles.docCard}>
+                <TouchableOpacity onPress={() => removeDocument(doc)} hitSlop={8}>
+                  <Ionicons name="trash-outline" size={17} color={COLORS.dangerText} />
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.docInfo} onPress={() => openDocument(doc)} activeOpacity={0.7}>
                   <View style={styles.docIcon}>
                     <Ionicons
@@ -169,20 +157,6 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
                     </AppText>
                     <AppText style={styles.docDate}>{formatDate(doc.created_at)}</AppText>
                   </View>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => saveDocument(doc)}
-                  hitSlop={8}
-                  disabled={savingId === doc.id}
-                >
-                  {savingId === doc.id ? (
-                    <ActivityIndicator size="small" color={COLORS.accent} />
-                  ) : (
-                    <Ionicons name="download-outline" size={17} color={COLORS.accent} />
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => removeDocument(doc)} hitSlop={8}>
-                  <Ionicons name="trash-outline" size={17} color={COLORS.dangerText} />
                 </TouchableOpacity>
               </Card>
             ))

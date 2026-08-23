@@ -60,10 +60,6 @@ export default function App() {
   return (
     <CompanyProvider>
       <NavigationContainer>
-        {/* Swipe-to-go-back in the app's actual reading direction (right-to-left)
-            is handled by useSwipeBackGesture() inside <Screen>, not by native-stack's
-            own gesture — that one is LTR-only and would fight a same-screen RTL
-            gesture for touch priority on iOS. */}
         <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="SetPassword" component={SetPasswordScreen} />

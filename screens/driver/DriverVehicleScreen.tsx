@@ -4,7 +4,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, ExpiryBadge } from '../../components/ui';
 import { COLORS, RADIUS, SPACING, CARD_SHADOW, expiryState, formatDate } from '../../lib/theme';
-import { formatPlate } from '../../lib/plate';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
 import { listCompliance, Vehicle, ComplianceItem } from '../../lib/adminApi';
@@ -71,7 +70,7 @@ export default function DriverVehicleScreen({ navigation }: Props) {
                 </AppText>
               </View>
               <AppText weight="bold" style={styles.plateText}>
-                {formatPlate(vehicle.plate_number)}
+                {vehicle.plate_number}
               </AppText>
             </View>
             <AppText weight="bold" style={styles.vehicleTitle}>

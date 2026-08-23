@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
@@ -20,7 +20,6 @@ import { SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
 import { getDriver, updateDriver, listDepartments, DriverRow, Department } from '../../lib/adminApi';
-import { isValidIsraeliPhone, formatIsraeliPhone } from '../../lib/validation';
 import { RootStackParamList } from '../../navigation/types';
 
 const LICENSE_CLASS_OPTIONS = [
@@ -123,7 +122,7 @@ export default function DriverProfileScreen({ navigation }: Props) {
     setForm({
       firstName: driver?.full_name ? firstName : '',
       lastName: driver?.full_name ? rest.join(' ') : '',
-      phone: driver?.phone ? formatIsraeliPhone(driver.phone) : '',
+      phone: driver?.phone || '',
       national_id: driver?.national_id || '',
       employee_number: driver?.employee_number || '',
       license_classes: firstClass ?? '',
@@ -141,7 +140,6 @@ export default function DriverProfileScreen({ navigation }: Props) {
     if (!form.firstName.trim()) e.firstName = 'שדה חובה';
     if (!form.lastName.trim()) e.lastName = 'שדה חובה';
     if (!form.phone.trim()) e.phone = 'שדה חובה';
-    else if (!isValidIsraeliPhone(form.phone)) e.phone = 'מספר טלפון לא תקין';
     if (!form.national_id.trim()) e.national_id = 'שדה חובה';
     if (!form.employee_number.trim()) e.employee_number = 'שדה חובה';
     if (!form.license_classes.trim()) e.license_classes = 'שדה חובה';
@@ -191,8 +189,7 @@ export default function DriverProfileScreen({ navigation }: Props) {
       {loading ? (
         <LoadingState />
       ) : editing ? (
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.content}>
           <Card style={styles.card}>
             <Field label="שם פרטי" error={errors.firstName}>
               <Input value={form.firstName} onChangeText={(v) => set('firstName', v)} hasError={!!errors.firstName} />
@@ -203,9 +200,8 @@ export default function DriverProfileScreen({ navigation }: Props) {
             <Field label="טלפון" error={errors.phone}>
               <InputLtr
                 value={form.phone}
-                onChangeText={(v) => set('phone', formatIsraeliPhone(v))}
+                onChangeText={(v) => set('phone', v)}
                 keyboardType="phone-pad"
-                maxLength={11}
                 hasError={!!errors.phone}
               />
             </Field>
@@ -272,8 +268,7 @@ export default function DriverProfileScreen({ navigation }: Props) {
             <SecondaryButton label="ביטול" onPress={() => setEditing(false)} disabled={saving} />
             <PrimaryButton label="שמור" onPress={save} loading={saving} style={styles.saveButton} />
           </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+        </View>
       ) : (
         <View style={styles.content}>
           <Card style={styles.card}>
@@ -297,7 +292,7 @@ export default function DriverProfileScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 48 },
+  content: { padding: SPACING.lg, gap: SPACING.md },
   card: { gap: SPACING.md },
   editActions: { flexDirection: 'row-reverse', gap: SPACING.sm },
   saveButton: { flex: 1 },

@@ -126,19 +126,6 @@ export const EXPIRY_STYLE: Record<ExpiryState, { bg: string; fg: string; label: 
   missing: { bg: COLORS.neutralBg, fg: COLORS.neutralText, label: 'חסר' },
 };
 
-/**
- * Date + time, for stamps like "עודכן לאחרונה" where the hour matters —
- * two odometer updates on the same day are otherwise indistinguishable.
- */
-export function formatDateTime(date: string | null | undefined): string {
-  if (!date) return '—';
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return '—';
-  const hh = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  return `${formatDate(date)} ${hh}:${min}`;
-}
-
 /** Days remaining until an expiry date (negative once it's passed). `null` when the date is empty/invalid. */
 export function daysUntilExpiry(date: string | null | undefined): number | null {
   if (!date) return null;

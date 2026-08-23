@@ -14,8 +14,7 @@ import {
   Badge,
 } from '../../components/ui';
 import { ComplianceSection } from '../../components/ComplianceSection';
-import { COLORS, RADIUS, SPACING, formatDate, formatDateTime } from '../../lib/theme';
-import { formatPlate } from '../../lib/plate';
+import { COLORS, RADIUS, SPACING, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
   getVehicle,
@@ -56,7 +55,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>(route.params.tab ?? 'general');
+  const [tab, setTab] = useState<Tab>('general');
 
   const load = useCallback(async () => {
     const v = await getVehicle(vehicleId);
@@ -129,11 +128,8 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   return (
     <Screen>
       <ScreenHeader
-        title={
-          [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') ||
-          formatPlate(vehicle.plate_number)
-        }
-        subtitle={`${formatPlate(vehicle.plate_number)} · ${
+        title={[vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || vehicle.plate_number}
+        subtitle={`${vehicle.plate_number} · ${
           VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type
         }`}
         onBack={() => navigation.goBack()}
@@ -180,7 +176,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
                   fg={vehicle.status === 'active' ? COLORS.okText : COLORS.neutralText}
                 />
               </View>
-              <InfoRow label="מספר רישוי" value={formatPlate(vehicle.plate_number)} />
+              <InfoRow label="מספר רישוי" value={vehicle.plate_number} />
               <InfoRow label="יצרן" value={vehicle.manufacturer} />
               <InfoRow label="דגם" value={vehicle.model} />
               <InfoRow label="סוג" value={VEHICLE_TYPE_LABELS[vehicle.vehicle_type]} />
@@ -231,9 +227,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
             <InfoRow label="מד אוץ נוכחי" value={`${vehicle.odometer.toLocaleString()} ק״מ`} />
             <InfoRow
               label="עודכן לאחרונה"
-              value={
-                vehicle.odometer_updated_at ? formatDateTime(vehicle.odometer_updated_at) : null
-              }
+              value={vehicle.odometer_updated_at ? formatDate(vehicle.odometer_updated_at) : null}
             />
             <InfoRow
               label="ק״מ בטיפול האחרון"

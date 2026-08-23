@@ -5,7 +5,6 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Screen, ScreenHeader, AppText, Card, InfoRow, LoadingState, SecondaryButton } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
 import { COLORS, SPACING } from '../../lib/theme';
-import { formatPlate } from '../../lib/plate';
 import { useCompany } from '../../lib/CompanyContext';
 import {
   getDriver,
@@ -129,10 +128,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
                   <Select
                     value={currentVehicle?.id ?? null}
                     onChange={changeVehicle}
-                    options={vehicles.map((v) => ({
-                      value: v.id,
-                      label: formatPlate(v.plate_number),
-                    }))}
+                    options={vehicles.map((v) => ({ value: v.id, label: v.plate_number }))}
                     placeholder="ללא רכב"
                     allowClear
                   />

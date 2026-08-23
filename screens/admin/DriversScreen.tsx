@@ -36,7 +36,6 @@ import {
 import { useCompany } from '../../lib/CompanyContext';
 import { listDrivers, DriverRow } from '../../lib/adminApi';
 import { exportDriversReport, REPORT_CATEGORIES, ReportCategory } from '../../lib/driverReport';
-import { formatPlate } from '../../lib/plate';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -276,33 +275,6 @@ export default function DriversScreen() {
                       {licenseText}
                     </AppText>
                   </View>
-
-                  {/* The vehicle assignment lives on the vehicle row, but it is
-                      the first thing a fleet manager looks for on a driver. */}
-                  <View style={styles.vehicleRow}>
-                    <Ionicons
-                      name={item.vehicle_plate ? 'car-sport' : 'car-outline'}
-                      size={12}
-                      color={item.vehicle_plate ? COLORS.accent : COLORS.textFaint}
-                    />
-                    {item.vehicle_plate ? (
-                      <TouchableOpacity
-                        style={styles.plateChip}
-                        activeOpacity={0.7}
-                        hitSlop={6}
-                        onPress={() =>
-                          item.vehicle_id &&
-                          navigation.navigate('VehicleDetail', { vehicleId: item.vehicle_id })
-                        }
-                      >
-                        <AppText weight="bold" style={styles.plateChipText}>
-                          {formatPlate(item.vehicle_plate)}
-                        </AppText>
-                      </TouchableOpacity>
-                    ) : (
-                      <AppText style={styles.noVehicleText}>ללא רכב משויך</AppText>
-                    )}
-                  </View>
                 </View>
 
                 {!!item.phone && (
@@ -447,16 +419,6 @@ const styles = StyleSheet.create({
   licenseRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, marginTop: 1 },
   dot: { width: 6, height: 6, borderRadius: 3 },
   licenseText: { fontSize: 11 },
-
-  vehicleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, marginTop: 3 },
-  plateChip: {
-    backgroundColor: '#F5C518',
-    borderRadius: 5,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-  },
-  plateChipText: { fontSize: 10.5, color: '#1A1A1A' },
-  noVehicleText: { fontSize: 11, color: COLORS.textFaint },
 
   callBtn: {
     width: 36,
