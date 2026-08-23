@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
@@ -191,7 +191,8 @@ export default function DriverProfileScreen({ navigation }: Props) {
       {loading ? (
         <LoadingState />
       ) : editing ? (
-        <View style={styles.content}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Card style={styles.card}>
             <Field label="שם פרטי" error={errors.firstName}>
               <Input value={form.firstName} onChangeText={(v) => set('firstName', v)} hasError={!!errors.firstName} />
@@ -271,7 +272,8 @@ export default function DriverProfileScreen({ navigation }: Props) {
             <SecondaryButton label="ביטול" onPress={() => setEditing(false)} disabled={saving} />
             <PrimaryButton label="שמור" onPress={save} loading={saving} style={styles.saveButton} />
           </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       ) : (
         <View style={styles.content}>
           <Card style={styles.card}>
@@ -295,7 +297,7 @@ export default function DriverProfileScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: SPACING.lg, gap: SPACING.md },
+  content: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 48 },
   card: { gap: SPACING.md },
   editActions: { flexDirection: 'row-reverse', gap: SPACING.sm },
   saveButton: { flex: 1 },
