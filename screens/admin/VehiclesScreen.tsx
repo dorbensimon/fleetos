@@ -22,6 +22,7 @@ import {
   expiryState,
   formatDate,
   EXPIRY_STYLE,
+  ExpiryState,
 } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
@@ -248,6 +249,7 @@ export default function VehiclesScreen() {
                   <View style={styles.cardMeta}>
                     <MetaBadge label="ביטוח" date={insurance} />
                     <MetaBadge label="טסט" date={test} />
+                    <ServiceMetaBadge vehicle={item} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -259,19 +261,29 @@ export default function VehiclesScreen() {
   );
 }
 
+const EXPIRY_ICON: Record<ExpiryState, keyof typeof Ionicons.glyphMap> = {
+  ok: 'checkmark-circle',
+  soon: 'hourglass-outline',
+  expired: 'alert-circle',
+  missing: 'help-circle-outline',
+};
+
+function ExpiryPill({ state, text }: { state: ExpiryState; text: string }) {
+  const style = EXPIRY_STYLE[state];
+  return (
+    <View style={[styles.expiryPill, { backgroundColor: style.bg }]}>
+      <Ionicons name={EXPIRY_ICON[state]} size={14} color={style.fg} />
+      {!!text && (
+        <AppText weight="bold" style={[styles.expiryPillText, { color: style.fg }]}>
+          {text}
+        </AppText>
+      )}
+    </View>
+  );
+}
+
 function MetaBadge({ label, date }: { label: string; date: string | null }) {
   const state = expiryState(date);
-  const style = EXPIRY_STYLE[state];
-
-  const icon: keyof typeof Ionicons.glyphMap =
-    state === 'ok'
-      ? 'checkmark-circle'
-      : state === 'soon'
-        ? 'hourglass-outline'
-        : state === 'expired'
-          ? 'alert-circle'
-          : 'help-circle-outline';
-
   const text =
     state === 'ok'
       ? ''
@@ -284,14 +296,33 @@ function MetaBadge({ label, date }: { label: string; date: string | null }) {
   return (
     <View style={styles.metaItem}>
       <AppText style={styles.metaLabel}>{label}</AppText>
-      <View style={[styles.expiryPill, { backgroundColor: style.bg }]}>
-        <Ionicons name={icon} size={14} color={style.fg} />
-        {!!text && (
-          <AppText weight="bold" style={[styles.expiryPillText, { color: style.fg }]}>
-            {text}
-          </AppText>
-        )}
-      </View>
+      <ExpiryPill state={state} text={text} />
+    </View>
+  );
+}
+
+/**
+ * The service badge has no expiry date to compare against — it works off
+ * remaining km instead, using the same three-tier rule as insurance/test:
+ * comfortably ahead (over ~1,000 km left) → checkmark only, within range →
+ * yellow hourglass with the km left, already due → "פג תוקף" with the overage.
+ */
+function ServiceMetaBadge({ vehicle }: { vehicle: Vehicle }) {
+  const kmLeft = vehicle.next_service_km != null ? vehicle.next_service_km - vehicle.odometer : null;
+  const state: ExpiryState = kmLeft == null ? 'missing' : kmLeft <= 0 ? 'expired' : kmLeft <= 1000 ? 'soon' : 'ok';
+  const text =
+    state === 'ok'
+      ? ''
+      : state === 'soon'
+        ? `${kmLeft!.toLocaleString()} ק״מ`
+        : state === 'expired'
+          ? `פג תוקף · ${Math.abs(kmLeft!).toLocaleString()} ק״מ`
+          : 'חסר';
+
+  return (
+    <View style={styles.metaItem}>
+      <AppText style={styles.metaLabel}>טיפול</AppText>
+      <ExpiryPill state={state} text={text} />
     </View>
   );
 }
@@ -333,7 +364,8 @@ const styles = StyleSheet.create({
 
   cardMeta: {
     flexDirection: 'row-reverse',
-    gap: SPACING.xl,
+    flexWrap: 'wrap',
+    gap: SPACING.md,
     borderTopWidth: 1,
     borderTopColor: COLORS.divider,
     paddingTop: SPACING.md,

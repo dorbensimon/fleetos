@@ -95,30 +95,37 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  /**
-   * Which of the three service-km fields the admin has typed into
-   * directly. Auto-fill only ever writes to a field outside this set, so
-   * it recomputes on every keystroke without fighting a value the admin
-   * entered themselves. Clearing a field removes it from the set, making
-   * it derivable again.
-   */
-  const kmTouched = React.useRef(new Set<'last_service_km' | 'service_interval_km' | 'next_service_km'>());
+  type KmField = 'last_service_km' | 'service_interval_km' | 'next_service_km';
+  const KM_FIELDS: KmField[] = ['last_service_km', 'service_interval_km', 'next_service_km'];
 
-  const setKm = (key: 'last_service_km' | 'service_interval_km' | 'next_service_km', value: string) => {
-    if (value.trim() === '') kmTouched.current.delete(key);
-    else kmTouched.current.add(key);
+  /**
+   * The two most recently hand-edited km fields are treated as the
+   * "inputs"; the third is always the derived one and gets recomputed
+   * from them. Editing a field never writes back into that same field
+   * (it just moves it to the input side), so a field can always be
+   * cleared or retyped freely without the auto-fill fighting the admin.
+   */
+  const kmOrder = React.useRef<KmField[]>([]);
+
+  const setKm = (key: KmField, value: string) => {
+    kmOrder.current = [...kmOrder.current.filter((k) => k !== key), key];
+    const inputs = kmOrder.current.slice(-2);
 
     setForm((f) => {
       const next = { ...f, [key]: value };
+      if (inputs.length < 2) return next;
+
+      const derived = KM_FIELDS.find((k) => !inputs.includes(k))!;
       const last = num(next.last_service_km);
       const interval = num(next.service_interval_km);
       const target = num(next.next_service_km);
 
-      if (last != null && interval != null && !kmTouched.current.has('next_service_km')) {
-        next.next_service_km = String(last + interval);
-      } else if (last != null && target != null && !kmTouched.current.has('service_interval_km')) {
-        const diff = target - last;
-        next.service_interval_km = diff > 0 ? String(diff) : '';
+      if (derived === 'next_service_km') {
+        next.next_service_km = last != null && interval != null ? String(last + interval) : '';
+      } else if (derived === 'service_interval_km') {
+        next.service_interval_km = last != null && target != null && target - last > 0 ? String(target - last) : '';
+      } else {
+        next.last_service_km = interval != null && target != null && target - interval > 0 ? String(target - interval) : '';
       }
       return next;
     });
@@ -134,11 +141,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     if (vehicleId) {
       const v = await getVehicle(vehicleId);
       if (v) {
-        kmTouched.current = new Set(
-          (['last_service_km', 'service_interval_km', 'next_service_km'] as const).filter(
-            (k) => v[k] != null && v[k] !== 0
-          )
-        );
+        kmOrder.current = [];
         setForm({
           plate_number: v.plate_number,
           vehicle_type: v.vehicle_type,
