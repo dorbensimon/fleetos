@@ -16,6 +16,7 @@ import {
   InputLtr,
   Badge,
   ExpiryBadge,
+  useToast,
 } from '../../components/ui';
 import { ComplianceSection } from '../../components/ComplianceSection';
 import { COLORS, RADIUS, SPACING, formatDate, expiryState, ExpiryState } from '../../lib/theme';
@@ -73,6 +74,7 @@ interface MaintForm {
 export default function VehicleDetailScreen({ route, navigation }: Props) {
   const { vehicleId } = route.params;
   const { companyId } = useCompany();
+  const { showToast } = useToast();
 
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [driver, setDriver] = useState<DriverRow | null>(null);
@@ -141,6 +143,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
       });
       setEditingMaintenance(false);
       await load();
+      showToast('נשמר בהצלחה');
     } catch (err: any) {
       Alert.alert('שמירה נכשלה', String(err?.message ?? 'נסה שוב'));
     } finally {

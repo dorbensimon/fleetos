@@ -9,7 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { AppText, Card, ExpiryBadge, PrimaryButton } from './ui';
+import { AppText, Card, ExpiryBadge, PrimaryButton, useToast } from './ui';
 import { DateField } from './ui/DateField';
 import { COLORS, RADIUS, SPACING, expiryState, formatDate } from '../lib/theme';
 import {
@@ -54,6 +54,7 @@ export function ComplianceSection({
   ownerType: OwnerType;
   ownerId: string;
 }) {
+  const { showToast } = useToast();
   const [items, setItems] = useState<Map<string, ComplianceItem>>(new Map());
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,6 +117,7 @@ export function ComplianceSection({
         return next;
       });
       await load();
+      showToast('נשמר בהצלחה');
     } catch {
       Alert.alert('שמירה נכשלה', 'לא הצלחנו לשמור את התאריך. נסה שוב.');
     } finally {

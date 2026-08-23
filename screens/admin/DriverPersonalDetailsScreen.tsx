@@ -11,6 +11,7 @@ import {
   LoadingState,
   SecondaryButton,
   PrimaryButton,
+  useToast,
 } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
 import { COLORS, SPACING } from '../../lib/theme';
@@ -44,6 +45,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DriverPersonalDetails'>
 export default function DriverPersonalDetailsScreen({ route, navigation }: Props) {
   const { driverId } = route.params;
   const { companyId, company } = useCompany();
+  const { showToast } = useToast();
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -95,6 +97,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
       await load();
       setEditingVehicle(false);
       setPendingVehicleId(null);
+      showToast('נשמר בהצלחה');
     } catch (err: any) {
       Alert.alert('שינוי הרכב נכשל', String(err?.message ?? 'נסה שוב'));
     } finally {

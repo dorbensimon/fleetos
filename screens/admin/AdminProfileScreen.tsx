@@ -13,6 +13,7 @@ import {
   Field,
   Input,
   InputLtr,
+  useToast,
 } from '../../components/ui';
 import { SPACING, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
@@ -25,6 +26,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'AdminProfile'>;
 
 export default function AdminProfileScreen({ navigation }: Props) {
   const { profile, company, refresh } = useCompany();
+  const { showToast } = useToast();
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -88,6 +90,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
     }
     setEditing(false);
     await refresh();
+    showToast('נשמר בהצלחה');
   };
 
   return (

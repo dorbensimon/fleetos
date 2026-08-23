@@ -13,6 +13,7 @@ import {
   Field,
   Input,
   InputLtr,
+  useToast,
 } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
 import { DateField } from '../../components/ui/DateField';
@@ -63,6 +64,7 @@ interface FormState {
 
 export default function DriverProfileScreen({ navigation }: Props) {
   const { profile, company, companyId, refresh } = useCompany();
+  const { showToast } = useToast();
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [email, setEmail] = useState<string | null>(null);
@@ -168,6 +170,7 @@ export default function DriverProfileScreen({ navigation }: Props) {
       setEditing(false);
       await refresh();
       await load();
+      showToast('נשמר בהצלחה');
     } catch {
       Alert.alert('שמירה נכשלה', 'לא הצלחנו לשמור את השינויים. נסה שוב');
     } finally {

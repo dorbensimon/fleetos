@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Screen, Card, AppText, ScreenHeader, LoadingState, Field, Input, InputLtr, PrimaryButton } from '../../components/ui';
+import { Screen, Card, AppText, ScreenHeader, LoadingState, Field, Input, InputLtr, PrimaryButton, useToast } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
 import { DateField } from '../../components/ui/DateField';
 import { COLORS, SPACING } from '../../lib/theme';
@@ -65,6 +65,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
   const driverId = route.params?.driverId;
   const isEdit = !!driverId;
   const { companyId } = useCompany();
+  const { showToast } = useToast();
 
   const [form, setForm] = useState<FormState>(EMPTY);
   const [departments, setDepartments] = useState<{ value: string; label: string }[]>([]);
@@ -193,6 +194,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           return;
         }
       }
+      showToast('נשמר בהצלחה');
       navigation.goBack();
     } catch (err: any) {
       Alert.alert('שמירה נכשלה', String(err?.message ?? 'נסה שוב'));

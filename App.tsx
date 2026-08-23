@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts, Assistant_400Regular, Assistant_700Bold } from '@expo-google-fonts/assistant';
@@ -26,6 +27,7 @@ import { RootStackParamList } from './navigation/types';
 import { supabase } from './lib/supabase';
 import { resolveRouteForUser } from './lib/session';
 import { CompanyProvider } from './lib/CompanyContext';
+import { ToastProvider } from './components/ui';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -51,42 +53,48 @@ export default function App() {
 
   if (!initialRoute || !fontsLoaded) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F5F7' }}>
-        <ActivityIndicator color="#0071E3" />
-      </View>
+      <SafeAreaProvider>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F5F7' }}>
+          <ActivityIndicator color="#0071E3" />
+        </View>
+      </SafeAreaProvider>
     );
   }
 
   return (
-    <CompanyProvider>
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
-          <Stack.Screen name="OwnerHome" component={OwnerHomeScreen} />
-          <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
-          <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />
+    <SafeAreaProvider>
+      <ToastProvider>
+        <CompanyProvider>
+          <NavigationContainer>
+            <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
+              <Stack.Screen name="OwnerHome" component={OwnerHomeScreen} />
+              <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
+              <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />
 
-          {/* Admin module — no tab bar; AdminHome (drivers) and Vehicles
-              switch to each other via the segmented control in their headers. */}
-          <Stack.Screen name="AdminHome" component={DriversScreen} />
-          <Stack.Screen name="Vehicles" component={VehiclesScreen} />
-          <Stack.Screen name="VehicleDetail" component={VehicleDetailScreen} />
-          <Stack.Screen name="VehicleForm" component={VehicleFormScreen} />
-          <Stack.Screen name="DriverDetail" component={DriverDetailScreen} />
-          <Stack.Screen name="DriverForm" component={DriverFormScreen} />
-          <Stack.Screen name="Departments" component={DepartmentsScreen} />
-          <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
-          <Stack.Screen name="Notifications" component={NotificationsScreen} />
-          <Stack.Screen name="DocumentCategory" component={DocumentCategoryScreen} />
-          <Stack.Screen name="DriverPersonalDetails" component={DriverPersonalDetailsScreen} />
+              {/* Admin module — no tab bar; AdminHome (drivers) and Vehicles
+                  switch to each other via the segmented control in their headers. */}
+              <Stack.Screen name="AdminHome" component={DriversScreen} />
+              <Stack.Screen name="Vehicles" component={VehiclesScreen} />
+              <Stack.Screen name="VehicleDetail" component={VehicleDetailScreen} />
+              <Stack.Screen name="VehicleForm" component={VehicleFormScreen} />
+              <Stack.Screen name="DriverDetail" component={DriverDetailScreen} />
+              <Stack.Screen name="DriverForm" component={DriverFormScreen} />
+              <Stack.Screen name="Departments" component={DepartmentsScreen} />
+              <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
+              <Stack.Screen name="Notifications" component={NotificationsScreen} />
+              <Stack.Screen name="DocumentCategory" component={DocumentCategoryScreen} />
+              <Stack.Screen name="DriverPersonalDetails" component={DriverPersonalDetailsScreen} />
 
-          {/* Driver module */}
-          <Stack.Screen name="DriverVehicle" component={DriverVehicleScreen} />
-          <Stack.Screen name="DriverDocuments" component={DriverDocumentsScreen} />
-          <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </CompanyProvider>
+              {/* Driver module */}
+              <Stack.Screen name="DriverVehicle" component={DriverVehicleScreen} />
+              <Stack.Screen name="DriverDocuments" component={DriverDocumentsScreen} />
+              <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </CompanyProvider>
+      </ToastProvider>
+    </SafeAreaProvider>
   );
 }

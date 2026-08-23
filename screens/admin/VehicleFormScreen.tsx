@@ -12,6 +12,7 @@ import {
   InputLtr,
   PrimaryButton,
   AutocompleteInput,
+  useToast,
 } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
 import { COLORS, SPACING } from '../../lib/theme';
@@ -80,6 +81,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   const vehicleId = route.params?.vehicleId;
   const isEdit = !!vehicleId;
   const { companyId } = useCompany();
+  const { showToast } = useToast();
 
   const [form, setForm] = useState<FormState>(EMPTY);
   const [departments, setDepartments] = useState<{ value: string; label: string }[]>([]);
@@ -178,6 +180,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           last_service_km: 0,
         });
       }
+      showToast('נשמר בהצלחה');
       navigation.goBack();
     } catch (err: any) {
       const message = String(err?.message ?? '');

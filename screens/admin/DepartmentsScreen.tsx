@@ -3,7 +3,7 @@ import { View, FlatList, StyleSheet, TouchableOpacity, Alert, TextInput } from '
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState } from '../../components/ui';
+import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, useToast } from '../../components/ui';
 import { COLORS, RADIUS, SPACING, CARD_SHADOW } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listDepartments, createDepartment, updateDepartment, deleteDepartment, Department } from '../../lib/adminApi';
@@ -18,6 +18,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Departments'>;
 
 export default function DepartmentsScreen({ navigation }: Props) {
   const { companyId } = useCompany();
+  const { showToast } = useToast();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState('');
@@ -54,6 +55,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
       await createDepartment(companyId, newName.trim());
       setNewName('');
       await load();
+      showToast('נשמר בהצלחה');
     } catch (err: any) {
       Alert.alert('הוספת מחלקה נכשלה', String(err?.message ?? 'נסה שוב'));
     } finally {
@@ -70,6 +72,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
       await updateDepartment(id, editingName.trim());
       setEditingId(null);
       await load();
+      showToast('נשמר בהצלחה');
     } catch (err: any) {
       Alert.alert('שינוי השם נכשל', String(err?.message ?? 'נסה שוב'));
     }
