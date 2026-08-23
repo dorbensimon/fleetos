@@ -224,9 +224,9 @@ export default function VehiclesScreen() {
                       {[item.manufacturer, item.model].filter(Boolean).join(' ') || 'ללא דגם'}
                     </AppText>
                     <AppText style={styles.cardSubtitle} numberOfLines={1}>
-                      {`סוג: ${VEHICLE_TYPE_LABELS[item.vehicle_type] ?? item.vehicle_type}`}
+                      {driverName ? `נהג: ${driverName}` : 'ללא נהג'}
                       {departmentName ? ` · מחלקה: ${departmentName}` : ''}
-                      {driverName ? ` · נהג: ${driverName}` : ' · ללא נהג'}
+                      {` · סוג: ${VEHICLE_TYPE_LABELS[item.vehicle_type] ?? item.vehicle_type}`}
                     </AppText>
                   </View>
 

@@ -116,7 +116,7 @@ export function groupByCategory(defs: ComplianceItemDef[]) {
 }
 
 export const VEHICLE_TYPE_LABELS: Record<string, string> = {
-  car: 'רכב',
+  car: 'פרטי',
   minibus: 'מיניבוס',
   bus: 'אוטובוס',
   truck: 'משאית',
