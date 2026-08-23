@@ -29,6 +29,7 @@ import {
   listVehicles,
   listComplianceForOwners,
   listDrivers,
+  listDepartments,
   updateVehicle,
   Vehicle,
   ComplianceItem,
@@ -54,6 +55,7 @@ export default function VehiclesScreen() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [compliance, setCompliance] = useState<Map<string, ComplianceItem[]>>(new Map());
   const [driverNames, setDriverNames] = useState<Map<string, string>>(new Map());
+  const [departmentNames, setDepartmentNames] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
@@ -67,6 +69,9 @@ export default function VehiclesScreen() {
 
     const drivers = await listDrivers(companyId);
     setDriverNames(new Map(drivers.map((d) => [d.id, d.full_name ?? 'ללא שם'])));
+
+    const departments = await listDepartments(companyId);
+    setDepartmentNames(new Map(departments.map((d) => [d.id, d.name])));
   }, [companyId]);
 
   useFocusEffect(
@@ -194,6 +199,7 @@ export default function VehiclesScreen() {
             const driverName = item.primary_driver_id
               ? driverNames.get(item.primary_driver_id)
               : null;
+            const departmentName = item.department_id ? departmentNames.get(item.department_id) : null;
 
             return (
               <TouchableOpacity
@@ -219,6 +225,7 @@ export default function VehiclesScreen() {
                     </AppText>
                     <AppText style={styles.cardSubtitle} numberOfLines={1}>
                       {`סוג: ${VEHICLE_TYPE_LABELS[item.vehicle_type] ?? item.vehicle_type}`}
+                      {departmentName ? ` · מחלקה: ${departmentName}` : ''}
                       {driverName ? ` · נהג: ${driverName}` : ' · ללא נהג'}
                     </AppText>
                   </View>
