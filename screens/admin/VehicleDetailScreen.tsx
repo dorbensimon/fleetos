@@ -63,9 +63,6 @@ const num = (s: string): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
-type KmField = 'last_service_km' | 'service_interval_km' | 'next_service_km';
-const KM_FIELDS: KmField[] = ['last_service_km', 'service_interval_km', 'next_service_km'];
-
 interface MaintForm {
   odometer: string;
   last_service_km: string;
@@ -92,11 +89,9 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     next_service_km: '',
   });
   const [savingMaintenance, setSavingMaintenance] = useState(false);
-  const kmOrder = React.useRef<KmField[]>([]);
 
   const startEditMaintenance = () => {
     if (!vehicle) return;
-    kmOrder.current = [];
     setMaintForm({
       odometer: String(vehicle.odometer ?? ''),
       last_service_km: String(vehicle.last_service_km ?? ''),
@@ -106,31 +101,31 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     setEditingMaintenance(true);
   };
 
+  const setLastServiceKm = (value: string) => setMaintForm((f) => ({ ...f, last_service_km: value }));
+  const setNextServiceKm = (value: string) => setMaintForm((f) => ({ ...f, next_service_km: value }));
+
   /**
-   * Same "two most recently hand-edited km fields are the inputs, the
-   * third is derived" rule as VehicleFormScreen, so a field being edited
-   * is never the one auto-fill writes into and can always be cleared.
+   * The only auto-fill left: once both the odometer reading and the
+   * service interval are known, "ק״מ לטיפול הבא" is odometer + interval,
+   * recomputed on every change to either of those two. Nothing else is
+   * derived automatically.
    */
-  const setMaintKm = (key: KmField, value: string) => {
-    kmOrder.current = [...kmOrder.current.filter((k) => k !== key), key];
-    const inputs = kmOrder.current.slice(-2);
-
+  const setOdometer = (value: string) => {
     setMaintForm((f) => {
-      const next = { ...f, [key]: value };
-      if (inputs.length < 2) return next;
-
-      const derived = KM_FIELDS.find((k) => !inputs.includes(k))!;
-      const last = num(next.last_service_km);
+      const next = { ...f, odometer: value };
+      const odo = num(value);
       const interval = num(next.service_interval_km);
-      const target = num(next.next_service_km);
+      if (odo != null && interval != null) next.next_service_km = String(odo + interval);
+      return next;
+    });
+  };
 
-      if (derived === 'next_service_km') {
-        next.next_service_km = last != null && interval != null ? String(last + interval) : '';
-      } else if (derived === 'service_interval_km') {
-        next.service_interval_km = last != null && target != null && target - last > 0 ? String(target - last) : '';
-      } else {
-        next.last_service_km = interval != null && target != null && target - interval > 0 ? String(target - interval) : '';
-      }
+  const setServiceIntervalKm = (value: string) => {
+    setMaintForm((f) => {
+      const next = { ...f, service_interval_km: value };
+      const odo = num(next.odometer);
+      const interval = num(value);
+      if (odo != null && interval != null) next.next_service_km = String(odo + interval);
       return next;
     });
   };
@@ -358,33 +353,21 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
             {editingMaintenance ? (
               <>
                 <Field label="מד אוץ נוכחי (ק״מ)">
-                  <InputLtr
-                    value={maintForm.odometer}
-                    onChangeText={(v) => setMaintForm((f) => ({ ...f, odometer: v }))}
-                    keyboardType="number-pad"
-                  />
+                  <InputLtr value={maintForm.odometer} onChangeText={setOdometer} keyboardType="number-pad" />
                 </Field>
                 <Field label="ק״מ בטיפול האחרון">
-                  <InputLtr
-                    value={maintForm.last_service_km}
-                    onChangeText={(v) => setMaintKm('last_service_km', v)}
-                    keyboardType="number-pad"
-                  />
+                  <InputLtr value={maintForm.last_service_km} onChangeText={setLastServiceKm} keyboardType="number-pad" />
                 </Field>
                 <Field label="טווח ק״מ בין טיפולים">
                   <InputLtr
                     value={maintForm.service_interval_km}
-                    onChangeText={(v) => setMaintKm('service_interval_km', v)}
+                    onChangeText={setServiceIntervalKm}
                     keyboardType="number-pad"
                     placeholder="למשל 20000"
                   />
                 </Field>
                 <Field label="ק״מ לטיפול הבא">
-                  <InputLtr
-                    value={maintForm.next_service_km}
-                    onChangeText={(v) => setMaintKm('next_service_km', v)}
-                    keyboardType="number-pad"
-                  />
+                  <InputLtr value={maintForm.next_service_km} onChangeText={setNextServiceKm} keyboardType="number-pad" />
                 </Field>
                 <View style={styles.actions}>
                   <SecondaryButton
