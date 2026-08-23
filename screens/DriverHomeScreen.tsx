@@ -50,7 +50,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
     }, [load])
   );
 
-  const firstName = driver?.full_name?.trim().split(/\s+/)[0];
+  const fullName = driver?.full_name?.trim();
   const test = compliance.find((c) => c.item_type === 'annual_test')?.expiry_date ?? null;
   const testState = expiryState(test);
 
@@ -59,7 +59,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
       <View style={[styles.topRow, { paddingTop: insets.top + 14 }]}>
         <View style={styles.greetingWrap}>
           <AppText weight="bold" style={styles.greetingName} numberOfLines={1}>
-            {timeGreeting()}, {firstName || 'נהג'}
+            {fullName ? `${timeGreeting()}, ${fullName}` : timeGreeting()}
           </AppText>
         </View>
         <DriverMenuButton />
