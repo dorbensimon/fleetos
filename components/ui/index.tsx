@@ -8,6 +8,7 @@ import {
   TextInput,
   TextInputProps,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './Text';
@@ -258,43 +259,70 @@ export function FilterChips<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <View style={styles.chipRow}>
-      {options.map((opt) => {
-        const active = opt.value === value;
-        return (
-          <TouchableOpacity
-            key={opt.value}
-            onPress={() => onChange(opt.value)}
-            activeOpacity={0.8}
-            style={[styles.chip, active && styles.chipActive]}
-          >
-            {!!opt.icon && (
-              <Ionicons
-                name={opt.icon}
-                size={16}
-                color={active ? COLORS.textInverse : opt.badgeColor ?? COLORS.textMuted}
-              />
-            )}
-            <AppText
-              weight="bold"
-              numberOfLines={2}
-              style={[styles.chipText, active && styles.chipTextActive]}
-            >
-              {opt.label}
-            </AppText>
-            {opt.count !== undefined && (
-              <View
-                style={[styles.chipBadge, opt.badgeColor ? { backgroundColor: opt.badgeColor } : null]}
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.chipRow}
+      style={styles.chipScrollFlip}
+    >
+      <View style={styles.chipRowFlip}>
+        {options.map((opt) => {
+          const active = opt.value === value;
+          const empty = opt.count === 0 && !active;
+          const dotColor = opt.badgeColor ?? COLORS.textFaint;
+
+          const content = (
+            <View style={styles.chip}>
+              {opt.icon ? (
+                <Ionicons name={opt.icon} size={15} color={dotColor} />
+              ) : (
+                <View style={[styles.chipDotHalo, { backgroundColor: `${dotColor}22` }]}>
+                  <View style={[styles.chipDot, { backgroundColor: dotColor }]} />
+                </View>
+              )}
+              <AppText
+                weight="bold"
+                numberOfLines={1}
+                style={[
+                  styles.chipText,
+                  active && styles.chipTextActive,
+                  empty && styles.chipTextEmpty,
+                ]}
               >
-                <AppText weight="bold" style={styles.chipBadgeText}>
-                  {opt.count}
-                </AppText>
-              </View>
-            )}
-          </TouchableOpacity>
-        );
-      })}
-    </View>
+                {opt.label}
+              </AppText>
+              {opt.count !== undefined && (
+                <View style={styles.chipBadge}>
+                  <AppText
+                    weight="bold"
+                    style={[styles.chipBadgeText, empty && styles.chipTextEmpty]}
+                  >
+                    {opt.count}
+                  </AppText>
+                </View>
+              )}
+            </View>
+          );
+
+          return (
+            <TouchableOpacity key={opt.value} activeOpacity={0.8} onPress={() => onChange(opt.value)}>
+              {active ? (
+                // Pressed-in look: a clipped ring throws its shadow inward,
+                // which reads as an inset shadow — RN has no real inset shadow.
+                <View style={styles.chipPressedClip}>
+                  <View style={[styles.chipRing, styles.chipRingDark]} pointerEvents="none" />
+                  <View style={[styles.chipRing, styles.chipRingLight]} pointerEvents="none" />
+                  {content}
+                </View>
+              ) : (
+                // Flat, no shadow — depth only ever appears on the active pill.
+                <View style={styles.chipInactive}>{content}</View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </ScrollView>
   );
 }
 
@@ -443,39 +471,69 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 14, fontFamily: FONT.regular, color: COLORS.text },
 
-  chipRow: { flexDirection: 'row-reverse', gap: SPACING.sm, alignItems: 'stretch' },
+  chipScrollFlip: { transform: [{ scaleX: -1 }] },
+  chipRowFlip: { transform: [{ scaleX: -1 }], flexDirection: 'row-reverse', gap: 11 },
+  chipRow: { paddingVertical: 2, paddingHorizontal: 1 },
   chip: {
-    flex: 1,
-    position: 'relative',
-    minHeight: 58,
-    paddingHorizontal: 6,
-    paddingVertical: 8,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.card,
-    flexDirection: 'column',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    ...SUBTLE_SHADOW,
+    gap: 7,
+    height: 40,
+    paddingRight: 14,
+    paddingLeft: 11,
   },
-  chipActive: { backgroundColor: COLORS.text },
-  chipText: { fontSize: 11, color: COLORS.textMuted, textAlign: 'center' },
-  chipTextActive: { color: COLORS.textInverse },
-  chipBadge: {
+  // Flat, no shadow at all — the unselected state carries no depth.
+  chipInactive: { backgroundColor: '#F7F7F6', borderRadius: RADIUS.pill },
+  // Pressed-in (active) pill: overflow:hidden clips the rings' shadow to an
+  // inward-reading edge, which is what fakes an inset shadow on iOS.
+  chipPressedClip: {
+    borderRadius: RADIUS.pill,
+    backgroundColor: '#E4E2E0',
+    overflow: 'hidden',
+  },
+  chipRing: {
     position: 'absolute',
-    top: -7,
-    right: -7,
-    minWidth: 18,
-    height: 18,
-    paddingHorizontal: 4,
-    borderRadius: 9,
-    backgroundColor: COLORS.accent,
+    top: -8,
+    left: -8,
+    right: -8,
+    bottom: -8,
+    borderRadius: RADIUS.pill,
+    borderWidth: 8,
+    borderColor: '#E4E2E0',
+  },
+  chipRingDark: {
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowOffset: { width: 3, height: 3 },
+    shadowRadius: 6,
+  },
+  chipRingLight: {
+    shadowColor: '#FFFFFF',
+    shadowOpacity: 0.95,
+    shadowOffset: { width: -3, height: -3 },
+    shadowRadius: 6,
+  },
+  chipDotHalo: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: COLORS.card,
   },
-  chipBadgeText: { fontSize: 10, color: COLORS.textInverse },
+  chipDot: { width: 7, height: 7, borderRadius: 3.5 },
+  chipText: { fontSize: 13.5, color: '#3A3A3A' },
+  chipTextActive: { color: '#111111' },
+  chipTextEmpty: { color: '#B4B4B4' },
+  chipBadge: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    borderRadius: RADIUS.pill,
+    backgroundColor: '#EDEDEC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipBadgeText: { fontSize: 11, color: COLORS.textMuted },
 
   centered: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48, gap: 8 },
   emptyTitle: { fontSize: 14.5, color: COLORS.textMuted, marginTop: 4 },

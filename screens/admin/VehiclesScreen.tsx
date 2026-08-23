@@ -41,9 +41,24 @@ const TONE_WARN = '#F5A623';
 const TONE_BAD = '#E5484D';
 const TONE_NEUTRAL = '#979797';
 
-function dateTone(days: number | null): string {
-  if (days == null) return TONE_NEUTRAL;
-  return days <= 30 ? TONE_BAD : days <= 90 ? TONE_WARN : TONE_OK;
+const YEAR_DAYS = 365;
+const SERVICE_WARN_KM = 1000;
+
+/** Same rule for every stat: green with runway left, yellow inside the warning window, red once overdue. */
+function remainingTone(remaining: number | null, warnAt: number): string {
+  if (remaining == null) return TONE_NEUTRAL;
+  if (remaining < 0) return TONE_BAD;
+  return remaining <= warnAt ? TONE_WARN : TONE_OK;
+}
+
+/**
+ * The line grows from empty toward full as the deadline approaches — green
+ * while there's runway left, still growing (now yellow) once inside the
+ * warning window, and a full red line once the deadline has passed.
+ */
+function remainingRatio(remaining: number | null, total: number): number {
+  if (remaining == null) return 0.06;
+  return Math.max(0, Math.min(1, 1 - remaining / total));
 }
 
 function worstTone(tones: string[]): string {
@@ -53,8 +68,10 @@ function worstTone(tones: string[]): string {
   return TONE_OK;
 }
 
-function chipFor(tone: string): { label: string; bg: string; fg: string } {
-  if (tone === TONE_BAD) return { label: 'דורש טיפול', bg: '#FDECEC', fg: TONE_BAD };
+function chipFor(tone: string, badItems: string[] = []): { label: string; bg: string; fg: string } {
+  if (tone === TONE_BAD) {
+    return { label: badItems.length ? badItems.join(' · ') : 'דורש טיפול', bg: '#FDECEC', fg: TONE_BAD };
+  }
   if (tone === TONE_WARN) return { label: 'מתקרב מועד', bg: '#FFF6E5', fg: '#B9720A' };
   if (tone === TONE_NEUTRAL) return { label: 'חסר נתונים', bg: '#F2F2F2', fg: TONE_NEUTRAL };
   return { label: 'תקין', bg: '#EAF8F1', fg: '#118653' };
@@ -219,13 +236,21 @@ export default function VehiclesScreen() {
             const insDays = daysUntilExpiry(insurance);
             const testDays = daysUntilExpiry(test);
             const kmToService = item.next_service_km != null ? item.next_service_km - item.odometer : null;
+            const svcTotalKm =
+              item.service_interval_km ??
+              (item.next_service_km != null ? item.next_service_km - item.last_service_km : null) ??
+              10000;
 
-            const insTone = dateTone(insDays);
-            const testTone = dateTone(testDays);
+            const insTone = remainingTone(insDays, 30);
+            const testTone = remainingTone(testDays, 30);
             const svcOverdue = kmToService != null && kmToService <= 0;
-            const svcTone = kmToService == null ? TONE_NEUTRAL : svcOverdue ? TONE_BAD : TONE_OK;
+            const svcTone = remainingTone(kmToService, SERVICE_WARN_KM);
             const worst = worstTone([insTone, testTone, svcTone]);
-            const chip = chipFor(worst);
+            const badItems: string[] = [];
+            if (insTone === TONE_BAD) badItems.push('ביטוח');
+            if (testTone === TONE_BAD) badItems.push('טסט');
+            if (svcTone === TONE_BAD) badItems.push('טיפול');
+            const chip = chipFor(worst, badItems);
 
             return (
               <TouchableOpacity
@@ -294,7 +319,7 @@ export default function VehiclesScreen() {
                       value={insurance ? formatDate(insurance) : 'חסר'}
                       note={insDays == null ? 'חסר' : insDays < 0 ? 'פג תוקף' : `${insDays} ימים`}
                       tone={insTone}
-                      ratio={insDays == null ? 0.06 : Math.max(0, insDays) / 365}
+                      ratio={remainingRatio(insDays, YEAR_DAYS)}
                       showDivider
                     />
                     <StatCell
@@ -302,7 +327,7 @@ export default function VehiclesScreen() {
                       value={test ? formatDate(test) : 'חסר'}
                       note={testDays == null ? 'חסר' : testDays < 0 ? 'פג תוקף' : `${testDays} ימים`}
                       tone={testTone}
-                      ratio={testDays == null ? 0.06 : Math.max(0, testDays) / 365}
+                      ratio={remainingRatio(testDays, YEAR_DAYS)}
                       showDivider
                     />
                     <StatCell
@@ -316,7 +341,7 @@ export default function VehiclesScreen() {
                             : `בעוד ${kmToService.toLocaleString()} ק״מ`
                       }
                       tone={svcTone}
-                      ratio={svcOverdue ? 1 : 0.55}
+                      ratio={remainingRatio(kmToService, svcTotalKm)}
                     />
                   </View>
                 )}
@@ -445,7 +470,15 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 10.5, fontWeight: '600', color: '#8A8A8A' },
   statValue: { fontSize: 12.5, color: COLORS.text, textAlign: 'right' },
   statValueBad: { color: TONE_BAD },
-  statTrack: { height: 3, borderRadius: RADIUS.pill, backgroundColor: '#ECECEC', overflow: 'hidden', marginTop: 1 },
+  statTrack: {
+    height: 3,
+    borderRadius: RADIUS.pill,
+    backgroundColor: '#ECECEC',
+    overflow: 'hidden',
+    marginTop: 1,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
   statBar: { height: '100%', borderRadius: RADIUS.pill },
   statNote: { fontSize: 10, color: '#8A8A8A' },
   statNoteBad: { fontWeight: '700', color: TONE_BAD },
