@@ -11,6 +11,9 @@ import {
   LoadingState,
   InfoRow,
   SecondaryButton,
+  PrimaryButton,
+  Field,
+  InputLtr,
   Badge,
   ExpiryBadge,
 } from '../../components/ui';
@@ -23,6 +26,7 @@ import {
   archiveVehicle,
   listDepartments,
   listCompliance,
+  updateVehicle,
   Vehicle,
   DriverRow,
   Department,
@@ -52,6 +56,23 @@ const TABS: { key: Tab; label: string }[] = [
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleDetail'>;
 
+const num = (s: string): number | null => {
+  const t = s.trim();
+  if (t === '') return null;
+  const n = Number(t.replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : null;
+};
+
+type KmField = 'last_service_km' | 'service_interval_km' | 'next_service_km';
+const KM_FIELDS: KmField[] = ['last_service_km', 'service_interval_km', 'next_service_km'];
+
+interface MaintForm {
+  odometer: string;
+  last_service_km: string;
+  service_interval_km: string;
+  next_service_km: string;
+}
+
 export default function VehicleDetailScreen({ route, navigation }: Props) {
   const { vehicleId } = route.params;
   const { companyId } = useCompany();
@@ -62,6 +83,75 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const [compliance, setCompliance] = useState<ComplianceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('general');
+
+  const [editingMaintenance, setEditingMaintenance] = useState(false);
+  const [maintForm, setMaintForm] = useState<MaintForm>({
+    odometer: '',
+    last_service_km: '',
+    service_interval_km: '',
+    next_service_km: '',
+  });
+  const [savingMaintenance, setSavingMaintenance] = useState(false);
+  const kmOrder = React.useRef<KmField[]>([]);
+
+  const startEditMaintenance = () => {
+    if (!vehicle) return;
+    kmOrder.current = [];
+    setMaintForm({
+      odometer: String(vehicle.odometer ?? ''),
+      last_service_km: String(vehicle.last_service_km ?? ''),
+      service_interval_km: vehicle.service_interval_km ? String(vehicle.service_interval_km) : '',
+      next_service_km: vehicle.next_service_km ? String(vehicle.next_service_km) : '',
+    });
+    setEditingMaintenance(true);
+  };
+
+  /**
+   * Same "two most recently hand-edited km fields are the inputs, the
+   * third is derived" rule as VehicleFormScreen, so a field being edited
+   * is never the one auto-fill writes into and can always be cleared.
+   */
+  const setMaintKm = (key: KmField, value: string) => {
+    kmOrder.current = [...kmOrder.current.filter((k) => k !== key), key];
+    const inputs = kmOrder.current.slice(-2);
+
+    setMaintForm((f) => {
+      const next = { ...f, [key]: value };
+      if (inputs.length < 2) return next;
+
+      const derived = KM_FIELDS.find((k) => !inputs.includes(k))!;
+      const last = num(next.last_service_km);
+      const interval = num(next.service_interval_km);
+      const target = num(next.next_service_km);
+
+      if (derived === 'next_service_km') {
+        next.next_service_km = last != null && interval != null ? String(last + interval) : '';
+      } else if (derived === 'service_interval_km') {
+        next.service_interval_km = last != null && target != null && target - last > 0 ? String(target - last) : '';
+      } else {
+        next.last_service_km = interval != null && target != null && target - interval > 0 ? String(target - interval) : '';
+      }
+      return next;
+    });
+  };
+
+  const saveMaintenance = async () => {
+    setSavingMaintenance(true);
+    try {
+      await updateVehicle(vehicleId, {
+        odometer: num(maintForm.odometer) ?? 0,
+        last_service_km: num(maintForm.last_service_km) ?? 0,
+        service_interval_km: num(maintForm.service_interval_km),
+        next_service_km: num(maintForm.next_service_km),
+      });
+      setEditingMaintenance(false);
+      await load();
+    } catch (err: any) {
+      Alert.alert('שמירה נכשלה', String(err?.message ?? 'נסה שוב'));
+    } finally {
+      setSavingMaintenance(false);
+    }
+  };
 
   const load = useCallback(async () => {
     const v = await getVehicle(vehicleId);
@@ -254,48 +344,106 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
 
         {tab === 'maintenance' && (
           <Card>
-            <AppText weight="bold" style={styles.cardTitle}>
-              תפעול ותחזוקה
-            </AppText>
-            <InfoRow label="מד אוץ נוכחי" value={`${vehicle.odometer.toLocaleString()} ק״מ`} />
-            <InfoRow
-              label="עודכן לאחרונה"
-              value={vehicle.odometer_updated_at ? formatDate(vehicle.odometer_updated_at) : null}
-            />
-            <InfoRow
-              label="ק״מ בטיפול האחרון"
-              value={`${vehicle.last_service_km.toLocaleString()} ק״מ`}
-            />
-            <InfoRow
-              label="טווח ק״מ בין טיפולים"
-              value={vehicle.service_interval_km ? `${vehicle.service_interval_km.toLocaleString()} ק״מ` : null}
-            />
-            <InfoRow
-              label="ק״מ לטיפול הבא"
-              value={vehicle.next_service_km ? `${vehicle.next_service_km.toLocaleString()} ק״מ` : null}
-            />
-            <InfoRow
-              label="יתרה לטיפול"
-              right={
-                kmToService == null ? (
-                  <AppText weight="bold" style={styles.infoValue}>
-                    —
-                  </AppText>
-                ) : (
-                  <AppText
-                    weight="bold"
-                    style={[
-                      styles.infoValue,
-                      { color: kmToService <= 0 ? COLORS.dangerText : COLORS.text },
-                    ]}
-                  >
-                    {kmToService <= 0
-                      ? `חריגה של ${Math.abs(kmToService).toLocaleString()} ק״מ`
-                      : `${kmToService.toLocaleString()} ק״מ`}
-                  </AppText>
-                )
-              }
-            />
+            <View style={styles.statusRow}>
+              <AppText weight="bold" style={styles.cardTitle}>
+                תפעול ותחזוקה
+              </AppText>
+              {!editingMaintenance && (
+                <TouchableOpacity onPress={startEditMaintenance} hitSlop={10} style={styles.editBtn}>
+                  <Ionicons name="create-outline" size={20} color={COLORS.accent} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {editingMaintenance ? (
+              <>
+                <Field label="מד אוץ נוכחי (ק״מ)">
+                  <InputLtr
+                    value={maintForm.odometer}
+                    onChangeText={(v) => setMaintForm((f) => ({ ...f, odometer: v }))}
+                    keyboardType="number-pad"
+                  />
+                </Field>
+                <Field label="ק״מ בטיפול האחרון">
+                  <InputLtr
+                    value={maintForm.last_service_km}
+                    onChangeText={(v) => setMaintKm('last_service_km', v)}
+                    keyboardType="number-pad"
+                  />
+                </Field>
+                <Field label="טווח ק״מ בין טיפולים">
+                  <InputLtr
+                    value={maintForm.service_interval_km}
+                    onChangeText={(v) => setMaintKm('service_interval_km', v)}
+                    keyboardType="number-pad"
+                    placeholder="למשל 20000"
+                  />
+                </Field>
+                <Field label="ק״מ לטיפול הבא">
+                  <InputLtr
+                    value={maintForm.next_service_km}
+                    onChangeText={(v) => setMaintKm('next_service_km', v)}
+                    keyboardType="number-pad"
+                  />
+                </Field>
+                <View style={styles.actions}>
+                  <SecondaryButton
+                    label="ביטול"
+                    style={styles.actionBtn}
+                    disabled={savingMaintenance}
+                    onPress={() => setEditingMaintenance(false)}
+                  />
+                  <PrimaryButton
+                    label="שמור"
+                    style={styles.actionBtn}
+                    loading={savingMaintenance}
+                    onPress={saveMaintenance}
+                  />
+                </View>
+              </>
+            ) : (
+              <>
+                <InfoRow label="מד אוץ נוכחי" value={`${vehicle.odometer.toLocaleString()} ק״מ`} />
+                <InfoRow
+                  label="עודכן לאחרונה"
+                  value={vehicle.odometer_updated_at ? formatDate(vehicle.odometer_updated_at) : null}
+                />
+                <InfoRow
+                  label="ק״מ בטיפול האחרון"
+                  value={`${vehicle.last_service_km.toLocaleString()} ק״מ`}
+                />
+                <InfoRow
+                  label="טווח ק״מ בין טיפולים"
+                  value={vehicle.service_interval_km ? `${vehicle.service_interval_km.toLocaleString()} ק״מ` : null}
+                />
+                <InfoRow
+                  label="ק״מ לטיפול הבא"
+                  value={vehicle.next_service_km ? `${vehicle.next_service_km.toLocaleString()} ק״מ` : null}
+                />
+                <InfoRow
+                  label="יתרה לטיפול"
+                  right={
+                    kmToService == null ? (
+                      <AppText weight="bold" style={styles.infoValue}>
+                        —
+                      </AppText>
+                    ) : (
+                      <AppText
+                        weight="bold"
+                        style={[
+                          styles.infoValue,
+                          { color: kmToService <= 0 ? COLORS.dangerText : COLORS.text },
+                        ]}
+                      >
+                        {kmToService <= 0
+                          ? `חריגה של ${Math.abs(kmToService).toLocaleString()} ק״מ`
+                          : `${kmToService.toLocaleString()} ק״מ`}
+                      </AppText>
+                    )
+                  }
+                />
+              </>
+            )}
           </Card>
         )}
 

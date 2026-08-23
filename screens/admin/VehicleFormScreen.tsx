@@ -31,7 +31,11 @@ import { ISRAEL_COMMON_MANUFACTURERS } from '../../lib/manufacturers';
 import { formatPlate } from '../../lib/plate';
 import { RootStackParamList } from '../../navigation/types';
 
-/** Add / edit a vehicle. Expiry dates are not here — they live in the documents tab. */
+/**
+ * Add / edit a vehicle. Expiry dates are not here — they live in the
+ * documents tab. Odometer/service-km fields aren't here either — they
+ * live in the vehicle detail screen's maintenance tab.
+ */
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleForm'>;
 
@@ -48,10 +52,6 @@ interface FormState {
   status: VehicleStatus;
   department_id: string | null;
   primary_driver_id: string | null;
-  odometer: string;
-  last_service_km: string;
-  service_interval_km: string;
-  next_service_km: string;
 }
 
 const EMPTY: FormState = {
@@ -67,10 +67,6 @@ const EMPTY: FormState = {
   status: 'active',
   department_id: null,
   primary_driver_id: null,
-  odometer: '',
-  last_service_km: '',
-  service_interval_km: '',
-  next_service_km: '',
 };
 
 const num = (s: string): number | null => {
@@ -95,42 +91,6 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  type KmField = 'last_service_km' | 'service_interval_km' | 'next_service_km';
-  const KM_FIELDS: KmField[] = ['last_service_km', 'service_interval_km', 'next_service_km'];
-
-  /**
-   * The two most recently hand-edited km fields are treated as the
-   * "inputs"; the third is always the derived one and gets recomputed
-   * from them. Editing a field never writes back into that same field
-   * (it just moves it to the input side), so a field can always be
-   * cleared or retyped freely without the auto-fill fighting the admin.
-   */
-  const kmOrder = React.useRef<KmField[]>([]);
-
-  const setKm = (key: KmField, value: string) => {
-    kmOrder.current = [...kmOrder.current.filter((k) => k !== key), key];
-    const inputs = kmOrder.current.slice(-2);
-
-    setForm((f) => {
-      const next = { ...f, [key]: value };
-      if (inputs.length < 2) return next;
-
-      const derived = KM_FIELDS.find((k) => !inputs.includes(k))!;
-      const last = num(next.last_service_km);
-      const interval = num(next.service_interval_km);
-      const target = num(next.next_service_km);
-
-      if (derived === 'next_service_km') {
-        next.next_service_km = last != null && interval != null ? String(last + interval) : '';
-      } else if (derived === 'service_interval_km') {
-        next.service_interval_km = last != null && target != null && target - last > 0 ? String(target - last) : '';
-      } else {
-        next.last_service_km = interval != null && target != null && target - interval > 0 ? String(target - interval) : '';
-      }
-      return next;
-    });
-  };
-
   const load = useCallback(async () => {
     if (!companyId) return;
 
@@ -141,7 +101,6 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     if (vehicleId) {
       const v = await getVehicle(vehicleId);
       if (v) {
-        kmOrder.current = [];
         setForm({
           plate_number: v.plate_number,
           vehicle_type: v.vehicle_type,
@@ -155,10 +114,6 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           status: v.status,
           department_id: v.department_id,
           primary_driver_id: v.primary_driver_id,
-          odometer: String(v.odometer ?? ''),
-          last_service_km: String(v.last_service_km ?? ''),
-          service_interval_km: v.service_interval_km ? String(v.service_interval_km) : '',
-          next_service_km: v.next_service_km ? String(v.next_service_km) : '',
         });
       }
     }
@@ -210,16 +165,18 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         status: form.status,
         department_id: form.department_id,
         primary_driver_id: form.primary_driver_id,
-        odometer: num(form.odometer) ?? 0,
-        last_service_km: num(form.last_service_km) ?? 0,
-        service_interval_km: num(form.service_interval_km),
-        next_service_km: num(form.next_service_km),
       };
 
       if (isEdit) {
         await updateVehicle(vehicleId!, payload);
       } else {
-        await createVehicle({ ...payload, company_id: companyId, plate_number: payload.plate_number! });
+        await createVehicle({
+          ...payload,
+          company_id: companyId,
+          plate_number: payload.plate_number!,
+          odometer: 0,
+          last_service_km: 0,
+        });
       }
       navigation.goBack();
     } catch (err: any) {
@@ -363,45 +320,6 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
 
             <Field label="שימוש הרכב" optional>
               <Input value={form.usage_type} onChangeText={(v) => set('usage_type', v)} />
-            </Field>
-          </Card>
-
-          <Card style={styles.card}>
-            <AppText weight="bold" style={styles.cardTitle}>
-              מד אוץ וטיפולים
-            </AppText>
-
-            <Field label="מד אוץ נוכחי (ק״מ)" optional>
-              <InputLtr
-                value={form.odometer}
-                onChangeText={(v) => set('odometer', v)}
-                keyboardType="number-pad"
-              />
-            </Field>
-
-            <Field label="ק״מ בטיפול האחרון" optional>
-              <InputLtr
-                value={form.last_service_km}
-                onChangeText={(v) => setKm('last_service_km', v)}
-                keyboardType="number-pad"
-              />
-            </Field>
-
-            <Field label="טווח ק״מ בין טיפולים" optional>
-              <InputLtr
-                value={form.service_interval_km}
-                onChangeText={(v) => setKm('service_interval_km', v)}
-                keyboardType="number-pad"
-                placeholder="למשל 20000"
-              />
-            </Field>
-
-            <Field label="ק״מ לטיפול הבא" optional>
-              <InputLtr
-                value={form.next_service_km}
-                onChangeText={(v) => setKm('next_service_km', v)}
-                keyboardType="number-pad"
-              />
             </Field>
           </Card>
 
