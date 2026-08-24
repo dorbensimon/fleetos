@@ -1,11 +1,30 @@
 #!/usr/bin/env node
 
+const fs = require('fs');
+const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
+
+// טוען .env.local (אם קיים) בלי תלות ב-dotenv - שורות בפורמט KEY=VALUE
+const envLocalPath = path.join(__dirname, '.env.local');
+if (fs.existsSync(envLocalPath)) {
+  for (const line of fs.readFileSync(envLocalPath, 'utf8').split('\n')) {
+    const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)\s*$/);
+    if (match && !process.env[match[1]]) {
+      process.env[match[1]] = match[2].replace(/^["']|["']$/g, '');
+    }
+  }
+}
 
 const SUPABASE_URL = 'https://lnflftptzrfuzfecmhho.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_4UJaMSQubyVg7h-vD-OwEg_37kBN7Bx';
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const usingServiceRole = Boolean(SERVICE_ROLE_KEY);
+console.log(usingServiceRole
+  ? '🔑 משתמש ב-service_role key (גישה מלאה, עוקף RLS)'
+  : 'ℹ️  משתמש ב-anon key (גישה מוגבלת לפי RLS) - להוסיף SUPABASE_SERVICE_ROLE_KEY ל-.env.local לגישה מלאה');
+
+const supabase = createClient(SUPABASE_URL, usingServiceRole ? SERVICE_ROLE_KEY : SUPABASE_ANON_KEY);
 
 const commands = {
   async list(table) {
