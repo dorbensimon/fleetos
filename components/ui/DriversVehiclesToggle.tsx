@@ -1,8 +1,10 @@
-import React from 'react';
-import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, FONT } from '../../lib/theme';
+import * as Haptics from 'expo-haptics';
+import { FONT } from '../../lib/theme';
 
 /**
  * The drivers/vehicles switch under each admin header. Each option is a
@@ -10,14 +12,11 @@ import { COLORS, FONT } from '../../lib/theme';
  * — `value` reflects whichever screen mounted it, and `onChange` fires
  * navigation rather than local state.
  *
- * Inactive pill: raised metal look (light diagonal gradient, bright
- * top-left / dark bottom-right border, outer drop shadow) — untouched
- * since it was already right, only the label got darker.
- *
- * Active pill: one flat accent colour, no gradient — "pressed into the
- * page" comes from a shadow ring around the whole pill (shadowOffset
- * 0,0 spreads it evenly) plus a thin dark shade along its own left/
- * right inner edges only, so the centre stays flat and uniform.
+ * iOS-glass segmented control: a blurred pill track holds two static
+ * labels, and a sliding black thumb underneath them carries the depth
+ * (three stacked shadow layers, since RN can't put more than one shadow
+ * on a single View — each layer is its own nested, unclipped wrapper
+ * around the actual clipped, gradient-filled pill).
  */
 
 export type ToggleValue = 'drivers' | 'vehicles';
@@ -27,154 +26,213 @@ type Props = {
   onChange?: (v: ToggleValue) => void;
 };
 
+const TRACK_HEIGHT = 54;
+const TRACK_RADIUS = 27;
+const TRACK_PAD = 4;
+const THUMB_RADIUS = TRACK_RADIUS - TRACK_PAD;
+
 export default function DriversVehiclesToggle({ value = 'drivers', onChange }: Props) {
+  const [segmentWidth, setSegmentWidth] = useState(0);
+
+  // 0 = drivers (right, since row-reverse puts the first child there), 1 = vehicles.
+  const slide = useRef(new Animated.Value(value === 'drivers' ? 0 : 1)).current;
+  const press = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.spring(slide, {
+      toValue: value === 'drivers' ? 0 : 1,
+      useNativeDriver: true,
+      stiffness: 300,
+      damping: 26,
+      mass: 0.9,
+    }).start();
+  }, [value, slide]);
+
+  const select = (v: ToggleValue) => {
+    if (v !== value) Haptics.selectionAsync();
+    onChange?.(v);
+  };
+
+  const pressIn = () => {
+    Animated.spring(press, { toValue: 0.97, useNativeDriver: true, stiffness: 400, damping: 24 }).start();
+  };
+  const pressOut = () => {
+    Animated.spring(press, { toValue: 1, useNativeDriver: true, stiffness: 400, damping: 24 }).start();
+  };
+
+  const translateX = slide.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -segmentWidth],
+  });
+
   return (
-    <View style={styles.row}>
-      <ToggleButton
-        label="נהגים"
-        active={value === 'drivers'}
-        onPress={() => onChange?.('drivers')}
-        icon={(color) => <Feather name="users" size={15} color={color} />}
-      />
-      <ToggleButton
-        label="רכבים"
-        active={value === 'vehicles'}
-        onPress={() => onChange?.('vehicles')}
-        icon={(color) => <MaterialCommunityIcons name="car-outline" size={17} color={color} />}
-      />
+    <View style={styles.track}>
+      <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, styles.trackTint]} pointerEvents="none" />
+
+      {segmentWidth > 0 && (
+        <Animated.View
+          style={[
+            styles.thumbPositioner,
+            { width: segmentWidth, transform: [{ translateX }, { scale: press }] },
+          ]}
+        >
+          <View style={styles.thumbDrop}>
+            <View style={styles.thumbAmbient}>
+              <View style={styles.thumbContact}>
+                <View style={styles.thumbClip}>
+                  <LinearGradient
+                    colors={['#3A3A3C', '#1C1C1E', '#000000']}
+                    locations={[0, 0.52, 1]}
+                    start={{ x: 0.5, y: 0 }}
+                    end={{ x: 0.5, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)']}
+                    locations={[0, 0.45]}
+                    start={{ x: 0.5, y: 0 }}
+                    end={{ x: 0.5, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <View style={styles.thumbTopLight} />
+                </View>
+              </View>
+            </View>
+          </View>
+        </Animated.View>
+      )}
+
+      <View
+        style={styles.segmentsRow}
+        onLayout={(e) => setSegmentWidth((e.nativeEvent.layout.width - TRACK_PAD * 2) / 2)}
+      >
+        <ToggleSegment
+          label="נהגים"
+          active={value === 'drivers'}
+          onPress={() => select('drivers')}
+          onPressIn={pressIn}
+          onPressOut={pressOut}
+          icon={(color) => <Feather name="users" size={15} color={color} />}
+        />
+        <ToggleSegment
+          label="רכבים"
+          active={value === 'vehicles'}
+          onPress={() => select('vehicles')}
+          onPressIn={pressIn}
+          onPressOut={pressOut}
+          icon={(color) => <MaterialCommunityIcons name="car-outline" size={17} color={color} />}
+        />
+      </View>
+
+      <View style={styles.trackHairline} pointerEvents="none" />
     </View>
   );
 }
 
-function ToggleButton({
+function ToggleSegment({
   label,
   active,
   onPress,
+  onPressIn,
+  onPressOut,
   icon,
 }: {
   label: string;
   active: boolean;
   onPress: () => void;
+  onPressIn: () => void;
+  onPressOut: () => void;
   icon: (color: string) => React.ReactNode;
 }) {
-  if (active) {
-    // Outer view carries the glow shadow (must NOT clip, so no overflow:hidden
-    // here) — the inner view is the rounded, clipped black pill itself.
-    return (
-      <Pressable onPress={onPress} style={styles.btnActiveOuter}>
-        <View style={styles.btnActiveInner}>
-          <LinearGradient
-            colors={['rgba(0,0,0,0.22)', 'rgba(0,0,0,0)']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={styles.sideLeft}
-          />
-          <LinearGradient
-            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.22)']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={styles.sideRight}
-          />
-          {icon(COLORS.textInverse)}
-          <Text style={styles.labelActive}>{label}</Text>
-        </View>
-      </Pressable>
-    );
-  }
-
   return (
-    <Pressable onPress={onPress} style={[styles.btn, styles.btnRaised]}>
-      <LinearGradient
-        colors={['#FBFBFB', '#EAEAEA']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[StyleSheet.absoluteFill, styles.noPointerEvents]}
-      />
-      <View style={styles.borderRaised} />
-      {icon('#6B6B6B')}
-      <Text style={styles.label}>{label}</Text>
+    <Pressable style={styles.segment} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
+      {icon(active ? '#FFFFFF' : 'rgba(60,60,67,0.6)')}
+      <Text style={active ? styles.labelActive : styles.label}>{label}</Text>
     </Pressable>
   );
 }
 
-const PILL = 24;
-
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row-reverse',
-    gap: 10,
+  track: {
+    height: TRACK_HEIGHT,
+    borderRadius: TRACK_RADIUS,
+    padding: TRACK_PAD,
     marginTop: 14,
-  },
-  btn: {
-    flex: 1,
-    height: 48,
-    borderRadius: PILL,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
     overflow: 'hidden',
+    position: 'relative',
   },
-  btnRaised: {
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowOffset: { width: 1, height: 1 },
-        shadowRadius: 5,
-      },
-      android: { elevation: 4 },
-    }),
-  },
-  borderRaised: {
+  trackTint: { backgroundColor: 'rgba(120,120,128,0.12)', borderRadius: TRACK_RADIUS },
+  trackHairline: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: PILL,
-    borderWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.9)',
-    borderLeftColor: 'rgba(255,255,255,0.9)',
-    borderRightColor: 'rgba(0,0,0,0.12)',
-    borderBottomColor: 'rgba(0,0,0,0.12)',
-    pointerEvents: 'none',
+    borderRadius: TRACK_RADIUS,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.5)',
   },
-  noPointerEvents: { pointerEvents: 'none' },
-  btnActiveOuter: {
-    flex: 1,
-    height: 48,
-    borderRadius: PILL,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.55,
-        shadowOffset: { width: 0, height: 0 },
-        shadowRadius: 9,
-      },
-      android: { elevation: 8 },
-    }),
-  },
-  btnActiveInner: {
-    flex: 1,
-    borderRadius: PILL,
-    backgroundColor: COLORS.text,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    overflow: 'hidden',
-  },
-  sideLeft: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 16, pointerEvents: 'none' },
-  sideRight: { position: 'absolute', top: 0, bottom: 0, right: 0, width: 16, pointerEvents: 'none' },
+
+  segmentsRow: { flex: 1, flexDirection: 'row-reverse' },
+  segment: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 7 },
+
   label: {
     fontFamily: FONT.regular,
     fontSize: 14,
-    color: '#3A3A3A',
+    color: 'rgba(60,60,67,0.6)',
     writingDirection: 'rtl',
   },
   labelActive: {
     fontFamily: FONT.bold,
-    fontSize: 14,
-    color: COLORS.textInverse,
+    fontSize: 15,
+    letterSpacing: -0.2,
+    color: '#FFFFFF',
     writingDirection: 'rtl',
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 0.5 },
+    textShadowRadius: 1,
+  },
+
+  thumbPositioner: {
+    position: 'absolute',
+    top: TRACK_PAD,
+    bottom: TRACK_PAD,
+    right: TRACK_PAD,
+  },
+  thumbDrop: {
+    flex: 1,
+    borderRadius: THUMB_RADIUS,
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 26,
+  },
+  thumbAmbient: {
+    flex: 1,
+    borderRadius: THUMB_RADIUS,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+  },
+  thumbContact: {
+    flex: 1,
+    borderRadius: THUMB_RADIUS,
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 1,
+  },
+  thumbClip: {
+    flex: 1,
+    borderRadius: THUMB_RADIUS,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.5)',
+  },
+  thumbTopLight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.28)',
   },
 });

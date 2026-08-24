@@ -182,6 +182,35 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     }, [load])
   );
 
+  const [unassigning, setUnassigning] = useState(false);
+
+  const confirmUnassignDriver = () => {
+    if (!driver) return;
+    Alert.alert(
+      'הסרת שיוך נהג',
+      `להסיר את ${driver.full_name ?? 'הנהג'} מהרכב ${formatPlate(vehicle?.plate_number)}?`,
+      [
+        { text: 'ביטול', style: 'cancel' },
+        {
+          text: 'הסר שיוך',
+          style: 'destructive',
+          onPress: async () => {
+            setUnassigning(true);
+            try {
+              await updateVehicle(vehicleId, { primary_driver_id: null });
+              await load();
+              showToast('נשמר בהצלחה');
+            } catch (err: any) {
+              Alert.alert('הסרת השיוך נכשלה', String(err?.message ?? 'נסה שוב'));
+            } finally {
+              setUnassigning(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const confirmArchive = () => {
     Alert.alert(
       'העברה לארכיון',
@@ -461,23 +490,28 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
               נהג משויך
             </AppText>
             {driver ? (
-              <TouchableOpacity
-                style={styles.driverRow}
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('DriverDetail', { driverId: driver.id })}
-              >
-                <Ionicons name="chevron-back" size={16} color={COLORS.textFaint} />
-                <View style={styles.driverText}>
-                  <AppText weight="bold" style={styles.driverName}>
-                    {driver.full_name ?? 'ללא שם'}
-                  </AppText>
-                  <AppText style={styles.driverMeta}>
-                    {driver.phone ? formatPhone(driver.phone) : '—'}
-                    {driver.license_classes ? ` · דרגה ${driver.license_classes}` : ''}
-                  </AppText>
-                </View>
-                <Ionicons name="person-circle-outline" size={30} color={COLORS.textFaint} />
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  style={styles.driverRow}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('DriverDetail', { driverId: driver.id })}
+                >
+                  <Ionicons name="chevron-back" size={16} color={COLORS.textFaint} />
+                  <View style={styles.driverText}>
+                    <AppText weight="bold" style={styles.driverName}>
+                      {driver.full_name ?? 'ללא שם'}
+                    </AppText>
+                    <AppText style={styles.driverMeta}>
+                      {driver.phone ? formatPhone(driver.phone) : '—'}
+                      {driver.license_classes ? ` · דרגה ${driver.license_classes}` : ''}
+                    </AppText>
+                  </View>
+                  <TouchableOpacity onPress={confirmUnassignDriver} disabled={unassigning} hitSlop={8}>
+                    <Ionicons name="trash-outline" size={16} color={COLORS.dangerText} />
+                  </TouchableOpacity>
+                  <Ionicons name="person-circle-outline" size={30} color={COLORS.textFaint} />
+                </TouchableOpacity>
+              </>
             ) : (
               <AppText style={styles.noDriver}>לא משויך נהג לרכב זה</AppText>
             )}

@@ -9,8 +9,7 @@ import SetPasswordScreen from './screens/SetPasswordScreen';
 import OwnerHomeScreen from './screens/OwnerHomeScreen';
 import DriverHomeScreen from './screens/DriverHomeScreen';
 import CompanyDetailScreen from './screens/CompanyDetailScreen';
-import DriversScreen from './screens/admin/DriversScreen';
-import VehiclesScreen from './screens/admin/VehiclesScreen';
+import FleetScreen from './screens/admin/FleetScreen';
 import VehicleDetailScreen from './screens/admin/VehicleDetailScreen';
 import VehicleFormScreen from './screens/admin/VehicleFormScreen';
 import DriverDetailScreen from './screens/admin/DriverDetailScreen';
@@ -73,10 +72,10 @@ export default function App() {
               <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
               <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />
 
-              {/* Admin module — no tab bar; AdminHome (drivers) and Vehicles
-                  switch to each other via the segmented control in their headers. */}
-              <Stack.Screen name="AdminHome" component={DriversScreen} />
-              <Stack.Screen name="Vehicles" component={VehiclesScreen} />
+              {/* Admin module — no tab bar; drivers and vehicles are one
+                  screen (FleetScreen) that crossfades its body via the
+                  segmented control in its header, not a navigation push. */}
+              <Stack.Screen name="AdminHome" component={FleetScreen} />
               <Stack.Screen name="VehicleDetail" component={VehicleDetailScreen} />
               <Stack.Screen name="VehicleForm" component={VehicleFormScreen} />
               <Stack.Screen name="DriverDetail" component={DriverDetailScreen} />

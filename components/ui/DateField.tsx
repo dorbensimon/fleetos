@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform, TextInput } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform, TextInput, Modal } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './Text';
@@ -104,14 +104,14 @@ export function DateField({
         )}
       </TouchableOpacity>
 
-      {showPicker && (
+      {showPicker && Platform.OS === 'android' && (
         <DateTimePicker
           value={value ? new Date(value) : new Date()}
           mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display="default"
           onChange={(event, selected) => {
-            // Android fires once and dismisses itself; iOS keeps the spinner open.
-            if (Platform.OS === 'android') setShowPicker(false);
+            // Android's dialog is its own native window and dismisses itself.
+            setShowPicker(false);
             if (event.type === 'dismissed') return;
             if (selected) onChange(toIso(selected));
           }}
@@ -119,11 +119,34 @@ export function DateField({
       )}
 
       {showPicker && Platform.OS === 'ios' && (
-        <TouchableOpacity style={styles.iosDone} onPress={() => setShowPicker(false)}>
-          <AppText weight="bold" style={styles.iosDoneText}>
-            סיום
-          </AppText>
-        </TouchableOpacity>
+        // A real Modal isolates the spinner on its own native layer — the
+        // inline version used to sit inside whatever accordion/section held
+        // this field, and tapping "סיום" could land on that section's own
+        // touch target and collapse it right along with the picker.
+        <Modal transparent animationType="fade" onRequestClose={() => setShowPicker(false)}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowPicker(false)}
+          >
+            <View style={styles.modalSheet}>
+              <DateTimePicker
+                value={value ? new Date(value) : new Date()}
+                mode="date"
+                display="spinner"
+                onChange={(event, selected) => {
+                  if (event.type === 'dismissed') return;
+                  if (selected) onChange(toIso(selected));
+                }}
+              />
+              <TouchableOpacity style={styles.iosDone} onPress={() => setShowPicker(false)}>
+                <AppText weight="bold" style={styles.iosDoneText}>
+                  סיום
+                </AppText>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       )}
     </>
   );
@@ -152,4 +175,15 @@ const styles = StyleSheet.create({
   },
   iosDone: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 24 },
   iosDoneText: { color: COLORS.accent, fontSize: 15 },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  modalSheet: {
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: RADIUS.lg,
+    borderTopRightRadius: RADIUS.lg,
+    paddingBottom: 8,
+  },
 });
