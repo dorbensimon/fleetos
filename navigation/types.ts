@@ -15,6 +15,7 @@ export type RootStackParamList = {
   Departments: undefined;
   AdminProfile: undefined;
   Notifications: undefined;
+  Settings: undefined;
   DocumentCategory: {
     ownerType: 'driver' | 'vehicle';
     ownerId: string;

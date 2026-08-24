@@ -7,12 +7,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen, AppText, Card, PressableCard, LoadingState, DriverMenuButton } from '../components/ui';
 import { COLORS, RADIUS, SPACING, CARD_SHADOW, timeGreeting, expiryState, formatDate } from '../lib/theme';
 import { useCompany } from '../lib/CompanyContext';
-import { supabase } from '../lib/supabase';
-import { getDriver, listCompliance, DriverRow, Vehicle, ComplianceItem } from '../lib/adminApi';
+import { getDriver, listActiveDriverVehicles, listCompliance, DriverRow, Vehicle, ComplianceItem } from '../lib/adminApi';
 import { VEHICLE_TYPE_LABELS } from '../lib/compliance';
 import { RootStackParamList } from '../navigation/types';
 
-/** U1 — the driver's personal landing screen. */
+/**
+ * U1 — the driver's personal landing screen. Only the driver's *primary*
+ * vehicle (or, if there's no primary set, the first active one) is shown
+ * here — this is a quick summary card, not the full list; that lives on
+ * DriverVehicleScreen (see U2 for the 0–2-vehicles case).
+ */
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverHome'>;
 
 export default function DriverHomeScreen({ navigation }: Props) {
@@ -20,19 +24,19 @@ export default function DriverHomeScreen({ navigation }: Props) {
   const { profile } = useCompany();
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [otherVehicleCount, setOtherVehicleCount] = useState(0);
   const [compliance, setCompliance] = useState<ComplianceItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!profile) return;
-    const [d, { data: v }] = await Promise.all([
-      getDriver(profile.id),
-      supabase.from('vehicles').select('*').eq('primary_driver_id', profile.id).maybeSingle(),
-    ]);
+    const [d, assignments] = await Promise.all([getDriver(profile.id), listActiveDriverVehicles(profile.id)]);
     setDriver(d);
-    setVehicle((v as Vehicle) ?? null);
-    if (v) {
-      setCompliance(await listCompliance('vehicle', (v as Vehicle).id));
+    const primary = assignments.find((a) => a.is_primary) ?? assignments[0] ?? null;
+    setVehicle(primary?.vehicle ?? null);
+    setOtherVehicleCount(Math.max(0, assignments.length - (primary ? 1 : 0)));
+    if (primary) {
+      setCompliance(await listCompliance('vehicle', primary.vehicle.id));
     }
   }, [profile]);
 
@@ -87,6 +91,9 @@ export default function DriverHomeScreen({ navigation }: Props) {
                   </AppText>
                   <AppText style={styles.vehicleSub}>
                     {test ? `טסט הבא: ${formatDate(test)}` : 'ללא תאריך טסט רשום'}
+                    {otherVehicleCount > 0
+                      ? ` · +${otherVehicleCount} ${otherVehicleCount === 1 ? 'רכב נוסף' : 'רכבים נוספים'}`
+                      : ''}
                   </AppText>
                 </>
               ) : (

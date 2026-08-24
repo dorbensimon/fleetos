@@ -20,23 +20,24 @@ import {
   useToast,
 } from '../../components/ui';
 import { ComplianceSection } from '../../components/ComplianceSection';
+import { VehicleDriversEditor } from '../../components/VehicleDriversEditor';
 import { COLORS, RADIUS, SPACING, formatDate, expiryState, ExpiryState } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
   getVehicle,
-  getDriver,
   archiveVehicle,
   listDepartments,
   listCompliance,
+  listDrivers,
+  listActiveVehicleDrivers,
   updateVehicle,
   Vehicle,
-  DriverRow,
   Department,
   ComplianceItem,
+  VehicleDriverWithProfile,
 } from '../../lib/adminApi';
 import { VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../lib/compliance';
 import { formatPlate } from '../../lib/plate';
-import { formatPhone } from '../../lib/phone';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -84,7 +85,8 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const { showToast } = useToast();
 
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
-  const [driver, setDriver] = useState<DriverRow | null>(null);
+  const [vehicleDrivers, setVehicleDrivers] = useState<VehicleDriverWithProfile[]>([]);
+  const [driverOptions, setDriverOptions] = useState<{ value: string; label: string }[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [compliance, setCompliance] = useState<ComplianceItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,10 +164,18 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const load = useCallback(async () => {
     const v = await getVehicle(vehicleId);
     setVehicle(v);
-    setDriver(v?.primary_driver_id ? await getDriver(v.primary_driver_id) : null);
-    if (companyId) setDepartments(await listDepartments(companyId));
+    setVehicleDrivers(await listActiveVehicleDrivers(vehicleId));
+    if (companyId) {
+      setDepartments(await listDepartments(companyId));
+      const drvs = await listDrivers(companyId);
+      setDriverOptions(drvs.map((d) => ({ value: d.id, label: d.full_name ?? 'ללא שם' })));
+    }
     setCompliance(await listCompliance('vehicle', vehicleId));
   }, [vehicleId, companyId]);
+
+  const reloadVehicleDrivers = useCallback(async () => {
+    setVehicleDrivers(await listActiveVehicleDrivers(vehicleId));
+  }, [vehicleId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -186,35 +196,6 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
       };
     }, [load])
   );
-
-  const [unassigning, setUnassigning] = useState(false);
-
-  const confirmUnassignDriver = () => {
-    if (!driver) return;
-    Alert.alert(
-      'הסרת שיוך נהג',
-      `להסיר את ${driver.full_name ?? 'הנהג'} מהרכב ${formatPlate(vehicle?.plate_number)}?`,
-      [
-        { text: 'ביטול', style: 'cancel' },
-        {
-          text: 'הסר שיוך',
-          style: 'destructive',
-          onPress: async () => {
-            setUnassigning(true);
-            try {
-              await updateVehicle(vehicleId, { primary_driver_id: null });
-              await load();
-              showToast('נשמר בהצלחה');
-            } catch (err: any) {
-              Alert.alert('הסרת השיוך נכשלה', String(err?.message ?? 'נסה שוב'));
-            } finally {
-              setUnassigning(false);
-            }
-          },
-        },
-      ]
-    );
-  };
 
   const confirmArchive = () => {
     Alert.alert(
@@ -510,34 +491,15 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
         {tab === 'drivers' && (
           <Card>
             <AppText weight="bold" style={styles.cardTitle}>
-              נהג משויך
+              נהגים משויכים
             </AppText>
-            {driver ? (
-              <>
-                <TouchableOpacity
-                  style={styles.driverRow}
-                  activeOpacity={0.7}
-                  onPress={() => navigation.navigate('DriverDetail', { driverId: driver.id })}
-                >
-                  <Ionicons name="chevron-back" size={16} color={COLORS.textFaint} />
-                  <View style={styles.driverText}>
-                    <AppText weight="bold" style={styles.driverName}>
-                      {driver.full_name ?? 'ללא שם'}
-                    </AppText>
-                    <AppText style={styles.driverMeta}>
-                      {driver.phone ? formatPhone(driver.phone) : '—'}
-                      {driver.license_classes ? ` · דרגה ${driver.license_classes}` : ''}
-                    </AppText>
-                  </View>
-                  <TouchableOpacity onPress={confirmUnassignDriver} disabled={unassigning} hitSlop={8}>
-                    <Ionicons name="trash-outline" size={16} color={COLORS.dangerText} />
-                  </TouchableOpacity>
-                  <Ionicons name="person-circle-outline" size={30} color={COLORS.textFaint} />
-                </TouchableOpacity>
-              </>
-            ) : (
-              <AppText style={styles.noDriver}>לא משויך נהג לרכב זה</AppText>
-            )}
+            <VehicleDriversEditor
+              vehicleId={vehicleId}
+              assignments={vehicleDrivers}
+              driverOptions={driverOptions}
+              onChanged={reloadVehicleDrivers}
+              onOpenDriver={(driverId) => navigation.navigate('DriverDetail', { driverId })}
+            />
           </Card>
         )}
       </ScrollView>
@@ -585,15 +547,4 @@ const styles = StyleSheet.create({
 
   actions: { flexDirection: 'row-reverse', gap: SPACING.md, marginTop: SPACING.sm },
   actionBtn: { flex: 1 },
-
-  driverRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: SPACING.md,
-    paddingTop: SPACING.md,
-  },
-  driverText: { flex: 1, gap: 2 },
-  driverName: { fontSize: 14.5 },
-  driverMeta: { fontSize: 12.5, color: COLORS.textMuted },
-  noDriver: { fontSize: 13, color: COLORS.textFaint, paddingTop: SPACING.md },
 });

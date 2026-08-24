@@ -16,6 +16,7 @@ import {
 } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
 import { MonthYearField } from '../../components/ui/MonthYearField';
+import { VehicleDriversEditor } from '../../components/VehicleDriversEditor';
 import { COLORS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
@@ -24,9 +25,11 @@ import {
   updateVehicle,
   listDepartments,
   listDrivers,
+  listActiveVehicleDrivers,
   Vehicle,
   VehicleStatus,
   VehicleType,
+  VehicleDriverWithProfile,
 } from '../../lib/adminApi';
 import { VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../lib/compliance';
 import { ISRAEL_COMMON_MANUFACTURERS } from '../../lib/manufacturers';
@@ -53,7 +56,6 @@ interface FormState {
   usage_type: string;
   status: VehicleStatus;
   department_id: string | null;
-  primary_driver_id: string | null;
 }
 
 const EMPTY: FormState = {
@@ -68,7 +70,6 @@ const EMPTY: FormState = {
   usage_type: '',
   status: 'active',
   department_id: null,
-  primary_driver_id: null,
 };
 
 const num = (s: string): number | null => {
@@ -87,6 +88,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [departments, setDepartments] = useState<{ value: string; label: string }[]>([]);
   const [drivers, setDrivers] = useState<{ value: string; label: string }[]>([]);
+  const [vehicleDrivers, setVehicleDrivers] = useState<VehicleDriverWithProfile[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -102,7 +104,8 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     setDrivers(drvs.map((d) => ({ value: d.id, label: d.full_name ?? 'ללא שם' })));
 
     if (vehicleId) {
-      const v = await getVehicle(vehicleId);
+      const [v, vd] = await Promise.all([getVehicle(vehicleId), listActiveVehicleDrivers(vehicleId)]);
+      setVehicleDrivers(vd);
       if (v) {
         setForm({
           plate_number: v.plate_number,
@@ -116,11 +119,15 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           usage_type: v.usage_type ?? '',
           status: v.status,
           department_id: v.department_id,
-          primary_driver_id: v.primary_driver_id,
         });
       }
     }
   }, [companyId, vehicleId]);
+
+  const reloadVehicleDrivers = useCallback(async () => {
+    if (!vehicleId) return;
+    setVehicleDrivers(await listActiveVehicleDrivers(vehicleId));
+  }, [vehicleId]);
 
   useEffect(() => {
     (async () => {
@@ -169,7 +176,6 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         usage_type: form.usage_type.trim() || null,
         status: form.status,
         department_id: form.department_id,
-        primary_driver_id: form.primary_driver_id,
       };
 
       if (isEdit) {
@@ -304,19 +310,27 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
               />
             </Field>
 
-            <Field label="נהג משויך" optional>
-              <Select
-                value={form.primary_driver_id}
-                onChange={(v) => set('primary_driver_id', v)}
-                options={drivers}
-                placeholder={drivers.length ? 'בחר נהג' : 'לא הוגדרו נהגים'}
-                allowClear
-              />
-            </Field>
-
             <Field label="שימוש הרכב" optional>
               <Input value={form.usage_type} onChangeText={(v) => set('usage_type', v)} />
             </Field>
+          </Card>
+
+          <Card style={styles.card}>
+            <AppText weight="bold" style={styles.cardTitle}>
+              נהגים משויכים
+            </AppText>
+            {isEdit ? (
+              <VehicleDriversEditor
+                vehicleId={vehicleId!}
+                assignments={vehicleDrivers}
+                driverOptions={drivers}
+                onChanged={reloadVehicleDrivers}
+              />
+            ) : (
+              <AppText style={styles.driversHint}>
+                ניתן לשייך נהגים לרכב לאחר יצירתו — שמור את הרכב תחילה, ואז פתח את תיק הרכב כדי להוסיף נהגים.
+              </AppText>
+            )}
           </Card>
 
           <PrimaryButton
@@ -334,4 +348,5 @@ const styles = StyleSheet.create({
   content: { padding: SPACING.lg, gap: SPACING.lg, paddingBottom: 48 },
   card: { gap: SPACING.md },
   cardTitle: { fontSize: 15.5, color: COLORS.text },
+  driversHint: { fontSize: 12.5, color: COLORS.textFaint, lineHeight: 18 },
 });

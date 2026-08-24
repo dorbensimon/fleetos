@@ -55,12 +55,26 @@ export interface DriverDetails {
   updated_at: string;
 }
 
+/** One vehicle a driver is actively assigned to, as attached to DriverRow. */
+export interface DriverRowVehicle {
+  id: string;
+  plate_number: string;
+  is_primary: boolean;
+}
+
 /** A driver as the list and detail screens need them: profile + details. */
 export interface DriverRow extends DriverDetails {
   full_name: string | null;
   phone: string | null;
   job_title: string | null;
   email?: string | null;
+  /**
+   * All vehicles the driver is currently (actively) assigned to — 0 to 2,
+   * primary first. `vehicle_id`/`vehicle_plate` below are kept for screens
+   * that only care about "a" vehicle to show (list cards, filters) and are
+   * simply the first entry of this array.
+   */
+  vehicles: DriverRowVehicle[];
   vehicle_id?: string | null;
   vehicle_plate?: string | null;
 }
@@ -156,6 +170,181 @@ export async function archiveVehicle(vehicleId: string) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Vehicle <-> driver assignments (vehicle_drivers)                    */
+/*                                                                      */
+/* Source of truth for "who currently drives this vehicle", replacing  */
+/* vehicles.primary_driver_id (still present on the row for now — see  */
+/* supabase/sql/34_vehicle_drivers.sql — but no longer read/written    */
+/* here). A vehicle may have at most 2 *active* rows (unassigned_at is */
+/* null): at most one is_primary. Removing a driver sets unassigned_at */
+/* rather than deleting the row, so vehicle_driver_history-style audit */
+/* is preserved on this table itself. The DB trigger enforces all of   */
+/* this server-side; the checks here just give a fast, friendly error  */
+/* before round-tripping to Postgres.                                  */
+/* ------------------------------------------------------------------ */
+
+export interface VehicleDriverAssignment {
+  id: string;
+  company_id: string;
+  vehicle_id: string;
+  driver_id: string;
+  is_primary: boolean;
+  assigned_at: string;
+  unassigned_at: string | null;
+}
+
+/** An active assignment joined with the driver's identity, for display. */
+export interface VehicleDriverWithProfile extends VehicleDriverAssignment {
+  full_name: string | null;
+  phone: string | null;
+}
+
+/** An active assignment joined with the vehicle, for the driver-facing screens. */
+export interface DriverVehicleAssignment extends VehicleDriverAssignment {
+  vehicle: Vehicle;
+}
+
+const MAX_DRIVERS_PER_VEHICLE = 2;
+
+/** Active (unassigned_at is null) driver assignments for one vehicle, primary first. */
+export async function listActiveVehicleDrivers(vehicleId: string): Promise<VehicleDriverWithProfile[]> {
+  const { data, error } = await supabase
+    .from('vehicle_drivers')
+    .select('*, profiles:driver_id(full_name, phone)')
+    .eq('vehicle_id', vehicleId)
+    .is('unassigned_at', null)
+    .order('is_primary', { ascending: false })
+    .order('assigned_at', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []).map((row: any) => {
+    const { profiles, ...rest } = row;
+    return {
+      ...(rest as VehicleDriverAssignment),
+      full_name: profiles?.full_name ?? null,
+      phone: profiles?.phone ?? null,
+    };
+  });
+}
+
+/**
+ * Same as `listActiveVehicleDrivers` but for many vehicles at once — used
+ * by list screens (FleetScreen) so they don't issue one query per row.
+ */
+export async function listActiveVehicleDriversForVehicles(
+  vehicleIds: string[]
+): Promise<Map<string, VehicleDriverWithProfile[]>> {
+  const map = new Map<string, VehicleDriverWithProfile[]>();
+  if (vehicleIds.length === 0) return map;
+
+  const { data, error } = await supabase
+    .from('vehicle_drivers')
+    .select('*, profiles:driver_id(full_name, phone)')
+    .in('vehicle_id', vehicleIds)
+    .is('unassigned_at', null)
+    .order('is_primary', { ascending: false })
+    .order('assigned_at', { ascending: true });
+
+  if (error) throw error;
+  for (const row of (data ?? []) as any[]) {
+    const { profiles, ...rest } = row;
+    const assignment: VehicleDriverWithProfile = {
+      ...(rest as VehicleDriverAssignment),
+      full_name: profiles?.full_name ?? null,
+      phone: profiles?.phone ?? null,
+    };
+    const list = map.get(assignment.vehicle_id) ?? [];
+    list.push(assignment);
+    map.set(assignment.vehicle_id, list);
+  }
+  return map;
+}
+
+/** Active vehicles a driver currently drives (0–2), primary first. */
+export async function listActiveDriverVehicles(driverId: string): Promise<DriverVehicleAssignment[]> {
+  const { data, error } = await supabase
+    .from('vehicle_drivers')
+    .select('*, vehicle:vehicle_id(*)')
+    .eq('driver_id', driverId)
+    .is('unassigned_at', null)
+    .order('is_primary', { ascending: false })
+    .order('assigned_at', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? [])
+    .filter((row: any) => !!row.vehicle)
+    .map((row: any) => {
+      const { vehicle, ...rest } = row;
+      return { ...(rest as VehicleDriverAssignment), vehicle: vehicle as Vehicle };
+    });
+}
+
+/**
+ * Assigns a driver to a vehicle without touching any existing active
+ * assignment — the DB trigger rejects a 3rd active driver, a duplicate
+ * active pair, or a 2nd active primary, but we check first so the UI can
+ * show a clear Hebrew message immediately instead of a raw SQL error.
+ */
+export async function assignDriverToVehicle(
+  vehicleId: string,
+  driverId: string,
+  isPrimary: boolean
+): Promise<VehicleDriverAssignment> {
+  const existing = await listActiveVehicleDrivers(vehicleId);
+
+  if (existing.some((a) => a.driver_id === driverId)) {
+    throw new Error('הנהג כבר משויך לרכב זה');
+  }
+  if (existing.length >= MAX_DRIVERS_PER_VEHICLE) {
+    throw new Error('לא ניתן לשייך יותר משני נהגים לרכב אחד');
+  }
+  if (isPrimary && existing.some((a) => a.is_primary)) {
+    throw new Error('לרכב זה כבר יש נהג ראשי פעיל — יש להסיר אותו לפני קביעת נהג ראשי חדש');
+  }
+
+  const { data, error } = await supabase
+    .from('vehicle_drivers')
+    .insert({ vehicle_id: vehicleId, driver_id: driverId, is_primary: isPrimary })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as VehicleDriverAssignment;
+}
+
+/**
+ * Removes a driver from a vehicle — a soft delete (`unassigned_at`), never
+ * a physical delete, so the assignment's history stays queryable.
+ */
+export async function unassignVehicleDriver(assignmentId: string) {
+  const { error } = await supabase
+    .from('vehicle_drivers')
+    .update({ unassigned_at: new Date().toISOString() })
+    .eq('id', assignmentId);
+  if (error) throw error;
+}
+
+/**
+ * Makes one assignment the vehicle's primary driver — an explicit, separate
+ * action from adding a driver (never an automatic side effect). Demotes
+ * the current primary (if any) first: the DB only allows one active
+ * `is_primary = true` row per vehicle at a time, so promoting before
+ * demoting would collide with that constraint.
+ */
+export async function setPrimaryVehicleDriver(vehicleId: string, assignmentId: string) {
+  const { error: demoteError } = await supabase
+    .from('vehicle_drivers')
+    .update({ is_primary: false })
+    .eq('vehicle_id', vehicleId)
+    .eq('is_primary', true)
+    .is('unassigned_at', null)
+    .neq('id', assignmentId);
+  if (demoteError) throw demoteError;
+
+  const { error } = await supabase.from('vehicle_drivers').update({ is_primary: true }).eq('id', assignmentId);
+  if (error) throw error;
+}
+
+/* ------------------------------------------------------------------ */
 /* Drivers                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -177,22 +366,38 @@ export async function listDrivers(companyId: string): Promise<DriverRow[]> {
 
   const ids = rows.map((r) => r.id);
 
-  const [{ data: profiles }, { data: vehicles }] = await Promise.all([
+  const [{ data: profiles }, { data: assignments, error: assignError }] = await Promise.all([
     supabase.from('profiles').select('id, full_name, phone, job_title').in('id', ids),
-    supabase.from('vehicles').select('id, plate_number, primary_driver_id').in('primary_driver_id', ids),
+    supabase
+      .from('vehicle_drivers')
+      .select('driver_id, is_primary, vehicle:vehicle_id(id, plate_number)')
+      .in('driver_id', ids)
+      .is('unassigned_at', null)
+      .order('is_primary', { ascending: false }),
   ]);
+  if (assignError) throw assignError;
 
   const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
-  const vehicleByDriver = new Map((vehicles ?? []).map((v: any) => [v.primary_driver_id, v]));
+  const vehiclesByDriver = new Map<string, DriverRowVehicle[]>();
+  for (const row of (assignments ?? []) as any[]) {
+    if (!row.vehicle) continue;
+    const list = vehiclesByDriver.get(row.driver_id) ?? [];
+    list.push({ id: row.vehicle.id, plate_number: row.vehicle.plate_number, is_primary: row.is_primary });
+    vehiclesByDriver.set(row.driver_id, list);
+  }
 
-  return rows.map((r) => ({
-    ...r,
-    full_name: profileById.get(r.id)?.full_name ?? null,
-    phone: profileById.get(r.id)?.phone ?? null,
-    job_title: profileById.get(r.id)?.job_title ?? null,
-    vehicle_id: vehicleByDriver.get(r.id)?.id ?? null,
-    vehicle_plate: vehicleByDriver.get(r.id)?.plate_number ?? null,
-  }));
+  return rows.map((r) => {
+    const vehicles = vehiclesByDriver.get(r.id) ?? [];
+    return {
+      ...r,
+      full_name: profileById.get(r.id)?.full_name ?? null,
+      phone: profileById.get(r.id)?.phone ?? null,
+      job_title: profileById.get(r.id)?.job_title ?? null,
+      vehicles,
+      vehicle_id: vehicles[0]?.id ?? null,
+      vehicle_plate: vehicles[0]?.plate_number ?? null,
+    };
+  });
 }
 
 export async function getDriver(driverId: string): Promise<DriverRow | null> {
@@ -207,20 +412,21 @@ export async function getDriver(driverId: string): Promise<DriverRow | null> {
   if (profileError && profileError.code !== 'PGRST116') throw profileError;
   if (!details) return null;
 
-  const { data: vehicle, error: vehicleError } = await supabase
-    .from('vehicles')
-    .select('id, plate_number')
-    .eq('primary_driver_id', driverId)
-    .maybeSingle();
-  if (vehicleError) throw vehicleError;
+  const assignments = await listActiveDriverVehicles(driverId);
+  const vehicles: DriverRowVehicle[] = assignments.map((a) => ({
+    id: a.vehicle.id,
+    plate_number: a.vehicle.plate_number,
+    is_primary: a.is_primary,
+  }));
 
   return {
     ...(details as DriverDetails),
     full_name: (profile as any)?.full_name ?? null,
     phone: (profile as any)?.phone ?? null,
     job_title: (profile as any)?.job_title ?? null,
-    vehicle_id: (vehicle as any)?.id ?? null,
-    vehicle_plate: (vehicle as any)?.plate_number ?? null,
+    vehicles,
+    vehicle_id: vehicles[0]?.id ?? null,
+    vehicle_plate: vehicles[0]?.plate_number ?? null,
   };
 }
 

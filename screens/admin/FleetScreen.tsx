@@ -43,9 +43,11 @@ import {
   DriverRow,
   listVehicles,
   listComplianceForOwners,
+  listActiveVehicleDriversForVehicles,
   listDepartments,
   updateVehicle,
   Vehicle,
+  VehicleDriverWithProfile,
   ComplianceItem,
 } from '../../lib/adminApi';
 import { exportDriversReport, REPORT_CATEGORIES, ReportCategory } from '../../lib/driverReport';
@@ -190,7 +192,7 @@ export default function FleetScreen() {
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [compliance, setCompliance] = useState<Map<string, ComplianceItem[]>>(new Map());
-  const [driverNames, setDriverNames] = useState<Map<string, string>>(new Map());
+  const [vehicleDrivers, setVehicleDrivers] = useState<Map<string, VehicleDriverWithProfile[]>>(new Map());
   const [departmentNames, setDepartmentNames] = useState<Map<string, string>>(new Map());
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [vehiclesRefreshing, setVehiclesRefreshing] = useState(false);
@@ -202,9 +204,7 @@ export default function FleetScreen() {
     const rows = await listVehicles(companyId, true);
     setVehicles(rows);
     setCompliance(await listComplianceForOwners('vehicle', rows.map((v) => v.id)));
-
-    const rowsDrivers = await listDrivers(companyId);
-    setDriverNames(new Map(rowsDrivers.map((d) => [d.id, d.full_name ?? 'ללא שם'])));
+    setVehicleDrivers(await listActiveVehicleDriversForVehicles(rows.map((v) => v.id)));
 
     const departments = await listDepartments(companyId);
     setDepartmentNames(new Map(departments.map((d) => [d.id, d.name])));
@@ -216,14 +216,18 @@ export default function FleetScreen() {
       const matchesStatus = status === 'all' ? v.status !== 'archived' : v.status === status;
       if (!matchesStatus) return false;
       if (!q) return true;
+      const driverNamesForVehicle = (vehicleDrivers.get(v.id) ?? [])
+        .map((d) => (d.full_name ?? '').toLowerCase())
+        .join(' ');
       return (
         v.plate_number.toLowerCase().includes(q) ||
         (v.model ?? '').toLowerCase().includes(q) ||
         (v.manufacturer ?? '').toLowerCase().includes(q) ||
-        (v.internal_code ?? '').toLowerCase().includes(q)
+        (v.internal_code ?? '').toLowerCase().includes(q) ||
+        driverNamesForVehicle.includes(q)
       );
     });
-  }, [vehicles, vehicleSearch, status]);
+  }, [vehicles, vehicleSearch, status, vehicleDrivers]);
 
   const vehicleCounts = useMemo(
     () => ({
@@ -530,7 +534,10 @@ export default function FleetScreen() {
               renderItem={({ item }) => {
                 const insurance = expiryOf(item.id, 'insurance_mandatory');
                 const test = expiryOf(item.id, 'annual_test');
-                const driverName = item.primary_driver_id ? driverNames.get(item.primary_driver_id) : null;
+                const assignedDrivers = vehicleDrivers.get(item.id) ?? [];
+                const driverName =
+                  assignedDrivers.find((d) => d.is_primary)?.full_name ?? assignedDrivers[0]?.full_name ?? null;
+                const extraDriverCount = Math.max(0, assignedDrivers.length - (driverName ? 1 : 0));
                 const departmentName = item.department_id ? departmentNames.get(item.department_id) : null;
                 const isArchived = item.status === 'archived';
 
@@ -590,6 +597,7 @@ export default function FleetScreen() {
                         </View>
                         <AppText style={vehicleStyles.cardSubtitle} numberOfLines={1}>
                           {driverName ? `נהג: ${driverName}` : 'ללא נהג'}
+                          {extraDriverCount > 0 ? ` (+${extraDriverCount})` : ''}
                           {departmentName ? ` · מח': ${departmentName}` : ''}
                           {` · סוג: ${VEHICLE_TYPE_LABELS[item.vehicle_type] ?? item.vehicle_type}`}
                         </AppText>

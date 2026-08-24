@@ -9,6 +9,7 @@ import SetPasswordScreen from './screens/SetPasswordScreen';
 import OwnerHomeScreen from './screens/OwnerHomeScreen';
 import DriverHomeScreen from './screens/DriverHomeScreen';
 import CompanyDetailScreen from './screens/CompanyDetailScreen';
+import SettingsScreen from './screens/SettingsScreen';
 import FleetScreen from './screens/admin/FleetScreen';
 import VehicleDetailScreen from './screens/admin/VehicleDetailScreen';
 import VehicleFormScreen from './screens/admin/VehicleFormScreen';
@@ -71,6 +72,10 @@ export default function App() {
               <Stack.Screen name="OwnerHome" component={OwnerHomeScreen} />
               <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
               <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />
+
+              {/* Shared between admin and driver — reached from either
+                  hamburger menu, same screen instance for both roles. */}
+              <Stack.Screen name="Settings" component={SettingsScreen} />
 
               {/* Admin module — no tab bar; drivers and vehicles are one
                   screen (FleetScreen) that crossfades its body via the

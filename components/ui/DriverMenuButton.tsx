@@ -43,6 +43,20 @@ export function DriverMenuButton() {
                 </AppText>
               </TouchableOpacity>
 
+              <TouchableOpacity
+                style={styles.menuItem}
+                activeOpacity={0.7}
+                onPress={() => {
+                  setMenuOpen(false);
+                  navigation.navigate('Settings');
+                }}
+              >
+                <Ionicons name="settings-outline" size={19} color={COLORS.text} />
+                <AppText weight="bold" style={styles.menuItemTextNeutral}>
+                  הגדרות
+                </AppText>
+              </TouchableOpacity>
+
               <View style={styles.menuDivider} />
 
               <TouchableOpacity style={styles.menuItem} activeOpacity={0.7} onPress={logout}>

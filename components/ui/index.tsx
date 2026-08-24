@@ -9,6 +9,7 @@ import {
   TextInputProps,
   ActivityIndicator,
   ScrollView,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './Text';
@@ -400,6 +401,47 @@ export function ErrorState({
   );
 }
 
+/**
+ * A labelled on/off row with an explanation line — used by the settings
+ * screen's notification toggles. Saves immediately on change; the caller
+ * owns the actual persistence + optimistic rollback on failure.
+ */
+export function ToggleRow({
+  label,
+  description,
+  value,
+  onValueChange,
+  disabled,
+}: {
+  label: string;
+  description?: string;
+  value: boolean;
+  onValueChange: (next: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <View style={styles.toggleRow}>
+      <View style={styles.toggleTextWrap}>
+        <AppText weight="bold" style={styles.toggleLabel}>
+          {label}
+        </AppText>
+        {!!description && <AppText style={styles.toggleDescription}>{description}</AppText>}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        disabled={disabled}
+        trackColor={{ false: COLORS.fieldBorder, true: COLORS.accent }}
+        thumbColor={COLORS.card}
+        ios_backgroundColor={COLORS.fieldBorder}
+        accessibilityRole="switch"
+        accessibilityLabel={label}
+        accessibilityState={{ disabled: !!disabled, checked: value }}
+      />
+    </View>
+  );
+}
+
 /** A labelled value, used all over the detail screens. */
 export function InfoRow({
   label,
@@ -593,6 +635,17 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accentSoft,
   },
   retryText: { fontSize: 13.5, color: COLORS.accent },
+
+  toggleRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.md,
+    paddingVertical: 12,
+  },
+  toggleTextWrap: { flex: 1, gap: 3 },
+  toggleLabel: { fontSize: 14.5, color: COLORS.text },
+  toggleDescription: { fontSize: 12.5, color: COLORS.textMuted, lineHeight: 17 },
 
   infoRow: {
     flexDirection: 'row-reverse',

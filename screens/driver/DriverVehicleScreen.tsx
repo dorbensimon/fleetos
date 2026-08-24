@@ -5,31 +5,31 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, ExpiryBadge } from '../../components/ui';
 import { COLORS, RADIUS, SPACING, CARD_SHADOW, expiryState, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { supabase } from '../../lib/supabase';
-import { listCompliance, Vehicle, ComplianceItem } from '../../lib/adminApi';
+import { listActiveDriverVehicles, listComplianceForOwners, DriverVehicleAssignment, ComplianceItem } from '../../lib/adminApi';
 import { VEHICLE_TYPE_LABELS } from '../../lib/compliance';
 import { RootStackParamList } from '../../navigation/types';
 
-/** U2 — read-only view of the driver's own assigned vehicle. */
+/**
+ * U2 — the driver's own vehicles. A driver can be actively assigned to
+ * more than one vehicle (e.g. primary on one, secondary on another), so
+ * this is a list, not a single-vehicle view — see `.claude/prds/
+ * vehicle-drivers-multi.md`. When there's exactly one vehicle, the list
+ * still renders (as a single card), keeping the experience just as
+ * simple as before rather than adding a picker nobody needs.
+ */
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverVehicle'>;
 
 export default function DriverVehicleScreen({ navigation }: Props) {
   const { profile } = useCompany();
-  const [vehicle, setVehicle] = useState<Vehicle | null>(null);
-  const [compliance, setCompliance] = useState<ComplianceItem[]>([]);
+  const [assignments, setAssignments] = useState<DriverVehicleAssignment[]>([]);
+  const [compliance, setCompliance] = useState<Map<string, ComplianceItem[]>>(new Map());
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!profile) return;
-    const { data } = await supabase
-      .from('vehicles')
-      .select('*')
-      .eq('primary_driver_id', profile.id)
-      .maybeSingle();
-    setVehicle((data as Vehicle) ?? null);
-    if (data) {
-      setCompliance(await listCompliance('vehicle', (data as Vehicle).id));
-    }
+    const data = await listActiveDriverVehicles(profile.id);
+    setAssignments(data);
+    setCompliance(await listComplianceForOwners('vehicle', data.map((a) => a.vehicle.id)));
   }, [profile]);
 
   useFocusEffect(
@@ -46,6 +46,42 @@ export default function DriverVehicleScreen({ navigation }: Props) {
     }, [load])
   );
 
+  return (
+    <Screen>
+      <ScreenHeader title="הרכב שלי" onBack={() => navigation.goBack()} />
+
+      {loading ? (
+        <LoadingState />
+      ) : assignments.length === 0 ? (
+        <EmptyState icon="car-outline" title="אין רכב משויך" hint="פנה למנהל הצי שלך לשיוך רכב" />
+      ) : (
+        <View style={styles.content}>
+          {assignments.map((a) => (
+            <VehicleCard
+              key={a.id}
+              vehicle={a.vehicle}
+              isPrimary={a.is_primary}
+              showPrimaryBadge={assignments.length > 1}
+              compliance={compliance.get(a.vehicle.id) ?? []}
+            />
+          ))}
+        </View>
+      )}
+    </Screen>
+  );
+}
+
+function VehicleCard({
+  vehicle,
+  isPrimary,
+  showPrimaryBadge,
+  compliance,
+}: {
+  vehicle: DriverVehicleAssignment['vehicle'];
+  isPrimary: boolean;
+  showPrimaryBadge: boolean;
+  compliance: ComplianceItem[];
+}) {
   const expiryOf = (itemType: string) =>
     compliance.find((c) => c.item_type === itemType)?.expiry_date ?? null;
 
@@ -53,55 +89,46 @@ export default function DriverVehicleScreen({ navigation }: Props) {
   const test = expiryOf('annual_test');
 
   return (
-    <Screen>
-      <ScreenHeader title="הרכב שלי" onBack={() => navigation.goBack()} />
-
-      {loading ? (
-        <LoadingState />
-      ) : !vehicle ? (
-        <EmptyState icon="car-outline" title="אין רכב משויך" hint="פנה למנהל הצי שלך לשיוך רכב" />
-      ) : (
-        <View style={styles.content}>
-          <Card style={styles.plateCard}>
-            <View style={styles.plate}>
-              <View style={styles.plateFlag}>
-                <AppText weight="bold" style={styles.plateFlagText}>
-                  IL
-                </AppText>
-              </View>
-              <AppText weight="bold" style={styles.plateText}>
-                {vehicle.plate_number}
-              </AppText>
-            </View>
-            <AppText weight="bold" style={styles.vehicleTitle}>
-              {[vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || 'ללא דגם'}
+    <>
+      <Card style={styles.plateCard}>
+        <View style={styles.plate}>
+          <View style={styles.plateFlag}>
+            <AppText weight="bold" style={styles.plateFlagText}>
+              IL
             </AppText>
-            <AppText style={styles.vehicleSub}>
-              {VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type}
-            </AppText>
-          </Card>
-
-          <Card style={styles.card}>
-            <View style={styles.metaRow}>
-              <AppText style={styles.metaLabel}>ביטוח חובה</AppText>
-              <ExpiryBadge state={expiryState(insurance)} label={insurance ? formatDate(insurance) : 'חסר'} />
-            </View>
-            <View style={styles.metaRow}>
-              <AppText style={styles.metaLabel}>טסט שנתי</AppText>
-              <ExpiryBadge state={expiryState(test)} label={test ? formatDate(test) : 'חסר'} />
-            </View>
-            {!!vehicle.odometer && (
-              <View style={styles.metaRow}>
-                <AppText style={styles.metaLabel}>קילומטראז׳</AppText>
-                <AppText weight="bold" style={styles.metaValue}>
-                  {vehicle.odometer.toLocaleString('he-IL')} ק"מ
-                </AppText>
-              </View>
-            )}
-          </Card>
+          </View>
+          <AppText weight="bold" style={styles.plateText}>
+            {vehicle.plate_number}
+          </AppText>
         </View>
-      )}
-    </Screen>
+        <AppText weight="bold" style={styles.vehicleTitle}>
+          {[vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || 'ללא דגם'}
+        </AppText>
+        <AppText style={styles.vehicleSub}>
+          {VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type}
+          {showPrimaryBadge ? (isPrimary ? ' · הרכב הראשי שלי' : ' · רכב משני') : ''}
+        </AppText>
+      </Card>
+
+      <Card style={styles.card}>
+        <View style={styles.metaRow}>
+          <AppText style={styles.metaLabel}>ביטוח חובה</AppText>
+          <ExpiryBadge state={expiryState(insurance)} label={insurance ? formatDate(insurance) : 'חסר'} />
+        </View>
+        <View style={styles.metaRow}>
+          <AppText style={styles.metaLabel}>טסט שנתי</AppText>
+          <ExpiryBadge state={expiryState(test)} label={test ? formatDate(test) : 'חסר'} />
+        </View>
+        {!!vehicle.odometer && (
+          <View style={styles.metaRow}>
+            <AppText style={styles.metaLabel}>קילומטראז׳</AppText>
+            <AppText weight="bold" style={styles.metaValue}>
+              {vehicle.odometer.toLocaleString('he-IL')} ק"מ
+            </AppText>
+          </View>
+        )}
+      </Card>
+    </>
   );
 }
 
