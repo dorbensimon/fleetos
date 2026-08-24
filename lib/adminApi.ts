@@ -130,7 +130,13 @@ export async function getVehicle(vehicleId: string): Promise<Vehicle | null> {
     .eq('id', vehicleId)
     .single();
 
-  if (error) return null;
+  // PGRST116 = "no rows found" — a genuine "not found", safe to return null.
+  // Any other error (network, RLS/permissions, etc) must propagate so the
+  // screen can show a real error state instead of a misleading "not found".
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
   return data as Vehicle;
 }
 
@@ -190,18 +196,23 @@ export async function listDrivers(companyId: string): Promise<DriverRow[]> {
 }
 
 export async function getDriver(driverId: string): Promise<DriverRow | null> {
-  const [{ data: details }, { data: profile }] = await Promise.all([
+  const [{ data: details, error: detailsError }, { data: profile, error: profileError }] = await Promise.all([
     supabase.from('driver_details').select('*').eq('id', driverId).single(),
     supabase.from('profiles').select('id, full_name, phone, job_title').eq('id', driverId).single(),
   ]);
 
+  // PGRST116 = "no rows found" — genuine "not found", safe to return null.
+  // Any other error (network, RLS/permissions) must propagate.
+  if (detailsError && detailsError.code !== 'PGRST116') throw detailsError;
+  if (profileError && profileError.code !== 'PGRST116') throw profileError;
   if (!details) return null;
 
-  const { data: vehicle } = await supabase
+  const { data: vehicle, error: vehicleError } = await supabase
     .from('vehicles')
     .select('id, plate_number')
     .eq('primary_driver_id', driverId)
     .maybeSingle();
+  if (vehicleError) throw vehicleError;
 
   return {
     ...(details as DriverDetails),

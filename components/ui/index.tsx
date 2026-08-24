@@ -358,6 +358,48 @@ export function EmptyState({
   );
 }
 
+/**
+ * Shown when a load() call fails (network error, Supabase RLS/permission
+ * error, etc) instead of silently falling through to an EmptyState/"not
+ * found" message that misrepresents the failure as absence of data.
+ */
+export function ErrorState({
+  message = 'משהו השתבש בטעינת הנתונים',
+  hint = 'בדוק את החיבור לאינטרנט ונסה שוב',
+  onRetry,
+}: {
+  message?: string;
+  hint?: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <View style={styles.centered}>
+      <Ionicons name="alert-circle-outline" size={38} color={COLORS.dangerText} />
+      <AppText
+        weight="bold"
+        style={styles.errorTitle}
+        accessibilityRole="alert"
+      >
+        {message}
+      </AppText>
+      {!!hint && <AppText style={styles.emptyHint}>{hint}</AppText>}
+      {!!onRetry && (
+        <TouchableOpacity
+          onPress={onRetry}
+          style={styles.retryBtn}
+          accessibilityRole="button"
+          accessibilityLabel="נסה שוב"
+        >
+          <Ionicons name="refresh" size={16} color={COLORS.accent} />
+          <AppText weight="bold" style={styles.retryText}>
+            נסה שוב
+          </AppText>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 /** A labelled value, used all over the detail screens. */
 export function InfoRow({
   label,
@@ -537,7 +579,20 @@ const styles = StyleSheet.create({
 
   centered: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48, gap: 8 },
   emptyTitle: { fontSize: 14.5, color: COLORS.textMuted, marginTop: 4 },
-  emptyHint: { fontSize: 12.5, color: COLORS.textFaint, textAlign: 'center' },
+  emptyHint: { fontSize: 12.5, color: COLORS.textFaint, textAlign: 'center', paddingHorizontal: SPACING.xl },
+  errorTitle: { fontSize: 14.5, color: COLORS.text, marginTop: 4, textAlign: 'center' },
+  retryBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    minHeight: 40,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.accentSoft,
+  },
+  retryText: { fontSize: 13.5, color: COLORS.accent },
 
   infoRow: {
     flexDirection: 'row-reverse',

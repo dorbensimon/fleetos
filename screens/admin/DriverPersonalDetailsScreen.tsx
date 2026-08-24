@@ -9,6 +9,7 @@ import {
   Card,
   InfoRow,
   LoadingState,
+  ErrorState,
   SecondaryButton,
   PrimaryButton,
   useToast,
@@ -51,6 +52,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
   const [departments, setDepartments] = useState<Department[]>([]);
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [editingVehicle, setEditingVehicle] = useState(false);
   const [pendingVehicleId, setPendingVehicleId] = useState<string | null>(null);
   const [savingVehicle, setSavingVehicle] = useState(false);
@@ -73,8 +75,14 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
       let active = true;
       (async () => {
         setLoading(true);
-        await load();
-        if (active) setLoading(false);
+        setLoadError(null);
+        try {
+          await load();
+        } catch (err: any) {
+          if (active) setLoadError(err?.message ?? 'טעינת פרטי הנהג נכשלה');
+        } finally {
+          if (active) setLoading(false);
+        }
       })();
       return () => {
         active = false;
@@ -122,6 +130,17 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <ErrorState
+          message={loadError}
+          onRetry={() => {
+            setLoading(true);
+            setLoadError(null);
+            load()
+              .catch((err: any) => setLoadError(err?.message ?? 'טעינת פרטי הנהג נכשלה'))
+              .finally(() => setLoading(false));
+          }}
+        />
       ) : (
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Card style={styles.card}>

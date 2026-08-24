@@ -9,6 +9,7 @@ import {
   AppText,
   ScreenHeader,
   LoadingState,
+  ErrorState,
   InfoRow,
   SecondaryButton,
   PrimaryButton,
@@ -87,6 +88,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [compliance, setCompliance] = useState<ComplianceItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('general');
 
   const [editingMaintenance, setEditingMaintenance] = useState(false);
@@ -170,8 +172,11 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
       let active = true;
       (async () => {
         setLoading(true);
+        setLoadError(null);
         try {
           await load();
+        } catch (err: any) {
+          if (active) setLoadError(err?.message ?? 'טעינת הרכב נכשלה');
         } finally {
           if (active) setLoading(false);
         }
@@ -234,6 +239,24 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
       <Screen>
         <ScreenHeader title="תיק רכב" onBack={() => navigation.goBack()} />
         <LoadingState />
+      </Screen>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <Screen>
+        <ScreenHeader title="תיק רכב" onBack={() => navigation.goBack()} />
+        <ErrorState
+          message={loadError}
+          onRetry={() => {
+            setLoading(true);
+            setLoadError(null);
+            load()
+              .catch((err: any) => setLoadError(err?.message ?? 'טעינת הרכב נכשלה'))
+              .finally(() => setLoading(false));
+          }}
+        />
       </Screen>
     );
   }

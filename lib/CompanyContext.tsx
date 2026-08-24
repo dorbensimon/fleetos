@@ -15,6 +15,7 @@ interface CompanyContextValue {
   company: Company | null;
   profile: Profile | null;
   loading: boolean;
+  error: string | null;
   refresh: () => Promise<void>;
 }
 
@@ -30,40 +31,51 @@ export function CompanyProvider({
   const [profile, setProfile] = useState<Profile | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const { data: auth } = await supabase.auth.getUser();
-    const userId = auth.user?.id;
-    if (!userId) {
-      setProfile(null);
-      setCompany(null);
+    setError(null);
+    try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+
+      const userId = auth.user?.id;
+      if (!userId) {
+        setProfile(null);
+        setCompany(null);
+        setLoading(false);
+        return;
+      }
+
+      const { data: profileRow, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single<Profile>();
+      if (profileError) throw profileError;
+
+      setProfile(profileRow ?? null);
+
+      const activeId = companyIdOverride ?? profileRow?.company_id ?? null;
+      if (!activeId) {
+        setCompany(null);
+        setLoading(false);
+        return;
+      }
+
+      const { data: companyRow, error: companyError } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', activeId)
+        .single<Company>();
+      if (companyError) throw companyError;
+
+      setCompany(companyRow ?? null);
       setLoading(false);
-      return;
-    }
-
-    const { data: profileRow } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single<Profile>();
-
-    setProfile(profileRow ?? null);
-
-    const activeId = companyIdOverride ?? profileRow?.company_id ?? null;
-    if (!activeId) {
-      setCompany(null);
+    } catch (err: any) {
+      setError(err?.message ?? 'טעינת פרטי החברה נכשלה');
       setLoading(false);
-      return;
     }
-
-    const { data: companyRow } = await supabase
-      .from('companies')
-      .select('*')
-      .eq('id', activeId)
-      .single<Company>();
-
-    setCompany(companyRow ?? null);
-    setLoading(false);
   }, [companyIdOverride]);
 
   useEffect(() => {
@@ -77,9 +89,10 @@ export function CompanyProvider({
       company,
       profile,
       loading,
+      error,
       refresh: load,
     }),
-    [companyIdOverride, profile, company, loading, load]
+    [companyIdOverride, profile, company, loading, error, load]
   );
 
   return <CompanyContext.Provider value={value}>{children}</CompanyContext.Provider>;

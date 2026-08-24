@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Alert, ScrollView, Modal, Pressable
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, ScreenHeader, AppText, PressableCard, LoadingState, PrimaryButton } from '../../components/ui';
+import { Screen, ScreenHeader, AppText, PressableCard, LoadingState, ErrorState, PrimaryButton } from '../../components/ui';
 import { COLORS, RADIUS, SPACING, CARD_SHADOW, expiryState, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, deleteDriver, resetDriverPassword, DriverRow } from '../../lib/adminApi';
@@ -28,6 +28,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   const { companyId, company } = useCompany();
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const [resetOpen, setResetOpen] = useState(false);
@@ -90,21 +91,23 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     );
   };
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const d = await getDriver(driverId);
+      setDriver(d);
+    } catch (err: any) {
+      setLoadError(err?.message ?? 'טעינת הנהג נכשלה');
+    } finally {
+      setLoading(false);
+    }
+  }, [driverId]);
+
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      (async () => {
-        setLoading(true);
-        const d = await getDriver(driverId);
-        if (active) {
-          setDriver(d);
-          setLoading(false);
-        }
-      })();
-      return () => {
-        active = false;
-      };
-    }, [driverId])
+      load();
+    }, [load])
   );
 
   const openCategory = (item: DriverDocCategory) => {
@@ -126,6 +129,8 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <ErrorState message={loadError} onRetry={load} />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <PressableCard
