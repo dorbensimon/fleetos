@@ -223,8 +223,20 @@ export default function DriverFormScreen({ route, navigation }: Props) {
               פרטים אישיים
             </AppText>
 
+            {isEdit && (
+              <AppText style={styles.lockedNote}>
+                בעריכת נהג ניתן לעדכן רק מחלקה, מספר עובד ודרגת רישיון. שאר השדות נעולים.
+              </AppText>
+            )}
+
             <Field label="שם מלא" error={errors.full_name}>
-              <Input value={form.full_name} onChangeText={(v) => set('full_name', v)} hasError={!!errors.full_name} />
+              <Input
+                value={form.full_name}
+                onChangeText={(v) => set('full_name', v)}
+                hasError={!!errors.full_name}
+                editable={!isEdit}
+                style={isEdit && styles.lockedInput}
+              />
             </Field>
 
             <Field label="טלפון" error={errors.phone}>
@@ -234,6 +246,8 @@ export default function DriverFormScreen({ route, navigation }: Props) {
                 placeholder="052-7898655"
                 keyboardType="phone-pad"
                 hasError={!!errors.phone}
+                editable={!isEdit}
+                style={isEdit && styles.lockedInput}
               />
             </Field>
 
@@ -243,6 +257,8 @@ export default function DriverFormScreen({ route, navigation }: Props) {
                 onChangeText={(v) => set('national_id', v)}
                 keyboardType="number-pad"
                 hasError={!!errors.national_id}
+                editable={!isEdit}
+                style={isEdit && styles.lockedInput}
               />
             </Field>
 
@@ -300,6 +316,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
                 value={form.license_expiry || null}
                 onChange={(iso) => set('license_expiry', iso ?? '')}
                 hasError={!!errors.license_expiry}
+                disabled={isEdit}
               />
             </Field>
           </Card>
@@ -341,4 +358,6 @@ const styles = StyleSheet.create({
   content: { padding: SPACING.lg, gap: SPACING.lg, paddingBottom: 48 },
   card: { gap: SPACING.md },
   cardTitle: { fontSize: 15.5, color: COLORS.text },
+  lockedNote: { fontSize: 12, color: COLORS.textFaint, marginTop: -4 },
+  lockedInput: { opacity: 0.55 },
 });

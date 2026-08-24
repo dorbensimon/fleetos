@@ -17,7 +17,7 @@ import {
 } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
 import { DateField } from '../../components/ui/DateField';
-import { SPACING } from '../../lib/theme';
+import { SPACING, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
 import { getDriver, updateDriver, listDepartments, DriverRow, Department } from '../../lib/adminApi';
@@ -292,6 +292,10 @@ export default function DriverProfileScreen({ navigation }: Props) {
             <InfoRow label="מחלקה" value={departmentName} />
             <InfoRow label="דרגת רישיון" value={driver?.license_classes} />
             <InfoRow label="תוקף רישיון" value={driver?.license_expiry} />
+            <InfoRow
+              label="תאריך הצטרפות לאפליקציה"
+              value={driver?.created_at ? formatDate(driver.created_at) : null}
+            />
           </Card>
         </View>
       )}

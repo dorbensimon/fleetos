@@ -42,18 +42,20 @@ export function DateField({
   onChange,
   placeholder = 'בחר תאריך',
   hasError,
+  disabled,
 }: {
   value: string | null;
   onChange: (iso: string | null) => void;
   placeholder?: string;
   hasError?: boolean;
+  disabled?: boolean;
 }) {
   const [showPicker, setShowPicker] = useState(false);
   const [webText, setWebText] = useState(value ? formatDate(value) : '');
 
   if (Platform.OS === 'web') {
     return (
-      <View style={[styles.box, hasError && styles.boxError]}>
+      <View style={[styles.box, hasError && styles.boxError, disabled && styles.boxDisabled]}>
         <Ionicons name="calendar-outline" size={17} color={COLORS.textFaint} />
         <TextInput
           value={webText}
@@ -70,8 +72,9 @@ export function DateField({
           placeholderTextColor={COLORS.textFaint}
           style={styles.webInput}
           textAlign="left"
+          editable={!disabled}
         />
-        {!!value && (
+        {!disabled && !!value && (
           <TouchableOpacity
             onPress={() => {
               setWebText('');
@@ -82,6 +85,7 @@ export function DateField({
             <Ionicons name="close-circle" size={17} color={COLORS.textFaint} />
           </TouchableOpacity>
         )}
+        {disabled && <Ionicons name="lock-closed-outline" size={15} color={COLORS.textFaint} />}
       </View>
     );
   }
@@ -89,19 +93,20 @@ export function DateField({
   return (
     <>
       <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => setShowPicker(true)}
-        style={[styles.box, hasError && styles.boxError]}
+        activeOpacity={disabled ? 1 : 0.8}
+        onPress={() => !disabled && setShowPicker(true)}
+        style={[styles.box, hasError && styles.boxError, disabled && styles.boxDisabled]}
       >
         <Ionicons name="calendar-outline" size={17} color={COLORS.textFaint} />
         <AppText style={[styles.value, !value && styles.placeholder]}>
           {value ? formatDate(value) : placeholder}
         </AppText>
-        {!!value && (
+        {!disabled && !!value && (
           <TouchableOpacity onPress={() => onChange(null)} hitSlop={8}>
             <Ionicons name="close-circle" size={17} color={COLORS.textFaint} />
           </TouchableOpacity>
         )}
+        {disabled && <Ionicons name="lock-closed-outline" size={15} color={COLORS.textFaint} />}
       </TouchableOpacity>
 
       {showPicker && Platform.OS === 'android' && (
@@ -165,6 +170,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   boxError: { borderColor: COLORS.dangerText },
+  boxDisabled: { opacity: 0.55 },
   value: { flex: 1, fontSize: 15, textAlign: 'left' },
   placeholder: { color: COLORS.textFaint },
   webInput: {

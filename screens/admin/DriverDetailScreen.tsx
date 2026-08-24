@@ -227,6 +227,12 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
               </AppText>
             </TouchableOpacity>
           </View>
+
+          {!!driver?.created_at && (
+            <AppText style={styles.joinedText}>
+              הצטרף לאפליקציה בתאריך {formatDate(driver.created_at)}
+            </AppText>
+          )}
         </ScrollView>
       )}
 
@@ -334,6 +340,7 @@ const styles = StyleSheet.create({
   menuLabelDanger: { color: COLORS.dangerText },
   licenseBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADIUS.pill },
   licenseBadgeText: { fontSize: 11 },
+  joinedText: { fontSize: 12, color: COLORS.textFaint, textAlign: 'center', marginTop: 4 },
 
   resetOverlay: {
     flex: 1,

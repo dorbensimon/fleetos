@@ -1,7 +1,10 @@
 // Edge Function: delete-company-user
-// Called by the app (owner only) to fully remove an admin/driver: Auth user + profile row.
-// Deleting an admin cascades: every driver in that admin's company is
-// permanently deleted too, since a company with no admin can't be managed.
+// Called by the app (owner only) to fully remove a single admin or driver
+// account: Auth user + profile row. Deleting an admin does NOT delete the
+// drivers in their company, and does NOT delete the company itself — the
+// company can simply be left temporarily without an admin (the owner can
+// add a new one later via add-company-admin). Deleting all of a company's
+// drivers is a separate, explicit action — see delete-company-drivers.
 // Irreversible.
 
 import { corsHeaders } from '../_shared/cors.ts';
@@ -31,25 +34,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: target } = await adminClient
+    const { data: target, error: targetError } = await adminClient
       .from('profiles')
       .select('role, company_id')
       .eq('id', userId)
       .single();
 
-    if (target?.role === 'admin' && target.company_id) {
-      const { data: drivers } = await adminClient
-        .from('profiles')
-        .select('id')
-        .eq('role', 'driver')
-        .eq('company_id', target.company_id);
-
-      for (const driver of drivers ?? []) {
-        await adminClient.from('profiles').delete().eq('id', driver.id);
-        await adminClient.auth.admin.deleteUser(driver.id);
-      }
+    if (targetError || !target) {
+      return new Response(JSON.stringify({ error: 'המשתמש לא נמצא' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
+    // Deletes only this one account. Drivers in the same company (if
+    // `target` is an admin) are intentionally left untouched — see
+    // delete-company-drivers for the separate, explicit bulk action.
     await adminClient.from('profiles').delete().eq('id', userId);
     const { error: deleteUserError } = await adminClient.auth.admin.deleteUser(userId);
 

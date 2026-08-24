@@ -15,7 +15,7 @@ import {
   useToast,
 } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
-import { COLORS, SPACING } from '../../lib/theme';
+import { COLORS, SPACING, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
   getDriver,
@@ -198,6 +198,8 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
                 />
               </TouchableOpacity>
             )}
+
+            <InfoRow label="תאריך הצטרפות לאפליקציה" value={driver?.created_at ? formatDate(driver.created_at) : null} />
           </Card>
         </ScrollView>
       )}

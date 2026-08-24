@@ -324,6 +324,45 @@ export async function deleteDriver(
 }
 
 /**
+ * Permanently deletes EVERY driver in the company. Intentionally separate
+ * from deleting an admin account (deleteDriver deletes one driver at a
+ * time; deleting an admin never touches drivers at all) — this must be a
+ * deliberate, explicit action the caller opts into, with its own
+ * confirmation UI. Irreversible.
+ */
+export async function deleteAllCompanyDrivers(
+  companyId: string
+): Promise<
+  | { ok: true; deletedCount: number; totalCount: number; failedIds: string[] }
+  | { ok: false; error: string }
+> {
+  const { data, error } = await supabase.functions.invoke('delete-company-drivers', {
+    body: { companyId, confirm: true },
+  });
+
+  if (error || !data?.success) {
+    let message = data?.error || 'מחיקת הנהגים נכשלה';
+    const ctx = (error as any)?.context;
+    if (ctx?.json) {
+      try {
+        const body = await ctx.json();
+        if (body?.error) message = body.error;
+      } catch {
+        /* keep the generic message */
+      }
+    }
+    return { ok: false, error: message };
+  }
+
+  return {
+    ok: true,
+    deletedCount: data.deletedCount ?? 0,
+    totalCount: data.totalCount ?? 0,
+    failedIds: data.failedIds ?? [],
+  };
+}
+
+/**
  * Resets a driver's password and forces them to set their own new one
  * on next login (must_change_password=true) — same flow as when the
  * account was first created.

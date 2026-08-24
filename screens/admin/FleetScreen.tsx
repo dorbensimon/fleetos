@@ -251,6 +251,10 @@ export default function FleetScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      // Every time this screen regains focus (including returning from a
+      // pushed detail screen) the toggle resets to "drivers" — it never
+      // remembers whatever mode was left active before navigating away.
+      setMode('drivers');
       (async () => {
         setDriversLoading(true);
         setVehiclesLoading(true);
@@ -594,8 +598,8 @@ export default function FleetScreen() {
                       {item.status !== 'active' && (
                         <Badge
                           label={VEHICLE_STATUS_LABELS[item.status] ?? item.status}
-                          bg={COLORS.neutralBg}
-                          fg={COLORS.neutralText}
+                          bg={item.status === 'maintenance' || item.status === 'disabled' ? COLORS.dangerBg : COLORS.neutralBg}
+                          fg={item.status === 'maintenance' || item.status === 'disabled' ? COLORS.dangerText : COLORS.neutralText}
                         />
                       )}
                     </View>

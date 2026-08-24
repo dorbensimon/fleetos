@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { ScrollView, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   Screen,
@@ -15,6 +15,7 @@ import {
   useToast,
 } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
+import { MonthYearField } from '../../components/ui/MonthYearField';
 import { COLORS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
@@ -135,6 +136,8 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!form.plate_number.trim()) e.plate_number = 'שדה חובה';
+    else if (!/^\d{5,8}$/.test(form.plate_number.trim())) e.plate_number = 'מספר רישוי לא תקין (עד 8 ספרות)';
+
     const year = num(form.production_year);
     if (form.production_year.trim() && (year === null || year < 1950 || year > 2100)) {
       e.production_year = 'שנה לא תקינה';
@@ -221,9 +224,10 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             <Field label="מספר רישוי" error={errors.plate_number}>
               <InputLtr
                 value={formatPlate(form.plate_number)}
-                onChangeText={(v) => set('plate_number', v.replace(/\D/g, ''))}
+                onChangeText={(v) => set('plate_number', v.replace(/\D/g, '').slice(0, 8))}
                 placeholder="12-345-67"
                 keyboardType="number-pad"
+                maxLength={11}
                 hasError={!!errors.plate_number}
               />
             </Field>
@@ -259,30 +263,19 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
               <InputLtr value={form.vin} onChangeText={(v) => set('vin', v)} />
             </Field>
 
-            <View style={styles.row}>
-              <View style={styles.rowItem}>
-                <Field label="שנת ייצור" optional error={errors.production_year}>
-                  <InputLtr
-                    value={form.production_year}
-                    onChangeText={(v) => set('production_year', v)}
-                    keyboardType="number-pad"
-                    placeholder="2020"
-                    hasError={!!errors.production_year}
-                  />
-                </Field>
-              </View>
-              <View style={styles.rowItem}>
-                <Field label="חודש" optional error={errors.production_month}>
-                  <InputLtr
-                    value={form.production_month}
-                    onChangeText={(v) => set('production_month', v)}
-                    keyboardType="number-pad"
-                    placeholder="1–12"
-                    hasError={!!errors.production_month}
-                  />
-                </Field>
-              </View>
-            </View>
+            <Field
+              label="חודש ושנת ייצור"
+              optional
+              error={errors.production_year || errors.production_month}
+            >
+              <MonthYearField
+                month={num(form.production_month)}
+                year={num(form.production_year)}
+                onChangeMonth={(m) => set('production_month', m ? String(m) : '')}
+                onChangeYear={(y) => set('production_year', y ? String(y) : '')}
+                hasError={!!errors.production_year || !!errors.production_month}
+              />
+            </Field>
           </Card>
 
           <Card style={styles.card}>
@@ -341,6 +334,4 @@ const styles = StyleSheet.create({
   content: { padding: SPACING.lg, gap: SPACING.lg, paddingBottom: 48 },
   card: { gap: SPACING.md },
   cardTitle: { fontSize: 15.5, color: COLORS.text },
-  row: { flexDirection: 'row-reverse', gap: SPACING.md },
-  rowItem: { flex: 1 },
 });
