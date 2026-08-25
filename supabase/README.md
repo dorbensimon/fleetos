@@ -73,3 +73,22 @@ PR and push to `main`, so a function with a type error can't merge silently.
 
 Deploy via the Supabase MCP `deploy_edge_function` tool, after Dor's approval (same
 production-write rule as migrations — see `AGENTS.md`).
+
+## Environments
+
+There is currently **one** Supabase project (Tolvex, `lnflftptzrfuzfecmhho`), used for
+every build profile — development, preview, and production all point at the same
+live database. `lib/supabase.ts` reads its URL/anon key from
+`EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` (falling back to the
+current project's values if unset), and `eas.json` sets those per build profile.
+
+This is a deliberate, temporary decision (Dor, 2026-08-26): don't stand up a separate
+staging project yet, but keep the wiring in place so adding one later is a small change,
+not a refactor. To add a real staging environment when the time comes:
+
+1. Create a new Supabase project for staging.
+2. Add its URL/anon key as a new `staging` profile's `env` block in `eas.json`
+   (copy the `preview` profile as a starting point).
+3. Point that profile's builds at the staging project instead of production.
+
+No code changes should be needed beyond that — the env-var indirection is already there.
