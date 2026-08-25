@@ -9,7 +9,7 @@ import SetPasswordScreen from './screens/SetPasswordScreen';
 import OwnerHomeScreen from './screens/OwnerHomeScreen';
 import DriverHomeScreen from './screens/DriverHomeScreen';
 import CompanyDetailScreen from './screens/CompanyDetailScreen';
-import SettingsScreen from './screens/SettingsScreen';
+import NotificationPreferencesScreen from './screens/NotificationPreferencesScreen';
 import FleetScreen from './screens/admin/FleetScreen';
 import VehicleDetailScreen from './screens/admin/VehicleDetailScreen';
 import VehicleFormScreen from './screens/admin/VehicleFormScreen';
@@ -23,6 +23,7 @@ import DriverPersonalDetailsScreen from './screens/admin/DriverPersonalDetailsSc
 import DriverVehicleScreen from './screens/driver/DriverVehicleScreen';
 import DriverDocumentsScreen from './screens/driver/DriverDocumentsScreen';
 import DriverProfileScreen from './screens/driver/DriverProfileScreen';
+import MenuScreen from './screens/MenuScreen';
 import { RootStackParamList } from './navigation/types';
 import { supabase } from './lib/supabase';
 import { resolveRouteForUser } from './lib/session';
@@ -73,9 +74,10 @@ export default function App() {
               <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
               <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />
 
-              {/* Shared between admin and driver — reached from either
-                  hamburger menu, same screen instance for both roles. */}
-              <Stack.Screen name="Settings" component={SettingsScreen} />
+              {/* Shared between admin and driver — reached from the menu
+                  screen, same screen instance for both roles. */}
+              <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
+              <Stack.Screen name="Menu" component={MenuScreen} />
 
               {/* Admin module — no tab bar; drivers and vehicles are one
                   screen (FleetScreen) that crossfades its body via the

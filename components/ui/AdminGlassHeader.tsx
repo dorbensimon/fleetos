@@ -41,15 +41,13 @@ export function AdminGlassHeader({
 
       <View style={[styles.content, { paddingTop: insets.top + 14 }]}>
         <View style={styles.topRow}>
+          <AdminMenuButton />
           <View style={styles.greetingWrap}>
             <AppText style={styles.greeting} numberOfLines={1}>
               {fullName ? `${timeGreeting()}, ${fullName}` : timeGreeting()}
             </AppText>
           </View>
-          <View style={styles.menuGroup}>
-            <NotificationBellButton />
-            <AdminMenuButton />
-          </View>
+          <NotificationBellButton />
         </View>
 
         <View style={styles.search}>
@@ -96,12 +94,11 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 12,
   },
-  greetingWrap: { flex: 1 },
-  menuGroup: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  greetingWrap: { flex: 1, alignItems: 'center' },
   greeting: {
     fontSize: 13,
     color: COLORS.textMuted,
-    textAlign: 'right',
+    textAlign: 'center',
   },
   search: {
     flexDirection: 'row-reverse',

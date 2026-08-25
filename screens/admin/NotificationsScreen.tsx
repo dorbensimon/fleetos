@@ -18,7 +18,7 @@ import { RootStackParamList } from '../../navigation/types';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
 
-function timeAgo(iso: string): string {
+export function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
   if (mins < 1) return 'עכשיו';

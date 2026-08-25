@@ -43,3 +43,7 @@ yarn-error.*
 
 # Supabase CLI local state
 supabase/.temp/
+
+# Local AI tool artifacts (machine-specific, regenerated locally)
+.codex/
+graphify-out/

@@ -15,16 +15,18 @@ export type RootStackParamList = {
   Departments: undefined;
   AdminProfile: undefined;
   Notifications: undefined;
-  Settings: undefined;
+  NotificationPreferences: undefined;
   DocumentCategory: {
     ownerType: 'driver' | 'vehicle';
     ownerId: string;
     category: string;
     title: string;
   };
-
   // Driver module
   DriverVehicle: undefined;
   DriverDocuments: undefined;
   DriverProfile: undefined;
+
+  // Shared
+  Menu: undefined;
 };

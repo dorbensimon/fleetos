@@ -25,15 +25,15 @@ import {
 } from '../lib/notificationPreferencesApi';
 
 /**
- * Notification preferences ("הגדרות"), reached from the hamburger menu —
- * shared by admin and driver (same screen, per the PRD's UI-consistency
- * requirement). Drivers currently have no notification types of their own
- * yet (see PRD "קהל יעד"), so they see an empty state instead of the
- * 6-toggle list shown to admins.
+ * Notification preferences, reached from Settings — shared by admin and
+ * driver (same screen, per the PRD's UI-consistency requirement). Drivers
+ * currently have no notification types of their own yet (see PRD "קהל
+ * יעד"), so they see an empty state instead of the 6-toggle list shown to
+ * admins.
  */
-type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'NotificationPreferences'>;
 
-export default function SettingsScreen({ navigation }: Props) {
+export default function NotificationPreferencesScreen({ navigation }: Props) {
   const { profile } = useCompany();
   const { showToast } = useToast();
 
@@ -83,7 +83,7 @@ export default function SettingsScreen({ navigation }: Props) {
 
   return (
     <Screen>
-      <ScreenHeader title="הגדרות" subtitle="העדפות התראות" onBack={() => navigation.goBack()} />
+      <ScreenHeader title="ניהול התראות" subtitle="ניהול העדפות התראה" onBack={() => navigation.goBack()} />
 
       {loading ? (
         <LoadingState />
