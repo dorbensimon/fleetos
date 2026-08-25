@@ -1,0 +1,15 @@
+{
+  "enabledPlugins": {
+    "expo@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Write(.claude/*-findings.md)",
+      "Edit(.claude/*-findings.md)",
+      "Write(.claude/*-backlog.md)",
+      "Edit(.claude/*-backlog.md)",
+      "Write(.claude/*-summary-for-team.md)",
+      "Edit(.claude/*-summary-for-team.md)"
+    ]
+  }
+}
