@@ -1,16 +1,17 @@
 # תוכנית בדיקה חיה — FleetOS
 
-תוכנית בדיקה מצטברת. מעודכנת בכל סבב ביקורת קוד. **סטטוס תשתית נוכחי (עדכון 2026-08-26): Jest+RTL מותקן ועובד** — `jest-expo` preset, `npm test` (66/66 ירוק), `npm run typecheck` ו-`npm run lint` נקיים. קבצי טסט תחת `lib/__tests__/`. אין עדיין Detox/Maestro/Cypress — E2E על מכשיר עדיין מתועד ידנית בלבד.
+תוכנית בדיקה מצטברת. מעודכנת בכל סבב ביקורת קוד. **סטטוס תשתית נוכחי (עדכון 2026-08-26, אחרי ריפקטור מכני של FleetScreen/OwnerHomeScreen/CompanyDetailScreen/adminApi.ts): Jest+RTL מותקן ועובד** — `jest-expo` preset, `npm test` (93/93 ירוק, כולל 27 טסטים חדשים ל-`fleetCardHelpers`), `npm run typecheck` ו-`npm run lint` נקיים (נבדק שוב אחרי הריפקטור — אין רגרסיה). קבצי טסט תחת `lib/__tests__/`. אין עדיין Detox/Maestro/Cypress — E2E על מכשיר עדיין מתועד ידנית בלבד.
 
 ---
 
-## FleetScreen (מסך "נהגים/רכבים" המשולב)
-- **קבצים רלוונטיים:** `screens/admin/FleetScreen.tsx`, `components/ui/DriversVehiclesToggle.tsx`, `lib/adminApi.ts`
+## FleetScreen (מסך "נהגים/רכבים" המשולב) + components/fleet/* + lib/fleetCardHelpers.ts
+- **קבצים רלוונטיים:** `screens/admin/FleetScreen.tsx` (984→465 שורות אחרי הריפקטור), `components/fleet/{DriverCard,VehicleCard,StatCell,ExportReportSheet}.tsx`, `lib/fleetCardHelpers.ts`, `components/ui/DriversVehiclesToggle.tsx`, `lib/adminApi.ts`
 - **תרחישי בדיקה:**
-  - [Unit] `remainingTone`/`remainingRatio`/`worstTone` — מיפוי ימים/ק״מ שנותרו לטון צבע נכון (ok/warn/bad/neutral) כולל גבולות (0, warnAt בדיוק, שלילי, null) — סטטוס: מתוכנן
-  - [Unit] `filteredDrivers`/`filteredVehicles` — לוגיקת סינון וחיפוש (כולל `no_vehicle`, סטטוס `archived` מוסתר כברירת מחדל) — סטטוס: מתוכנן
+  - [Unit] `remainingTone`/`remainingRatio`/`worstTone`/`chipFor` — מיפוי ימים/ק״מ שנותרו לטון צבע נכון (ok/warn/bad/neutral) ולצ'יפ תואם (תווית/צבעים), כולל גבולות (0, warnAt בדיוק, warnAt=0, שלילי/overdue, null, ratio clamp מעל 1/מתחת 0, worstTone על מערך ריק/מעורב, tone לא מוכר ב-chipFor) — סטטוס: **אוטומטי** (`lib/__tests__/fleetCardHelpers.test.ts`, 27 טסטים, נכתב לאחר פיצול הלוגיקה הטהורה מ-`FleetScreen.tsx` ל-`lib/fleetCardHelpers.ts`)
+  - [Unit] `filteredDrivers`/`filteredVehicles` — לוגיקת סינון וחיפוש (כולל `no_vehicle`, סטטוס `archived` מוסתר כברירת מחדל) — סטטוס: מתוכנן (נשארה inline בתוך `FleetScreen.tsx`, לא פוצלה בריפקטור הזה — אם תבודד לפונקציה טהורה בעתיד, קלה לבדיקה כמו `fleetCardHelpers`)
   - [Integration] מעבר בין מצב "נהגים" ל"רכבים" לא מנווט למסך חדש (אין back stack) ושתי הרשימות נטענות פעם אחת ב-`useFocusEffect` — סטטוס: ידני-מתועד-לא-נבדק
-  - [E2E-ידני] ייצוא דוח נהגים (PDF) לכל אחת מ-4 הקטגוריות — לוודא שהקובץ נוצר ומשתף שיתוף נפתח — סטטוס: ידני-מתועד-לא-נבדק
+  - [E2E-ידני] ייצוא דוח נהגים (PDF) לכל אחת מ-4 הקטגוריות (עכשיו דרך `components/fleet/ExportReportSheet.tsx`) — לוודא שהקובץ נוצר ומשתף שיתוף נפתח — סטטוס: ידני-מתועד-לא-נבדק
+  - [רגרסיית ריפקטור] `npm test`/`npm run typecheck`/`npm run lint` הורצו שוב אחרי פיצול FleetScreen ל-components/fleet + lib/fleetCardHelpers ו-adminApi.ts ל-lib/adminApi/* — כולם ירוקים, אין רגרסיה מבחינת קומפילציה/לינט/טסטים קיימים — סטטוס: **אוטומטי** (2026-08-26)
 - **סיכוני עומס/ביצועים:** `loadVehicles` מריץ 3 קריאות רשת ברצף (`listVehicles`, `listComplianceForOwners`, `listDrivers`, `listDepartments`) בכל פוקוס-מסך; בחברה עם הרבה רכבים/נהגים זה עלול להאט את המעבר בין מסכים. `listComplianceForOwners`/`listDrivers` לא עמודים (pagination) — כדאי לבדוק עומס עם 500+ רכבים/נהגים בעתיד (למשל k6 מול Supabase REST על `vehicles`/`compliance_items`/`driver_details`).
 
 ## שיוך נהג↔רכב (VehicleFormScreen, DriverPersonalDetailsScreen, VehicleDetailScreen, lib/adminApi.ts)
@@ -73,6 +74,13 @@
   - [Unit] `isValidEmail` — כתובות תקינות/לא תקינות (רווחים, בלי @, בלי דומיין) — סטטוס: מתוכנן (עדיין אין `lib/__tests__/validation.test.ts`)
   - [Unit] `formatPhone`/`isValidIsraeliPhone` — מספרי נייד (05X), קווי (0X), מספרים קצרים/ארוכים מדי, תווים לא מספריים — סטטוס: **אוטומטי** (`lib/__tests__/phone.test.ts`, קיים מראש)
   - [Unit] `formatPlate` — פורמט מספר רישוי לפי מספר הספרות — סטטוס: **אוטומטי** (`lib/__tests__/plate.test.ts`, קיים מראש)
+  - [Unit] `validateForm` (`screens/OwnerHomeScreen.tsx`, יצירת חברה), `validateNewAdminForm`/`validateResetForm` (`screens/CompanyDetailScreen.tsx`) — לוגיקת ולידציה טהורה (שדות חובה, אורך סיסמה מינימלי, התאמת אימות סיסמה) שנשארה inline כ-closures בתוך רכיבי המסך אחרי הריפקטור, ולא פוצלה כמו `fleetCardHelpers`. אלו פונקציות טהורות פוטנציאליות (לא תלויות ב-state של קומפוננטה מעבר לקריאת ה-form object כפרמטר) — קל יחסית לבודד אותן ל-`lib/*` (למשל `lib/companyFormValidation.ts`) ולבדוק ביחידה ישירות, במקום לדרוש רינדור מסך מלא. לא מומש כרפקטור על ידי — מדווח כהמלצה בלבד למתן/idan.
+
+## פיצול adminApi.ts
+- **קבצים רלוונטיים:** `lib/adminApi/{types,vehicles,assignments,drivers,notifications,compliance,departments}.ts` + `lib/adminApi.ts` (barrel export)
+- **תרחישי בדיקה:**
+  - [רגרסיית ריפקטור] `lib/__tests__/adminApi.test.ts` (הקיים, 21 טסטים) ממשיך לעבור ללא שינוי מול ה-barrel export — מוודא שהפיצול לא שינה חתימות/התנהגות ציבורית — סטטוס: **אוטומטי** (נבדק מחדש 2026-08-26)
+  - [Unit] יבוא ישיר מ-submodule בודד (למשל `lib/adminApi/vehicles.ts`) בלי דרך ה-barrel — לא נבדק במפורש, אך `npm run typecheck` הנקי מרמז שאין שגיאות imports/exports חסרים בין המודולים — סטטוס: ידני-מתועד-לא-נבדק
 
 ---
 

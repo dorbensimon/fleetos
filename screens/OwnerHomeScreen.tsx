@@ -1,48 +1,29 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  FlatList,
-  Modal,
-  Animated,
-  Pressable,
-  ActivityIndicator,
-  RefreshControl,
-  Image,
-  KeyboardAvoidingView,
-  ScrollView,
-  Platform,
-} from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { supabase, Company } from '../lib/supabase';
 import { pickAndUploadLogo } from '../lib/uploadLogo';
-import { formatPhone, isValidIsraeliPhone } from '../lib/phone';
+import { isValidIsraeliPhone } from '../lib/phone';
 import { isValidEmail } from '../lib/validation';
+import { COLORS } from '../components/owner/ownerTheme';
+import { CompanyCard, CompanyRow } from '../components/owner/CompanyCard';
+import { CompanyActionsSheet } from '../components/owner/CompanyActionsSheet';
+import { AddCompanySheet, EMPTY_OWNER_COMPANY_FORM, OwnerCompanyForm } from '../components/owner/AddCompanySheet';
+import { DeleteCompanyModal, CompanyCreatedModal } from '../components/owner/DeleteCompanyModal';
 
-const COLORS = {
-  screenBg: '#EEEEEE',
-  white: '#FFFFFF',
-  black: '#000000',
-  gray: '#666666',
-  grayLight: '#979797',
-  border: '#E2E2E2',
-  blue: '#0088CC',
-  red: '#C0392B',
-  activeBg: '#E9F1EC',
-  activeText: '#5C8A6E',
-  disabledBg: '#F0EAEA',
-  disabledText: '#B4685F',
-  fieldBg: '#FAFAFA',
-};
+/**
+ * The owner (super-admin) home screen: list every company in the system,
+ * create new ones (with their first admin), disable/enable, or delete
+ * them. Predates lib/theme.ts and uses its own local palette (see
+ * components/owner/ownerTheme.ts) rather than the shared design system.
+ *
+ * Split into components/owner/* by concern (card, actions menu, add-company
+ * form, delete/success modals) — this screen only owns data loading and
+ * the create/delete/toggle handlers those pieces call back into.
+ */
 
-const AVATAR_PALETTE = ['#0088CC', '#000000', '#666666', '#979797'];
-
-type CompanyRow = Company & { admins: number; drivers: number };
 type StatusFilter = 'all' | 'active' | 'disabled';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OwnerHome'>;
@@ -58,18 +39,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const [addOpen, setAddOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const [form, setForm] = useState({
-    name: '',
-    logoUrl: '',
-    companyType: '' as '' | 'בע״מ' | 'עוסק מורשה',
-    businessId: '',
-    adminFirstName: '',
-    adminLastName: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-  });
+  const [form, setForm] = useState<OwnerCompanyForm>(EMPTY_OWNER_COMPANY_FORM);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -155,10 +125,6 @@ export default function OwnerHomeScreen({ navigation }: Props) {
     await loadCompanies();
   };
 
-  const openDeleteFromMenu = () => {
-    setDeleteOpen(true);
-  };
-
   const confirmDelete = async () => {
     if (!menuCompany || deleteConfirmText.trim() !== menuCompany.name) return;
     setDeleting(true);
@@ -219,18 +185,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         return;
       }
 
-      setForm({
-        name: '',
-        logoUrl: '',
-        companyType: '',
-        businessId: '',
-        adminFirstName: '',
-        adminLastName: '',
-        email: '',
-        phone: '',
-        password: '',
-        confirmPassword: '',
-      });
+      setForm(EMPTY_OWNER_COMPANY_FORM);
       setFieldErrors({});
       setAddOpen(false);
       setSuccessOpen(true);
@@ -249,7 +204,6 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   };
 
   const activeCount = companies.filter((c) => c.status === 'active').length;
-  const deleteMatches = !!menuCompany && deleteConfirmText.trim() === menuCompany.name;
 
   const filteredCompanies = companies.filter((c) => {
     const matchesSearch = c.name.toLowerCase().includes(search.trim().toLowerCase());
@@ -319,402 +273,53 @@ export default function OwnerHomeScreen({ navigation }: Props) {
               <Text style={styles.emptyText}>לא נמצאו חברות</Text>
             </View>
           }
-          renderItem={({ item, index }) => {
-            const active = item.status === 'active';
-            const avatarColor = active ? AVATAR_PALETTE[index % AVATAR_PALETTE.length] : '#E6E6E6';
-            const avatarTextColor = active ? COLORS.white : COLORS.grayLight;
-            return (
-              <TouchableOpacity
-                style={styles.card}
-                activeOpacity={0.8}
-                onPress={() => navigation.navigate('CompanyDetail', { companyId: item.id })}
-              >
-                {item.logo_url ? (
-                  <Image source={{ uri: item.logo_url }} style={styles.avatar} resizeMode="cover" />
-                ) : (
-                  <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
-                    <Text style={[styles.avatarText, { color: avatarTextColor }]}>
-                      {item.name.trim().charAt(0)}
-                    </Text>
-                  </View>
-                )}
-                <View style={styles.cardBody}>
-                  <View style={styles.cardTopRow}>
-                    <Text style={styles.cardName} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <View style={[styles.badge, active ? styles.badgeActive : styles.badgeDisabled]}>
-                      <Text style={[styles.badgeText, active ? styles.badgeTextActive : styles.badgeTextDisabled]}>
-                        {active ? 'פעיל' : 'מושבת'}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.cardMetaRow}>
-                    <View style={styles.metaItem}>
-                      <Ionicons name="shield-outline" size={13} color={COLORS.grayLight} />
-                      <Text style={styles.metaText}>{item.admins} אדמינים</Text>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <Ionicons name="car-outline" size={13} color={COLORS.grayLight} />
-                      <Text style={styles.metaText}>{item.drivers} נהגים</Text>
-                    </View>
-                  </View>
-                </View>
-                <TouchableOpacity style={styles.menuButton} onPress={() => setMenuCompany(item)}>
-                  <Ionicons name="ellipsis-vertical" size={18} color={COLORS.grayLight} />
-                </TouchableOpacity>
-              </TouchableOpacity>
-            );
-          }}
+          renderItem={({ item, index }) => (
+            <CompanyCard
+              item={item}
+              index={index}
+              onPress={() => navigation.navigate('CompanyDetail', { companyId: item.id })}
+              onMenuPress={() => setMenuCompany(item)}
+            />
+          )}
         />
       )}
 
-      {/* בוטום שיט: תפריט פעולות לחברה */}
-      <BottomSheet visible={!!menuCompany && !deleteOpen} onClose={closeAll}>
-        <View style={styles.sheetHandle} />
-        <Text style={styles.sheetCompanyName}>{menuCompany?.name}</Text>
-        <TouchableOpacity style={styles.sheetAction} onPress={toggleActive}>
-          <Ionicons name="power-outline" size={19} color={COLORS.gray} />
-          <Text style={styles.sheetActionText}>
-            {menuCompany?.status === 'active' ? 'השבת חברה' : 'הפעל חברה'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.sheetAction} onPress={openDeleteFromMenu}>
-          <Ionicons name="trash-outline" size={19} color={COLORS.red} />
-          <Text style={[styles.sheetActionText, { color: COLORS.red }]}>מחק חברה</Text>
-        </TouchableOpacity>
-      </BottomSheet>
+      <CompanyActionsSheet
+        company={menuCompany}
+        visible={!!menuCompany && !deleteOpen}
+        onClose={closeAll}
+        onToggleActive={toggleActive}
+        onDelete={() => setDeleteOpen(true)}
+      />
 
-      {/* בוטום שיט: הוספת חברה */}
-      <BottomSheet visible={addOpen} onClose={closeAll}>
-        <View style={styles.sheetHeaderRow}>
-          <Text style={styles.sheetTitle}>הוספת חברה חדשה</Text>
-          <TouchableOpacity style={styles.closeButton} onPress={closeAll}>
-            <Ionicons name="close" size={16} color={COLORS.gray} />
-          </TouchableOpacity>
-        </View>
+      <AddCompanySheet
+        visible={addOpen}
+        form={form}
+        fieldErrors={fieldErrors}
+        showPassword={showPassword}
+        uploadingLogo={uploadingLogo}
+        logoError={logoError}
+        createError={createError}
+        creating={creating}
+        onClose={closeAll}
+        onChangeForm={setForm}
+        onPickLogo={handlePickLogo}
+        onToggleShowPassword={() => setShowPassword((v) => !v)}
+        onSubmit={createCompany}
+      />
 
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>שם החברה</Text>
-          <TextInput
-            style={[styles.fieldInput, !!fieldErrors.name && styles.fieldInputError]}
-            placeholder="לדוגמה: אלמוג הובלות"
-            placeholderTextColor={COLORS.grayLight}
-            value={form.name}
-            onChangeText={(v) => setForm((f) => ({ ...f, name: v }))}
-            textAlign="right"
-          />
-          {!!fieldErrors.name && <Text style={styles.fieldErrorText}>{fieldErrors.name}</Text>}
-        </View>
+      <DeleteCompanyModal
+        visible={deleteOpen}
+        company={menuCompany}
+        confirmText={deleteConfirmText}
+        deleting={deleting}
+        onChangeConfirmText={setDeleteConfirmText}
+        onClose={closeAll}
+        onConfirm={confirmDelete}
+      />
 
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>לוגו החברה (אופציונלי)</Text>
-          <TouchableOpacity style={styles.logoPicker} onPress={handlePickLogo} disabled={uploadingLogo}>
-            {uploadingLogo ? (
-              <ActivityIndicator color={COLORS.blue} />
-            ) : form.logoUrl ? (
-              <>
-                <View style={styles.logoPreviewWrap}>
-                  <Image source={{ uri: form.logoUrl }} style={styles.logoPreview} resizeMode="cover" />
-                  <View style={styles.logoUploadedBadge}>
-                    <Ionicons name="checkmark" size={11} color={COLORS.white} />
-                  </View>
-                </View>
-                <Text style={styles.logoPickerChangeText}>שנה תמונה</Text>
-              </>
-            ) : (
-              <>
-                <Ionicons name="cloud-upload-outline" size={22} color={COLORS.grayLight} />
-                <Text style={styles.logoPickerText}>העלאת לוגו</Text>
-                <Text style={styles.logoPickerHint}>PNG או JPG</Text>
-              </>
-            )}
-          </TouchableOpacity>
-          {!!logoError && <Text style={styles.errorText}>{logoError}</Text>}
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>סוג חברה (אופציונלי)</Text>
-          <View style={styles.companyTypeRow}>
-            {(['בע״מ', 'עוסק מורשה'] as const).map((type) => {
-              const active = form.companyType === type;
-              return (
-                <TouchableOpacity
-                  key={type}
-                  style={[styles.companyTypeChip, active && styles.companyTypeChipActive]}
-                  onPress={() => setForm((f) => ({ ...f, companyType: active ? '' : type }))}
-                >
-                  <Text style={[styles.companyTypeChipText, active && styles.companyTypeChipTextActive]}>
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>ח.פ / ע.מ (אופציונלי)</Text>
-          <TextInput
-            style={[styles.fieldInput, styles.fieldInputLtr]}
-            placeholder="512345678"
-            placeholderTextColor={COLORS.grayLight}
-            value={form.businessId}
-            onChangeText={(v) => setForm((f) => ({ ...f, businessId: v }))}
-            keyboardType="number-pad"
-            textAlign="left"
-          />
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>שם פרטי של האדמין</Text>
-          <TextInput
-            style={[styles.fieldInput, !!fieldErrors.adminFirstName && styles.fieldInputError]}
-            placeholder="לדוגמה: דוד"
-            placeholderTextColor={COLORS.grayLight}
-            value={form.adminFirstName}
-            onChangeText={(v) => setForm((f) => ({ ...f, adminFirstName: v }))}
-            textAlign="right"
-          />
-          {!!fieldErrors.adminFirstName && (
-            <Text style={styles.fieldErrorText}>{fieldErrors.adminFirstName}</Text>
-          )}
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>שם משפחה של האדמין</Text>
-          <TextInput
-            style={[styles.fieldInput, !!fieldErrors.adminLastName && styles.fieldInputError]}
-            placeholder="לדוגמה: כהן"
-            placeholderTextColor={COLORS.grayLight}
-            value={form.adminLastName}
-            onChangeText={(v) => setForm((f) => ({ ...f, adminLastName: v }))}
-            textAlign="right"
-          />
-          {!!fieldErrors.adminLastName && (
-            <Text style={styles.fieldErrorText}>{fieldErrors.adminLastName}</Text>
-          )}
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>מייל אדמין</Text>
-          <TextInput
-            style={[styles.fieldInput, styles.fieldInputLtr, !!fieldErrors.email && styles.fieldInputError]}
-            placeholder="admin@company.co.il"
-            placeholderTextColor={COLORS.grayLight}
-            value={form.email}
-            onChangeText={(v) => setForm((f) => ({ ...f, email: v }))}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            textAlign="left"
-          />
-          {!!fieldErrors.email && <Text style={styles.fieldErrorText}>{fieldErrors.email}</Text>}
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>טלפון</Text>
-          <TextInput
-            style={[styles.fieldInput, styles.fieldInputLtr, !!fieldErrors.phone && styles.fieldInputError]}
-            placeholder="050-0000000"
-            placeholderTextColor={COLORS.grayLight}
-            value={formatPhone(form.phone)}
-            onChangeText={(v) => setForm((f) => ({ ...f, phone: v.replace(/\D/g, '') }))}
-            keyboardType="phone-pad"
-            textAlign="left"
-          />
-          {!!fieldErrors.phone && <Text style={styles.fieldErrorText}>{fieldErrors.phone}</Text>}
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>סיסמה לאדמין</Text>
-          <View style={[styles.fieldInputWithIcon, !!fieldErrors.password && styles.fieldInputError]}>
-            <TextInput
-              style={[styles.fieldInputInner, styles.fieldInputLtr]}
-              placeholder="לפחות 6 תווים"
-              placeholderTextColor={COLORS.grayLight}
-              value={form.password}
-              onChangeText={(v) => setForm((f) => ({ ...f, password: v }))}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              textAlign="left"
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <Ionicons
-                name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                size={18}
-                color={COLORS.grayLight}
-              />
-            </TouchableOpacity>
-          </View>
-          {!!fieldErrors.password && <Text style={styles.fieldErrorText}>{fieldErrors.password}</Text>}
-        </View>
-
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>אימות סיסמה</Text>
-          <TextInput
-            style={[
-              styles.fieldInput,
-              styles.fieldInputLtr,
-              !!fieldErrors.confirmPassword && styles.fieldInputError,
-            ]}
-            placeholder="הזן שוב את הסיסמה"
-            placeholderTextColor={COLORS.grayLight}
-            value={form.confirmPassword}
-            onChangeText={(v) => setForm((f) => ({ ...f, confirmPassword: v }))}
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-            textAlign="left"
-          />
-          {!!fieldErrors.confirmPassword && (
-            <Text style={styles.fieldErrorText}>{fieldErrors.confirmPassword}</Text>
-          )}
-        </View>
-
-        {!!createError && <Text style={styles.errorText}>{createError}</Text>}
-
-        <TouchableOpacity
-          style={[styles.createButton, creating && styles.createButtonDisabled]}
-          onPress={createCompany}
-          disabled={creating}
-          activeOpacity={0.85}
-        >
-          {creating ? (
-            <ActivityIndicator color={COLORS.white} />
-          ) : (
-            <Text style={styles.createButtonText}>צור חברה</Text>
-          )}
-        </TouchableOpacity>
-        <Text style={styles.hintText}>האדמין יוכל להתחבר עם המייל והסיסמה שקבעת, ויתבקש לקבוע סיסמה קבועה משלו בכניסה הראשונה</Text>
-      </BottomSheet>
-
-      {/* מודאל: אישור מחיקה */}
-      <CenterModal visible={deleteOpen} onClose={closeAll}>
-        <View style={styles.deleteHeaderRow}>
-          <View style={styles.deleteIconBox}>
-            <Ionicons name="warning-outline" size={20} color={COLORS.red} />
-          </View>
-          <Text style={styles.deleteTitle}>מחיקת חברה</Text>
-        </View>
-        <Text style={styles.deleteDescription}>
-          מחיקת <Text style={styles.deleteCompanyNameBold}>{menuCompany?.name}</Text> תסיר את כל
-          האדמינים והנהגים המשויכים אליה. הפעולה אינה ניתנת לשחזור.
-        </Text>
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>להמשך, הקלד את שם החברה:</Text>
-          <TextInput
-            style={[styles.fieldInput, deleteMatches && styles.fieldInputMatch]}
-            placeholder={menuCompany?.name}
-            placeholderTextColor={COLORS.grayLight}
-            value={deleteConfirmText}
-            onChangeText={setDeleteConfirmText}
-            textAlign="right"
-          />
-        </View>
-        <View style={styles.deleteButtonsRow}>
-          <TouchableOpacity style={styles.cancelButton} onPress={closeAll}>
-            <Text style={styles.cancelButtonText}>ביטול</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.deleteButton, !deleteMatches && styles.deleteButtonDisabled]}
-            onPress={confirmDelete}
-            disabled={!deleteMatches || deleting}
-          >
-            {deleting ? (
-              <ActivityIndicator color={COLORS.white} />
-            ) : (
-              <Text
-                style={[styles.deleteButtonText, !deleteMatches && styles.deleteButtonTextDisabled]}
-              >
-                מחק לצמיתות
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </CenterModal>
-
-      {/* מודאל: סיסמה זמנית */}
-      <CenterModal visible={successOpen} onClose={() => setSuccessOpen(false)}>
-        <View style={styles.deleteHeaderRow}>
-          <View style={[styles.deleteIconBox, { backgroundColor: COLORS.activeBg }]}>
-            <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.activeText} />
-          </View>
-          <Text style={styles.deleteTitle}>החברה נוצרה בהצלחה</Text>
-        </View>
-        <Text style={styles.deleteDescription}>
-          האדמין יכול להתחבר עכשיו עם המייל והסיסמה שקבעת, ויתבקש לקבוע סיסמה קבועה משלו בכניסה
-          הראשונה.
-        </Text>
-        <TouchableOpacity style={styles.createButton} onPress={() => setSuccessOpen(false)}>
-          <Text style={styles.createButtonText}>סגור</Text>
-        </TouchableOpacity>
-      </CenterModal>
+      <CompanyCreatedModal visible={successOpen} onClose={() => setSuccessOpen(false)} />
     </View>
-  );
-}
-
-function BottomSheet({
-  visible,
-  onClose,
-  children,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  const translateY = useRef(new Animated.Value(300)).current;
-
-  useEffect(() => {
-    Animated.timing(translateY, {
-      toValue: visible ? 0 : 300,
-      duration: 220,
-      useNativeDriver: true,
-    }).start();
-  }, [visible]);
-
-  if (!visible) return null;
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <Pressable style={styles.overlay} onPress={onClose}>
-          <Animated.View style={[styles.sheetContainer, { transform: [{ translateY }], maxHeight: '85%' }]}>
-            <Pressable onPress={(e) => e.stopPropagation()}>
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.sheetContentContainer}
-              >
-                {children}
-              </ScrollView>
-            </Pressable>
-          </Animated.View>
-        </Pressable>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
-
-function CenterModal({
-  visible,
-  onClose,
-  children,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  if (!visible) return null;
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.centerOverlay} onPress={onClose}>
-        <Pressable style={styles.centerModal} onPress={(e) => e.stopPropagation()}>
-          {children}
-        </Pressable>
-      </Pressable>
-    </Modal>
   );
 }
 
@@ -793,230 +398,4 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: COLORS.blue, borderColor: COLORS.blue },
   filterChipText: { fontSize: 12.5, fontWeight: '600', color: COLORS.gray },
   filterChipTextActive: { color: COLORS.white },
-  card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 14,
-    padding: 14,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { fontSize: 18, fontWeight: '600' },
-  cardBody: { flex: 1, gap: 5 },
-  cardTopRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  cardName: { fontSize: 15.5, fontWeight: '600', color: COLORS.black, flexShrink: 1 },
-  badge: { paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 6 },
-  badgeActive: { backgroundColor: COLORS.activeBg },
-  badgeDisabled: { backgroundColor: COLORS.disabledBg },
-  badgeText: { fontSize: 11, fontWeight: '600' },
-  badgeTextActive: { color: COLORS.activeText },
-  badgeTextDisabled: { color: COLORS.disabledText },
-  cardMetaRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
-  metaItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: 12.5, color: COLORS.gray },
-  menuButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.28)',
-    justifyContent: 'flex-end',
-  },
-  sheetContainer: {
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  sheetContentContainer: {
-    padding: 20,
-    paddingBottom: 34,
-    gap: 14,
-  },
-  sheetHandle: {
-    width: 38,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#DDDDDD',
-    alignSelf: 'center',
-    marginBottom: 6,
-  },
-  sheetCompanyName: { fontSize: 14, fontWeight: '600', color: COLORS.black, textAlign: 'right' },
-  sheetAction: {
-    height: 52,
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 10,
-  },
-  sheetActionText: { fontSize: 15, color: COLORS.black },
-  sheetHeaderRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
-  sheetTitle: { fontSize: 18, fontWeight: '700', color: COLORS.black },
-  closeButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: '#F2F2F2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fieldGroup: { gap: 7 },
-  fieldLabel: { fontSize: 12.5, fontWeight: '600', color: COLORS.gray, textAlign: 'right' },
-  fieldLabelOptional: { color: COLORS.grayLight, fontWeight: '400' },
-  fieldInput: {
-    height: 48,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.fieldBg,
-    fontSize: 15,
-    color: COLORS.black,
-    paddingHorizontal: 14,
-  },
-  fieldInputLtr: { textAlign: 'left' },
-  fieldInputError: { borderColor: COLORS.red },
-  fieldErrorText: { fontSize: 11.5, color: COLORS.red, textAlign: 'right' },
-  companyTypeRow: { flexDirection: 'row-reverse', gap: 9 },
-  companyTypeChip: {
-    flex: 1,
-    height: 44,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.fieldBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  companyTypeChipActive: { borderColor: COLORS.blue, backgroundColor: COLORS.blue },
-  companyTypeChipText: { fontSize: 13.5, fontWeight: '600', color: COLORS.gray },
-  companyTypeChipTextActive: { color: COLORS.white },
-  fieldInputWithIcon: {
-    height: 48,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.fieldBg,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  fieldInputInner: {
-    flex: 1,
-    fontSize: 15,
-    color: COLORS.black,
-  },
-  logoPicker: {
-    height: 100,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderStyle: 'dashed',
-    backgroundColor: COLORS.fieldBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  logoPickerText: { fontSize: 13, color: COLORS.gray },
-  logoPickerHint: { fontSize: 11.5, color: COLORS.grayLight },
-  logoPreviewWrap: { width: 52, height: 52 },
-  logoPreview: {
-    width: 52,
-    height: 52,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  logoUploadedBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: COLORS.activeText,
-    borderWidth: 2,
-    borderColor: COLORS.fieldBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoPickerChangeText: { fontSize: 12, color: COLORS.blue, fontWeight: '600', marginTop: 6 },
-  fieldInputMatch: { borderColor: COLORS.activeText },
-  errorText: { color: COLORS.red, fontSize: 13, textAlign: 'center' },
-  createButton: {
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: COLORS.blue,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  createButtonDisabled: { opacity: 0.7 },
-  createButtonText: { color: COLORS.white, fontSize: 15.5, fontWeight: '600' },
-  hintText: { fontSize: 11.5, color: COLORS.grayLight, textAlign: 'center', lineHeight: 17 },
-  centerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  centerModal: {
-    backgroundColor: COLORS.white,
-    borderRadius: 18,
-    padding: 22,
-    width: '100%',
-    gap: 14,
-  },
-  deleteHeaderRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 11 },
-  deleteIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: COLORS.disabledBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deleteTitle: { fontSize: 17, fontWeight: '700', color: COLORS.black },
-  deleteDescription: { fontSize: 13.5, color: COLORS.gray, lineHeight: 21, textAlign: 'right' },
-  deleteCompanyNameBold: { color: COLORS.black, fontWeight: '600' },
-  deleteButtonsRow: { flexDirection: 'row', gap: 9 },
-  cancelButton: {
-    flex: 1,
-    height: 46,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelButtonText: { color: COLORS.black, fontSize: 14.5, fontWeight: '600' },
-  deleteButton: {
-    flex: 1.3,
-    height: 46,
-    borderRadius: 11,
-    backgroundColor: COLORS.red,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deleteButtonDisabled: { backgroundColor: '#EDD9D6' },
-  deleteButtonText: { color: COLORS.white, fontSize: 14.5, fontWeight: '600' },
-  deleteButtonTextDisabled: { color: '#C39B95' },
 });
