@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
+import { TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './Text';
 import { COLORS, RADIUS, SPACING, CARD_SHADOW } from '../../lib/theme';
