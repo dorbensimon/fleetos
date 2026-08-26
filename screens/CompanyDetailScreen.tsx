@@ -3,7 +3,17 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { supabase, Company } from '../lib/supabase';
+import { Company } from '../lib/supabase';
+import {
+  getCompany,
+  listCompanyUsers,
+  updateCompanyUser,
+  updateCompany,
+  deleteCompany,
+  addCompanyAdmin,
+  deleteCompanyUser,
+  resetCompanyUserPassword,
+} from '../lib/companyApi';
 import { pickAndUploadLogo } from '../lib/uploadLogo';
 import { isValidIsraeliPhone } from '../lib/phone';
 import { isValidEmail } from '../lib/validation';
@@ -126,13 +136,10 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
 
     setEditing(true);
     setEditError('');
-    const { error } = await supabase
-      .from('profiles')
-      .update({
+    const { error } = await updateCompanyUser(editTarget.id, {
         full_name: `${editForm.firstName.trim()} ${editForm.lastName.trim()}`.trim(),
         phone: editForm.phone.trim(),
-      })
-      .eq('id', editTarget.id);
+      });
     setEditing(false);
     if (error) {
       setEditError('שמירת השינויים נכשלה');
@@ -143,11 +150,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   };
 
   const load = useCallback(async () => {
-    const { data: companyData } = await supabase
-      .from('companies')
-      .select('*')
-      .eq('id', companyId)
-      .single<Company>();
+    const { data: companyData } = await getCompany(companyId);
 
     if (companyData) {
       setCompany(companyData);
@@ -163,9 +166,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       });
     }
 
-    const { data: usersData, error } = await supabase.functions.invoke('list-company-users', {
-      body: { companyId },
-    });
+    const { data: usersData, error } = await listCompanyUsers(companyId);
 
     if (!error && usersData?.success) {
       setUsers(usersData.users);
@@ -195,9 +196,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     if (!company || !fields.name.trim()) return;
     setSaveError('');
     setSaving(true);
-    const { error } = await supabase
-      .from('companies')
-      .update({
+    const { error } = await updateCompany(company.id, {
         name: fields.name.trim(),
         logo_url: fields.logoUrl.trim() || null,
         company_type: fields.companyType || null,
@@ -206,8 +205,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         phone: fields.phone.trim() || null,
         safety_officer_name: fields.safetyOfficerName.trim() || null,
         safety_officer_phone: fields.safetyOfficerPhone.trim() || null,
-      })
-      .eq('id', company.id);
+      });
     setSaving(false);
     if (error) {
       setSaveError('שמירת השינויים נכשלה');
@@ -219,14 +217,14 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   const toggleActive = async () => {
     if (!company) return;
     const newStatus = company.status === 'active' ? 'disabled' : 'active';
-    await supabase.from('companies').update({ status: newStatus }).eq('id', company.id);
+    await updateCompany(company.id, { status: newStatus });
     await load();
   };
 
   const confirmDeleteCompany = async () => {
     if (!company || deleteConfirmText.trim() !== company.name) return;
     setDeleting(true);
-    await supabase.from('companies').delete().eq('id', company.id);
+    await deleteCompany(company.id);
     setDeleting(false);
     navigation.goBack();
   };
@@ -255,15 +253,13 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
 
     setAddingAdmin(true);
     try {
-      const { data, error } = await supabase.functions.invoke('add-company-admin', {
-        body: {
+      const { data, error } = await addCompanyAdmin({
           companyId,
           adminFirstName: newAdminForm.firstName.trim(),
           adminLastName: newAdminForm.lastName.trim(),
           adminEmail: newAdminForm.email.trim(),
           adminPhone: newAdminForm.phone.trim(),
           adminPassword: newAdminForm.password,
-        },
       });
       if (error || !data?.success) {
         let message = data?.error || 'הוספת האדמין נכשלה';
@@ -293,7 +289,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   const removeUser = async () => {
     if (!removeTarget) return;
     setRemoving(true);
-    await supabase.functions.invoke('delete-company-user', { body: { userId: removeTarget.id } });
+    await deleteCompanyUser(removeTarget.id);
     setRemoving(false);
     setRemoveTarget(null);
     await load();
@@ -318,9 +314,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
 
     setResetting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('reset-user-password', {
-        body: { userId: resetTarget.id, newPassword: resetForm.password, companyId },
-      });
+      const { data, error } = await resetCompanyUserPassword(resetTarget.id, resetForm.password, companyId);
 
       if (error || !data?.success) {
         let message = data?.error || 'איפוס הסיסמה נכשל';

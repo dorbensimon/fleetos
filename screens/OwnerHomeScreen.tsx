@@ -4,6 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { supabase, Company } from '../lib/supabase';
+import {
+  listCompanies,
+  listCompanyProfileRoles,
+  updateCompanyStatus,
+  deleteOwnedCompany,
+  createCompanyAdmin,
+} from '../lib/ownerApi';
 import { pickAndUploadLogo } from '../lib/uploadLogo';
 import { isValidIsraeliPhone } from '../lib/phone';
 import { isValidEmail } from '../lib/validation';
@@ -68,15 +75,9 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const [successOpen, setSuccessOpen] = useState(false);
 
   const loadCompanies = useCallback(async () => {
-    const { data: companiesData } = await supabase
-      .from('companies')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const { data: companiesData } = await listCompanies();
 
-    const { data: profilesData } = await supabase
-      .from('profiles')
-      .select('company_id, role')
-      .not('company_id', 'is', null);
+    const { data: profilesData } = await listCompanyProfileRoles();
 
     const counts: Record<string, { admins: number; drivers: number }> = {};
     (profilesData || []).forEach((p: any) => {
@@ -120,7 +121,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const toggleActive = async () => {
     if (!menuCompany) return;
     const newStatus = menuCompany.status === 'active' ? 'disabled' : 'active';
-    await supabase.from('companies').update({ status: newStatus }).eq('id', menuCompany.id);
+    await updateCompanyStatus(menuCompany.id, newStatus);
     setMenuCompany(null);
     await loadCompanies();
   };
@@ -128,7 +129,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const confirmDelete = async () => {
     if (!menuCompany || deleteConfirmText.trim() !== menuCompany.name) return;
     setDeleting(true);
-    await supabase.from('companies').delete().eq('id', menuCompany.id);
+    await deleteOwnedCompany(menuCompany.id);
     setDeleting(false);
     closeAll();
     await loadCompanies();
@@ -158,8 +159,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
 
     setCreating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-company-admin', {
-        body: {
+      const { data, error } = await createCompanyAdmin({
           companyName: form.name.trim(),
           logoUrl: form.logoUrl.trim() || null,
           companyType: form.companyType || null,
@@ -169,7 +169,6 @@ export default function OwnerHomeScreen({ navigation }: Props) {
           adminEmail: form.email.trim(),
           adminPhone: form.phone.trim(),
           adminPassword: form.password,
-        },
       });
 
       if (error || !data?.success) {
