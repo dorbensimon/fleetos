@@ -15,6 +15,16 @@ export type RootStackParamList = {
   Departments: undefined;
   AdminProfile: undefined;
   Notifications: undefined;
+  AdminDocumentSigning: undefined;
+  DocusealWebView: {
+    mode: 'builder' | 'sign' | 'preview' | 'document' | 'image';
+    title: string;
+    token?: string;
+    src?: string;
+    host?: string;
+    templateId?: string;
+    requestId?: string;
+  };
   NotificationPreferences: undefined;
   DocumentCategory: {
     ownerType: 'driver' | 'vehicle';
@@ -25,6 +35,7 @@ export type RootStackParamList = {
   // Driver module
   DriverVehicle: undefined;
   DriverDocuments: undefined;
+  DriverSigningDocuments: { driverId?: string } | undefined;
   DriverProfile: undefined;
 
   // Shared

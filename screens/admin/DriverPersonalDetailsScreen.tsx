@@ -23,6 +23,7 @@ import {
   listVehicles,
   listDepartments,
   listActiveDriverVehicles,
+  listActiveVehicleDrivers,
   assignDriverToVehicle,
   unassignVehicleDriver,
   getUserEmail,
@@ -117,9 +118,10 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
     }
     setBusyId('__new__');
     try {
-      // Never auto-primary here either — same rule as VehicleDriversEditor:
-      // becoming the vehicle's primary driver is always a separate action.
-      await assignDriverToVehicle(addingVehicleId, driverId, false);
+      // Mirror the vehicle-side flow: the first active driver on a vehicle
+      // becomes primary automatically, later additions stay secondary.
+      const targetVehicleAssignments = await listActiveVehicleDrivers(addingVehicleId);
+      await assignDriverToVehicle(addingVehicleId, driverId, targetVehicleAssignments.length === 0);
       setAddingVehicleId(null);
       await load();
       showToast('הרכב שויך לנהג');

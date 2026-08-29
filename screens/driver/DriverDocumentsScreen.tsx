@@ -24,7 +24,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
 
       <View style={styles.content}>
         <View style={styles.menuList}>
-          {DRIVER_DOCUMENT_CATEGORIES.map((item) => (
+          {DRIVER_DOCUMENT_CATEGORIES.flatMap((item) => [
             <TouchableOpacity
               key={item.key}
               style={styles.menuRow}
@@ -46,8 +46,26 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
                 {item.label}
               </AppText>
               <Ionicons name="chevron-back" size={16} color={COLORS.textFaint} />
-            </TouchableOpacity>
-          ))}
+            </TouchableOpacity>,
+            ...(item.key === 'license_docs'
+              ? [
+                  <TouchableOpacity
+                    key="signed_documents"
+                    style={styles.menuRow}
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate('DriverSigningDocuments')}
+                  >
+                    <View style={styles.menuIcon}>
+                      <Ionicons name="create-outline" size={17} color={COLORS.accent} />
+                    </View>
+                    <AppText weight="bold" style={styles.menuLabel} numberOfLines={1}>
+                      מסמכים לחתימה ומסמכים חתומים
+                    </AppText>
+                    <Ionicons name="chevron-back" size={16} color={COLORS.textFaint} />
+                  </TouchableOpacity>,
+                ]
+              : []),
+          ])}
         </View>
       </View>
     </Screen>

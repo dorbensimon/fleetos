@@ -28,15 +28,26 @@ const DRIVER_ITEMS: MenuItem[] = [
   { key: 'NotificationPreferences', icon: 'notifications-outline', label: 'ניהול התראות' },
 ];
 
-const ADMIN_ITEMS: MenuItem[] = [
+const OWNER_ITEMS: MenuItem[] = [
   { key: 'AdminProfile', icon: 'person-outline', label: 'הפרטים שלי' },
   { key: 'Departments', icon: 'business-outline', label: 'מחלקות' },
   { key: 'NotificationPreferences', icon: 'notifications-outline', label: 'ניהול התראות' },
 ];
 
+const ADMIN_ITEMS: MenuItem[] = [
+  ...OWNER_ITEMS.slice(0, 2),
+  { key: 'AdminDocumentSigning', icon: 'document-text-outline', label: 'מסמכים לחתימה' },
+  OWNER_ITEMS[2],
+];
+
 export default function MenuScreen({ navigation }: Props) {
   const { profile } = useCompany();
-  const items = profile?.role === 'driver' ? DRIVER_ITEMS : ADMIN_ITEMS;
+  const items =
+    profile?.role === 'driver'
+      ? DRIVER_ITEMS
+      : profile?.role === 'admin'
+        ? ADMIN_ITEMS
+        : OWNER_ITEMS;
 
   const logout = async () => {
     await supabase.auth.signOut();

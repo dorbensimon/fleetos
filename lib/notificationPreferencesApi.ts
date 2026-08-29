@@ -16,14 +16,17 @@ import { supabase } from './supabase';
  * default, so a brand-new user never needs a row seeded for them.
  */
 
-/** Closed list — see the PRD table. Do not add types here without updating the PRD. */
 export type NotificationType =
   | 'driver_profile_update'
   | 'driver_document_upload'
   | 'vehicle_insurance_mandatory_expiry'
   | 'vehicle_insurance_comprehensive_expiry'
   | 'vehicle_annual_test_expiry'
-  | 'vehicle_service_due';
+  | 'vehicle_inspection_last_date_expiry'
+  | 'vehicle_service_due'
+  | 'signature_request_assigned'
+  | 'vehicle_assignment'
+  | 'driver_profile_updated_by_manager';
 
 export interface NotificationTypeInfo {
   type: NotificationType;
@@ -32,7 +35,7 @@ export interface NotificationTypeInfo {
 }
 
 /** Hebrew label + short explanation shown per toggle, in the PRD's table order. */
-export const NOTIFICATION_TYPES: NotificationTypeInfo[] = [
+export const ADMIN_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
   {
     type: 'driver_profile_update',
     label: 'עדכון פרטי נהג',
@@ -59,10 +62,43 @@ export const NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     description: 'טסט שנתי לרכב מתקרב לפקיעה (עד 20 יום מראש)',
   },
   {
+    type: 'vehicle_inspection_last_date_expiry',
+    label: 'תוקף בדיקת רכב',
+    description: 'בדיקת רכב שמחושבת לפי תאריך הבדיקה האחרונה כבר פגה ודורשת טיפול',
+  },
+  {
     type: 'vehicle_service_due',
     label: 'טיפול רכב מתקרב',
     description: 'נותרו עד 1,000 ק"מ לטיפול התקופתי הבא ברכב',
   },
+];
+
+export const DRIVER_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
+  {
+    type: 'signature_request_assigned',
+    label: 'מסמך חדש לחתימה',
+    description: 'המנהל שלח אליך מסמך חדש שממתין לחתימה',
+  },
+  {
+    type: 'vehicle_assignment',
+    label: 'שיוך לרכב',
+    description: 'המנהל שייך אותך לרכב חדש',
+  },
+  {
+    type: 'driver_profile_updated_by_manager',
+    label: 'עדכון הפרטים שלי',
+    description: 'המנהל עדכן פרטים אישיים או פרטי רישיון בתיק שלך',
+  },
+  {
+    type: 'vehicle_inspection_last_date_expiry',
+    label: 'תוקף בדיקת רכב',
+    description: 'אחת מבדיקות הרכב שלך פגה לפי תאריך הבדיקה האחרונה',
+  },
+];
+
+export const NOTIFICATION_TYPES: NotificationTypeInfo[] = [
+  ...ADMIN_NOTIFICATION_TYPES,
+  ...DRIVER_NOTIFICATION_TYPES,
 ];
 
 export type NotificationPreferencesMap = Record<NotificationType, boolean>;

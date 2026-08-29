@@ -37,6 +37,7 @@ jest.mock('base64-arraybuffer', () => ({
 
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import { File } from 'expo-file-system';
 import { supabase } from '../supabase';
 import {
   pickImage,
@@ -137,6 +138,23 @@ describe('pickFile', () => {
     expect(result?.mimeType).toBe('application/octet-stream');
     expect(result?.name).toMatch(/^file-\d+$/);
   });
+
+  it('keeps browser base64 data so a picked PDF can be uploaded', async () => {
+    (DocumentPicker.getDocumentAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      assets: [{
+        uri: 'blob://document',
+        name: 'document.pdf',
+        mimeType: 'application/pdf',
+        base64: 'cGRm',
+      }],
+    });
+
+    const result = await pickFile();
+
+    expect(DocumentPicker.getDocumentAsync).toHaveBeenCalledWith(expect.objectContaining({ base64: true }));
+    expect(result).toEqual(expect.objectContaining({ base64: 'cGRm' }));
+  });
 });
 
 describe('uploadDocument', () => {
@@ -164,6 +182,26 @@ describe('uploadDocument', () => {
     expect(options).toEqual({ contentType: 'application/pdf', upsert: false });
     expect(bytes).toBeInstanceOf(ArrayBuffer);
     expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('uploads browser PDF base64 without reading a blob URI through FileSystem', async () => {
+    const upload = jest.fn().mockResolvedValue({ error: null });
+    const remove = jest.fn().mockResolvedValue({ error: null });
+    (supabase.storage.from as jest.Mock).mockReturnValue({ upload, remove });
+    (supabase.from as jest.Mock).mockReturnValueOnce(chain({ data: doc, error: null }));
+
+    await uploadDocument({
+      ...params,
+      file: {
+        uri: 'blob://document',
+        name: 'scan.pdf',
+        mimeType: 'application/pdf',
+        base64: 'data:application/pdf;base64,cGRm',
+      },
+    });
+
+    expect(File).not.toHaveBeenCalled();
+    expect(upload).toHaveBeenCalledTimes(1);
   });
 
   it('throws and never attempts the DB insert when the storage upload fails', async () => {

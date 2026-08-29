@@ -18,10 +18,13 @@ import DriverFormScreen from './screens/admin/DriverFormScreen';
 import DepartmentsScreen from './screens/admin/DepartmentsScreen';
 import AdminProfileScreen from './screens/admin/AdminProfileScreen';
 import NotificationsScreen from './screens/admin/NotificationsScreen';
+import AdminDocumentSigningScreen from './screens/admin/AdminDocumentSigningScreen';
+import DocusealWebViewScreen from './screens/DocusealWebViewScreen';
 import DocumentCategoryScreen from './screens/admin/DocumentCategoryScreen';
 import DriverPersonalDetailsScreen from './screens/admin/DriverPersonalDetailsScreen';
 import DriverVehicleScreen from './screens/driver/DriverVehicleScreen';
 import DriverDocumentsScreen from './screens/driver/DriverDocumentsScreen';
+import DriverSigningDocumentsScreen from './screens/driver/DriverSigningDocumentsScreen';
 import DriverProfileScreen from './screens/driver/DriverProfileScreen';
 import MenuScreen from './screens/MenuScreen';
 import { RootStackParamList } from './navigation/types';
@@ -90,12 +93,15 @@ export default function App() {
               <Stack.Screen name="Departments" component={DepartmentsScreen} />
               <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
+              <Stack.Screen name="AdminDocumentSigning" component={AdminDocumentSigningScreen} />
+              <Stack.Screen name="DocusealWebView" component={DocusealWebViewScreen} />
               <Stack.Screen name="DocumentCategory" component={DocumentCategoryScreen} />
               <Stack.Screen name="DriverPersonalDetails" component={DriverPersonalDetailsScreen} />
 
               {/* Driver module */}
               <Stack.Screen name="DriverVehicle" component={DriverVehicleScreen} />
               <Stack.Screen name="DriverDocuments" component={DriverDocumentsScreen} />
+              <Stack.Screen name="DriverSigningDocuments" component={DriverSigningDocumentsScreen} />
               <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />
             </Stack.Navigator>
           </NavigationContainer>

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -99,7 +99,11 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       Alert.alert('שגיאה', 'לא ניתן לפתוח את המסמך כרגע');
       return;
     }
-    Linking.openURL(url);
+    navigation.navigate('DocusealWebView', {
+      mode: doc.mime_type?.startsWith('image/') ? 'image' : 'document',
+      title: doc.file_name ?? doc.title,
+      src: url,
+    });
   };
 
   const downloadDoc = async (doc: DocumentRow) => {

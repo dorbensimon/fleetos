@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform, TextInput, Modal } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import React, { useEffect, useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, Platform, TextInput, Modal, Pressable } from 'react-native';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './Text';
-import { COLORS, RADIUS, FONT, formatDate } from '../../lib/theme';
+import { COLORS, RADIUS, FONT, formatDate, parseDateValue } from '../../lib/theme';
 
 /**
  * Date input that stays usable on every target.
@@ -53,6 +53,26 @@ export function DateField({
   const [showPicker, setShowPicker] = useState(false);
   const [webText, setWebText] = useState(value ? formatDate(value) : '');
 
+  useEffect(() => {
+    setWebText(value ? formatDate(value) : '');
+  }, [value]);
+
+  const openPicker = () => {
+    if (disabled) return;
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: value ? parseDateValue(value) : new Date(),
+        mode: 'date',
+        display: 'default',
+        onChange: (event, selected) => {
+          if (event.type !== 'dismissed' && selected) onChange(toIso(selected));
+        },
+      });
+      return;
+    }
+    setShowPicker(true);
+  };
+
   if (Platform.OS === 'web') {
     return (
       <View style={[styles.box, hasError && styles.boxError, disabled && styles.boxDisabled]}>
@@ -94,7 +114,7 @@ export function DateField({
     <>
       <TouchableOpacity
         activeOpacity={disabled ? 1 : 0.8}
-        onPress={() => !disabled && setShowPicker(true)}
+        onPress={openPicker}
         style={[styles.box, hasError && styles.boxError, disabled && styles.boxDisabled]}
       >
         <Ionicons name="calendar-outline" size={17} color={COLORS.textFaint} />
@@ -102,26 +122,18 @@ export function DateField({
           {value ? formatDate(value) : placeholder}
         </AppText>
         {!disabled && !!value && (
-          <TouchableOpacity onPress={() => onChange(null)} hitSlop={8}>
+          <TouchableOpacity
+            onPress={(event) => {
+              event.stopPropagation();
+              onChange(null);
+            }}
+            hitSlop={8}
+          >
             <Ionicons name="close-circle" size={17} color={COLORS.textFaint} />
           </TouchableOpacity>
         )}
         {disabled && <Ionicons name="lock-closed-outline" size={15} color={COLORS.textFaint} />}
       </TouchableOpacity>
-
-      {showPicker && Platform.OS === 'android' && (
-        <DateTimePicker
-          value={value ? new Date(value) : new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selected) => {
-            // Android's dialog is its own native window and dismisses itself.
-            setShowPicker(false);
-            if (event.type === 'dismissed') return;
-            if (selected) onChange(toIso(selected));
-          }}
-        />
-      )}
 
       {showPicker && Platform.OS === 'ios' && (
         // A real Modal isolates the spinner on its own native layer — the
@@ -129,16 +141,17 @@ export function DateField({
         // this field, and tapping "סיום" could land on that section's own
         // touch target and collapse it right along with the picker.
         <Modal transparent animationType="fade" onRequestClose={() => setShowPicker(false)}>
-          <TouchableOpacity
+          <Pressable
             style={styles.modalBackdrop}
-            activeOpacity={1}
             onPress={() => setShowPicker(false)}
           >
-            <View style={styles.modalSheet}>
+            <Pressable style={styles.modalSheet} onPress={(event) => event.stopPropagation()}>
               <DateTimePicker
-                value={value ? new Date(value) : new Date()}
+                value={value ? parseDateValue(value) : new Date()}
                 mode="date"
                 display="spinner"
+                themeVariant="light"
+                textColor={COLORS.text}
                 onChange={(event, selected) => {
                   if (event.type === 'dismissed') return;
                   if (selected) onChange(toIso(selected));
@@ -149,8 +162,8 @@ export function DateField({
                   סיום
                 </AppText>
               </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
+            </Pressable>
+          </Pressable>
         </Modal>
       )}
     </>

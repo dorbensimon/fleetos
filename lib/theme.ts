@@ -102,11 +102,20 @@ export const TYPO = {
  * soon     — within 30 days
  * ok       — comfortably valid
  */
-export type ExpiryState = 'ok' | 'soon' | 'expired' | 'missing';
+export type ExpiryState = 'ok' | 'soon' | 'expired' | 'missing' | 'optional';
+
+/** Parses database date-only values without shifting them across time zones. */
+export function parseDateValue(value: string): Date {
+  const dateOnly = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnly) {
+    return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]), 12);
+  }
+  return new Date(value);
+}
 
 export function expiryState(date: string | null | undefined): ExpiryState {
   if (!date) return 'missing';
-  const target = new Date(date);
+  const target = parseDateValue(date);
   if (Number.isNaN(target.getTime())) return 'missing';
 
   const today = new Date();
@@ -124,12 +133,13 @@ export const EXPIRY_STYLE: Record<ExpiryState, { bg: string; fg: string; label: 
   soon: { bg: COLORS.warnBg, fg: COLORS.warnText, label: 'קרוב' },
   expired: { bg: COLORS.dangerBg, fg: COLORS.dangerText, label: 'פג' },
   missing: { bg: COLORS.neutralBg, fg: COLORS.neutralText, label: 'חסר' },
+  optional: { bg: COLORS.accentSoft, fg: COLORS.accent, label: 'אופציונלי' },
 };
 
 /** Days remaining until an expiry date (negative once it's passed). `null` when the date is empty/invalid. */
 export function daysUntilExpiry(date: string | null | undefined): number | null {
   if (!date) return null;
-  const target = new Date(date);
+  const target = parseDateValue(date);
   if (Number.isNaN(target.getTime())) return null;
 
   const today = new Date();
@@ -151,7 +161,7 @@ export function timeGreeting(): string {
 /** Formats an ISO date as DD/MM/YYYY, or an em dash when empty. */
 export function formatDate(date: string | null | undefined): string {
   if (!date) return '—';
-  const d = new Date(date);
+  const d = parseDateValue(date);
   if (Number.isNaN(d.getTime())) return '—';
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');

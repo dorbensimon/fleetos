@@ -112,6 +112,8 @@ export interface Notification {
   company_id: string;
   actor_id: string | null;
   actor_name: string | null;
+  recipient_id: string | null;
+  notification_type: string | null;
   message: string;
   read_at: string | null;
   created_at: string;

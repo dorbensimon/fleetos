@@ -14,6 +14,12 @@ import {
   worstTone,
   chipFor,
 } from '../../lib/fleetCardHelpers';
+import {
+  complianceBadgeLabel,
+  complianceBadgeState,
+  complianceRemainingDays,
+  findComplianceDef,
+} from '../../lib/compliance';
 import { StatCell, statsRowStyles } from './StatCell';
 
 export function VehicleCard({
@@ -33,8 +39,11 @@ export function VehicleCard({
 }) {
   const expiryOf = (itemType: string) => compliance.get(item.id)?.find((c) => c.item_type === itemType)?.expiry_date ?? null;
 
-  const insurance = expiryOf('insurance_mandatory');
-  const test = expiryOf('annual_test');
+  const insuranceItem = compliance.get(item.id)?.find((c) => c.item_type === 'insurance_mandatory') ?? null;
+  const testItem = compliance.get(item.id)?.find((c) => c.item_type === 'annual_test') ?? null;
+  const insurance = insuranceItem?.expiry_date ?? null;
+  const testDef = findComplianceDef('vehicle', 'annual_test');
+  const test = testItem?.expiry_date ?? null;
   const assignedDrivers = vehicleDrivers.get(item.id) ?? [];
   const driverName = assignedDrivers.find((d) => d.is_primary)?.full_name ?? assignedDrivers[0]?.full_name ?? null;
   const extraDriverCount = Math.max(0, assignedDrivers.length - (driverName ? 1 : 0));
@@ -42,7 +51,7 @@ export function VehicleCard({
   const isArchived = item.status === 'archived';
 
   const insDays = daysUntilExpiry(insurance);
-  const testDays = daysUntilExpiry(test);
+  const testDays = testDef ? complianceRemainingDays(testDef, testItem) : daysUntilExpiry(test);
   const kmToService = item.next_service_km != null ? item.next_service_km - item.odometer : null;
   const svcTotalKm =
     item.service_interval_km ??
@@ -133,9 +142,17 @@ export function VehicleCard({
           />
           <StatCell
             label="טסט"
-            value={test ? formatDate(test) : 'חסר'}
-            note={testDays == null ? 'חסר' : testDays < 0 ? 'פג תוקף' : `${testDays} ימים`}
-            tone={testTone}
+            value={testDef ? complianceBadgeLabel(testDef, testItem) : test ? formatDate(test) : 'חסר'}
+            note={
+              testDef && testItem?.last_date && !testItem.expiry_date
+                ? `בדיקה אחרונה ${formatDate(testItem.last_date)}`
+                : testDays == null
+                ? 'חסר'
+                : testDays < 0
+                ? 'פג תוקף'
+                : `${testDays} ימים`
+            }
+            tone={testDef && complianceBadgeState(testDef, testItem) === 'optional' ? '#1DBF73' : testTone}
             ratio={remainingRatio(testDays, YEAR_DAYS)}
             showDivider
           />

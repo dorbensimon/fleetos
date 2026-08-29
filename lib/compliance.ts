@@ -1,3 +1,6 @@
+import type { ComplianceItem } from './adminApi';
+import { daysUntilExpiry, expiryState, ExpiryState, formatDate, parseDateValue } from './theme';
+
 /**
  * The catalogue of tracked expiry items ("compliance items").
  *
@@ -30,6 +33,64 @@ export interface ComplianceItemDef {
   label: string;
   /** Some items also record when the last check happened, not just the next one. */
   tracksLastDate?: boolean;
+  /** When no explicit next date was entered, derive validity from the last check date. */
+  validityDays?: number;
+}
+
+const DAY_MS = 86_400_000;
+
+function toIsoDate(date: Date): string {
+  const yyyy = String(date.getFullYear());
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function addDays(value: string, days: number): string {
+  const date = parseDateValue(value);
+  date.setHours(12, 0, 0, 0);
+  date.setTime(date.getTime() + days * DAY_MS);
+  return toIsoDate(date);
+}
+
+export function complianceTargetDate(
+  def: ComplianceItemDef,
+  item: ComplianceItem | null | undefined
+): string | null {
+  if (item?.expiry_date) return item.expiry_date;
+  if (def.tracksLastDate && def.validityDays && item?.last_date) {
+    return addDays(item.last_date, def.validityDays);
+  }
+  return null;
+}
+
+export function complianceBadgeState(
+  def: ComplianceItemDef,
+  item: ComplianceItem | null | undefined
+): ExpiryState {
+  const targetDate = complianceTargetDate(def, item);
+  if (targetDate) return expiryState(targetDate);
+  if (def.tracksLastDate && item?.last_date) return 'optional';
+  return 'missing';
+}
+
+export function complianceBadgeLabel(
+  def: ComplianceItemDef,
+  item: ComplianceItem | null | undefined
+): string {
+  if (item?.expiry_date) return formatDate(item.expiry_date);
+  if (def.tracksLastDate && item?.last_date) return formatDate(item.last_date);
+  return 'חסר';
+}
+
+export function complianceRemainingDays(
+  def: ComplianceItemDef,
+  item: ComplianceItem | null | undefined
+): number | null {
+  const targetDate = complianceTargetDate(def, item);
+  if (targetDate) return daysUntilExpiry(targetDate);
+  if (def.tracksLastDate && item?.last_date) return Number.POSITIVE_INFINITY;
+  return null;
 }
 
 export const CATEGORY_LABELS: Record<ComplianceCategory, string> = {
@@ -58,18 +119,18 @@ export const VEHICLE_COMPLIANCE: ComplianceItemDef[] = [
   { itemType: 'insurance_mandatory', category: 'insurance', label: 'ביטוח חובה' },
   { itemType: 'insurance_comprehensive', category: 'insurance', label: 'ביטוח מקיף' },
 
-  { itemType: 'annual_test', category: 'inspection', label: 'טסט שנתי', tracksLastDate: true },
-  { itemType: 'brakes_semiannual', category: 'inspection', label: 'בדיקת בלמים חצי-שנתית', tracksLastDate: true },
-  { itemType: 'winter_check', category: 'inspection', label: 'בדיקת חורף', tracksLastDate: true },
-  { itemType: 'child_detection', category: 'inspection', label: 'בדיקת שכחת ילדים', tracksLastDate: true },
+  { itemType: 'annual_test', category: 'inspection', label: 'טסט שנתי', tracksLastDate: true, validityDays: 365 },
+  { itemType: 'brakes_semiannual', category: 'inspection', label: 'בדיקת בלמים חצי-שנתית', tracksLastDate: true, validityDays: 183 },
+  { itemType: 'winter_check', category: 'inspection', label: 'בדיקת חורף', tracksLastDate: true, validityDays: 365 },
+  { itemType: 'child_detection', category: 'inspection', label: 'בדיקת שכחת ילדים', tracksLastDate: true, validityDays: 365 },
   { itemType: 'tachograph', category: 'inspection', label: 'טכוגרף' },
-  { itemType: 'safety_officer', category: 'inspection', label: 'ביקורת קצב״ת', tracksLastDate: true },
+  { itemType: 'safety_officer', category: 'inspection', label: 'ביקורת קצב״ת', tracksLastDate: true, validityDays: 365 },
 ];
 
 export const DRIVER_COMPLIANCE: ComplianceItemDef[] = [
   { itemType: 'health_declaration', category: 'health', label: 'הצהרת בריאות' },
 
-  { itemType: 'periodic_training', category: 'training', label: 'הדרכות תקופתיות', tracksLastDate: true },
+  { itemType: 'periodic_training', category: 'training', label: 'הדרכות תקופתיות', tracksLastDate: true, validityDays: 365 },
   { itemType: 'procedure_6', category: 'training', label: 'נוהל 6 (הסעת ילדים)' },
   { itemType: 'crane_license', category: 'training', label: 'רישיון מנוף' },
   { itemType: 'rp_certificate', category: 'training', label: 'תוקף ר.פ' },

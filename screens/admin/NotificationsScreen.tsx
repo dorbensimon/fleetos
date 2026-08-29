@@ -30,7 +30,7 @@ export function timeAgo(iso: string): string {
 }
 
 export default function NotificationsScreen({ navigation }: Props) {
-  const { companyId } = useCompany();
+  const { companyId, profile } = useCompany();
   const [items, setItems] = useState<Notification[]>([]);
   const [unreadIds, setUnreadIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -53,18 +53,32 @@ export default function NotificationsScreen({ navigation }: Props) {
     }, [companyId])
   );
 
+  const targetRouteForNotification = (
+    n: Notification
+  ): 'DriverSigningDocuments' | 'DriverVehicle' | 'DriverProfile' | null => {
+    if (profile?.role !== 'driver') return null;
+    if (n.notification_type === 'signature_request_assigned') return 'DriverSigningDocuments';
+    if (n.notification_type === 'vehicle_assignment') return 'DriverVehicle';
+    if (n.notification_type === 'driver_profile_updated_by_manager') return 'DriverProfile';
+    if (n.notification_type === 'vehicle_inspection_last_date_expiry') return 'DriverVehicle';
+    return null;
+  };
+
   const openNotification = async (n: Notification) => {
-    if (!unreadIds.has(n.id)) return;
-    setUnreadIds((prev) => {
-      const next = new Set(prev);
-      next.delete(n.id);
-      return next;
-    });
-    try {
-      await markNotificationRead(n.id);
-    } catch {
-      // Best-effort — already reflected locally.
+    const targetRoute = targetRouteForNotification(n);
+    if (unreadIds.has(n.id)) {
+      setUnreadIds((prev) => {
+        const next = new Set(prev);
+        next.delete(n.id);
+        return next;
+      });
+      try {
+        await markNotificationRead(n.id);
+      } catch {
+        // Best-effort — already reflected locally.
+      }
     }
+    if (targetRoute) navigation.navigate(targetRoute);
   };
 
   const markAllRead = async () => {
@@ -90,14 +104,30 @@ export default function NotificationsScreen({ navigation }: Props) {
       {loading ? (
         <LoadingState />
       ) : items.length === 0 ? (
-        <EmptyState icon="notifications-outline" title="אין עדיין התראות" hint="עדכונים עצמיים של נהגים יופיעו כאן" />
+        <EmptyState
+          icon="notifications-outline"
+          title="אין עדיין התראות"
+          hint={profile?.role === 'driver' ? 'עדכונים מהמנהל שלך יופיעו כאן' : 'עדכונים הקשורים לחברה יופיעו כאן'}
+        />
       ) : (
         <View style={styles.content}>
           {items.map((n) => (
             <TouchableOpacity key={n.id} activeOpacity={0.7} onPress={() => openNotification(n)}>
               <Card style={[styles.row, unreadIds.has(n.id) && styles.rowUnread]}>
                 <View style={styles.icon}>
-                  <Ionicons name="person-circle-outline" size={20} color={COLORS.accent} />
+                  <Ionicons
+                    name={
+                      n.notification_type === 'signature_request_assigned'
+                        ? 'create-outline'
+                        : n.notification_type === 'vehicle_assignment'
+                        ? 'car-outline'
+                        : n.notification_type === 'vehicle_inspection_last_date_expiry'
+                        ? 'warning-outline'
+                        : 'person-circle-outline'
+                    }
+                    size={20}
+                    color={COLORS.accent}
+                  />
                 </View>
                 <View style={styles.textWrap}>
                   <AppText weight="bold" style={styles.message}>

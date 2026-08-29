@@ -19,6 +19,16 @@ interface PickedFile {
   uri: string;
   name: string;
   mimeType: string;
+  base64?: string;
+}
+
+function rawBase64(value: string): string {
+  const separator = value.indexOf(',');
+  return value.startsWith('data:') && separator >= 0 ? value.slice(separator + 1) : value;
+}
+
+async function readPickedFileBase64(file: PickedFile): Promise<string> {
+  return rawBase64(file.base64 || await new File(file.uri).base64());
 }
 
 /** Opens the photo library, for scans and photographed paperwork. */
@@ -67,6 +77,7 @@ export async function pickFile(): Promise<PickedFile | null> {
   const result = await DocumentPicker.getDocumentAsync({
     type: ['application/pdf', 'image/*'],
     copyToCacheDirectory: true,
+    base64: true,
   });
 
   if (result.canceled || !result.assets?.[0]) return null;
@@ -76,6 +87,7 @@ export async function pickFile(): Promise<PickedFile | null> {
     uri: asset.uri,
     name: asset.name || `file-${Date.now()}`,
     mimeType: asset.mimeType || 'application/octet-stream',
+    ...(asset.base64 ? { base64: asset.base64 } : {}),
   };
 }
 
@@ -98,7 +110,7 @@ export async function uploadDocument(params: {
 }): Promise<DocumentRow> {
   const { file } = params;
 
-  const base64 = await new File(file.uri).base64();
+  const base64 = await readPickedFileBase64(file);
   const bytes = decode(base64);
 
   const ext = file.name.split('.').pop() || 'bin';

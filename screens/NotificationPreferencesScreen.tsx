@@ -9,7 +9,6 @@ import {
   ToggleRow,
   LoadingState,
   ErrorState,
-  EmptyState,
   AppText,
   useToast,
 } from '../components/ui';
@@ -17,7 +16,8 @@ import { COLORS, SPACING } from '../lib/theme';
 import { useCompany } from '../lib/CompanyContext';
 import { RootStackParamList } from '../navigation/types';
 import {
-  NOTIFICATION_TYPES,
+  ADMIN_NOTIFICATION_TYPES,
+  DRIVER_NOTIFICATION_TYPES,
   NotificationType,
   NotificationPreferencesMap,
   getPreferences,
@@ -26,10 +26,7 @@ import {
 
 /**
  * Notification preferences, reached from Settings — shared by admin and
- * driver (same screen, per the PRD's UI-consistency requirement). Drivers
- * currently have no notification types of their own yet (see PRD "קהל
- * יעד"), so they see an empty state instead of the 6-toggle list shown to
- * admins.
+ * driver. Each role sees only notification types that are relevant to it.
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'NotificationPreferences'>;
 
@@ -43,6 +40,7 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
   const [savingType, setSavingType] = useState<NotificationType | null>(null);
 
   const isDriver = profile?.role === 'driver';
+  const visibleTypes = isDriver ? DRIVER_NOTIFICATION_TYPES : ADMIN_NOTIFICATION_TYPES;
 
   const load = useCallback(async () => {
     if (!profile?.id) return;
@@ -91,21 +89,13 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
         <View style={styles.content}>
           <ErrorState message={error} onRetry={load} />
         </View>
-      ) : isDriver ? (
-        <View style={styles.content}>
-          <EmptyState
-            icon="notifications-outline"
-            title="אין עדיין התראות רלוונטיות"
-            hint="כרגע אין סוגי התראה פעילים עבור נהגים. כשיתווספו, תוכל לשלוט בהם כאן."
-          />
-        </View>
       ) : (
         <View style={styles.content}>
           <AppText style={styles.hint}>
             שליטה על ההתראות שאתה מקבל באפליקציה. השינוי נשמר באופן מיידי.
           </AppText>
           <Card style={styles.card}>
-            {NOTIFICATION_TYPES.map((item, index) => (
+            {visibleTypes.map((item, index) => (
               <View key={item.type} style={index > 0 ? styles.divider : undefined}>
                 <ToggleRow
                   label={item.label}

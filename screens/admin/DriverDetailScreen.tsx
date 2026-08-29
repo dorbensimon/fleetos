@@ -165,7 +165,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
           </PressableCard>
 
           <View style={styles.menuList}>
-            {MENU.map((item) => (
+            {MENU.flatMap((item) => [
               <TouchableOpacity
                 key={item.key}
                 style={styles.menuRow}
@@ -186,8 +186,26 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
                   </View>
                 )}
                 <Ionicons name="chevron-back" size={16} color={COLORS.textFaint} />
-              </TouchableOpacity>
-            ))}
+              </TouchableOpacity>,
+              ...(item.key === 'license_docs'
+                ? [
+                    <TouchableOpacity
+                      key="signed_documents"
+                      style={styles.menuRow}
+                      activeOpacity={0.7}
+                      onPress={() => navigation.navigate('DriverSigningDocuments', { driverId })}
+                    >
+                      <View style={styles.menuIcon}>
+                        <Ionicons name="create-outline" size={17} color={COLORS.accent} />
+                      </View>
+                      <AppText weight="bold" style={styles.menuLabel} numberOfLines={1}>
+                        מסמכים לחתימה ומסמכים חתומים
+                      </AppText>
+                      <Ionicons name="chevron-back" size={16} color={COLORS.textFaint} />
+                    </TouchableOpacity>,
+                  ]
+                : []),
+            ])}
 
             <TouchableOpacity
               style={styles.menuRow}

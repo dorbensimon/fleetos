@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, Card, ExpiryBadge, PrimaryButton, useToast } from './ui';
 import { DateField } from './ui/DateField';
-import { COLORS, RADIUS, SPACING, expiryState, formatDate } from '../lib/theme';
+import { COLORS, EXPIRY_STYLE, RADIUS, SPACING } from '../lib/theme';
 import {
   ComplianceItem,
   DocumentRow,
@@ -22,6 +22,9 @@ import {
 import {
   ComplianceItemDef,
   complianceCatalog,
+  complianceBadgeLabel,
+  complianceBadgeState,
+  complianceTargetDate,
   groupByCategory,
 } from '../lib/compliance';
 import {
@@ -232,6 +235,8 @@ export function ComplianceSection({
             const currentLastDate = draft?.last_date !== undefined ? draft.last_date : item?.last_date ?? null;
             const currentExpiryDate =
               draft?.expiry_date !== undefined ? draft.expiry_date : item?.expiry_date ?? null;
+            const badgeState = complianceBadgeState(def, item);
+            const derivedTargetDate = complianceTargetDate(def, item);
             const isDirty =
               !!draft &&
               ((draft.last_date !== undefined && draft.last_date !== (item?.last_date ?? null)) ||
@@ -258,10 +263,21 @@ export function ComplianceSection({
                         {itemDocs.length} מסמכים
                       </AppText>
                     )}
+                    {def.tracksLastDate && item?.last_date && !item?.expiry_date && (
+                      <AppText
+                        style={[
+                          styles.itemStatusNote,
+                          { color: EXPIRY_STYLE[badgeState].fg },
+                        ]}
+                      >
+                        בדיקה אחרונה
+                        {derivedTargetDate ? ' · תוקף מחושב אוטומטית' : ''}
+                      </AppText>
+                    )}
                   </View>
                   <ExpiryBadge
-                    state={expiryState(item?.expiry_date)}
-                    label={item?.expiry_date ? formatDate(item.expiry_date) : 'חסר'}
+                    state={badgeState}
+                    label={complianceBadgeLabel(def, item)}
                   />
                 </TouchableOpacity>
 
@@ -281,7 +297,7 @@ export function ComplianceSection({
 
                     <View style={styles.dateRow}>
                       <AppText style={styles.dateLabel}>
-                        {def.tracksLastDate ? 'בדיקה הבאה' : 'תוקף'}
+                        {def.tracksLastDate ? 'בדיקה הבאה (אופציונלי)' : 'תוקף'}
                       </AppText>
                       <View style={styles.dateInput}>
                         <DateField
@@ -523,6 +539,7 @@ const styles = StyleSheet.create({
   itemLabelWrap: { flex: 1, gap: 1 },
   itemLabel: { fontSize: 13.5 },
   itemDocCount: { fontSize: 11, color: COLORS.textFaint },
+  itemStatusNote: { fontSize: 11.5 },
 
   itemBody: { paddingBottom: SPACING.md, gap: SPACING.sm },
   dateRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.md },

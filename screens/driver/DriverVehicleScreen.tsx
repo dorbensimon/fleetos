@@ -7,6 +7,7 @@ import { COLORS, RADIUS, SPACING, CARD_SHADOW, expiryState, formatDate } from '.
 import { useCompany } from '../../lib/CompanyContext';
 import { listActiveDriverVehicles, listComplianceForOwners, DriverVehicleAssignment, ComplianceItem } from '../../lib/adminApi';
 import { VEHICLE_TYPE_LABELS } from '../../lib/compliance';
+import { complianceBadgeLabel, complianceBadgeState, findComplianceDef } from '../../lib/compliance';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -86,7 +87,8 @@ function VehicleCard({
     compliance.find((c) => c.item_type === itemType)?.expiry_date ?? null;
 
   const insurance = expiryOf('insurance_mandatory');
-  const test = expiryOf('annual_test');
+  const testItem = compliance.find((c) => c.item_type === 'annual_test') ?? null;
+  const testDef = findComplianceDef('vehicle', 'annual_test');
 
   return (
     <>
@@ -117,7 +119,10 @@ function VehicleCard({
         </View>
         <View style={styles.metaRow}>
           <AppText style={styles.metaLabel}>טסט שנתי</AppText>
-          <ExpiryBadge state={expiryState(test)} label={test ? formatDate(test) : 'חסר'} />
+          <ExpiryBadge
+            state={testDef ? complianceBadgeState(testDef, testItem) : expiryState(testItem?.expiry_date)}
+            label={testDef ? complianceBadgeLabel(testDef, testItem) : testItem?.expiry_date ? formatDate(testItem.expiry_date) : 'חסר'}
+          />
         </View>
         {!!vehicle.odometer && (
           <View style={styles.metaRow}>

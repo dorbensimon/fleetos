@@ -4,11 +4,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Screen, AppText, Card, PressableCard, LoadingState, DriverMenuButton } from '../components/ui';
+import { Screen, AppText, Card, PressableCard, LoadingState, DriverMenuButton, NotificationBellButton } from '../components/ui';
 import { COLORS, RADIUS, SPACING, CARD_SHADOW, timeGreeting, expiryState, formatDate } from '../lib/theme';
 import { useCompany } from '../lib/CompanyContext';
 import { getDriver, listActiveDriverVehicles, listCompliance, DriverRow, Vehicle, ComplianceItem } from '../lib/adminApi';
-import { VEHICLE_TYPE_LABELS } from '../lib/compliance';
+import { VEHICLE_TYPE_LABELS, complianceBadgeState, findComplianceDef } from '../lib/compliance';
 import { RootStackParamList } from '../navigation/types';
 
 /**
@@ -55,18 +55,21 @@ export default function DriverHomeScreen({ navigation }: Props) {
   );
 
   const fullName = driver?.full_name?.trim();
-  const test = compliance.find((c) => c.item_type === 'annual_test')?.expiry_date ?? null;
-  const testState = expiryState(test);
+  const testItem = compliance.find((c) => c.item_type === 'annual_test') ?? null;
+  const testDef = findComplianceDef('vehicle', 'annual_test');
+  const test = testItem?.expiry_date ?? null;
+  const testState = testDef ? complianceBadgeState(testDef, testItem) : expiryState(test);
 
   return (
     <Screen>
       <View style={[styles.topRow, { paddingTop: insets.top + 14 }]}>
+        <DriverMenuButton />
         <View style={styles.greetingWrap}>
           <AppText weight="bold" style={styles.greetingName} numberOfLines={1}>
             {fullName ? `${timeGreeting()}, ${fullName}` : timeGreeting()}
           </AppText>
         </View>
-        <DriverMenuButton />
+        <NotificationBellButton />
       </View>
 
       {loading ? (
@@ -90,7 +93,11 @@ export default function DriverHomeScreen({ navigation }: Props) {
                       VEHICLE_TYPE_LABELS[vehicle.vehicle_type]}
                   </AppText>
                   <AppText style={styles.vehicleSub}>
-                    {test ? `טסט הבא: ${formatDate(test)}` : 'ללא תאריך טסט רשום'}
+                    {test
+                      ? `טסט הבא: ${formatDate(test)}`
+                      : testItem?.last_date
+                      ? `בדיקה אחרונה: ${formatDate(testItem.last_date)}`
+                      : 'ללא תאריך טסט רשום'}
                     {otherVehicleCount > 0
                       ? ` · +${otherVehicleCount} ${otherVehicleCount === 1 ? 'רכב נוסף' : 'רכבים נוספים'}`
                       : ''}
@@ -145,7 +152,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingBottom: SPACING.md,
   },
-  greetingWrap: { alignItems: 'flex-end' },
+  greetingWrap: { flex: 1, alignItems: 'center', paddingHorizontal: SPACING.md },
   greetingName: { fontSize: 20 },
 
   content: { padding: SPACING.lg, gap: SPACING.md },

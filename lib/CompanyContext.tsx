@@ -83,6 +83,24 @@ export function CompanyProvider({
     load();
   }, [load]);
 
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) {
+        setProfile(null);
+        setCompany(null);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      load();
+    });
+
+    return () => subscription.unsubscribe();
+  }, [load]);
+
   const value = useMemo<CompanyContextValue>(
     () => ({
       companyId: companyIdOverride ?? profile?.company_id ?? null,

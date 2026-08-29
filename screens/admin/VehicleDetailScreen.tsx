@@ -37,6 +37,7 @@ import {
   VehicleDriverWithProfile,
 } from '../../lib/adminApi';
 import { VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../lib/compliance';
+import { complianceBadgeLabel, complianceBadgeState, findComplianceDef } from '../../lib/compliance';
 import { formatPlate } from '../../lib/plate';
 import { RootStackParamList } from '../../navigation/types';
 
@@ -268,7 +269,8 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
       : `${kmToService.toLocaleString()} ק״מ`;
   const insuranceDate =
     compliance.find((c) => c.item_type === 'insurance_mandatory')?.expiry_date ?? null;
-  const testDate = compliance.find((c) => c.item_type === 'annual_test')?.expiry_date ?? null;
+  const testItem = compliance.find((c) => c.item_type === 'annual_test') ?? null;
+  const testDef = findComplianceDef('vehicle', 'annual_test');
 
   return (
     <Screen>
@@ -314,7 +316,10 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
         </View>
         <View style={styles.badgeItem}>
           <AppText style={styles.badgeLabel}>טסט</AppText>
-          <ExpiryBadge state={expiryState(testDate)} label={testDate ? formatDate(testDate) : 'חסר'} />
+          <ExpiryBadge
+            state={testDef ? complianceBadgeState(testDef, testItem) : expiryState(testItem?.expiry_date)}
+            label={testDef ? complianceBadgeLabel(testDef, testItem) : testItem?.expiry_date ? formatDate(testItem.expiry_date) : 'חסר'}
+          />
         </View>
         <View style={styles.badgeItem}>
           <AppText style={styles.badgeLabel}>טיפול</AppText>

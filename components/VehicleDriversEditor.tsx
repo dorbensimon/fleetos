@@ -50,11 +50,9 @@ export function VehicleDriversEditor({
     if (!addingDriverId) return;
     setBusyId('__new__');
     try {
-      // Never auto-primary, even for a vehicle with zero drivers so far —
-      // per the product decision, becoming primary is always a separate,
-      // deliberate action (the "★" button below), never a side effect of
-      // simply adding a driver.
-      await assignDriverToVehicle(vehicleId, addingDriverId, false);
+      // If the vehicle has no active drivers yet, the first one becomes
+      // primary automatically; only additional drivers start as secondary.
+      await assignDriverToVehicle(vehicleId, addingDriverId, assignments.length === 0);
       setAddingDriverId(null);
       await onChanged();
       showToast('הנהג שויך לרכב');
