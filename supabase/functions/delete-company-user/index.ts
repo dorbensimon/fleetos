@@ -14,6 +14,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+  if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'השיטה אינה נתמכת' }), { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   try {
     const verify = await verifyOwner(req.headers.get('Authorization'));
@@ -50,7 +51,8 @@ Deno.serve(async (req) => {
     // Deletes only this one account. Drivers in the same company (if
     // `target` is an admin) are intentionally left untouched — see
     // delete-company-drivers for the separate, explicit bulk action.
-    await adminClient.from('profiles').delete().eq('id', userId);
+    // profiles.id cascades from auth.users.id, so one Auth deletion removes
+    // both records without a failure window between two separate writes.
     const { error: deleteUserError } = await adminClient.auth.admin.deleteUser(userId);
 
     if (deleteUserError) {

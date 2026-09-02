@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Easing } from 'react-native';
 import { AppText } from '../ui';
-import { COLORS, RADIUS, SPACING } from '../../lib/theme';
+import { RADIUS, SPACING } from '../../lib/theme';
 import { TONE_BAD } from '../../lib/fleetCardHelpers';
+import { FLEET_COLORS, FLEET_FONT } from './fleetTheme';
 
 /**
  * One column of the insurance/test/service stats row: a coloured dot +
@@ -65,30 +66,30 @@ export function StatCell({
 export const statsRowStyles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row-reverse',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: FLEET_COLORS.chipsBarBg,
     borderTopWidth: 1,
-    borderTopColor: '#EFEFEF',
+    borderTopColor: FLEET_COLORS.divider,
   },
 });
 
 const styles = StyleSheet.create({
   statCell: { flex: 1, gap: 5, padding: SPACING.sm },
-  statCellDivider: { borderLeftWidth: 1, borderLeftColor: '#EFEFEF' },
+  statCellDivider: { borderLeftWidth: 1, borderLeftColor: FLEET_COLORS.divider },
   statHeader: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
   statDot: { width: 6, height: 6, borderRadius: 3 },
-  statLabel: { fontSize: 10.5, fontWeight: '600', color: '#8A8A8A' },
-  statValue: { fontSize: 12.5, color: COLORS.text, textAlign: 'right' },
+  statLabel: { fontSize: 10.5, color: FLEET_COLORS.textSecondary, fontFamily: FLEET_FONT.bold },
+  statValue: { fontSize: 12.5, color: FLEET_COLORS.textPrimary, textAlign: 'right', fontFamily: FLEET_FONT.bold },
   statValueBad: { color: TONE_BAD },
   statTrack: {
     height: 3,
     borderRadius: RADIUS.pill,
-    backgroundColor: '#ECECEC',
+    backgroundColor: FLEET_COLORS.trackBg,
     overflow: 'hidden',
     marginTop: 1,
     flexDirection: 'row',
     justifyContent: 'flex-end',
   },
   statBar: { height: '100%', borderRadius: RADIUS.pill },
-  statNote: { fontSize: 10, color: '#8A8A8A' },
-  statNoteBad: { fontWeight: '700', color: TONE_BAD },
+  statNote: { fontSize: 10, color: FLEET_COLORS.textSecondary, fontFamily: FLEET_FONT.regular },
+  statNoteBad: { color: TONE_BAD, fontFamily: FLEET_FONT.bold },
 });

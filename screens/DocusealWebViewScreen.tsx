@@ -18,6 +18,10 @@ function scriptValue(value: string) {
   return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
+function scriptJson(value: unknown) {
+  return JSON.stringify(value).replace(/</g, '\\u003c');
+}
+
 function buildHtml(params: RootStackParamList['DocusealWebView']) {
   const host = params.host || 'cdn.docuseal.com';
   const hostAttribute = host.includes('.eu') ? ` data-host="${host}"` : '';
@@ -30,7 +34,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
 
   if (params.mode === 'document') {
     return `${base}
-      <style>#pages{padding:8px}canvas{display:block;max-width:100%;height:auto;margin:0 auto 10px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.12)}</style>
+      <style>#pages{padding:8px}.page{position:relative;margin:0 auto 10px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.12)}canvas{display:block;width:100%;height:auto}.preview-field{position:absolute;box-sizing:border-box;border:2px dashed #0e7490;background:rgba(14,116,144,.10);color:#075985;display:flex;align-items:center;justify-content:center;font:700 12px sans-serif;pointer-events:none;overflow:hidden}.preview-field.stamp{border-color:#7c3aed;background:rgba(124,58,237,.10);color:#6d28d9}</style>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>${bridge}</head>
       <body><main id="pages"></main><script>
         (async () => {
@@ -38,19 +42,37 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
             const pdf = await pdfjsLib.getDocument({ url: ${scriptValue(params.src || '')}, withCredentials: false }).promise;
             const root = document.getElementById('pages');
+            const fields = ${scriptJson(params.previewFields || [])};
+            const zeroIndexedPages = fields.some((field) => field.areas.some((area) => area.page === 0));
             for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
               const page = await pdf.getPage(pageNumber);
               const initial = page.getViewport({ scale: 1 });
               const cssScale = Math.max(0.1, (window.innerWidth - 16) / initial.width);
               const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
               const viewport = page.getViewport({ scale: cssScale * pixelRatio });
+              const pageWrap = document.createElement('section');
+              pageWrap.className = 'page';
+              pageWrap.style.width = (viewport.width / pixelRatio) + 'px';
               const canvas = document.createElement('canvas');
               canvas.width = viewport.width;
               canvas.height = viewport.height;
-              canvas.style.width = (viewport.width / pixelRatio) + 'px';
-              canvas.style.height = (viewport.height / pixelRatio) + 'px';
-              root.appendChild(canvas);
+              pageWrap.appendChild(canvas);
+              root.appendChild(pageWrap);
               await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+              for (const field of fields) {
+                for (const area of field.areas) {
+                  const fieldPage = zeroIndexedPages ? area.page + 1 : area.page;
+                  if (fieldPage !== pageNumber) continue;
+                  const marker = document.createElement('div');
+                  marker.className = 'preview-field' + (field.type === 'stamp' ? ' stamp' : '');
+                  marker.style.left = (area.x * 100) + '%';
+                  marker.style.top = (area.y * 100) + '%';
+                  marker.style.width = (area.w * 100) + '%';
+                  marker.style.height = (area.h * 100) + '%';
+                  marker.textContent = field.type === 'stamp' ? 'חותמת' : 'חתימה';
+                  pageWrap.appendChild(marker);
+                }
+              }
             }
             send('document-ready', { pages: pdf.numPages });
           } catch (error) {
@@ -63,7 +85,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
   if (params.mode === 'builder') {
     return `${base}<script src="https://${host}/js/builder.js"></script>${bridge}</head><body>
       <docuseal-builder id="builder" data-token="${attr(params.token || '')}"${hostAttribute} data-language="he"
-        data-roles="Driver" data-field-types="signature" data-draw-field-type="signature"
+        data-roles="Driver" data-field-types="signature,stamp" data-draw-field-type="signature"
         data-with-send-button="false" data-with-upload-button="false" data-with-sign-yourself-button="false"
         data-with-title="false" data-with-documents-list="false"></docuseal-builder>
       <script>document.getElementById('builder').addEventListener('save', (e) => send('saved', e.detail));</script>
@@ -135,7 +157,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
         await syncSigningRequest(params.requestId);
         navigation.goBack();
       } else if (message.type === 'error') {
-        setError(params.mode === 'document' ? 'טעינת המסמך נכשלה' : 'טעינת DocuSeal נכשלה');
+        setError(params.mode === 'document' ? 'טעינת המסמך נכשלה' : 'טעינת התבנית נכשלה');
         setLoading(false);
       } else if (message.type === 'document-ready') {
         setLoading(false);
@@ -160,7 +182,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
           onLoadEnd={() => params.mode !== 'document' && setLoading(false)}
           onError={() => {
             setLoading(false);
-            setError(params.mode === 'document' ? 'טעינת המסמך נכשלה' : 'טעינת DocuSeal נכשלה');
+            setError(params.mode === 'document' ? 'טעינת המסמך נכשלה' : 'טעינת התבנית נכשלה');
           }}
           originWhitelist={['https://*', 'about:*']}
           onShouldStartLoadWithRequest={({ url }) =>

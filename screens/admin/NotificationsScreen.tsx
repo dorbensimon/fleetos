@@ -1,9 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, SecondaryButton } from '../../components/ui';
+import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, ErrorState, SecondaryButton } from '../../components/ui';
+import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { COLORS, SPACING, CARD_SHADOW } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listNotifications, markNotificationRead, markAllNotificationsRead, Notification } from '../../lib/adminApi';
@@ -34,23 +35,42 @@ export default function NotificationsScreen({ navigation }: Props) {
   const [items, setItems] = useState<Notification[]>([]);
   const [unreadIds, setUnreadIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const loadRequest = useRef(0);
+
+  const load = useCallback(async () => {
+    const requestId = ++loadRequest.current;
+    setLoading(true);
+    setError(null);
+    if (!companyId) {
+      if (requestId === loadRequest.current) {
+        setItems([]);
+        setUnreadIds(new Set());
+        setLoading(false);
+      }
+      return;
+    }
+    try {
+      const rows = await listNotifications(companyId);
+      if (requestId !== loadRequest.current) return;
+      setItems(rows);
+      setUnreadIds(new Set(rows.filter((r) => !r.read_at).map((r) => r.id)));
+    } catch (err: any) {
+      if (requestId === loadRequest.current) {
+        setError(err?.message ?? 'טעינת ההתראות נכשלה');
+      }
+    } finally {
+      if (requestId === loadRequest.current) setLoading(false);
+    }
+  }, [companyId]);
 
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      (async () => {
-        if (!companyId) return;
-        setLoading(true);
-        const rows = await listNotifications(companyId);
-        if (!active) return;
-        setItems(rows);
-        setUnreadIds(new Set(rows.filter((r) => !r.read_at).map((r) => r.id)));
-        setLoading(false);
-      })();
+      load();
       return () => {
-        active = false;
+        loadRequest.current += 1;
       };
-    }, [companyId])
+    }, [load])
   );
 
   const targetRouteForNotification = (
@@ -64,8 +84,60 @@ export default function NotificationsScreen({ navigation }: Props) {
     return null;
   };
 
+  /**
+   * Admin-side routing (this screen is shared between roles; the driver
+   * branch above never covered admins, so tapping any notification as an
+   * admin previously did nothing).
+   *
+   * IMPORTANT — verified against the actual schema (supabase/sql 25, 35,
+   * 40, 42 + supabase/functions/assign-signing-template), not guessed:
+   * the `notifications` table stores no dedicated entity-id column
+   * (no driver_id / vehicle_id / document_id / request_id) — only a
+   * human-readable `message` string. Two consequences that shape this
+   * function, both flagged to Rafael for backend follow-up rather than
+   * papered over here:
+   *
+   * 1. `actor_id` happens to already be a usable id, but only for the
+   *    two "driver edited their own record" triggers (`driver_profile_update`,
+   *    `driver_document_upload`) — there the actor IS the driver. We use it.
+   * 2. For `vehicle_assignment` and the `vehicle_*` expiry types, the
+   *    admin-visible row (`recipient_id is null`) has no vehicle id at
+   *    all — the vehicle name is baked into `message` as text only. We
+   *    can't deep-link to a specific `VehicleDetail` (mandatory `vehicleId`
+   *    param) without a schema change, so these route to the fleet list
+   *    instead of doing nothing. `signature_request_assigned` is written
+   *    with a specific driver as `recipient_id`, which per the migration 40
+   *    RLS policy an admin can never actually see (recipient_id must be
+   *    null or the viewer's own id) — that branch is forward-compatible,
+   *    not a currently-reachable path. There is no notification_type at
+   *    all yet for "notification preferences changed", so that one isn't
+   *    wired here — it would be dead code matching nothing in the DB.
+   */
+  const targetForAdminNotification = (
+    n: Notification
+  ):
+    | { screen: 'AdminDocumentSigning' }
+    | { screen: 'AdminHome' }
+    | { screen: 'DriverPersonalDetails'; driverId: string }
+    | null => {
+    if (n.notification_type === 'signature_request_assigned') return { screen: 'AdminDocumentSigning' };
+    if (n.notification_type === 'driver_profile_update' && n.actor_id) {
+      return { screen: 'DriverPersonalDetails', driverId: n.actor_id };
+    }
+    if (
+      n.notification_type === 'vehicle_assignment' ||
+      n.notification_type === 'vehicle_inspection_last_date_expiry' ||
+      n.notification_type === 'vehicle_insurance_mandatory_expiry' ||
+      n.notification_type === 'vehicle_insurance_comprehensive_expiry' ||
+      n.notification_type === 'vehicle_annual_test_expiry' ||
+      n.notification_type === 'vehicle_service_due'
+    ) {
+      return { screen: 'AdminHome' };
+    }
+    return null;
+  };
+
   const openNotification = async (n: Notification) => {
-    const targetRoute = targetRouteForNotification(n);
     if (unreadIds.has(n.id)) {
       setUnreadIds((prev) => {
         const next = new Set(prev);
@@ -75,24 +147,39 @@ export default function NotificationsScreen({ navigation }: Props) {
       try {
         await markNotificationRead(n.id);
       } catch {
-        // Best-effort — already reflected locally.
+        setUnreadIds((prev) => new Set(prev).add(n.id));
       }
     }
-    if (targetRoute) navigation.navigate(targetRoute);
+
+    if (profile?.role === 'driver') {
+      const targetRoute = targetRouteForNotification(n);
+      if (targetRoute) navigation.navigate(targetRoute);
+      return;
+    }
+
+    const target = targetForAdminNotification(n);
+    if (!target) return;
+    if (target.screen === 'DriverPersonalDetails') {
+      navigation.navigate('DriverPersonalDetails', { driverId: target.driverId });
+    } else {
+      navigation.navigate(target.screen);
+    }
   };
 
   const markAllRead = async () => {
     if (!companyId || unreadIds.size === 0) return;
+    const previousUnreadIds = unreadIds;
     setUnreadIds(new Set());
     try {
       await markAllNotificationsRead(companyId);
     } catch {
-      // Best-effort — the screen already shows everything as read locally.
+      setUnreadIds(previousUnreadIds);
     }
   };
 
   return (
     <Screen>
+      <AdminGradientBackground />
       <ScreenHeader
         title="התראות"
         onBack={() => navigation.goBack()}
@@ -103,6 +190,8 @@ export default function NotificationsScreen({ navigation }: Props) {
 
       {loading ? (
         <LoadingState />
+      ) : error ? (
+        <ErrorState message={error} onRetry={load} />
       ) : items.length === 0 ? (
         <EmptyState
           icon="notifications-outline"

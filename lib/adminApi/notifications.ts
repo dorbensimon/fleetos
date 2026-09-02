@@ -8,15 +8,11 @@ function notificationCutoffIso(): string {
 }
 
 export async function listNotifications(companyId: string): Promise<Notification[]> {
-  // No dedicated cron job for this — trim anything past its 7-day
-  // lifetime whenever the list is actually opened, which is often
-  // enough in practice, then read only what's left.
-  await supabase.from('notifications').delete().eq('company_id', companyId).lt('created_at', notificationCutoffIso());
-
   const { data, error } = await supabase
     .from('notifications')
     .select('*')
     .eq('company_id', companyId)
+    .gte('created_at', notificationCutoffIso())
     .order('created_at', { ascending: false });
 
   if (error) throw error;

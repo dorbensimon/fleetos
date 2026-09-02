@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, Company, Profile } from './supabase';
 
 /**
@@ -32,12 +32,17 @@ export function CompanyProvider({
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadVersion = useRef(0);
 
   const load = useCallback(async () => {
+    const version = ++loadVersion.current;
+    const isCurrent = () => version === loadVersion.current;
     setError(null);
     try {
       const { data: auth, error: authError } = await supabase.auth.getUser();
       if (authError) throw authError;
+
+      if (!isCurrent()) return;
 
       const userId = auth.user?.id;
       if (!userId) {
@@ -53,6 +58,8 @@ export function CompanyProvider({
         .eq('id', userId)
         .single<Profile>();
       if (profileError) throw profileError;
+
+      if (!isCurrent()) return;
 
       setProfile(profileRow ?? null);
 
@@ -70,9 +77,12 @@ export function CompanyProvider({
         .single<Company>();
       if (companyError) throw companyError;
 
+      if (!isCurrent()) return;
+
       setCompany(companyRow ?? null);
       setLoading(false);
     } catch (err: any) {
+      if (!isCurrent()) return;
       setError(err?.message ?? 'טעינת פרטי החברה נכשלה');
       setLoading(false);
     }
@@ -88,12 +98,19 @@ export function CompanyProvider({
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) {
+        loadVersion.current += 1;
         setProfile(null);
         setCompany(null);
         setError(null);
         setLoading(false);
         return;
       }
+      // Never carry the previous account's cached company/profile through an
+      // account switch while the new session is still loading.
+      loadVersion.current += 1;
+      setProfile(null);
+      setCompany(null);
+      setError(null);
       setLoading(true);
       load();
     });

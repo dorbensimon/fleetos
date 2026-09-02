@@ -195,8 +195,8 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.divider,
   },
   rowMain: { flex: 1 },
-  rowText: { gap: 3 },
-  nameRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  rowText: { flex: 1, gap: 3, alignItems: 'flex-end', paddingRight: 12 },
+  nameRow: { width: '100%', flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'flex-start', gap: 8 },
   name: { fontSize: 14.5, flexShrink: 1 },
   meta: { fontSize: 12.5, color: COLORS.textMuted },
 

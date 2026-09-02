@@ -22,6 +22,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+  if (req.method !== 'POST') return json({ error: 'השיטה אינה נתמכת' }, 405);
 
   try {
     const { companyId, confirm } = await req.json();
@@ -54,21 +55,11 @@ Deno.serve(async (req) => {
     let deletedCount = 0;
     const failedIds: string[] = [];
 
-    // Sequential on purpose: this deletes Auth users one at a time via the
-    // admin API, and a partial failure (e.g. one auth.admin call erroring)
+    // Sequential on purpose: deleting auth.users cascades to profiles and all
+    // dependent driver rows. A partial failure (e.g. one admin API call erroring)
     // must not abort deletion of the rest — we report a summary instead of
     // failing the whole batch on a single bad row.
     for (const driver of targets) {
-      const { error: profileDeleteError } = await adminClient
-        .from('profiles')
-        .delete()
-        .eq('id', driver.id);
-
-      if (profileDeleteError) {
-        failedIds.push(driver.id);
-        continue;
-      }
-
       const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(driver.id);
       if (authDeleteError) {
         failedIds.push(driver.id);

@@ -150,7 +150,6 @@ export default function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -171,7 +170,6 @@ export default function LoginScreen({ navigation }: Props) {
       });
 
       if (authError || !authData.user) {
-        console.log('Supabase auth error:', authError?.message, authError?.status);
         setErrorMessage('מייל או סיסמה שגויים');
         return;
       }
@@ -186,10 +184,8 @@ export default function LoginScreen({ navigation }: Props) {
         return;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 700));
       navigation.reset({ index: 0, routes: [{ name: result.route }] });
-    } catch (err) {
-      console.log('Unexpected login error:', err);
+    } catch {
       setSuccessMessage('');
       setErrorMessage('אירעה שגיאה. נסה שוב מאוחר יותר');
     } finally {
@@ -226,7 +222,7 @@ export default function LoginScreen({ navigation }: Props) {
             </View>
 
             <AnimatedField
-              label="מייל או טלפון"
+              label="מייל"
               value={identifier}
               onChangeText={setIdentifier}
               icon="mail-outline"
@@ -245,17 +241,6 @@ export default function LoginScreen({ navigation }: Props) {
               showPassword={showPassword}
               onToggle={() => setShowPassword(!showPassword)}
             />
-
-            <TouchableOpacity
-              style={styles.rememberRow}
-              onPress={() => setRememberMe(!rememberMe)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                {rememberMe && <Ionicons name="checkmark" size={14} color={COLORS.white} />}
-              </View>
-              <Text style={styles.rememberText}>זכור אותי</Text>
-            </TouchableOpacity>
 
             {!!errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
             {!!successMessage && <Text style={styles.successText}>{successMessage}</Text>}
@@ -370,30 +355,6 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     paddingBottom: 8,
     textAlign: 'right',
-  },
-  rememberRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0, 0, 0, 0.25)',
-    backgroundColor: COLORS.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: COLORS.blue,
-    borderColor: COLORS.blue,
-  },
-  rememberText: {
-    fontSize: 14,
-    color: COLORS.gray,
-    marginRight: 8,
   },
   errorText: {
     color: '#D70015',

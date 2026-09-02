@@ -2,6 +2,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
+import { extensionForMimeType, isAllowedLogoMimeType } from './fileTypes';
+
+const MAX_LOGO_BYTES = 5 * 1024 * 1024;
 
 export async function pickAndUploadLogo(): Promise<string | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -21,13 +24,20 @@ export async function pickAndUploadLogo(): Promise<string | null> {
   }
 
   const asset = result.assets[0];
+  const mimeType = asset.mimeType || 'image/jpeg';
+  if (!isAllowedLogoMimeType(mimeType)) {
+    throw new Error('סוג הלוגו אינו נתמך. ניתן להעלות JPG, PNG, WEBP או HEIC');
+  }
   const base64 = await new File(asset.uri).base64();
   const arrayBuffer = decode(base64);
-  const fileExt = asset.uri.split('.').pop()?.split('?')[0] || 'jpg';
+  if (arrayBuffer.byteLength > MAX_LOGO_BYTES) {
+    throw new Error('הלוגו גדול מדי. ניתן להעלות תמונה עד 5MB');
+  }
+  const fileExt = extensionForMimeType(mimeType);
   const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
 
   const { error } = await supabase.storage.from('company-logos').upload(fileName, arrayBuffer, {
-    contentType: asset.mimeType || 'image/jpeg',
+    contentType: mimeType,
     upsert: false,
   });
 

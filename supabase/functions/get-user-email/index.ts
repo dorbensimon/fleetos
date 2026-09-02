@@ -17,6 +17,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+  if (req.method !== 'POST') return json({ error: 'השיטה אינה נתמכת' }, 405);
 
   try {
     const { userId, companyId } = await req.json();

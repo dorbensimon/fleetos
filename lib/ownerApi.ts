@@ -13,8 +13,8 @@ export function updateCompanyStatus(companyId: string, status: Company['status']
   return supabase.from('companies').update({ status }).eq('id', companyId);
 }
 
-export function deleteOwnedCompany(companyId: string) {
-  return supabase.from('companies').delete().eq('id', companyId);
+export function deleteOwnedCompany(companyId: string, confirmName: string) {
+  return supabase.functions.invoke('delete-company', { body: { companyId, confirmName } });
 }
 
 export function createCompanyAdmin(body: Record<string, unknown>) {

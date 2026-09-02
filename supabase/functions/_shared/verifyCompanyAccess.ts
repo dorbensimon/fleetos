@@ -1,4 +1,5 @@
-import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { verifyUser } from './verifyUser.ts';
 
 type AccessResult =
   | { ok: true; adminClient: SupabaseClient; callerId: string; callerRole: string }
@@ -15,37 +16,13 @@ export async function verifyCompanyAccess(
   authHeader: string | null,
   targetCompanyId: string | null
 ): Promise<AccessResult> {
-  if (!authHeader) {
-    return { ok: false, status: 401, error: 'לא מחובר' };
-  }
   if (!targetCompanyId) {
     return { ok: false, status: 400, error: 'חסר מזהה חברה' };
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-  const callerClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-
-  const { data: userData, error: userError } = await callerClient.auth.getUser();
-  if (userError || !userData.user) {
-    return { ok: false, status: 401, error: 'לא מחובר' };
-  }
-
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
-  const { data: profile, error: profileError } = await adminClient
-    .from('profiles')
-    .select('role, company_id')
-    .eq('id', userData.user.id)
-    .single();
-
-  if (profileError || !profile) {
-    return { ok: false, status: 403, error: 'אין הרשאה לבצע פעולה זו' };
-  }
+  const user = await verifyUser(authHeader);
+  if (!user.ok) return user;
+  const { adminClient, profile } = user;
 
   const allowed =
     profile.role === 'owner' ||
@@ -58,7 +35,7 @@ export async function verifyCompanyAccess(
   return {
     ok: true,
     adminClient,
-    callerId: userData.user.id,
+    callerId: user.userId,
     callerRole: profile.role,
   };
 }

@@ -35,6 +35,8 @@ export function NotificationBellButton() {
       style={styles.button}
       activeOpacity={0.8}
       onPress={() => navigation.navigate('Notifications')}
+      accessibilityRole="button"
+      accessibilityLabel={unread > 0 ? `התראות, ${unread} שלא נקראו` : 'התראות'}
     >
       <Ionicons name="notifications-outline" size={19} color={COLORS.text} />
       <View style={[styles.badge, unread === 0 && styles.badgeRead]}>
@@ -48,9 +50,9 @@ export function NotificationBellButton() {
 
 const styles = StyleSheet.create({
   button: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.55)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.6)',

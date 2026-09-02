@@ -24,6 +24,11 @@ export type RootStackParamList = {
     host?: string;
     templateId?: string;
     requestId?: string;
+    previewFields?: Array<{
+      name: string;
+      type: 'signature' | 'stamp';
+      areas: Array<{ page: number; x: number; y: number; w: number; h: number }>;
+    }>;
   };
   NotificationPreferences: undefined;
   DocumentCategory: {
@@ -32,6 +37,7 @@ export type RootStackParamList = {
     category: string;
     title: string;
   };
+  DriverLicenseDocuments: { driverId: string };
   // Driver module
   DriverVehicle: undefined;
   DriverDocuments: undefined;

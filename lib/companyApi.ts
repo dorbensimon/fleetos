@@ -18,8 +18,8 @@ export function updateCompany(companyId: string, patch: Partial<Company>) {
   return supabase.from('companies').update(patch).eq('id', companyId);
 }
 
-export function deleteCompany(companyId: string) {
-  return supabase.from('companies').delete().eq('id', companyId);
+export function deleteCompany(companyId: string, confirmName: string) {
+  return supabase.functions.invoke('delete-company', { body: { companyId, confirmName } });
 }
 
 export function addCompanyAdmin(body: Record<string, unknown>) {

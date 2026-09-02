@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -19,6 +19,8 @@ import { CompanyCard, CompanyRow } from '../components/owner/CompanyCard';
 import { CompanyActionsSheet } from '../components/owner/CompanyActionsSheet';
 import { AddCompanySheet, EMPTY_OWNER_COMPANY_FORM, OwnerCompanyForm } from '../components/owner/AddCompanySheet';
 import { DeleteCompanyModal, CompanyCreatedModal } from '../components/owner/DeleteCompanyModal';
+import { ErrorState } from '../components/ui';
+import { functionErrorMessage } from '../lib/functionError';
 
 /**
  * The owner (super-admin) home screen: list every company in the system,
@@ -73,11 +75,18 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const [deleting, setDeleting] = useState(false);
 
   const [successOpen, setSuccessOpen] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const loadRequest = useRef(0);
 
   const loadCompanies = useCallback(async () => {
-    const { data: companiesData } = await listCompanies();
-
-    const { data: profilesData } = await listCompanyProfileRoles();
+    const requestId = ++loadRequest.current;
+    setLoadError(null);
+    try {
+    const [{ data: companiesData, error: companiesError }, { data: profilesData, error: profilesError }] = await Promise.all([
+      listCompanies(),
+      listCompanyProfileRoles(),
+    ]);
+    if (companiesError || profilesError) throw companiesError || profilesError;
 
     const counts: Record<string, { admins: number; drivers: number }> = {};
     (profilesData || []).forEach((p: any) => {
@@ -92,21 +101,32 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       drivers: counts[c.id]?.drivers || 0,
     }));
 
-    setCompanies(merged);
+    if (requestId === loadRequest.current) setCompanies(merged);
+    } catch (err: any) {
+      if (requestId === loadRequest.current) setLoadError(err?.message ?? 'טעינת החברות נכשלה');
+    }
   }, []);
 
   useEffect(() => {
+    let active = true;
     (async () => {
       setLoading(true);
       await loadCompanies();
-      setLoading(false);
+      if (active) setLoading(false);
     })();
+    return () => {
+      active = false;
+      loadRequest.current += 1;
+    };
   }, [loadCompanies]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadCompanies();
-    setRefreshing(false);
+    try {
+      await loadCompanies();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const closeAll = () => {
@@ -121,7 +141,11 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const toggleActive = async () => {
     if (!menuCompany) return;
     const newStatus = menuCompany.status === 'active' ? 'disabled' : 'active';
-    await updateCompanyStatus(menuCompany.id, newStatus);
+    const { error } = await updateCompanyStatus(menuCompany.id, newStatus);
+    if (error) {
+      Alert.alert('העדכון נכשל', 'לא הצלחנו לעדכן את סטטוס החברה');
+      return;
+    }
     setMenuCompany(null);
     await loadCompanies();
   };
@@ -129,8 +153,12 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const confirmDelete = async () => {
     if (!menuCompany || deleteConfirmText.trim() !== menuCompany.name) return;
     setDeleting(true);
-    await deleteOwnedCompany(menuCompany.id);
+    const { data, error } = await deleteOwnedCompany(menuCompany.id, deleteConfirmText.trim());
     setDeleting(false);
+    if (error || !data?.success) {
+      Alert.alert('מחיקת החברה נכשלה', await functionErrorMessage(error, data, 'נסה שוב', false));
+      return;
+    }
     closeAll();
     await loadCompanies();
   };
@@ -172,15 +200,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       });
 
       if (error || !data?.success) {
-        let message = data?.error || 'יצירת החברה נכשלה';
-        if (error?.context?.json) {
-          try {
-            const body = await error.context.json();
-            if (body?.error) message = body.error;
-          } catch {}
-        }
-        console.log('create-company-admin error:', error, 'message:', message);
-        setCreateError(message);
+        setCreateError(await functionErrorMessage(error, data, 'יצירת החברה נכשלה', false));
         return;
       }
 
@@ -189,8 +209,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       setAddOpen(false);
       setSuccessOpen(true);
       await loadCompanies();
-    } catch (err) {
-      console.log('create-company-admin unexpected error:', err);
+    } catch {
       setCreateError('אירעה שגיאה. נסה שוב');
     } finally {
       setCreating(false);
@@ -261,6 +280,8 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         <View style={styles.centerFill}>
           <ActivityIndicator color={COLORS.blue} />
         </View>
+      ) : loadError && companies.length === 0 ? (
+        <ErrorState message={loadError} onRetry={loadCompanies} />
       ) : (
         <FlatList
           data={filteredCompanies}

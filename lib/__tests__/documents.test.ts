@@ -213,6 +213,20 @@ describe('uploadDocument', () => {
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
+  it('rejects unsupported MIME types before reading or uploading the file', async () => {
+    const upload = jest.fn();
+    (supabase.storage.from as jest.Mock).mockReturnValue({ upload });
+
+    await expect(uploadDocument({
+      ...params,
+      file: { ...params.file, mimeType: 'application/zip' },
+    })).rejects.toThrow('סוג הקובץ אינו נתמך');
+
+    expect(File).not.toHaveBeenCalled();
+    expect(upload).not.toHaveBeenCalled();
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
   it('removes the orphaned storage file when the DB insert fails', async () => {
     const upload = jest.fn().mockResolvedValue({ error: null });
     const remove = jest.fn().mockResolvedValue({ error: null });

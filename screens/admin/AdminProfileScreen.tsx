@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -8,6 +8,7 @@ import {
   Card,
   InfoRow,
   LoadingState,
+  ErrorState,
   SecondaryButton,
   PrimaryButton,
   Field,
@@ -15,6 +16,7 @@ import {
   InputLtr,
   useToast,
 } from '../../components/ui';
+import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { SPACING, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
@@ -29,28 +31,37 @@ export default function AdminProfileScreen({ navigation }: Props) {
   const { showToast } = useToast();
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const loadRequest = useRef(0);
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ firstName: '', lastName: '', phone: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
+  const load = useCallback(async () => {
+        const requestId = ++loadRequest.current;
+        setLoading(true);
+        setLoadError(null);
+        try {
+        const [{ data }] = await Promise.all([supabase.auth.getUser(), refresh()]);
+        if (requestId === loadRequest.current) {
+          setEmail(data.user?.email ?? null);
+        }
+        } catch (err: any) {
+          if (requestId === loadRequest.current) setLoadError(err?.message ?? 'טעינת הפרטים נכשלה');
+        } finally {
+          if (requestId === loadRequest.current) setLoading(false);
+        }
+  }, [refresh]);
+
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      (async () => {
-        setLoading(true);
-        const [{ data }] = await Promise.all([supabase.auth.getUser(), refresh()]);
-        if (active) {
-          setEmail(data.user?.email ?? null);
-          setLoading(false);
-        }
-      })();
+      load();
       return () => {
-        active = false;
+        loadRequest.current += 1;
       };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [load])
   );
 
   const startEdit = () => {
@@ -95,6 +106,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
 
   return (
     <Screen>
+      <AdminGradientBackground />
       <ScreenHeader
         title="הפרטים שלי"
         subtitle={profile?.full_name ?? undefined}
@@ -108,6 +120,8 @@ export default function AdminProfileScreen({ navigation }: Props) {
 
       {loading ? (
         <LoadingState />
+      ) : loadError ? (
+        <ErrorState message={loadError} onRetry={load} />
       ) : (
         <View style={styles.content}>
           {editing ? (

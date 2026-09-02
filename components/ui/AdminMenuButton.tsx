@@ -11,7 +11,13 @@ export function AdminMenuButton() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   return (
-    <TouchableOpacity style={styles.button} activeOpacity={0.8} onPress={() => navigation.navigate('Menu')}>
+    <TouchableOpacity
+      style={styles.button}
+      activeOpacity={0.8}
+      onPress={() => navigation.navigate('Menu')}
+      accessibilityRole="button"
+      accessibilityLabel="תפריט"
+    >
       <Ionicons name="person-circle-outline" size={26} color={COLORS.text} />
     </TouchableOpacity>
   );
@@ -19,9 +25,9 @@ export function AdminMenuButton() {
 
 const styles = StyleSheet.create({
   button: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.55)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.6)',

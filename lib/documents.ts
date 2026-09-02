@@ -5,6 +5,8 @@ import { File, Paths } from 'expo-file-system';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
 import { DocumentRow, OwnerType } from './adminApi';
+import { safeFileName } from './fileNames';
+import { extensionForMimeType, isAllowedDocumentMimeType } from './fileTypes';
 
 /**
  * Documents live in a PRIVATE storage bucket, unlike company logos.
@@ -14,8 +16,9 @@ import { DocumentRow, OwnerType } from './adminApi';
  */
 const BUCKET = 'documents';
 const SIGNED_URL_TTL_SECONDS = 60 * 10;
+const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
 
-interface PickedFile {
+export interface PickedFile {
   uri: string;
   name: string;
   mimeType: string;
@@ -72,7 +75,15 @@ export async function captureImage(): Promise<PickedFile | null> {
   };
 }
 
-/** Opens the system file picker, for PDFs already on the device. */
+/**
+ * Opens the system file picker, for PDFs already on the device.
+ *
+ * `base64: true` only has an effect on web (expo-document-picker v54) —
+ * on iOS/Android `asset.base64` is always undefined, so native callers
+ * must read the bytes themselves from `asset.uri` (see `readPickedFileBase64`
+ * below / `readFileBase64` in lib/docuseal.ts). Kept here anyway since it's
+ * a no-op cost on native and still needed for the web asset.base64 field.
+ */
 export async function pickFile(): Promise<PickedFile | null> {
   const result = await DocumentPicker.getDocumentAsync({
     type: ['application/pdf', 'image/*'],
@@ -109,11 +120,17 @@ export async function uploadDocument(params: {
   expiryDate?: string | null;
 }): Promise<DocumentRow> {
   const { file } = params;
+  if (!isAllowedDocumentMimeType(file.mimeType)) {
+    throw new Error('סוג הקובץ אינו נתמך. ניתן להעלות PDF או תמונה בפורמט JPG, PNG, WEBP או HEIC');
+  }
 
   const base64 = await readPickedFileBase64(file);
   const bytes = decode(base64);
+  if (bytes.byteLength > MAX_DOCUMENT_BYTES) {
+    throw new Error('הקובץ גדול מדי. ניתן להעלות קובץ עד 20MB');
+  }
 
-  const ext = file.name.split('.').pop() || 'bin';
+  const ext = extensionForMimeType(file.mimeType);
   const path = `${params.companyId}/${params.ownerType}/${params.ownerId}/${Date.now()}-${Math.random()
     .toString(36)
     .slice(2)}.${ext}`;
@@ -199,7 +216,7 @@ export async function downloadDocument(doc: DocumentRow): Promise<void> {
   const response = await fetch(url);
   const buffer = new Uint8Array(await response.arrayBuffer());
 
-  const file = new File(Paths.cache, doc.file_name ?? doc.title);
+  const file = new File(Paths.cache, safeFileName(doc.file_name ?? doc.title, 'document'));
   file.write(buffer);
 
   if (await Sharing.isAvailableAsync()) {

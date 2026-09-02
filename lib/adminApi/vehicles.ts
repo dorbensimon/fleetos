@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { Vehicle } from './types';
+import { functionErrorMessage } from '../functionError';
 
 export async function listVehicles(companyId: string, includeArchived = false): Promise<Vehicle[]> {
   let query = supabase.from('vehicles').select('*').eq('company_id', companyId);
@@ -41,4 +42,17 @@ export async function updateVehicle(vehicleId: string, patch: Partial<Vehicle>) 
 
 export async function archiveVehicle(vehicleId: string) {
   await updateVehicle(vehicleId, { status: 'archived' });
+}
+
+export async function restoreVehicle(vehicleId: string) {
+  await updateVehicle(vehicleId, { status: 'active' });
+}
+
+export async function deleteVehicle(vehicleId: string, companyId: string) {
+  const { data, error } = await supabase.functions.invoke('delete-company-vehicle', {
+    body: { vehicleId, companyId },
+  });
+  if (error || !data?.success) {
+    throw new Error(await functionErrorMessage(error, data, 'מחיקת הרכב נכשלה', false));
+  }
 }

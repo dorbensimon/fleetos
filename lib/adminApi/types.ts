@@ -1,5 +1,6 @@
 export type VehicleStatus = 'active' | 'maintenance' | 'disabled' | 'archived';
 export type VehicleType = 'car' | 'minibus' | 'bus' | 'truck';
+export type AcquisitionType = 'purchase' | 'leasing' | 'rental';
 export type OwnerType = 'vehicle' | 'driver';
 
 export interface Vehicle {
@@ -15,6 +16,8 @@ export interface Vehicle {
   model: string | null;
   production_year: number | null;
   production_month: number | null;
+  road_registration_date: string | null;
+  acquisition_type: AcquisitionType | null;
   usage_type: string | null;
   status: VehicleStatus;
   odometer: number;

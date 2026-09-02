@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet, Alert, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
@@ -12,10 +11,9 @@ import {
   LoadingState,
   ErrorState,
   SecondaryButton,
-  PrimaryButton,
   useToast,
 } from '../../components/ui';
-import { Select } from '../../components/ui/Select';
+import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { COLORS, SPACING, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
@@ -32,9 +30,10 @@ import {
   Department,
   DriverVehicleAssignment,
 } from '../../lib/adminApi';
-import { formatPlate } from '../../lib/plate';
 import { formatPhone } from '../../lib/phone';
 import { RootStackParamList } from '../../navigation/types';
+import { DriverVehicleAssignmentsCard, confirmVehicleRemoval } from '../../components/driver/DriverVehicleAssignmentsCard';
+import { departmentNameById } from '../../lib/driverFields';
 
 /**
  * Read-only view of exactly the fields DriverFormScreen collects -
@@ -102,7 +101,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
     }, [load])
   );
 
-  const departmentName = departments.find((d) => d.id === driver?.department_id)?.name ?? null;
+  const departmentName = departmentNameById(departments, driver?.department_id);
 
   const assignedVehicleIds = new Set(driverVehicles.map((dv) => dv.vehicle_id));
   const availableVehicles = allVehicles.filter((v) => !assignedVehicleIds.has(v.id));
@@ -132,30 +131,24 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
     }
   };
 
-  const confirmRemoveVehicle = (dv: DriverVehicleAssignment) => {
-    Alert.alert('הסרת שיוך רכב', `להסיר את הנהג מהרכב ${formatPlate(dv.vehicle.plate_number)}?`, [
-      { text: 'ביטול', style: 'cancel' },
-      {
-        text: 'הסר שיוך',
-        style: 'destructive',
-        onPress: async () => {
-          setBusyId(dv.id);
-          try {
-            await unassignVehicleDriver(dv.id);
-            await load();
-            showToast('השיוך הוסר');
-          } catch (err: any) {
-            Alert.alert('הסרת השיוך נכשלה', String(err?.message ?? 'נסה שוב'));
-          } finally {
-            setBusyId(null);
-          }
-        },
-      },
-    ]);
+  const confirmRemoveVehicle = (assignment: DriverVehicleAssignment) => {
+    confirmVehicleRemoval(assignment, async () => {
+      setBusyId(assignment.id);
+      try {
+        await unassignVehicleDriver(assignment.id);
+        await load();
+        showToast('השיוך הוסר');
+      } catch (err: any) {
+        Alert.alert('הסרת השיוך נכשלה', String(err?.message ?? 'נסה שוב'));
+      } finally {
+        setBusyId(null);
+      }
+    });
   };
 
   return (
     <Screen>
+      <AdminGradientBackground />
       <ScreenHeader
         title="פרטי נהג"
         subtitle={driver?.full_name ?? undefined}
@@ -195,62 +188,16 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
             <InfoRow label="דרגת רישיון" value={driver?.license_classes} />
             <InfoRow label="תוקף רישיון" value={driver?.license_expiry} />
 
-            <View style={styles.vehiclesSection}>
-              <AppText style={styles.infoLabel}>רכבים משויכים</AppText>
-
-              {driverVehicles.length === 0 ? (
-                <AppText style={styles.noVehicles}>לא משויכים רכבים לנהג זה</AppText>
-              ) : (
-                driverVehicles.map((dv) => (
-                  <View key={dv.id} style={styles.vehicleRow}>
-                    <TouchableOpacity
-                      style={styles.vehicleRowMain}
-                      activeOpacity={0.7}
-                      onPress={() => navigation.navigate('VehicleDetail', { vehicleId: dv.vehicle_id })}
-                      accessibilityLabel={`פתח את תיק הרכב ${dv.vehicle.plate_number}`}
-                    >
-                      <AppText weight="bold" style={styles.vehicleValueText}>
-                        {formatPlate(dv.vehicle.plate_number)}
-                      </AppText>
-                      <View style={[styles.badge, dv.is_primary ? styles.badgePrimary : styles.badgeSecondary]}>
-                        <AppText weight="bold" style={[styles.badgeText, dv.is_primary && styles.badgeTextPrimary]}>
-                          {dv.is_primary ? 'ראשי' : 'משני'}
-                        </AppText>
-                      </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => confirmRemoveVehicle(dv)}
-                      disabled={busyId === dv.id}
-                      hitSlop={8}
-                      accessibilityLabel="הסר שיוך רכב"
-                    >
-                      <Ionicons name="trash-outline" size={17} color={COLORS.dangerText} />
-                    </TouchableOpacity>
-                  </View>
-                ))
-              )}
-
-              <View style={styles.vehicleAddRow}>
-                <View style={styles.vehicleSelectWrap}>
-                  <Select
-                    value={addingVehicleId}
-                    onChange={setAddingVehicleId}
-                    options={availableVehicles.map((v) => ({ value: v.id, label: formatPlate(v.plate_number) }))}
-                    placeholder={availableVehicles.length ? 'הוסף רכב' : 'אין רכבים זמינים להוספה'}
-                    allowClear
-                  />
-                </View>
-                {!!addingVehicleId && (
-                  <PrimaryButton
-                    label="אישור"
-                    icon="checkmark-outline"
-                    style={styles.confirmBtn}
-                    loading={busyId === '__new__'}
-                    onPress={addVehicle}
-                  />
-                )}
-              </View>
-            </View>
+            <DriverVehicleAssignmentsCard
+              driverVehicles={driverVehicles}
+              availableVehicles={availableVehicles}
+              addingVehicleId={addingVehicleId}
+              busyId={busyId}
+              onSelectVehicle={setAddingVehicleId}
+              onAddVehicle={addVehicle}
+              onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId })}
+              onRemoveVehicle={confirmRemoveVehicle}
+            />
 
             <InfoRow label="תאריך הצטרפות לאפליקציה" value={driver?.created_at ? formatDate(driver.created_at) : null} />
           </Card>
@@ -263,25 +210,4 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
 const styles = StyleSheet.create({
   content: { paddingBottom: 40 },
   card: { margin: SPACING.lg, gap: 4 },
-  infoLabel: { fontSize: 13, color: COLORS.textMuted },
-
-  vehiclesSection: { paddingVertical: 8, gap: 6 },
-  noVehicles: { fontSize: 13, color: COLORS.textFaint },
-  vehicleRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-  },
-  vehicleRowMain: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, flex: 1 },
-  vehicleValueText: { fontSize: 14 },
-  badge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  badgePrimary: { backgroundColor: COLORS.accentSoft },
-  badgeSecondary: { backgroundColor: COLORS.field },
-  badgeText: { fontSize: 10.5, color: COLORS.textMuted },
-  badgeTextPrimary: { color: COLORS.accent },
-
-  vehicleAddRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginTop: 4 },
-  vehicleSelectWrap: { flex: 1, minHeight: 48, justifyContent: 'center' },
-  confirmBtn: { marginTop: 0 },
 });

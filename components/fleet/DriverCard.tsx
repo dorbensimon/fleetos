@@ -2,9 +2,10 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from '../ui';
-import { COLORS, RADIUS, SPACING, CARD_SHADOW, SUBTLE_SHADOW, expiryState, daysUntilExpiry, formatDate } from '../../lib/theme';
+import { SPACING, expiryState, daysUntilExpiry, formatDate } from '../../lib/theme';
 import { DriverRow } from '../../lib/adminApi';
 import { formatPlate } from '../../lib/plate';
+import { FLEET_COLORS, FLEET_FONT, FLEET_SHADOWS, severityFor } from './fleetTheme';
 
 export function DriverCard({
   item,
@@ -27,7 +28,7 @@ export function DriverCard({
     : state === 'soon'
     ? `רישיון יפוג בעוד ${days} ${days === 1 ? 'יום' : 'ימים'}`
     : `רישיון בתוקף עד ${formatDate(item.license_expiry)}`;
-  const licenseColor = state === 'expired' ? COLORS.dangerText : state === 'soon' ? COLORS.warnText : COLORS.okText;
+  const severity = severityFor(state);
 
   return (
     <TouchableOpacity activeOpacity={0.85} style={styles.card} onPress={onPress}>
@@ -53,9 +54,12 @@ export function DriverCard({
         <AppText style={styles.cardSubtitle} numberOfLines={1}>
           {item.national_id ? `ת.ז ${item.national_id}` : 'ללא ת.ז'}
         </AppText>
+        <AppText style={styles.emailText} numberOfLines={1}>
+          {item.email || 'ללא אימייל'}
+        </AppText>
         <View style={styles.licenseRow}>
-          <View style={[styles.dot, { backgroundColor: licenseColor }]} />
-          <AppText style={[styles.licenseText, { color: licenseColor }]} numberOfLines={1}>
+          <View style={[styles.dot, { backgroundColor: severity.text }]} />
+          <AppText style={[styles.licenseText, { color: severity.text }]} numberOfLines={1}>
             {licenseText}
           </AppText>
         </View>
@@ -75,8 +79,14 @@ export function DriverCard({
       </View>
 
       {!!item.phone && (
-        <TouchableOpacity style={styles.callBtn} onPress={onCall} hitSlop={8}>
-          <Ionicons name="call-outline" size={17} color={COLORS.okText} />
+        <TouchableOpacity
+          style={styles.callBtn}
+          onPress={onCall}
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel={`התקשר אל ${item.full_name ?? 'הנהג'}`}
+        >
+          <Ionicons name="call-outline" size={17} color={FLEET_COLORS.success.text} />
         </TouchableOpacity>
       )}
     </TouchableOpacity>
@@ -85,25 +95,25 @@ export function DriverCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
+    backgroundColor: FLEET_COLORS.card,
+    borderRadius: 30,
     padding: SPACING.md,
     marginHorizontal: SPACING.lg,
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: SPACING.md,
-    ...CARD_SHADOW,
+    ...FLEET_SHADOWS.card,
   },
   avatarWrap: { position: 'relative' },
   avatar: {
     width: 42,
     height: 42,
     borderRadius: 12,
-    backgroundColor: COLORS.accentSoft,
+    backgroundColor: 'rgba(10,132,255,.10)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: 17, color: COLORS.accent },
+  avatarText: { fontSize: 17, color: FLEET_COLORS.primary, fontFamily: FLEET_FONT.bold },
   gradeBadge: {
     position: 'absolute',
     bottom: -4,
@@ -114,28 +124,33 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.card,
+    backgroundColor: FLEET_COLORS.card,
     borderWidth: 1.5,
-    borderColor: COLORS.card,
-    ...SUBTLE_SHADOW,
+    borderColor: FLEET_COLORS.card,
+    shadowColor: '#08245e',
+    shadowOpacity: 0.14,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
-  gradeBadgeWarn: { backgroundColor: COLORS.warnBg },
-  gradeText: { fontSize: 10, color: COLORS.textMuted },
-  gradeTextWarn: { color: COLORS.warnText },
+  gradeBadgeWarn: { backgroundColor: FLEET_COLORS.warning.tint },
+  gradeText: { fontSize: 10, color: FLEET_COLORS.textSecondary, fontFamily: FLEET_FONT.bold },
+  gradeTextWarn: { color: FLEET_COLORS.warning.text },
 
   cardTitleWrap: { flex: 1, gap: 2 },
-  cardTitle: { fontSize: 15 },
-  cardSubtitle: { fontSize: 12, color: COLORS.textFaint },
+  cardTitle: { fontSize: 15, color: FLEET_COLORS.textPrimary, fontFamily: FLEET_FONT.bold },
+  cardSubtitle: { fontSize: 12, color: FLEET_COLORS.textSecondary, fontFamily: FLEET_FONT.regular },
+  emailText: { fontSize: 11.5, color: FLEET_COLORS.textSecondary, fontFamily: FLEET_FONT.regular },
   licenseRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, marginTop: 1 },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  licenseText: { fontSize: 11 },
-  vehicleLink: { fontSize: 11.5, color: COLORS.accent, marginTop: 3 },
+  licenseText: { fontSize: 11, fontFamily: FLEET_FONT.regular },
+  vehicleLink: { fontSize: 11.5, color: FLEET_COLORS.primary, marginTop: 3, fontFamily: FLEET_FONT.regular },
 
   callBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.okBg,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: FLEET_COLORS.success.tint,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -1,8 +1,8 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, ExpiryBadge } from '../../components/ui';
+import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, ErrorState, ExpiryBadge } from '../../components/ui';
 import { COLORS, RADIUS, SPACING, CARD_SHADOW, expiryState, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listActiveDriverVehicles, listComplianceForOwners, DriverVehicleAssignment, ComplianceItem } from '../../lib/adminApi';
@@ -25,24 +25,38 @@ export default function DriverVehicleScreen({ navigation }: Props) {
   const [assignments, setAssignments] = useState<DriverVehicleAssignment[]>([]);
   const [compliance, setCompliance] = useState<Map<string, ComplianceItem[]>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const loadRequest = useRef(0);
 
   const load = useCallback(async () => {
-    if (!profile) return;
-    const data = await listActiveDriverVehicles(profile.id);
-    setAssignments(data);
-    setCompliance(await listComplianceForOwners('vehicle', data.map((a) => a.vehicle.id)));
+    const requestId = ++loadRequest.current;
+    setLoading(true);
+    setError(null);
+    if (!profile) {
+      if (requestId === loadRequest.current) {
+        setError('פרופיל הנהג אינו זמין');
+        setLoading(false);
+      }
+      return;
+    }
+    try {
+      const data = await listActiveDriverVehicles(profile.id);
+      const loadedCompliance = await listComplianceForOwners('vehicle', data.map((a) => a.vehicle.id));
+      if (requestId !== loadRequest.current) return;
+      setAssignments(data);
+      setCompliance(loadedCompliance);
+    } catch (err: any) {
+      if (requestId === loadRequest.current) setError(err?.message ?? 'טעינת הרכבים נכשלה');
+    } finally {
+      if (requestId === loadRequest.current) setLoading(false);
+    }
   }, [profile]);
 
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      (async () => {
-        setLoading(true);
-        await load();
-        if (active) setLoading(false);
-      })();
+      load();
       return () => {
-        active = false;
+        loadRequest.current += 1;
       };
     }, [load])
   );
@@ -53,6 +67,8 @@ export default function DriverVehicleScreen({ navigation }: Props) {
 
       {loading ? (
         <LoadingState />
+      ) : error ? (
+        <ErrorState message={error} onRetry={load} />
       ) : assignments.length === 0 ? (
         <EmptyState icon="car-outline" title="אין רכב משויך" hint="פנה למנהל הצי שלך לשיוך רכב" />
       ) : (

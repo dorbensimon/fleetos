@@ -74,4 +74,17 @@ describe('pickAndUploadLogo', () => {
 
     await expect(pickAndUploadLogo()).rejects.toEqual({ message: 'quota exceeded' });
   });
+
+  it('rejects an unsupported image format before uploading it', async () => {
+    (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValueOnce({ granted: true });
+    (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: 'file://logo.gif', mimeType: 'image/gif' }],
+    });
+    const upload = jest.fn();
+    (supabase.storage.from as jest.Mock).mockReturnValue({ upload });
+
+    await expect(pickAndUploadLogo()).rejects.toThrow('סוג הלוגו אינו נתמך');
+    expect(upload).not.toHaveBeenCalled();
+  });
 });

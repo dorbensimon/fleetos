@@ -22,7 +22,6 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "permissions": ["android.permission.RECORD_AUDIO"],
       "package": "com.anonymous.fleetos"
     },
     "web": {
@@ -32,7 +31,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "האפליקציה צריכה גישה לתמונות כדי להעלות מסמכי חברה ותמונות."
+          "photosPermission": "האפליקציה צריכה גישה לתמונות כדי להעלות מסמכי חברה ותמונות.",
+          "cameraPermission": "האפליקציה צריכה גישה למצלמה כדי לצלם מסמכים לחתימה."
         }
       ],
       "expo-font",

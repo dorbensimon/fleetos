@@ -17,6 +17,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+  if (req.method !== 'POST') return json({ error: 'השיטה אינה נתמכת' }, 405);
 
   try {
     const { driverId, companyId } = await req.json();
@@ -41,7 +42,9 @@ Deno.serve(async (req) => {
       return json({ error: 'הנהג לא נמצא בחברה זו' }, 404);
     }
 
-    await adminClient.from('profiles').delete().eq('id', driverId);
+    // profiles.id references auth.users(id) ON DELETE CASCADE. Deleting the
+    // Auth user first makes this one atomic database operation and avoids an
+    // orphaned login account if a second, separate Auth call were to fail.
     const { error: deleteUserError } = await adminClient.auth.admin.deleteUser(driverId);
 
     if (deleteUserError) {

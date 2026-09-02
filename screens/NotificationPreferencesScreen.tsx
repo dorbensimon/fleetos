@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -12,6 +12,7 @@ import {
   AppText,
   useToast,
 } from '../components/ui';
+import { AdminGradientBackground } from '../components/admin/AdminGradientBackground';
 import { COLORS, SPACING } from '../lib/theme';
 import { useCompany } from '../lib/CompanyContext';
 import { RootStackParamList } from '../navigation/types';
@@ -38,27 +39,38 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [prefs, setPrefs] = useState<NotificationPreferencesMap | null>(null);
   const [savingType, setSavingType] = useState<NotificationType | null>(null);
+  const loadRequest = useRef(0);
 
   const isDriver = profile?.role === 'driver';
+  const isAdmin = profile?.role === 'admin';
   const visibleTypes = isDriver ? DRIVER_NOTIFICATION_TYPES : ADMIN_NOTIFICATION_TYPES;
 
   const load = useCallback(async () => {
-    if (!profile?.id) return;
+    const requestId = ++loadRequest.current;
     setLoading(true);
     setError(null);
+    if (!profile?.id) {
+      if (requestId === loadRequest.current) {
+        setError('פרופיל המשתמש אינו זמין');
+        setLoading(false);
+      }
+      return;
+    }
     try {
       const data = await getPreferences(profile.id);
+      if (requestId !== loadRequest.current) return;
       setPrefs(data);
     } catch (err: any) {
-      setError(err?.message ?? 'טעינת ההעדפות נכשלה');
+      if (requestId === loadRequest.current) setError(err?.message ?? 'טעינת ההעדפות נכשלה');
     } finally {
-      setLoading(false);
+      if (requestId === loadRequest.current) setLoading(false);
     }
   }, [profile?.id]);
 
   useFocusEffect(
     useCallback(() => {
       load();
+      return () => { loadRequest.current += 1; };
     }, [load])
   );
 
@@ -81,6 +93,7 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
 
   return (
     <Screen>
+      {isAdmin && <AdminGradientBackground />}
       <ScreenHeader title="ניהול התראות" subtitle="ניהול העדפות התראה" onBack={() => navigation.goBack()} />
 
       {loading ? (

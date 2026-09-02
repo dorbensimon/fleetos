@@ -1,22 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, FlatList, StyleSheet, RefreshControl, TouchableOpacity, Linking, Alert, Animated } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet, RefreshControl, Linking, Alert, Animated, StatusBar } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import {
-  Screen,
-  AppText,
-  FilterChips,
-  LoadingState,
-  EmptyState,
-  AdminBottomBar,
-  AdminGlassHeader,
-} from '../../components/ui';
+import { Screen, AppText, EmptyState } from '../../components/ui';
 import { ToggleValue } from '../../components/ui/DriversVehiclesToggle';
 import { DriverCard } from '../../components/fleet/DriverCard';
 import { VehicleCard } from '../../components/fleet/VehicleCard';
 import { ExportReportSheet } from '../../components/fleet/ExportReportSheet';
-import { COLORS, RADIUS, SPACING, SUBTLE_SHADOW, expiryState } from '../../lib/theme';
+import { DriverListSkeleton, VehicleListSkeleton } from '../../components/fleet/FleetListSkeleton';
+import { FleetHero, FleetStat, heroNavHeight, HERO_CONTENT_HEIGHT, HERO_TRAVEL } from '../../components/fleet/FleetHero';
+import { FleetDock } from '../../components/fleet/FleetDock';
+import { FleetFilterChips } from '../../components/fleet/FleetFilterChips';
+import { FLEET_COLORS, FLEET_FONT, FLEET_SHADOWS } from '../../components/fleet/fleetTheme';
+import { SPACING, expiryState } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
   listDrivers,
@@ -32,15 +29,23 @@ import {
 } from '../../lib/adminApi';
 import { exportDriversReport, ReportCategory } from '../../lib/driverReport';
 import { RootStackParamList } from '../../navigation/types';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /**
  * A2/A4 — the fleet screen. "Drivers" and "Vehicles" are the same screen:
- * one shared glass header (search + the segmented toggle) with two list
- * bodies stacked underneath it. Switching modes never pushes a new
- * screen — there both lists stay mounted and simply crossfade, so there's
- * no back button, no swipe-back gesture, and no left/right slide; the old
- * list fades out just as the new one fades in, fast enough to read as one
- * screen whose content changed rather than a navigation.
+ * a shared blue-gradient hero (glanceable status cubes + search + export)
+ * with two list bodies stacked underneath it. Switching modes never
+ * pushes a new screen — both lists stay mounted and crossfade, so
+ * there's no back button, no swipe-back gesture, and no slide.
+ *
+ * Each list is its own rounded white "sheet" that rests below the hero
+ * and rises to meet it as you scroll (tied 1:1 to that list's own
+ * `scrollY`, clamped once it reaches `HERO_TRAVEL`) while the hero's stat
+ * cubes fade away over the same range — the search field and export
+ * button settle just under the nav row once collapsed. The section
+ * title scrolls away normally; the filter chips right below it are
+ * pinned via `stickyHeaderIndices` so they stay reachable while cards
+ * scroll beneath them.
  *
  * The per-row cards (DriverCard/VehicleCard), their shared stat-bar cell
  * (StatCell) and tone/formatting math (lib/fleetCardHelpers) live in their
@@ -53,9 +58,22 @@ type StatusFilter = 'all' | 'active' | 'maintenance' | 'disabled' | 'archived';
 
 const CROSSFADE_MS = 140;
 
+type DriverSheetItem =
+  | { kind: 'title' }
+  | { kind: 'chips' }
+  | { kind: 'empty' }
+  | { kind: 'card'; item: DriverRow };
+
+type VehicleSheetItem =
+  | { kind: 'title' }
+  | { kind: 'chips' }
+  | { kind: 'empty' }
+  | { kind: 'card'; item: Vehicle };
+
 export default function FleetScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { companyId, company } = useCompany();
+  const insets = useSafeAreaInsets();
 
   const [mode, setMode] = useState<ToggleValue>('drivers');
 
@@ -246,178 +264,217 @@ export default function FleetScreen() {
     ]).start();
   }, [mode, driversOpacity, vehiclesOpacity]);
 
+  /* ---------------------------------------------------------------- */
+  /* Hero + sheet scroll choreography                                  */
+  /* ---------------------------------------------------------------- */
+
+  const navHeight = heroNavHeight(insets.top);
+  const sheetRestTop = navHeight + HERO_CONTENT_HEIGHT + SPACING.xl;
+
+  const driversScrollY = useRef(new Animated.Value(0)).current;
+  const vehiclesScrollY = useRef(new Animated.Value(0)).current;
+  const activeScrollY = mode === 'drivers' ? driversScrollY : vehiclesScrollY;
+
+  const onDriversScroll = Animated.event([{ nativeEvent: { contentOffset: { y: driversScrollY } } }], {
+    useNativeDriver: true,
+  });
+  const onVehiclesScroll = Animated.event([{ nativeEvent: { contentOffset: { y: vehiclesScrollY } } }], {
+    useNativeDriver: true,
+  });
+
+  const sheetTranslateY = (scrollY: Animated.Value) =>
+    scrollY.interpolate({ inputRange: [0, HERO_TRAVEL], outputRange: [0, -HERO_TRAVEL], extrapolate: 'clamp' });
+
+  // On the blue hero glass, cube numbers use the bright "fill" tones (not
+  // the muted "text" tones, which are sized for reading on the white
+  // sheet) — same idea as the spec's bright status-dot variants reserved
+  // for use "on blue background only".
+  const driverStats: [FleetStat, FleetStat, FleetStat] = [
+    { label: 'סה״כ נהגים', value: driverCounts.all, tint: '#fff' },
+    { label: 'רישיון קרוב לפוג', value: driverCounts.soon, tint: FLEET_COLORS.warning.fill },
+    { label: 'רישיון פג', value: driverCounts.expired, tint: FLEET_COLORS.statusDisabledDot },
+  ];
+  const vehicleStats: [FleetStat, FleetStat, FleetStat] = [
+    { label: 'סה״כ רכבים', value: vehicleCounts.all, tint: '#fff' },
+    { label: 'פעילים', value: vehicleCounts.active, tint: FLEET_COLORS.statusActiveDot },
+    { label: 'מושבתים', value: vehicleCounts.disabled + vehicleCounts.maintenance, tint: FLEET_COLORS.statusDisabledDot },
+  ];
+
+  const driverSheetData: DriverSheetItem[] = [
+    { kind: 'title' },
+    { kind: 'chips' },
+    ...(filteredDrivers.length === 0 ? [{ kind: 'empty' as const }] : filteredDrivers.map((item) => ({ kind: 'card' as const, item }))),
+  ];
+  const vehicleSheetData: VehicleSheetItem[] = [
+    { kind: 'title' },
+    { kind: 'chips' },
+    ...(filteredVehicles.length === 0 ? [{ kind: 'empty' as const }] : filteredVehicles.map((item) => ({ kind: 'card' as const, item }))),
+  ];
+
   return (
     <Screen>
-      <AdminGlassHeader
+      <StatusBar barStyle="light-content" />
+
+      <FleetHero
+        scrollY={activeScrollY}
+        stats={mode === 'drivers' ? driverStats : vehicleStats}
         query={mode === 'drivers' ? driverSearch : vehicleSearch}
         onChangeQuery={mode === 'drivers' ? setDriverSearch : setVehicleSearch}
         searchPlaceholder={mode === 'drivers' ? 'חפש לפי שם, ת.ז או מספר עובד' : 'חיפוש לפי מספר רישוי'}
-        toggleValue={mode}
-        onToggleChange={setMode}
+        onExportPress={mode === 'drivers' ? () => setExportMenuOpen(true) : undefined}
       />
 
-      <View style={styles.body}>
-        <Animated.View
-          style={[StyleSheet.absoluteFill, { opacity: driversOpacity }]}
-          pointerEvents={mode === 'drivers' ? 'auto' : 'none'}
-        >
-          {driversLoading ? (
-            <LoadingState />
-          ) : (
-            <FlatList
-              data={filteredDrivers}
-              keyExtractor={(d) => d.id}
-              contentContainerStyle={driverStyles.list}
-              refreshControl={<RefreshControl refreshing={driversRefreshing} onRefresh={onRefreshDrivers} />}
-              ListHeaderComponent={
-                <>
-                  <View style={driverStyles.kpiRow}>
-                    <TouchableOpacity
-                      style={driverStyles.kpiCard}
-                      activeOpacity={0.8}
-                      onPress={() => setExportMenuOpen(true)}
-                    >
-                      <Ionicons name="document-text-outline" size={17} color={COLORS.textMuted} />
-                      <AppText weight="bold" style={driverStyles.kpiLabel}>
-                        ייצוא דוח
-                      </AppText>
-                    </TouchableOpacity>
+      <Animated.View
+        style={[
+          styles.sheet,
+          { top: sheetRestTop, opacity: driversOpacity, transform: [{ translateY: sheetTranslateY(driversScrollY) }] },
+        ]}
+        pointerEvents={mode === 'drivers' ? 'auto' : 'none'}
+      >
+       <View style={sheetStyles.sheetInner}>
+        <LinearGradient colors={[FLEET_COLORS.sheetFrom, FLEET_COLORS.sheetTo]} style={StyleSheet.absoluteFill} />
+        {driversLoading ? (
+          <DriverListSkeleton />
+        ) : (
+          <Animated.FlatList
+            data={driverSheetData}
+            keyExtractor={(entry, i) => (entry.kind === 'card' ? entry.item.id : `${entry.kind}-${i}`)}
+            stickyHeaderIndices={[1]}
+            onScroll={onDriversScroll}
+            scrollEventThrottle={16}
+            contentContainerStyle={sheetStyles.list}
+            refreshControl={<RefreshControl refreshing={driversRefreshing} onRefresh={onRefreshDrivers} />}
+            renderItem={({ item: entry }) => {
+              if (entry.kind === 'title') {
+                return (
+                  <View style={sheetStyles.titleRow}>
+                    <AppText weight="bold" style={sheetStyles.titleText}>
+                      הנהגים שלי
+                    </AppText>
+                    <AppText style={sheetStyles.titleCount}>{driverCounts.all}</AppText>
                   </View>
-
-                  <View style={driverStyles.chipsWrap}>
-                    <FilterChips<LicenseFilter>
+                );
+              }
+              if (entry.kind === 'chips') {
+                return (
+                  <View style={sheetStyles.chipsBar}>
+                    <FleetFilterChips<LicenseFilter>
                       value={licenseFilter}
                       onChange={setLicenseFilter}
                       options={[
-                        {
-                          value: 'all',
-                          label: 'הכל',
-                          count: driverCounts.all,
-                          badgeColor: COLORS.accent,
-                          icon: 'people-outline',
-                        },
-                        {
-                          value: 'soon',
-                          label: 'רישיון קרוב לפוג',
-                          count: driverCounts.soon,
-                          badgeColor: COLORS.warnText,
-                          icon: 'hourglass-outline',
-                        },
-                        {
-                          value: 'expired',
-                          label: 'רישיון פג',
-                          count: driverCounts.expired,
-                          badgeColor: COLORS.dangerText,
-                          icon: 'warning',
-                        },
-                        {
-                          value: 'no_vehicle',
-                          label: 'ללא רכב',
-                          count: driverCounts.noVehicle,
-                          badgeColor: COLORS.neutralText,
-                          icon: 'ban-outline',
-                        },
+                        { value: 'all', label: 'הכל', count: driverCounts.all, icon: 'people-outline' },
+                        { value: 'soon', label: 'רישיון קרוב לפוג', count: driverCounts.soon, icon: 'hourglass-outline' },
+                        { value: 'expired', label: 'רישיון פג', count: driverCounts.expired, icon: 'warning' },
+                        { value: 'no_vehicle', label: 'ללא רכב', count: driverCounts.noVehicle, icon: 'ban-outline' },
                       ]}
                     />
+                    <LinearGradient colors={[FLEET_COLORS.chipsBarBg, 'rgba(242,245,249,0)']} style={sheetStyles.chipsBarFade} pointerEvents="none" />
                   </View>
-                </>
+                );
               }
-              ListEmptyComponent={
-                <EmptyState
-                  icon="people-outline"
-                  title={drivers.length === 0 ? 'עדיין אין נהגים' : 'לא נמצאו נהגים'}
-                  hint={drivers.length === 0 ? 'הוסף את הנהג הראשון של החברה' : undefined}
-                />
-              }
-              ListFooterComponent={
-                <AdminBottomBar
-                  actionLabel="נהג חדש"
-                  actionIcon="add"
-                  onAction={() => navigation.navigate('DriverForm', {})}
-                />
-              }
-              renderItem={({ item }) => (
-                <DriverCard
-                  item={item}
-                  onPress={() => navigation.navigate('DriverDetail', { driverId: item.id })}
-                  onPressVehicle={() => navigation.navigate('VehicleDetail', { vehicleId: item.vehicle_id! })}
-                  onCall={() => call(item.phone)}
-                />
-              )}
-            />
-          )}
-        </Animated.View>
-
-        <Animated.View
-          style={[StyleSheet.absoluteFill, { opacity: vehiclesOpacity }]}
-          pointerEvents={mode === 'vehicles' ? 'auto' : 'none'}
-        >
-          {vehiclesLoading ? (
-            <LoadingState />
-          ) : (
-            <FlatList
-              data={filteredVehicles}
-              keyExtractor={(v) => v.id}
-              contentContainerStyle={vehicleStyles.list}
-              refreshControl={<RefreshControl refreshing={vehiclesRefreshing} onRefresh={onRefreshVehicles} />}
-              ListHeaderComponent={
-                <View style={vehicleStyles.controls}>
-                  <FilterChips<StatusFilter>
-                    value={status}
-                    onChange={setStatus}
-                    options={[
-                      { value: 'all', label: 'הכל', count: vehicleCounts.all, badgeColor: COLORS.accent },
-                      { value: 'active', label: 'פעיל', count: vehicleCounts.active, badgeColor: COLORS.okText },
-                      {
-                        value: 'maintenance',
-                        label: 'בטיפול',
-                        count: vehicleCounts.maintenance,
-                        badgeColor: COLORS.warnText,
-                      },
-                      {
-                        value: 'disabled',
-                        label: 'מושבת',
-                        count: vehicleCounts.disabled,
-                        badgeColor: COLORS.dangerText,
-                      },
-                      {
-                        value: 'archived',
-                        label: 'בארכיון',
-                        count: vehicleCounts.archived,
-                        badgeColor: COLORS.textFaint,
-                      },
-                    ]}
+              if (entry.kind === 'empty') {
+                return (
+                  <EmptyState
+                    icon="people-outline"
+                    title={drivers.length === 0 ? 'עדיין אין נהגים' : 'לא נמצאו נהגים'}
+                    hint={drivers.length === 0 ? 'הוסף את הנהג הראשון של החברה' : undefined}
                   />
-                </View>
+                );
               }
-              ListEmptyComponent={
-                <EmptyState
-                  icon="car-outline"
-                  title={vehicles.length === 0 ? 'עדיין אין רכבים' : 'לא נמצאו רכבים'}
-                  hint={vehicles.length === 0 ? 'הוסף את הרכב הראשון של החברה' : undefined}
+              return (
+                <DriverCard
+                  item={entry.item}
+                  onPress={() => navigation.navigate('DriverDetail', { driverId: entry.item.id })}
+                  onPressVehicle={() => navigation.navigate('VehicleDetail', { vehicleId: entry.item.vehicle_id! })}
+                  onCall={() => call(entry.item.phone)}
                 />
+              );
+            }}
+          />
+        )}
+       </View>
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.sheet,
+          { top: sheetRestTop, opacity: vehiclesOpacity, transform: [{ translateY: sheetTranslateY(vehiclesScrollY) }] },
+        ]}
+        pointerEvents={mode === 'vehicles' ? 'auto' : 'none'}
+      >
+       <View style={sheetStyles.sheetInner}>
+        <LinearGradient colors={[FLEET_COLORS.sheetFrom, FLEET_COLORS.sheetTo]} style={StyleSheet.absoluteFill} />
+        {vehiclesLoading ? (
+          <VehicleListSkeleton />
+        ) : (
+          <Animated.FlatList
+            data={vehicleSheetData}
+            keyExtractor={(entry, i) => (entry.kind === 'card' ? entry.item.id : `${entry.kind}-${i}`)}
+            stickyHeaderIndices={[1]}
+            onScroll={onVehiclesScroll}
+            scrollEventThrottle={16}
+            contentContainerStyle={sheetStyles.list}
+            refreshControl={<RefreshControl refreshing={vehiclesRefreshing} onRefresh={onRefreshVehicles} />}
+            renderItem={({ item: entry }) => {
+              if (entry.kind === 'title') {
+                return (
+                  <View style={sheetStyles.titleRow}>
+                    <AppText weight="bold" style={sheetStyles.titleText}>
+                      הרכבים שלי
+                    </AppText>
+                    <AppText style={sheetStyles.titleCount}>{vehicleCounts.all}</AppText>
+                  </View>
+                );
               }
-              ListFooterComponent={
-                <AdminBottomBar
-                  actionLabel="רכב חדש"
-                  actionIcon="add"
-                  onAction={() => navigation.navigate('VehicleForm', {})}
-                />
+              if (entry.kind === 'chips') {
+                return (
+                  <View style={sheetStyles.chipsBar}>
+                    <FleetFilterChips<StatusFilter>
+                      value={status}
+                      onChange={setStatus}
+                      options={[
+                        { value: 'all', label: 'הכל', count: vehicleCounts.all },
+                        { value: 'active', label: 'פעיל', count: vehicleCounts.active },
+                        { value: 'maintenance', label: 'בטיפול', count: vehicleCounts.maintenance },
+                        { value: 'disabled', label: 'מושבת', count: vehicleCounts.disabled },
+                        { value: 'archived', label: 'בארכיון', count: vehicleCounts.archived },
+                      ]}
+                    />
+                    <LinearGradient colors={[FLEET_COLORS.chipsBarBg, 'rgba(242,245,249,0)']} style={sheetStyles.chipsBarFade} pointerEvents="none" />
+                  </View>
+                );
               }
-              renderItem={({ item }) => (
+              if (entry.kind === 'empty') {
+                return (
+                  <EmptyState
+                    icon="car-outline"
+                    title={vehicles.length === 0 ? 'עדיין אין רכבים' : 'לא נמצאו רכבים'}
+                    hint={vehicles.length === 0 ? 'הוסף את הרכב הראשון של החברה' : undefined}
+                  />
+                );
+              }
+              return (
                 <VehicleCard
-                  item={item}
+                  item={entry.item}
                   compliance={compliance}
                   vehicleDrivers={vehicleDrivers}
                   departmentNames={departmentNames}
-                  onPress={() => navigation.navigate('VehicleDetail', { vehicleId: item.id })}
-                  onRestore={() => restoreVehicle(item.id)}
+                  onPress={() => navigation.navigate('VehicleDetail', { vehicleId: entry.item.id })}
+                  onRestore={() => restoreVehicle(entry.item.id)}
                 />
-              )}
-            />
-          )}
-        </Animated.View>
-      </View>
+              );
+            }}
+          />
+        )}
+       </View>
+      </Animated.View>
+
+      <FleetDock
+        mode={mode}
+        onModeChange={setMode}
+        actionLabel={mode === 'drivers' ? 'נהג חדש' : 'רכב חדש'}
+        onAction={() => navigation.navigate(mode === 'drivers' ? 'DriverForm' : 'VehicleForm', {})}
+      />
 
       <ExportReportSheet
         visible={exportMenuOpen}
@@ -430,36 +487,53 @@ export default function FleetScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { flex: 1, position: 'relative' },
+  // Shadow lives on this outer view (no overflow:hidden, or RN clips the
+  // shadow along with the corners) — `sheetInner` below does the actual
+  // rounded clipping + gradient fill.
+  sheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    ...FLEET_SHADOWS.sheet,
+  },
 });
 
-const driverStyles = StyleSheet.create({
-  kpiRow: {
-    flexDirection: 'row-reverse',
-    gap: SPACING.sm,
-    paddingTop: SPACING.md,
-  },
-  kpiCard: {
+const sheetStyles = StyleSheet.create({
+  sheetInner: {
     flex: 1,
-    position: 'relative',
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    paddingVertical: 12,
-    paddingHorizontal: 9,
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    overflow: 'hidden',
+  },
+  list: { paddingBottom: 120, gap: SPACING.md },
+
+  titleRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 7,
-    ...SUBTLE_SHADOW,
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
   },
-  kpiLabel: { fontSize: 11, lineHeight: 13, flexShrink: 1 },
+  titleText: { fontSize: 16, color: FLEET_COLORS.textPrimary, fontFamily: FLEET_FONT.bold },
+  titleCount: { fontSize: 13, color: FLEET_COLORS.textSecondary, fontFamily: FLEET_FONT.regular },
 
-  chipsWrap: { paddingTop: SPACING.md },
-
-  list: { paddingTop: SPACING.md, gap: SPACING.md, paddingBottom: 28 },
-});
-
-const vehicleStyles = StyleSheet.create({
-  controls: { paddingTop: SPACING.md, gap: SPACING.md },
-
-  list: { paddingTop: SPACING.md, gap: SPACING.md, paddingBottom: 28 },
+  chipsBar: {
+    backgroundColor: FLEET_COLORS.chipsBarBg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.md,
+    // No box-shadow here on purpose — Android's `elevation` shadow ignores
+    // the sheet's `overflow:hidden` clip (sheetInner), so it used to bleed
+    // past the rounded corners as a square patch. A hairline top highlight
+    // plus the fade below is enough separation without it.
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,.9)',
+  },
+  chipsBarFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: -20,
+    height: 20,
+  },
 });

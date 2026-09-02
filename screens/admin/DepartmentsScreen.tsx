@@ -1,9 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, FlatList, StyleSheet, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, useToast } from '../../components/ui';
+import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, ErrorState, useToast } from '../../components/ui';
+import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { COLORS, RADIUS, SPACING, CARD_SHADOW } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listDepartments, createDepartment, updateDepartment, deleteDepartment, Department } from '../../lib/adminApi';
@@ -25,25 +26,35 @@ export default function DepartmentsScreen({ navigation }: Props) {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const loadRequest = useRef(0);
 
   const load = useCallback(async () => {
-    if (!companyId) return;
-    setDepartments(await listDepartments(companyId));
+    const requestId = ++loadRequest.current;
+    setLoading(true);
+    setError(null);
+    if (!companyId) {
+      if (requestId === loadRequest.current) {
+        setError('לא נמצאה חברה משויכת');
+        setLoading(false);
+      }
+      return;
+    }
+    try {
+      const rows = await listDepartments(companyId);
+      if (requestId === loadRequest.current) setDepartments(rows);
+    } catch (err: any) {
+      if (requestId === loadRequest.current) setError(err?.message ?? 'טעינת המחלקות נכשלה');
+    } finally {
+      if (requestId === loadRequest.current) setLoading(false);
+    }
   }, [companyId]);
 
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      (async () => {
-        setLoading(true);
-        try {
-          await load();
-        } finally {
-          if (active) setLoading(false);
-        }
-      })();
+      load();
       return () => {
-        active = false;
+        loadRequest.current += 1;
       };
     }, [load])
   );
@@ -102,6 +113,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
 
   return (
     <Screen>
+      <AdminGradientBackground />
       <ScreenHeader title="מחלקות" subtitle="יחידות ארגוניות לשיוך רכבים" onBack={() => navigation.goBack()} />
 
       <View style={styles.addRow}>
@@ -126,6 +138,8 @@ export default function DepartmentsScreen({ navigation }: Props) {
 
       {loading ? (
         <LoadingState />
+      ) : error ? (
+        <ErrorState message={error} onRetry={load} />
       ) : (
         <FlatList
           data={departments}

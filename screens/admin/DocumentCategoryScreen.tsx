@@ -1,22 +1,25 @@
-import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState } from '../../components/ui';
-import { COLORS, RADIUS, SPACING, formatDate } from '../../lib/theme';
+import { Screen, ScreenHeader, AppText, LoadingState, EmptyState, ErrorState } from '../../components/ui';
+import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
+import { DocumentFileRow } from '../../components/documents/DocumentFileRow';
+import { COLORS, RADIUS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { DocumentRow } from '../../lib/adminApi';
+import { listDocuments, uploadDocument } from '../../lib/documents';
 import {
-  listDocuments,
-  uploadDocument,
-  deleteDocument,
-  getDocumentUrl,
-  pickImage,
-  captureImage,
-  pickFile,
-  downloadDocument,
-} from '../../lib/documents';
+  chooseDocumentSource,
+  confirmDeleteDocument,
+  documentDisplayName,
+  documentViewerMode,
+  downloadDocumentWithAlert,
+  getDocumentViewUrl,
+  pickDocumentSource,
+  type DocumentSource,
+} from '../../lib/documentActions';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -35,24 +38,28 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const loadRequest = useRef(0);
 
   const load = useCallback(async () => {
-    setDocs(await listDocuments(ownerType, ownerId, category));
+    const requestId = ++loadRequest.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const rows = await listDocuments(ownerType, ownerId, category);
+      if (requestId === loadRequest.current) setDocs(rows);
+    } catch (err: any) {
+      if (requestId === loadRequest.current) setError(err?.message ?? 'טעינת המסמכים נכשלה');
+    } finally {
+      if (requestId === loadRequest.current) setLoading(false);
+    }
   }, [ownerType, ownerId, category]);
 
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      (async () => {
-        setLoading(true);
-        try {
-          await load();
-        } finally {
-          if (active) setLoading(false);
-        }
-      })();
+      load();
       return () => {
-        active = false;
+        loadRequest.current += 1;
       };
     }, [load])
   );
@@ -60,15 +67,10 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const addDocument = async () => {
     if (!companyId) return;
 
-    const choose = async (source: 'camera' | 'gallery' | 'file') => {
+    chooseDocumentSource(title, async (source: DocumentSource) => {
       setUploading(true);
       try {
-        const file =
-          source === 'camera'
-            ? await captureImage()
-            : source === 'gallery'
-            ? await pickImage()
-            : await pickFile();
+        const file = await pickDocumentSource(source);
         if (!file) return;
 
         await uploadDocument({ companyId, ownerType, ownerId, category, title, file });
@@ -78,66 +80,29 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       } finally {
         setUploading(false);
       }
-    };
-
-    if (Platform.OS === 'web') {
-      await choose('file');
-      return;
-    }
-
-    Alert.alert('הוספת מסמך', title, [
-      { text: 'צלם מסמך', onPress: () => choose('camera') },
-      { text: 'בחר תמונה', onPress: () => choose('gallery') },
-      { text: 'בחר קובץ', onPress: () => choose('file') },
-      { text: 'ביטול', style: 'cancel' },
-    ]);
+    });
   };
 
   const openDocument = async (doc: DocumentRow) => {
-    const url = await getDocumentUrl(doc);
-    if (!url) {
-      Alert.alert('שגיאה', 'לא ניתן לפתוח את המסמך כרגע');
-      return;
-    }
+    const url = await getDocumentViewUrl(doc);
+    if (!url) return;
+
     navigation.navigate('DocusealWebView', {
-      mode: doc.mime_type?.startsWith('image/') ? 'image' : 'document',
-      title: doc.file_name ?? doc.title,
+      mode: documentViewerMode(doc),
+      title: documentDisplayName(doc),
       src: url,
     });
   };
 
-  const downloadDoc = async (doc: DocumentRow) => {
-    try {
-      await downloadDocument(doc);
-    } catch (err: any) {
-      Alert.alert('ההורדה נכשלה', err?.message ?? 'נסה שוב');
-    }
-  };
-
-  const removeDocument = (doc: DocumentRow) => {
-    Alert.alert('מחיקת מסמך', `למחוק את "${doc.file_name ?? doc.title}"? הפעולה אינה הפיכה.`, [
-      { text: 'ביטול', style: 'cancel' },
-      {
-        text: 'מחק',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteDocument(doc);
-            await load();
-          } catch {
-            Alert.alert('מחיקה נכשלה', 'נסה שוב');
-          }
-        },
-      },
-    ]);
-  };
-
   return (
     <Screen>
+      <AdminGradientBackground />
       <ScreenHeader title={title} onBack={() => navigation.goBack()} />
 
       {loading ? (
         <LoadingState />
+      ) : error ? (
+        <ErrorState message={error} onRetry={load} />
       ) : (
         <View style={styles.content}>
           {docs.length === 0 ? (
@@ -148,29 +113,15 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
             />
           ) : (
             docs.map((doc) => (
-              <Card key={doc.id} style={styles.docCard}>
-                <TouchableOpacity style={styles.docInfo} onPress={() => openDocument(doc)} activeOpacity={0.7}>
-                  <View style={styles.docIcon}>
-                    <Ionicons
-                      name={doc.mime_type?.includes('pdf') ? 'document-text-outline' : 'image-outline'}
-                      size={18}
-                      color={COLORS.accent}
-                    />
-                  </View>
-                  <View style={styles.docTextWrap}>
-                    <AppText weight="bold" style={styles.docName} numberOfLines={1}>
-                      {doc.file_name ?? doc.title}
-                    </AppText>
-                    <AppText style={styles.docDate}>{formatDate(doc.created_at)}</AppText>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => downloadDoc(doc)} hitSlop={8}>
-                  <Ionicons name="download-outline" size={17} color={COLORS.accent} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => removeDocument(doc)} hitSlop={8}>
-                  <Ionicons name="trash-outline" size={17} color={COLORS.dangerText} />
-                </TouchableOpacity>
-              </Card>
+              <DocumentFileRow
+                key={doc.id}
+                doc={doc}
+                variant="card"
+                showDate
+                onOpen={openDocument}
+                onDownload={downloadDocumentWithAlert}
+                onDelete={(item) => confirmDeleteDocument(item, load)}
+              />
             ))
           )}
 
@@ -194,25 +145,6 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   content: { padding: SPACING.lg, gap: SPACING.sm, flex: 1 },
-  docCard: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: SPACING.md,
-    padding: SPACING.md,
-  },
-  docInfo: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.md },
-  docIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: COLORS.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  docTextWrap: { flex: 1, gap: 1 },
-  docName: { fontSize: 14 },
-  docDate: { fontSize: 11.5, color: COLORS.textFaint },
-
   uploadBtn: {
     marginTop: SPACING.sm,
     height: 48,

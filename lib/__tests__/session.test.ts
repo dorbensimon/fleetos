@@ -92,15 +92,27 @@ describe('resolveRouteForUser', () => {
     expect(result).toEqual({ ok: true, route: 'AdminHome' });
   });
 
-  it('routes a driver with no company_id straight to DriverHome without a company check', async () => {
+  it('blocks a driver with no company assignment', async () => {
     (supabase.from as jest.Mock).mockReturnValueOnce(
       chain({ data: { ...baseProfile, role: 'driver', company_id: null }, error: null })
     );
 
     const result = await resolveRouteForUser('u1');
 
-    expect(result).toEqual({ ok: true, route: 'DriverHome' });
+    expect(result).toEqual({ ok: false, error: 'המשתמש אינו משויך לחברה' });
     expect(supabase.from).toHaveBeenCalledTimes(1);
+    expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks an unknown role instead of navigating to an undefined route', async () => {
+    (supabase.from as jest.Mock).mockReturnValueOnce(
+      chain({ data: { ...baseProfile, role: 'super-admin' }, error: null })
+    );
+
+    const result = await resolveRouteForUser('u1');
+
+    expect(result).toEqual({ ok: false, error: 'תפקיד המשתמש אינו תקין' });
+    expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
   });
 
   it('signs out and blocks access when the company is disabled', async () => {

@@ -190,5 +190,11 @@ export const VEHICLE_STATUS_LABELS: Record<string, string> = {
   archived: 'בארכיון',
 };
 
+export const ACQUISITION_TYPE_LABELS: Record<string, string> = {
+  purchase: 'רכישה',
+  leasing: 'ליסינג',
+  rental: 'השכרה',
+};
+
 /** Israeli driving licence classes, for the driver form. */
 export const LICENSE_CLASSES = ['A', 'A1', 'A2', 'B', 'C', 'C1', 'C3', 'D', 'D1', 'D2', 'D3', 'E'];

@@ -61,6 +61,15 @@ export const SUBTLE_SHADOW = {
   elevation: 2,
 } as const;
 
+/** Blue glow used under the accent-coloured CTA / selected chips — same colour as `COLORS.accent`. */
+export const ACCENT_SHADOW = {
+  shadowColor: COLORS.accent,
+  shadowOpacity: 0.65,
+  shadowRadius: 30,
+  shadowOffset: { width: 0, height: 16 },
+  elevation: 8,
+} as const;
+
 export const FONT = {
   regular: 'Assistant_400Regular',
   bold: 'Assistant_700Bold',

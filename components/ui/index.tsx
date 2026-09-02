@@ -129,21 +129,38 @@ export function PrimaryButton({
   icon,
   loading,
   style,
+  contentColor,
+  disabledStyle,
   ...rest
-}: TouchableOpacityProps & { label: string; icon?: any; loading?: boolean }) {
+}: TouchableOpacityProps & {
+  label: string;
+  icon?: any;
+  loading?: boolean;
+  /** Overrides the (otherwise fixed) white text/icon colour — e.g. for a muted disabled label. */
+  contentColor?: string;
+  /**
+   * Replaces the default opacity-fade disabled look with a caller-supplied style
+   * (e.g. a flat neutral background) when `disabled` is true. Falls back to the
+   * default dimmed look everywhere this isn't passed, so existing call sites are
+   * unaffected.
+   */
+  disabledStyle?: TouchableOpacityProps['style'];
+}) {
+  const isDisabled = !!(rest.disabled || loading);
+  const textIconColor = contentColor ?? COLORS.textInverse;
   return (
     <TouchableOpacity
       activeOpacity={0.85}
       {...rest}
-      disabled={rest.disabled || loading}
-      style={[styles.primaryBtn, (rest.disabled || loading) && styles.btnDisabled, style]}
+      disabled={isDisabled}
+      style={[styles.primaryBtn, isDisabled && (disabledStyle ?? styles.btnDisabled), style]}
     >
       {loading ? (
-        <ActivityIndicator color={COLORS.textInverse} />
+        <ActivityIndicator color={textIconColor} />
       ) : (
         <>
-          {!!icon && <Ionicons name={icon} size={17} color={COLORS.textInverse} />}
-          <AppText weight="bold" style={styles.primaryBtnText}>
+          {!!icon && <Ionicons name={icon} size={17} color={textIconColor} />}
+          <AppText weight="bold" style={[styles.primaryBtnText, contentColor && { color: contentColor }]}>
             {label}
           </AppText>
         </>
@@ -333,7 +350,7 @@ export function FilterChips<T extends string>({
 
 export function LoadingState() {
   return (
-    <View style={styles.centered}>
+    <View style={styles.loadingCentered}>
       <ActivityIndicator color={COLORS.accent} />
     </View>
   );
@@ -620,6 +637,7 @@ const styles = StyleSheet.create({
   chipBadgeText: { fontSize: 11, color: COLORS.textMuted },
 
   centered: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48, gap: 8 },
+  loadingCentered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { fontSize: 14.5, color: COLORS.textMuted, marginTop: 4 },
   emptyHint: { fontSize: 12.5, color: COLORS.textFaint, textAlign: 'center', paddingHorizontal: SPACING.xl },
   errorTitle: { fontSize: 14.5, color: COLORS.text, marginTop: 4, textAlign: 'center' },

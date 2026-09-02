@@ -6,10 +6,10 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, Card, ExpiryBadge, PrimaryButton, useToast } from './ui';
+import { DocumentFileRow } from './documents/DocumentFileRow';
 import { DateField } from './ui/DateField';
 import { COLORS, EXPIRY_STYLE, RADIUS, SPACING } from '../lib/theme';
 import {
@@ -27,16 +27,15 @@ import {
   complianceTargetDate,
   groupByCategory,
 } from '../lib/compliance';
+import { listDocuments, uploadDocument } from '../lib/documents';
 import {
-  listDocuments,
-  uploadDocument,
-  deleteDocument,
-  downloadDocument,
-  getDocumentUrl,
-  pickImage,
-  captureImage,
-  pickFile,
-} from '../lib/documents';
+  chooseDocumentSource,
+  confirmDeleteDocument,
+  downloadDocumentWithAlert,
+  getDocumentViewUrl,
+  pickDocumentSource,
+  type DocumentSource,
+} from '../lib/documentActions';
 
 /**
  * The grouped compliance + documents block used by both the vehicle
@@ -52,10 +51,14 @@ export function ComplianceSection({
   companyId,
   ownerType,
   ownerId,
+  focusItemType,
+  spacious,
 }: {
   companyId: string;
   ownerType: OwnerType;
   ownerId: string;
+  focusItemType?: string | null;
+  spacious?: boolean;
 }) {
   const { showToast } = useToast();
   const [items, setItems] = useState<Map<string, ComplianceItem>>(new Map());
@@ -91,6 +94,10 @@ export function ComplianceSection({
       }
     })();
   }, [load]);
+
+  useEffect(() => {
+    if (focusItemType) setExpanded(focusItemType);
+  }, [focusItemType]);
 
   const setDraftDate = (def: ComplianceItemDef, field: 'expiry_date' | 'last_date', iso: string | null) => {
     setDrafts((prev) => ({ ...prev, [def.itemType]: { ...prev[def.itemType], [field]: iso } }));
@@ -129,15 +136,10 @@ export function ComplianceSection({
   };
 
   const addDocument = async (def: ComplianceItemDef) => {
-    const choose = async (source: 'camera' | 'gallery' | 'file') => {
+    chooseDocumentSource(def.label, async (source: DocumentSource) => {
       setBusyItem(def.itemType);
       try {
-        const file =
-          source === 'camera'
-            ? await captureImage()
-            : source === 'gallery'
-            ? await pickImage()
-            : await pickFile();
+        const file = await pickDocumentSource(source);
 
         if (!file) return;
 
@@ -157,53 +159,13 @@ export function ComplianceSection({
       } finally {
         setBusyItem(null);
       }
-    };
-
-    if (Platform.OS === 'web') {
-      // No native action sheet on web — the file picker covers both cases.
-      await choose('file');
-      return;
-    }
-
-    Alert.alert('הוספת מסמך', def.label, [
-      { text: 'צלם מסמך', onPress: () => choose('camera') },
-      { text: 'בחר תמונה', onPress: () => choose('gallery') },
-      { text: 'בחר קובץ', onPress: () => choose('file') },
-      { text: 'ביטול', style: 'cancel' },
-    ]);
+    });
   };
 
   const openDocument = async (doc: DocumentRow) => {
-    const url = await getDocumentUrl(doc);
-    if (!url) {
-      Alert.alert('שגיאה', 'לא ניתן לפתוח את המסמך כרגע');
-      return;
-    }
+    const url = await getDocumentViewUrl(doc);
+    if (!url) return;
     Linking.openURL(url);
-  };
-
-  const downloadDoc = async (doc: DocumentRow) => {
-    try {
-      await downloadDocument(doc);
-    } catch (err: any) {
-      Alert.alert('ההורדה נכשלה', err?.message ?? 'נסה שוב');
-    }
-  };
-
-  const removeDocument = (doc: DocumentRow) => {
-    const run = async () => {
-      try {
-        await deleteDocument(doc);
-        await load();
-      } catch {
-        Alert.alert('מחיקה נכשלה', 'נסה שוב');
-      }
-    };
-
-    Alert.alert('מחיקת מסמך', `למחוק את "${doc.file_name ?? doc.title}"? הפעולה אינה הפיכה.`, [
-      { text: 'ביטול', style: 'cancel' },
-      { text: 'מחק', style: 'destructive', onPress: run },
-    ]);
   };
 
   if (loading) {
@@ -219,7 +181,7 @@ export function ComplianceSection({
   return (
     <>
       {groups.map((group) => (
-        <Card key={group.category} style={styles.card}>
+        <Card key={group.category} style={[styles.card, spacious && styles.cardSpacious]}>
           <View style={styles.groupHead}>
             <Ionicons name={group.icon as any} size={18} color={COLORS.accent} />
             <AppText weight="bold" style={styles.groupTitle}>
@@ -246,7 +208,7 @@ export function ComplianceSection({
               <View key={def.itemType} style={styles.item}>
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  style={styles.itemHead}
+                  style={[styles.itemHead, spacious && styles.itemHeadSpacious]}
                   onPress={() => setExpanded(isOpen ? null : def.itemType)}
                 >
                   <Ionicons
@@ -282,7 +244,7 @@ export function ComplianceSection({
                 </TouchableOpacity>
 
                 {isOpen && (
-                  <View style={styles.itemBody}>
+                  <View style={[styles.itemBody, spacious && styles.itemBodySpacious]}>
                     {def.tracksLastDate && (
                       <View style={styles.dateRow}>
                         <AppText style={styles.dateLabel}>בדיקה אחרונה</AppText>
@@ -318,32 +280,13 @@ export function ComplianceSection({
                     )}
 
                     {itemDocs.map((doc) => (
-                      <View key={doc.id} style={styles.docRow}>
-                        <TouchableOpacity
-                          style={styles.docNameWrap}
-                          onPress={() => openDocument(doc)}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons
-                            name={
-                              doc.mime_type?.includes('pdf')
-                                ? 'document-text-outline'
-                                : 'image-outline'
-                            }
-                            size={16}
-                            color={COLORS.textFaint}
-                          />
-                          <AppText style={styles.docName} numberOfLines={1}>
-                            {doc.file_name ?? doc.title}
-                          </AppText>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => downloadDoc(doc)} hitSlop={8}>
-                          <Ionicons name="download-outline" size={16} color={COLORS.accent} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => removeDocument(doc)} hitSlop={8}>
-                          <Ionicons name="trash-outline" size={16} color={COLORS.dangerText} />
-                        </TouchableOpacity>
-                      </View>
+                      <DocumentFileRow
+                        key={doc.id}
+                        doc={doc}
+                        onOpen={openDocument}
+                        onDownload={downloadDocumentWithAlert}
+                        onDelete={(item) => confirmDeleteDocument(item, load)}
+                      />
                     ))}
 
                     <TouchableOpacity
@@ -399,15 +342,10 @@ function GeneralDocuments({
   const [busy, setBusy] = useState(false);
 
   const add = async () => {
-    const choose = async (source: 'camera' | 'gallery' | 'file') => {
+    chooseDocumentSource('מסמך כללי', async (source: DocumentSource) => {
       setBusy(true);
       try {
-        const file =
-          source === 'camera'
-            ? await captureImage()
-            : source === 'gallery'
-            ? await pickImage()
-            : await pickFile();
+        const file = await pickDocumentSource(source);
         if (!file) return;
         await uploadDocument({
           companyId,
@@ -423,50 +361,16 @@ function GeneralDocuments({
       } finally {
         setBusy(false);
       }
-    };
-
-    if (Platform.OS === 'web') {
-      await choose('file');
-      return;
-    }
-
-    Alert.alert('הוספת מסמך', 'מסמך כללי', [
-      { text: 'צלם מסמך', onPress: () => choose('camera') },
-      { text: 'בחר תמונה', onPress: () => choose('gallery') },
-      { text: 'בחר קובץ', onPress: () => choose('file') },
-      { text: 'ביטול', style: 'cancel' },
-    ]);
+    });
   };
 
   const remove = (doc: DocumentRow) => {
-    Alert.alert('מחיקת מסמך', `למחוק את "${doc.file_name ?? doc.title}"?`, [
-      { text: 'ביטול', style: 'cancel' },
-      {
-        text: 'מחק',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteDocument(doc);
-            await onChanged();
-          } catch {
-            Alert.alert('מחיקה נכשלה', 'נסה שוב');
-          }
-        },
-      },
-    ]);
+    confirmDeleteDocument(doc, onChanged);
   };
 
   const open = async (doc: DocumentRow) => {
-    const url = await getDocumentUrl(doc);
+    const url = await getDocumentViewUrl(doc);
     if (url) Linking.openURL(url);
-  };
-
-  const download = async (doc: DocumentRow) => {
-    try {
-      await downloadDocument(doc);
-    } catch (err: any) {
-      Alert.alert('ההורדה נכשלה', err?.message ?? 'נסה שוב');
-    }
   };
 
   return (
@@ -483,24 +387,13 @@ function GeneralDocuments({
       )}
 
       {docs.map((doc) => (
-        <View key={doc.id} style={styles.docRow}>
-          <TouchableOpacity style={styles.docNameWrap} onPress={() => open(doc)} activeOpacity={0.7}>
-            <Ionicons
-              name={doc.mime_type?.includes('pdf') ? 'document-text-outline' : 'image-outline'}
-              size={16}
-              color={COLORS.textFaint}
-            />
-            <AppText style={styles.docName} numberOfLines={1}>
-              {doc.file_name ?? doc.title}
-            </AppText>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => download(doc)} hitSlop={8}>
-            <Ionicons name="download-outline" size={16} color={COLORS.accent} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => remove(doc)} hitSlop={8}>
-            <Ionicons name="trash-outline" size={16} color={COLORS.dangerText} />
-          </TouchableOpacity>
-        </View>
+        <DocumentFileRow
+          key={doc.id}
+          doc={doc}
+          onOpen={open}
+          onDownload={downloadDocumentWithAlert}
+          onDelete={remove}
+        />
       ))}
 
       <TouchableOpacity style={styles.uploadBtn} activeOpacity={0.8} onPress={add} disabled={busy}>
@@ -521,6 +414,7 @@ function GeneralDocuments({
 
 const styles = StyleSheet.create({
   card: { gap: 2 },
+  cardSpacious: { marginBottom: SPACING.sm, paddingVertical: SPACING.sm },
   groupHead: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -536,28 +430,18 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
     paddingVertical: 12,
   },
+  itemHeadSpacious: { paddingVertical: SPACING.md },
   itemLabelWrap: { flex: 1, gap: 1 },
   itemLabel: { fontSize: 13.5 },
   itemDocCount: { fontSize: 11, color: COLORS.textFaint },
   itemStatusNote: { fontSize: 11.5 },
 
   itemBody: { paddingBottom: SPACING.md, gap: SPACING.sm },
+  itemBodySpacious: { paddingBottom: SPACING.lg, gap: SPACING.md },
   dateRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.md },
   dateLabel: { fontSize: 12.5, color: COLORS.textMuted, width: 88 },
   dateInput: { flex: 1 },
   confirmBtn: { marginTop: 2 },
-
-  docRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: SPACING.md,
-    backgroundColor: COLORS.field,
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  docNameWrap: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  docName: { flex: 1, fontSize: 12.5, color: COLORS.textMuted },
 
   uploadBtn: {
     flexDirection: 'row-reverse',

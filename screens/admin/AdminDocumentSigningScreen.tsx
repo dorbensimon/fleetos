@@ -1,281 +1,74 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { listDrivers } from '../../lib/adminApi';
 import type { DriverRow } from '../../lib/adminApi';
 import { useCompany } from '../../lib/CompanyContext';
-import { pickFile, pickImage } from '../../lib/documents';
-import {
-  assignSigningTemplate,
-  createTemplateBuilderSession,
-  deleteSigningRecord,
-  downloadSignedRequest,
-  downloadSigningTemplate,
-  getSigningTemplateSourceUrl,
-  getSigningSession,
-  listSignatureRequests,
-  listSigningTemplates,
-  type SignatureRequest,
-  type SigningFile,
-  type SigningTemplate,
-} from '../../lib/docuseal';
-import { COLORS, RADIUS, SPACING } from '../../lib/theme';
+import { captureImage, pickFile, pickImage } from '../../lib/documents';
+import { assignSigningTemplate, createTemplateBuilderSession, deleteSigningRecord, downloadSignedRequest, downloadSigningTemplate, getSigningSession, getSigningTemplatePreviewSession, listSignatureRequests, listSigningTemplates, syncSigningRequest, type SignatureRequest, type SigningFile, type SigningTemplate } from '../../lib/docuseal';
 import type { RootStackParamList } from '../../navigation/types';
-import { AppText, Card, EmptyState, Input, PrimaryButton, Screen, ScreenHeader, SecondaryButton } from '../../components/ui';
+import { AppText } from '../../components/ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AdminDocumentSigning'>;
+type Tab = 'templates' | 'sent' | 'archive';
+type Source = 'gallery' | 'file' | 'camera';
+const BRAND = '#0088CC'; const TEXT = '#0E1E2B'; const MUTED = 'rgba(14,30,43,0.45)';
+const formatTime = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '—' : `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`; };
 
 export default function AdminDocumentSigningScreen({ navigation }: Props) {
-  const { companyId, loading: profileLoading, profile } = useCompany();
-  const [tab, setTab] = useState<'templates' | 'sent'>('templates');
-  const [title, setTitle] = useState('');
-  const [templates, setTemplates] = useState<SigningTemplate[]>([]);
-  const [requests, setRequests] = useState<SignatureRequest[]>([]);
-  const [drivers, setDrivers] = useState<DriverRow[]>([]);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [activeTemplate, setActiveTemplate] = useState<SigningTemplate | null>(null);
-  const [builderSource, setBuilderSource] = useState<'gallery' | 'file' | null>(null);
-  const [sending, setSending] = useState(false);
-  const [previewingTemplateId, setPreviewingTemplateId] = useState<string | null>(null);
-  const [sharingTemplateId, setSharingTemplateId] = useState<string | null>(null);
-  const [openingRequestId, setOpeningRequestId] = useState<string | null>(null);
-  const [sharingRequestId, setSharingRequestId] = useState<string | null>(null);
-  const [error, setError] = useState('');
-  const isAdmin = profile?.role === 'admin';
-
-  useEffect(() => {
-    if (!profileLoading && !isAdmin) {
-      navigation.replace(profile?.role === 'driver' ? 'DriverHome' : 'OwnerHome');
-    }
-  }, [isAdmin, navigation, profile?.role, profileLoading]);
-
-  const load = useCallback(async () => {
-    if (!companyId || !isAdmin) return;
-    try {
-      const [templateRows, requestRows, driverRows] = await Promise.all([
-        listSigningTemplates(companyId), listSignatureRequests(companyId), listDrivers(companyId),
-      ]);
-      setTemplates(templateRows);
-      setRequests(requestRows);
-      setDrivers(driverRows);
-      setError('');
-    } catch (err: any) { setError(err?.message || 'טעינת המסמכים נכשלה'); }
-  }, [companyId, isAdmin]);
-
-  useFocusEffect(useCallback(() => { load(); }, [load]));
-
+  const { companyId, loading: profileLoading, profile } = useCompany(); const insets = useSafeAreaInsets(); const isAdmin = profile?.role === 'admin';
+  const [tab, setTab] = useState<Tab>('templates'); const [title, setTitle] = useState(''); const [templates, setTemplates] = useState<SigningTemplate[]>([]); const [requests, setRequests] = useState<SignatureRequest[]>([]); const [archivedTemplates, setArchivedTemplates] = useState<SigningTemplate[]>([]); const [archivedRequests, setArchivedRequests] = useState<SignatureRequest[]>([]); const [drivers, setDrivers] = useState<DriverRow[]>([]); const [selected, setSelected] = useState<string[]>([]); const [activeTemplate, setActiveTemplate] = useState<SigningTemplate | null>(null); const [sourceSheetOpen, setSourceSheetOpen] = useState(false); const [builderSource, setBuilderSource] = useState<Source | null>(null); const [sending, setSending] = useState(false); const [previewingTemplateId, setPreviewingTemplateId] = useState<string | null>(null); const [openingRequestId, setOpeningRequestId] = useState<string | null>(null); const [error, setError] = useState('');
+  const loadRequest = useRef(0);
+  useEffect(() => { if (!profileLoading && !isAdmin) navigation.replace(profile?.role === 'driver' ? 'DriverHome' : 'OwnerHome'); }, [isAdmin, navigation, profile?.role, profileLoading]);
+  const load = useCallback(async () => { if (!companyId || !isAdmin) return; const requestId = ++loadRequest.current; try { const [templateRows, initialRequests, driverRows, archivedTemplateRows, archivedRequestRows] = await Promise.all([listSigningTemplates(companyId), listSignatureRequests(companyId), listDrivers(companyId), listSigningTemplates(companyId, true), listSignatureRequests(companyId, true)]); const toSync = initialRequests.filter((item) => item.status === 'pending' || (item.status === 'completed' && !item.signed_file_path)); if (toSync.length) await Promise.allSettled(toSync.map((item) => syncSigningRequest(item.id))); const currentRequests = toSync.length ? await listSignatureRequests(companyId) : initialRequests; if (requestId !== loadRequest.current) return; setTemplates(templateRows); setRequests(currentRequests); setArchivedTemplates(archivedTemplateRows); setArchivedRequests(archivedRequestRows); setDrivers(driverRows); setError(''); } catch (err: any) { if (requestId === loadRequest.current) setError(err?.message || 'טעינת המסמכים נכשלה'); } }, [companyId, isAdmin]);
+  useFocusEffect(useCallback(() => { load(); return () => { loadRequest.current += 1; }; }, [load]));
+  const sortedTemplates = useMemo(() => [...templates].sort((a, b) => a.title.localeCompare(b.title, 'he')), [templates]);
   if (profileLoading || !isAdmin) return null;
-
-  const startBuilder = async (file: SigningFile | null) => {
-    if (!file || !companyId) return;
-    if (!title.trim()) { setError('יש להקליד שם למסמך'); return; }
-    setError('');
-    try {
-      const session = await createTemplateBuilderSession(companyId, title.trim(), file);
-      navigation.navigate('DocusealWebView', {
-        mode: 'builder', title: 'מיקום שדה החתימה', token: session.token,
-        host: session.host, templateId: session.templateId,
-      });
-      setTitle('');
-    } catch (err: any) { setError(err?.message || 'יצירת התבנית נכשלה'); }
-  };
-
-  const startBuilderFrom = async (source: 'gallery' | 'file') => {
-    setBuilderSource(source);
-    try {
-      const file = source === 'gallery' ? await pickImage() : await pickFile();
-      await startBuilder(file);
-    } finally {
-      setBuilderSource(null);
-    }
-  };
-
-  const send = async () => {
-    if (!companyId || !activeTemplate || !selected.length) return;
-    setSending(true);
-    try {
-      const result = await assignSigningTemplate(companyId, activeTemplate.id, selected);
-      setActiveTemplate(null);
-      setSelected([]);
-      setTab('sent');
-      await load();
-      if (result.failed.length) Alert.alert('השליחה הושלמה חלקית', `נשלח ל-${result.created} נהגים`);
-    } catch (err: any) { setError(err?.message || 'שליחת המסמך נכשלה'); }
-    finally { setSending(false); }
-  };
-
-  const previewTemplate = async (item: SigningTemplate) => {
-    setPreviewingTemplateId(item.id);
-    setError('');
-    try {
-      const url = await getSigningTemplateSourceUrl(item);
-      if (!url) throw new Error('לא ניתן לפתוח את התבנית כרגע');
-      navigation.navigate('DocusealWebView', {
-        mode: 'document',
-        title: item.title,
-        src: url,
-      });
-    } catch (err: any) {
-      setError(err?.message || 'פתיחת התבנית נכשלה');
-    } finally {
-      setPreviewingTemplateId(null);
-    }
-  };
-
-  const shareTemplate = async (item: SigningTemplate) => {
-    setSharingTemplateId(item.id);
-    setError('');
-    try {
-      await downloadSigningTemplate(item);
-    } catch (err: any) {
-      setError(err?.message || 'הורדת התבנית נכשלה');
-    } finally {
-      setSharingTemplateId(null);
-    }
-  };
-
-  const openRequest = async (item: SignatureRequest) => {
-    setOpeningRequestId(item.id);
-    try {
-      const session = await getSigningSession(item.id);
-      navigation.navigate('DocusealWebView', { ...session, title: item.template?.title || 'מסמך חתום', requestId: item.id });
-    } catch (err: any) { setError(err?.message || 'פתיחת המסמך נכשלה'); }
-    finally { setOpeningRequestId(null); }
-  };
-
-  const shareSignedRequest = async (item: SignatureRequest) => {
-    setSharingRequestId(item.id);
-    setError('');
-    try {
-      await downloadSignedRequest(item);
-    } catch (err: any) {
-      setError(err?.message || 'הורדת המסמך החתום נכשלה');
-    } finally {
-      setSharingRequestId(null);
-    }
-  };
-
-  const remove = (kind: 'template' | 'request', id: string) => {
-    if (!companyId) return;
-    Alert.alert('מחיקת מסמך', 'המסמך יימחק גם מ-DocuSeal. להמשיך?', [
-      { text: 'ביטול', style: 'cancel' },
-      { text: 'מחיקה', style: 'destructive', onPress: async () => {
-        try { await deleteSigningRecord(companyId, kind, id); await load(); }
-        catch (err: any) { setError(err?.message || 'מחיקת המסמך נכשלה'); }
-      } },
-    ]);
-  };
-
-  return (
-    <Screen>
-      <ScreenHeader title="מסמכים לחתימה" onBack={() => navigation.goBack()} />
-      <View style={styles.tabs}>
-        {(['templates', 'sent'] as const).map((value) => (
-          <TouchableOpacity key={value} style={[styles.tab, tab === value && styles.tabActive]} onPress={() => setTab(value)}>
-            <AppText weight="bold" style={tab === value ? styles.tabTextActive : styles.tabText}>
-              {value === 'templates' ? 'תבניות' : 'נשלחו'}
-            </AppText>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        {tab === 'templates' && (
-          <Card style={styles.createCard}>
-            <AppText weight="bold" style={styles.heading}>יצירת טופס חדש</AppText>
-            <Input value={title} onChangeText={setTitle} placeholder="שם המסמך" />
-            <View style={styles.actions}>
-              <PrimaryButton
-                style={styles.action}
-                label="תמונה מהגלריה"
-                icon="images-outline"
-                loading={builderSource === 'gallery'}
-                disabled={builderSource !== null}
-                onPress={() => startBuilderFrom('gallery')}
-              />
-              <SecondaryButton
-                style={styles.action}
-                label="PDF או תמונה"
-                icon="document-attach-outline"
-                disabled={builderSource !== null}
-                onPress={() => startBuilderFrom('file')}
-              />
-            </View>
-          </Card>
-        )}
-
-        {!!error && <AppText style={styles.error}>{error}</AppText>}
-
-        {tab === 'templates' && templates.map((item) => (
-          <TouchableOpacity key={item.id} activeOpacity={0.8} onPress={() => previewTemplate(item)}>
-          <Card style={styles.card}>
-            {previewingTemplateId === item.id
-              ? <Ionicons name="hourglass-outline" size={25} color={COLORS.accent} />
-              : <Ionicons name="document-text-outline" size={25} color={COLORS.accent} />}
-            <View style={styles.cardText}><AppText weight="bold">{item.title}</AppText><AppText style={styles.meta}>תבנית מוכנה לשליחה</AppText></View>
-            <TouchableOpacity onPress={() => shareTemplate(item)} hitSlop={8} disabled={sharingTemplateId === item.id}>
-              <Ionicons name="download-outline" size={20} color={COLORS.accent} />
-            </TouchableOpacity>
-            <SecondaryButton label="שלח" icon="send-outline" onPress={() => setActiveTemplate(item)} />
-            <TouchableOpacity onPress={() => remove('template', item.id)}><Ionicons name="trash-outline" size={20} color={COLORS.dangerText} /></TouchableOpacity>
-          </Card>
-          </TouchableOpacity>
-        ))}
-        {tab === 'templates' && !templates.length && <EmptyState title="אין עדיין תבניות מוכנות" />}
-
-        {tab === 'sent' && requests.map((item) => (
-          <Card key={item.id} style={styles.card}>
-            <Ionicons
-              name={openingRequestId === item.id ? 'hourglass-outline' : item.status === 'completed' ? 'checkmark-circle' : 'time-outline'}
-              size={25}
-              color={item.status === 'completed' ? COLORS.okText : COLORS.accent}
-            />
-            <TouchableOpacity style={styles.cardText} onPress={() => item.status === 'completed' && openRequest(item)} disabled={openingRequestId === item.id}>
-              <AppText weight="bold">{item.template?.title || 'מסמך'}</AppText>
-              <AppText style={styles.meta}>{item.driverName || 'נהג'} · {item.status === 'completed' ? 'נחתם' : item.status === 'declined' ? 'נדחה' : 'ממתין לחתימה'}</AppText>
-            </TouchableOpacity>
-            {item.status === 'completed' && (
-              <TouchableOpacity onPress={() => shareSignedRequest(item)} hitSlop={8} disabled={sharingRequestId === item.id}>
-                <Ionicons name="download-outline" size={20} color={COLORS.accent} />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity onPress={() => remove('request', item.id)}><Ionicons name="trash-outline" size={20} color={COLORS.dangerText} /></TouchableOpacity>
-          </Card>
-        ))}
-        {tab === 'sent' && !requests.length && <EmptyState title="לא נשלחו מסמכים" />}
-      </ScrollView>
-
-      <Modal visible={!!activeTemplate} transparent animationType="slide" onRequestClose={() => setActiveTemplate(null)}>
-        <View style={styles.overlay}><View style={styles.sheet}>
-          <AppText weight="bold" style={styles.heading}>בחירת נהגים</AppText>
-          <ScrollView style={styles.driverList}>
-            {drivers.map((driver) => {
-              const checked = selected.includes(driver.id);
-              return <TouchableOpacity key={driver.id} style={styles.driver} onPress={() => setSelected(checked ? selected.filter((id) => id !== driver.id) : [...selected, driver.id])}>
-                <Ionicons name={checked ? 'checkbox' : 'square-outline'} size={23} color={COLORS.accent} />
-                <AppText style={styles.cardText}>{driver.full_name || 'נהג'}</AppText>
-              </TouchableOpacity>;
-            })}
-          </ScrollView>
-          <PrimaryButton label={`שלח ל-${selected.length} נהגים`} loading={sending} disabled={!selected.length} onPress={send} />
-          <SecondaryButton label="ביטול" onPress={() => setActiveTemplate(null)} />
-        </View></View>
-      </Modal>
-    </Screen>
-  );
+  const startBuilder = async (file: SigningFile | null) => { if (!file || !companyId) return; if (!title.trim()) { setError('יש להקליד שם למסמך לפני הבחירה'); return; } setError(''); try { const session = await createTemplateBuilderSession(companyId, title.trim(), file); setTitle(''); setSourceSheetOpen(false); navigation.navigate('DocusealWebView', { mode: 'builder', title: 'מיקום שדות החתימה', token: session.token, host: session.host, templateId: session.templateId }); } catch (err: any) { setError(err?.message || 'יצירת התבנית נכשלה'); } };
+  const chooseSource = async (source: Source) => { if (!title.trim()) { setSourceSheetOpen(false); setError('יש להקליד שם למסמך לפני הבחירה'); return; } setBuilderSource(source); try { const file = source === 'gallery' ? await pickImage() : source === 'camera' ? await captureImage() : await pickFile(); await startBuilder(file); } finally { setBuilderSource(null); } };
+  const previewTemplate = async (item: SigningTemplate) => { setPreviewingTemplateId(item.id); setError(''); try { const session = await getSigningTemplatePreviewSession(item.id); navigation.navigate('DocusealWebView', { ...session, title: item.title }); } catch (err: any) { setError(err?.message || 'פתיחת התבנית נכשלה'); } finally { setPreviewingTemplateId(null); } };
+  const send = async () => { if (!companyId || !activeTemplate || !selected.length) return; setSending(true); try { const result = await assignSigningTemplate(companyId, activeTemplate.id, selected); if (!result.created) throw new Error(result.message || 'לא נוצרה בקשת חתימה'); setActiveTemplate(null); setSelected([]); setTab('sent'); await load(); if (result.failed.length) Alert.alert('השליחה הושלמה חלקית', `${result.message || ''}\nנשלח ל-${result.created} נהגים`); } catch (err: any) { setError(err?.message || 'שליחת המסמך נכשלה'); } finally { setSending(false); } };
+  const openRequest = async (item: SignatureRequest) => { if (item.status !== 'completed') return; setOpeningRequestId(item.id); try { const session = await getSigningSession(item.id); navigation.navigate('DocusealWebView', { ...session, title: item.template?.title || 'מסמך חתום', requestId: item.id }); } catch (err: any) { setError(err?.message || 'פתיחת המסמך נכשלה'); } finally { setOpeningRequestId(null); } };
+  const archive = (kind: 'template' | 'request', id: string) => { if (!companyId) return; Alert.alert('העברה לארכיון', 'הפריט יישמר בארכיון ולא יימחק לצמיתות. להמשיך?', [{ text: 'ביטול', style: 'cancel' }, { text: 'העבר לארכיון', style: 'destructive', onPress: async () => { try { await deleteSigningRecord(companyId, kind, id); await load(); } catch (err: any) { setError(err?.message || 'העברה לארכיון נכשלה'); } } }]); };
+  const restore = async (kind: 'template' | 'request', id: string) => { if (!companyId) return; try { await deleteSigningRecord(companyId, kind, id, 'restore'); await load(); } catch (err: any) { setError(err?.message || 'שחזור המסמך נכשל'); } };
+  const permanentlyDelete = (kind: 'template' | 'request', id: string) => { if (!companyId) return; Alert.alert('מחיקה לצמיתות', 'הפריט וקובצי המקור שלו יימחקו מ-FleetOS ללא אפשרות שחזור. ב-DocuSeal הוא יישאר בארכיון של הספק. להמשיך?', [{ text: 'ביטול', style: 'cancel' }, { text: 'מחק לצמיתות', style: 'destructive', onPress: async () => { try { await deleteSigningRecord(companyId, kind, id, 'permanent-delete'); await load(); } catch (err: any) { setError(err?.message || 'מחיקת המסמך נכשלה'); } } }]); };
+  return <View style={s.screen}><AdminGradientBackground /><ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+    <View style={[s.navRow, { paddingTop: Math.max(insets.top, 20) + 12 }]}><TouchableOpacity style={s.backAction} onPress={() => navigation.goBack()} hitSlop={8}><Ionicons name="chevron-forward" size={24} color={BRAND} /><AppText style={s.backText}>תפריט</AppText></TouchableOpacity></View>
+    <View style={s.hero}><LinearGradient colors={['#3FA9E8', '#0A7FD0']} style={s.heroAvatar}><Ionicons name="document-text-outline" size={46} color="#FFF" /><Ionicons name="create-outline" size={21} color="#FFF" style={s.avatarPen} /></LinearGradient><AppText style={s.heroTitle}>מסמכים לחתימה</AppText><AppText style={s.heroSubtitle}>{`${templates.length} תבניות`}</AppText></View>
+    <View style={s.segmentTrack}><Segment label="תבניות" active={tab === 'templates'} onPress={() => setTab('templates')} /><Segment label="נשלחו" active={tab === 'sent'} onPress={() => setTab('sent')} /><Segment label="ארכיון" active={tab === 'archive'} onPress={() => setTab('archive')} /></View>{!!error && <AppText style={s.error}>{error}</AppText>}
+    {tab === 'templates' && <View style={s.section}><AppText style={s.caption}>תבנית חדשה</AppText><View style={s.createCard}><TouchableOpacity activeOpacity={.85} onPress={() => setSourceSheetOpen(true)}><LinearGradient colors={['#EAF4FB', '#DDEDF7', '#F4F9FC']} start={{ x: .1, y: 0 }} end={{ x: .9, y: 1 }} style={s.illustrationPanel}><PaperIllustration /><View style={s.illustrationCopy}><AppText style={s.createTitle}>יצירת תבנית חדשה</AppText><AppText style={s.createBody}>העלה PDF או תמונה, ואז מקם את שדות החתימה בעורך של DocuSeal.</AppText></View></LinearGradient></TouchableOpacity><Stepper /><View style={s.nameField}><Ionicons name="create-outline" size={17} color="rgba(14,30,43,0.32)" /><TextInput value={title} onChangeText={setTitle} placeholder="שם המסמך" placeholderTextColor="rgba(14,30,43,0.32)" textAlign="right" style={s.nameInput} /></View></View><View style={s.listCaptionRow}><AppText style={s.caption}>תבניות מוכנות</AppText><AppText style={s.caption}>{templates.length}</AppText></View>{sortedTemplates.length > 0 && <View style={s.listCard}>{sortedTemplates.map((item, index) => <TemplateRow key={item.id} item={item} last={index === sortedTemplates.length - 1} loading={previewingTemplateId === item.id} onOpen={() => previewTemplate(item)} onSend={() => setActiveTemplate(item)} onDownload={() => downloadSigningTemplate(item).catch((err: any) => setError(err?.message || 'הורדת התבנית נכשלה'))} onArchive={() => archive('template', item.id)} />)}</View>}{!sortedTemplates.length && <AppText style={s.emptyText}>אין עדיין תבניות. אפשר ליצור את הראשונה בכרטיס למעלה.</AppText>}{!!sortedTemplates.length && <AppText style={s.footnote}>לחיצה ארוכה על תבנית מורידה PDF. מחיקה מבקשת אישור.</AppText>}</View>}
+    {tab === 'sent' && <View style={s.section}><View style={s.listCaptionRow}><AppText style={s.caption}>מסמכים שנשלחו</AppText><AppText style={s.caption}>{requests.length}</AppText></View>{requests.length > 0 ? <View style={s.listCard}>{requests.map((item, index) => <RequestRow key={item.id} item={item} last={index === requests.length - 1} loading={openingRequestId === item.id} onOpen={() => openRequest(item)} onDownload={() => downloadSignedRequest(item).catch((err: any) => setError(err?.message || 'הורדת המסמך נכשלה'))} onArchive={() => archive('request', item.id)} />)}</View> : <AppText style={s.emptyText}>לא נשלחו מסמכים עדיין.</AppText>}</View>}
+    {tab === 'archive' && <View style={s.section}><View style={s.listCaptionRow}><AppText style={s.caption}>פריטים בארכיון</AppText><AppText style={s.caption}>{archivedTemplates.length + archivedRequests.length}</AppText></View>{(archivedTemplates.length + archivedRequests.length) > 0 ? <View style={s.listCard}>{archivedTemplates.map((item, index) => <ArchiveRow key={`template-${item.id}`} title={item.title} subtitle="תבנית DocuSeal" last={index === archivedTemplates.length - 1 && !archivedRequests.length} onRestore={() => restore('template', item.id)} onDelete={() => permanentlyDelete('template', item.id)} />)}{archivedRequests.map((item, index) => <ArchiveRow key={`request-${item.id}`} title={item.template?.title || 'מסמך'} subtitle={`${item.driverName || 'נהג'} · ${item.status === 'completed' ? 'נחתם' : 'ממתין'}`} last={index === archivedRequests.length - 1} onRestore={() => restore('request', item.id)} onDelete={() => permanentlyDelete('request', item.id)} disabled={!['completed', 'declined'].includes(item.status)} />)}</View> : <AppText style={s.emptyText}>הארכיון ריק.</AppText>}</View>}
+  </ScrollView><SourceSheet visible={sourceSheetOpen} busy={builderSource} onClose={() => setSourceSheetOpen(false)} onChoose={chooseSource} /><Modal visible={!!activeTemplate} transparent animationType="slide" onRequestClose={() => setActiveTemplate(null)}><View style={s.modalOverlay}><View style={s.driverSheet}><View style={s.grabber} /><AppText style={s.sheetTitle}>בחירת נהגים</AppText><ScrollView style={s.driverList}>{drivers.map((driver) => { const checked = selected.includes(driver.id); return <TouchableOpacity key={driver.id} style={s.driverRow} onPress={() => setSelected(checked ? selected.filter((id) => id !== driver.id) : [...selected, driver.id])}><Ionicons name={checked ? 'checkbox' : 'square-outline'} size={22} color={BRAND} /><AppText style={s.driverName}>{driver.full_name || 'נהג'}</AppText></TouchableOpacity>; })}</ScrollView><TouchableOpacity disabled={!selected.length || sending} style={[s.sendAllButton, (!selected.length || sending) && s.disabled]} onPress={send}><AppText style={s.primaryButtonText}>{sending ? 'שולח...' : `שלח ל-${selected.length} נהגים`}</AppText></TouchableOpacity><TouchableOpacity style={s.cancelButton} onPress={() => setActiveTemplate(null)}><AppText style={s.cancelText}>ביטול</AppText></TouchableOpacity></View></View></Modal></View>;
 }
 
-const styles = StyleSheet.create({
-  tabs: { flexDirection: 'row-reverse', margin: SPACING.lg, marginBottom: 0, backgroundColor: COLORS.neutralBg, borderRadius: RADIUS.md, padding: 4 },
-  tab: { flex: 1, padding: 10, alignItems: 'center', borderRadius: RADIUS.sm },
-  tabActive: { backgroundColor: COLORS.card }, tabText: { color: COLORS.textMuted }, tabTextActive: { color: COLORS.accent },
-  content: { padding: SPACING.lg, gap: SPACING.md }, createCard: { gap: SPACING.md }, heading: { fontSize: 18, textAlign: 'right' },
-  actions: { flexDirection: 'row-reverse', gap: SPACING.sm }, action: { flex: 1 },
-  card: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.md, padding: SPACING.md },
-  cardText: { flex: 1, textAlign: 'right' }, meta: { color: COLORS.textMuted, fontSize: 12, marginTop: 3 }, error: { color: COLORS.dangerText, textAlign: 'center' },
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000055' },
-  sheet: { maxHeight: '75%', backgroundColor: COLORS.card, borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg, padding: SPACING.lg, gap: SPACING.md },
-  driverList: { maxHeight: 360 }, driver: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.md, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: COLORS.divider },
+function Segment({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) { return <TouchableOpacity activeOpacity={.75} onPress={onPress} style={[s.segment, active && s.segmentActive]}><AppText style={[s.segmentText, active && s.segmentTextActive]}>{label}</AppText></TouchableOpacity>; }
+function Stepper() { return <View style={s.stepper}>{[['1', 'העלאה'], ['2', 'מיקום שדות'], ['3', 'שליחה']].map(([number, label], index) => <View style={s.stepWrap} key={number}><View style={[s.stepCircle, index === 0 && s.stepCircleActive]}><AppText style={[s.stepNumber, index === 0 && s.stepNumberActive]}>{number}</AppText></View><AppText style={[s.stepLabel, index === 0 && s.stepLabelActive]}>{label}</AppText>{index < 2 && <View style={s.stepRail} />}</View>)}</View>; }
+function PaperIllustration() { return <View style={s.paperArea}><View style={s.backPaper} /><View style={s.frontPaper}><View style={s.paperTitleLine} /><View style={s.paperLine} /><View style={s.paperLine} /><View style={[s.paperLine, s.paperLineShort]} /><View style={s.signaturePlaceholder}><AppText style={s.signatureLabel}>חתימה</AppText></View></View></View>; }
+function TemplateRow({ item, last, loading, onOpen, onSend, onDownload, onArchive }: { item: SigningTemplate; last: boolean; loading: boolean; onOpen: () => void; onSend: () => void; onDownload: () => void; onArchive: () => void }) { return <TouchableOpacity activeOpacity={.75} disabled={loading} onPress={onOpen} onLongPress={onDownload} style={[s.listRow, !last && s.listDivider]}><View style={s.documentIcon}><Ionicons name={loading ? 'hourglass-outline' : 'document-text-outline'} size={18} color="#FFF" /></View><View style={s.rowCopy}><AppText numberOfLines={1} style={s.rowTitle}>{item.title}</AppText><AppText numberOfLines={1} style={s.rowSubtitle}>תבנית DocuSeal מוכנה לשליחה</AppText></View><TouchableOpacity hitSlop={6} style={s.sendPill} onPress={onSend}><Ionicons name="paper-plane-outline" size={15} color={BRAND} /><AppText style={s.sendPillText}>שלח</AppText></TouchableOpacity><TouchableOpacity hitSlop={6} style={s.smallAction} onPress={onDownload}><Ionicons name="download-outline" size={16} color={MUTED} /></TouchableOpacity><TouchableOpacity hitSlop={6} style={s.deleteAction} onPress={onArchive}><Ionicons name="trash-outline" size={16} color="#C0392B" /></TouchableOpacity><Ionicons name="chevron-back" size={18} color="rgba(60,60,67,0.28)" /></TouchableOpacity>; }
+function RequestRow({ item, last, loading, onOpen, onDownload, onArchive }: { item: SignatureRequest; last: boolean; loading: boolean; onOpen: () => void; onDownload: () => void; onArchive: () => void }) { const signed = item.status === 'completed'; return <TouchableOpacity activeOpacity={.75} disabled={!signed || loading} onPress={onOpen} style={[s.listRow, !last && s.listDivider]}><View style={[s.documentIcon, { backgroundColor: signed ? '#2E8B57' : BRAND }]}><Ionicons name={loading ? 'hourglass-outline' : signed ? 'checkmark-outline' : 'time-outline'} size={18} color="#FFF" /></View><View style={s.rowCopy}><AppText numberOfLines={1} style={s.rowTitle}>{item.template?.title || 'מסמך'}</AppText><AppText numberOfLines={1} style={s.rowSubtitle}>{`${item.driverName || 'נהג'} · ${formatTime(item.created_at)}`}</AppText></View><View style={[s.statusPill, signed ? s.statusSigned : s.statusPending]}>{signed && <Ionicons name="shield-checkmark-outline" size={13} color="#2E8B57" />}<AppText style={[s.statusText, { color: signed ? '#2E8B57' : BRAND }]}>{signed ? 'חתום דיגיטלית' : 'ממתין'}</AppText></View>{signed && <TouchableOpacity hitSlop={6} style={s.smallAction} onPress={onDownload}><Ionicons name="download-outline" size={16} color={MUTED} /></TouchableOpacity>}<TouchableOpacity hitSlop={6} style={s.deleteAction} onPress={onArchive}><Ionicons name="trash-outline" size={16} color="#C0392B" /></TouchableOpacity></TouchableOpacity>; }
+function ArchiveRow({ title, subtitle, last, onRestore, onDelete, disabled }: { title: string; subtitle: string; last: boolean; onRestore: () => void; onDelete: () => void; disabled?: boolean }) { return <View style={[s.listRow, !last && s.listDivider]}><View style={[s.documentIcon, { backgroundColor: 'rgba(14,30,43,0.24)' }]}><Ionicons name="archive-outline" size={18} color="#FFF" /></View><View style={s.rowCopy}><AppText numberOfLines={1} style={s.rowTitle}>{title}</AppText><AppText numberOfLines={1} style={s.rowSubtitle}>{subtitle}</AppText></View><TouchableOpacity disabled={disabled} onPress={onRestore} style={[s.restorePill, disabled && s.disabled]}><Ionicons name="refresh-outline" size={15} color={BRAND} /><AppText style={s.sendPillText}>שחזר</AppText></TouchableOpacity><TouchableOpacity onPress={onDelete} style={s.deleteAction}><Ionicons name="trash-outline" size={16} color="#C0392B" /></TouchableOpacity></View>; }
+function SourceSheet({ visible, busy, onClose, onChoose }: { visible: boolean; busy: Source | null; onClose: () => void; onChoose: (source: Source) => void }) { return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><TouchableWithoutFeedback onPress={onClose}><View style={s.modalOverlay} /></TouchableWithoutFeedback><View style={s.sourceSheet}><View style={s.grabber} /><AppText style={s.sourceSheetTitle}>בחירת מקור</AppText><View style={s.sourceList}><SourceOption source="gallery" busy={busy} icon="image-outline" color="#34C759" label="תמונה מהגלריה" onPress={onChoose} /><SourceOption source="file" busy={busy} icon="document-text-outline" color={BRAND} label="קובץ PDF או תמונה" onPress={onChoose} /><SourceOption source="camera" busy={busy} icon="camera-outline" color="#5E5CE6" label="צילום מסמך" onPress={onChoose} last /></View></View></Modal>; }
+function SourceOption({ source, busy, icon, color, label, onPress, last }: { source: Source; busy: Source | null; icon: keyof typeof Ionicons.glyphMap; color: string; label: string; onPress: (source: Source) => void; last?: boolean }) { return <TouchableOpacity disabled={busy !== null} onPress={() => onPress(source)} style={[s.sourceOption, !last && s.listDivider]}><View style={[s.sourceIcon, { backgroundColor: color }]}><Ionicons name={busy === source ? 'hourglass-outline' : icon} size={18} color="#FFF" /></View><AppText style={s.sourceLabel}>{label}</AppText><Ionicons name="chevron-back" size={18} color="rgba(60,60,67,0.28)" /></TouchableOpacity>; }
+
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#F1F4F7' }, scroll: { flex: 1, backgroundColor: 'transparent' }, content: { paddingBottom: 48, position: 'relative' },
+  navRow: { paddingHorizontal: 20 }, backAction: { flexDirection: 'row-reverse', alignSelf: 'flex-end', alignItems: 'center', gap: 2 }, backText: { fontFamily: 'Assistant_600SemiBold', fontSize: 17, color: BRAND },
+  hero: { alignItems: 'center', paddingHorizontal: 20, paddingTop: 16 }, heroAvatar: { width: 104, height: 104, borderRadius: 52, justifyContent: 'center', alignItems: 'center', shadowColor: '#0A7FD0', shadowOpacity: .32, shadowRadius: 17, shadowOffset: { width: 0, height: 12 }, elevation: 8 }, avatarPen: { position: 'absolute', right: 17, bottom: 17 }, heroTitle: { marginTop: 14, fontFamily: 'Assistant_700Bold', fontSize: 29, letterSpacing: -.6, color: TEXT }, heroSubtitle: { marginTop: 3, fontFamily: 'Assistant_600SemiBold', fontSize: 15, color: 'rgba(14,30,43,0.5)' },
+  segmentTrack: { flexDirection: 'row-reverse', marginHorizontal: 20, marginTop: 20, padding: 3, borderRadius: 11, backgroundColor: 'rgba(120,120,128,0.12)' }, segment: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 9 }, segmentActive: { backgroundColor: '#FFF', shadowColor: '#143C5A', shadowOpacity: .14, shadowRadius: 4, shadowOffset: { width: 0, height: 3 }, elevation: 2 }, segmentText: { fontFamily: 'Assistant_700Bold', fontSize: 14.5, color: 'rgba(14,30,43,0.6)' }, segmentTextActive: { color: BRAND },
+  error: { marginHorizontal: 20, marginTop: 12, textAlign: 'center', fontFamily: 'Assistant_600SemiBold', color: '#C0392B' }, section: { paddingHorizontal: 20, paddingTop: 20 }, caption: { fontFamily: 'Assistant_600SemiBold', fontSize: 13.5, color: 'rgba(14,30,43,0.42)' },
+  createCard: { marginTop: 7, padding: 6, paddingBottom: 16, backgroundColor: '#FFF', borderRadius: 22, shadowColor: '#143C5A', shadowOpacity: .16, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 3 }, illustrationPanel: { height: 176, borderRadius: 18, overflow: 'hidden', flexDirection: 'row-reverse', alignItems: 'center' }, illustrationCopy: { flex: 1, paddingLeft: 14, paddingRight: 16 }, createTitle: { fontFamily: 'Assistant_700Bold', fontSize: 20, letterSpacing: -.4, color: TEXT, textAlign: 'right' }, createBody: { marginTop: 6, fontFamily: 'Assistant_400Regular', fontSize: 13, lineHeight: 18, color: 'rgba(14,30,43,0.55)', textAlign: 'right' },
+  paperArea: { width: 142, height: '100%', position: 'relative' }, backPaper: { position: 'absolute', width: 84, height: 112, right: 14, top: 34, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.7)', transform: [{ rotate: '6deg' }] }, frontPaper: { position: 'absolute', width: 96, height: 124, right: 32, top: 24, paddingHorizontal: 11, paddingTop: 12, borderRadius: 8, backgroundColor: '#FFF', transform: [{ rotate: '-7deg' }], shadowColor: '#143C5A', shadowOpacity: .22, shadowRadius: 13, shadowOffset: { width: 0, height: 7 }, elevation: 4 }, paperTitleLine: { height: 5, width: '70%', borderRadius: 3, backgroundColor: 'rgba(14,30,43,0.12)', marginBottom: 10 }, paperLine: { height: 4, borderRadius: 2, backgroundColor: 'rgba(14,30,43,0.08)', marginBottom: 6 }, paperLineShort: { width: '68%', marginBottom: 9 }, signaturePlaceholder: { height: 32, borderRadius: 7, borderWidth: 1.5, borderStyle: 'dashed', borderColor: BRAND, backgroundColor: 'rgba(0,136,204,0.07)', alignItems: 'center', justifyContent: 'center' }, signatureLabel: { fontFamily: 'Assistant_700Bold', fontSize: 10.5, color: BRAND },
+  stepper: { flexDirection: 'row-reverse', paddingHorizontal: 10, paddingTop: 14 }, stepWrap: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', gap: 5 }, stepCircle: { width: 19, height: 19, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(118,118,128,0.14)' }, stepCircleActive: { backgroundColor: BRAND }, stepNumber: { fontFamily: 'Assistant_700Bold', fontSize: 11.5, color: 'rgba(14,30,43,0.45)' }, stepNumberActive: { color: '#FFF' }, stepLabel: { fontFamily: 'Assistant_700Bold', fontSize: 12.5, color: 'rgba(14,30,43,0.42)' }, stepLabelActive: { color: TEXT }, stepRail: { flex: 1, height: 1, backgroundColor: 'rgba(14,30,43,0.1)' },
+  nameField: { height: 48, marginHorizontal: 10, marginTop: 14, paddingHorizontal: 14, flexDirection: 'row-reverse', alignItems: 'center', gap: 10, borderRadius: 14, backgroundColor: 'rgba(118,118,128,0.1)' }, nameInput: { flex: 1, height: '100%', fontFamily: 'Assistant_400Regular', fontSize: 16, color: TEXT },
+  listCaptionRow: { marginTop: 20, marginHorizontal: 4, marginBottom: 7, flexDirection: 'row-reverse', justifyContent: 'space-between' }, listCard: { overflow: 'hidden', borderRadius: 18, backgroundColor: '#FFF', shadowColor: '#143C5A', shadowOpacity: .16, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 3 }, listRow: { minHeight: 62, paddingHorizontal: 14, paddingVertical: 11, flexDirection: 'row-reverse', alignItems: 'center', gap: 9 }, listDivider: { borderBottomWidth: 1, borderBottomColor: 'rgba(14,30,43,0.07)' }, documentIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center' }, rowCopy: { flex: 1, minWidth: 0 }, rowTitle: { fontFamily: 'Assistant_700Bold', fontSize: 16.5, letterSpacing: -.2, color: TEXT, textAlign: 'right' }, rowSubtitle: { marginTop: 1, fontFamily: 'Assistant_400Regular', fontSize: 13.5, color: MUTED, textAlign: 'right' },
+  sendPill: { paddingHorizontal: 10, paddingVertical: 7, flexDirection: 'row-reverse', alignItems: 'center', gap: 4, borderRadius: 10, backgroundColor: 'rgba(0,136,204,0.1)' }, sendPillText: { fontFamily: 'Assistant_700Bold', fontSize: 14.5, color: BRAND }, smallAction: { width: 28, height: 34, alignItems: 'center', justifyContent: 'center' }, deleteAction: { width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(192,57,43,0.1)', alignItems: 'center', justifyContent: 'center' }, footnote: { paddingHorizontal: 4, paddingTop: 8, fontFamily: 'Assistant_400Regular', fontSize: 13, color: 'rgba(14,30,43,0.4)', textAlign: 'right' }, emptyText: { paddingVertical: 24, fontFamily: 'Assistant_400Regular', fontSize: 13.5, color: MUTED, textAlign: 'center' },
+  statusPill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, flexDirection: 'row-reverse', alignItems: 'center', gap: 4 }, statusPending: { backgroundColor: 'rgba(0,136,204,0.1)' }, statusSigned: { backgroundColor: 'rgba(46,139,87,0.1)' }, statusText: { fontFamily: 'Assistant_700Bold', fontSize: 12.5 }, restorePill: { paddingHorizontal: 10, paddingVertical: 7, flexDirection: 'row-reverse', alignItems: 'center', gap: 4, borderRadius: 10, backgroundColor: 'rgba(0,136,204,0.1)' },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(14,40,60,0.3)' }, sourceSheet: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 34, borderTopLeftRadius: 26, borderTopRightRadius: 26, backgroundColor: '#FFF', shadowColor: '#0E283C', shadowOpacity: .2, shadowRadius: 25, shadowOffset: { width: 0, height: -8 }, elevation: 12 }, grabber: { width: 38, height: 5, borderRadius: 3, alignSelf: 'center', backgroundColor: 'rgba(14,30,43,0.15)' }, sourceSheetTitle: { marginTop: 14, marginBottom: 16, fontFamily: 'Assistant_700Bold', fontSize: 22, letterSpacing: -.4, color: TEXT, textAlign: 'center' }, sourceList: { overflow: 'hidden', borderRadius: 18, backgroundColor: 'rgba(118,118,128,0.08)' }, sourceOption: { minHeight: 58, paddingHorizontal: 14, flexDirection: 'row-reverse', alignItems: 'center', gap: 12 }, sourceIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, sourceLabel: { flex: 1, fontFamily: 'Assistant_700Bold', fontSize: 16.5, color: TEXT, textAlign: 'right' },
+  driverSheet: { maxHeight: '78%', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 28, borderTopLeftRadius: 26, borderTopRightRadius: 26, backgroundColor: '#FFF' }, sheetTitle: { marginTop: 14, marginBottom: 10, fontFamily: 'Assistant_700Bold', fontSize: 22, color: TEXT, textAlign: 'right' }, driverList: { maxHeight: 360 }, driverRow: { minHeight: 52, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(14,30,43,0.07)' }, driverName: { flex: 1, fontFamily: 'Assistant_400Regular', fontSize: 16, color: TEXT, textAlign: 'right' }, sendAllButton: { marginTop: 16, height: 52, borderRadius: 15, backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center' }, primaryButtonText: { fontFamily: 'Assistant_700Bold', fontSize: 16, color: '#FFF' }, cancelButton: { height: 44, alignItems: 'center', justifyContent: 'center' }, cancelText: { fontFamily: 'Assistant_700Bold', fontSize: 16, color: 'rgba(14,30,43,0.6)' }, disabled: { opacity: .5 },
 });

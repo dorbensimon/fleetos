@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -32,6 +32,8 @@ import {
 } from '../components/companyDetail/ResetPasswordModal';
 import { EditUserModal, EditUserForm } from '../components/companyDetail/EditUserModal';
 import { InfoSuccessModal } from '../components/companyDetail/InfoSuccessModal';
+import { ErrorState } from '../components/ui';
+import { functionErrorMessage } from '../lib/functionError';
 
 /**
  * Owner-only screen: one company's editable details + its admins/drivers
@@ -62,6 +64,8 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   const [company, setCompany] = useState<Company | null>(null);
   const [users, setUsers] = useState<CompanyUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const loadRequest = useRef(0);
 
   const [fields, setFields] = useState<CompanyEditableFields>(EMPTY_FIELDS);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -150,9 +154,13 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   };
 
   const load = useCallback(async () => {
-    const { data: companyData } = await getCompany(companyId);
+    const requestId = ++loadRequest.current;
+    setLoadError(null);
+    try {
+    const { data: companyData, error: companyError } = await getCompany(companyId);
+    if (companyError || !companyData) throw companyError ?? new Error('החברה לא נמצאה');
 
-    if (companyData) {
+    if (requestId === loadRequest.current) {
       setCompany(companyData);
       setFields({
         name: companyData.name,
@@ -168,17 +176,28 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
 
     const { data: usersData, error } = await listCompanyUsers(companyId);
 
-    if (!error && usersData?.success) {
+    if (error || !usersData?.success) {
+      throw new Error(await functionErrorMessage(error, usersData, 'טעינת המשתמשים נכשלה', false));
+    }
+    if (requestId === loadRequest.current) {
       setUsers(usersData.users);
+    }
+    } catch (err: any) {
+      if (requestId === loadRequest.current) setLoadError(err?.message ?? 'טעינת החברה נכשלה');
     }
   }, [companyId]);
 
   useEffect(() => {
+    let active = true;
     (async () => {
       setLoading(true);
       await load();
-      setLoading(false);
+      if (active) setLoading(false);
     })();
+    return () => {
+      active = false;
+      loadRequest.current += 1;
+    };
   }, [load]);
 
   const hasChanges =
@@ -217,15 +236,23 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   const toggleActive = async () => {
     if (!company) return;
     const newStatus = company.status === 'active' ? 'disabled' : 'active';
-    await updateCompany(company.id, { status: newStatus });
+    const { error } = await updateCompany(company.id, { status: newStatus });
+    if (error) {
+      Alert.alert('העדכון נכשל', 'לא הצלחנו לעדכן את סטטוס החברה');
+      return;
+    }
     await load();
   };
 
   const confirmDeleteCompany = async () => {
     if (!company || deleteConfirmText.trim() !== company.name) return;
     setDeleting(true);
-    await deleteCompany(company.id);
+    const { data, error } = await deleteCompany(company.id, deleteConfirmText.trim());
     setDeleting(false);
+    if (error || !data?.success) {
+      Alert.alert('מחיקת החברה נכשלה', await functionErrorMessage(error, data, 'נסה שוב', false));
+      return;
+    }
     navigation.goBack();
   };
 
@@ -262,15 +289,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
           adminPassword: newAdminForm.password,
       });
       if (error || !data?.success) {
-        let message = data?.error || 'הוספת האדמין נכשלה';
-        if (error?.context?.json) {
-          try {
-            const body = await error.context.json();
-            if (body?.error) message = body.error;
-          } catch {}
-        }
-        console.log('add-company-admin error:', error, 'message:', message);
-        setAddAdminError(message);
+        setAddAdminError(await functionErrorMessage(error, data, 'הוספת האדמין נכשלה', false));
         return;
       }
       setNewAdminForm(EMPTY_NEW_ADMIN_FORM);
@@ -278,8 +297,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       setAddAdminOpen(false);
       setAddAdminSuccessOpen(true);
       await load();
-    } catch (err) {
-      console.log('add-company-admin unexpected error:', err);
+    } catch {
       setAddAdminError('אירעה שגיאה. נסה שוב');
     } finally {
       setAddingAdmin(false);
@@ -289,8 +307,12 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   const removeUser = async () => {
     if (!removeTarget) return;
     setRemoving(true);
-    await deleteCompanyUser(removeTarget.id);
+    const { data, error } = await deleteCompanyUser(removeTarget.id);
     setRemoving(false);
+    if (error || !data?.success) {
+      Alert.alert('מחיקת המשתמש נכשלה', await functionErrorMessage(error, data, 'נסה שוב', false));
+      return;
+    }
     setRemoveTarget(null);
     await load();
   };
@@ -317,15 +339,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       const { data, error } = await resetCompanyUserPassword(resetTarget.id, resetForm.password, companyId);
 
       if (error || !data?.success) {
-        let message = data?.error || 'איפוס הסיסמה נכשל';
-        if (error?.context?.json) {
-          try {
-            const body = await error.context.json();
-            if (body?.error) message = body.error;
-          } catch {}
-        }
-        console.log('reset-user-password error:', error, 'message:', message);
-        setResetError(message);
+        setResetError(await functionErrorMessage(error, data, 'איפוס הסיסמה נכשל', false));
         return;
       }
 
@@ -334,13 +348,20 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       setResetTarget(null);
       setResetSuccessOpen(true);
       await load();
-    } catch (err) {
-      console.log('reset-user-password unexpected error:', err);
+    } catch {
       setResetError('אירעה שגיאה. נסה שוב');
     } finally {
       setResetting(false);
     }
   };
+
+  if (loadError && !company) {
+    return (
+      <View style={styles.centerFill}>
+        <ErrorState message={loadError} onRetry={load} />
+      </View>
+    );
+  }
 
   if (loading || !company) {
     return (

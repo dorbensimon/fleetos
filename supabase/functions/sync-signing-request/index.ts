@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
     const user = await verifyUser(req.headers.get('Authorization'));
     if (!user.ok) return json({ error: user.error }, user.status);
     const { data: local } = await user.adminClient.from('signature_requests').select('*').eq('id', requestId).single();
-    if (!local) return json({ error: 'המסמך לא נמצא' }, 404);
+    if (!local || local.archived_at) return json({ error: 'המסמך לא נמצא' }, 404);
     const allowed = local.driver_id === user.userId
       || user.profile.role === 'owner'
       || (user.profile.role === 'admin' && user.profile.company_id === local.company_id);
@@ -52,4 +52,3 @@ Deno.serve(async (req) => {
     return json({ error: 'סנכרון החתימה נכשל' }, 500);
   }
 });
-

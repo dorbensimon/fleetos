@@ -28,5 +28,17 @@ export async function verifyUser(authHeader: string | null): Promise<UserResult>
     .single();
   if (profileError || !profile) return { ok: false, status: 403, error: 'אין הרשאה' };
 
+  if (profile.role !== 'owner') {
+    if (!profile.company_id) return { ok: false, status: 403, error: 'אין שיוך לחברה פעילה' };
+    const { data: company, error: companyError } = await adminClient
+      .from('companies')
+      .select('status')
+      .eq('id', profile.company_id)
+      .single();
+    if (companyError || company?.status !== 'active') {
+      return { ok: false, status: 403, error: 'החברה אינה פעילה' };
+    }
+  }
+
   return { ok: true, adminClient, userId: data.user.id, email: data.user.email, profile };
 }

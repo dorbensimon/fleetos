@@ -103,12 +103,12 @@ describe('fleetCardHelpers', () => {
 
   describe('chipFor', () => {
     it('returns the generic "requires attention" label for bad tone with no bad items', () => {
-      expect(chipFor(TONE_BAD)).toEqual({ label: 'דורש טיפול', bg: '#FDECEC', fg: TONE_BAD });
+      expect(chipFor(TONE_BAD)).toEqual({ label: 'דורש טיפול', bg: 'rgba(255,59,48,.14)', fg: TONE_BAD });
     });
 
     it('joins bad item labels for bad tone when provided', () => {
       const result = chipFor(TONE_BAD, ['ביטוח', 'טסט']);
-      expect(result).toEqual({ label: 'ביטוח · טסט', bg: '#FDECEC', fg: TONE_BAD });
+      expect(result).toEqual({ label: 'ביטוח · טסט', bg: 'rgba(255,59,48,.14)', fg: TONE_BAD });
     });
 
     it('ignores badItems for a single bad item and just uses it as-is', () => {
@@ -118,21 +118,21 @@ describe('fleetCardHelpers', () => {
 
     it('returns the "approaching deadline" chip for warn tone regardless of badItems', () => {
       const result = chipFor(TONE_WARN, ['ביטוח']);
-      expect(result).toEqual({ label: 'מתקרב מועד', bg: '#FFF6E5', fg: '#B9720A' });
+      expect(result).toEqual({ label: 'מתקרב מועד', bg: 'rgba(255,159,10,.16)', fg: '#b26200' });
     });
 
     it('returns the "missing data" chip for neutral tone', () => {
-      expect(chipFor(TONE_NEUTRAL)).toEqual({ label: 'חסר נתונים', bg: '#F2F2F2', fg: TONE_NEUTRAL });
+      expect(chipFor(TONE_NEUTRAL)).toEqual({ label: 'חסר נתונים', bg: 'rgba(11,12,16,.08)', fg: 'rgba(11,12,16,.6)' });
     });
 
     it('returns the "ok" chip for ok tone', () => {
-      expect(chipFor(TONE_OK)).toEqual({ label: 'תקין', bg: '#EAF8F1', fg: '#118653' });
+      expect(chipFor(TONE_OK)).toEqual({ label: 'תקין', bg: 'rgba(52,199,89,.14)', fg: '#1e8e3e' });
     });
 
     it('falls through to the ok chip for an unrecognized tone value', () => {
       // Defensive check: any tone string that isn't bad/warn/neutral falls
       // through to the final `return` (ok chip), even if it's not TONE_OK.
-      expect(chipFor('#unknown')).toEqual({ label: 'תקין', bg: '#EAF8F1', fg: '#118653' });
+      expect(chipFor('#unknown')).toEqual({ label: 'תקין', bg: 'rgba(52,199,89,.14)', fg: '#1e8e3e' });
     });
   });
 });

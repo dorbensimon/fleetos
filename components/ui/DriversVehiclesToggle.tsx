@@ -37,6 +37,9 @@ export default function DriversVehiclesToggle({ value = 'drivers', onChange }: P
   // 0 = drivers (right, since row-reverse puts the first child there), 1 = vehicles.
   const slide = useRef(new Animated.Value(value === 'drivers' ? 0 : 1)).current;
   const press = useRef(new Animated.Value(1)).current;
+  // 0 = resting, 1 = mid-flight — drives the squash/stretch "liquid glass" wobble,
+  // same idea as the elastic pull on the notifications on/off switch.
+  const stretch = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.spring(slide, {
@@ -46,7 +49,13 @@ export default function DriversVehiclesToggle({ value = 'drivers', onChange }: P
       damping: 26,
       mass: 0.9,
     }).start();
-  }, [value, slide]);
+
+    stretch.setValue(0);
+    Animated.sequence([
+      Animated.timing(stretch, { toValue: 1, duration: 110, useNativeDriver: true }),
+      Animated.spring(stretch, { toValue: 0, useNativeDriver: true, stiffness: 260, damping: 14, mass: 0.9 }),
+    ]).start();
+  }, [value, slide, stretch]);
 
   const select = (v: ToggleValue) => {
     if (v !== value) Haptics.selectionAsync();
@@ -65,6 +74,10 @@ export default function DriversVehiclesToggle({ value = 'drivers', onChange }: P
     outputRange: [0, -segmentWidth],
   });
 
+  const stretchX = stretch.interpolate({ inputRange: [0, 1], outputRange: [1, 1.16] });
+  const stretchY = stretch.interpolate({ inputRange: [0, 1], outputRange: [1, 0.9] });
+  const glassGleam = stretch.interpolate({ inputRange: [0, 1], outputRange: [0.28, 0.55] });
+
   return (
     <View style={styles.track}>
       <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFill} />
@@ -77,29 +90,31 @@ export default function DriversVehiclesToggle({ value = 'drivers', onChange }: P
             { width: segmentWidth, transform: [{ translateX }, { scale: press }] },
           ]}
         >
-          <View style={styles.thumbDrop}>
-            <View style={styles.thumbAmbient}>
-              <View style={styles.thumbContact}>
-                <View style={styles.thumbClip}>
-                  <LinearGradient
-                    colors={['#3A3A3C', '#1C1C1E', '#000000']}
-                    locations={[0, 0.52, 1]}
-                    start={{ x: 0.5, y: 0 }}
-                    end={{ x: 0.5, y: 1 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <LinearGradient
-                    colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)']}
-                    locations={[0, 0.45]}
-                    start={{ x: 0.5, y: 0 }}
-                    end={{ x: 0.5, y: 1 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <View style={styles.thumbTopLight} />
+          <Animated.View style={{ flex: 1, transform: [{ scaleX: stretchX }, { scaleY: stretchY }] }}>
+            <View style={styles.thumbDrop}>
+              <View style={styles.thumbAmbient}>
+                <View style={styles.thumbContact}>
+                  <View style={styles.thumbClip}>
+                    <LinearGradient
+                      colors={['#3A3A3C', '#1C1C1E', '#000000']}
+                      locations={[0, 0.52, 1]}
+                      start={{ x: 0.5, y: 0 }}
+                      end={{ x: 0.5, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <LinearGradient
+                      colors={['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)']}
+                      locations={[0, 0.45]}
+                      start={{ x: 0.5, y: 0 }}
+                      end={{ x: 0.5, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <Animated.View style={[styles.thumbTopLight, { opacity: glassGleam }]} />
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
+          </Animated.View>
         </Animated.View>
       )}
 

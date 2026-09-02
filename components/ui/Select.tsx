@@ -1,8 +1,14 @@
-import React, { useState } from 'react';
-import { TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from './Text';
 import { COLORS, RADIUS, SPACING, CARD_SHADOW } from '../../lib/theme';
+
+const ENTER_MS = 340;
+const EXIT_MS = 220;
+const SHEET_EASE = Easing.bezier(0.32, 0.72, 0, 1);
 
 export interface SelectOption<T extends string> {
   value: T;
@@ -29,7 +35,34 @@ export function Select<T extends string>({
   allowClear?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const insets = useSafeAreaInsets();
+  const translateY = useRef(new Animated.Value(1)).current;
+  const scrimOpacity = useRef(new Animated.Value(0)).current;
   const selected = options.find((o) => o.value === value);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      translateY.setValue(1);
+      scrimOpacity.setValue(0);
+      Animated.parallel([
+        Animated.timing(translateY, { toValue: 0, duration: ENTER_MS, easing: SHEET_EASE, useNativeDriver: true }),
+        Animated.timing(scrimOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+      return;
+    }
+
+    if (mounted) {
+      Animated.parallel([
+        Animated.timing(translateY, { toValue: 1, duration: EXIT_MS, easing: SHEET_EASE, useNativeDriver: true }),
+        Animated.timing(scrimOpacity, { toValue: 0, duration: EXIT_MS, useNativeDriver: true }),
+      ]).start(() => setMounted(false));
+    }
+  }, [mounted, open, scrimOpacity, translateY]);
+
+  const close = () => setOpen(false);
+  const translate = translateY.interpolate({ inputRange: [0, 1], outputRange: [0, 440] });
 
   return (
     <>
@@ -44,16 +77,29 @@ export function Select<T extends string>({
         </AppText>
       </TouchableOpacity>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.overlay} onPress={() => setOpen(false)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+      <Modal visible={mounted} transparent animationType="none" onRequestClose={close}>
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: scrimOpacity }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={close}>
+            <BlurView intensity={8} tint="dark" style={StyleSheet.absoluteFill} />
+            <View style={[StyleSheet.absoluteFill, styles.scrim]} />
+          </Pressable>
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.sheet,
+            { bottom: 8 + insets.bottom, transform: [{ translateY: translate }] },
+          ]}
+        >
+          <View style={styles.grabHandle} />
+          <Pressable onPress={(e) => e.stopPropagation()}>
             <ScrollView bounces={false}>
               {allowClear && (
                 <TouchableOpacity
                   style={styles.option}
                   onPress={() => {
                     onChange(null);
-                    setOpen(false);
+                    close();
                   }}
                 >
                   <AppText style={styles.clearText}>ללא</AppText>
@@ -67,7 +113,7 @@ export function Select<T extends string>({
                     style={styles.option}
                     onPress={() => {
                       onChange(opt.value);
-                      setOpen(false);
+                      close();
                     }}
                   >
                     {active && <Ionicons name="checkmark" size={17} color={COLORS.accent} />}
@@ -82,7 +128,7 @@ export function Select<T extends string>({
               })}
             </ScrollView>
           </Pressable>
-        </Pressable>
+        </Animated.View>
       </Modal>
     </>
   );
@@ -104,18 +150,25 @@ const styles = StyleSheet.create({
   value: { flex: 1, fontSize: 15 },
   placeholder: { color: COLORS.textFaint },
 
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'center',
-    padding: SPACING.xl,
-  },
+  scrim: { backgroundColor: 'rgba(10, 24, 38, 0.38)' },
   sheet: {
+    position: 'absolute',
+    left: SPACING.sm,
+    right: SPACING.sm,
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
     maxHeight: '70%',
-    paddingVertical: SPACING.sm,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.sm,
     ...CARD_SHADOW,
+  },
+  grabHandle: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.fieldBorder,
+    marginBottom: SPACING.xs,
   },
   option: {
     flexDirection: 'row-reverse',

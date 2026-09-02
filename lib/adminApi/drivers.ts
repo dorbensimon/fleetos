@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import { DriverDetails, DriverRow, DriverRowVehicle } from './types';
 import { listActiveDriverVehicles } from './assignments';
+import { functionErrorMessage } from '../functionError';
 
 /**
  * Drivers live across two tables: `profiles` (identity + auth link) and
@@ -90,18 +91,33 @@ export async function updateDriver(
   patch: Partial<DriverDetails> & { full_name?: string | null; phone?: string | null }
 ) {
   const { full_name, phone, ...details } = patch;
+  let previousProfile: Record<string, unknown> | null = null;
+  let profileChanged = false;
 
   if (full_name !== undefined || phone !== undefined) {
     const profilePatch: Record<string, unknown> = {};
     if (full_name !== undefined) profilePatch.full_name = full_name;
     if (phone !== undefined) profilePatch.phone = phone;
+    const { data: currentProfile, error: readError } = await supabase
+      .from('profiles')
+      .select('full_name, phone')
+      .eq('id', driverId)
+      .single();
+    if (readError) throw readError;
+    previousProfile = currentProfile as Record<string, unknown>;
     const { error } = await supabase.from('profiles').update(profilePatch).eq('id', driverId);
     if (error) throw error;
+    profileChanged = true;
   }
 
   if (Object.keys(details).length > 0) {
     const { error } = await supabase.from('driver_details').update(details).eq('id', driverId);
-    if (error) throw error;
+    if (error) {
+      if (profileChanged && previousProfile) {
+        await supabase.from('profiles').update(previousProfile).eq('id', driverId);
+      }
+      throw error;
+    }
   }
 }
 
@@ -137,17 +153,7 @@ export async function createDriverAccount(payload: {
   });
 
   if (error || !data?.success) {
-    let message = data?.error || 'יצירת הנהג נכשלה';
-    const ctx = (error as any)?.context;
-    if (ctx?.json) {
-      try {
-        const body = await ctx.json();
-        if (body?.error) message = body.error;
-      } catch {
-        /* keep the generic message */
-      }
-    }
-    return { ok: false, error: message };
+    return { ok: false, error: await functionErrorMessage(error, data, 'יצירת הנהג נכשלה', false) };
   }
 
   return { ok: true, driverId: data.driverId };
@@ -167,17 +173,7 @@ export async function deleteDriver(
   });
 
   if (error || !data?.success) {
-    let message = data?.error || 'מחיקת הנהג נכשלה';
-    const ctx = (error as any)?.context;
-    if (ctx?.json) {
-      try {
-        const body = await ctx.json();
-        if (body?.error) message = body.error;
-      } catch {
-        /* keep the generic message */
-      }
-    }
-    return { ok: false, error: message };
+    return { ok: false, error: await functionErrorMessage(error, data, 'מחיקת הנהג נכשלה', false) };
   }
 
   return { ok: true };
@@ -201,17 +197,7 @@ export async function deleteAllCompanyDrivers(
   });
 
   if (error || !data?.success) {
-    let message = data?.error || 'מחיקת הנהגים נכשלה';
-    const ctx = (error as any)?.context;
-    if (ctx?.json) {
-      try {
-        const body = await ctx.json();
-        if (body?.error) message = body.error;
-      } catch {
-        /* keep the generic message */
-      }
-    }
-    return { ok: false, error: message };
+    return { ok: false, error: await functionErrorMessage(error, data, 'מחיקת הנהגים נכשלה', false) };
   }
 
   return {
@@ -237,17 +223,7 @@ export async function resetDriverPassword(
   });
 
   if (error || !data?.success) {
-    let message = data?.error || 'איפוס הסיסמה נכשל';
-    const ctx = (error as any)?.context;
-    if (ctx?.json) {
-      try {
-        const body = await ctx.json();
-        if (body?.error) message = body.error;
-      } catch {
-        /* keep the generic message */
-      }
-    }
-    return { ok: false, error: message };
+    return { ok: false, error: await functionErrorMessage(error, data, 'איפוס הסיסמה נכשל', false) };
   }
 
   return { ok: true };

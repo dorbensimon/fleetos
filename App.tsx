@@ -3,7 +3,20 @@ import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useFonts, Assistant_400Regular, Assistant_700Bold } from '@expo-google-fonts/assistant';
+import {
+  useFonts,
+  Assistant_400Regular,
+  Assistant_500Medium,
+  Assistant_600SemiBold,
+  Assistant_700Bold,
+} from '@expo-google-fonts/assistant';
+import {
+  Heebo_400Regular,
+  Heebo_500Medium,
+  Heebo_600SemiBold,
+  Heebo_700Bold,
+  Heebo_800ExtraBold,
+} from '@expo-google-fonts/heebo';
 import LoginScreen from './screens/LoginScreen';
 import SetPasswordScreen from './screens/SetPasswordScreen';
 import OwnerHomeScreen from './screens/OwnerHomeScreen';
@@ -21,6 +34,7 @@ import NotificationsScreen from './screens/admin/NotificationsScreen';
 import AdminDocumentSigningScreen from './screens/admin/AdminDocumentSigningScreen';
 import DocusealWebViewScreen from './screens/DocusealWebViewScreen';
 import DocumentCategoryScreen from './screens/admin/DocumentCategoryScreen';
+import DriverLicenseDocumentsScreen from './screens/admin/DriverLicenseDocumentsScreen';
 import DriverPersonalDetailsScreen from './screens/admin/DriverPersonalDetailsScreen';
 import DriverVehicleScreen from './screens/driver/DriverVehicleScreen';
 import DriverDocumentsScreen from './screens/driver/DriverDocumentsScreen';
@@ -38,21 +52,45 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList | null>(null);
 
-  const [fontsLoaded] = useFonts({ Assistant_400Regular, Assistant_700Bold });
+  const [fontsLoaded] = useFonts({
+    Assistant_400Regular,
+    Assistant_500Medium,
+    Assistant_600SemiBold,
+    Assistant_700Bold,
+    Heebo_400Regular,
+    Heebo_500Medium,
+    Heebo_600SemiBold,
+    Heebo_700Bold,
+    Heebo_800ExtraBold,
+  });
 
   useEffect(() => {
+    let active = true;
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      const userId = data.session?.user.id;
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        const userId = data.session?.user.id;
 
-      if (!userId) {
-        setInitialRoute('Login');
-        return;
+        if (!userId) {
+          if (active) setInitialRoute('Login');
+          return;
+        }
+
+        const result = await resolveRouteForUser(userId);
+        if (active) setInitialRoute(result.ok ? result.route : 'Login');
+      } catch {
+        if (active) setInitialRoute('Login');
       }
-
-      const result = await resolveRouteForUser(userId);
-      setInitialRoute(result.ok ? result.route : 'Login');
     })();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') setInitialRoute('Login');
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   if (!initialRoute || !fontsLoaded) {
@@ -70,7 +108,7 @@ export default function App() {
       <ToastProvider>
         <CompanyProvider>
           <NavigationContainer>
-            <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
+            <Stack.Navigator key={initialRoute} screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
               <Stack.Screen name="OwnerHome" component={OwnerHomeScreen} />
@@ -96,6 +134,7 @@ export default function App() {
               <Stack.Screen name="AdminDocumentSigning" component={AdminDocumentSigningScreen} />
               <Stack.Screen name="DocusealWebView" component={DocusealWebViewScreen} />
               <Stack.Screen name="DocumentCategory" component={DocumentCategoryScreen} />
+              <Stack.Screen name="DriverLicenseDocuments" component={DriverLicenseDocumentsScreen} />
               <Stack.Screen name="DriverPersonalDetails" component={DriverPersonalDetailsScreen} />
 
               {/* Driver module */}

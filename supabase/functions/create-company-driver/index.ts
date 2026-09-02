@@ -15,10 +15,28 @@ const json = (body: unknown, status: number) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
+const DRIVER_DETAILS_FIELDS = [
+  'department_id', 'employee_number', 'national_id', 'birth_date', 'address',
+  'home_phone', 'marital_status', 'education', 'employment_start_date',
+  'license_number', 'license_classes', 'license_issue_date', 'license_expiry',
+  'status', 'notes',
+] as const;
+
+function pickDriverDetails(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const source = value as Record<string, unknown>;
+  return Object.fromEntries(
+    DRIVER_DETAILS_FIELDS
+      .filter((key) => source[key] !== undefined)
+      .map((key) => [key, source[key]]),
+  );
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+  if (req.method !== 'POST') return json({ error: 'השיטה אינה נתמכת' }, 405);
 
   try {
     const body = await req.json();
@@ -66,7 +84,7 @@ Deno.serve(async (req) => {
     const { error: detailsError } = await adminClient.from('driver_details').insert({
       id: driverId,
       company_id: companyId,
-      ...(details ?? {}),
+      ...pickDriverDetails(details),
     });
 
     if (detailsError) {

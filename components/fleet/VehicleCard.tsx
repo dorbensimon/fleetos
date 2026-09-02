@@ -1,12 +1,20 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { AppText, Badge } from '../ui';
-import { COLORS, RADIUS, SPACING, CARD_SHADOW, daysUntilExpiry, formatDate } from '../../lib/theme';
+import { RADIUS, SPACING, daysUntilExpiry, formatDate } from '../../lib/theme';
 import { Vehicle, VehicleDriverWithProfile, ComplianceItem } from '../../lib/adminApi';
-import { VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../lib/compliance';
+import {
+  VEHICLE_STATUS_LABELS,
+  VEHICLE_TYPE_LABELS,
+  complianceBadgeLabel,
+  complianceBadgeState,
+  complianceRemainingDays,
+  findComplianceDef,
+} from '../../lib/compliance';
 import { formatPlate } from '../../lib/plate';
 import {
   TONE_BAD,
+  TONE_OK,
   YEAR_DAYS,
   SERVICE_WARN_KM,
   remainingTone,
@@ -14,13 +22,8 @@ import {
   worstTone,
   chipFor,
 } from '../../lib/fleetCardHelpers';
-import {
-  complianceBadgeLabel,
-  complianceBadgeState,
-  complianceRemainingDays,
-  findComplianceDef,
-} from '../../lib/compliance';
 import { StatCell, statsRowStyles } from './StatCell';
+import { FLEET_COLORS, FLEET_FONT, FLEET_SHADOWS } from './fleetTheme';
 
 export function VehicleCard({
   item,
@@ -37,8 +40,6 @@ export function VehicleCard({
   onPress: () => void;
   onRestore: () => void;
 }) {
-  const expiryOf = (itemType: string) => compliance.get(item.id)?.find((c) => c.item_type === itemType)?.expiry_date ?? null;
-
   const insuranceItem = compliance.get(item.id)?.find((c) => c.item_type === 'insurance_mandatory') ?? null;
   const testItem = compliance.get(item.id)?.find((c) => c.item_type === 'annual_test') ?? null;
   const insurance = insuranceItem?.expiry_date ?? null;
@@ -111,8 +112,8 @@ export function VehicleCard({
         {item.status !== 'active' && (
           <Badge
             label={VEHICLE_STATUS_LABELS[item.status] ?? item.status}
-            bg={item.status === 'maintenance' || item.status === 'disabled' ? COLORS.dangerBg : COLORS.neutralBg}
-            fg={item.status === 'maintenance' || item.status === 'disabled' ? COLORS.dangerText : COLORS.neutralText}
+            bg={item.status === 'maintenance' || item.status === 'disabled' ? FLEET_COLORS.danger.tint : FLEET_COLORS.none.tint}
+            fg={item.status === 'maintenance' || item.status === 'disabled' ? FLEET_COLORS.danger.text : FLEET_COLORS.none.text}
           />
         )}
       </View>
@@ -152,7 +153,7 @@ export function VehicleCard({
                 ? 'פג תוקף'
                 : `${testDays} ימים`
             }
-            tone={testDef && complianceBadgeState(testDef, testItem) === 'optional' ? '#1DBF73' : testTone}
+            tone={testDef && complianceBadgeState(testDef, testItem) === 'optional' ? TONE_OK : testTone}
             ratio={remainingRatio(testDays, YEAR_DAYS)}
             showDivider
           />
@@ -171,15 +172,13 @@ export function VehicleCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
+    backgroundColor: FLEET_COLORS.card,
+    borderRadius: 30,
     marginHorizontal: SPACING.lg,
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
     overflow: 'hidden',
-    ...CARD_SHADOW,
+    ...FLEET_SHADOWS.card,
   },
-  cardAlert: { shadowColor: TONE_BAD, shadowOpacity: 0.18 },
+  cardAlert: { shadowColor: TONE_BAD, shadowOpacity: 0.22 },
 
   cardTop: {
     flexDirection: 'row-reverse',
@@ -190,35 +189,47 @@ const styles = StyleSheet.create({
   },
   cardTitleWrap: { flex: 1, gap: 3 },
   titleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
-  cardTitle: { fontSize: 15.5, flexShrink: 1 },
-  cardSubtitle: { fontSize: 11.5, color: COLORS.textFaint },
+  cardTitle: { fontSize: 15.5, flexShrink: 1, color: FLEET_COLORS.textPrimary, fontFamily: FLEET_FONT.bold },
+  cardSubtitle: { fontSize: 11.5, color: FLEET_COLORS.textSecondary, fontFamily: FLEET_FONT.regular },
   chip: { flexShrink: 0, borderRadius: RADIUS.pill, paddingHorizontal: 8, paddingVertical: 3 },
-  chipText: { fontSize: 10.5 },
+  chipText: { fontSize: 10.5, fontFamily: FLEET_FONT.bold },
 
   plate: {
     flexDirection: 'row-reverse',
     alignItems: 'stretch',
-    backgroundColor: '#F5C518',
-    borderRadius: 6,
+    backgroundColor: FLEET_COLORS.plateYellow,
+    borderRadius: 11,
     overflow: 'hidden',
+    shadowColor: 'rgba(16,24,40,.4)',
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
   plateFlag: {
-    backgroundColor: '#1B4CA1',
+    backgroundColor: FLEET_COLORS.plateBlue,
     paddingHorizontal: 5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  plateFlagText: { color: '#FFFFFF', fontSize: 9 },
-  plateText: { fontSize: 13, color: '#1A1A1A', paddingHorizontal: 8, paddingVertical: 5 },
+  plateFlagText: { color: '#FFFFFF', fontSize: 9, fontFamily: FLEET_FONT.black },
+  plateText: {
+    fontSize: 13,
+    color: '#111111',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    letterSpacing: 0.3,
+    fontFamily: FLEET_FONT.black,
+  },
 
   restoreBtn: {
     alignItems: 'center',
     justifyContent: 'center',
     height: 38,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.accentSoft,
+    backgroundColor: 'rgba(10,132,255,.10)',
     marginHorizontal: SPACING.lg,
     marginBottom: SPACING.md,
   },
-  restoreText: { fontSize: 13, color: COLORS.accent },
+  restoreText: { fontSize: 13, color: FLEET_COLORS.primary, fontFamily: FLEET_FONT.bold },
 });
