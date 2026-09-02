@@ -306,10 +306,10 @@ export default function FleetScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      // Every time this screen regains focus (including returning from a
-      // pushed detail screen) the toggle resets to "drivers" — it never
-      // remembers whatever mode was left active before navigating away.
-      setMode('drivers');
+      // Keep the current mode, filters, search text and list scroll position
+      // when returning from a pushed detail screen. The fleet screen stays
+      // mounted in the navigation stack, so its existing state is the
+      // correct place to return to.
       (async () => {
         setDriversLoading(true);
         setVehiclesLoading(true);

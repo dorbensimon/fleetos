@@ -296,7 +296,12 @@ export function ComplianceSection({
                       disabled={busyItem === def.itemType}
                     >
                       {busyItem === def.itemType ? (
-                        <ActivityIndicator size="small" color={COLORS.accent} />
+                        <>
+                          <ActivityIndicator size="small" color={COLORS.accent} />
+                          <AppText weight="bold" style={styles.uploadText}>
+                            מעבד ומעלה…
+                          </AppText>
+                        </>
                       ) : (
                         <>
                           <Ionicons name="cloud-upload-outline" size={16} color={COLORS.accent} />
@@ -398,7 +403,12 @@ function GeneralDocuments({
 
       <TouchableOpacity style={styles.uploadBtn} activeOpacity={0.8} onPress={add} disabled={busy}>
         {busy ? (
-          <ActivityIndicator size="small" color={COLORS.accent} />
+          <>
+            <ActivityIndicator size="small" color={COLORS.accent} />
+            <AppText weight="bold" style={styles.uploadText}>
+              מעבד ומעלה…
+            </AppText>
+          </>
         ) : (
           <>
             <Ionicons name="cloud-upload-outline" size={16} color={COLORS.accent} />

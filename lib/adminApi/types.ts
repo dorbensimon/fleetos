@@ -14,6 +14,7 @@ export interface Vehicle {
   vehicle_type: VehicleType;
   manufacturer: string | null;
   model: string | null;
+  color: string | null;
   production_year: number | null;
   production_month: number | null;
   road_registration_date: string | null;

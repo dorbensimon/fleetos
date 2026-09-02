@@ -63,6 +63,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
   const [toast, setToast] = useState<string | null>(null);
 
   const [uploadingSide, setUploadingSide] = useState<Side | null>(null);
+  const [processingSide, setProcessingSide] = useState<Side | null>(null);
   const [failedSide, setFailedSide] = useState<Side | null>(null);
 
   const [sheetFor, setSheetFor] = useState<Side | null>(null);
@@ -160,6 +161,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
         return;
       }
 
+      setProcessingSide(side);
       const existing = docs[side];
       const uploaded = await uploadDocument({
         companyId,
@@ -178,6 +180,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       setFailedSide(side);
       Alert.alert('ההעלאה נכשלה', err?.message ?? 'נסה שוב');
     } finally {
+      setProcessingSide(null);
       setUploadingSide(null);
     }
   };
@@ -405,6 +408,16 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
           </View>
         </View>
       </Modal>
+
+      <Modal visible={!!processingSide} transparent animationType="fade">
+        <View style={styles.processingOverlay}>
+          <View style={styles.processingCard}>
+            <ActivityIndicator size="large" color={DC_COLORS.blueLight} />
+            <Text style={styles.processingTitle}>מעבד את התמונה…</Text>
+            <Text style={styles.processingSubtitle}>אנא המתן, אין צורך לבחור שוב</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -503,6 +516,23 @@ function formatDdMmYyyy(iso: string): string {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: DC_COLORS.bg },
   centerFill: { alignItems: 'center', justifyContent: 'center' },
+  processingOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(14, 30, 43, 0.42)',
+  },
+  processingCard: {
+    minWidth: 220,
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 22,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+  },
+  processingTitle: { color: DC_COLORS.label, fontSize: 16, fontWeight: '700' },
+  processingSubtitle: { color: DC_COLORS.labelTertiary, fontSize: 12 },
   navBar: { width: '100%' },
   navBorder: {
     position: 'absolute',

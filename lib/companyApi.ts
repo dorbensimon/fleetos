@@ -18,6 +18,11 @@ export function updateCompany(companyId: string, patch: Partial<Company>) {
   return supabase.from('companies').update(patch).eq('id', companyId);
 }
 
+/** Lets an admin update their own company's phone number (RLS only allows the owner to write `companies` directly). */
+export function updateCompanyPhone(companyId: string, phone: string) {
+  return supabase.functions.invoke('update-company-phone', { body: { companyId, phone } });
+}
+
 export function deleteCompany(companyId: string, confirmName: string) {
   return supabase.functions.invoke('delete-company', { body: { companyId, confirmName } });
 }

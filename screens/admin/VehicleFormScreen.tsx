@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Animated,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -30,6 +31,8 @@ import {
   listDepartments,
   listDrivers,
   listActiveVehicleDrivers,
+  listCompliance,
+  upsertCompliance,
   Vehicle,
   VehicleStatus,
   VehicleType,
@@ -40,6 +43,7 @@ import { VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS, ACQUISITION_TYPE_LABELS } f
 import { formatPlate } from '../../lib/plate';
 import { RootStackParamList } from '../../navigation/types';
 import { dateOnlyIsoFromLocalDate, formatDateDots } from '../../lib/driverFormValidation';
+import { lookupVehicleRegistry, VehicleRegistryDetails } from '../../lib/vehicleRegistry';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleForm'>;
 type FormVehicleType = VehicleType | '';
@@ -50,11 +54,13 @@ interface FormState {
   vehicle_type: FormVehicleType;
   manufacturer: string;
   model: string;
+  color: string;
   internal_code: string;
   vin: string;
   production_year: string;
   production_month: string;
   road_registration_date: string;
+  vehicle_license_expiry: string;
   acquisition_type: AcquisitionType | null;
   usage_type: string;
   status: VehicleStatus;
@@ -66,11 +72,13 @@ const EMPTY: FormState = {
   vehicle_type: '',
   manufacturer: '',
   model: '',
+  color: '',
   internal_code: '',
   vin: '',
   production_year: '',
   production_month: '',
   road_registration_date: '',
+  vehicle_license_expiry: '',
   acquisition_type: null,
   usage_type: '',
   status: 'active',
@@ -182,6 +190,10 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   const [focusedField, setFocusedField] = useState<FieldKey | null>(null);
   const [showRoadDatePicker, setShowRoadDatePicker] = useState(false);
   const [draftRoadDate, setDraftRoadDate] = useState<Date | null>(null);
+  const [showLicenseExpiryPicker, setShowLicenseExpiryPicker] = useState(false);
+  const [draftLicenseExpiry, setDraftLicenseExpiry] = useState<Date | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupMessage, setLookupMessage] = useState<string | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -199,9 +211,10 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     setDrivers(drvs.map((driver) => ({ value: driver.id, label: driver.full_name ?? 'ללא שם' })));
 
     if (vehicleId) {
-      const [vehicle, assignments] = await Promise.all([
+      const [vehicle, assignments, compliance] = await Promise.all([
         getVehicle(vehicleId),
         listActiveVehicleDrivers(vehicleId),
+        listCompliance('vehicle', vehicleId),
       ]);
       setVehicleDrivers(assignments);
       if (vehicle) {
@@ -210,11 +223,13 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           vehicle_type: vehicle.vehicle_type,
           manufacturer: vehicle.manufacturer ?? '',
           model: vehicle.model ?? '',
+          color: vehicle.color ?? '',
           internal_code: vehicle.internal_code ?? '',
           vin: vehicle.vin ?? '',
           production_year: vehicle.production_year ? String(vehicle.production_year) : '',
           production_month: vehicle.production_month ? String(vehicle.production_month).padStart(2, '0') : '',
           road_registration_date: vehicle.road_registration_date ?? '',
+          vehicle_license_expiry: compliance.find((item) => item.item_type === 'vehicle_license')?.expiry_date ?? '',
           acquisition_type: vehicle.acquisition_type,
           usage_type: vehicle.usage_type ?? '',
           status: vehicle.status,
@@ -260,6 +275,69 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     setShowRoadDatePicker(false);
   };
 
+  const openLicenseExpiryPicker = () => {
+    setDraftLicenseExpiry(form.vehicle_license_expiry ? parseDateValue(form.vehicle_license_expiry) : new Date());
+    setShowLicenseExpiryPicker(true);
+  };
+
+  const handleLicenseExpiryChange = (_: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowLicenseExpiryPicker(false);
+      if (selectedDate) set('vehicle_license_expiry', dateOnlyIsoFromLocalDate(selectedDate));
+      return;
+    }
+    if (selectedDate) setDraftLicenseExpiry(selectedDate);
+  };
+
+  const confirmLicenseExpiryPicker = () => {
+    const selectedDate = draftLicenseExpiry ?? new Date();
+    set('vehicle_license_expiry', dateOnlyIsoFromLocalDate(selectedDate));
+    setShowLicenseExpiryPicker(false);
+  };
+
+  const applyRegistryDetails = (details: VehicleRegistryDetails) => {
+    setForm((current) => ({
+      ...current,
+      manufacturer: details.manufacturer ?? current.manufacturer,
+      model: details.model ?? current.model,
+      color: details.color ?? current.color,
+      production_year: details.productionYear ? String(details.productionYear) : current.production_year,
+      vehicle_license_expiry: details.licenseExpiry ?? current.vehicle_license_expiry,
+    }));
+    setLookupMessage('פרטי הרכב מולאו לפי מאגר משרד התחבורה. בדוק ואשר לפני השמירה.');
+  };
+
+  const lookupVehicle = async () => {
+    const plate = form.plate_number.replace(/\D/g, '');
+    if (!/^\d{7,8}$/.test(plate)) {
+      setErrors((current) => ({ ...current, plate_number: 'מספר הרישוי חייב להכיל 7-8 ספרות' }));
+      return;
+    }
+
+    setLookupLoading(true);
+    setLookupMessage(null);
+    try {
+      const details = await lookupVehicleRegistry(plate);
+      if (!details) {
+        setLookupMessage('לא נמצא רכב עם מספר הרישוי הזה. אפשר למלא את הפרטים ידנית.');
+        return;
+      }
+
+      Alert.alert(
+        'נמצאו פרטי רכב',
+        'נמלא את היצרן, הדגם, השנה, הצבע ותוקף רישיון הרכב. תמיד אפשר לערוך את הפרטים לפני השמירה.',
+        [
+          { text: 'ביטול', style: 'cancel' },
+          { text: 'מלא פרטים', onPress: () => applyRegistryDetails(details) },
+        ]
+      );
+    } catch (err: any) {
+      setLookupMessage(err?.message || 'לא ניתן לחפש את פרטי הרכב כרגע. אפשר לנסות שוב או למלא ידנית.');
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
   const save = async () => {
     if (!companyId) return;
 
@@ -284,6 +362,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         vehicle_type: form.vehicle_type as VehicleType,
         manufacturer: form.manufacturer.trim() || null,
         model: form.model.trim() || null,
+        color: form.color.trim() || null,
         internal_code: form.internal_code.trim() || null,
         vin: form.vin.trim().toUpperCase() || null,
         production_year: num(form.production_year),
@@ -295,16 +374,36 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         department_id: form.department_id,
       };
 
+      let savedVehicleId: string;
       if (isEdit) {
         await updateVehicle(vehicleId!, payload);
+        savedVehicleId = vehicleId!;
       } else {
-        await createVehicle({
+        const created = await createVehicle({
           ...payload,
           company_id: companyId,
           plate_number: plateDigits,
           odometer: 0,
           last_service_km: 0,
         });
+        savedVehicleId = created.id;
+      }
+
+      if (form.vehicle_license_expiry) {
+        try {
+          await upsertCompliance({
+            companyId,
+            ownerType: 'vehicle',
+            ownerId: savedVehicleId,
+            category: 'licensing',
+            itemType: 'vehicle_license',
+            expiryDate: form.vehicle_license_expiry,
+          });
+        } catch {
+          showToast('הרכב נשמר, אך תוקף הרישיון לא נשמר. אפשר לעדכן אותו בתיק הרכב.');
+          navigation.goBack();
+          return;
+        }
       }
 
       showToast(isEdit ? 'השינויים נשמרו' : 'הרכב נוצר בהצלחה');
@@ -440,6 +539,26 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
               </View>
               {!!errors.plate_number && <AppText style={styles.error}>{errors.plate_number}</AppText>}
 
+              <TouchableOpacity
+                style={[styles.lookupButton, lookupLoading && styles.lookupButtonDisabled]}
+                activeOpacity={0.8}
+                onPress={lookupVehicle}
+                disabled={lookupLoading}
+                accessibilityRole="button"
+                accessibilityLabel="חפש פרטי רכב לפי מספר הרישוי"
+              >
+                {lookupLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Ionicons name="search-outline" size={18} color="#FFFFFF" />
+                )}
+                <AppText weight="bold" style={styles.lookupButtonText}>
+                  {lookupLoading ? 'מחפש פרטי רכב…' : 'חפש פרטי רכב'}
+                </AppText>
+              </TouchableOpacity>
+              <AppText style={styles.lookupHint}>הזן מספר רישוי כדי למלא אוטומטית את פרטי הרכב.</AppText>
+              {!!lookupMessage && <AppText style={styles.lookupMessage}>{lookupMessage}</AppText>}
+
               <View style={styles.fullDivider} />
 
               <View style={styles.choiceHeader}>
@@ -485,6 +604,15 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
                 label="דגם"
                 value={form.model}
                 onChangeText={(value) => set('model', value)}
+                placeholder="אופציונלי"
+                focusedField={focusedField}
+                setFocusedField={setFocusedField}
+              />
+              <VehicleFormRow
+                fieldKey="color"
+                label="צבע"
+                value={form.color}
+                onChangeText={(value) => set('color', value)}
                 placeholder="אופציונלי"
                 focusedField={focusedField}
                 setFocusedField={setFocusedField}
@@ -542,7 +670,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
               )}
 
               <TouchableOpacity
-                style={[styles.dateRow, styles.rowLast]}
+                style={styles.dateRow}
                 onPress={openRoadDatePicker}
                 accessibilityRole="button"
                 accessibilityLabel="בחירת תאריך עליה לכביש"
@@ -564,6 +692,29 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
                 </View>
               </TouchableOpacity>
               {!!errors.road_registration_date && <AppText style={styles.error}>{errors.road_registration_date}</AppText>}
+
+              <TouchableOpacity
+                style={[styles.dateRow, styles.rowLast]}
+                onPress={openLicenseExpiryPicker}
+                accessibilityRole="button"
+                accessibilityLabel="בחירת תוקף רישיון רכב"
+              >
+                <View style={styles.focusRail} />
+                <AppText style={styles.labelWide}>תוקף רישיון רכב</AppText>
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={openLicenseExpiryPicker}
+                  accessibilityRole="button"
+                  accessibilityLabel="בחר תוקף רישיון רכב"
+                >
+                  <AppText weight="bold" style={styles.dateButtonText}>בחר תאריך</AppText>
+                </TouchableOpacity>
+                <View style={styles.dateTextWrap}>
+                  <AppText weight="bold" style={[styles.dateValue, !form.vehicle_license_expiry && styles.placeholderText]}>
+                    {formatDateDots(form.vehicle_license_expiry) || 'לא נבחר תאריך'}
+                  </AppText>
+                </View>
+              </TouchableOpacity>
             </View>
           </Section>
 
@@ -724,6 +875,48 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             mode="date"
             display="default"
             onChange={handleRoadDateChange}
+          />
+        )
+      )}
+
+      {showLicenseExpiryPicker && (
+        Platform.OS === 'ios' ? (
+          <View style={styles.dateSheetLayer}>
+            <TouchableOpacity
+              activeOpacity={1}
+              style={StyleSheet.absoluteFill}
+              onPress={() => setShowLicenseExpiryPicker(false)}
+              accessibilityRole="button"
+              accessibilityLabel="סגור בחירת תוקף רישיון רכב"
+            >
+              <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
+              <View style={styles.dateSheetScrim} />
+            </TouchableOpacity>
+            <View style={[styles.dateSheet, { marginBottom: insets.bottom + 106 }]}>
+              <View style={styles.dateSheetHeader}>
+                <TouchableOpacity onPress={() => setShowLicenseExpiryPicker(false)} hitSlop={8}>
+                  <AppText weight="bold" style={styles.dateSheetCancel}>ביטול</AppText>
+                </TouchableOpacity>
+                <AppText weight="bold" style={styles.dateSheetTitle}>תוקף רישיון רכב</AppText>
+                <TouchableOpacity onPress={confirmLicenseExpiryPicker} hitSlop={8}>
+                  <AppText weight="bold" style={styles.dateSheetConfirm}>אישור</AppText>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={draftLicenseExpiry ?? new Date()}
+                mode="date"
+                display="spinner"
+                onChange={handleLicenseExpiryChange}
+                style={styles.iosDatePicker}
+              />
+            </View>
+          </View>
+        ) : (
+          <DateTimePicker
+            value={form.vehicle_license_expiry ? parseDateValue(form.vehicle_license_expiry) : new Date()}
+            mode="date"
+            display="default"
+            onChange={handleLicenseExpiryChange}
           />
         )
       )}
@@ -958,6 +1151,30 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   plateBadgeText: { fontSize: 13, color: '#1A1A0E', textAlign: 'center' },
+  lookupButton: {
+    minHeight: 44,
+    borderRadius: 14,
+    backgroundColor: COLORS.accent,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 7,
+  },
+  lookupButtonDisabled: { opacity: 0.7 },
+  lookupButtonText: { fontSize: 14.5, color: '#FFFFFF' },
+  lookupHint: { fontSize: 12.5, color: 'rgba(16,31,44,.45)', textAlign: 'right', marginBottom: 12 },
+  lookupMessage: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: '#216B44',
+    backgroundColor: 'rgba(48,164,108,.10)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 12,
+    textAlign: 'right',
+  },
   fullDivider: {
     height: 0.5,
     backgroundColor: 'rgba(16,31,44,.06)',
