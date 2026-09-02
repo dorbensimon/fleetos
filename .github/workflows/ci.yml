@@ -24,5 +24,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.x
-      - run: deno check supabase/functions/*/index.ts
+          deno-version: v2.9.5
+      - run: deno check --no-config --lock=supabase/functions/deno.lock --frozen supabase/functions/*/index.ts

@@ -47,3 +47,6 @@ supabase/.temp/
 # Local AI tool artifacts (machine-specific, regenerated locally)
 .codex/
 graphify-out/
+
+# The mobile app is managed by npm. Edge Functions keep their own lockfile.
+/deno.lock

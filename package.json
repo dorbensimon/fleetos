@@ -8,7 +8,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "typecheck:functions": "deno check supabase/functions/*/index.ts",
+    "typecheck:functions": "deno check --no-config --lock=supabase/functions/deno.lock --frozen supabase/functions/*/index.ts",
     "test": "jest",
     "lint": "expo lint"
   },
