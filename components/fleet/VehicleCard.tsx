@@ -32,6 +32,7 @@ export function VehicleCard({
   departmentNames,
   onPress,
   onRestore,
+  restoring = false,
 }: {
   item: Vehicle;
   compliance: Map<string, ComplianceItem[]>;
@@ -39,6 +40,7 @@ export function VehicleCard({
   departmentNames: Map<string, string>;
   onPress: () => void;
   onRestore: () => void;
+  restoring?: boolean;
 }) {
   const insuranceItem = compliance.get(item.id)?.find((c) => c.item_type === 'insurance_mandatory') ?? null;
   const testItem = compliance.get(item.id)?.find((c) => c.item_type === 'annual_test') ?? null;
@@ -122,13 +124,14 @@ export function VehicleCard({
         <TouchableOpacity
           style={styles.restoreBtn}
           activeOpacity={0.8}
+          disabled={restoring}
           onPress={(e) => {
             e.stopPropagation();
             onRestore();
           }}
         >
           <AppText weight="bold" style={styles.restoreText}>
-            שחזר מארכיון
+            {restoring ? 'משחזר…' : 'שחזר מארכיון'}
           </AppText>
         </TouchableOpacity>
       ) : (

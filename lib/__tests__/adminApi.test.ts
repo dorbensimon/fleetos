@@ -12,6 +12,7 @@ import {
   setPrimaryVehicleDriver,
   getVehicle,
   getDriver,
+  listDrivers,
   listVehicles,
   createDriverAccount,
   deleteAllCompanyDrivers,
@@ -25,7 +26,7 @@ import {
  */
 function chain(result: { data: any; error: any; count?: number }) {
   const builder: any = { __calls: {} as Record<string, any[][]> };
-  ['select', 'eq', 'neq', 'in', 'is', 'gte', 'lt', 'order', 'insert', 'update', 'delete', 'upsert'].forEach((m) => {
+  ['select', 'eq', 'neq', 'in', 'is', 'gte', 'lt', 'order', 'range', 'insert', 'update', 'delete', 'upsert'].forEach((m) => {
     builder[m] = jest.fn((...args: any[]) => {
       builder.__calls[m] = builder.__calls[m] ?? [];
       builder.__calls[m].push(args);
@@ -228,6 +229,34 @@ describe('listVehicles', () => {
     await listVehicles('c1', true);
 
     expect(builder.neq).not.toHaveBeenCalled();
+  });
+
+  it('fetches subsequent deterministic pages instead of silently truncating a large fleet', async () => {
+    const firstPage = chain({ data: Array.from({ length: 200 }, (_, index) => ({ id: `v-${index}` })), error: null });
+    const finalPage = chain({ data: [{ id: 'v-200' }], error: null });
+    mockFromSequence(firstPage, finalPage);
+
+    const vehicles = await listVehicles('c1', true);
+
+    expect(vehicles).toHaveLength(201);
+    expect(firstPage.range).toHaveBeenCalledWith(0, 199);
+    expect(finalPage.range).toHaveBeenCalledWith(200, 399);
+  });
+});
+
+describe('listDrivers', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('propagates a profile lookup failure instead of rendering anonymous driver cards', async () => {
+    const detailsBuilder = chain({
+      data: [{ id: 'd1', company_id: 'c1', status: 'active' }],
+      error: null,
+    });
+    const profileBuilder = chain({ data: null, error: { message: 'profile read denied', code: '42501' } });
+    const assignmentBuilder = chain({ data: [], error: null });
+    mockFromSequence(detailsBuilder, profileBuilder, assignmentBuilder);
+
+    await expect(listDrivers('c1')).rejects.toEqual({ message: 'profile read denied', code: '42501' });
   });
 });
 

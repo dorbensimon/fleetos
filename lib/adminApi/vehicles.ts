@@ -1,15 +1,14 @@
 import { supabase } from '../supabase';
 import { Vehicle } from './types';
 import { functionErrorMessage } from '../functionError';
+import { fetchAllPages } from './paging';
 
 export async function listVehicles(companyId: string, includeArchived = false): Promise<Vehicle[]> {
-  let query = supabase.from('vehicles').select('*').eq('company_id', companyId);
-  if (!includeArchived) query = query.neq('status', 'archived');
-
-  const { data, error } = await query.order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return (data ?? []) as Vehicle[];
+  return fetchAllPages<Vehicle>(async (from, to) => {
+    let query = supabase.from('vehicles').select('*').eq('company_id', companyId);
+    if (!includeArchived) query = query.neq('status', 'archived');
+    return query.order('created_at', { ascending: false }).order('id', { ascending: false }).range(from, to);
+  });
 }
 
 export async function getVehicle(vehicleId: string): Promise<Vehicle | null> {

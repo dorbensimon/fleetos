@@ -3,7 +3,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppText } from '../ui';
-import { RADIUS } from '../../lib/theme';
+import { RADIUS, SPACING } from '../../lib/theme';
 import { FLEET_COLORS, FLEET_FONT } from './fleetTheme';
 
 /**
@@ -71,7 +71,10 @@ export function FleetFilterChips<T extends string>({
 const styles = StyleSheet.create({
   scrollFlip: { transform: [{ scaleX: -1 }] },
   rowFlip: { transform: [{ scaleX: -1 }], flexDirection: 'row-reverse', gap: 11 },
-  row: { paddingVertical: 2, paddingHorizontal: 1 },
+  // Matches the cards' own `marginHorizontal: SPACING.lg` (DriverCard/VehicleCard)
+  // so the first chip lines up with the card edge instead of sitting flush
+  // against the screen edge.
+  row: { paddingVertical: 2, paddingHorizontal: SPACING.lg },
 
   pill: { borderRadius: RADIUS.pill },
   pillInactive: { backgroundColor: 'rgba(255,255,255,.6)' },

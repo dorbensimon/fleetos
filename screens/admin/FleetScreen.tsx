@@ -3,14 +3,15 @@ import { View, StyleSheet, RefreshControl, Linking, Alert, Animated, StatusBar }
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Screen, AppText, EmptyState } from '../../components/ui';
+import { Screen, AppText, EmptyState, ErrorState } from '../../components/ui';
 import { ToggleValue } from '../../components/ui/DriversVehiclesToggle';
 import { DriverCard } from '../../components/fleet/DriverCard';
 import { VehicleCard } from '../../components/fleet/VehicleCard';
 import { ExportReportSheet } from '../../components/fleet/ExportReportSheet';
 import { DriverListSkeleton, VehicleListSkeleton } from '../../components/fleet/FleetListSkeleton';
 import { FleetHero, FleetStat, heroNavHeight, HERO_CONTENT_HEIGHT, HERO_TRAVEL } from '../../components/fleet/FleetHero';
-import { FleetDock } from '../../components/fleet/FleetDock';
+import { FleetDock, FLEET_DOCK_CLEARANCE } from '../../components/fleet/FleetDock';
+import { FleetAddButton } from '../../components/fleet/FleetAddButton';
 import { FleetFilterChips } from '../../components/fleet/FleetFilterChips';
 import { FLEET_COLORS, FLEET_FONT, FLEET_SHADOWS } from '../../components/fleet/fleetTheme';
 import { SPACING, expiryState } from '../../lib/theme';
@@ -62,13 +63,15 @@ type DriverSheetItem =
   | { kind: 'title' }
   | { kind: 'chips' }
   | { kind: 'empty' }
-  | { kind: 'card'; item: DriverRow };
+  | { kind: 'card'; item: DriverRow }
+  | { kind: 'action' };
 
 type VehicleSheetItem =
   | { kind: 'title' }
   | { kind: 'chips' }
   | { kind: 'empty' }
-  | { kind: 'card'; item: Vehicle };
+  | { kind: 'card'; item: Vehicle }
+  | { kind: 'action' };
 
 export default function FleetScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -84,14 +87,47 @@ export default function FleetScreen() {
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
   const [driversLoading, setDriversLoading] = useState(true);
   const [driversRefreshing, setDriversRefreshing] = useState(false);
+  const [driversError, setDriversError] = useState<string | null>(null);
   const [driverSearch, setDriverSearch] = useState('');
   const [licenseFilter, setLicenseFilter] = useState<LicenseFilter>('all');
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportingCategory, setExportingCategory] = useState<ReportCategory | null>(null);
 
-  const loadDrivers = useCallback(async () => {
-    if (!companyId) return;
-    setDrivers(await listDrivers(companyId));
+  const driverLoadRequest = useRef(0);
+  const vehicleLoadRequest = useRef(0);
+  const loadedDriversCompanyId = useRef<string | null>(companyId ?? null);
+  const loadedVehiclesCompanyId = useRef<string | null>(companyId ?? null);
+
+  const errorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error && error.message ? error.message : fallback;
+
+  const loadDrivers = useCallback(async (): Promise<boolean> => {
+    const requestId = ++driverLoadRequest.current;
+    if (loadedDriversCompanyId.current !== (companyId ?? null)) {
+      loadedDriversCompanyId.current = companyId ?? null;
+      setDrivers([]);
+      setDriversError(null);
+    }
+    if (!companyId) {
+      if (requestId === driverLoadRequest.current) {
+        setDrivers([]);
+        setDriversError('לא נמצאה חברה פעילה עבור המשתמש');
+      }
+      return false;
+    }
+
+    try {
+      const rows = await listDrivers(companyId);
+      if (requestId !== driverLoadRequest.current) return false;
+      setDrivers(rows);
+      setDriversError(null);
+      return true;
+    } catch (error) {
+      if (requestId === driverLoadRequest.current) {
+        setDriversError(errorMessage(error, 'טעינת הנהגים נכשלה'));
+      }
+      return false;
+    }
   }, [companyId]);
 
   const filteredDrivers = useMemo(() => {
@@ -128,9 +164,22 @@ export default function FleetScreen() {
     };
   }, [drivers]);
 
-  const call = (phone: string | null) => {
-    if (!phone) return;
-    Linking.openURL(`tel:${phone.replace(/[^\d+]/g, '')}`);
+  const call = async (phone: string | null) => {
+    const number = phone?.replace(/[^\d+]/g, '') ?? '';
+    if (!number || number === '+') {
+      Alert.alert('לא ניתן לחייג', 'לנהג לא מוגדר מספר טלפון תקין');
+      return;
+    }
+
+    const url = `tel:${number}`;
+    try {
+      if (!(await Linking.canOpenURL(url))) {
+        throw new Error('שיחות טלפון אינן נתמכות במכשיר זה');
+      }
+      await Linking.openURL(url);
+    } catch (error) {
+      Alert.alert('לא ניתן לחייג', errorMessage(error, 'נסה שוב מאוחר יותר'));
+    }
   };
 
   const runExport = async (category: ReportCategory) => {
@@ -156,18 +205,52 @@ export default function FleetScreen() {
   const [departmentNames, setDepartmentNames] = useState<Map<string, string>>(new Map());
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [vehiclesRefreshing, setVehiclesRefreshing] = useState(false);
+  const [vehiclesError, setVehiclesError] = useState<string | null>(null);
+  const [restoringVehicleId, setRestoringVehicleId] = useState<string | null>(null);
   const [vehicleSearch, setVehicleSearch] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
 
-  const loadVehicles = useCallback(async () => {
-    if (!companyId) return;
-    const rows = await listVehicles(companyId, true);
-    setVehicles(rows);
-    setCompliance(await listComplianceForOwners('vehicle', rows.map((v) => v.id)));
-    setVehicleDrivers(await listActiveVehicleDriversForVehicles(rows.map((v) => v.id)));
+  const loadVehicles = useCallback(async (): Promise<boolean> => {
+    const requestId = ++vehicleLoadRequest.current;
+    if (loadedVehiclesCompanyId.current !== (companyId ?? null)) {
+      loadedVehiclesCompanyId.current = companyId ?? null;
+      setVehicles([]);
+      setCompliance(new Map());
+      setVehicleDrivers(new Map());
+      setDepartmentNames(new Map());
+      setVehiclesError(null);
+    }
+    if (!companyId) {
+      if (requestId === vehicleLoadRequest.current) {
+        setVehicles([]);
+        setCompliance(new Map());
+        setVehicleDrivers(new Map());
+        setDepartmentNames(new Map());
+        setVehiclesError('לא נמצאה חברה פעילה עבור המשתמש');
+      }
+      return false;
+    }
 
-    const departments = await listDepartments(companyId);
-    setDepartmentNames(new Map(departments.map((d) => [d.id, d.name])));
+    try {
+      const [rows, departments] = await Promise.all([listVehicles(companyId, true), listDepartments(companyId)]);
+      const [nextCompliance, nextVehicleDrivers] = await Promise.all([
+        listComplianceForOwners('vehicle', rows.map((vehicle) => vehicle.id)),
+        listActiveVehicleDriversForVehicles(rows.map((vehicle) => vehicle.id)),
+      ]);
+      if (requestId !== vehicleLoadRequest.current) return false;
+
+      setVehicles(rows);
+      setCompliance(nextCompliance);
+      setVehicleDrivers(nextVehicleDrivers);
+      setDepartmentNames(new Map(departments.map((department) => [department.id, department.name])));
+      setVehiclesError(null);
+      return true;
+    } catch (error) {
+      if (requestId === vehicleLoadRequest.current) {
+        setVehiclesError(errorMessage(error, 'טעינת הרכבים נכשלה'));
+      }
+      return false;
+    }
   }, [companyId]);
 
   const filteredVehicles = useMemo(() => {
@@ -201,8 +284,19 @@ export default function FleetScreen() {
   );
 
   const restoreVehicle = async (vehicleId: string) => {
-    await updateVehicle(vehicleId, { status: 'active' });
-    await loadVehicles();
+    if (restoringVehicleId) return;
+    setRestoringVehicleId(vehicleId);
+    try {
+      await updateVehicle(vehicleId, { status: 'active' });
+      const refreshed = await loadVehicles();
+      if (!refreshed) {
+        Alert.alert('הרכב שוחזר', 'לא הצלחנו לרענן את הרשימה. אפשר למשוך למטה כדי לנסות שוב.');
+      }
+    } catch (error) {
+      Alert.alert('שחזור הרכב נכשל', errorMessage(error, 'נסה שוב מאוחר יותר'));
+    } finally {
+      setRestoringVehicleId(null);
+    }
   };
 
   /* ---------------------------------------------------------------- */
@@ -230,20 +324,50 @@ export default function FleetScreen() {
       })();
       return () => {
         active = false;
+        // A request started for a previous company/focus cycle is no longer
+        // allowed to overwrite the newer screen state when it resolves.
+        driverLoadRequest.current += 1;
+        vehicleLoadRequest.current += 1;
       };
     }, [loadDrivers, loadVehicles])
   );
 
   const onRefreshDrivers = async () => {
     setDriversRefreshing(true);
-    await loadDrivers();
-    setDriversRefreshing(false);
+    try {
+      const refreshed = await loadDrivers();
+      if (!refreshed) Alert.alert('רענון הנהגים נכשל', 'בדוק את החיבור ונסה שוב.');
+    } finally {
+      setDriversRefreshing(false);
+    }
   };
 
   const onRefreshVehicles = async () => {
     setVehiclesRefreshing(true);
-    await loadVehicles();
-    setVehiclesRefreshing(false);
+    try {
+      const refreshed = await loadVehicles();
+      if (!refreshed) Alert.alert('רענון הרכבים נכשל', 'בדוק את החיבור ונסה שוב.');
+    } finally {
+      setVehiclesRefreshing(false);
+    }
+  };
+
+  const retryDrivers = async () => {
+    setDriversLoading(true);
+    try {
+      await loadDrivers();
+    } finally {
+      setDriversLoading(false);
+    }
+  };
+
+  const retryVehicles = async () => {
+    setVehiclesLoading(true);
+    try {
+      await loadVehicles();
+    } finally {
+      setVehiclesLoading(false);
+    }
   };
 
   const driversOpacity = useRef(new Animated.Value(1)).current;
@@ -304,11 +428,13 @@ export default function FleetScreen() {
     { kind: 'title' },
     { kind: 'chips' },
     ...(filteredDrivers.length === 0 ? [{ kind: 'empty' as const }] : filteredDrivers.map((item) => ({ kind: 'card' as const, item }))),
+    { kind: 'action' },
   ];
   const vehicleSheetData: VehicleSheetItem[] = [
     { kind: 'title' },
     { kind: 'chips' },
     ...(filteredVehicles.length === 0 ? [{ kind: 'empty' as const }] : filteredVehicles.map((item) => ({ kind: 'card' as const, item }))),
+    { kind: 'action' },
   ];
 
   return (
@@ -335,6 +461,8 @@ export default function FleetScreen() {
         <LinearGradient colors={[FLEET_COLORS.sheetFrom, FLEET_COLORS.sheetTo]} style={StyleSheet.absoluteFill} />
         {driversLoading ? (
           <DriverListSkeleton />
+        ) : driversError && drivers.length === 0 ? (
+          <ErrorState message="לא ניתן לטעון את הנהגים" hint={driversError} onRetry={() => void retryDrivers()} />
         ) : (
           <Animated.FlatList
             data={driverSheetData}
@@ -342,7 +470,7 @@ export default function FleetScreen() {
             stickyHeaderIndices={[1]}
             onScroll={onDriversScroll}
             scrollEventThrottle={16}
-            contentContainerStyle={sheetStyles.list}
+            contentContainerStyle={[sheetStyles.list, { paddingBottom: FLEET_DOCK_CLEARANCE + insets.bottom }]}
             refreshControl={<RefreshControl refreshing={driversRefreshing} onRefresh={onRefreshDrivers} />}
             renderItem={({ item: entry }) => {
               if (entry.kind === 'title') {
@@ -381,12 +509,15 @@ export default function FleetScreen() {
                   />
                 );
               }
+              if (entry.kind === 'action') {
+                return <FleetAddButton label="נהג חדש" onPress={() => navigation.navigate('DriverForm', {})} />;
+              }
               return (
                 <DriverCard
                   item={entry.item}
                   onPress={() => navigation.navigate('DriverDetail', { driverId: entry.item.id })}
                   onPressVehicle={() => navigation.navigate('VehicleDetail', { vehicleId: entry.item.vehicle_id! })}
-                  onCall={() => call(entry.item.phone)}
+                  onCall={() => void call(entry.item.phone)}
                 />
               );
             }}
@@ -406,6 +537,8 @@ export default function FleetScreen() {
         <LinearGradient colors={[FLEET_COLORS.sheetFrom, FLEET_COLORS.sheetTo]} style={StyleSheet.absoluteFill} />
         {vehiclesLoading ? (
           <VehicleListSkeleton />
+        ) : vehiclesError && vehicles.length === 0 ? (
+          <ErrorState message="לא ניתן לטעון את הרכבים" hint={vehiclesError} onRetry={() => void retryVehicles()} />
         ) : (
           <Animated.FlatList
             data={vehicleSheetData}
@@ -413,7 +546,7 @@ export default function FleetScreen() {
             stickyHeaderIndices={[1]}
             onScroll={onVehiclesScroll}
             scrollEventThrottle={16}
-            contentContainerStyle={sheetStyles.list}
+            contentContainerStyle={[sheetStyles.list, { paddingBottom: FLEET_DOCK_CLEARANCE + insets.bottom }]}
             refreshControl={<RefreshControl refreshing={vehiclesRefreshing} onRefresh={onRefreshVehicles} />}
             renderItem={({ item: entry }) => {
               if (entry.kind === 'title') {
@@ -453,6 +586,9 @@ export default function FleetScreen() {
                   />
                 );
               }
+              if (entry.kind === 'action') {
+                return <FleetAddButton label="רכב חדש" onPress={() => navigation.navigate('VehicleForm', {})} />;
+              }
               return (
                 <VehicleCard
                   item={entry.item}
@@ -461,6 +597,7 @@ export default function FleetScreen() {
                   departmentNames={departmentNames}
                   onPress={() => navigation.navigate('VehicleDetail', { vehicleId: entry.item.id })}
                   onRestore={() => restoreVehicle(entry.item.id)}
+                  restoring={restoringVehicleId === entry.item.id}
                 />
               );
             }}
@@ -469,12 +606,7 @@ export default function FleetScreen() {
        </View>
       </Animated.View>
 
-      <FleetDock
-        mode={mode}
-        onModeChange={setMode}
-        actionLabel={mode === 'drivers' ? 'נהג חדש' : 'רכב חדש'}
-        onAction={() => navigation.navigate(mode === 'drivers' ? 'DriverForm' : 'VehicleForm', {})}
-      />
+      <FleetDock mode={mode} onModeChange={setMode} />
 
       <ExportReportSheet
         visible={exportMenuOpen}
@@ -506,7 +638,7 @@ const sheetStyles = StyleSheet.create({
     borderTopRightRadius: 40,
     overflow: 'hidden',
   },
-  list: { paddingBottom: 120, gap: SPACING.md },
+  list: { gap: SPACING.md },
 
   titleRow: {
     flexDirection: 'row-reverse',

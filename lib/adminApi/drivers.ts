@@ -2,6 +2,7 @@ import { supabase } from '../supabase';
 import { DriverDetails, DriverRow, DriverRowVehicle } from './types';
 import { listActiveDriverVehicles } from './assignments';
 import { functionErrorMessage } from '../functionError';
+import { chunkIds, fetchAllPages } from './paging';
 
 /**
  * Drivers live across two tables: `profiles` (identity + auth link) and
@@ -9,28 +10,39 @@ import { functionErrorMessage } from '../functionError';
  * plate of the vehicle currently assigned to each driver.
  */
 export async function listDrivers(companyId: string): Promise<DriverRow[]> {
-  const { data: details, error } = await supabase
-    .from('driver_details')
-    .select('*')
-    .eq('company_id', companyId)
-    .neq('status', 'archived');
-
-  if (error) throw error;
-  const rows = (details ?? []) as DriverDetails[];
+  const rows = await fetchAllPages<DriverDetails>((from, to) =>
+    supabase
+      .from('driver_details')
+      .select('*')
+      .eq('company_id', companyId)
+      .neq('status', 'archived')
+      .order('id', { ascending: true })
+      .range(from, to)
+  );
   if (rows.length === 0) return [];
 
   const ids = rows.map((r) => r.id);
-
-  const [{ data: profiles }, { data: assignments, error: assignError }] = await Promise.all([
-    supabase.from('profiles').select('id, full_name, phone, job_title').in('id', ids),
-    supabase
-      .from('vehicle_drivers')
-      .select('driver_id, is_primary, vehicle:vehicle_id(id, plate_number)')
-      .in('driver_id', ids)
-      .is('unassigned_at', null)
-      .order('is_primary', { ascending: false }),
-  ]);
-  if (assignError) throw assignError;
+  const batches = chunkIds(ids);
+  const profiles: any[] = [];
+  const assignments: any[] = [];
+  for (const batch of batches) {
+    // Keep a bounded amount of work in flight on mobile. The two independent
+    // lookups run together, while very large companies are processed in
+    // predictable batches rather than producing a request burst.
+    const [{ data: profileData, error: profileError }, { data: assignmentData, error: assignmentError }] = await Promise.all([
+      supabase.from('profiles').select('id, full_name, phone, job_title').in('id', batch),
+      supabase
+        .from('vehicle_drivers')
+        .select('driver_id, is_primary, vehicle:vehicle_id(id, plate_number)')
+        .in('driver_id', batch)
+        .is('unassigned_at', null)
+        .order('is_primary', { ascending: false }),
+    ]);
+    if (profileError) throw profileError;
+    if (assignmentError) throw assignmentError;
+    profiles.push(...(profileData ?? []));
+    assignments.push(...(assignmentData ?? []));
+  }
 
   const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]));
   const vehiclesByDriver = new Map<string, DriverRowVehicle[]>();

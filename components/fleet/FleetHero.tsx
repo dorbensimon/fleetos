@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { View, TextInput, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '../ui';
 import { FleetMenuButton, FleetBellButton } from './FleetHeroButtons';
 import { RADIUS, timeGreeting } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { FLEET_COLORS, FLEET_FONT, FLEET_SHADOWS } from './fleetTheme';
+import { FLEET_COLORS, FLEET_FONT } from './fleetTheme';
 
 /**
  * Field-visit hero for the admin fleet screen — same blue gradient and
@@ -67,6 +68,13 @@ export function FleetHero({
   const { profile } = useCompany();
   const fullName = profile?.full_name?.trim();
   const navHeight = heroNavHeight(insets.top);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const exportPress = useRef(new Animated.Value(1)).current;
+
+  const exportPressIn = () =>
+    Animated.spring(exportPress, { toValue: 0.97, useNativeDriver: true, stiffness: 400, damping: 24 }).start();
+  const exportPressOut = () =>
+    Animated.spring(exportPress, { toValue: 1, useNativeDriver: true, stiffness: 400, damping: 24 }).start();
 
   const cubesOpacity = scrollY.interpolate({
     inputRange: [0, HERO_TRAVEL],
@@ -139,15 +147,29 @@ export function FleetHero({
       <Animated.View
         style={[
           styles.search,
+          searchFocused && styles.searchFocused,
           { top: navHeight + navGapRest + cubeRowHeight + gap, transform: [{ translateY: riseTranslateY }] },
         ]}
       >
-        <Ionicons name="search" size={17} color={FLEET_COLORS.textSecondary} />
+        <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFill} />
+        <LinearGradient
+          colors={
+            searchFocused
+              ? ['rgba(255,255,255,.34)', 'rgba(255,255,255,.2)']
+              : ['rgba(255,255,255,.26)', 'rgba(255,255,255,.15)']
+          }
+          start={{ x: 0.15, y: 0 }}
+          end={{ x: 0.75, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <Ionicons name="search" size={17} color="rgba(255,255,255,.85)" />
         <TextInput
           value={query}
           onChangeText={onChangeQuery}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
           placeholder={searchPlaceholder}
-          placeholderTextColor={FLEET_COLORS.textSecondary}
+          placeholderTextColor="rgba(255,255,255,.82)"
           style={styles.searchInput}
           textAlign="right"
         />
@@ -159,22 +181,28 @@ export function FleetHero({
             styles.exportWrap,
             {
               top: navHeight + navGapRest + cubeRowHeight + gap + fieldHeight + gap,
-              transform: [{ translateY: riseTranslateY }],
+              transform: [{ translateY: riseTranslateY }, { scale: exportPress }],
             },
           ]}
         >
-          <TouchableOpacity activeOpacity={0.85} onPress={onExportPress}>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={onExportPress}
+            onPressIn={exportPressIn}
+            onPressOut={exportPressOut}
+            style={styles.exportBtn}
+          >
+            <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
             <LinearGradient
-              colors={[FLEET_COLORS.primary, FLEET_COLORS.primaryDeep]}
-              start={{ x: 0.2, y: 0 }}
-              end={{ x: 0.8, y: 1 }}
-              style={styles.exportBtn}
-            >
-              <Ionicons name="document-text-outline" size={16} color="#fff" />
-              <AppText weight="bold" style={styles.exportText}>
-                ייצוא דוחות
-              </AppText>
-            </LinearGradient>
+              colors={['rgba(255,255,255,.9)', 'rgba(255,255,255,.74)']}
+              start={{ x: 0.15, y: 0 }}
+              end={{ x: 0.75, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <Ionicons name="document-text-outline" size={16} color="#0a3fa8" />
+            <AppText weight="bold" style={styles.exportText}>
+              ייצוא דוחות
+            </AppText>
           </TouchableOpacity>
         </Animated.View>
       )}
@@ -243,18 +271,27 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     height: fieldHeight,
-    borderRadius: 999,
-    backgroundColor: FLEET_COLORS.card,
+    borderRadius: 23,
+    overflow: 'hidden',
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 20,
-    ...FLEET_SHADOWS.card,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,.38)',
+    shadowColor: '#08245e',
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
+  searchFocused: {
+    borderColor: 'rgba(255,255,255,.55)',
   },
   searchInput: {
     flex: 1,
     fontSize: 15.5,
-    color: FLEET_COLORS.textPrimary,
+    color: '#fff',
     fontFamily: FLEET_FONT.regular,
     textAlign: 'right',
     padding: 0,
@@ -263,12 +300,19 @@ const styles = StyleSheet.create({
   exportWrap: { position: 'absolute', left: 20, right: 20, height: buttonHeight },
   exportBtn: {
     flex: 1,
-    borderRadius: RADIUS.md,
+    borderRadius: 22,
+    overflow: 'hidden',
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    ...FLEET_SHADOWS.fab,
+    gap: 9,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,.85)',
+    shadowColor: '#08245e',
+    shadowOpacity: 0.5,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
   },
-  exportText: { color: '#fff', fontSize: 13.5, fontFamily: FLEET_FONT.bold },
+  exportText: { color: '#0a3fa8', fontSize: 14, fontFamily: FLEET_FONT.bold },
 });

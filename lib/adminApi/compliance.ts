@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { ComplianceItem, OwnerType } from './types';
+import { chunkIds, fetchAllPages } from './paging';
 
 export async function listCompliance(
   ownerType: OwnerType,
@@ -23,13 +24,22 @@ export async function listComplianceForOwners(
   const map = new Map<string, ComplianceItem[]>();
   if (ownerIds.length === 0) return map;
 
-  const { data } = await supabase
-    .from('compliance_items')
-    .select('*')
-    .eq('owner_type', ownerType)
-    .in('owner_id', ownerIds);
+  const rows: ComplianceItem[] = [];
+  for (const ownerIdBatch of chunkIds(ownerIds)) {
+    rows.push(
+      ...(await fetchAllPages<ComplianceItem>((from, to) =>
+        supabase
+          .from('compliance_items')
+          .select('*')
+          .eq('owner_type', ownerType)
+          .in('owner_id', ownerIdBatch)
+          .order('id', { ascending: true })
+          .range(from, to)
+      ))
+    );
+  }
 
-  for (const row of (data ?? []) as ComplianceItem[]) {
+  for (const row of rows) {
     const list = map.get(row.owner_id) ?? [];
     list.push(row);
     map.set(row.owner_id, list);

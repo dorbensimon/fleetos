@@ -14,6 +14,7 @@
 
 import { supabase } from '../supabase';
 import { VehicleDriverAssignment, VehicleDriverWithProfile, DriverVehicleAssignment } from './types';
+import { chunkIds } from './paging';
 
 const MAX_DRIVERS_PER_VEHICLE = 2;
 
@@ -48,16 +49,19 @@ export async function listActiveVehicleDriversForVehicles(
   const map = new Map<string, VehicleDriverWithProfile[]>();
   if (vehicleIds.length === 0) return map;
 
-  const { data, error } = await supabase
-    .from('vehicle_drivers')
-    .select('*, profiles:driver_id(full_name, phone)')
-    .in('vehicle_id', vehicleIds)
-    .is('unassigned_at', null)
-    .order('is_primary', { ascending: false })
-    .order('assigned_at', { ascending: true });
-
-  if (error) throw error;
-  for (const row of (data ?? []) as any[]) {
+  const rows: any[] = [];
+  for (const vehicleIdBatch of chunkIds(vehicleIds)) {
+    const { data, error } = await supabase
+      .from('vehicle_drivers')
+      .select('*, profiles:driver_id(full_name, phone)')
+      .in('vehicle_id', vehicleIdBatch)
+      .is('unassigned_at', null)
+      .order('is_primary', { ascending: false })
+      .order('assigned_at', { ascending: true });
+    if (error) throw error;
+    rows.push(...(data ?? []));
+  }
+  for (const row of rows) {
     const { profiles, ...rest } = row;
     const assignment: VehicleDriverWithProfile = {
       ...(rest as VehicleDriverAssignment),
