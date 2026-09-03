@@ -15,7 +15,7 @@ export type RootStackParamList = {
   Departments: undefined;
   AdminProfile: undefined;
   Notifications: undefined;
-  AdminDocumentSigning: undefined;
+  AdminDocumentSigning: { companyId?: string } | undefined;
   DocusealWebView: {
     mode: 'builder' | 'sign' | 'preview' | 'document' | 'image';
     title: string;

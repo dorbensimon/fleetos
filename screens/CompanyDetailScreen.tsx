@@ -409,6 +409,15 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         />
 
         <View style={s.card}>
+          <TouchableOpacity style={s.sectionHeaderRow} onPress={() => navigation.navigate('AdminDocumentSigning', { companyId })}>
+            <Ionicons name="chevron-back" size={20} color={COLORS.gray} />
+            <Text style={s.sectionTitle}>מסמכים לחתימה</Text>
+            <Ionicons name="document-text-outline" size={20} color={COLORS.blue} />
+          </TouchableOpacity>
+          <Text style={s.emptyText}>ניהול תבניות, שליחה מרוכזת לנהגים ותזכורות במייל עבור חברה זו.</Text>
+        </View>
+
+        <View style={s.card}>
           <View style={s.sectionHeaderRow}>
             <Text style={s.sectionTitle}>אדמינים ({admins.length})</Text>
             <TouchableOpacity style={s.addSmallButton} onPress={() => setAddAdminOpen(true)}>

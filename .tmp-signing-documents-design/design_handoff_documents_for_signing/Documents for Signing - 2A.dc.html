@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet"><style>body{margin:0;background:#e9eef2;font-family:Assistant,-apple-system,BlinkMacSystemFont,system-ui,sans-serif}a{color:#0088CC}a:hover{color:#006ea6}</style><template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#7FC4E8"/><rect x="34" y="24" width="32" height="52" rx="7" fill="#fff"/><rect x="40" y="34" width="20" height="4" rx="2" fill="#7FC4E8"/><rect x="40" y="43" width="20" height="3" rx="1.5" fill="#CFE3EF"/><rect x="40" y="50" width="14" height="3" rx="1.5" fill="#CFE3EF"/><path d="M41 64c4 .5 7-1 9-6" stroke="#0088CC" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg></template></helmet>
+
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 0">
+<div style="width:393px;border-radius:34px;overflow:hidden;box-shadow:0 30px 70px rgba(20,45,70,.22)">
+<div dir="rtl" style="width:393px;height:852px;overflow:hidden;position:relative;font-family:Assistant,-apple-system,sans-serif;color:#0E1E2B;background:linear-gradient(180deg,#7FC4E8 0%,#A9D9F1 26%,#DCEEF8 52%,#F6FAFC 70%,#FFF 100%)">
+
+  <div style="padding:52px 22px 0;display:flex;align-items:center;justify-content:space-between">
+    <div style="width:42px;height:42px;border-radius:21px;background:#fff;box-shadow:0 8px 20px rgba(20,60,90,.18);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700">6</div>
+    <div style="display:flex;gap:18px;align-items:center;color:rgba(255,255,255,.92)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="22" height="22"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4.5 4.5"></path></svg>
+      <div style="display:flex;flex-direction:column;gap:3.5px"><div style="width:3.5px;height:3.5px;border-radius:2px;background:currentColor"></div><div style="width:3.5px;height:3.5px;border-radius:2px;background:currentColor"></div><div style="width:3.5px;height:3.5px;border-radius:2px;background:currentColor"></div></div>
+    </div>
+  </div>
+
+  <div style="padding:26px 22px 0;display:flex;align-items:center;justify-content:space-between">
+    <div style="font-size:29px;font-weight:600;letter-spacing:-.5px;color:#fff;text-shadow:0 2px 12px rgba(20,60,90,.18)">מסמכים לחתימה</div>
+    <div onClick="{{ openSheet }}" style="width:40px;height:40px;border-radius:20px;background:rgba(255,255,255,.28);border:1px solid rgba(255,255,255,.5);color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:300;cursor:pointer;backdrop-filter:blur(6px)">+</div>
+  </div>
+
+  <div style="display:flex;gap:12px;padding:22px 22px 0;overflow:hidden;mask-image:linear-gradient(270deg,#000 0%,#000 62%,rgba(0,0,0,.55) 84%,transparent 100%);-webkit-mask-image:linear-gradient(270deg,#000 0%,#000 62%,rgba(0,0,0,.55) 84%,transparent 100%)">
+    <div onClick="{{ openSheet }}" style="box-sizing:border-box;width:64px;height:132px;flex:none;border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.14));display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9);font-size:30px;font-weight:300;cursor:pointer;backdrop-filter:blur(8px)">+</div>
+    <div style="box-sizing:border-box;width:212px;height:132px;flex:none;border-radius:22px;background:linear-gradient(175deg,rgba(255,255,255,.93) 0%,rgba(255,255,255,.72) 62%,rgba(255,255,255,.5) 100%);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 26px 60px -18px rgba(20,60,90,.28);padding:18px 20px;display:flex;flex-direction:column;justify-content:space-between">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:23px;font-weight:600;letter-spacing:-.3px">הצהרת נהג</div>
+          <div style="font-size:12.5px;color:rgba(14,30,43,.45);margin-top:2px">3 שדות חתימה</div>
+        </div>
+        <div style="color:#7FC4E8">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><path d="M3 17c3.5.4 5.5-1 7-5s2.6-6.2 4-6 .8 3-1 7-3.6 8-1 8c1.6 0 2.8-1.2 3.6-2.6"></path><path d="M15 20.5h5.5"></path></svg>
+        </div>
+      </div>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between">
+        <div><div style="font-size:11px;color:rgba(14,30,43,.4)">עודכן</div><div style="font-size:13.5px;font-weight:600">היום, 14:20</div></div>
+        <div style="font-size:13.5px;font-weight:600;color:#0088CC">שלח ›</div>
+      </div>
+    </div>
+    <div style="box-sizing:border-box;width:150px;height:132px;flex:none;border-radius:22px;background:linear-gradient(175deg,rgba(255,255,255,.7) 0%,rgba(255,255,255,.42) 70%,rgba(255,255,255,.2) 100%);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 26px 55px -22px rgba(20,60,90,.2);padding:18px 20px">
+      <div style="font-size:23px;font-weight:600;letter-spacing:-.3px">בריאות</div>
+      <div style="font-size:12.5px;color:rgba(14,30,43,.45);margin-top:2px">2 שדות</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:6px;justify-content:center;padding:16px 0 0">
+    <div style="width:6px;height:6px;border-radius:3px;background:#fff"></div>
+    <div style="width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.45)"></div>
+    <div style="width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.45)"></div>
+  </div>
+
+
+  <svg viewBox="0 0 393 360" width="393" height="360" fill="none" stroke="#5E93B5" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:0;right:0;bottom:96px;opacity:.17;pointer-events:none;z-index:0">
+    <path d="M40 300h58a6 6 0 0 0 6-6V212a6 6 0 0 0-6-6H62l-22 22v66a6 6 0 0 0 6 6z"></path>
+    <path d="M62 206v18a4 4 0 0 1-4 4H40"></path>
+    <path d="M56 244h30M56 258h34M56 272h22"></path>
+    <path d="M132 320V232a8 8 0 0 1 8-8h56a8 8 0 0 1 8 8v88"></path>
+    <path d="M156 224v-8a6 6 0 0 1 6-6h12a6 6 0 0 1 6 6v8z"></path>
+    <path d="M148 252h40M148 266h44M148 280h26"></path>
+    <path d="M232 318v-54a10 10 0 0 1 10-10h34l14 14v50a10 10 0 0 1-10 10z"></path>
+    <path d="M276 254v10a4 4 0 0 0 4 4h10"></path>
+    <path d="M246 288c10 1 16-3 20-14s6-17 10-16 2 8-2 18-8 22-2 22c4 0 7-3 9-7"></path>
+    <circle cx="330" cy="222" r="20"></circle>
+    <circle cx="330" cy="222" r="13"></circle>
+    <path d="M330 196v-8M330 256v-8M304 222h-8M364 222h-8M312 204l-6-6M348 240l6 6M348 204l6-6M312 240l-6 6"></path>
+    <path d="M0 330h393"></path>
+    <path d="M96 176h20M300 176h32M356 300h37"></path>
+  </svg>
+  <div style="padding:34px 22px 0;position:relative;z-index:1">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:26px;font-weight:700;letter-spacing:-.5px;border-bottom:2.5px solid #7FC4E8;padding-bottom:2px;display:inline-block">נשלחו לחתימה</div>
+      <div style="color:rgba(14,30,43,.35)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="20" height="20"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4.5 4.5"></path></svg></div>
+    </div>
+  </div>
+
+  <div style="padding:16px 22px 0;display:flex;flex-direction:column;gap:15px;position:relative;z-index:1">
+    <sc-for list="{{ sent }}" as="f" hint-placeholder-count="4">
+      <div style="display:flex;align-items:flex-start;gap:13px">
+        <div style="width:9px;flex:none;padding-top:7px">
+          <div style="width:9px;height:9px;border-radius:5px;background:{{ f.dot }}"></div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:16.5px;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ f.doc }}</div>
+          <div style="font-size:14px;font-weight:600;color:rgba(14,30,43,.68);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ f.to }}</div>
+          <div style="font-size:12.5px;color:rgba(14,30,43,.35);margin-top:2px">{{ f.when }}</div>
+        </div>
+        <div style="flex:none;font-size:12.5px;font-weight:700;color:{{ f.dot }};background:{{ f.chipBg }};border-radius:9px;padding:5px 10px;margin-top:4px">{{ f.status }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="position:absolute;bottom:0;right:0;left:0;height:104px;display:flex;align-items:center;justify-content:space-between;padding:0 22px 18px">
+    <div style="font-size:26px;font-weight:700;letter-spacing:-.5px;border-bottom:2.5px solid #7FC4E8;padding-bottom:2px">ארכיון</div>
+    <div style="width:132px;height:86px;border-radius:26px 0 0 0;background:linear-gradient(160deg,#DCEEF8,#F2F9FD);display:flex;align-items:center;justify-content:center;color:#3E7EA0;position:absolute;bottom:0;left:0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="24" height="24"><path d="M6 19V11"></path><path d="M12 19V5"></path><path d="M18 19v-6"></path></svg>
+    </div>
+  </div>
+
+  <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;z-index:9;background:rgba(14,40,60,.3);display:flex;align-items:flex-end;backdrop-filter:blur(2px)">
+      <div style="width:100%;background:#fff;border-radius:30px 30px 0 0;padding:12px 22px 36px;box-shadow:0 -20px 50px rgba(14,40,60,.2)">
+        <div style="width:38px;height:5px;border-radius:3px;background:rgba(14,30,43,.15);margin:0 auto 18px"></div>
+        <div style="font-size:24px;font-weight:700;letter-spacing:-.4px">תבנית חדשה</div>
+        <div style="font-size:13.5px;color:rgba(14,30,43,.45);margin-top:4px">העלה PDF או תמונה, ואז מקם את שדות החתימה.</div>
+        <div style="margin-top:18px;border-bottom:1.5px solid rgba(14,30,43,.12);padding-bottom:10px;font-size:17px;color:rgba(14,30,43,.3)">שם המסמך</div>
+        <div style="display:flex;gap:10px;margin-top:20px">
+          <div style="flex:1;height:54px;border-radius:18px;background:linear-gradient(180deg,#7FC4E8,#59AEDB);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16.5px;font-weight:700;box-shadow:0 12px 26px rgba(89,174,219,.4)">גלריה</div>
+          <div style="flex:1;height:54px;border-radius:18px;background:#F0F5F8;display:flex;align-items:center;justify-content:center;font-size:16.5px;font-weight:700">קובץ</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { sheetOpen: false };
+  renderVals() {
+    return {
+      sent: [
+        { doc: 'הצהרת נהג', to: 'דני אמסלם', when: '1.9, 14:30', status: 'נחתם', dot: '#3E9E6B', chipBg: 'rgba(62,158,107,.12)' },
+        { doc: 'מסמך בריאות', to: 'מירב לוי · יוסי כהן · +2', when: '31.8, 09:12', status: 'ממתין', dot: '#0088CC', chipBg: 'rgba(0,136,204,.12)' },
+        { doc: 'טופס קליטה', to: 'אורי בן דוד', when: '28.8, 16:40', status: 'ממתין', dot: '#0088CC', chipBg: 'rgba(0,136,204,.12)' },
+        { doc: 'אישור נסיעה 4821', to: 'שרית מזרחי · נועם פרץ', when: '24.8, 11:05', status: 'נחתם', dot: '#3E9E6B', chipBg: 'rgba(62,158,107,.12)' },
+      ],
+      sheetOpen: this.state.sheetOpen,
+      openSheet: () => this.setState({ sheetOpen: true }),
+      closeSheet: () => this.setState({ sheetOpen: false }),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -23,6 +23,8 @@ export interface PickedFile {
   name: string;
   mimeType: string;
   base64?: string;
+  width?: number;
+  height?: number;
 }
 
 function rawBase64(value: string): string {
@@ -54,6 +56,8 @@ export async function pickImage(): Promise<PickedFile | null> {
     uri: asset.uri,
     name: asset.fileName || `scan-${Date.now()}.${ext}`,
     mimeType: asset.mimeType || 'image/jpeg',
+    width: asset.width,
+    height: asset.height,
   };
 }
 
@@ -72,6 +76,8 @@ export async function captureImage(): Promise<PickedFile | null> {
     uri: asset.uri,
     name: `photo-${Date.now()}.jpg`,
     mimeType: asset.mimeType || 'image/jpeg',
+    width: asset.width,
+    height: asset.height,
   };
 }
 

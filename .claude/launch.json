@@ -6,6 +6,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["expo", "start", "--web", "-c"],
       "port": 8081
+    },
+    {
+      "name": "design-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tmp/static_server.js", "tmp/ios_design/design_handoff_documents_for_signing", "8933"],
+      "port": 8933
     }
   ]
 }

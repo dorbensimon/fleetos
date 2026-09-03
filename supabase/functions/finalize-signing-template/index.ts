@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
     const { companyId, templateId } = await req.json();
     const access = await verifyCompanyAccess(req.headers.get('Authorization'), companyId ?? null);
     if (!access.ok) return json({ error: access.error }, access.status);
-    if (access.callerRole !== 'admin') return json({ error: 'הפעולה זמינה למנהל בלבד' }, 403);
+    if (access.callerRole !== 'admin' && access.callerRole !== 'owner') return json({ error: 'אין הרשאה לאשר תבנית' }, 403);
 
     const { data: local } = await access.adminClient
       .from('signing_templates')
@@ -43,4 +43,3 @@ Deno.serve(async (req) => {
     return json({ error: 'אישור התבנית נכשל' }, 500);
   }
 });
-

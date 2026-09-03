@@ -15,7 +15,9 @@ export function isAllowedDocumentMimeType(mimeType: string): boolean {
 }
 
 export function isAllowedLogoMimeType(mimeType: string): boolean {
-  return LOGO_MIME_TYPES.has(mimeType.toLowerCase());
+  // Signing PDFs can embed PNG/JPEG directly and convert WEBP safely on the
+  // server. HEIC/HEIF have no reliable decoder in the Edge runtime.
+  return LOGO_MIME_TYPES.has(mimeType.toLowerCase()) && !['image/heic', 'image/heif'].includes(mimeType.toLowerCase());
 }
 
 /** Returns a server-safe extension that agrees with an already validated MIME type. */

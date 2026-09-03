@@ -45,6 +45,10 @@ Deno.serve(async (req) => {
       status,
       signed_file_path: signedFilePath,
       completed_at: status === 'completed' ? submitter.completed_at || new Date().toISOString() : null,
+      ...(status !== 'pending' ? {
+        next_email_reminder_at: null,
+        email_reminder_locked_until: null,
+      } : {}),
     }).eq('id', local.id);
     return json({ success: true, status });
   } catch (error) {

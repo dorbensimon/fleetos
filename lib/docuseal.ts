@@ -29,11 +29,28 @@ export type SignatureRequest = {
   created_at: string;
   archived_at?: string | null;
   failure_reason?: string | null;
+  email_reminder_count?: number;
+  last_email_reminder_at?: string | null;
+  next_email_reminder_at?: string | null;
   template?: { title: string } | null;
   driverName?: string | null;
 };
 
-export type SigningFile = { uri: string; name: string; mimeType: string; base64?: string };
+export type CompanySigningSettings = {
+  email_reminders_enabled: boolean;
+  initial_reminder_delay_hours: number;
+  repeat_reminder_interval_hours: number;
+  max_email_reminders: number;
+};
+
+export const DEFAULT_COMPANY_SIGNING_SETTINGS: CompanySigningSettings = {
+  email_reminders_enabled: true,
+  initial_reminder_delay_hours: 72,
+  repeat_reminder_interval_hours: 72,
+  max_email_reminders: 3,
+};
+
+export type SigningFile = { uri: string; name: string; mimeType: string; base64?: string; width?: number; height?: number };
 export type DocuSealPreviewField = {
   name: string;
   type: 'signature' | 'stamp';
@@ -135,16 +152,34 @@ function parseJpegDimensions(bytes: Uint8Array): { width: number; height: number
  * formats we don't parse ourselves (e.g. HEIC).
  */
 async function imageDimensions(file: SigningFile, base64: string): Promise<{ width: number; height: number }> {
+  // ImagePicker reports display-oriented dimensions, so an iPhone photo whose
+  // JPEG pixels are stored sideways still produces a portrait PDF page.
+  if (file.width && file.height && file.width > 0 && file.height > 0) {
+    return { width: file.width, height: file.height };
+  }
   const bytes = new Uint8Array(decode(base64));
   const parsed = parsePngDimensions(bytes) || parseJpegDimensions(bytes);
   if (parsed && parsed.width > 0 && parsed.height > 0) return parsed;
   return getImageSize(file.uri);
 }
 
+function imagePageDimensions(imageWidth: number, imageHeight: number): { width: number; height: number } {
+  // Keep the PDF page at a reliable print size while making its aspect ratio
+  // identical to the selected image. Matching ratios means `contain` can show
+  // every pixel without either cropping or adding white bands.
+  const longestEdge = 842;
+  const scale = longestEdge / Math.max(imageWidth, imageHeight);
+  return {
+    width: Math.max(72, Math.round(imageWidth * scale)),
+    height: Math.max(72, Math.round(imageHeight * scale)),
+  };
+}
+
 async function imageToPdf(file: SigningFile): Promise<SigningFile> {
   if (!file.mimeType.startsWith('image/')) return file;
   const base64 = await readFileBase64(file);
-  const { width, height } = await imageDimensions(file, base64);
+  const imageSize = await imageDimensions(file, base64);
+  const { width, height } = imagePageDimensions(imageSize.width, imageSize.height);
   const html = `<!doctype html>
     <html>
       <head>
@@ -158,14 +193,13 @@ async function imageToPdf(file: SigningFile): Promise<SigningFile> {
             margin: 0;
             padding: 0;
             overflow: hidden;
+            background: #fff;
           }
           img {
-            position: absolute;
-            inset: 0;
             display: block;
-            width: ${width}px;
-            height: ${height}px;
-            object-fit: fill;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
           }
         </style>
       </head>
@@ -291,6 +325,30 @@ export async function getSigningSession(requestId: string): Promise<DocuSealSess
 
 export async function syncSigningRequest(requestId: string) {
   return invoke<{ success: boolean; status: SignatureRequest['status'] }>('sync-signing-request', { requestId });
+}
+
+export async function resendSigningRequest(requestId: string) {
+  return invoke<{ success: boolean; channel: 'email' }>('resend-signing-request', { requestId });
+}
+
+export async function getCompanySigningSettings(companyId: string): Promise<CompanySigningSettings> {
+  const { data, error } = await supabase
+    .from('company_signing_settings')
+    .select('email_reminders_enabled, initial_reminder_delay_hours, repeat_reminder_interval_hours, max_email_reminders')
+    .eq('company_id', companyId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as CompanySigningSettings | null) || DEFAULT_COMPANY_SIGNING_SETTINGS;
+}
+
+export async function updateCompanySigningSettings(companyId: string, settings: CompanySigningSettings) {
+  return invoke<{ success: boolean; channel: 'email'; settings: CompanySigningSettings }>('update-company-signing-settings', {
+    companyId,
+    emailRemindersEnabled: settings.email_reminders_enabled,
+    initialReminderDelayHours: settings.initial_reminder_delay_hours,
+    repeatReminderIntervalHours: settings.repeat_reminder_interval_hours,
+    maxEmailReminders: settings.max_email_reminders,
+  });
 }
 
 export async function deleteSigningRecord(companyId: string, kind: 'template' | 'request', id: string, action: 'archive' | 'restore' | 'permanent-delete' = 'archive') {

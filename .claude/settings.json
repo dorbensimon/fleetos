@@ -31,6 +31,15 @@
             "command": "C:/Users/dor59/.local/bin/graphify.EXE hook-guard read"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/rewrite-noisy-bash.js"
+          }
+        ]
       }
     ]
   }

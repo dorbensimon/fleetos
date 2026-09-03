@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet"><style>*::-webkit-scrollbar{width:0;height:0;display:none}body{margin:0;background:#e9eef2;font-family:Assistant,-apple-system,BlinkMacSystemFont,system-ui,sans-serif}a{color:#0088CC}a:hover{color:#006ea6}</style><template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#EEF3F7"/><circle cx="50" cy="36" r="16" fill="#0A84FF"/><path d="M44 28h9l4 4v12H44z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><rect x="26" y="60" width="48" height="6" rx="3" fill="#fff"/><rect x="34" y="72" width="32" height="5" rx="2.5" fill="#D5E2EC"/></svg></template></helmet>
+
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 0">
+<div style="width:393px;border-radius:34px;overflow:hidden;box-shadow:0 30px 70px rgba(20,45,70,.22)">
+<div dir="rtl" style="width:393px;height:852px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;position:relative;font-family:Assistant,-apple-system,sans-serif;color:#0E1E2B;background-color:#F1F4F7;background-image:linear-gradient(180deg,#CFE7F5 0%,#E4EFF6 190px,#F1F4F7 380px);background-repeat:no-repeat;background-attachment:local;background-size:100% 420px">
+
+  <div style="padding:52px 20px 0;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:2px;color:#0088CC;font-size:17px;font-weight:600;cursor:pointer"><span style="font-size:24px;line-height:1;margin-top:-2px">›</span><span>תפריט</span></div>
+  </div>
+
+  <div style="padding:16px 20px 0;display:flex;flex-direction:column;align-items:center">
+    <div style="width:104px;height:104px;border-radius:52px;background:linear-gradient(180deg,#3FA9E8,#0A7FD0);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 0 0 10px rgba(63,169,232,.14),0 18px 34px rgba(10,127,208,.32)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="46" height="46" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"></path><path d="M14 3v4h4"></path><path d="M10 11.5c2 .3 3.2-.8 4-3s1.4-4.4 2.2-4.2"></path><path d="M10 16h7"></path></svg>
+    </div>
+    <div style="font-size:29px;font-weight:700;letter-spacing:-.6px;margin-top:14px">מסמכים לחתימה</div>
+    <div style="display:flex;align-items:center;gap:7px;font-size:15px;font-weight:600;color:rgba(14,30,43,.5);margin-top:3px">
+      <span>6 תבניות</span>
+    </div>
+  </div>
+
+  <div style="padding:20px 20px 0">
+    <div style="display:flex;background:rgba(120,120,128,.12);border-radius:11px;padding:3px">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+        <div onClick="{{ t.select }}" style="flex:1;text-align:center;padding:8px 0;border-radius:9px;font-size:14.5px;font-weight:700;cursor:pointer;background:{{ t.bg }};box-shadow:{{ t.shadow }};color:{{ t.fg }}">{{ t.label }}</div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="padding:22px 20px 0">
+    <div style="font-size:13.5px;font-weight:600;color:rgba(14,30,43,.42);padding:0 4px 7px">תבנית חדשה</div>
+    <div style="background:#fff;border-radius:22px;padding:6px 6px 16px;box-shadow:0 8px 22px -14px rgba(20,60,90,.3);overflow:hidden">
+      <div onClick="{{ openSheet }}" style="display:flex;align-items:stretch;height:176px;border-radius:18px;background:linear-gradient(170deg,#EAF4FB 0%,#DDEDF7 55%,#F4F9FC 100%);overflow:hidden;cursor:pointer">
+        <div style="position:relative;flex:none;width:142px">
+          <div style="position:absolute;z-index:0;top:34px;right:14px;width:84px;height:112px;border-radius:8px;background:rgba(255,255,255,.7);transform:rotate(6deg);box-shadow:0 10px 22px -14px rgba(20,60,90,.3)"></div>
+          <div style="position:absolute;z-index:1;top:24px;right:32px;width:96px;height:124px;border-radius:8px;background:#fff;transform:rotate(-7deg);box-shadow:0 12px 26px -12px rgba(20,60,90,.35);padding:12px 11px;box-sizing:border-box">
+            <div style="height:5px;border-radius:3px;background:rgba(14,30,43,.12);width:70%"></div>
+            <div style="height:4px;border-radius:2px;background:rgba(14,30,43,.08);width:100%;margin-top:9px"></div>
+            <div style="height:4px;border-radius:2px;background:rgba(14,30,43,.08);width:86%;margin-top:6px"></div>
+            <div style="height:4px;border-radius:2px;background:rgba(14,30,43,.08);width:94%;margin-top:6px"></div>
+            <div style="margin-top:14px;height:32px;border-radius:7px;border:1.5px dashed #0088CC;background:rgba(0,136,204,.07);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#0088CC">חתימה</div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:0 16px 0 14px">
+          <div style="font-size:20px;font-weight:700;letter-spacing:-.4px;line-height:1.2">יצירת תבנית חדשה</div>
+          <div style="font-size:13px;color:rgba(14,30,43,.55);line-height:1.4;margin-top:6px">העלה PDF או תמונה, ואז מקם את שדות החתימה בעורך של DocuSeal.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;padding:14px 10px 0">
+        <sc-for list="{{ steps }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:19px;height:19px;border-radius:10px;background:{{ s.bg }};color:{{ s.fg }};display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700">{{ s.n }}</div>
+            <div style="font-size:12.5px;font-weight:700;color:{{ s.text }};white-space:nowrap">{{ s.label }}</div>
+          </div>
+          <div style="flex:1;height:1px;background:rgba(14,30,43,.1);margin:0 -2px;display:{{ s.railDisplay }}"></div>
+        </sc-for>
+      </div>
+
+      <div style="margin:14px 10px 0;height:48px;border-radius:14px;background:rgba(118,118,128,.1);display:flex;align-items:center;gap:10px;padding:0 14px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="rgba(14,30,43,.32)" stroke-width="1.8" width="17" height="17" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10-4-4L4 16z"></path><path d="M14.5 5.5l4 4"></path></svg>
+        <span style="font-size:16px;color:rgba(14,30,43,.32)">שם המסמך</span>
+      </div>
+
+      <div style="display:flex;gap:10px;margin:12px 10px 0">
+        <div onClick="{{ openSheet }}" style="flex:1;height:50px;border-radius:15px;background:#0088CC;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700;box-shadow:0 12px 24px -10px rgba(0,136,204,.6);cursor:pointer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"></rect><circle cx="9" cy="10" r="1.6"></circle><path d="M4 17l5-4 4 3 3-2 4 3"></path></svg>תמונה מהגלריה
+        </div>
+        <div onClick="{{ openSheet }}" style="flex:1;height:50px;border-radius:15px;background:rgba(118,118,128,.1);color:#0E1E2B;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700;cursor:pointer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"></path><path d="M14 3v4h4"></path></svg>PDF או תמונה
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:22px 20px 34px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px 7px">
+      <div style="font-size:13.5px;font-weight:600;color:rgba(14,30,43,.42)">תבניות מוכנות</div>
+      <div style="font-size:13.5px;font-weight:600;color:rgba(14,30,43,.42)">6</div>
+    </div>
+    <div style="background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 8px 22px -14px rgba(20,60,90,.3)">
+      <sc-for list="{{ templates }}" as="t" hint-placeholder-count="6">
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:{{ t.sep }}">
+          <div style="width:34px;height:34px;flex:none;border-radius:10px;background:#0088CC;color:#fff;display:flex;align-items:center;justify-content:center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"></path><path d="M14 3v4h4"></path><path d="M10 12h6M10 16h4"></path></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:16.5px;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.name }}</div>
+            <div style="font-size:13.5px;color:rgba(14,30,43,.45);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">תבנית DocuSeal מוכנה לשליחה</div>
+          </div>
+          <div style="flex:none;display:flex;align-items:center;gap:7px;background:rgba(0,136,204,.1);color:#0088CC;border-radius:10px;padding:7px 11px;font-size:14.5px;font-weight:700;cursor:pointer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" width="15" height="15" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L10.5 13.5"></path><path d="M21 3l-7 18-3.5-7.5L3 10z"></path></svg>שלח
+          </div>
+          <div style="flex:none;width:34px;height:34px;border-radius:10px;background:rgba(192,57,43,.1);color:#C0392B;display:flex;align-items:center;justify-content:center;cursor:pointer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14"></path><path d="M9.5 7V5h5v2"></path><path d="M7 7l1 12.5h8L17 7"></path></svg>
+          </div>
+          <span style="color:rgba(60,60,67,.28);font-size:18px">‹</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size:13px;color:rgba(14,30,43,.4);padding:8px 4px 0;line-height:1.4">החלקה שמאלה על תבנית — הורדת PDF. מחיקה מבקשת אישור.</div>
+  </div>
+
+  <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;z-index:9;background:rgba(14,40,60,.3);display:flex;align-items:flex-end;backdrop-filter:blur(2px)">
+      <div style="width:100%;background:#fff;border-radius:26px 26px 0 0;padding:12px 20px 34px;box-shadow:0 -20px 50px rgba(14,40,60,.2)">
+        <div style="width:38px;height:5px;border-radius:3px;background:rgba(14,30,43,.15);margin:0 auto 16px"></div>
+        <div style="font-size:22px;font-weight:700;letter-spacing:-.4px;text-align:center">בחירת מקור</div>
+        <div style="background:#fff;border-radius:16px;overflow:hidden;margin-top:14px;box-shadow:0 8px 22px -14px rgba(20,60,90,.3)">
+          <sc-for list="{{ sources }}" as="s" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:{{ s.sep }};cursor:pointer">
+              <div style="width:34px;height:34px;flex:none;border-radius:10px;background:{{ s.tint }};color:#fff;display:flex;align-items:center;justify-content:center">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18" stroke-linecap="round" stroke-linejoin="round"><path d="{{ s.d }}"></path></svg>
+              </div>
+              <div style="flex:1;font-size:16.5px;font-weight:700">{{ s.label }}</div>
+              <span style="color:rgba(60,60,67,.28);font-size:18px">‹</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { tab: 'תבניות', sheetOpen: false };
+
+  sep(i, n) {
+    return i === n - 1 ? 'none' : '1px solid rgba(14,30,43,.07)';
+  }
+
+  renderVals() {
+    const names = ['iii', 'מסמך חדש חדש', 'Ghh', 'לולו', 'חדשהיום', 'בריאות'];
+    const sources = [
+      { label: 'תמונה מהגלריה', tint: '#34C759', d: 'M3 5.5h18v13H3zM8.5 10.2a1.7 1.7 0 1 0 0 .1M4 17l5-4 4 3 3-2 4 3' },
+      { label: 'קובץ PDF', tint: '#0088CC', d: 'M7 3h7l4 4v14H7zM14 3v4h4M10 13h6M10 17h4' },
+      { label: 'צילום מסמך', tint: '#5E5CE6', d: 'M4 8h3l1.5-2.5h7L17 8h3v11H4zM12 16.5a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4' },
+    ];
+    const stepDefs = [
+      { n: '1', label: 'העלאה', active: true },
+      { n: '2', label: 'מיקום שדות', active: false },
+      { n: '3', label: 'שליחה', active: false },
+    ];
+    return {
+      steps: stepDefs.map((s, i) => ({
+        n: s.n,
+        label: s.label,
+        bg: s.active ? '#0088CC' : 'rgba(118,118,128,.14)',
+        fg: s.active ? '#fff' : 'rgba(14,30,43,.45)',
+        text: s.active ? '#0E1E2B' : 'rgba(14,30,43,.42)',
+        railDisplay: i === stepDefs.length - 1 ? 'none' : 'block',
+      })),
+      tabs: ['תבניות', 'נשלחו', 'ארכיון'].map((label) => {
+        const on = label === this.state.tab;
+        return {
+          label,
+          bg: on ? '#fff' : 'transparent',
+          shadow: on ? '0 3px 8px rgba(20,60,90,.14), 0 1px 1px rgba(20,60,90,.05)' : 'none',
+          fg: on ? '#0088CC' : 'rgba(14,30,43,.6)',
+          select: () => this.setState({ tab: label }),
+        };
+      }),
+      templates: names.map((name, i) => ({ name, sep: this.sep(i, names.length) })),
+      sources: sources.map((s, i) => ({ ...s, sep: this.sep(i, sources.length) })),
+      sheetOpen: this.state.sheetOpen,
+      openSheet: () => this.setState({ sheetOpen: true }),
+      closeSheet: () => this.setState({ sheetOpen: false }),
+    };
+  }
+}
+</script>
+</body>
+</html>

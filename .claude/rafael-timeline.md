@@ -89,3 +89,29 @@ PRD: `.claude/prds/documents-broadcast-stage2-signing.md`. סדר העבודה �
 | — | דניאל: להשלים אימות ריצת מיגרציות 37/38/41/42/43 מול production | אין (פתוח מסבב קודם) | חוסם QA אמיתי (עומר) |
 
 **עיקרון מנחה:** אף אחד לא מחכה סרק ללירון. רק מתן/רועי לא מתחילים לבנות רעיונות בהשראת המתחרה (nudge reminders, ספריית טפסים בשם קבוע וכו') לפני אישור עידן — זה מפורש כהרחבת scope בסיכון הקיים ב-`rafael-risks.md`.
+
+---
+
+## ⚠️ עדכון קריטי (29.8.2026) — כל התוכן למעלה (אבני דרך 1-5 של "שלב 2 חתימה דיגיטלית") מיושן ומוחלף
+
+**הסיבה:** הפיתרון הטכני שבפועל נבחר ומומש הוא **אינטגרציית Docuseal** (שירות חתימה חיצוני), לא בניית מנגנון signature-pad/RPC/stack-collapse עצמאי כפי שתוכנן באבני הדרך 1-5 למעלה. ר' `rafael-status.md`, סעיף "RE-BASELINE קריטי", לפירוט מלא של הממצא.
+
+**אבני הדרך 1-5 למעלה (מיקה→רועי→לירון→מתן→עומר על סכימת מיקום-חתימה/RPC/collapse) — לא מבוטלות רשמית על ידי (זו לא סמכותי), אך ככל הנראה נס-פר-אקטו על ידי המימוש בפועל.** אם עידן/דור רוצים לאשר רשמית שה-PRD הישן (`documents-broadcast-stage2-signing.md`) הוחלף ב-Docuseal, זו החלטת מוצר — לא שלי לקבוע, רק לדווח שהיא כבר קרתה בפועל בקוד.
+
+## מסלול נוכחי (Docuseal, מבוסס על מה שכבר קיים בקוד + `CLAUDE_HANDOFF_2026-08-29.md`)
+
+### הושלם בקוד (לפי git log + handoff, לא אומת על ידי באופן עצמאי)
+- אינטגרציית Docuseal מלאה: מסכי אדמין/נהג, WebView חתימה, 8 Edge Functions, `lib/docuseal.ts`.
+- תיקוני loading state, share sheet להורדה, preview בלחיצה על כרטיס תבנית, image sizing מותאם, sanitization של שמות קבצים בעברית.
+- עדכוני compliance (בדיקה הבאה אופציונלית, last_date-driven expiry).
+- routing להתראות **אצל נהג בלבד** (`signature_request_assigned`, `vehicle_assignment`, `driver_profile_updated_by_manager`, `vehicle_inspection_last_date_expiry`).
+- commit `3b488d9` — כל השינויים הנ"ל.
+
+### פתוח — ממתין לאישור מפורש (לא לביצוע טכני שלי או של שאר הצוות בלי OK מדור)
+- **מיגרציה 42** (`42_vehicle_last_check_expiry_notifications.sql`) — מוכנה מקומית, לא הוחלה על production. דורשת אישור מפורש דור לפני apply.
+- **אימות שמיגרציות 37-40 רצו בפועל מול production** (41 כן, לפי ה-handoff) — באחריות דניאל, לפני שממשיכים לבנות מעליהן.
+
+### פתוח — עבודה חדשה (P1/P2, ר' `rafael-ceremonies.md` לבריפים מלאים)
+1. **Admin Notification Routing (P1)** — מתן (routing logic + params), רועי (payload כולל driver_id/vehicle_id/document_id), עומר (QA). ר' `rafael-status.md` לטבלת המיפוי המלאה.
+2. **Docuseal Multi-Tenancy by company_id (P2, חייב לפני production go-live רחב)** — מיקה (schema proposal: company_id על טבלאות Docuseal), רועי (migration + RLS), מתן (frontend validation).
+3. **הערכה מחדש** — האם הסיכון "מורכבות stack-collapse אטומי" (`rafael-risks.md`) עדיין רלוונטי בארכיטקטורת Docuseal, או שהוא ניתן לסגירה כי Docuseal מנהל את זה בעצמו. דורש בירור קצר עם רועי/מתן, לא ידוע לי בוודאות.

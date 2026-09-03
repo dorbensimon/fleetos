@@ -26,16 +26,16 @@ Deno.serve(async (req) => {
     const { templateId } = await req.json();
     const user = await verifyUser(req.headers.get('Authorization'));
     if (!user.ok) return json({ error: user.error }, user.status);
-    if (user.profile.role !== 'admin') return json({ error: 'הפעולה זמינה למנהל בלבד' }, 403);
+    if (user.profile.role !== 'admin' && user.profile.role !== 'owner') return json({ error: 'אין הרשאה לצפות בתבנית' }, 403);
 
-    const { data: template } = await user.adminClient
+    let templateQuery = user.adminClient
       .from('signing_templates')
       .select('id, company_id, docuseal_template_id, source_file_path')
       .eq('id', templateId)
-      .eq('company_id', user.profile.company_id)
       .eq('status', 'ready')
-      .is('archived_at', null)
-      .single();
+      .is('archived_at', null);
+    if (user.profile.role === 'admin') templateQuery = templateQuery.eq('company_id', user.profile.company_id);
+    const { data: template } = await templateQuery.single();
     if (!template?.docuseal_template_id || !isSigningTemplateSourcePath(template.company_id, template.source_file_path)) {
       return json({ error: 'התבנית לא נמצאה' }, 404);
     }

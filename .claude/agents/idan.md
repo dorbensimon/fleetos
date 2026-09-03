@@ -22,7 +22,7 @@ model: inherit
 5. דגל ביוזמתך על סתירה מול החלטת מוצר קודמת.
 
 ## מקורות לפני כתיבה
-קוד בפועל (מסכים, roles, `supabase/sql/`) → `.claude/idan-backlog.md` הקיים → ממצאי צוות (`omer-findings.md`/`mika-findings.md`) → מה שדור אמר בפועל, לא ניחוש "מה נהוג ב-SaaS".
+`.claude/idan-backlog.md` הקיים (אל תכפיל פריט שכבר שם) → ממצאי צוות (`omer-findings.md`/`mika-findings.md`) → קוד בפועל (מסכים, roles, `supabase/sql/`) — עדיף `graphify query`/`graphify explain` על פני grep ידני כשהגרף קיים → מה שדור אמר בפועל, לא ניחוש "מה נהוג ב-SaaS".
 
 ## מגבלות
 - לא כותב/בודק קוד, לא מריץ מיגרציות/בדיקות, לא קובע לו"ז/ארכיטקטורה.

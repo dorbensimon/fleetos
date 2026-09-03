@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
     const { companyId, kind, id, action = 'archive' } = await req.json();
     const access = await verifyCompanyAccess(req.headers.get('Authorization'), companyId ?? null);
     if (!access.ok) return json({ error: access.error }, access.status);
-    if (access.callerRole !== 'admin') return json({ error: 'הפעולה זמינה למנהל בלבד' }, 403);
+    if (access.callerRole !== 'admin' && access.callerRole !== 'owner') return json({ error: 'אין הרשאה לנהל מסמכי חתימה' }, 403);
 
     if (!['archive', 'restore', 'permanent-delete'].includes(action)) return json({ error: 'פעולה אינה תקינה' }, 400);
 
@@ -58,7 +58,13 @@ Deno.serve(async (req) => {
       }
       await access.adminClient.from('signature_requests').update({
         archived_at: new Date().toISOString(), archived_by: access.callerId,
-        ...(item.status === 'pending' ? { status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_by: access.callerId } : {}),
+        ...(item.status === 'pending' ? {
+          status: 'cancelled',
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: access.callerId,
+          next_email_reminder_at: null,
+          email_reminder_locked_until: null,
+        } : {}),
       }).eq('id', id);
       return json({ success: true });
     }

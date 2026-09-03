@@ -4,6 +4,11 @@ import { isSigningTemplateSourcePath } from '../_shared/signingPaths.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 
+type CompanyLogo = {
+  bytes: ArrayBuffer;
+  contentType: string;
+};
+
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -11,11 +16,76 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
-/** Adds a fixed, visible verification mark before DocuSeal signs the PDF. */
-async function addDigitalSignatureMark(pdfBytes: ArrayBuffer): Promise<Uint8Array> {
+function companyLogoPath(logoUrl: string | null, supabaseUrl: string): string | null {
+  if (!logoUrl) return null;
+  try {
+    const parsed = new URL(logoUrl);
+    if (parsed.origin !== new URL(supabaseUrl).origin) return null;
+    const marker = '/storage/v1/object/public/company-logos/';
+    if (!parsed.pathname.startsWith(marker)) return null;
+    const path = decodeURIComponent(parsed.pathname.slice(marker.length));
+    return path && !path.includes('..') ? path : null;
+  } catch {
+    return null;
+  }
+}
+
+async function logoAsPng(logo: CompanyLogo): Promise<ArrayBuffer | null> {
+  if (logo.contentType !== 'image/webp') return null;
+  try {
+    const bitmap = await createImageBitmap(new Blob([logo.bytes], { type: logo.contentType }));
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    // Deno's Edge type declarations currently narrow getContext('2d') too
+    // aggressively, even though the runtime exposes the standard 2D API.
+    const context = canvas.getContext('2d') as unknown as {
+      drawImage: (image: ImageBitmap, dx: number, dy: number) => void;
+    } | null;
+    if (!context) return null;
+    context.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    return (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer();
+  } catch {
+    return null;
+  }
+}
+
+/** Adds the company logo and a fixed verification mark before DocuSeal signs the PDF. */
+async function prepareSigningPdf(pdfBytes: ArrayBuffer, companyLogo: CompanyLogo | null): Promise<Uint8Array> {
   const pdf = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
   const pages = pdf.getPages();
   if (!pages.length) throw new Error('המסמך אינו מכיל עמודים');
+
+  if (companyLogo) {
+    const contentType = companyLogo.contentType.toLowerCase();
+    let image = null;
+    if (contentType === 'image/png') image = await pdf.embedPng(companyLogo.bytes);
+    else if (contentType === 'image/jpeg' || contentType === 'image/jpg') image = await pdf.embedJpg(companyLogo.bytes);
+    else if (contentType === 'image/webp') {
+      const pngBytes = await logoAsPng(companyLogo);
+      if (pngBytes) image = await pdf.embedPng(pngBytes);
+    }
+    if (!image) throw new Error('unsupported company logo');
+
+    // The logo belongs to the company whose manager is creating this template.
+    // It is placed in a small, fixed header on the first page and becomes part
+    // of the immutable PDF that DocuSeal signs.
+    const firstPage = pages[0];
+    const { width, height } = firstPage.getSize();
+    const maxWidth = Math.min(132, width - 44);
+    const maxHeight = Math.min(44, height - 44);
+    const scaled = image.scaleToFit(maxWidth, maxHeight);
+    const x = width - scaled.width - 22;
+    const y = height - scaled.height - 22;
+    firstPage.drawRectangle({
+      x: x - 4,
+      y: y - 4,
+      width: scaled.width + 8,
+      height: scaled.height + 8,
+      color: rgb(1, 1, 1),
+      opacity: 0.94,
+    });
+    firstPage.drawImage(image, { x, y, width: scaled.width, height: scaled.height });
+  }
 
   const page = pages[pages.length - 1];
   const { width } = page.getSize();
@@ -51,7 +121,7 @@ Deno.serve(async (req) => {
     const { companyId, title, filePath, fileName } = await req.json();
     const access = await verifyCompanyAccess(req.headers.get('Authorization'), companyId ?? null);
     if (!access.ok) return json({ error: access.error }, access.status);
-    if (access.callerRole !== 'admin') return json({ error: 'הפעולה זמינה למנהל בלבד' }, 403);
+    if (access.callerRole !== 'admin' && access.callerRole !== 'owner') return json({ error: 'אין הרשאה ליצור תבנית' }, 403);
     if (typeof title !== 'string' || !title.trim()) return json({ error: 'חסר שם למסמך' }, 400);
     if (!isSigningTemplateSourcePath(companyId, filePath)) {
       return json({ error: 'נתיב המסמך אינו תקין' }, 400);
@@ -64,6 +134,30 @@ Deno.serve(async (req) => {
     const integrationEmail = userData?.user?.email;
     if (!integrationEmail) return json({ error: 'לא נמצאה כתובת המייל של המנהל' }, 400);
 
+    const { data: company, error: companyError } = await access.adminClient
+      .from('companies')
+      .select('logo_url')
+      .eq('id', companyId)
+      .single();
+    if (companyError || !company) return json({ error: 'פרטי החברה לא נמצאו' }, 404);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    if (!supabaseUrl) return json({ error: 'הגדרות השרת חסרות' }, 500);
+    const logoPath = companyLogoPath(company.logo_url, supabaseUrl);
+    if (company.logo_url && !logoPath) {
+      return json({ error: 'קובץ הלוגו של החברה אינו תקין. יש להעלות אותו מחדש מתוך פרטי החברה.' }, 400);
+    }
+
+    let companyLogo: CompanyLogo | null = null;
+    if (logoPath) {
+      const { data: logoBlob, error: logoError } = await access.adminClient.storage.from('company-logos').download(logoPath);
+      if (logoError || !logoBlob) return json({ error: 'לא ניתן לקרוא את לוגו החברה. נסה להעלות אותו מחדש.' }, 502);
+      const contentType = logoBlob.type.toLowerCase();
+      if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(contentType)) {
+        return json({ error: 'לוגו החברה צריך להיות PNG, JPG או WEBP כדי להופיע במסמך החתימה.' }, 400);
+      }
+      companyLogo = { bytes: await logoBlob.arrayBuffer(), contentType };
+    }
+
     const { data: signed, error: signedError } = await access.adminClient.storage
       .from('documents')
       .createSignedUrl(filePath, 60 * 30);
@@ -71,7 +165,15 @@ Deno.serve(async (req) => {
 
     const sourceResponse = await fetch(signed.signedUrl);
     if (!sourceResponse.ok) return json({ error: 'לא ניתן להוריד את המסמך לצורך הטבעת החותמת' }, 502);
-    const stampedPdf = await addDigitalSignatureMark(await sourceResponse.arrayBuffer());
+    let stampedPdf: Uint8Array;
+    try {
+      stampedPdf = await prepareSigningPdf(await sourceResponse.arrayBuffer(), companyLogo);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'unsupported company logo') {
+        return json({ error: 'לא הצלחנו להכין את לוגו החברה למסמך. יש להעלות PNG, JPG או WEBP.' }, 400);
+      }
+      throw error;
+    }
     const { error: stampUploadError } = await access.adminClient.storage
       .from('documents')
       .upload(filePath, stampedPdf, { contentType: 'application/pdf', upsert: true });

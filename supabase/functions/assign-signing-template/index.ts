@@ -12,6 +12,11 @@ type DocuSealSubmitter = {
   slug?: string;
 };
 
+type CompanySigningSettings = {
+  email_reminders_enabled: boolean;
+  initial_reminder_delay_hours: number;
+};
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);
@@ -20,7 +25,7 @@ Deno.serve(async (req) => {
     const { companyId, templateId, driverIds } = await req.json();
     const access = await verifyCompanyAccess(req.headers.get('Authorization'), companyId ?? null);
     if (!access.ok) return json({ error: access.error }, access.status);
-    if (access.callerRole !== 'admin') return json({ error: 'הפעולה זמינה למנהל בלבד' }, 403);
+    if (access.callerRole !== 'admin' && access.callerRole !== 'owner') return json({ error: 'אין הרשאה לשלוח מסמכים' }, 403);
 
     const ids = [...new Set(Array.isArray(driverIds) ? driverIds : [])].slice(0, 100);
     if (!ids.length) return json({ error: 'יש לבחור לפחות נהג אחד' }, 400);
@@ -49,6 +54,17 @@ Deno.serve(async (req) => {
       .select('full_name')
       .eq('id', access.callerId)
       .single();
+
+    const { data: signingSettings, error: signingSettingsError } = await access.adminClient
+      .from('company_signing_settings')
+      .select('email_reminders_enabled, initial_reminder_delay_hours')
+      .eq('company_id', companyId)
+      .maybeSingle();
+    if (signingSettingsError) return json({ error: 'טעינת הגדרות תזכורות המייל נכשלה' }, 500);
+    const settings = signingSettings as CompanySigningSettings | null;
+    const initialReminderAt = settings?.email_reminders_enabled === false
+      ? null
+      : new Date(Date.now() + (settings?.initial_reminder_delay_hours ?? 72) * 60 * 60 * 1000).toISOString();
 
     let created = 0;
     const failed: string[] = [];
@@ -79,7 +95,13 @@ Deno.serve(async (req) => {
 
       const { data: requestRow, error: requestError } = await access.adminClient
         .from('signature_requests')
-        .insert({ company_id: companyId, template_id: templateId, driver_id: driver.id, created_by: access.callerId })
+        .insert({
+          company_id: companyId,
+          template_id: templateId,
+          driver_id: driver.id,
+          created_by: access.callerId,
+          next_email_reminder_at: initialReminderAt,
+        })
         .select('id')
         .single();
       if (requestError || !requestRow) {
@@ -92,7 +114,8 @@ Deno.serve(async (req) => {
         method: 'POST',
         body: JSON.stringify({
           template_id: template.docuseal_template_id,
-          send_email: false,
+          // FleetOS uses email only. SMS is intentionally never requested.
+          send_email: true,
           submitters: [{
             role: 'Driver',
             email,

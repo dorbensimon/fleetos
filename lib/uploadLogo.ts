@@ -26,7 +26,7 @@ export async function pickAndUploadLogo(): Promise<string | null> {
   const asset = result.assets[0];
   const mimeType = asset.mimeType || 'image/jpeg';
   if (!isAllowedLogoMimeType(mimeType)) {
-    throw new Error('סוג הלוגו אינו נתמך. ניתן להעלות JPG, PNG, WEBP או HEIC');
+    throw new Error('סוג הלוגו אינו נתמך. ניתן להעלות JPG, PNG או WEBP');
   }
   const base64 = await new File(asset.uri).base64();
   const arrayBuffer = decode(base64);

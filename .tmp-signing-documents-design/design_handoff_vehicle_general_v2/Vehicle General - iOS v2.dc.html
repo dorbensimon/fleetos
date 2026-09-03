@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet"><style>*::-webkit-scrollbar{width:0;height:0;display:none}body{margin:0;background:#e9eef2;font-family:Assistant,-apple-system,BlinkMacSystemFont,system-ui,sans-serif}a{color:#0088CC}a:hover{color:#006ea6}</style><template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#EEF3F7"/><circle cx="50" cy="38" r="16" fill="#0A84FF"/><path d="M42 40h16l-3-6H45z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><rect x="26" y="62" width="48" height="6" rx="3" fill="#fff"/><rect x="34" y="74" width="32" height="5" rx="2.5" fill="#D5E2EC"/></svg></template></helmet>
+
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 0">
+<div style="width:393px;border-radius:34px;overflow:hidden;box-shadow:0 30px 70px rgba(20,45,70,.22)">
+<div dir="rtl" style="width:393px;height:852px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;position:relative;font-family:Assistant,-apple-system,sans-serif;color:#0E1E2B;background-color:#F1F4F7;background-image:linear-gradient(180deg,#CFE7F5 0%,#E4EFF6 190px,#F1F4F7 380px);background-repeat:no-repeat;background-attachment:local;background-size:100% 420px">
+
+  <div style="padding:52px 20px 0;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:2px;color:#0088CC;font-size:17px;font-weight:600;cursor:pointer"><span style="font-size:24px;line-height:1;margin-top:-2px">›</span><span>רכבים</span></div>
+    <div style="width:36px;height:36px;border-radius:18px;background:rgba(255,255,255,.75);display:flex;align-items:center;justify-content:center;gap:3px;cursor:pointer">
+      <span style="width:4px;height:4px;border-radius:2px;background:#0088CC"></span>
+      <span style="width:4px;height:4px;border-radius:2px;background:#0088CC"></span>
+      <span style="width:4px;height:4px;border-radius:2px;background:#0088CC"></span>
+    </div>
+  </div>
+
+  <div style="padding:16px 20px 0;display:flex;flex-direction:column;align-items:center">
+    <div style="width:104px;height:104px;border-radius:52px;background:linear-gradient(180deg,#3FA9E8,#0A7FD0);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 0 0 10px rgba(63,169,232,.14),0 18px 34px rgba(10,127,208,.32)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="46" height="46" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16h16"></path><path d="M5.5 16v-3l2-.8 1.6-3.4A2 2 0 0 1 10.9 8h4.2a2 2 0 0 1 1.8 1.2L18.5 12l2 .8V16"></path><circle cx="8" cy="16.5" r="1.6"></circle><circle cx="16" cy="16.5" r="1.6"></circle></svg>
+    </div>
+    <div style="font-size:29px;font-weight:700;letter-spacing:-.6px;margin-top:14px">סקודה אוקטביה</div>
+    <div style="display:flex;align-items:center;gap:7px;font-size:15px;font-weight:600;color:rgba(14,30,43,.5);margin-top:3px">
+      <span style="direction:ltr">124-56-755</span><span>·</span><span>פרטי</span>
+      <span style="width:7px;height:7px;border-radius:4px;background:#34C759;margin-inline-start:2px"></span><span style="color:#2E8B57">פעיל</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;padding:20px 20px 0">
+    <sc-for list="{{ quick }}" as="q" hint-placeholder-count="3">
+      <div onClick="{{ q.select }}" style="flex:1;background:#fff;border-radius:18px;padding:14px 6px 13px;display:flex;flex-direction:column;align-items:center;gap:9px;box-shadow:0 8px 22px -12px rgba(20,60,90,.3);cursor:pointer">
+        <div style="width:38px;height:38px;border-radius:19px;background:{{ q.tint }};color:{{ q.fg }};display:flex;align-items:center;justify-content:center">
+          <sc-if value="{{ q.isDrivers }}" hint-placeholder-val="{{ true }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="19" height="19" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.5"></circle><path d="M5.5 19.5c0-3.2 2.9-5.5 6.5-5.5s6.5 2.3 6.5 5.5"></path></svg>
+          </sc-if>
+          <sc-if value="{{ q.isService }}" hint-placeholder-val="{{ false }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="19" height="19" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6.5a3.5 3.5 0 0 1 4.8-3.2l-2.4 2.4 1.4 1.4 2.4-2.4A3.5 3.5 0 0 1 17.5 9.5c-.6 0-1.1-.1-1.6-.4L7.8 17.2a2 2 0 1 1-2.8-2.8l8.1-8.1c-.4-.5-.6-1.1-.6-1.8z"></path></svg>
+          </sc-if>
+          <sc-if value="{{ q.isDocs }}" hint-placeholder-val="{{ false }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="19" height="19" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"></path><path d="M14 3v4h4"></path><path d="M10 12h6M10 16h4"></path></svg>
+          </sc-if>
+        </div>
+        <div style="font-size:14.5px;font-weight:700">{{ q.label }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="position:relative;z-index:1;margin-top:22px">
+    <sc-for list="{{ sections }}" as="sec" hint-placeholder-count="3">
+      <div style="padding:0 20px 20px">
+        <div style="font-size:13.5px;font-weight:600;color:rgba(14,30,43,.42);padding:0 4px 7px">{{ sec.caption }}</div>
+        <div style="background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 8px 22px -14px rgba(20,60,90,.3)">
+          <sc-for list="{{ sec.rows }}" as="r" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:{{ r.sep }};cursor:pointer">
+              <div style="width:34px;height:34px;flex:none;border-radius:10px;background:{{ r.tint }};color:#fff;display:flex;align-items:center;justify-content:center">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18" stroke-linecap="round" stroke-linejoin="round"><path d="{{ r.d }}"></path></svg>
+              </div>
+              <div style="flex:1;font-size:16.5px;font-weight:700;letter-spacing:-.2px">{{ r.label }}</div>
+              <div style="font-size:15.5px;font-weight:600;color:{{ r.valueColor }};direction:{{ r.dir }};white-space:nowrap">{{ r.value }}</div>
+              <span style="color:rgba(60,60,67,.28);font-size:18px">‹</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+
+    <div style="padding:0 20px 34px">
+      <div style="font-size:13.5px;font-weight:600;color:rgba(14,30,43,.42);padding:0 4px 7px">פעולות</div>
+      <div style="display:flex;gap:10px">
+        <div style="flex:1;height:52px;border-radius:16px;background:#0088CC;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16.5px;font-weight:700;box-shadow:0 12px 24px -10px rgba(0,136,204,.6);cursor:pointer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" width="17" height="17" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10-10-4-4L4 16z"></path><path d="M14.5 5.5l4 4"></path></svg>עריכת פרטים
+        </div>
+        <div style="flex:none;width:126px;height:52px;border-radius:16px;background:#fff;color:#C0392B;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16.5px;font-weight:700;box-shadow:0 8px 22px -14px rgba(20,60,90,.3);cursor:pointer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" width="17" height="17" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="5" rx="1.5"></rect><path d="M6 9v9a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9"></path><path d="M12 12v4"></path><path d="M9.5 14l2.5 2.5L14.5 14"></path></svg>לארכיון
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { quick: 'נהגים' };
+
+  rows(list) {
+    return list.map((r, i) => ({
+      ...r,
+      dir: r.dir || 'rtl',
+      valueColor: r.valueColor || 'rgba(14,30,43,.45)',
+      sep: i === list.length - 1 ? 'none' : '1px solid rgba(14,30,43,.07)',
+    }));
+  }
+
+  renderVals() {
+    const quick = [
+      { key: 'נהגים', label: 'נהג משויך', tint: 'rgba(94,92,230,.12)', fg: '#5E5CE6' },
+      { key: 'תחזוקה', label: 'תחזוקה', tint: 'rgba(255,149,0,.14)', fg: '#E08600' },
+      { key: 'מסמכים', label: 'מסמכים', tint: 'rgba(0,136,204,.12)', fg: '#0088CC' },
+    ].map((q) => ({
+      ...q,
+      isDrivers: q.key === 'נהגים',
+      isService: q.key === 'תחזוקה',
+      isDocs: q.key === 'מסמכים',
+      select: () => this.setState({ quick: q.key }),
+    }));
+
+    return {
+      quick,
+      sections: [
+        {
+          caption: 'תוקף ותחזוקה',
+          rows: this.rows([
+            { d: 'M12 3l7 3v5c0 4.2-2.9 7.4-7 8.5C7.9 18.4 5 15.2 5 11V6z', label: 'ביטוח', value: '12/09/2027', dir: 'ltr', valueColor: '#2E8B57', tint: '#34C759' },
+            { d: 'M12 3.2a8.8 8.8 0 1 0 0 17.6 8.8 8.8 0 0 0 0-17.6M8.2 12.2l2.8 2.8 5-5.6', label: 'טסט', value: '15/08/2026', dir: 'ltr', valueColor: '#C0392B', tint: '#C0392B' },
+            { d: 'M14.5 6.5a3.5 3.5 0 0 1 4.8-3.2l-2.4 2.4 1.4 1.4 2.4-2.4A3.5 3.5 0 0 1 17.5 9.5c-.6 0-1.1-.1-1.6-.4L7.8 17.2a2 2 0 1 1-2.8-2.8l8.1-8.1c-.4-.5-.6-1.1-.6-1.8z', label: 'טיפול הבא', value: '10,000 ק״מ', tint: '#FF9500' },
+            { d: 'M4.2 17a7.8 7.8 0 1 1 15.6 0M12 17l4-5', label: 'מד אוץ', value: '74,315 ק״מ', tint: '#5E5CE6' },
+          ]),
+        },
+        {
+          caption: 'פרטי רכב ורישוי',
+          rows: this.rows([
+            { d: 'M4 8.5h16v7H4zM8.5 12h7', label: 'מספר רישוי', value: '124-56-755', dir: 'ltr', tint: '#0088CC' },
+            { d: 'M4.5 16.5h15M6 16.5v-3l1.8-.7 1.5-3.3h5.4l1.5 3.3 1.8.7v3', label: 'יצרן ודגם', value: 'סקודה אוקטביה', tint: '#32ADE6' },
+            { d: 'M5 5h8l6 7-6 7H5z', label: 'סוג', value: 'פרטי', tint: '#8E8E93' },
+            { d: 'M5 6.5h14v13H5zM5 10.5h14M9 4v3M15 4v3', label: 'שנת ייצור', value: '8/2022', dir: 'ltr', tint: '#8E8E93' },
+          ]),
+        },
+        {
+          caption: 'זיהוי וארגון',
+          rows: this.rows([
+            { d: 'M6 6v12M9.5 6v12M13 6v12M16.5 6v12M20 6v12', label: 'מספר שילדה', value: '1636', dir: 'ltr', tint: '#8E8E93' },
+            { d: 'M9.5 7L5 12l4.5 5M14.5 7L19 12l-4.5 5', label: 'קוד פנימי', value: '15263', dir: 'ltr', tint: '#8E8E93' },
+            { d: 'M6 20V5.5h6.5V20M12.5 11H19v9M8.5 8.5h1.5M8.5 12h1.5M8.5 15.5h1.5', label: 'מחלקה', value: 'נהגי מסע', tint: '#5E5CE6' },
+            { d: 'M8 12h8', label: 'שימוש הרכב', value: '—', tint: '#C7CBD1' },
+          ]),
+        },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

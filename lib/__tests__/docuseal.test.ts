@@ -74,7 +74,7 @@ describe('DocuSeal image templates', () => {
     });
   });
 
-  it('keeps an uploaded image at its original size inside the generated PDF', async () => {
+  it('creates a PDF page with the same aspect ratio as the uploaded image', async () => {
     await createTemplateBuilderSession('company-1', 'טופס', {
       uri: 'file://image.jpg',
       name: 'scan.jpg',
@@ -82,10 +82,10 @@ describe('DocuSeal image templates', () => {
     });
 
     expect(Print.printToFileAsync).toHaveBeenCalledWith(expect.objectContaining({
-      width: 1200,
-      height: 1800,
+      width: 561,
+      height: 842,
       margins: { top: 0, right: 0, bottom: 0, left: 0 },
-      html: expect.stringContaining('object-fit: fill'),
+      html: expect.stringContaining('object-fit: contain'),
     }));
     expect(mockUpload).toHaveBeenCalledWith(
       expect.stringMatching(/\/scan\.pdf$/),
@@ -103,6 +103,23 @@ describe('DocuSeal image templates', () => {
       mimeType: 'image/jpeg',
     })).rejects.toThrow('לא ניתן להתאים את התמונה לעמוד יחיד');
     expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it('uses ImagePicker display dimensions so EXIF-rotated iPhone photos stay portrait', async () => {
+    (decode as jest.Mock).mockImplementation(() => buildJpegBytes(4032, 3024).buffer);
+
+    await createTemplateBuilderSession('company-1', 'טופס', {
+      uri: 'file://portrait-image.jpg',
+      name: 'portrait.jpg',
+      mimeType: 'image/jpeg',
+      width: 3024,
+      height: 4032,
+    });
+
+    expect(Image.getSize).not.toHaveBeenCalled();
+    expect(Print.printToFileAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ width: 632, height: 842 })
+    );
   });
 
   it('uploads an existing PDF without converting it again', async () => {
@@ -169,7 +186,7 @@ describe('DocuSeal image dimension parsing (bug #12 — content:// URIs from exp
 
     expect(Image.getSize).not.toHaveBeenCalled();
     expect(Print.printToFileAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ width: 2480, height: 3508 })
+      expect.objectContaining({ width: 595, height: 842 })
     );
   });
 
@@ -184,7 +201,7 @@ describe('DocuSeal image dimension parsing (bug #12 — content:// URIs from exp
 
     expect(Image.getSize).not.toHaveBeenCalled();
     expect(Print.printToFileAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ width: 1000, height: 1414 })
+      expect.objectContaining({ width: 595, height: 842 })
     );
   });
 
