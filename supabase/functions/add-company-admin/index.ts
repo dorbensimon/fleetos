@@ -38,8 +38,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (adminPassword.length < 6) {
-      return new Response(JSON.stringify({ error: 'הסיסמה חייבת להכיל לפחות 6 תווים' }), {
+    if (adminPassword.length < 8) {
+      return new Response(JSON.stringify({ error: 'הסיסמה חייבת להכיל לפחות 8 תווים' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

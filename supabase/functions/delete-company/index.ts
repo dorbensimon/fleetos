@@ -51,6 +51,16 @@ Deno.serve(async (req) => {
     if (companyError || !company) return json({ error: 'החברה לא נמצאה' }, 404);
     if (confirmName.trim() !== company.name) return json({ error: 'שם החברה לאישור אינו תואם' }, 400);
 
+    // Deletion spans Postgres, Auth and Storage, so it cannot be one database
+    // transaction. Disable access first and make every following step safe to
+    // retry. A partial failure then leaves a disabled company instead of an
+    // active tenant with only some users removed.
+    const { error: disableError } = await adminClient
+      .from('companies')
+      .update({ status: 'disabled' })
+      .eq('id', companyId);
+    if (disableError) return json({ error: 'חסימת החברה לפני המחיקה נכשלה' }, 500);
+
     const [profilesResult, documentsResult, legacyTemplatesResult, templatesResult, requestsResult] = await Promise.all([
       adminClient.from('profiles').select('id').eq('company_id', companyId),
       adminClient.from('documents').select('file_path').eq('company_id', companyId),
@@ -74,14 +84,11 @@ Deno.serve(async (req) => {
     }
     if (failedUsers > 0) {
       return json({
-        error: 'מחיקת חלק ממשתמשי החברה נכשלה. החברה נשארה במערכת וניתן לנסות שוב.',
+        error: 'מחיקת חלק ממשתמשי החברה נכשלה. החברה נחסמה וניתן לנסות את המחיקה שוב בבטחה.',
         deletedUsers,
         failedUsers,
       }, 500);
     }
-
-    const { error: deleteError } = await adminClient.from('companies').delete().eq('id', companyId);
-    if (deleteError) return json({ error: 'מחיקת החברה נכשלה' }, 500);
 
     const documentPaths = [
       ...(documentsResult.data ?? []).map((row: { file_path: string | null }) => row.file_path),
@@ -97,7 +104,19 @@ Deno.serve(async (req) => {
       logoPath ? removePaths(adminClient, 'company-logos', [logoPath]) : Promise.resolve(true),
     ]);
 
-    return json({ success: true, cleanupPending: !(documentsClean && signedClean && logoClean) }, 200);
+    if (!(documentsClean && signedClean && logoClean)) {
+      return json({
+        error: 'ניקוי קבצי החברה נכשל. החברה חסומה וניתן לנסות את המחיקה שוב.',
+        cleanupPending: true,
+      }, 500);
+    }
+
+    const { error: deleteError } = await adminClient.from('companies').delete().eq('id', companyId);
+    if (deleteError) {
+      return json({ error: 'מחיקת החברה נכשלה. החברה נשארה חסומה וניתן לנסות שוב.' }, 500);
+    }
+
+    return json({ success: true, cleanupPending: false }, 200);
   } catch {
     return json({ error: 'אירעה שגיאה בלתי צפויה' }, 500);
   }

@@ -57,6 +57,7 @@ interface FormState {
   color: string;
   internal_code: string;
   vin: string;
+  odometer: string;
   production_year: string;
   production_month: string;
   road_registration_date: string;
@@ -75,6 +76,7 @@ const EMPTY: FormState = {
   color: '',
   internal_code: '',
   vin: '',
+  odometer: '',
   production_year: '',
   production_month: '',
   road_registration_date: '',
@@ -135,6 +137,11 @@ function num(value: string): number | null {
   if (!trimmed) return null;
   const parsed = Number(trimmed.replace(/[^\d.-]/g, ''));
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatKm(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  return digits ? Number(digits).toLocaleString() : '';
 }
 
 function validateVehicleForm(form: FormState): Record<string, string> {
@@ -226,6 +233,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           color: vehicle.color ?? '',
           internal_code: vehicle.internal_code ?? '',
           vin: vehicle.vin ?? '',
+          odometer: vehicle.odometer ? String(vehicle.odometer) : '',
           production_year: vehicle.production_year ? String(vehicle.production_year) : '',
           production_month: vehicle.production_month ? String(vehicle.production_month).padStart(2, '0') : '',
           road_registration_date: vehicle.road_registration_date ?? '',
@@ -365,6 +373,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         color: form.color.trim() || null,
         internal_code: form.internal_code.trim() || null,
         vin: form.vin.trim().toUpperCase() || null,
+        odometer: num(form.odometer) ?? 0,
         production_year: num(form.production_year),
         production_month: num(form.production_month),
         road_registration_date: form.road_registration_date || null,
@@ -383,7 +392,6 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           ...payload,
           company_id: companyId,
           plate_number: plateDigits,
-          odometer: 0,
           last_service_km: 0,
         });
         savedVehicleId = created.id;
@@ -636,6 +644,17 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
                 focusedField={focusedField}
                 setFocusedField={setFocusedField}
                 error={errors.vin}
+                ltr
+              />
+              <VehicleFormRow
+                fieldKey="odometer"
+                label="קילומטראז' נוכחי"
+                value={formatKm(form.odometer)}
+                onChangeText={(value) => set('odometer', value.replace(/\D/g, ''))}
+                placeholder="אופציונלי"
+                focusedField={focusedField}
+                setFocusedField={setFocusedField}
+                keyboardType="number-pad"
                 ltr
               />
 
@@ -946,6 +965,7 @@ function VehicleFormRow({
   fieldKey,
   error,
   ltr,
+  keyboardType,
 }: {
   label: string;
   value: string;
@@ -956,6 +976,7 @@ function VehicleFormRow({
   fieldKey: FieldKey;
   error?: string;
   ltr?: boolean;
+  keyboardType?: 'default' | 'number-pad';
 }) {
   const focused = focusedField === fieldKey;
   return (
@@ -971,6 +992,7 @@ function VehicleFormRow({
           placeholder={placeholder}
           placeholderTextColor="rgba(16,31,44,.3)"
           style={[styles.input, ltr && styles.ltrInput]}
+          keyboardType={keyboardType}
           accessibilityLabel={label}
         />
         {!!value && (

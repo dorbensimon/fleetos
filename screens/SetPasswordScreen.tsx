@@ -14,6 +14,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { supabase } from '../lib/supabase';
 import { resolveRouteForUser } from '../lib/session';
+import { MIN_PASSWORD_LENGTH } from '../lib/validation';
 
 /**
  * Shown once, right after a first login with an owner/admin-assigned
@@ -47,7 +48,7 @@ export default function SetPasswordScreen({ navigation }: Props) {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!password) e.password = 'שדה חובה';
-    else if (password.length < 6) e.password = 'לפחות 6 תווים';
+    else if (password.length < MIN_PASSWORD_LENGTH) e.password = 'לפחות 8 תווים';
     if (!confirmPassword) e.confirmPassword = 'שדה חובה';
     else if (confirmPassword !== password) e.confirmPassword = 'הסיסמאות אינן תואמות';
     return e;
@@ -106,7 +107,7 @@ export default function SetPasswordScreen({ navigation }: Props) {
             <View style={[styles.inputRow, !!errors.password && styles.inputError]}>
               <TextInput
                 style={styles.inputInRow}
-                placeholder="לפחות 6 תווים"
+                placeholder="לפחות 8 תווים"
                 placeholderTextColor={COLORS.grayLight}
                 value={password}
                 onChangeText={setPassword}

@@ -36,14 +36,17 @@ rules below exist to keep it that way.
 
 ## Edge Functions (`supabase/functions/`)
 
-Nine functions live under `supabase/functions/*/index.ts`, sharing two auth helpers
-in `supabase/functions/_shared/`:
+The active application functions live under `supabase/functions/*/index.ts` and
+share three auth helpers in `supabase/functions/_shared/`:
 - `verifyOwner.ts` — caller must be the platform owner.
 - `verifyCompanyAccess.ts` — caller must be the owner, or an admin of the target company.
+- `verifyUser.ts` — caller must be authenticated and, unless they are the owner,
+  belong to an active company.
 
-Every function must call one of these **before** touching the service-role client —
-that's the whole security model for these endpoints, since the service role bypasses
-RLS entirely.
+Every user-invoked function must call one of these **before** touching the
+service-role client. Webhooks and scheduled workers instead validate their signed
+secret before creating that client. The service role bypasses RLS entirely, so every
+new endpoint must follow one of those two authorization paths.
 
 ### Local verification
 

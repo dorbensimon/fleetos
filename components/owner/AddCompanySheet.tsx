@@ -200,7 +200,7 @@ export function AddCompanySheet({
         <View style={[styles.fieldInputWithIcon, !!fieldErrors.password && styles.fieldInputError]}>
           <TextInput
             style={[styles.fieldInputInner, styles.fieldInputLtr]}
-            placeholder="לפחות 6 תווים"
+            placeholder="לפחות 8 תווים"
             placeholderTextColor={COLORS.grayLight}
             value={form.password}
             onChangeText={(v) => onChangeForm((f) => ({ ...f, password: v }))}

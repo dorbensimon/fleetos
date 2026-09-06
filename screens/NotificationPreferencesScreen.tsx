@@ -1,10 +1,11 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Screen,
-  ScreenHeader,
   Card,
   ToggleRow,
   LoadingState,
@@ -13,6 +14,7 @@ import {
   useToast,
 } from '../components/ui';
 import { AdminGradientBackground } from '../components/admin/AdminGradientBackground';
+import { GlassPill } from '../components/ui/GlassPill';
 import { COLORS, SPACING } from '../lib/theme';
 import { useCompany } from '../lib/CompanyContext';
 import { RootStackParamList } from '../navigation/types';
@@ -32,6 +34,7 @@ import {
 type Props = NativeStackScreenProps<RootStackParamList, 'NotificationPreferences'>;
 
 export default function NotificationPreferencesScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const { profile } = useCompany();
   const { showToast } = useToast();
 
@@ -92,9 +95,26 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
   };
 
   return (
-    <Screen>
+    <Screen style={isAdmin ? styles.screen : undefined}>
       {isAdmin && <AdminGradientBackground />}
-      <ScreenHeader title="ניהול התראות" subtitle="ניהול העדפות התראה" onBack={() => navigation.goBack()} />
+      <View style={[styles.topBar, { paddingTop: insets.top + 20 }]}>
+        <View style={styles.topBarInner}>
+          <View style={styles.topTitleOverlay} pointerEvents="none">
+            <AppText weight="bold" style={styles.topTitle} numberOfLines={1}>
+              ניהול התראות
+            </AppText>
+            <AppText style={styles.topSubtitle} numberOfLines={1}>
+              ניהול העדפות התראה
+            </AppText>
+          </View>
+          <View style={{ width: 40 }} />
+          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8}>
+            <GlassPill size={40} blur={14} bg="rgba(255,255,255,.4)">
+              <Ionicons name="chevron-forward" size={20} color="#1a1a1a" />
+            </GlassPill>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {loading ? (
         <LoadingState />
@@ -127,6 +147,25 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  screen: { backgroundColor: '#F1F4F7' },
+  topBar: {
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.md,
+  },
+  topBarInner: {
+    position: 'relative',
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  topTitleOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topTitle: { fontSize: 18, color: COLORS.text, textAlign: 'center' },
+  topSubtitle: { fontSize: 12.5, color: COLORS.textMuted, marginTop: 2, textAlign: 'center' },
   content: { padding: SPACING.lg, gap: SPACING.md },
   card: { gap: 0 },
   divider: { borderTopWidth: 1, borderTopColor: COLORS.divider },

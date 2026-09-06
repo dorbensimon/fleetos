@@ -3,8 +3,10 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, ErrorState, SecondaryButton } from '../../components/ui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Screen, AppText, Card, LoadingState, EmptyState, ErrorState, SecondaryButton } from '../../components/ui';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
+import { GlassPill } from '../../components/ui/GlassPill';
 import { COLORS, SPACING, CARD_SHADOW } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listNotifications, markNotificationRead, markAllNotificationsRead, Notification } from '../../lib/adminApi';
@@ -31,6 +33,7 @@ export function timeAgo(iso: string): string {
 }
 
 export default function NotificationsScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const { companyId, profile } = useCompany();
   const [items, setItems] = useState<Notification[]>([]);
   const [unreadIds, setUnreadIds] = useState<Set<string>>(new Set());
@@ -178,15 +181,27 @@ export default function NotificationsScreen({ navigation }: Props) {
   };
 
   return (
-    <Screen>
+    <Screen style={styles.screen}>
       <AdminGradientBackground />
-      <ScreenHeader
-        title="התראות"
-        onBack={() => navigation.goBack()}
-        right={
-          unreadIds.size > 0 ? <SecondaryButton label="קרא הכל" icon="checkmark-done-outline" onPress={markAllRead} /> : undefined
-        }
-      />
+      <View style={[styles.topBar, { paddingTop: insets.top + 20 }]}>
+        <View style={styles.topBarInner}>
+          <View style={styles.topTitleOverlay} pointerEvents="none">
+            <AppText weight="bold" style={styles.topTitle} numberOfLines={1}>
+              התראות
+            </AppText>
+          </View>
+          {unreadIds.size > 0 ? (
+            <SecondaryButton label="קרא הכל" icon="checkmark-done-outline" onPress={markAllRead} />
+          ) : (
+            <View />
+          )}
+          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8}>
+            <GlassPill size={40} blur={14} bg="rgba(255,255,255,.4)">
+              <Ionicons name="chevron-forward" size={20} color="#1a1a1a" />
+            </GlassPill>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {loading ? (
         <LoadingState />
@@ -235,6 +250,24 @@ export default function NotificationsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  screen: { backgroundColor: '#F1F4F7' },
+  topBar: {
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.md,
+  },
+  topBarInner: {
+    position: 'relative',
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  topTitleOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topTitle: { fontSize: 18, color: COLORS.text },
   content: { padding: SPACING.lg, gap: SPACING.sm },
   row: {
     flexDirection: 'row-reverse',

@@ -3,17 +3,18 @@ import { View, StyleSheet, RefreshControl, Linking, Alert, Animated, StatusBar }
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Screen, AppText, EmptyState, ErrorState } from '../../components/ui';
+import { Screen, EmptyState, ErrorState } from '../../components/ui';
 import { ToggleValue } from '../../components/ui/DriversVehiclesToggle';
 import { DriverCard } from '../../components/fleet/DriverCard';
 import { VehicleCard } from '../../components/fleet/VehicleCard';
 import { ExportReportSheet } from '../../components/fleet/ExportReportSheet';
+import { VEHICLE_REPORT_CATEGORIES, VehicleReportCategory, exportVehiclesReport } from '../../lib/vehicleReport';
 import { DriverListSkeleton, VehicleListSkeleton } from '../../components/fleet/FleetListSkeleton';
 import { FleetHero, FleetStat, heroNavHeight, HERO_CONTENT_HEIGHT, HERO_TRAVEL } from '../../components/fleet/FleetHero';
 import { FleetDock, FLEET_DOCK_CLEARANCE } from '../../components/fleet/FleetDock';
 import { FleetAddButton } from '../../components/fleet/FleetAddButton';
 import { FleetFilterChips } from '../../components/fleet/FleetFilterChips';
-import { FLEET_COLORS, FLEET_FONT, FLEET_SHADOWS } from '../../components/fleet/fleetTheme';
+import { FLEET_COLORS, FLEET_SHADOWS } from '../../components/fleet/fleetTheme';
 import { SPACING, expiryState } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
@@ -28,7 +29,8 @@ import {
   VehicleDriverWithProfile,
   ComplianceItem,
 } from '../../lib/adminApi';
-import { exportDriversReport, ReportCategory } from '../../lib/driverReport';
+import { exportDriversReport, REPORT_CATEGORIES, ReportCategory } from '../../lib/driverReport';
+import { listSignatureRequests } from '../../lib/docuseal';
 import { RootStackParamList } from '../../navigation/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -60,14 +62,12 @@ type StatusFilter = 'all' | 'active' | 'maintenance' | 'disabled' | 'archived';
 const CROSSFADE_MS = 140;
 
 type DriverSheetItem =
-  | { kind: 'title' }
   | { kind: 'chips' }
   | { kind: 'empty' }
   | { kind: 'card'; item: DriverRow }
   | { kind: 'action' };
 
 type VehicleSheetItem =
-  | { kind: 'title' }
   | { kind: 'chips' }
   | { kind: 'empty' }
   | { kind: 'card'; item: Vehicle }
@@ -89,9 +89,11 @@ export default function FleetScreen() {
   const [driversRefreshing, setDriversRefreshing] = useState(false);
   const [driversError, setDriversError] = useState<string | null>(null);
   const [driverSearch, setDriverSearch] = useState('');
+  const [pendingSigning, setPendingSigning] = useState<Map<string, number>>(new Map());
   const [licenseFilter, setLicenseFilter] = useState<LicenseFilter>('all');
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportingCategory, setExportingCategory] = useState<ReportCategory | null>(null);
+  const [exportingVehicleCategory, setExportingVehicleCategory] = useState<VehicleReportCategory | null>(null);
 
   const driverLoadRequest = useRef(0);
   const vehicleLoadRequest = useRef(0);
@@ -106,6 +108,7 @@ export default function FleetScreen() {
     if (loadedDriversCompanyId.current !== (companyId ?? null)) {
       loadedDriversCompanyId.current = companyId ?? null;
       setDrivers([]);
+      setPendingSigning(new Map());
       setDriversError(null);
     }
     if (!companyId) {
@@ -117,9 +120,18 @@ export default function FleetScreen() {
     }
 
     try {
-      const rows = await listDrivers(companyId);
+      const [rows, signatureRequests] = await Promise.all([
+        listDrivers(companyId),
+        listSignatureRequests(companyId).catch(() => []),
+      ]);
       if (requestId !== driverLoadRequest.current) return false;
+      const signingMap = new Map<string, number>();
+      for (const request of signatureRequests) {
+        if (request.status !== 'pending' && request.status !== 'declined') continue;
+        signingMap.set(request.driver_id, (signingMap.get(request.driver_id) ?? 0) + 1);
+      }
       setDrivers(rows);
+      setPendingSigning(signingMap);
       setDriversError(null);
       return true;
     } catch (error) {
@@ -192,6 +204,19 @@ export default function FleetScreen() {
       Alert.alert('ייצוא הדוח נכשל', String(err?.message ?? 'נסה שוב'));
     } finally {
       setExportingCategory(null);
+    }
+  };
+
+  const runVehicleExport = async (category: VehicleReportCategory) => {
+    if (!company) return;
+    setExportingVehicleCategory(category);
+    try {
+      await exportVehiclesReport(company, vehicles, compliance, vehicleDrivers, category);
+      setExportMenuOpen(false);
+    } catch (err: any) {
+      Alert.alert('ייצוא הדוח נכשל', String(err?.message ?? 'נסה שוב'));
+    } finally {
+      setExportingVehicleCategory(null);
     }
   };
 
@@ -425,13 +450,11 @@ export default function FleetScreen() {
   ];
 
   const driverSheetData: DriverSheetItem[] = [
-    { kind: 'title' },
     { kind: 'chips' },
     ...(filteredDrivers.length === 0 ? [{ kind: 'empty' as const }] : filteredDrivers.map((item) => ({ kind: 'card' as const, item }))),
     { kind: 'action' },
   ];
   const vehicleSheetData: VehicleSheetItem[] = [
-    { kind: 'title' },
     { kind: 'chips' },
     ...(filteredVehicles.length === 0 ? [{ kind: 'empty' as const }] : filteredVehicles.map((item) => ({ kind: 'card' as const, item }))),
     { kind: 'action' },
@@ -447,7 +470,7 @@ export default function FleetScreen() {
         query={mode === 'drivers' ? driverSearch : vehicleSearch}
         onChangeQuery={mode === 'drivers' ? setDriverSearch : setVehicleSearch}
         searchPlaceholder={mode === 'drivers' ? 'חפש לפי שם, ת.ז או מספר עובד' : 'חיפוש לפי מספר רישוי'}
-        onExportPress={mode === 'drivers' ? () => setExportMenuOpen(true) : undefined}
+        onExportPress={() => setExportMenuOpen(true)}
       />
 
       <Animated.View
@@ -467,22 +490,12 @@ export default function FleetScreen() {
           <Animated.FlatList
             data={driverSheetData}
             keyExtractor={(entry, i) => (entry.kind === 'card' ? entry.item.id : `${entry.kind}-${i}`)}
-            stickyHeaderIndices={[1]}
+            stickyHeaderIndices={[0]}
             onScroll={onDriversScroll}
             scrollEventThrottle={16}
             contentContainerStyle={[sheetStyles.list, { paddingBottom: FLEET_DOCK_CLEARANCE + insets.bottom }]}
             refreshControl={<RefreshControl refreshing={driversRefreshing} onRefresh={onRefreshDrivers} />}
             renderItem={({ item: entry }) => {
-              if (entry.kind === 'title') {
-                return (
-                  <View style={sheetStyles.titleRow}>
-                    <AppText weight="bold" style={sheetStyles.titleText}>
-                      הנהגים שלי
-                    </AppText>
-                    <AppText style={sheetStyles.titleCount}>{driverCounts.all}</AppText>
-                  </View>
-                );
-              }
               if (entry.kind === 'chips') {
                 return (
                   <View style={sheetStyles.chipsBar}>
@@ -515,6 +528,7 @@ export default function FleetScreen() {
               return (
                 <DriverCard
                   item={entry.item}
+                  pendingSigningCount={pendingSigning.get(entry.item.id) ?? 0}
                   onPress={() => navigation.navigate('DriverDetail', { driverId: entry.item.id })}
                   onPressVehicle={() => navigation.navigate('VehicleDetail', { vehicleId: entry.item.vehicle_id! })}
                   onCall={() => void call(entry.item.phone)}
@@ -543,22 +557,12 @@ export default function FleetScreen() {
           <Animated.FlatList
             data={vehicleSheetData}
             keyExtractor={(entry, i) => (entry.kind === 'card' ? entry.item.id : `${entry.kind}-${i}`)}
-            stickyHeaderIndices={[1]}
+            stickyHeaderIndices={[0]}
             onScroll={onVehiclesScroll}
             scrollEventThrottle={16}
             contentContainerStyle={[sheetStyles.list, { paddingBottom: FLEET_DOCK_CLEARANCE + insets.bottom }]}
             refreshControl={<RefreshControl refreshing={vehiclesRefreshing} onRefresh={onRefreshVehicles} />}
             renderItem={({ item: entry }) => {
-              if (entry.kind === 'title') {
-                return (
-                  <View style={sheetStyles.titleRow}>
-                    <AppText weight="bold" style={sheetStyles.titleText}>
-                      הרכבים שלי
-                    </AppText>
-                    <AppText style={sheetStyles.titleCount}>{vehicleCounts.all}</AppText>
-                  </View>
-                );
-              }
               if (entry.kind === 'chips') {
                 return (
                   <View style={sheetStyles.chipsBar}>
@@ -608,12 +612,27 @@ export default function FleetScreen() {
 
       <FleetDock mode={mode} onModeChange={setMode} />
 
-      <ExportReportSheet
-        visible={exportMenuOpen}
-        exportingCategory={exportingCategory}
-        onClose={() => setExportMenuOpen(false)}
-        onSelect={runExport}
-      />
+      {mode === 'drivers' ? (
+        <ExportReportSheet
+          visible={exportMenuOpen}
+          title="ייצוא דוח נהגים"
+          subtitle="בחר את קבוצת הנהגים לדוח"
+          categories={REPORT_CATEGORIES}
+          exportingCategory={exportingCategory}
+          onClose={() => setExportMenuOpen(false)}
+          onSelect={runExport}
+        />
+      ) : (
+        <ExportReportSheet
+          visible={exportMenuOpen}
+          title="ייצוא דוח רכבים"
+          subtitle="בחר את קבוצת הרכבים לדוח"
+          categories={VEHICLE_REPORT_CATEGORIES}
+          exportingCategory={exportingVehicleCategory}
+          onClose={() => setExportMenuOpen(false)}
+          onSelect={runVehicleExport}
+        />
+      )}
     </Screen>
   );
 }
@@ -639,16 +658,6 @@ const sheetStyles = StyleSheet.create({
     overflow: 'hidden',
   },
   list: { gap: SPACING.md },
-
-  titleRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.lg,
-  },
-  titleText: { fontSize: 16, color: FLEET_COLORS.textPrimary, fontFamily: FLEET_FONT.bold },
-  titleCount: { fontSize: 13, color: FLEET_COLORS.textSecondary, fontFamily: FLEET_FONT.regular },
 
   chipsBar: {
     backgroundColor: FLEET_COLORS.chipsBarBg,

@@ -3,29 +3,40 @@ import { View, StyleSheet, TouchableOpacity, Modal, Pressable, ActivityIndicator
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from '../ui';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
-import { REPORT_CATEGORIES, ReportCategory } from '../../lib/driverReport';
 
-export function ExportReportSheet({
+export interface ExportReportCategoryOption<T extends string> {
+  value: T;
+  label: string;
+  icon: string;
+}
+
+export function ExportReportSheet<T extends string>({
   visible,
+  title = 'ייצוא דוח',
+  subtitle = 'בחר את הקבוצה לדוח',
+  categories,
   exportingCategory,
   onClose,
   onSelect,
 }: {
   visible: boolean;
-  exportingCategory: ReportCategory | null;
+  title?: string;
+  subtitle?: string;
+  categories: ExportReportCategoryOption<T>[];
+  exportingCategory: T | null;
   onClose: () => void;
-  onSelect: (category: ReportCategory) => void;
+  onSelect: (category: T) => void;
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <AppText weight="bold" style={styles.title}>
-            ייצוא דוח נהגים
+            {title}
           </AppText>
-          <AppText style={styles.subtitle}>בחר את קבוצת הנהגים לדוח</AppText>
+          <AppText style={styles.subtitle}>{subtitle}</AppText>
 
-          {REPORT_CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <TouchableOpacity
               key={cat.value}
               style={styles.row}

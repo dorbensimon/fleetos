@@ -51,8 +51,8 @@ Deno.serve(async (req) => {
     if (!email?.trim() || !password || !fullName?.trim() || !phone?.trim()) {
       return json({ error: 'שם, טלפון, מייל וסיסמה הם שדות חובה' }, 400);
     }
-    if (password.length < 6) {
-      return json({ error: 'הסיסמה חייבת להכיל לפחות 6 תווים' }, 400);
+    if (password.length < 8) {
+      return json({ error: 'הסיסמה חייבת להכיל לפחות 8 תווים' }, 400);
     }
 
     const { data: newUser, error: createUserError } = await adminClient.auth.admin.createUser({

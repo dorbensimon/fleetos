@@ -131,17 +131,21 @@ export function FleetHero({
         ]}
         pointerEvents="none"
       >
-        {stats.map((stat) => (
-          <View key={stat.label} style={styles.cube}>
-            <View style={styles.cubeTint} />
-            <AppText weight="bold" style={[styles.cubeValue, { color: stat.tint }]}>
-              {stat.value}
-            </AppText>
-            <AppText style={styles.cubeLabel} numberOfLines={1}>
-              {stat.label}
-            </AppText>
-          </View>
-        ))}
+        <View style={styles.statsBar}>
+          {stats.map((stat, index) => (
+            <React.Fragment key={stat.label}>
+              {index > 0 && <View style={styles.statsDivider} />}
+              <View style={styles.statsSeg}>
+                <AppText weight="bold" style={[styles.statsVal, { color: stat.tint }]}>
+                  {stat.value}
+                </AppText>
+                <AppText style={styles.statsLabel} numberOfLines={1}>
+                  {stat.label}
+                </AppText>
+              </View>
+            </React.Fragment>
+          ))}
+        </View>
       </Animated.View>
 
       <Animated.View
@@ -249,22 +253,22 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     height: cubeRowHeight,
-    flexDirection: 'row-reverse',
-    gap,
   },
-  cube: {
+  statsBar: {
     flex: 1,
+    flexDirection: 'row-reverse',
+    alignItems: 'stretch',
     borderRadius: RADIUS.lg,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
     borderWidth: 1,
-    borderColor: FLEET_COLORS.heroGlassBorder,
+    borderColor: 'rgba(255,255,255,.14)',
+    backgroundColor: 'rgba(255,255,255,.12)',
+    paddingVertical: 13,
+    paddingHorizontal: 4,
   },
-  cubeTint: { ...StyleSheet.absoluteFillObject, backgroundColor: FLEET_COLORS.heroGlassBg },
-  cubeValue: { fontSize: 20, fontFamily: FLEET_FONT.black },
-  cubeLabel: { fontSize: 11, color: 'rgba(255,255,255,0.85)', fontFamily: FLEET_FONT.regular },
+  statsSeg: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 6 },
+  statsVal: { fontSize: 22, fontFamily: FLEET_FONT.black },
+  statsLabel: { fontSize: 11, color: 'rgba(255,255,255,.7)', fontFamily: FLEET_FONT.regular },
+  statsDivider: { width: 1, alignSelf: 'stretch', backgroundColor: 'rgba(255,255,255,.18)', marginVertical: 4 },
 
   search: {
     position: 'absolute',

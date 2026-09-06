@@ -13,12 +13,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, LoadingState, ErrorState, PrimaryButton } from '../../components/ui';
+import { AppText, LoadingState, ErrorState, PrimaryButton, useToast } from '../../components/ui';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { getDriver, deleteDriver, resetDriverPassword, getUserEmail, DriverRow } from '../../lib/adminApi';
+import { getDriver, deleteDriver, resetDriverPassword, getUserEmail, listDepartments, DriverRow } from '../../lib/adminApi';
 import { listDocuments } from '../../lib/documents';
 import { listSignatureRequests } from '../../lib/docuseal';
+import { exportDriverSnapshotReport } from '../../lib/driverSnapshotReport';
 import { RootStackParamList } from '../../navigation/types';
 import { NavBarCollapsing } from '../../components/driverCard/NavBarCollapsing';
 import { DriverHero } from '../../components/driverCard/DriverHero';
@@ -34,6 +35,7 @@ import { dialPhone } from '../../lib/phone';
 import { ResetDriverPasswordModal } from '../../components/driverCard/ResetDriverPasswordModal';
 import { buildDriverDetailGroups } from '../../components/driverCard/buildDriverDetailGroups';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
+import { MIN_PASSWORD_LENGTH } from '../../lib/validation';
 
 /**
  * "כרטיס נהג" — visual layer per DriverCard-spec.md (iOS-native styling,
@@ -58,7 +60,8 @@ const DOCUMENT_CATEGORY_BY_ROW: Partial<Record<DriverCardRow['key'], string>> = 
 
 export default function DriverDetailScreen({ route, navigation }: Props) {
   const { driverId } = route.params;
-  const { companyId } = useCompany();
+  const { companyId, company } = useCompany();
+  const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [licensePhotosComplete, setLicensePhotosComplete] = useState(false);
@@ -66,6 +69,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [exportingReport, setExportingReport] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
   const loadRequest = useRef(0);
 
@@ -84,8 +88,8 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
 
   const submitReset = async () => {
     if (!companyId) return;
-    if (resetPassword.length < 6) {
-      setResetError('הסיסמה חייבת להכיל לפחות 6 תווים');
+    if (resetPassword.length < MIN_PASSWORD_LENGTH) {
+      setResetError('הסיסמה חייבת להכיל לפחות 8 תווים');
       return;
     }
     if (resetPassword !== resetConfirm) {
@@ -179,6 +183,24 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     }, [load])
   );
 
+  const exportReport = async () => {
+    if (!driver || !company || exportingReport) return;
+    setExportingReport(true);
+    try {
+      const [departments, signatureRequests] = await Promise.all([
+        companyId ? listDepartments(companyId) : Promise.resolve([]),
+        listSignatureRequests(companyId ?? undefined),
+      ]);
+      const departmentName = departments.find((d) => d.id === driver.department_id)?.name ?? null;
+      const driverSigningRequests = signatureRequests.filter((r) => r.driver_id === driverId);
+      await exportDriverSnapshotReport(company, driver, departmentName, driverSigningRequests);
+    } catch (err: any) {
+      showToast(err?.message || 'ייצוא הדוח נכשל, נסה שוב');
+    } finally {
+      setExportingReport(false);
+    }
+  };
+
   const handleRowPress = (row: DriverCardRow) => {
     if (row.key === 'vehicle' || row.key === 'primary-vehicle' || row.key === 'secondary-vehicle') {
       const targetVehicle =
@@ -206,6 +228,10 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     }
     if (row.key === 'reset-driver-password') {
       setResetOpen(true);
+      return;
+    }
+    if (row.key === 'export-driver-report') {
+      exportReport();
       return;
     }
     const category = DOCUMENT_CATEGORY_BY_ROW[row.key];

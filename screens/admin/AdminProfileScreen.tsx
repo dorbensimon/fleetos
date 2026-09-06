@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, LoadingState, ErrorState, useToast } from '../../components/ui';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
+import { GlassPill } from '../../components/ui/GlassPill';
 import { COLORS, FONT, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
@@ -218,31 +219,6 @@ export default function AdminProfileScreen({ navigation }: Props) {
 /* Local glass components                                             */
 /* ------------------------------------------------------------------ */
 
-function GlassPill({
-  size,
-  blur,
-  bg,
-  children,
-}: {
-  size: number;
-  blur: number;
-  bg: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View
-      style={[
-        pillStyles.wrap,
-        { width: size, height: size, borderRadius: size / 2 },
-      ]}
-    >
-      <BlurView intensity={blur} tint="light" style={StyleSheet.absoluteFill} />
-      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: bg, borderRadius: size / 2, borderWidth: 0.5, borderColor: 'rgba(255,255,255,.6)' }]} />
-      <View style={pillStyles.content}>{children}</View>
-    </View>
-  );
-}
-
 function GlassCard({ children }: { children: React.ReactNode }) {
   return (
     <View style={cardStyles.wrap}>
@@ -317,24 +293,6 @@ function Row({
 }
 
 /* ------------------------------------------------------------------ */
-
-const pillStyles = StyleSheet.create({
-  wrap: {
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#505a82',
-        shadowOpacity: 0.18,
-        shadowOffset: { width: 0, height: 2 },
-        shadowRadius: 8,
-      },
-      android: { elevation: 3 },
-    }),
-  },
-  content: { alignItems: 'center', justifyContent: 'center' },
-});
 
 const cardStyles = StyleSheet.create({
   wrap: {

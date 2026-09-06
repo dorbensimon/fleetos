@@ -102,13 +102,22 @@ Deno.serve(async (req) => {
       const remindersEnabled = settings?.email_reminders_enabled ?? true;
       const maxReminders = settings?.max_email_reminders ?? 3;
       if (!remindersEnabled || !candidate.docuseal_submitter_id || candidate.email_reminder_count >= maxReminders) {
-        await admin.from('signature_requests').update({
+        const { error: skipUpdateError } = await admin.from('signature_requests').update({
           next_email_reminder_at: null,
           email_reminder_locked_until: null,
         }).eq('id', candidate.id);
+        if (skipUpdateError) throw skipUpdateError;
         skipped += 1;
         continue;
       }
+
+      const newCount = candidate.email_reminder_count + 1;
+      const intervalHours = settings?.repeat_reminder_interval_hours ?? 72;
+      const nextReminderAt = newCount >= maxReminders ? null : dateAfterHours(now, intervalHours);
+      const { error: prepareError } = await admin.from('signature_requests').update({
+        next_email_reminder_at: nextReminderAt,
+      }).eq('id', candidate.id);
+      if (prepareError) throw prepareError;
 
       const response = await docusealFetch(`/submitters/${candidate.docuseal_submitter_id}`, {
         method: 'PUT',
@@ -118,22 +127,22 @@ Deno.serve(async (req) => {
       if (!response.ok) {
         // Release the lock and retry this mail later. This protects requests
         // when DocuSeal is briefly unavailable without silently losing them.
-        await admin.from('signature_requests').update({
+        const { error: retryUpdateError } = await admin.from('signature_requests').update({
           email_reminder_locked_until: null,
           next_email_reminder_at: dateAfterHours(now, 1),
         }).eq('id', candidate.id);
+        if (retryUpdateError) throw retryUpdateError;
         failed += 1;
         continue;
       }
 
-      const newCount = candidate.email_reminder_count + 1;
-      const intervalHours = settings?.repeat_reminder_interval_hours ?? 72;
-      await admin.from('signature_requests').update({
+      const { error: sentUpdateError } = await admin.from('signature_requests').update({
         email_reminder_count: newCount,
         last_email_reminder_at: nowIso,
-        next_email_reminder_at: newCount >= maxReminders ? null : dateAfterHours(now, intervalHours),
+        next_email_reminder_at: nextReminderAt,
         email_reminder_locked_until: null,
       }).eq('id', candidate.id);
+      if (sentUpdateError) throw sentUpdateError;
       sent += 1;
     }
 

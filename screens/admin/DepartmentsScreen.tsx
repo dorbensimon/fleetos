@@ -3,10 +3,10 @@ import { View, FlatList, StyleSheet, TouchableOpacity, Alert, TextInput } from '
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, LoadingState, EmptyState, ErrorState, useToast } from '../../components/ui';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
+import { GlassPill } from '../../components/ui/GlassPill';
 import { COLORS, SPACING, ACCENT_SHADOW } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listDepartments, createDepartment, updateDepartment, deleteDepartment, Department } from '../../lib/adminApi';
@@ -120,17 +120,16 @@ export default function DepartmentsScreen({ navigation }: Props) {
     <View style={styles.screen}>
       <AdminGradientBackground />
 
-      <View style={[styles.navBar, { paddingTop: insets.top }]}>
-        <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFill} />
-        <View style={styles.navContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8}>
-            <AppText weight="bold" style={styles.navBack}>‹ חזרה</AppText>
-          </TouchableOpacity>
-          <AppText weight="bold" style={styles.navTitle} numberOfLines={1}>
-            מחלקות
-          </AppText>
-          <View style={{ minWidth: 50 }} />
-        </View>
+      <View style={[styles.topBar, { paddingTop: insets.top + 20 }]}>
+        <View style={{ width: 40 }} />
+        <AppText weight="bold" style={styles.topTitle} numberOfLines={1}>
+          מחלקות
+        </AppText>
+        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8}>
+          <GlassPill size={40} blur={14} bg="rgba(255,255,255,.4)">
+            <Ionicons name="chevron-forward" size={20} color="#1a1a1a" />
+          </GlassPill>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
@@ -236,24 +235,16 @@ export default function DepartmentsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F3F6F9' },
+  screen: { flex: 1, backgroundColor: '#F1F4F7' },
 
-  navBar: {
-    width: '100%',
-    overflow: 'hidden',
-    backgroundColor: 'rgba(240,246,251,.72)',
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(14,30,43,.06)',
-  },
-  navContent: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
+  topBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    height: 52,
+    justifyContent: 'space-between',
     paddingHorizontal: 18,
+    paddingBottom: SPACING.md,
   },
-  navBack: { fontSize: 17, lineHeight: 22, color: COLORS.accent },
-  navTitle: { fontSize: 17, lineHeight: 22, color: '#101F2C' },
+  topTitle: { flex: 1, fontSize: 18, color: '#101F2C', textAlign: 'center', marginHorizontal: 8 },
 
   content: { flex: 1, paddingHorizontal: 18, paddingTop: SPACING.lg },
 

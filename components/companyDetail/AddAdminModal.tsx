@@ -111,7 +111,7 @@ export function AddAdminModal({
         <View style={[s.fieldInputWithIcon, !!fieldErrors.password && s.fieldInputError]}>
           <TextInput
             style={[s.fieldInputInner, s.fieldInputLtr]}
-            placeholder="לפחות 6 תווים"
+            placeholder="לפחות 8 תווים"
             placeholderTextColor={COLORS.grayLight}
             value={form.password}
             onChangeText={(v) => onChangeForm((f) => ({ ...f, password: v }))}

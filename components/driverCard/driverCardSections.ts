@@ -42,7 +42,8 @@ export type DriverCardRowKey =
   | 'hazmat'
   | 'training'
   | 'edit-driver'
-  | 'reset-driver-password';
+  | 'reset-driver-password'
+  | 'export-driver-report';
 
 export interface DriverCardValueRow {
   key: DriverCardRowKey;
@@ -106,6 +107,12 @@ export const DRIVER_CARD_GROUPS: DriverCardGroup[] = [
       { key: 'certifications', kind: 'nav', label: 'הסמכות והכשרות', icon: 'award', tint: 'orange' },
       { key: 'hazmat', kind: 'nav', label: 'חומרים מסוכנים', icon: 'hazard', tint: 'red' },
       { key: 'training', kind: 'nav', label: 'הדרכות והכשרות', icon: 'cap', tint: 'indigo' },
+    ],
+  },
+  {
+    title: 'דוחות',
+    rows: [
+      { key: 'export-driver-report', kind: 'nav', label: 'ייצוא דוח תמונת מצב', icon: 'doc', tint: 'blue' },
     ],
   },
   {

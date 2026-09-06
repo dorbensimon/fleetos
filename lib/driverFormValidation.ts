@@ -1,6 +1,6 @@
 import { isValidIsraeliPhone } from './phone';
 import { parseDateValue } from './theme';
-import { isValidEmail } from './validation';
+import { isValidEmail, MIN_PASSWORD_LENGTH } from './validation';
 
 export type DriverFormValidationState = {
   full_name: string;
@@ -107,7 +107,7 @@ export function validateDriverForm(
   if (!isEdit) {
     if (!form.email.trim()) errors.email = 'שדה חובה';
     else if (!isValidEmail(form.email)) errors.email = 'כתובת מייל לא תקינה';
-    if (!form.password || form.password.length < 8) errors.password = 'לפחות 8 תווים';
+    if (!form.password || form.password.length < MIN_PASSWORD_LENGTH) errors.password = 'לפחות 8 תווים';
   }
 
   return errors;

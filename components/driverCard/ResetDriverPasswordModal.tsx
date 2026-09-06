@@ -41,7 +41,7 @@ export function ResetDriverPasswordModal({
             style={styles.input}
             value={password}
             onChangeText={onPasswordChange}
-            placeholder="סיסמה חדשה (לפחות 6 תווים)"
+            placeholder="סיסמה חדשה (לפחות 8 תווים)"
             placeholderTextColor={COLORS.textFaint}
             secureTextEntry
             autoCapitalize="none"

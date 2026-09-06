@@ -9,11 +9,14 @@ import { FLEET_COLORS, FLEET_FONT, FLEET_SHADOWS, severityFor } from './fleetThe
 
 export function DriverCard({
   item,
+  pendingSigningCount = 0,
   onPress,
   onPressVehicle,
   onCall,
 }: {
   item: DriverRow;
+  /** Documents awaiting the driver's signature — the row is hidden entirely when this is 0. */
+  pendingSigningCount?: number;
   onPress: () => void;
   onPressVehicle: () => void;
   onCall: () => void;
@@ -29,6 +32,8 @@ export function DriverCard({
     ? `רישיון יפוג בעוד ${days} ${days === 1 ? 'יום' : 'ימים'}`
     : `רישיון בתוקף עד ${formatDate(item.license_expiry)}`;
   const severity = severityFor(state);
+  const hasVehicle = !!(item.vehicle_id && item.vehicle_plate);
+  const hasPendingSigning = pendingSigningCount > 0;
 
   return (
     <TouchableOpacity activeOpacity={0.85} style={styles.card} onPress={onPress}>
@@ -51,19 +56,13 @@ export function DriverCard({
         <AppText weight="bold" style={styles.cardTitle} numberOfLines={1}>
           {item.full_name ?? 'ללא שם'}
         </AppText>
-        <AppText style={styles.cardSubtitle} numberOfLines={1}>
-          {item.national_id ? `ת.ז ${item.national_id}` : 'ללא ת.ז'}
-        </AppText>
-        <AppText style={styles.emailText} numberOfLines={1}>
-          {item.email || 'ללא אימייל'}
-        </AppText>
         <View style={styles.licenseRow}>
           <View style={[styles.dot, { backgroundColor: severity.text }]} />
           <AppText style={[styles.licenseText, { color: severity.text }]} numberOfLines={1}>
             {licenseText}
           </AppText>
         </View>
-        {item.vehicle_id && item.vehicle_plate && (
+        {hasVehicle && (
           <TouchableOpacity
             hitSlop={4}
             onPress={(e) => {
@@ -72,9 +71,17 @@ export function DriverCard({
             }}
           >
             <AppText style={styles.vehicleLink} numberOfLines={1}>
-              רכב: {formatPlate(item.vehicle_plate)}
+              רכב: {formatPlate(item.vehicle_plate!)}
             </AppText>
           </TouchableOpacity>
+        )}
+        {hasPendingSigning && (
+          <View style={styles.signingRow}>
+            <Ionicons name="document-text-outline" size={12} color={FLEET_COLORS.warning.text} />
+            <AppText style={styles.signingText} numberOfLines={1}>
+              {pendingSigningCount} {pendingSigningCount === 1 ? 'מסמך' : 'מסמכים'} לחתימה
+            </AppText>
+          </View>
         )}
       </View>
 
@@ -139,12 +146,12 @@ const styles = StyleSheet.create({
 
   cardTitleWrap: { flex: 1, gap: 2 },
   cardTitle: { fontSize: 15, color: FLEET_COLORS.textPrimary, fontFamily: FLEET_FONT.bold },
-  cardSubtitle: { fontSize: 12, color: FLEET_COLORS.textSecondary, fontFamily: FLEET_FONT.regular },
-  emailText: { fontSize: 11.5, color: FLEET_COLORS.textSecondary, fontFamily: FLEET_FONT.regular },
   licenseRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, marginTop: 1 },
   dot: { width: 6, height: 6, borderRadius: 3 },
   licenseText: { fontSize: 11, fontFamily: FLEET_FONT.regular },
   vehicleLink: { fontSize: 11.5, color: FLEET_COLORS.primary, marginTop: 3, fontFamily: FLEET_FONT.regular },
+  signingRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, marginTop: 3 },
+  signingText: { fontSize: 11.5, color: FLEET_COLORS.warning.text, fontFamily: FLEET_FONT.regular },
 
   callBtn: {
     width: 44,

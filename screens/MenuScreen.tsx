@@ -110,7 +110,7 @@ export default function MenuScreen({ navigation }: Props) {
   const subtitle = profile?.job_title || (profile?.role ? ROLE_LABEL[profile.role] : '');
 
   return (
-    <Screen style={styles.screen}>
+    <Screen style={isAdmin ? styles.adminScreen : styles.screen}>
       {isAdmin && <AdminGradientBackground />}
       <SafeAreaView style={styles.safe}>
         <View style={styles.topBar}>
@@ -186,6 +186,7 @@ export default function MenuScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: MENU_COLORS.background },
+  adminScreen: { backgroundColor: '#F1F4F7' },
   safe: { flex: 1 },
   topBar: {
     flexDirection: 'row-reverse',

@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    await user.adminClient.from('signature_requests').update({
+    const { error: updateError } = await user.adminClient.from('signature_requests').update({
       status,
       signed_file_path: signedFilePath,
       completed_at: status === 'completed' ? submitter.completed_at || new Date().toISOString() : null,
@@ -50,6 +50,7 @@ Deno.serve(async (req) => {
         email_reminder_locked_until: null,
       } : {}),
     }).eq('id', local.id);
+    if (updateError) throw updateError;
     return json({ success: true, status });
   } catch (error) {
     console.error('sync-signing-request failed', error instanceof Error ? error.message : 'unknown');

@@ -73,7 +73,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const name = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || formatPlate(vehicle.plate_number);
   const toForm = () => navigation.navigate('VehicleForm', { vehicleId });
 
-  return <Screen style={s.screen}><AdminGradientBackground /><ScrollView ref={scrollRef} style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: headerScrollY } } }], { useNativeDriver: false })}>
+  return <Screen style={s.screen}><AdminGradientBackground />
     <NavBarCollapsing
       scrollY={headerScrollY}
       insetTop={insets.top}
@@ -82,6 +82,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
       onMore={toForm}
       backgroundColor="transparent"
     />
+    <ScrollView ref={scrollRef} style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false} scrollEventThrottle={16} onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: headerScrollY } } }], { useNativeDriver: false })}>
     <View style={s.hero}><LinearGradient colors={['#3FA9E8', '#0A7FD0']} style={s.avatar}><Ionicons name="car-outline" size={46} color="#FFF" /></LinearGradient><AppText weight="bold" style={s.title}>{name}</AppText><View style={s.identity}><AppText weight="bold" style={s.identityText}>{formatPlate(vehicle.plate_number)}</AppText><View style={s.divider} /><AppText weight="bold" style={s.identityText}>{VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type}</AppText><View style={[s.statusDot, vehicle.status !== 'active' && s.statusOff]} /><AppText weight="bold" style={[s.statusText, vehicle.status !== 'active' && s.statusTextOff]}>{VEHICLE_STATUS_LABELS[vehicle.status] ?? vehicle.status}</AppText></View></View>
     <View style={s.tiles}><Tile label="כללי" icon="car-outline" color="#32ADE6" onPress={() => openTab('general')} /><Tile label="נהג משויך" icon="person-outline" color="#5E5CE6" onPress={() => openTab('drivers')} /><Tile label="תחזוקה" icon="construct-outline" color="#E08600" onPress={() => openTab('maintenance')} /><Tile label="מסמכים" icon="document-text-outline" color="#0088CC" onPress={() => openTab('documents')} /></View>
     {tab === 'general' && <>

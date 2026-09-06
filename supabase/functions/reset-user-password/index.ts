@@ -22,8 +22,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (newPassword.length < 6) {
-      return new Response(JSON.stringify({ error: 'הסיסמה חייבת להכיל לפחות 6 תווים' }), {
+    if (newPassword.length < 8) {
+      return new Response(JSON.stringify({ error: 'הסיסמה חייבת להכיל לפחות 8 תווים' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -63,7 +63,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    await adminClient.from('profiles').update({ must_change_password: true }).eq('id', userId);
+    const { error: profileUpdateError } = await adminClient
+      .from('profiles')
+      .update({ must_change_password: true })
+      .eq('id', userId);
+    if (profileUpdateError) {
+      console.error('reset-user-password profile update failed', profileUpdateError.message);
+      return new Response(JSON.stringify({
+        error: 'הסיסמה אופסה, אך סימון החלפת הסיסמה נכשל. יש לנסות שוב לפני מסירת הסיסמה למשתמש',
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
