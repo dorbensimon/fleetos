@@ -6,8 +6,6 @@ import {
   Alert,
   Animated,
   Linking,
-  ActionSheetIOS,
-  Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -16,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, LoadingState, ErrorState, PrimaryButton, useToast } from '../../components/ui';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { getDriver, deleteDriver, resetDriverPassword, getUserEmail, listDepartments, DriverRow } from '../../lib/adminApi';
+import { getDriver, deleteDriver, archiveDriver, resetDriverPassword, getUserEmail, listDepartments, DriverRow } from '../../lib/adminApi';
 import { listDocuments } from '../../lib/documents';
 import { listSignatureRequests } from '../../lib/docuseal';
 import { exportDriverSnapshotReport } from '../../lib/driverSnapshotReport';
@@ -33,6 +31,7 @@ import {
 } from '../../components/driverCard/driverCardSections';
 import { dialPhone } from '../../lib/phone';
 import { ResetDriverPasswordModal } from '../../components/driverCard/ResetDriverPasswordModal';
+import { ConfirmActionModal } from '../../components/driverCard/ConfirmActionModal';
 import { buildDriverDetailGroups } from '../../components/driverCard/buildDriverDetailGroups';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { MIN_PASSWORD_LENGTH } from '../../lib/validation';
@@ -69,6 +68,9 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [exportingReport, setExportingReport] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
   const loadRequest = useRef(0);
@@ -108,44 +110,33 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     Alert.alert('הסיסמה אופסה', 'הנהג יתבקש לקבוע סיסמה קבועה משלו בכניסה הבאה.');
   };
 
-  const confirmDelete = () => {
-    const options = ['מחק לצמיתות', 'ביטול'];
-    const run = async () => {
-      if (!companyId) return;
-      setDeleting(true);
-      const result = await deleteDriver(driverId, companyId);
-      setDeleting(false);
-      if (!result.ok) {
-        Alert.alert('מחיקה נכשלה', result.error);
-        return;
-      }
-      navigation.goBack();
-    };
-
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options,
-          destructiveButtonIndex: 0,
-          cancelButtonIndex: 1,
-          title: `מחיקת ${driver?.full_name ?? 'הנהג'}`,
-          message: 'הפעולה אינה ניתנת לשחזור.',
-        },
-        (index) => {
-          if (index === 0) run();
-        }
-      );
+  const runDelete = async () => {
+    if (!companyId) return;
+    setDeleting(true);
+    const result = await deleteDriver(driverId, companyId);
+    setDeleting(false);
+    if (!result.ok) {
+      setDeleteConfirmOpen(false);
+      Alert.alert('מחיקה נכשלה', result.error);
       return;
     }
+    setDeleteConfirmOpen(false);
+    navigation.goBack();
+  };
 
-    Alert.alert(
-      'מחיקת נהג',
-      `האם למחוק לצמיתות את ${driver?.full_name ?? 'הנהג'}? הפעולה אינה ניתנת לשחזור.`,
-      [
-        { text: 'ביטול', style: 'cancel' },
-        { text: 'מחק לצמיתות', style: 'destructive', onPress: run },
-      ]
-    );
+  const runArchive = async () => {
+    setArchiving(true);
+    try {
+      await archiveDriver(driverId);
+      setArchiveConfirmOpen(false);
+      showToast('הנהג הועבר לארכיון');
+      navigation.goBack();
+    } catch (err: any) {
+      setArchiveConfirmOpen(false);
+      Alert.alert('ההעברה לארכיון נכשלה', err?.message ?? 'נסה שוב');
+    } finally {
+      setArchiving(false);
+    }
   };
 
   const load = useCallback(async () => {
@@ -319,8 +310,17 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
 
         <View style={styles.destructiveGroup}>
           <TouchableOpacity
+            style={[styles.destructiveRow, styles.archiveRow]}
+            onPress={() => setArchiveConfirmOpen(true)}
+            disabled={archiving}
+            activeOpacity={0.7}
+          >
+            <AppText style={[DC_TYPO.destructiveBold, styles.archiveText]}>העברה לארכיון</AppText>
+            <Feather name="archive" size={16} color={DC_COLORS.gray} style={styles.trashIcon} />
+          </TouchableOpacity>
+          <TouchableOpacity
             style={styles.destructiveRow}
-            onPress={confirmDelete}
+            onPress={() => setDeleteConfirmOpen(true)}
             disabled={deleting}
             activeOpacity={0.7}
           >
@@ -351,6 +351,27 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
         onClose={closeReset}
         onSubmit={submitReset}
       />
+
+      <ConfirmActionModal
+        visible={archiveConfirmOpen}
+        title="העברה לארכיון"
+        message={`האם אתה בטוח שברצונך להעביר את ${driver?.full_name ?? 'הנהג'} לארכיון?`}
+        confirmLabel="העבר לארכיון"
+        loading={archiving}
+        onConfirm={runArchive}
+        onClose={() => setArchiveConfirmOpen(false)}
+      />
+
+      <ConfirmActionModal
+        visible={deleteConfirmOpen}
+        title="מחיקת נהג"
+        message={`האם אתה בטוח שברצונך למחוק לצמיתות את ${driver?.full_name ?? 'הנהג'}? הפעולה אינה ניתנת לשחזור.`}
+        confirmLabel="מחק לצמיתות"
+        destructive
+        loading={deleting}
+        onConfirm={runDelete}
+        onClose={() => setDeleteConfirmOpen(false)}
+      />
     </View>
   );
 }
@@ -378,6 +399,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 52,
   },
+  archiveRow: { borderBottomWidth: 1, borderBottomColor: DC_COLORS.separator },
+  archiveText: { color: DC_COLORS.gray },
   destructiveText: { color: DC_COLORS.red },
   trashIcon: { marginRight: 7 },
   footer: {

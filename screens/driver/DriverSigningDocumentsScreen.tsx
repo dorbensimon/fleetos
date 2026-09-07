@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, Card, EmptyState, ErrorState, LoadingState, Screen, ScreenHeader } from '../../components/ui';
+import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { getSigningSession, listSignatureRequests, syncSigningRequest, type SignatureRequest } from '../../lib/docuseal';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
@@ -65,7 +66,8 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
   const visible = items.filter((item) => tab === 'completed' ? item.status === 'completed' : ['pending', 'declined'].includes(item.status));
 
   return (
-    <Screen>
+    <Screen style={styles.screen}>
+      <AdminGradientBackground />
       <ScreenHeader title={isManagerView ? 'מסמכי הנהג לחתימה' : 'מסמכים לחתימה'} onBack={() => navigation.goBack()} />
       <View style={styles.tabs}>
         {(['pending', 'completed'] as const).map((value) => (
@@ -105,6 +107,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
 }
 
 const styles = StyleSheet.create({
+  screen: { backgroundColor: '#F1F4F7' },
   tabs: { flexDirection: 'row-reverse', margin: SPACING.lg, marginBottom: 0, padding: 4, borderRadius: RADIUS.md, backgroundColor: COLORS.neutralBg },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: RADIUS.sm },
   active: { backgroundColor: COLORS.card }, content: { padding: SPACING.lg, gap: SPACING.md },

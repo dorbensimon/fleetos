@@ -95,7 +95,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   };
 
   return (
-    <Screen>
+    <Screen style={styles.screen}>
       <AdminGradientBackground />
       <ScreenHeader title={title} onBack={() => navigation.goBack()} />
 
@@ -144,6 +144,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  screen: { backgroundColor: '#F1F4F7' },
   content: { padding: SPACING.lg, gap: SPACING.sm, flex: 1 },
   uploadBtn: {
     marginTop: SPACING.sm,

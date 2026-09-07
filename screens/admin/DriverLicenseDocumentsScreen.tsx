@@ -514,7 +514,7 @@ function formatDdMmYyyy(iso: string): string {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: DC_COLORS.bg },
+  screen: { flex: 1, backgroundColor: '#F1F4F7' },
   centerFill: { alignItems: 'center', justifyContent: 'center' },
   processingOverlay: {
     flex: 1,
