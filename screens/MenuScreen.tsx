@@ -43,6 +43,7 @@ const OWNER_ITEMS: MenuItem[] = [
 
 const ADMIN_ITEMS: MenuItem[] = [
   ...OWNER_ITEMS.slice(0, 2),
+  { key: 'Reports', icon: 'document-text-outline', label: 'ייצוא דוחות' },
   { key: 'AdminDocumentSigning', icon: 'document-text-outline', label: 'מסמכים לחתימה', badgeKey: 'pendingSigning' },
   OWNER_ITEMS[2],
 ];
@@ -75,6 +76,9 @@ export default function MenuScreen({ navigation }: Props) {
         break;
       case 'Departments':
         navigation.navigate('Departments');
+        break;
+      case 'Reports':
+        navigation.navigate('Reports');
         break;
       case 'AdminDocumentSigning':
         navigation.navigate('AdminDocumentSigning');

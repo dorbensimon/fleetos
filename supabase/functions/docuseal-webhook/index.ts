@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
-    let query = admin.from('signature_requests').select('id, company_id, driver_id, status, signed_file_path');
+    let query = admin.from('signature_requests').select('id, company_id, driver_id, status, signed_file_path, deleted_at');
     if (data.external_id) {
       query = query.eq('id', data.external_id);
     } else if (data.id) {
@@ -111,6 +111,10 @@ Deno.serve(async (req) => {
       return json({ error: 'איתור בקשת החתימה נכשל' }, 500);
     }
     if (!request) return json({ received: true, ignored: 'unknown request' });
+    // A permanently removed document is closed for good; a late DocuSeal event
+    // (e.g. a driver finishing a signature after an admin already removed it)
+    // must not resurrect it or overwrite its preserved evidence.
+    if (request.deleted_at) return json({ received: true, ignored: 'request removed' });
 
     const nextStatus = statusForEvent(payload.event_type, data);
     if (!nextStatus) return json({ received: true, ignored: payload.event_type });

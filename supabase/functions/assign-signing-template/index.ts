@@ -41,6 +41,12 @@ Deno.serve(async (req) => {
       return json({ error: 'התבנית אינה מוכנה לשליחה' }, 400);
     }
 
+    const { data: company } = await access.adminClient
+      .from('companies')
+      .select('name')
+      .eq('id', companyId)
+      .single();
+
     const { data: drivers } = await access.adminClient
       .from('profiles')
       .select('id, full_name')
@@ -110,10 +116,17 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      const sentDate = new Date().toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const submissionName = [template.title, driver.full_name, sentDate].filter(Boolean).join(' - ');
+      // Folder groups all of a driver's documents together: CompanyName / DriverName
+      const folderName = [company?.name, driver.full_name].filter(Boolean).join('/');
       const response = await docusealFetch('/submissions', {
         method: 'POST',
         body: JSON.stringify({
           template_id: template.docuseal_template_id,
+          // Name appears in DocuSeal dashboard and in the stored PDF filename.
+          name: submissionName,
+          ...(folderName ? { folder_name: folderName } : {}),
           // FleetOS uses email only. SMS is intentionally never requested.
           send_email: true,
           submitters: [{

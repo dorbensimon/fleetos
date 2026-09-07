@@ -7,8 +7,6 @@ import { Screen, EmptyState, ErrorState } from '../../components/ui';
 import { ToggleValue } from '../../components/ui/DriversVehiclesToggle';
 import { DriverCard } from '../../components/fleet/DriverCard';
 import { VehicleCard } from '../../components/fleet/VehicleCard';
-import { ExportReportSheet } from '../../components/fleet/ExportReportSheet';
-import { VEHICLE_REPORT_CATEGORIES, VehicleReportCategory, exportVehiclesReport } from '../../lib/vehicleReport';
 import { DriverListSkeleton, VehicleListSkeleton } from '../../components/fleet/FleetListSkeleton';
 import { FleetHero, FleetStat, heroNavHeight, HERO_CONTENT_HEIGHT, HERO_TRAVEL } from '../../components/fleet/FleetHero';
 import { FleetDock, FLEET_DOCK_CLEARANCE } from '../../components/fleet/FleetDock';
@@ -29,7 +27,6 @@ import {
   VehicleDriverWithProfile,
   ComplianceItem,
 } from '../../lib/adminApi';
-import { exportDriversReport, REPORT_CATEGORIES, ReportCategory } from '../../lib/driverReport';
 import { listSignatureRequests } from '../../lib/docuseal';
 import { RootStackParamList } from '../../navigation/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -91,9 +88,6 @@ export default function FleetScreen() {
   const [driverSearch, setDriverSearch] = useState('');
   const [pendingSigning, setPendingSigning] = useState<Map<string, number>>(new Map());
   const [licenseFilter, setLicenseFilter] = useState<LicenseFilter>('all');
-  const [exportMenuOpen, setExportMenuOpen] = useState(false);
-  const [exportingCategory, setExportingCategory] = useState<ReportCategory | null>(null);
-  const [exportingVehicleCategory, setExportingVehicleCategory] = useState<VehicleReportCategory | null>(null);
 
   const driverLoadRequest = useRef(0);
   const vehicleLoadRequest = useRef(0);
@@ -194,31 +188,6 @@ export default function FleetScreen() {
     }
   };
 
-  const runExport = async (category: ReportCategory) => {
-    if (!company) return;
-    setExportingCategory(category);
-    try {
-      await exportDriversReport(company, drivers, category);
-      setExportMenuOpen(false);
-    } catch (err: any) {
-      Alert.alert('ייצוא הדוח נכשל', String(err?.message ?? 'נסה שוב'));
-    } finally {
-      setExportingCategory(null);
-    }
-  };
-
-  const runVehicleExport = async (category: VehicleReportCategory) => {
-    if (!company) return;
-    setExportingVehicleCategory(category);
-    try {
-      await exportVehiclesReport(company, vehicles, compliance, vehicleDrivers, category);
-      setExportMenuOpen(false);
-    } catch (err: any) {
-      Alert.alert('ייצוא הדוח נכשל', String(err?.message ?? 'נסה שוב'));
-    } finally {
-      setExportingVehicleCategory(null);
-    }
-  };
 
   /* ---------------------------------------------------------------- */
   /* Vehicles                                                          */
@@ -470,7 +439,8 @@ export default function FleetScreen() {
         query={mode === 'drivers' ? driverSearch : vehicleSearch}
         onChangeQuery={mode === 'drivers' ? setDriverSearch : setVehicleSearch}
         searchPlaceholder={mode === 'drivers' ? 'חפש לפי שם, ת.ז או מספר עובד' : 'חיפוש לפי מספר רישוי'}
-        onExportPress={() => setExportMenuOpen(true)}
+        onActivityLogPress={() => navigation.navigate('ActivityLog')}
+        onAttentionPress={() => navigation.navigate('Attention')}
       />
 
       <Animated.View
@@ -612,27 +582,6 @@ export default function FleetScreen() {
 
       <FleetDock mode={mode} onModeChange={setMode} />
 
-      {mode === 'drivers' ? (
-        <ExportReportSheet
-          visible={exportMenuOpen}
-          title="ייצוא דוח נהגים"
-          subtitle="בחר את קבוצת הנהגים לדוח"
-          categories={REPORT_CATEGORIES}
-          exportingCategory={exportingCategory}
-          onClose={() => setExportMenuOpen(false)}
-          onSelect={runExport}
-        />
-      ) : (
-        <ExportReportSheet
-          visible={exportMenuOpen}
-          title="ייצוא דוח רכבים"
-          subtitle="בחר את קבוצת הרכבים לדוח"
-          categories={VEHICLE_REPORT_CATEGORIES}
-          exportingCategory={exportingVehicleCategory}
-          onClose={() => setExportMenuOpen(false)}
-          onSelect={runVehicleExport}
-        />
-      )}
     </Screen>
   );
 }

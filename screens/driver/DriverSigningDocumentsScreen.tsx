@@ -63,7 +63,13 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
     finally { setOpening(''); }
   };
 
-  const visible = items.filter((item) => tab === 'completed' ? item.status === 'completed' : ['pending', 'declined'].includes(item.status));
+  const visible = items
+    .filter((item) => tab === 'completed' ? item.status === 'completed' : ['pending', 'declined'].includes(item.status))
+    .sort((a, b) => {
+      const aDate = tab === 'completed' ? (a.completed_at ?? a.created_at) : a.created_at;
+      const bDate = tab === 'completed' ? (b.completed_at ?? b.created_at) : b.created_at;
+      return new Date(bDate).getTime() - new Date(aDate).getTime();
+    });
 
   return (
     <Screen style={styles.screen}>
@@ -87,8 +93,13 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                 <Ionicons name={item.status === 'completed' ? 'checkmark' : 'create-outline'} size={22} color={item.status === 'completed' ? COLORS.okText : COLORS.accent} />
               </View>
               <View style={styles.text}>
-                <AppText weight="bold">{item.template?.title || 'מסמך לחתימה'}</AppText>
-                <AppText style={styles.meta}>{item.status === 'completed' ? (item.signed_file_path ? 'נחתם ונשמר' : 'נחתם, העותק נשמר כעת') : item.status === 'declined' ? 'החתימה נדחתה' : 'לחץ כדי לחתום'}</AppText>
+                <AppText weight="bold">{item.template?.title || item.template_title || 'מסמך לחתימה'}</AppText>
+                <AppText style={styles.meta}>
+                  {item.status === 'completed'
+                    ? `נחתם ${new Date(item.completed_at ?? item.created_at).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
+                    : item.status === 'declined' ? 'החתימה נדחתה'
+                    : `נשלח ${new Date(item.created_at).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })}`}
+                </AppText>
                 {item.status === 'completed' && (
                   <View style={styles.docusealBadge}>
                     <Ionicons name="shield-checkmark-outline" size={13} color={COLORS.okText} />

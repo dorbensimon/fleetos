@@ -111,6 +111,14 @@ export interface Department {
   name: string;
 }
 
+export interface ActivityLogEntry {
+  id: string; company_id: string; actor_id: string | null;
+  action: 'created' | 'updated' | 'deleted';
+  entity_type: 'department' | 'vehicle' | 'driver' | 'profile' | 'compliance' | 'document' | 'assignment';
+  entity_id: string | null; entity_label: string | null; created_at: string;
+  actor: { full_name: string | null } | null;
+}
+
 export interface Notification {
   id: string;
   company_id: string;

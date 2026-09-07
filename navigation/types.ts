@@ -13,6 +13,9 @@ export type RootStackParamList = {
   DriverPersonalDetails: { driverId: string };
   DriverForm: { driverId?: string };
   Departments: undefined;
+  ActivityLog: undefined;
+  Attention: undefined;
+  Reports: undefined;
   AdminProfile: undefined;
   Notifications: undefined;
   AdminDocumentSigning: { companyId?: string } | undefined;

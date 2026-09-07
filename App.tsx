@@ -29,6 +29,9 @@ import VehicleFormScreen from './screens/admin/VehicleFormScreen';
 import DriverDetailScreen from './screens/admin/DriverDetailScreen';
 import DriverFormScreen from './screens/admin/DriverFormScreen';
 import DepartmentsScreen from './screens/admin/DepartmentsScreen';
+import ActivityLogScreen from './screens/admin/ActivityLogScreen';
+import AttentionScreen from './screens/admin/AttentionScreen';
+import ReportsScreen from './screens/admin/ReportsScreen';
 import AdminProfileScreen from './screens/admin/AdminProfileScreen';
 import NotificationsScreen from './screens/admin/NotificationsScreen';
 import AdminDocumentSigningScreen from './screens/admin/AdminDocumentSigningScreen';
@@ -129,6 +132,9 @@ export default function App() {
               <Stack.Screen name="DriverDetail" component={DriverDetailScreen} />
               <Stack.Screen name="DriverForm" component={DriverFormScreen} />
               <Stack.Screen name="Departments" component={DepartmentsScreen} />
+              <Stack.Screen name="ActivityLog" component={ActivityLogScreen} />
+              <Stack.Screen name="Attention" component={AttentionScreen} />
+              <Stack.Screen name="Reports" component={ReportsScreen} />
               <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               <Stack.Screen name="AdminDocumentSigning" component={AdminDocumentSigningScreen} />

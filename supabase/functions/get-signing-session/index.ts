@@ -18,15 +18,20 @@ Deno.serve(async (req) => {
 
     const { data: request } = await user.adminClient
       .from('signature_requests')
-      .select('id, company_id, driver_id, status, archived_at, docuseal_submitter_slug, signed_file_path')
+      .select('id, company_id, driver_id, status, archived_at, deleted_at, docuseal_submitter_slug, signed_file_path')
       .eq('id', requestId)
       .single();
-    if (!request || request.archived_at) return json({ error: 'המסמך לא נמצא' }, 404);
+    if (!request) return json({ error: 'המסמך לא נמצא' }, 404);
     const isAssignedDriver = request.driver_id === user.userId;
-    const allowed = isAssignedDriver
-      || user.profile.role === 'owner'
+    const isCompanyManager = user.profile.role === 'owner'
       || (user.profile.role === 'admin' && user.profile.company_id === request.company_id);
+    const allowed = isAssignedDriver || isCompanyManager;
     if (!allowed) return json({ error: 'אין הרשאה למסמך זה' }, 403);
+    // Archived and removed documents stay reachable for the company's managers,
+    // who need them as evidence, but they no longer exist for the driver.
+    if ((request.archived_at || request.deleted_at) && !isCompanyManager) {
+      return json({ error: 'המסמך לא נמצא' }, 404);
+    }
     if (request.status !== 'completed' && !isAssignedDriver) {
       return json({ error: 'רק הנהג שאליו נשלח המסמך יכול לחתום עליו' }, 403);
     }

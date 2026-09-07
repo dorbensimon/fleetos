@@ -41,7 +41,7 @@ const { navGapRest, navGapCollapsed, cubeRowHeight, fieldHeight, buttonHeight, g
 export const HERO_TRAVEL = navGapRest - navGapCollapsed + cubeRowHeight + gap;
 
 /** Content height below the nav row, at rest (top gap + cubes + gaps + field + button). */
-export const HERO_CONTENT_HEIGHT = navGapRest + cubeRowHeight + gap + fieldHeight + gap + buttonHeight;
+export const HERO_CONTENT_HEIGHT = navGapRest + cubeRowHeight + gap + fieldHeight + gap + buttonHeight + gap + buttonHeight;
 
 export function heroNavHeight(insetsTop: number) {
   return insetsTop + 56;
@@ -56,6 +56,8 @@ export function FleetHero({
   onChangeQuery,
   searchPlaceholder,
   onExportPress,
+  onActivityLogPress,
+  onAttentionPress,
 }: {
   scrollY: Animated.Value;
   stats: [FleetStat, FleetStat, FleetStat];
@@ -63,6 +65,8 @@ export function FleetHero({
   onChangeQuery: (v: string) => void;
   searchPlaceholder: string;
   onExportPress?: () => void;
+  onActivityLogPress?: () => void;
+  onAttentionPress?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const { profile } = useCompany();
@@ -210,6 +214,22 @@ export function FleetHero({
           </TouchableOpacity>
         </Animated.View>
       )}
+      {!!onActivityLogPress && (
+        <Animated.View style={[styles.activityWrap, { top: navHeight + navGapRest + cubeRowHeight + gap + fieldHeight + gap + buttonHeight + gap, transform: [{ translateY: riseTranslateY }] }]}>
+          <TouchableOpacity activeOpacity={0.82} onPress={onActivityLogPress} style={styles.activityBtn}>
+            <Ionicons name="time-outline" size={16} color="#fff" />
+            <AppText weight="bold" style={styles.activityText}>יומן פעולות</AppText>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+      {!!onAttentionPress && (
+        <Animated.View style={[styles.attentionWrap, { top: navHeight + navGapRest + cubeRowHeight + gap + fieldHeight + gap, transform: [{ translateY: riseTranslateY }] }]}>
+          <TouchableOpacity activeOpacity={0.82} onPress={onAttentionPress} style={styles.attentionBtn}>
+            <Ionicons name="alert-circle-outline" size={16} color="#102A42" />
+            <AppText weight="bold" style={styles.attentionText}>דורש טיפול</AppText>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -319,4 +339,10 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   exportText: { color: '#0a3fa8', fontSize: 14, fontFamily: FLEET_FONT.bold },
+  activityWrap: { position: 'absolute', left: 20, right: 20, height: buttonHeight },
+  activityBtn: { flex: 1, borderRadius: 22, backgroundColor: 'rgba(8,44,105,.38)', borderWidth: 1, borderColor: 'rgba(255,255,255,.42)', flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 9 },
+  activityText: { color: '#fff', fontSize: 14, fontFamily: FLEET_FONT.bold },
+  attentionWrap: { position: 'absolute', left: 20, right: 20, height: buttonHeight },
+  attentionBtn: { flex: 1, borderRadius: 22, backgroundColor: 'rgba(255,255,255,.88)', borderWidth: 1, borderColor: 'rgba(255,255,255,.9)', flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 9 },
+  attentionText: { color: '#102A42', fontSize: 14, fontFamily: FLEET_FONT.bold },
 });

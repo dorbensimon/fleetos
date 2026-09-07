@@ -21,13 +21,15 @@ export type SigningTemplate = {
 export type SignatureRequest = {
   id: string;
   company_id: string;
-  template_id: string;
+  template_id: string | null;
   driver_id: string;
   status: 'pending' | 'completed' | 'declined' | 'cancelled' | 'failed';
   completed_at: string | null;
   signed_file_path: string | null;
   created_at: string;
   archived_at?: string | null;
+  deleted_at?: string | null;
+  template_title?: string | null;
   failure_reason?: string | null;
   email_reminder_count?: number;
   last_email_reminder_at?: string | null;
@@ -290,7 +292,7 @@ export async function downloadSignedRequest(request: SignatureRequest): Promise<
 
   const response = await fetch(session.src);
   const buffer = new Uint8Array(await response.arrayBuffer());
-  const file = new File(Paths.cache, safeFileName(`${request.template?.title || 'signed-document'}.pdf`, 'signed-document.pdf'));
+  const file = new File(Paths.cache, safeFileName(`${request.template?.title || request.template_title || 'signed-document'}.pdf`, 'signed-document.pdf'));
   file.write(buffer);
 
   if (await Sharing.isAvailableAsync()) {
@@ -298,19 +300,38 @@ export async function downloadSignedRequest(request: SignatureRequest): Promise<
   }
 }
 
-export async function listSignatureRequests(companyId?: string, includeArchived = false): Promise<SignatureRequest[]> {
-  let query = supabase.from('signature_requests').select('*, template:signing_templates(title)');
-  if (companyId) query = query.eq('company_id', companyId);
-  query = includeArchived ? query.not('archived_at', 'is', null) : query.is('archived_at', null);
-  const { data, error } = await query.order('created_at', { ascending: false });
-  if (error) throw error;
-  const requests = (data || []) as unknown as SignatureRequest[];
-  if (!companyId || !requests.length) return requests;
-
+async function withDriverNames(requests: SignatureRequest[]): Promise<SignatureRequest[]> {
+  if (!requests.length) return requests;
   const ids = [...new Set(requests.map((item) => item.driver_id))];
   const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', ids);
   const names = new Map((profiles || []).map((profile) => [profile.id, profile.full_name]));
   return requests.map((item) => ({ ...item, driverName: names.get(item.driver_id) }));
+}
+
+export async function listSignatureRequests(companyId?: string, includeArchived = false): Promise<SignatureRequest[]> {
+  let query = supabase.from('signature_requests').select('*, template:signing_templates(title)');
+  if (companyId) query = query.eq('company_id', companyId);
+  // Signed documents are kept as evidence after an admin clears them from the
+  // archive, so every list has to hide the rows marked deleted.
+  query = query.is('deleted_at', null);
+  query = includeArchived ? query.not('archived_at', 'is', null) : query.is('archived_at', null);
+  const { data, error } = await query.order('created_at', { ascending: false });
+  if (error) throw error;
+  const requests = (data || []) as unknown as SignatureRequest[];
+  if (!companyId) return requests;
+  return withDriverNames(requests);
+}
+
+// Signed documents an admin cleared out of the archive. They are hidden from
+// every other list, and this is the only place they can still be reached.
+export async function listRemovedSignatureRequests(companyId: string): Promise<SignatureRequest[]> {
+  const { data, error } = await supabase.from('signature_requests')
+    .select('*, template:signing_templates(title)')
+    .eq('company_id', companyId)
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false });
+  if (error) throw error;
+  return withDriverNames((data || []) as unknown as SignatureRequest[]);
 }
 
 export async function assignSigningTemplate(companyId: string, templateId: string, driverIds: string[]) {
