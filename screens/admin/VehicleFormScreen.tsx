@@ -22,6 +22,7 @@ import { AppText, LoadingState, useToast } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
 import { VehicleDriversEditor } from '../../components/VehicleDriversEditor';
 import { COLORS, SPACING, ACCENT_SHADOW, parseDateValue } from '../../lib/theme';
+import { isStaleDepartmentError } from '../../lib/driverFields';
 import { useCompany } from '../../lib/CompanyContext';
 import {
   getVehicle,
@@ -252,6 +253,14 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     setVehicleDrivers(await listActiveVehicleDrivers(vehicleId));
   }, [vehicleId]);
 
+  // Unlike `load`, this never touches `form` — safe to call after a failed
+  // save without wiping the user's unsaved edits.
+  const refreshDepartments = useCallback(async () => {
+    if (!companyId) return;
+    const deps = await listDepartments(companyId);
+    setDepartments(deps.map((department) => ({ value: department.id, label: department.name })));
+  }, [companyId]);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -418,6 +427,12 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
       navigation.goBack();
     } catch (err: any) {
       const message = String(err?.message ?? '');
+      if (isStaleDepartmentError(message)) {
+        set('department_id', null);
+        void refreshDepartments().catch(() => {});
+        Alert.alert('שמירה נכשלה', 'המחלקה שנבחרה נמחקה בינתיים. בחר מחלקה אחרת ונסה שוב.');
+        return;
+      }
       Alert.alert(
         'שמירה נכשלה',
         message.includes('duplicate') || message.includes('unique')

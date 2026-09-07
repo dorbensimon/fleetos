@@ -61,6 +61,11 @@ export function departmentOptions(departments: Department[]): { value: string; l
   return departments.map((department) => ({ value: department.id, label: department.name }));
 }
 
+/** True when a save failed because the selected department was deleted (by someone else) while the form was open. */
+export function isStaleDepartmentError(message: string | null | undefined): boolean {
+  return !!message && message.includes('department_id_fkey');
+}
+
 export function driverEditableFieldsFromRow(driver: DriverRow | null | undefined): DriverEditableFields {
   const license = splitLicenseClasses(driver?.license_classes);
   return {

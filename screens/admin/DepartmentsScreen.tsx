@@ -9,7 +9,7 @@ import { AdminGradientBackground } from '../../components/admin/AdminGradientBac
 import { GlassPill } from '../../components/ui/GlassPill';
 import { COLORS, SPACING, ACCENT_SHADOW } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { listDepartments, createDepartment, updateDepartment, deleteDepartment, Department } from '../../lib/adminApi';
+import { listDepartments, createDepartment, updateDepartment, deleteDepartment, countDepartmentUsage, Department } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -94,10 +94,26 @@ export default function DepartmentsScreen({ navigation }: Props) {
     }
   };
 
-  const confirmDelete = (dept: Department) => {
+  const confirmDelete = async (dept: Department) => {
+    if (!companyId) return;
+    let usage = { vehicles: 0, drivers: 0 };
+    try {
+      usage = await countDepartmentUsage(dept.id);
+    } catch {
+      // If the count fails, still allow deleting — the warning just won't have numbers.
+    }
+    const parts = [
+      usage.vehicles === 1 ? 'רכב אחד' : usage.vehicles > 0 ? `${usage.vehicles} רכבים` : '',
+      usage.drivers === 1 ? 'נהג אחד' : usage.drivers > 0 ? `${usage.drivers} נהגים` : '',
+    ].filter(Boolean);
+    const isSingular = usage.vehicles + usage.drivers === 1;
+    const message = parts.length
+      ? `למחוק את "${dept.name}"? ${parts.join(' ו')} ${isSingular ? 'משויך' : 'משויכים'} אליה כרגע, ו${isSingular ? 'יישאר' : 'יישארו'} ללא מחלקה.`
+      : `למחוק את "${dept.name}"?`;
+
     Alert.alert(
       'מחיקת מחלקה',
-      `למחוק את "${dept.name}"? רכבים ששויכו אליה יישארו ללא מחלקה.`,
+      message,
       [
         { text: 'ביטול', style: 'cancel' },
         {
@@ -105,7 +121,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteDepartment(dept.id);
+              await deleteDepartment(companyId, dept.id);
               await load();
             } catch (err: any) {
               Alert.alert('מחיקה נכשלה', String(err?.message ?? 'נסה שוב'));

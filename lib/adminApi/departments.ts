@@ -27,7 +27,17 @@ export async function updateDepartment(departmentId: string, name: string) {
   if (error) throw error;
 }
 
-export async function deleteDepartment(departmentId: string) {
-  const { error } = await supabase.from('departments').delete().eq('id', departmentId);
+export async function countDepartmentUsage(departmentId: string): Promise<{ vehicles: number; drivers: number }> {
+  const [vehicles, drivers] = await Promise.all([
+    supabase.from('vehicles').select('id', { count: 'exact', head: true }).eq('department_id', departmentId),
+    supabase.from('driver_details').select('id', { count: 'exact', head: true }).eq('department_id', departmentId),
+  ]);
+  if (vehicles.error) throw vehicles.error;
+  if (drivers.error) throw drivers.error;
+  return { vehicles: vehicles.count ?? 0, drivers: drivers.count ?? 0 };
+}
+
+export async function deleteDepartment(companyId: string, departmentId: string) {
+  const { error } = await supabase.from('departments').delete().eq('id', departmentId).eq('company_id', companyId);
   if (error) throw error;
 }

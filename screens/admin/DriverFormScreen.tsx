@@ -26,7 +26,7 @@ import { supabase } from '../../lib/supabase';
 import { getDriver, updateDriver, createDriverAccount, listDepartments, getUserEmail, type Department } from '../../lib/adminApi';
 import { formatPhone } from '../../lib/phone';
 import { RootStackParamList } from '../../navigation/types';
-import { departmentOptions, driverEditableFieldsFromRow, LICENSE_CLASS_OPTIONS } from '../../lib/driverFields';
+import { departmentOptions, driverEditableFieldsFromRow, isStaleDepartmentError, LICENSE_CLASS_OPTIONS } from '../../lib/driverFields';
 import {
   countFilledRequiredDriverFields,
   dateOnlyIsoFromLocalDate,
@@ -137,6 +137,14 @@ export default function DriverFormScreen({ route, navigation }: Props) {
     }
   }, [driverId, companyId, profile]);
 
+  // Unlike `load`, this never touches `form` — safe to call after a failed
+  // save without wiping the user's unsaved edits.
+  const refreshDepartments = useCallback(async () => {
+    if (!companyId) return;
+    const deps = await listDepartments(companyId);
+    setDepartments(departmentOptions(deps as Department[]));
+  }, [companyId]);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -197,6 +205,12 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           },
         });
         if (!result.ok) {
+          if (isStaleDepartmentError(result.error)) {
+            setForm((current) => ({ ...current, department_id: null }));
+            void refreshDepartments().catch(() => {});
+            Alert.alert('שמירה נכשלה', 'המחלקה שנבחרה נמחקה בינתיים. בחר מחלקה אחרת ונסה שוב.');
+            return;
+          }
           Alert.alert('יצירת הנהג נכשלה', result.error);
           return;
         }
@@ -204,7 +218,14 @@ export default function DriverFormScreen({ route, navigation }: Props) {
       showToast(isEdit ? 'השינויים נשמרו' : 'הנהג נוצר בהצלחה');
       if (!isEdit) navigation.goBack();
     } catch (err: any) {
-      Alert.alert('שמירה נכשלה', String(err?.message ?? 'נסה שוב'));
+      const message = String(err?.message ?? '');
+      if (isStaleDepartmentError(message)) {
+        setForm((current) => ({ ...current, department_id: null }));
+        void refreshDepartments().catch(() => {});
+        Alert.alert('שמירה נכשלה', 'המחלקה שנבחרה נמחקה בינתיים. בחר מחלקה אחרת ונסה שוב.');
+        return;
+      }
+      Alert.alert('שמירה נכשלה', message || 'נסה שוב');
     } finally {
       setSaving(false);
     }
