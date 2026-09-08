@@ -176,3 +176,13 @@ export function formatDate(date: string | null | undefined): string {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
+
+/** Formats an ISO timestamp as DD/MM/YYYY HH:MM, or an em dash when empty. */
+export function formatDateTime(date: string | null | undefined): string {
+  if (!date) return '—';
+  const d = parseDateValue(date);
+  if (Number.isNaN(d.getTime())) return '—';
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${formatDate(date)} ${hh}:${min}`;
+}

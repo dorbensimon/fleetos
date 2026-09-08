@@ -120,7 +120,7 @@ export interface Department {
 export interface ActivityLogEntry {
   id: string; company_id: string; actor_id: string | null;
   action: 'created' | 'updated' | 'deleted';
-  entity_type: 'department' | 'vehicle' | 'driver' | 'profile' | 'compliance' | 'document' | 'assignment';
+  entity_type: 'department' | 'vehicle' | 'driver' | 'profile' | 'compliance' | 'document' | 'assignment' | 'signing_template' | 'signature_request';
   entity_id: string | null; entity_label: string | null; created_at: string;
   actor: { full_name: string | null } | null;
   /**
@@ -128,6 +128,8 @@ export interface ActivityLogEntry {
    * null once that person is deleted; this snapshot does not.
    */
   actor_name: string | null;
+  /** Short, field-specific description of what changed, e.g. "קילומטר ברכב 485756: 120000 ← 125000". */
+  details: string | null;
 }
 
 export interface Notification {

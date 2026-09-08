@@ -18,6 +18,7 @@ import {
   remainingTone,
   worstTone,
 } from './fleetCardHelpers';
+import { buildReportDocument, emptyState, esc, statusTag, TagTone } from './reportTemplate';
 
 export type VehicleReportCategory = 'all' | 'insurance' | 'test' | 'service' | 'issues';
 
@@ -121,9 +122,11 @@ const STATUS_LABELS: Record<'ok' | 'soon' | 'expired' | 'missing', string> = {
   missing: 'חסר נתונים',
 };
 
-function esc(value: string | null | undefined): string {
-  if (!value) return '';
-  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function statusTone(statusKey: 'ok' | 'soon' | 'expired' | 'missing'): TagTone {
+  if (statusKey === 'expired') return 'accent2';
+  if (statusKey === 'soon') return 'outline';
+  if (statusKey === 'missing') return 'neutral';
+  return 'accent';
 }
 
 function buildHtml(company: Company, summaries: VehicleSummary[], category: VehicleReportCategory): string {
@@ -142,200 +145,56 @@ function buildHtml(company: Company, summaries: VehicleSummary[], category: Vehi
           <td>${s.test ? esc(formatDate(s.test)) : '—'}</td>
           <td>${v.next_service_km != null ? `${v.next_service_km.toLocaleString()} ק״מ` : '—'}</td>
           <td>${esc(s.driverName) || 'ללא נהג'}</td>
-          <td><span class="status status-${statusKey}">${STATUS_LABELS[statusKey]}</span></td>
+          <td>${statusTag(STATUS_LABELS[statusKey], statusTone(statusKey))}</td>
         </tr>`;
     })
     .join('');
 
-  const generatedAt = new Date().toLocaleDateString('he-IL');
+  const bodyHtml = summaries.length === 0
+    ? emptyState('לא נמצאו רכבים בקטגוריה זו')
+    : `<table class="table" dir="rtl">
+        <thead>
+          <tr>
+            <th>מספר רישוי</th>
+            <th>יצרן ודגם</th>
+            <th>סוג</th>
+            <th>סטטוס רכב</th>
+            <th>ביטוח חובה</th>
+            <th>טסט שנתי</th>
+            <th>טיפול הבא</th>
+            <th>נהג משויך</th>
+            <th>מצב כללי</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
 
-  return `
-<!DOCTYPE html>
-<html dir="rtl" lang="he">
-<head>
-<meta charset="utf-8" />
-<style>
-  * { box-sizing: border-box; }
-  body {
-    font-family: 'Arial', sans-serif;
-    margin: 0;
-    padding: 32px;
-    color: #1A1A1A;
-    direction: rtl;
-  }
-  .letterhead {
-    display: flex;
-    flex-direction: row-reverse;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 3px solid #0088CC;
-    padding-bottom: 16px;
-    margin-bottom: 20px;
-  }
-  .letterhead-company {
-    display: flex;
-    flex-direction: row-reverse;
-    align-items: center;
-    gap: 14px;
-  }
-  .logo {
-    width: 56px;
-    height: 56px;
-    border-radius: 10px;
-    object-fit: cover;
-    border: 1px solid #E2E2E2;
-  }
-  .company-name {
-    font-size: 20px;
-    font-weight: bold;
-    color: #000;
-    margin: 0;
-  }
-  .company-sub {
-    font-size: 11.5px;
-    color: #666;
-    margin-top: 2px;
-  }
-  .letterhead-meta {
-    text-align: left;
-    font-size: 11px;
-    color: #666;
-    line-height: 1.6;
-  }
-  .company-details {
-    display: flex;
-    flex-direction: row-reverse;
-    flex-wrap: wrap;
-    gap: 22px;
-    background: #F7F9FA;
-    border-radius: 10px;
-    padding: 12px 16px;
-    margin-bottom: 22px;
-    font-size: 11.5px;
-  }
-  .detail-item { min-width: 140px; }
-  .detail-label { color: #888; font-size: 10px; margin-bottom: 2px; }
-  .detail-value { color: #1A1A1A; font-weight: bold; }
-  h1 {
-    font-size: 16px;
-    color: #000;
-    margin: 0 0 4px;
-  }
-  .report-sub {
-    font-size: 11px;
-    color: #888;
-    margin-bottom: 16px;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 10.8px;
-  }
-  th {
-    background: #000;
-    color: #fff;
-    padding: 9px 6px;
-    text-align: right;
-    font-size: 10.3px;
-  }
-  td {
-    padding: 7px 6px;
-    border-bottom: 1px solid #ECECEC;
-    text-align: right;
-  }
-  tr:nth-child(even) td { background: #FAFAFA; }
-  .ltr { direction: ltr; text-align: left; }
-  .status {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 10.5px;
-    font-weight: bold;
-    white-space: nowrap;
-  }
-  .status-ok { background: #E6F6EF; color: #1E8E63; }
-  .status-soon { background: #FDF3E2; color: #A9720F; }
-  .status-expired { background: #F8E7E5; color: #C0392B; }
-  .status-missing { background: #EFEFEF; color: #666; }
-  .empty {
-    text-align: center;
-    padding: 40px 0;
-    color: #999;
-    font-size: 13px;
-  }
-  .footer {
-    margin-top: 26px;
-    padding-top: 10px;
-    border-top: 1px solid #ECECEC;
-    font-size: 10px;
-    color: #999;
-    text-align: center;
-  }
-</style>
-</head>
-<body>
-  <div class="letterhead">
-    <div class="letterhead-company">
-      ${company.logo_url ? `<img class="logo" src="${esc(company.logo_url)}" />` : ''}
-      <div>
-        <p class="company-name">${esc(company.name)}</p>
-        <p class="company-sub">${esc(company.company_type) || ''}${
-          company.business_id ? ` &nbsp;·&nbsp; ${esc(company.company_type ? (company.company_type === 'בע״מ' ? 'ח.פ' : 'ע.מ') : 'מס\' עוסק')} ${esc(company.business_id)}` : ''
-        }</p>
-      </div>
-    </div>
-    <div class="letterhead-meta">
-      ${company.address ? `<div>${esc(company.address)}</div>` : ''}
-      ${company.phone ? `<div class="ltr">${esc(company.phone)}</div>` : ''}
-    </div>
-  </div>
-
-  <div class="company-details">
-    <div class="detail-item">
-      <div class="detail-label">שם קצין הרכב</div>
-      <div class="detail-value">${esc(company.safety_officer_name) || '—'}</div>
-    </div>
-    <div class="detail-item">
-      <div class="detail-label">נייד קצין הרכב</div>
-      <div class="detail-value ltr">${esc(company.safety_officer_phone) || '—'}</div>
-    </div>
-    <div class="detail-item">
-      <div class="detail-label">תאריך הפקה</div>
-      <div class="detail-value">${generatedAt}</div>
-    </div>
-    <div class="detail-item">
-      <div class="detail-label">סה״כ רכבים בדוח</div>
-      <div class="detail-value">${summaries.length}</div>
-    </div>
-  </div>
-
-  <h1>${CATEGORY_TITLES[category]}</h1>
-  <p class="report-sub">Tolvex &middot; ניהול צי רכב</p>
-
-  ${
-    summaries.length === 0
-      ? `<div class="empty">לא נמצאו רכבים בקטגוריה זו</div>`
-      : `<table>
-          <thead>
-            <tr>
-              <th>מספר רישוי</th>
-              <th>יצרן ודגם</th>
-              <th>סוג</th>
-              <th>סטטוס רכב</th>
-              <th>ביטוח חובה</th>
-              <th>טסט שנתי</th>
-              <th>טיפול הבא</th>
-              <th>נהג משויך</th>
-              <th>מצב כללי</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>`
-  }
-
-  <div class="footer">מסמך זה הופק אוטומטית על ידי מערכת Tolvex לניהול צי רכב</div>
-</body>
-</html>`;
+  return buildReportDocument({
+    title: CATEGORY_TITLES[category],
+    metaColumns: [
+      {
+        label: 'חברה',
+        value: company.name,
+        sub: company.business_id ? `ח.פ ${company.business_id}` : undefined,
+      },
+      {
+        label: 'קצין רכב',
+        value: company.safety_officer_name ?? '',
+      },
+      {
+        label: 'קצין רכב נייד',
+        value: company.safety_officer_phone ?? '',
+        ltr: true,
+      },
+      {
+        label: 'סה״כ רכבים בדוח',
+        value: String(summaries.length),
+        big: true,
+        pushEnd: true,
+      },
+    ],
+    bodyHtml,
+  });
 }
 
 export async function exportVehiclesReport(
