@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, LoadingState, ErrorState, PrimaryButton, useToast } from '../../components/ui';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { getDriver, deleteDriver, archiveDriver, resetDriverPassword, getUserEmail, listDepartments, DriverRow } from '../../lib/adminApi';
+import { getDriver, archiveDriver, restoreDriver, resetDriverPassword, getUserEmail, listDepartments, DriverRow } from '../../lib/adminApi';
 import { listDocuments } from '../../lib/documents';
 import { listSignatureRequests } from '../../lib/docuseal';
 import { exportDriverSnapshotReport } from '../../lib/driverSnapshotReport';
@@ -67,10 +67,9 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   const [pendingSigningCount, setPendingSigningCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [exportingReport, setExportingReport] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
   const loadRequest = useRef(0);
@@ -110,33 +109,31 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     Alert.alert('הסיסמה אופסה', 'הנהג יתבקש לקבוע סיסמה קבועה משלו בכניסה הבאה.');
   };
 
-  const runDelete = async () => {
+  const runArchive = async () => {
     if (!companyId) return;
-    setDeleting(true);
-    const result = await deleteDriver(driverId, companyId);
-    setDeleting(false);
+    setArchiving(true);
+    const result = await archiveDriver(driverId, companyId);
+    setArchiving(false);
+    setArchiveConfirmOpen(false);
     if (!result.ok) {
-      setDeleteConfirmOpen(false);
-      Alert.alert('מחיקה נכשלה', result.error);
+      Alert.alert('ההעברה לארכיון נכשלה', result.error);
       return;
     }
-    setDeleteConfirmOpen(false);
+    showToast('הנהג הועבר לארכיון וגישתו לאפליקציה נחסמה');
     navigation.goBack();
   };
 
-  const runArchive = async () => {
-    setArchiving(true);
-    try {
-      await archiveDriver(driverId);
-      setArchiveConfirmOpen(false);
-      showToast('הנהג הועבר לארכיון');
-      navigation.goBack();
-    } catch (err: any) {
-      setArchiveConfirmOpen(false);
-      Alert.alert('ההעברה לארכיון נכשלה', err?.message ?? 'נסה שוב');
-    } finally {
-      setArchiving(false);
+  const runRestore = async () => {
+    if (!companyId) return;
+    setRestoring(true);
+    const result = await restoreDriver(driverId, companyId);
+    setRestoring(false);
+    if (!result.ok) {
+      Alert.alert('שחזור הנהג נכשל', result.error);
+      return;
     }
+    showToast('הנהג שוחזר מהארכיון');
+    await load();
   };
 
   const load = useCallback(async () => {
@@ -236,6 +233,8 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     }
   };
 
+  const isArchived = driver?.status === 'archived';
+  const assignedVehicleCount = driver?.vehicles.length ?? 0;
   const licenseVerified = licensePhotosComplete && !!driver?.license_expiry;
   const groups = buildDriverDetailGroups(driver, licenseVerified, pendingSigningCount);
 
@@ -282,6 +281,15 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
           subtitleParts={[driver?.status === 'archived' ? 'לא פעיל' : 'פעיל']}
         />
 
+        {isArchived && (
+          <View style={styles.archivedBanner}>
+            <Feather name="archive" size={16} color="#9A3412" />
+            <AppText style={styles.archivedBannerText}>
+              נהג זה נמצא בארכיון ואין לו גישה לאפליקציה. מחיקה לצמיתות מתבצעת ממסך הארכיון.
+            </AppText>
+          </View>
+        )}
+
         <View style={styles.quickActions}>
           {DRIVER_CARD_QUICK_ACTIONS.map((action) => (
             <QuickActionCard
@@ -308,25 +316,33 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
           <ListGroup key={group.title} group={group} onRowPress={handleRowPress} />
         ))}
 
+        {/* Permanent deletion deliberately does not live here: it is only
+            reachable from the driver archive, so an irreversible action
+            always passes through a reversible step first. */}
         <View style={styles.destructiveGroup}>
-          <TouchableOpacity
-            style={[styles.destructiveRow, styles.archiveRow]}
-            onPress={() => setArchiveConfirmOpen(true)}
-            disabled={archiving}
-            activeOpacity={0.7}
-          >
-            <AppText style={[DC_TYPO.destructiveBold, styles.archiveText]}>העברה לארכיון</AppText>
-            <Feather name="archive" size={16} color={DC_COLORS.gray} style={styles.trashIcon} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.destructiveRow}
-            onPress={() => setDeleteConfirmOpen(true)}
-            disabled={deleting}
-            activeOpacity={0.7}
-          >
-            <AppText style={[DC_TYPO.destructiveBold, styles.destructiveText]}>מחיקת נהג</AppText>
-            <Feather name="trash-2" size={16} color={DC_COLORS.red} style={styles.trashIcon} />
-          </TouchableOpacity>
+          {isArchived ? (
+            <TouchableOpacity
+              style={styles.destructiveRow}
+              onPress={runRestore}
+              disabled={restoring}
+              activeOpacity={0.7}
+            >
+              <AppText style={[DC_TYPO.destructiveBold, styles.restoreText]}>
+                {restoring ? 'משחזר…' : 'שחזור מהארכיון'}
+              </AppText>
+              <Feather name="rotate-ccw" size={16} color="#0088CC" style={styles.trashIcon} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.destructiveRow}
+              onPress={() => setArchiveConfirmOpen(true)}
+              disabled={archiving}
+              activeOpacity={0.7}
+            >
+              <AppText style={[DC_TYPO.destructiveBold, styles.archiveText]}>העברה לארכיון</AppText>
+              <Feather name="archive" size={16} color={DC_COLORS.gray} style={styles.trashIcon} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {!!driver?.created_at && (
@@ -355,22 +371,17 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       <ConfirmActionModal
         visible={archiveConfirmOpen}
         title="העברה לארכיון"
-        message={`האם אתה בטוח שברצונך להעביר את ${driver?.full_name ?? 'הנהג'} לארכיון?`}
+        message={
+          `${driver?.full_name ?? 'הנהג'} יאבד את הגישה לאפליקציה ויוסר מרשימת הנהגים.` +
+          (assignedVehicleCount > 0
+            ? ` שיוך ${assignedVehicleCount === 1 ? 'הרכב' : `${assignedVehicleCount} הרכבים`} שלו יבוטל.`
+            : '') +
+          ' תמיד אפשר לשחזר אותו ממסך הארכיון.'
+        }
         confirmLabel="העבר לארכיון"
         loading={archiving}
         onConfirm={runArchive}
         onClose={() => setArchiveConfirmOpen(false)}
-      />
-
-      <ConfirmActionModal
-        visible={deleteConfirmOpen}
-        title="מחיקת נהג"
-        message={`האם אתה בטוח שברצונך למחוק לצמיתות את ${driver?.full_name ?? 'הנהג'}? הפעולה אינה ניתנת לשחזור.`}
-        confirmLabel="מחק לצמיתות"
-        destructive
-        loading={deleting}
-        onConfirm={runDelete}
-        onClose={() => setDeleteConfirmOpen(false)}
       />
     </View>
   );
@@ -399,9 +410,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 52,
   },
-  archiveRow: { borderBottomWidth: 1, borderBottomColor: DC_COLORS.separator },
   archiveText: { color: DC_COLORS.gray },
-  destructiveText: { color: DC_COLORS.red },
+  restoreText: { color: '#0088CC' },
+  archivedBanner: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 9,
+    marginHorizontal: DC_SPACING.screenPaddingH,
+    marginBottom: DC_SPACING.groupGap,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: DC_SPACING.groupRadius,
+    backgroundColor: 'rgba(234,88,12,.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(234,88,12,.24)',
+  },
+  archivedBannerText: { flex: 1, fontSize: 13, color: '#9A3412', textAlign: 'right', lineHeight: 19 },
   trashIcon: { marginRight: 7 },
   footer: {
     color: DC_COLORS.labelTertiary,

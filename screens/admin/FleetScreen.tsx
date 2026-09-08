@@ -17,6 +17,7 @@ import { SPACING, expiryState } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
   listDrivers,
+  listArchivedDrivers,
   DriverRow,
   listVehicles,
   listComplianceForOwners,
@@ -88,6 +89,9 @@ export default function FleetScreen() {
   const [driverSearch, setDriverSearch] = useState('');
   const [pendingSigning, setPendingSigning] = useState<Map<string, number>>(new Map());
   const [licenseFilter, setLicenseFilter] = useState<LicenseFilter>('all');
+  // Archived drivers are never part of `drivers` (they are excluded at the
+  // query), so the archive button carries its own count.
+  const [archivedCount, setArchivedCount] = useState(0);
 
   const driverLoadRequest = useRef(0);
   const vehicleLoadRequest = useRef(0);
@@ -103,20 +107,24 @@ export default function FleetScreen() {
       loadedDriversCompanyId.current = companyId ?? null;
       setDrivers([]);
       setPendingSigning(new Map());
+      setArchivedCount(0);
       setDriversError(null);
     }
     if (!companyId) {
       if (requestId === driverLoadRequest.current) {
         setDrivers([]);
+        setArchivedCount(0);
         setDriversError('לא נמצאה חברה פעילה עבור המשתמש');
       }
       return false;
     }
 
     try {
-      const [rows, signatureRequests] = await Promise.all([
+      const [rows, signatureRequests, archived] = await Promise.all([
         listDrivers(companyId),
         listSignatureRequests(companyId).catch(() => []),
+        // A failed archive count must never block the fleet list itself.
+        listArchivedDrivers(companyId).catch(() => []),
       ]);
       if (requestId !== driverLoadRequest.current) return false;
       const signingMap = new Map<string, number>();
@@ -126,6 +134,7 @@ export default function FleetScreen() {
       }
       setDrivers(rows);
       setPendingSigning(signingMap);
+      setArchivedCount(archived.length);
       setDriversError(null);
       return true;
     } catch (error) {
@@ -478,6 +487,12 @@ export default function FleetScreen() {
                         { value: 'expired', label: 'רישיון פג', count: driverCounts.expired, icon: 'warning' },
                         { value: 'no_vehicle', label: 'ללא רכב', count: driverCounts.noVehicle, icon: 'ban-outline' },
                       ]}
+                      action={{
+                        label: 'ארכיון נהגים',
+                        count: archivedCount,
+                        icon: 'archive-outline',
+                        onPress: () => navigation.navigate('DriverArchive'),
+                      }}
                     />
                     <LinearGradient colors={[FLEET_COLORS.chipsBarBg, 'rgba(242,245,249,0)']} style={sheetStyles.chipsBarFade} pointerEvents="none" />
                   </View>

@@ -16,10 +16,23 @@ export function FleetFilterChips<T extends string>({
   options,
   value,
   onChange,
+  action,
 }: {
   options: { value: T; label: string; count?: number; icon?: React.ComponentProps<typeof Ionicons>['name'] }[];
   value: T;
   onChange: (v: T) => void;
+  /**
+   * A chip that navigates somewhere instead of filtering this list — it
+   * sits at the end of the row, is never "selected", and stays tappable at
+   * a count of zero (unlike a filter, an empty destination is still worth
+   * opening).
+   */
+  action?: {
+    label: string;
+    count?: number;
+    icon?: React.ComponentProps<typeof Ionicons>['name'];
+    onPress: () => void;
+  };
 }) {
   return (
     <ScrollView
@@ -63,6 +76,26 @@ export function FleetFilterChips<T extends string>({
             </TouchableOpacity>
           );
         })}
+
+        {!!action && (
+          <TouchableOpacity activeOpacity={0.8} onPress={action.onPress}>
+            <View style={[styles.pill, styles.pillInactive]}>
+              <View style={styles.chip}>
+                {action.icon && <Ionicons name={action.icon} size={15} color={FLEET_COLORS.textSecondary} />}
+                <AppText weight="bold" numberOfLines={1} style={styles.text}>
+                  {action.label}
+                </AppText>
+                {action.count !== undefined && (
+                  <View style={styles.badge}>
+                    <AppText weight="bold" style={styles.badgeText}>
+                      {action.count}
+                    </AppText>
+                  </View>
+                )}
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
     </ScrollView>
   );

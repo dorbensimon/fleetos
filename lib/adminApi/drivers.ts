@@ -133,12 +133,89 @@ export async function updateDriver(
   }
 }
 
-export async function archiveDriver(driverId: string) {
-  const { error } = await supabase
-    .from('driver_details')
-    .update({ status: 'archived' })
-    .eq('id', driverId);
-  if (error) throw error;
+/**
+ * Drivers that were moved to the archive, newest first — the only list
+ * that shows them. Archived drivers have no access to the app at all, so
+ * this is also the only place a permanent deletion can be started from.
+ */
+export async function listArchivedDrivers(companyId: string): Promise<DriverRow[]> {
+  const rows = await fetchAllPages<DriverDetails>((from, to) =>
+    supabase
+      .from('driver_details')
+      .select('*')
+      .eq('company_id', companyId)
+      .eq('status', 'archived')
+      .order('archived_at', { ascending: false, nullsFirst: false })
+      .order('id', { ascending: true })
+      .range(from, to)
+  );
+  if (rows.length === 0) return [];
+
+  // Both the drivers themselves and the admins who archived them are
+  // profiles, so one lookup covers both name columns.
+  const nameIds = [
+    ...new Set([...rows.map((r) => r.id), ...rows.map((r) => r.archived_by).filter((id): id is string => !!id)]),
+  ];
+  const profiles: any[] = [];
+  for (const batch of chunkIds(nameIds)) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, phone, job_title')
+      .in('id', batch);
+    if (error) throw error;
+    profiles.push(...(data ?? []));
+  }
+  const profileById = new Map(profiles.map((p: any) => [p.id, p]));
+
+  return rows.map((r) => ({
+    ...r,
+    full_name: profileById.get(r.id)?.full_name ?? null,
+    phone: profileById.get(r.id)?.phone ?? null,
+    job_title: profileById.get(r.id)?.job_title ?? null,
+    archived_by_name: r.archived_by ? profileById.get(r.archived_by)?.full_name ?? null : null,
+    // Archiving closes every active assignment, so an archived driver never
+    // has a vehicle to show.
+    vehicles: [],
+    vehicle_id: null,
+    vehicle_plate: null,
+  }));
+}
+
+/**
+ * Moves a driver to the archive. This is not a list filter: server-side it
+ * also blocks the driver's login, ends any session they currently have,
+ * closes their vehicle assignments and stops their signing reminders.
+ * Reversible via `restoreDriver`.
+ */
+export async function archiveDriver(
+  driverId: string,
+  companyId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data, error } = await supabase.functions.invoke('archive-company-driver', {
+    body: { driverId, companyId },
+  });
+
+  if (error || !data?.success) {
+    return { ok: false, error: await functionErrorMessage(error, data, 'ההעברה לארכיון נכשלה', false) };
+  }
+
+  return { ok: true };
+}
+
+/** Brings an archived driver back to active and restores their login. */
+export async function restoreDriver(
+  driverId: string,
+  companyId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data, error } = await supabase.functions.invoke('restore-company-driver', {
+    body: { driverId, companyId },
+  });
+
+  if (error || !data?.success) {
+    return { ok: false, error: await functionErrorMessage(error, data, 'שחזור הנהג נכשל', false) };
+  }
+
+  return { ok: true };
 }
 
 /**
@@ -172,9 +249,13 @@ export async function createDriverAccount(payload: {
 }
 
 /**
- * Permanently removes a driver's account. Only the admin of the same
- * company (or the owner) may do this — enforced server-side, not just
- * by hiding the button.
+ * Permanently removes an archived driver and everything the app holds
+ * about them — profile, documents, compliance items and the files behind
+ * them. Their signed forms stay in DocuSeal and simply stop being shown.
+ *
+ * Only the admin of the same company (or the owner) may do this, and only
+ * for a driver already in the archive — both enforced server-side, not
+ * just by where the button lives. Irreversible.
  */
 export async function deleteDriver(
   driverId: string,

@@ -119,6 +119,12 @@ Deno.serve(async (req) => {
     const nextStatus = statusForEvent(payload.event_type, data);
     if (!nextStatus) return json({ received: true, ignored: payload.event_type });
 
+    // DocuSeal may retry or deliver events out of order. Completed and
+    // declined are terminal, so an older event must not change them again.
+    if (request.status === 'completed' || request.status === 'declined') {
+      return json({ received: true, ignored: 'terminal request' });
+    }
+
     let signedFilePath = request.signed_file_path;
     const documentUrl = data.documents?.[0]?.url || data.submission?.combined_document_url;
     if (nextStatus === 'completed' && !signedFilePath && documentUrl) {
@@ -135,7 +141,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { error: updateError } = await admin.from('signature_requests').update({
+    const { data: updated, error: updateError } = await admin.from('signature_requests').update({
       status: nextStatus,
       signed_file_path: signedFilePath,
       completed_at: nextStatus === 'completed'
@@ -144,12 +150,14 @@ Deno.serve(async (req) => {
       failure_reason: nextStatus === 'declined' ? (data.decline_reason || null) : null,
       next_email_reminder_at: null,
       email_reminder_locked_until: null,
-    }).eq('id', request.id);
+      sync_locked_until: null,
+    }).eq('id', request.id).eq('status', 'pending').select('id').maybeSingle();
     if (updateError) {
       console.error('docuseal-webhook update failed', updateError.message);
       return json({ error: 'עדכון בקשת החתימה נכשל' }, 500);
     }
 
+    if (!updated) return json({ received: true, ignored: 'state changed concurrently' });
     return json({ received: true, updated: true, request_id: request.id, status: nextStatus });
   } catch (error) {
     console.error('docuseal-webhook failed', error instanceof Error ? error.message : 'unknown');

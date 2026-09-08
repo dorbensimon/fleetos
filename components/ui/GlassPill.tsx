@@ -19,7 +19,7 @@ export function GlassPill({
       <BlurView intensity={blur} tint="light" style={StyleSheet.absoluteFill} />
       <View
         style={[
-          StyleSheet.absoluteFillObject,
+          StyleSheet.absoluteFill,
           { backgroundColor: bg, borderRadius: size / 2, borderWidth: 0.5, borderColor: 'rgba(255,255,255,.6)' },
         ]}
       />

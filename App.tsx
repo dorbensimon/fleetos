@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -28,6 +28,7 @@ import VehicleDetailScreen from './screens/admin/VehicleDetailScreen';
 import VehicleFormScreen from './screens/admin/VehicleFormScreen';
 import DriverDetailScreen from './screens/admin/DriverDetailScreen';
 import DriverFormScreen from './screens/admin/DriverFormScreen';
+import DriverArchiveScreen from './screens/admin/DriverArchiveScreen';
 import DepartmentsScreen from './screens/admin/DepartmentsScreen';
 import ActivityLogScreen from './screens/admin/ActivityLogScreen';
 import AttentionScreen from './screens/admin/AttentionScreen';
@@ -49,6 +50,7 @@ import { supabase } from './lib/supabase';
 import { resolveRouteForUser } from './lib/session';
 import { CompanyProvider } from './lib/CompanyContext';
 import { ToastProvider } from './components/ui';
+import { flushPendingAssignmentOperations } from './lib/adminApi';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -87,6 +89,15 @@ export default function App() {
       }
     })();
     return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const retry = () => { void flushPendingAssignmentOperations().catch(() => undefined); };
+    retry();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') retry();
+    });
+    return () => subscription.remove();
   }, []);
 
   useEffect(() => {
@@ -131,6 +142,7 @@ export default function App() {
               <Stack.Screen name="VehicleForm" component={VehicleFormScreen} />
               <Stack.Screen name="DriverDetail" component={DriverDetailScreen} />
               <Stack.Screen name="DriverForm" component={DriverFormScreen} />
+              <Stack.Screen name="DriverArchive" component={DriverArchiveScreen} />
               <Stack.Screen name="Departments" component={DepartmentsScreen} />
               <Stack.Screen name="ActivityLog" component={ActivityLogScreen} />
               <Stack.Screen name="Attention" component={AttentionScreen} />

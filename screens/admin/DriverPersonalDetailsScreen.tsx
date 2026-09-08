@@ -24,6 +24,7 @@ import {
   listActiveVehicleDrivers,
   assignDriverToVehicle,
   unassignVehicleDriver,
+  isPendingAssignmentSyncError,
   getUserEmail,
   DriverRow,
   Vehicle,
@@ -34,6 +35,7 @@ import { formatPhone } from '../../lib/phone';
 import { RootStackParamList } from '../../navigation/types';
 import { DriverVehicleAssignmentsCard, confirmVehicleRemoval } from '../../components/driver/DriverVehicleAssignmentsCard';
 import { departmentNameById } from '../../lib/driverFields';
+import { supabase } from '../../lib/supabase';
 
 /**
  * Read-only view of exactly the fields DriverFormScreen collects -
@@ -101,6 +103,16 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
     }, [load])
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      const channel = supabase
+        .channel(`driver-vehicle-assignments:${driverId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_drivers', filter: `driver_id=eq.${driverId}` }, () => { void load(); })
+        .subscribe();
+      return () => { void supabase.removeChannel(channel); };
+    }, [driverId, load])
+  );
+
   const departmentName = departmentNameById(departments, driver?.department_id);
 
   const assignedVehicleIds = new Set(driverVehicles.map((dv) => dv.vehicle_id));
@@ -125,6 +137,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
       await load();
       showToast('הרכב שויך לנהג');
     } catch (err: any) {
+      if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
       Alert.alert('שיוך הרכב נכשל', String(err?.message ?? 'נסה שוב'));
     } finally {
       setBusyId(null);
@@ -139,6 +152,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
         await load();
         showToast('השיוך הוסר');
       } catch (err: any) {
+        if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
         Alert.alert('הסרת השיוך נכשלה', String(err?.message ?? 'נסה שוב'));
       } finally {
         setBusyId(null);

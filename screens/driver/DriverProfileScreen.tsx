@@ -122,7 +122,7 @@ export default function DriverProfileScreen({ navigation }: Props) {
 function GlassPill({ size, blur, bg, children }: { size: number; blur: number; bg: string; children: React.ReactNode }) {
   return <View style={[pillStyles.wrap, { width: size, height: size, borderRadius: size / 2 }]}>
     <BlurView intensity={blur} tint="light" style={StyleSheet.absoluteFill} />
-    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: bg, borderRadius: size / 2, borderWidth: 0.5, borderColor: 'rgba(255,255,255,.6)' }]} />
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: bg, borderRadius: size / 2, borderWidth: 0.5, borderColor: 'rgba(255,255,255,.6)' }]} />
     <View style={pillStyles.content}>{children}</View>
   </View>;
 }
@@ -144,6 +144,6 @@ function Row({ icon, label, value, first, readOnly }: { icon: React.ComponentPro
 }
 
 const pillStyles = StyleSheet.create({ wrap: { overflow: 'hidden', alignItems: 'center', justifyContent: 'center', ...Platform.select({ ios: { shadowColor: '#505a82', shadowOpacity: 0.18, shadowOffset: { width: 0, height: 2 }, shadowRadius: 8 }, android: { elevation: 3 } }) }, content: { alignItems: 'center', justifyContent: 'center' } });
-const cardStyles = StyleSheet.create({ wrap: { overflow: 'hidden', borderRadius: 22, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.6)', ...Platform.select({ ios: { shadowColor: '#505a82', shadowOpacity: 0.12, shadowOffset: { width: 0, height: 8 }, shadowRadius: 24 }, android: { elevation: 4 } }) }, tint: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.42)' } });
+const cardStyles = StyleSheet.create({ wrap: { overflow: 'hidden', borderRadius: 22, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.6)', ...Platform.select({ ios: { shadowColor: '#505a82', shadowOpacity: 0.12, shadowOffset: { width: 0, height: 8 }, shadowRadius: 24 }, android: { elevation: 4 } }) }, tint: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.42)' } });
 const rowStyles = StyleSheet.create({ row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 }, divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,.08)' }, icon: { flexShrink: 0 }, label: { fontSize: 14.5, color: '#1a1a1a', flexShrink: 0 }, value: { fontSize: 14.5, color: 'rgba(0,0,0,.5)', flexShrink: 1, textAlign: 'left' } });
 const styles = StyleSheet.create({ screen: { flex: 1, backgroundColor: '#F2F2F7' }, header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 }, headerCompany: { flex: 1, fontSize: 16, color: '#1a1a1a', textAlign: 'center', marginHorizontal: 8 }, content: { padding: 20, paddingTop: 18, paddingBottom: 40, gap: 4 }, profileBlock: { alignItems: 'center', paddingVertical: 18 }, avatarWrap: { width: 84, height: 84 }, avatar: { width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(0,0,0,.06)', alignItems: 'center', justifyContent: 'center' }, editBadgeWrap: { position: 'absolute', bottom: -2, left: -2 }, name: { fontSize: 17, color: '#1a1a1a', marginTop: 12 }, role: { fontSize: 13, color: 'rgba(20,20,30,.6)', marginTop: 2 }, sectionLabel: { fontSize: 12, color: 'rgba(20,20,30,.55)', paddingBottom: 8, paddingTop: 12 } });

@@ -8,6 +8,7 @@ const LOCK_MINUTES = 5;
 type DueRequest = {
   id: string;
   company_id: string;
+  driver_id: string;
   docuseal_submitter_id: number | null;
   email_reminder_count: number;
   email_reminder_locked_until: string | null;
@@ -56,7 +57,7 @@ Deno.serve(async (req) => {
   try {
     const { data: candidates, error: candidateError } = await admin
       .from('signature_requests')
-      .select('id, company_id, docuseal_submitter_id, email_reminder_count, email_reminder_locked_until')
+      .select('id, company_id, driver_id, docuseal_submitter_id, email_reminder_count, email_reminder_locked_until')
       .eq('status', 'pending')
       .is('archived_at', null)
       .not('next_email_reminder_at', 'is', null)
@@ -71,7 +72,33 @@ Deno.serve(async (req) => {
     let failed = 0;
     const settingsCache = new Map<string, CompanySigningSettings | null>();
 
-    for (const candidate of (candidates || []) as DueRequest[]) {
+    const dueRequests = (candidates || []) as DueRequest[];
+
+    // A driver in the archive has no access to the app, so chasing them by
+    // email would be noise they cannot act on. Their pending requests are
+    // dropped from the reminder schedule rather than repeatedly re-checked.
+    const archivedDriverIds = new Set<string>();
+    if (dueRequests.length > 0) {
+      const { data: archivedDrivers, error: archivedError } = await admin
+        .from('driver_details')
+        .select('id')
+        .eq('status', 'archived')
+        .in('id', [...new Set(dueRequests.map((request) => request.driver_id))]);
+      if (archivedError) throw archivedError;
+      for (const driver of archivedDrivers ?? []) archivedDriverIds.add(driver.id as string);
+    }
+
+    for (const candidate of dueRequests) {
+      if (archivedDriverIds.has(candidate.driver_id)) {
+        const { error: archivedSkipError } = await admin.from('signature_requests').update({
+          next_email_reminder_at: null,
+          email_reminder_locked_until: null,
+        }).eq('id', candidate.id).eq('status', 'pending');
+        if (archivedSkipError) throw archivedSkipError;
+        skipped += 1;
+        continue;
+      }
+
       // Claim first, then make the external API call. A concurrent cron run sees
       // the short lock and skips this request instead of sending a duplicate.
       const { data: claimed, error: claimError } = await admin
@@ -105,7 +132,7 @@ Deno.serve(async (req) => {
         const { error: skipUpdateError } = await admin.from('signature_requests').update({
           next_email_reminder_at: null,
           email_reminder_locked_until: null,
-        }).eq('id', candidate.id);
+        }).eq('id', candidate.id).eq('status', 'pending').eq('email_reminder_locked_until', lockUntil);
         if (skipUpdateError) throw skipUpdateError;
         skipped += 1;
         continue;
@@ -114,10 +141,12 @@ Deno.serve(async (req) => {
       const newCount = candidate.email_reminder_count + 1;
       const intervalHours = settings?.repeat_reminder_interval_hours ?? 72;
       const nextReminderAt = newCount >= maxReminders ? null : dateAfterHours(now, intervalHours);
-      const { error: prepareError } = await admin.from('signature_requests').update({
+      const { data: prepared, error: prepareError } = await admin.from('signature_requests').update({
         next_email_reminder_at: nextReminderAt,
-      }).eq('id', candidate.id);
+      }).eq('id', candidate.id).eq('status', 'pending').eq('email_reminder_locked_until', lockUntil)
+        .select('id').maybeSingle();
       if (prepareError) throw prepareError;
+      if (!prepared) { skipped += 1; continue; }
 
       const response = await docusealFetch(`/submitters/${candidate.docuseal_submitter_id}`, {
         method: 'PUT',
@@ -130,7 +159,7 @@ Deno.serve(async (req) => {
         const { error: retryUpdateError } = await admin.from('signature_requests').update({
           email_reminder_locked_until: null,
           next_email_reminder_at: dateAfterHours(now, 1),
-        }).eq('id', candidate.id);
+        }).eq('id', candidate.id).eq('status', 'pending').eq('email_reminder_locked_until', lockUntil);
         if (retryUpdateError) throw retryUpdateError;
         failed += 1;
         continue;
@@ -141,7 +170,7 @@ Deno.serve(async (req) => {
         last_email_reminder_at: nowIso,
         next_email_reminder_at: nextReminderAt,
         email_reminder_locked_until: null,
-      }).eq('id', candidate.id);
+      }).eq('id', candidate.id).eq('status', 'pending').eq('email_reminder_locked_until', lockUntil);
       if (sentUpdateError) throw sentUpdateError;
       sent += 1;
     }

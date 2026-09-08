@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
   tileEmptyText: { fontFamily: DC_TYPO.badge.fontFamily, fontSize: 13, color: DC_COLORS.labelTertiary },
   tileImage: { width: '100%', height: '100%' },
   tileEditOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.34)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tileUploadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(255,255,255,0.6)',
     alignItems: 'center',
     justifyContent: 'center',

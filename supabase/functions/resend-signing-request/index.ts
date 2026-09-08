@@ -76,7 +76,9 @@ Deno.serve(async (req) => {
           next_email_reminder_at: request.next_email_reminder_at,
           email_reminder_locked_until: null,
         })
-        .eq('id', request.id);
+        .eq('id', request.id)
+        .eq('status', 'pending')
+        .eq('email_reminder_locked_until', lockUntil);
       if (releaseError) console.error('resend-signing-request lock release failed', releaseError.message);
       return json({ error: 'שליחת התזכורת דרך DocuSeal נכשלה' }, 502);
     }
@@ -88,7 +90,7 @@ Deno.serve(async (req) => {
       // are disabled; it just leaves no next automatic reminder scheduled.
       next_email_reminder_at: nextReminderAt,
       email_reminder_locked_until: null,
-    }).eq('id', request.id);
+    }).eq('id', request.id).eq('status', 'pending').eq('email_reminder_locked_until', lockUntil);
     if (updateError) {
       console.error('resend-signing-request metadata update failed', updateError.message);
       return json({

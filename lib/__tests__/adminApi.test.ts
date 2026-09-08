@@ -1,11 +1,19 @@
 jest.mock('../supabase', () => ({
   supabase: {
     from: jest.fn(),
+    rpc: jest.fn(),
+    auth: { getUser: jest.fn() },
     functions: { invoke: jest.fn() },
   },
 }));
 
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+}));
+
 import { supabase } from '../supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   assignDriverToVehicle,
   unassignVehicleDriver,
@@ -94,49 +102,55 @@ describe('assignDriverToVehicle', () => {
   it('inserts the assignment and returns it when there is no conflict', async () => {
     const inserted = { ...driverB, id: 'a3' };
     const listBuilder = chain({ data: [driverA], error: null });
-    const insertBuilder = chain({ data: inserted, error: null });
-    mockFromSequence(listBuilder, insertBuilder);
+    mockFromSequence(listBuilder);
+    (supabase.rpc as jest.Mock).mockResolvedValue({ data: inserted, error: null });
 
     const result = await assignDriverToVehicle('v1', 'd-new', false);
 
     expect(result).toEqual(inserted);
-    expect(insertBuilder.insert).toHaveBeenCalledWith({
-      vehicle_id: 'v1',
-      driver_id: 'd-new',
-      is_primary: false,
-    });
+    expect(supabase.rpc).toHaveBeenCalledWith('assign_vehicle_driver', expect.objectContaining({
+      p_vehicle_id: 'v1', p_driver_id: 'd-new', p_is_primary: false,
+    }));
   });
 
   it('propagates a DB error from the insert (e.g. RLS/trigger rejection)', async () => {
     const listBuilder = chain({ data: [], error: null });
-    const insertBuilder = chain({ data: null, error: { message: 'permission denied', code: '42501' } });
-    mockFromSequence(listBuilder, insertBuilder);
+    mockFromSequence(listBuilder);
+    (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { message: 'permission denied', code: '42501' } });
 
     await expect(assignDriverToVehicle('v1', 'd-new', false)).rejects.toEqual({
       message: 'permission denied',
       code: '42501',
     });
   });
+
+  it('queues an assignment when its preflight read fails while offline', async () => {
+    mockFromSequence(chain({ data: null, error: { message: 'Network request failed' } }));
+    (supabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: 'admin-1' } }, error: null });
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+
+    await expect(assignDriverToVehicle('v1', 'd-new', false)).rejects.toThrow('הפעולה נשמרה');
+
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+      'fleetos.pending-assignment-operations.v1',
+      expect.stringContaining('"type":"assign"')
+    );
+  });
 });
 
 describe('unassignVehicleDriver', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('soft-deletes by setting unassigned_at rather than removing the row', async () => {
-    const builder = chain({ data: null, error: null });
-    mockFromSequence(builder);
+  it('uses the atomic database operation rather than a blind client update', async () => {
+    (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: null });
 
     await unassignVehicleDriver('a1');
 
-    expect(builder.update).toHaveBeenCalledTimes(1);
-    const [patch] = builder.update.mock.calls[0];
-    expect(patch).toHaveProperty('unassigned_at');
-    expect(typeof patch.unassigned_at).toBe('string');
-    expect(builder.eq).toHaveBeenCalledWith('id', 'a1');
+    expect(supabase.rpc).toHaveBeenCalledWith('unassign_vehicle_driver', { p_assignment_id: 'a1' });
   });
 
   it('throws when the update fails', async () => {
-    mockFromSequence(chain({ data: null, error: { message: 'boom' } }));
+    (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { message: 'boom' } });
 
     await expect(unassignVehicleDriver('a1')).rejects.toEqual({ message: 'boom' });
   });
@@ -145,24 +159,21 @@ describe('unassignVehicleDriver', () => {
 describe('setPrimaryVehicleDriver', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('demotes the current primary before promoting the target assignment', async () => {
-    const demoteBuilder = chain({ data: null, error: null });
-    const promoteBuilder = chain({ data: null, error: null });
-    mockFromSequence(demoteBuilder, promoteBuilder);
+  it('uses the atomic database operation', async () => {
+    (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: null });
 
     await setPrimaryVehicleDriver('v1', 'a2');
 
-    expect(demoteBuilder.update).toHaveBeenCalledWith({ is_primary: false });
-    expect(demoteBuilder.neq).toHaveBeenCalledWith('id', 'a2');
-    expect(promoteBuilder.update).toHaveBeenCalledWith({ is_primary: true });
+    expect(supabase.rpc).toHaveBeenCalledWith('set_vehicle_primary_driver', {
+      p_vehicle_id: 'v1',
+      p_assignment_id: 'a2',
+    });
   });
 
-  it('stops and throws if the demote step fails, without promoting', async () => {
-    const demoteBuilder = chain({ data: null, error: { message: 'demote failed' } });
-    mockFromSequence(demoteBuilder);
+  it('propagates an atomic operation failure', async () => {
+    (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { message: 'promotion failed' } });
 
-    await expect(setPrimaryVehicleDriver('v1', 'a2')).rejects.toEqual({ message: 'demote failed' });
-    expect(supabase.from).toHaveBeenCalledTimes(1);
+    await expect(setPrimaryVehicleDriver('v1', 'a2')).rejects.toEqual({ message: 'promotion failed' });
   });
 });
 

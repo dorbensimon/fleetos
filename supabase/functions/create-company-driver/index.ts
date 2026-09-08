@@ -32,6 +32,40 @@ function pickDriverDetails(value: unknown): Record<string, unknown> {
   );
 }
 
+/**
+ * Name of the archived driver in this company holding `email`, or null.
+ *
+ * Only ever called on the "email already registered" error path, and only
+ * over this company's archived drivers — a short list by nature. The login
+ * address lives in auth.users, not in profiles, so it has to be looked up
+ * one account at a time; the cap keeps that bounded no matter what.
+ */
+async function findArchivedDriverByEmail(
+  // deno-lint-ignore no-explicit-any
+  adminClient: any,
+  companyId: string,
+  email: string
+): Promise<string | null> {
+  const { data: archived } = await adminClient
+    .from('driver_details')
+    .select('id')
+    .eq('company_id', companyId)
+    .eq('status', 'archived')
+    .limit(50);
+
+  for (const driver of archived ?? []) {
+    const { data: authData } = await adminClient.auth.admin.getUserById(driver.id);
+    if (authData?.user?.email?.toLowerCase() !== email.toLowerCase()) continue;
+    const { data: profile } = await adminClient
+      .from('profiles')
+      .select('full_name')
+      .eq('id', driver.id)
+      .single();
+    return profile?.full_name || 'נהג';
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -62,7 +96,24 @@ Deno.serve(async (req) => {
     });
 
     if (createUserError || !newUser.user) {
-      return json({ error: createUserError?.message || 'יצירת המשתמש נכשלה' }, 500);
+      // "Email already registered" is the one failure an admin can act on,
+      // and the most confusing when it comes back as raw English. An
+      // archived driver still occupies their address, so the message points
+      // at the archive — restoring them is almost always what was meant.
+      const message = createUserError?.message ?? '';
+      const emailTaken = /already been registered|already registered|email_exists/i.test(message);
+      if (emailTaken) {
+        const archivedOwner = await findArchivedDriverByEmail(adminClient, companyId, email.trim());
+        return json(
+          {
+            error: archivedOwner
+              ? `כתובת המייל הזו שייכת ל${archivedOwner}, נהג שנמצא בארכיון. כדי להשתמש בה שוב יש לשחזר אותו מהארכיון, או למחוק אותו לצמיתות.`
+              : 'כתובת המייל הזו כבר רשומה במערכת',
+          },
+          409
+        );
+      }
+      return json({ error: message || 'יצירת המשתמש נכשלה' }, 500);
     }
 
     const driverId = newUser.user.id;

@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   image: { width: '100%', height: '100%' },
   webWrap: { flex: 1, backgroundColor: COLORS.screen },
   webview: { flex: 1, backgroundColor: COLORS.screen },
-  loading: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.screen },
+  loading: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.screen },
   footer: { padding: SPACING.md, backgroundColor: COLORS.card },
   error: { color: COLORS.dangerText, textAlign: 'center', padding: SPACING.sm },
   sync: { flexDirection: 'row-reverse', gap: SPACING.sm, alignItems: 'center', justifyContent: 'center', padding: SPACING.sm },

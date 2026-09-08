@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
       android: { elevation: 6 },
     }),
   },
-  tint: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.30)' },
+  tint: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.30)' },
   content: { paddingHorizontal: 20, paddingBottom: 18 },
   topRow: {
     flexDirection: 'row-reverse',

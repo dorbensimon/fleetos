@@ -992,12 +992,12 @@ const styles = StyleSheet.create({
   ctaTextDisabled: { color: 'rgba(14,30,43,.35)' },
   remainingText: { fontSize: 12.5, color: 'rgba(16,31,44,.42)', textAlign: 'center', marginTop: 8 },
   dateSheetLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 7,
     justifyContent: 'flex-end',
   },
   dateSheetScrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(16,31,44,.16)',
   },
   dateSheet: {

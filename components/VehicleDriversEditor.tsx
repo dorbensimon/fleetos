@@ -10,6 +10,7 @@ import {
   assignDriverToVehicle,
   unassignVehicleDriver,
   setPrimaryVehicleDriver,
+  isPendingAssignmentSyncError,
 } from '../lib/adminApi';
 
 /**
@@ -57,6 +58,7 @@ export function VehicleDriversEditor({
       await onChanged();
       showToast('הנהג שויך לרכב');
     } catch (err: any) {
+      if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
       Alert.alert('שיוך הנהג נכשל', String(err?.message ?? 'נסה שוב'));
     } finally {
       setBusyId(null);
@@ -70,6 +72,7 @@ export function VehicleDriversEditor({
       await onChanged();
       showToast('נקבע כנהג ראשי');
     } catch (err: any) {
+      if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
       Alert.alert('הפעולה נכשלה', String(err?.message ?? 'נסה שוב'));
     } finally {
       setBusyId(null);
@@ -89,6 +92,7 @@ export function VehicleDriversEditor({
             await onChanged();
             showToast('השיוך הוסר');
           } catch (err: any) {
+            if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
             Alert.alert('הסרת השיוך נכשלה', String(err?.message ?? 'נסה שוב'));
           } finally {
             setBusyId(null);

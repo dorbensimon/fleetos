@@ -61,6 +61,28 @@ export function CompanyProvider({
 
       if (!isCurrent()) return;
 
+      // An archived driver has no access to the app. Their Auth user is
+      // banned and their sessions are dropped the moment they are archived,
+      // but an access token already issued stays signature-valid until it
+      // expires — this closes those last minutes by ending the session as
+      // soon as the app asks who is logged in.
+      if (profileRow?.role === 'driver') {
+        const { data: details } = await supabase
+          .from('driver_details')
+          .select('status')
+          .eq('id', userId)
+          .maybeSingle<{ status: string }>();
+        if (details?.status === 'archived') {
+          await supabase.auth.signOut();
+          if (!isCurrent()) return;
+          setProfile(null);
+          setCompany(null);
+          setLoading(false);
+          return;
+        }
+        if (!isCurrent()) return;
+      }
+
       setProfile(profileRow ?? null);
 
       const activeId = companyIdOverride ?? profileRow?.company_id ?? null;

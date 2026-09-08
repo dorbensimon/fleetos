@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addTint: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.2)' },
+  addTint: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.2)' },
   cardWrap: {
     height: CARD_HEIGHT,
     borderRadius: SG_RADIUS.card,
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     padding: 18,
     justifyContent: 'space-between',
   },
-  tint: { ...StyleSheet.absoluteFillObject },
+  tint: { ...StyleSheet.absoluteFill },
   tintPrimary: { backgroundColor: 'rgba(255,255,255,0.55)' },
   tintSecondary: { backgroundColor: 'rgba(255,255,255,0.35)' },
   cardTop: { alignItems: 'flex-end' },

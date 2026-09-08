@@ -10,6 +10,7 @@ export type RootStackParamList = {
   VehicleDetail: { vehicleId: string };
   VehicleForm: { vehicleId?: string };
   DriverDetail: { driverId: string };
+  DriverArchive: undefined;
   DriverPersonalDetails: { driverId: string };
   DriverForm: { driverId?: string };
   Departments: undefined;

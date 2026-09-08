@@ -48,6 +48,10 @@ export interface DriverDetails {
   license_issue_date: string | null;
   license_expiry: string | null;
   status: 'active' | 'archived';
+  /** Set when the driver was moved to the archive; null while active. */
+  archived_at: string | null;
+  /** The admin who archived them — kept so the archive screen can say who. */
+  archived_by: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -75,6 +79,8 @@ export interface DriverRow extends DriverDetails {
   vehicles: DriverRowVehicle[];
   vehicle_id?: string | null;
   vehicle_plate?: string | null;
+  /** Name of the admin who archived the driver — archive screen only. */
+  archived_by_name?: string | null;
 }
 
 export interface ComplianceItem {
@@ -117,6 +123,11 @@ export interface ActivityLogEntry {
   entity_type: 'department' | 'vehicle' | 'driver' | 'profile' | 'compliance' | 'document' | 'assignment';
   entity_id: string | null; entity_label: string | null; created_at: string;
   actor: { full_name: string | null } | null;
+  /**
+   * The actor's name as it was when the line was written. `actor` above goes
+   * null once that person is deleted; this snapshot does not.
+   */
+  actor_name: string | null;
 }
 
 export interface Notification {

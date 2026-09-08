@@ -59,7 +59,29 @@ Deno.serve(async (req) => {
     // dependent driver rows. A partial failure (e.g. one admin API call erroring)
     // must not abort deletion of the rest — we report a summary instead of
     // failing the whole batch on a single bad row.
+    //
+    // Each driver goes through the same atomic cleanup as the single-driver
+    // path (delete-company-driver), so documents, compliance items and the
+    // files behind them are removed rather than orphaned. `require_archived`
+    // is false here: this action is company-wide and confirmed on its own,
+    // and has no per-driver archive step to pass through.
+    const storagePaths: string[] = [];
     for (const driver of targets) {
+      const { data: records, error: recordsError } = await adminClient.rpc(
+        'delete_company_driver_records',
+        {
+          target_driver_id: driver.id,
+          target_company_id: companyId,
+          acting_admin_id: access.callerId,
+          require_archived: false,
+        }
+      );
+      if (recordsError || !(records as { ok?: boolean } | null)?.ok) {
+        failedIds.push(driver.id);
+        continue;
+      }
+      storagePaths.push(...((records as { storage_paths?: string[] }).storage_paths ?? []));
+
       const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(driver.id);
       if (authDeleteError) {
         failedIds.push(driver.id);
@@ -67,6 +89,13 @@ Deno.serve(async (req) => {
       }
 
       deletedCount += 1;
+    }
+
+    // After the rows, never before: a storage failure may leave an
+    // unreachable orphan file, never a live row pointing at a missing one.
+    if (storagePaths.length > 0) {
+      const { error: storageError } = await adminClient.storage.from('documents').remove(storagePaths);
+      if (storageError) console.error('failed to remove driver files from storage');
     }
 
     return json(

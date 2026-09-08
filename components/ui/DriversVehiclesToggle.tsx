@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   trackHairline: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: TRACK_RADIUS,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,.7)',

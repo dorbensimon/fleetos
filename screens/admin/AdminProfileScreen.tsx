@@ -310,7 +310,7 @@ const cardStyles = StyleSheet.create({
       android: { elevation: 4 },
     }),
   },
-  tint: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.42)' },
+  tint: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.42)' },
 });
 
 const rowStyles = StyleSheet.create({

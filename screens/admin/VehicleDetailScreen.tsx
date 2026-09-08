@@ -17,6 +17,7 @@ import { formatPlate } from '../../lib/plate';
 import { RootStackParamList } from '../../navigation/types';
 import { NavBarCollapsing } from '../../components/driverCard/NavBarCollapsing';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
+import { supabase } from '../../lib/supabase';
 
 type Tab = 'general' | 'maintenance' | 'documents' | 'drivers';
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleDetail'>;
@@ -50,6 +51,12 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     if (companyId) { const [deps, companyDrivers] = await Promise.all([listDepartments(companyId), listDrivers(companyId)]); setDepartments(deps); setDriverOptions(companyDrivers.map((d) => ({ value: d.id, label: d.full_name ?? 'ללא שם' }))); }
   }, [companyId, vehicleId]);
   useFocusEffect(useCallback(() => { let active = true; setLoading(true); setError(null); load().catch((e: any) => active && setError(e?.message ?? 'טעינת הרכב נכשלה')).finally(() => active && setLoading(false)); return () => { active = false; }; }, [load]));
+  useFocusEffect(useCallback(() => {
+    const channel = supabase.channel(`vehicle-driver-assignments:${vehicleId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_drivers', filter: `vehicle_id=eq.${vehicleId}` }, () => { void load(); })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [load, vehicleId]));
 
   const openTab = (next: Tab, item?: string) => { setTab(next); if (item) setFocusItem(item); requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 340, animated: true })); };
   const archive = () => Alert.alert('העברה לארכיון', `להעביר את ${formatPlate(vehicle?.plate_number)} לארכיון? הרכב יוסתר מהרשימה אך הנתונים יישמרו.`, [{ text: 'ביטול', style: 'cancel' }, { text: 'העבר לארכיון', style: 'destructive', onPress: async () => { await archiveVehicle(vehicleId); navigation.goBack(); } }]);

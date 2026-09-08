@@ -26,7 +26,24 @@ export async function verifyUser(authHeader: string | null): Promise<UserResult>
     .select('role, company_id, full_name')
     .eq('id', data.user.id)
     .single();
-  if (profileError || !profile) return { ok: false, status: 403, error: 'אין הרשאה' };
+  if (profileError || !profile || !['owner', 'admin', 'driver'].includes(profile.role)) {
+    return { ok: false, status: 403, error: 'אין הרשאה' };
+  }
+
+  // Edge Functions use the service-role client for their trusted work, so RLS
+  // cannot protect an archived driver's still-valid access token here. Keep
+  // this check beside authentication so every function using verifyUser fails
+  // closed before it can read or mutate anything on the driver's behalf.
+  if (profile.role === 'driver') {
+    const { data: driverDetails, error: driverError } = await adminClient
+      .from('driver_details')
+      .select('status')
+      .eq('id', data.user.id)
+      .maybeSingle();
+    if (driverError || driverDetails?.status !== 'active') {
+      return { ok: false, status: 403, error: 'חשבון הנהג אינו פעיל' };
+    }
+  }
 
   if (profile.role !== 'owner') {
     if (!profile.company_id) return { ok: false, status: 403, error: 'אין שיוך לחברה פעילה' };

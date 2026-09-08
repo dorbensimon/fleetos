@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   topTitleOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },

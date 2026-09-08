@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: FLEET_COLORS.heroGlassBorder,
   },
-  glassTint: { ...StyleSheet.absoluteFillObject, backgroundColor: FLEET_COLORS.heroGlassBg },
+  glassTint: { ...StyleSheet.absoluteFill, backgroundColor: FLEET_COLORS.heroGlassBg },
   menuLines: { gap: 4, alignItems: 'flex-end' },
   menuLine: { width: 17, height: 2, borderRadius: 2, backgroundColor: '#fff' },
 
