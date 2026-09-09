@@ -99,8 +99,15 @@ export default function DriverFormScreen({ route, navigation }: Props) {
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
+    setErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  };
 
   const load = useCallback(async () => {
     if (companyId) {
@@ -159,7 +166,10 @@ export default function DriverFormScreen({ route, navigation }: Props) {
   const save = async () => {
     const e = validateDriverForm(form, isEdit);
     setErrors(e);
-    if (Object.keys(e).length > 0) return;
+    if (Object.keys(e).length > 0) {
+      Alert.alert('לא ניתן לשמור', 'יש לתקן את השדות המסומנים באדום ולנסות שוב.');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -271,6 +281,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
   const remainingCount = requiredFields.length - filledCount;
 
   const canSubmit = filledCount === requiredFields.length;
+  const liveErrors = validateDriverForm(form, isEdit);
   const screenTitle = isEdit ? 'עריכת נהג' : 'נהג חדש';
   const isDriverSelfEdit = isEdit && profile?.role === 'driver';
   const displayTitle = isDriverSelfEdit ? 'הפרטים שלי' : screenTitle;
@@ -372,6 +383,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
                 value={form.full_name}
                 onChangeText={(v) => set('full_name', v)}
                 error={errors.full_name}
+                valid={!!form.full_name.trim() && !liveErrors.full_name}
                 placeholder="לדוגמה: דני לוי"
                 accessibilityLabel="שם מלא"
               />
@@ -383,6 +395,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
                 value={formatPhone(form.phone)}
                 onChangeText={(v) => set('phone', v.replace(/\D/g, ''))}
                 error={errors.phone}
+                valid={!!form.phone.trim() && !liveErrors.phone}
                 placeholder="052-7898655"
                 keyboardType="phone-pad"
                 ltr
@@ -396,8 +409,10 @@ export default function DriverFormScreen({ route, navigation }: Props) {
                 value={form.national_id}
                 onChangeText={(v) => set('national_id', v.replace(/\D/g, '').slice(0, 9))}
                 error={errors.national_id}
+                valid={!!form.national_id.trim() && !liveErrors.national_id}
                 placeholder="9 ספרות"
                 keyboardType="number-pad"
+                maxLength={9}
                 ltr
                 accessibilityLabel="תעודת זהות"
               />
@@ -408,6 +423,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
                 label="מספר עובד"
                 value={form.employee_number}
                 onChangeText={(v) => set('employee_number', v)}
+                valid={!!form.employee_number.trim()}
                 placeholder="אופציונלי"
                 ltr
                 accessibilityLabel="מספר עובד"
@@ -543,6 +559,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
                   value={form.email}
                   onChangeText={(v) => set('email', v)}
                   error={errors.email}
+                  valid={!!form.email.trim() && !liveErrors.email}
                   placeholder="name@company.com"
                   keyboardType="email-address"
                   ltr
@@ -686,10 +703,12 @@ interface FormRowProps {
   value: string;
   onChangeText: (v: string) => void;
   error?: string;
+  valid?: boolean;
   placeholder?: string;
   keyboardType?: any;
   ltr?: boolean;
   last?: boolean;
+  maxLength?: number;
   fieldKey: FieldKey;
   focusedField: FieldKey | null;
   setFocusedField: (field: FieldKey | null) => void;
@@ -701,10 +720,12 @@ function FormRow({
   value,
   onChangeText,
   error,
+  valid = false,
   placeholder,
   keyboardType,
   ltr,
   last,
+  maxLength,
   fieldKey,
   focusedField,
   setFocusedField,
@@ -724,10 +745,11 @@ function FormRow({
           placeholder={placeholder}
           placeholderTextColor={COLORS.textFaint}
           keyboardType={keyboardType}
+          maxLength={maxLength}
           style={[styles.input, ltr && styles.ltrInput]}
           accessibilityLabel={accessibilityLabel ?? label.replace(' *', '')}
         />
-        {!!value && (
+        {valid && (
           <View style={styles.checkBadge}>
             <Ionicons name="checkmark" size={14} color="#268A59" />
           </View>

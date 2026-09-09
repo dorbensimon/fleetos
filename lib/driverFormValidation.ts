@@ -24,12 +24,12 @@ const CREATE_REQUIRED_FIELDS = [
   'password',
 ] as const satisfies readonly DriverFormField[];
 
+// Unlike creation, editing an existing driver shouldn't block on fields a
+// legacy record never had filled in (see validateDriverForm) — only name
+// and phone stay required here.
 const EDIT_REQUIRED_FIELDS = [
   'full_name',
   'phone',
-  'national_id',
-  'license_classes',
-  'license_expiry',
 ] as const satisfies readonly DriverFormField[];
 
 export function getRequiredDriverFields(isEdit: boolean): readonly DriverFormField[] {
@@ -97,12 +97,16 @@ export function validateDriverForm(
   if (!form.phone.trim()) errors.phone = 'שדה חובה';
   else if (!isValidIsraeliPhone(form.phone)) errors.phone = 'מספר טלפון לא תקין';
 
-  if (!form.national_id.trim()) errors.national_id = 'שדה חובה';
-  else if (!isValidIsraeliNationalId(form.national_id)) errors.national_id = 'תעודת זהות לא תקינה';
+  // Editing an existing driver must not get stuck behind fields a legacy
+  // record never had filled in (e.g. imported drivers missing a national
+  // ID) — those are only required when creating a new driver. A value
+  // that IS present still has to be valid, in both modes.
+  if (!isEdit && !form.national_id.trim()) errors.national_id = 'שדה חובה';
+  else if (form.national_id.trim() && !isValidIsraeliNationalId(form.national_id)) errors.national_id = 'תעודת זהות לא תקינה';
 
-  if (!form.license_classes.trim()) errors.license_classes = 'שדה חובה';
-  if (!form.license_expiry.trim()) errors.license_expiry = 'שדה חובה';
-  else if (!isFutureDateOnly(form.license_expiry)) errors.license_expiry = 'תוקף הרישיון חייב להיות עתידי';
+  if (!isEdit && !form.license_classes.trim()) errors.license_classes = 'שדה חובה';
+  if (!isEdit && !form.license_expiry.trim()) errors.license_expiry = 'שדה חובה';
+  else if (form.license_expiry.trim() && !isFutureDateOnly(form.license_expiry)) errors.license_expiry = 'תוקף הרישיון חייב להיות עתידי';
 
   if (!isEdit) {
     if (!form.email.trim()) errors.email = 'שדה חובה';
