@@ -6,10 +6,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen, ScreenHeader, AppText, LoadingState, EmptyState, ErrorState } from '../../components/ui';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { DocumentFileRow } from '../../components/documents/DocumentFileRow';
+import { Procedure6FormModal } from '../../components/documents/Procedure6FormModal';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { DocumentRow } from '../../lib/adminApi';
-import { listDocuments, uploadDocument } from '../../lib/documents';
+import { listDocuments, readPickedFileBase64, uploadDocument, type PickedFile } from '../../lib/documents';
+import { createProcedure6Report, Procedure6FormValues } from '../../lib/procedure6Report';
 import {
   chooseDocumentSource,
   confirmDeleteDocument,
@@ -32,8 +34,15 @@ import { RootStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'DocumentCategory'>;
 
 export default function DocumentCategoryScreen({ route, navigation }: Props) {
-  const { ownerType, ownerId, category, title } = route.params;
-  const { companyId } = useCompany();
+  const { ownerType, ownerId, category, title, allowDelete = true } = route.params;
+  const { companyId, profile } = useCompany();
+
+  // נוהל 6 replaces the plain "upload any file" flow with a structured
+  // form that produces a PDF (see Procedure6FormModal) — drivers may only
+  // view/download what an admin already created, never create one here.
+  const isProcedure6 = category === 'procedure_6';
+  const canCreateProcedure6 = isProcedure6 && profile?.role !== 'driver';
+  const [showProcedure6Form, setShowProcedure6Form] = useState(false);
 
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +92,20 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
     });
   };
 
+  const createProcedure6 = async (values: Procedure6FormValues, photo: PickedFile | null) => {
+    if (!companyId) return;
+
+    let photoDataUri: string | null = null;
+    if (photo) {
+      const base64 = await readPickedFileBase64(photo);
+      photoDataUri = `data:${photo.mimeType};base64,${base64}`;
+    }
+
+    await createProcedure6Report({ companyId, ownerType, ownerId, values, photoDataUri });
+    await load();
+    setShowProcedure6Form(false);
+  };
+
   const openDocument = async (doc: DocumentRow) => {
     const url = await getDocumentViewUrl(doc);
     if (!url) return;
@@ -108,8 +131,14 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
           {docs.length === 0 ? (
             <EmptyState
               icon="document-text-outline"
-              title="אין עדיין מסמכים"
-              hint="הנהג עדיין לא צילם או העלה מסמכים בקטגוריה זו"
+              title={isProcedure6 ? 'אין עדיין דיווחי נוהל 6' : 'אין עדיין מסמכים'}
+              hint={
+                isProcedure6
+                  ? canCreateProcedure6
+                    ? 'הוסף דיווח כדי ליצור את המסמך הראשון'
+                    : 'המנהל עדיין לא הוסיף דיווח בקטגוריה זו'
+                  : 'הנהג עדיין לא צילם או העלה מסמכים בקטגוריה זו'
+              }
             />
           ) : (
             docs.map((doc) => (
@@ -120,24 +149,39 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
                 showDate
                 onOpen={openDocument}
                 onDownload={downloadDocumentWithAlert}
-                onDelete={(item) => confirmDeleteDocument(item, load)}
+                onDelete={allowDelete ? (item) => confirmDeleteDocument(item, load) : undefined}
               />
             ))
           )}
 
-          <TouchableOpacity style={styles.uploadBtn} activeOpacity={0.85} onPress={addDocument} disabled={uploading}>
-            {uploading ? (
-              <ActivityIndicator color={COLORS.textInverse} />
-            ) : (
-              <>
-                <Ionicons name="cloud-upload-outline" size={17} color={COLORS.textInverse} />
-                <AppText weight="bold" style={styles.uploadText}>
-                  הוסף מסמך
-                </AppText>
-              </>
-            )}
-          </TouchableOpacity>
+          {(!isProcedure6 || canCreateProcedure6) && (
+            <TouchableOpacity
+              style={styles.uploadBtn}
+              activeOpacity={0.85}
+              onPress={() => (isProcedure6 ? setShowProcedure6Form(true) : addDocument())}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <ActivityIndicator color={COLORS.textInverse} />
+              ) : (
+                <>
+                  <Ionicons name={isProcedure6 ? 'add-circle-outline' : 'cloud-upload-outline'} size={17} color={COLORS.textInverse} />
+                  <AppText weight="bold" style={styles.uploadText}>
+                    {isProcedure6 ? 'הוסף דיווח נוהל 6' : 'הוסף מסמך'}
+                  </AppText>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
+      )}
+
+      {isProcedure6 && (
+        <Procedure6FormModal
+          visible={showProcedure6Form}
+          onClose={() => setShowProcedure6Form(false)}
+          onSubmit={createProcedure6}
+        />
       )}
     </Screen>
   );

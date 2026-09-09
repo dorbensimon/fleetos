@@ -32,7 +32,7 @@ function rawBase64(value: string): string {
   return value.startsWith('data:') && separator >= 0 ? value.slice(separator + 1) : value;
 }
 
-async function readPickedFileBase64(file: PickedFile): Promise<string> {
+export async function readPickedFileBase64(file: PickedFile): Promise<string> {
   return rawBase64(file.base64 || await new File(file.uri).base64());
 }
 
@@ -108,6 +108,57 @@ export async function pickFile(): Promise<PickedFile | null> {
   };
 }
 
+/** Shared tail of uploadDocument/uploadGeneratedDocument — writes the bytes, then the row. */
+async function storeDocumentBytes(params: {
+  companyId: string;
+  ownerType: OwnerType;
+  ownerId: string;
+  category: string;
+  title: string;
+  fileName: string;
+  mimeType: string;
+  bytes: ArrayBuffer;
+  complianceItemId?: string | null;
+  expiryDate?: string | null;
+}): Promise<DocumentRow> {
+  const ext = extensionForMimeType(params.mimeType);
+  const path = `${params.companyId}/${params.ownerType}/${params.ownerId}/${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2)}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, params.bytes, { contentType: params.mimeType, upsert: false });
+
+  if (uploadError) throw uploadError;
+
+  const { data, error } = await supabase
+    .from('documents')
+    .insert({
+      company_id: params.companyId,
+      owner_type: params.ownerType,
+      owner_id: params.ownerId,
+      compliance_item_id: params.complianceItemId ?? null,
+      category: params.category,
+      title: params.title,
+      file_path: path,
+      file_name: params.fileName,
+      mime_type: params.mimeType,
+      file_size: params.bytes.byteLength,
+      expiry_date: params.expiryDate ?? null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    // Do not leave an orphaned file behind if the row could not be written.
+    await supabase.storage.from(BUCKET).remove([path]);
+    throw error;
+  }
+
+  return data as DocumentRow;
+}
+
 /**
  * Uploads a picked file and records it in the `documents` table.
  *
@@ -136,42 +187,49 @@ export async function uploadDocument(params: {
     throw new Error('הקובץ גדול מדי. ניתן להעלות קובץ עד 20MB');
   }
 
-  const ext = extensionForMimeType(file.mimeType);
-  const path = `${params.companyId}/${params.ownerType}/${params.ownerId}/${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2)}.${ext}`;
+  return storeDocumentBytes({
+    companyId: params.companyId,
+    ownerType: params.ownerType,
+    ownerId: params.ownerId,
+    category: params.category,
+    title: params.title,
+    fileName: file.name,
+    mimeType: file.mimeType,
+    bytes,
+    complianceItemId: params.complianceItemId,
+    expiryDate: params.expiryDate,
+  });
+}
 
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET)
-    .upload(path, bytes, { contentType: file.mimeType, upsert: false });
-
-  if (uploadError) throw uploadError;
-
-  const { data, error } = await supabase
-    .from('documents')
-    .insert({
-      company_id: params.companyId,
-      owner_type: params.ownerType,
-      owner_id: params.ownerId,
-      compliance_item_id: params.complianceItemId ?? null,
-      category: params.category,
-      title: params.title,
-      file_path: path,
-      file_name: file.name,
-      mime_type: file.mimeType,
-      file_size: bytes.byteLength,
-      expiry_date: params.expiryDate ?? null,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    // Do not leave an orphaned file behind if the row could not be written.
-    await supabase.storage.from(BUCKET).remove([path]);
-    throw error;
+/**
+ * Records an app-generated file (e.g. a PDF built with expo-print) as a
+ * document, bypassing the picker/MIME-allowlist path used for user uploads.
+ */
+export async function uploadGeneratedDocument(params: {
+  companyId: string;
+  ownerType: OwnerType;
+  ownerId: string;
+  category: string;
+  title: string;
+  fileName: string;
+  mimeType: string;
+  base64: string;
+}): Promise<DocumentRow> {
+  const bytes = decode(rawBase64(params.base64));
+  if (bytes.byteLength > MAX_DOCUMENT_BYTES) {
+    throw new Error('הקובץ שנוצר גדול מדי');
   }
 
-  return data as DocumentRow;
+  return storeDocumentBytes({
+    companyId: params.companyId,
+    ownerType: params.ownerType,
+    ownerId: params.ownerId,
+    category: params.category,
+    title: params.title,
+    fileName: params.fileName,
+    mimeType: params.mimeType,
+    bytes,
+  });
 }
 
 export async function listDocuments(
