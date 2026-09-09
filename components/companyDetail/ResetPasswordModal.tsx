@@ -45,7 +45,8 @@ export function ResetPasswordModal({
         <View style={[s.fieldInputWithIcon, !!fieldErrors.password && s.fieldInputError]}>
           <TextInput
             style={[s.fieldInputInner, s.fieldInputLtr]}
-            placeholder="לפחות 8 תווים"
+            placeholder="לפחות 4 ספרות"
+            keyboardType="number-pad"
             placeholderTextColor={COLORS.grayLight}
             value={form.password}
             onChangeText={(v) => onChangeForm((f) => ({ ...f, password: v }))}
@@ -65,6 +66,7 @@ export function ResetPasswordModal({
         <TextInput
           style={[s.fieldInput, s.fieldInputLtr, !!fieldErrors.confirmPassword && s.fieldInputError]}
           placeholder="הזן שוב את הסיסמה"
+          keyboardType="number-pad"
           placeholderTextColor={COLORS.grayLight}
           value={form.confirmPassword}
           onChangeText={(v) => onChangeForm((f) => ({ ...f, confirmPassword: v }))}

@@ -558,7 +558,8 @@ export default function DriverFormScreen({ route, navigation }: Props) {
                       onFocus={() => setFocusedField('password')}
                       onBlur={() => setFocusedField(null)}
                       secureTextEntry={!form.showPassword}
-                      placeholder="לפחות 8 תווים"
+                      placeholder="לפחות 4 ספרות"
+                      keyboardType="number-pad"
                       placeholderTextColor={COLORS.textFaint}
                       style={[styles.input, styles.ltrInput, { color: COLORS.text }]}
                       accessibilityLabel="סיסמה"

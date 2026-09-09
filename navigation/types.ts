@@ -1,6 +1,13 @@
 export type RootStackParamList = {
   Login: undefined;
-  SetPassword: undefined;
+  /**
+   * voluntary: true — reached from a profile screen's "שינוי סיסמה" by an
+   * already-activated user choosing to change their password, not the
+   * forced first-login/post-reset flow (must_change_password=true). Only
+   * changes the copy shown and whether "cancel" is offered instead of
+   * "sign out" — the same complete-password-setup call handles both.
+   */
+  SetPassword: { voluntary?: boolean } | undefined;
   OwnerHome: undefined;
   AdminHome: undefined; // the drivers list — where an admin lands
   DriverHome: undefined;

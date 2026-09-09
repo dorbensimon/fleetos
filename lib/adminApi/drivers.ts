@@ -30,7 +30,7 @@ export async function listDrivers(companyId: string): Promise<DriverRow[]> {
     // lookups run together, while very large companies are processed in
     // predictable batches rather than producing a request burst.
     const [{ data: profileData, error: profileError }, { data: assignmentData, error: assignmentError }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, phone, job_title').in('id', batch),
+      supabase.from('profiles').select('id, full_name, phone, job_title, must_change_password, password_set_at').in('id', batch),
       supabase
         .from('vehicle_drivers')
         .select('driver_id, is_primary, vehicle:vehicle_id(id, plate_number)')
@@ -60,6 +60,8 @@ export async function listDrivers(companyId: string): Promise<DriverRow[]> {
       full_name: profileById.get(r.id)?.full_name ?? null,
       phone: profileById.get(r.id)?.phone ?? null,
       job_title: profileById.get(r.id)?.job_title ?? null,
+      must_change_password: profileById.get(r.id)?.must_change_password ?? null,
+      password_set_at: profileById.get(r.id)?.password_set_at ?? null,
       vehicles,
       vehicle_id: vehicles[0]?.id ?? null,
       vehicle_plate: vehicles[0]?.plate_number ?? null,
@@ -70,7 +72,7 @@ export async function listDrivers(companyId: string): Promise<DriverRow[]> {
 export async function getDriver(driverId: string): Promise<DriverRow | null> {
   const [{ data: details, error: detailsError }, { data: profile, error: profileError }] = await Promise.all([
     supabase.from('driver_details').select('*').eq('id', driverId).single(),
-    supabase.from('profiles').select('id, full_name, phone, job_title').eq('id', driverId).single(),
+    supabase.from('profiles').select('id, full_name, phone, job_title, must_change_password, password_set_at').eq('id', driverId).single(),
   ]);
 
   // PGRST116 = "no rows found" — genuine "not found", safe to return null.
@@ -91,6 +93,8 @@ export async function getDriver(driverId: string): Promise<DriverRow | null> {
     full_name: (profile as any)?.full_name ?? null,
     phone: (profile as any)?.phone ?? null,
     job_title: (profile as any)?.job_title ?? null,
+    must_change_password: (profile as any)?.must_change_password ?? null,
+    password_set_at: (profile as any)?.password_set_at ?? null,
     vehicles,
     vehicle_id: vehicles[0]?.id ?? null,
     vehicle_plate: vehicles[0]?.plate_number ?? null,
@@ -329,4 +333,24 @@ export async function getUserEmail(userId: string, companyId: string): Promise<s
   });
   if (error || !data?.success) return null;
   return data.email ?? null;
+}
+
+/**
+ * Corrects a driver/admin's login email (e.g. a typo made at creation) —
+ * DriverFormScreen only exposes the email field on create, never on edit.
+ */
+export async function updateUserEmail(
+  userId: string,
+  companyId: string,
+  newEmail: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data, error } = await supabase.functions.invoke('update-user-email', {
+    body: { userId, newEmail, companyId },
+  });
+
+  if (error || !data?.success) {
+    return { ok: false, error: await functionErrorMessage(error, data, 'עדכון המייל נכשל', false) };
+  }
+
+  return { ok: true };
 }

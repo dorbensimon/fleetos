@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -15,6 +16,7 @@ import { RootStackParamList } from '../navigation/types';
 import { supabase } from '../lib/supabase';
 import { resolveRouteForUser } from '../lib/session';
 import { MIN_PASSWORD_LENGTH } from '../lib/validation';
+import { functionErrorMessage } from '../lib/functionError';
 
 /**
  * Shown once, right after a first login with an owner/admin-assigned
@@ -37,13 +39,21 @@ const COLORS = {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SetPassword'>;
 
-export default function SetPasswordScreen({ navigation }: Props) {
+export default function SetPasswordScreen({ navigation, route }: Props) {
+  const voluntary = route.params?.voluntary ?? false;
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const signOut = () => {
+    Alert.alert('התנתקות', 'להתנתק ולחזור למסך ההתחברות?', [
+      { text: 'ביטול', style: 'cancel' },
+      { text: 'התנתק', style: 'destructive', onPress: () => { void supabase.auth.signOut(); } },
+    ]);
+  };
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -62,19 +72,21 @@ export default function SetPasswordScreen({ navigation }: Props) {
 
     setSaving(true);
     try {
-      const { data: userData, error: authError } = await supabase.auth.updateUser({ password });
-      if (authError || !userData.user) {
-        setGeneralError(authError?.message || 'עדכון הסיסמה נכשל');
+      // Setting the password and clearing must_change_password happen
+      // together, server-side — the client is never trusted to report on
+      // its own that setup is complete. See complete-password-setup and
+      // 71_lock_must_change_password_column.sql.
+      const { data, error } = await supabase.functions.invoke('complete-password-setup', {
+        body: { newPassword: password },
+      });
+      if (error || !data?.success) {
+        setGeneralError(await functionErrorMessage(error, data, 'עדכון הסיסמה נכשל'));
         return;
       }
 
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ must_change_password: false })
-        .eq('id', userData.user.id);
-
-      if (profileError) {
-        setGeneralError('הסיסמה עודכנה אך שמירת הסטטוס נכשלה. נסה להתחבר שוב');
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) {
+        setGeneralError('הסיסמה עודכנה אך טעינת המשתמש נכשלה. נסה להתחבר שוב');
         return;
       }
 
@@ -97,9 +109,11 @@ export default function SetPasswordScreen({ navigation }: Props) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.content}>
           <Ionicons name="lock-closed-outline" size={40} color={COLORS.blue} style={styles.icon} />
-          <Text style={styles.title}>קביעת סיסמה קבועה</Text>
+          <Text style={styles.title}>{voluntary ? 'שינוי סיסמה' : 'קביעת סיסמה קבועה'}</Text>
           <Text style={styles.subtitle}>
-            זו הכניסה הראשונה שלך למערכת. קבע סיסמה קבועה משלך כדי להמשיך.
+            {voluntary
+              ? 'קבע סיסמה חדשה לחשבון שלך.'
+              : 'זו הכניסה הראשונה שלך למערכת. קבע סיסמה קבועה משלך כדי להמשיך.'}
           </Text>
 
           <View style={styles.field}>
@@ -154,6 +168,14 @@ export default function SetPasswordScreen({ navigation }: Props) {
             ) : (
               <Text style={styles.buttonText}>המשך</Text>
             )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={voluntary ? () => navigation.goBack() : signOut}
+            activeOpacity={0.7}
+            style={styles.signOutLink}
+          >
+            <Text style={styles.signOutLinkText}>{voluntary ? 'ביטול' : 'זה לא אני / התנתק'}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -214,4 +236,6 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.7 },
   buttonText: { color: COLORS.white, fontSize: 16, fontWeight: '600' },
+  signOutLink: { marginTop: 20, alignItems: 'center' },
+  signOutLinkText: { color: COLORS.gray, fontSize: 13, fontWeight: '500' },
 });

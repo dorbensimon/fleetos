@@ -4,6 +4,7 @@
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyOwner } from '../_shared/verifyOwner.ts';
+import { isValidTemporaryPassword } from '../_shared/accountSecurity.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -38,8 +39,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (adminPassword.length < 8) {
-      return new Response(JSON.stringify({ error: 'הסיסמה חייבת להכיל לפחות 8 תווים' }), {
+    if (!isValidTemporaryPassword(adminPassword)) {
+      return new Response(JSON.stringify({ error: 'הסיסמה חייבת להכיל לפחות 4 ספרות בלבד' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -59,7 +60,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: newUser, error: createUserError } = await adminClient.auth.admin.createUser({
-      email: adminEmail.trim(),
+      email: adminEmail.trim().toLowerCase(),
       password: adminPassword,
       email_confirm: true,
     });

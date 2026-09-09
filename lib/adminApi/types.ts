@@ -81,6 +81,10 @@ export interface DriverRow extends DriverDetails {
   vehicle_plate?: string | null;
   /** Name of the admin who archived the driver — archive screen only. */
   archived_by_name?: string | null;
+  /** True until the driver replaces their admin-assigned temporary password. */
+  must_change_password?: boolean | null;
+  /** When the current pending temporary password was issued (created or last reset). */
+  password_set_at?: string | null;
 }
 
 export interface ComplianceItem {

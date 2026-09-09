@@ -78,7 +78,7 @@ export const DRIVER_CARD_GROUPS: DriverCardGroup[] = [
     title: 'פרטי קשר ורכב',
     rows: [
       { key: 'phone', kind: 'value', label: 'טלפון', icon: 'phone', tint: 'green', value: '050-0001101', ltr: true, pressable: true },
-      { key: 'email', kind: 'value', label: 'אימייל', icon: 'message', tint: 'blue', value: '—', ltr: true },
+      { key: 'email', kind: 'value', label: 'אימייל', icon: 'message', tint: 'blue', value: '—', ltr: true, pressable: true },
       { key: 'national-id', kind: 'value', label: 'ת״ז', icon: 'id', tint: 'gray', value: '204•••118', ltr: true },
     ],
   },

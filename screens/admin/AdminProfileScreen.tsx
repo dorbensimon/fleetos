@@ -205,6 +205,20 @@ export default function AdminProfileScreen({ navigation }: Props) {
             />
           </GlassCard>
 
+          <SectionLabel text="אבטחה" />
+          <GlassCard>
+            <TouchableOpacity
+              style={rowStyles.row}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('SetPassword', { voluntary: true })}
+            >
+              <Ionicons name="lock-closed-outline" size={19} color="rgba(0,0,0,.45)" style={rowStyles.icon} />
+              <AppText style={rowStyles.label}>שינוי סיסמה</AppText>
+              <View style={{ flex: 1 }} />
+              <Ionicons name="chevron-back" size={15} color="rgba(0,0,0,.25)" />
+            </TouchableOpacity>
+          </GlassCard>
+
           <SectionLabel text="" />
           <GlassCard>
             <Row icon="calendar-outline" label="תאריך הצטרפות" value={profile?.created_at ? formatDate(profile.created_at) : null} first readOnly />

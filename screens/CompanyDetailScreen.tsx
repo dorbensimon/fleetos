@@ -16,7 +16,7 @@ import {
 } from '../lib/companyApi';
 import { pickAndUploadLogo } from '../lib/uploadLogo';
 import { isValidIsraeliPhone } from '../lib/phone';
-import { isValidEmail, MIN_PASSWORD_LENGTH } from '../lib/validation';
+import { isValidEmail, isValidTemporaryPassword } from '../lib/validation';
 import { COLORS } from '../components/owner/ownerTheme';
 import { sharedStyles as s } from '../components/companyDetail/sharedStyles';
 import { CompanyUser } from '../components/companyDetail/types';
@@ -265,7 +265,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     if (!newAdminForm.phone.trim()) errors.phone = 'שדה חובה';
     else if (!isValidIsraeliPhone(newAdminForm.phone)) errors.phone = 'מספר טלפון לא תקין';
     if (!newAdminForm.password) errors.password = 'שדה חובה';
-    else if (newAdminForm.password.length < MIN_PASSWORD_LENGTH) errors.password = 'לפחות 8 תווים';
+    else if (!isValidTemporaryPassword(newAdminForm.password)) errors.password = 'לפחות 4 ספרות בלבד';
     if (!newAdminForm.confirmPassword) errors.confirmPassword = 'שדה חובה';
     else if (newAdminForm.confirmPassword !== newAdminForm.password)
       errors.confirmPassword = 'הסיסמאות אינן תואמות';
@@ -320,7 +320,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   const validateResetForm = () => {
     const errors: Record<string, string> = {};
     if (!resetForm.password) errors.password = 'שדה חובה';
-    else if (resetForm.password.length < MIN_PASSWORD_LENGTH) errors.password = 'לפחות 8 תווים';
+    else if (!isValidTemporaryPassword(resetForm.password)) errors.password = 'לפחות 4 ספרות בלבד';
     if (!resetForm.confirmPassword) errors.confirmPassword = 'שדה חובה';
     else if (resetForm.confirmPassword !== resetForm.password)
       errors.confirmPassword = 'הסיסמאות אינן תואמות';

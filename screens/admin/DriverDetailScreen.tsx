@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, LoadingState, ErrorState, PrimaryButton, useToast } from '../../components/ui';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { getDriver, archiveDriver, restoreDriver, resetDriverPassword, getUserEmail, listDepartments, DriverRow } from '../../lib/adminApi';
+import { getDriver, archiveDriver, restoreDriver, resetDriverPassword, getUserEmail, updateUserEmail, listDepartments, DriverRow } from '../../lib/adminApi';
 import { listDocuments } from '../../lib/documents';
 import { listSignatureRequests } from '../../lib/docuseal';
 import { exportDriverSnapshotReport } from '../../lib/driverSnapshotReport';
@@ -31,10 +31,13 @@ import {
 } from '../../components/driverCard/driverCardSections';
 import { dialPhone } from '../../lib/phone';
 import { ResetDriverPasswordModal } from '../../components/driverCard/ResetDriverPasswordModal';
+import { EditUserEmailModal } from '../../components/driverCard/EditUserEmailModal';
 import { ConfirmActionModal } from '../../components/driverCard/ConfirmActionModal';
 import { buildDriverDetailGroups } from '../../components/driverCard/buildDriverDetailGroups';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
-import { MIN_PASSWORD_LENGTH } from '../../lib/validation';
+import { isValidTemporaryPassword } from '../../lib/validation';
+
+const APP_STARTED_AT_MS = Date.now();
 
 /**
  * "כרטיס נהג" — visual layer per DriverCard-spec.md (iOS-native styling,
@@ -80,6 +83,11 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   const [resetError, setResetError] = useState('');
   const [resetting, setResetting] = useState(false);
 
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailValue, setEmailValue] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
+
   const closeReset = () => {
     setResetOpen(false);
     setResetPassword('');
@@ -87,10 +95,36 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     setResetError('');
   };
 
+  const closeEmail = () => {
+    setEmailOpen(false);
+    setEmailValue('');
+    setEmailError('');
+  };
+
+  const submitEmail = async () => {
+    if (!companyId) return;
+    const normalized = emailValue.trim().toLowerCase();
+    if (!normalized || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+      setEmailError('כתובת מייל לא תקינה');
+      return;
+    }
+    setEmailError('');
+    setSavingEmail(true);
+    const result = await updateUserEmail(driverId, companyId, normalized);
+    setSavingEmail(false);
+    if (!result.ok) {
+      setEmailError(result.error);
+      return;
+    }
+    closeEmail();
+    setDriver((current) => (current ? { ...current, email: normalized } : current));
+    showToast('כתובת המייל עודכנה');
+  };
+
   const submitReset = async () => {
     if (!companyId) return;
-    if (resetPassword.length < MIN_PASSWORD_LENGTH) {
-      setResetError('הסיסמה חייבת להכיל לפחות 8 תווים');
+    if (!isValidTemporaryPassword(resetPassword)) {
+      setResetError('הסיסמה חייבת להכיל לפחות 4 ספרות בלבד');
       return;
     }
     if (resetPassword !== resetConfirm) {
@@ -218,6 +252,11 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       setResetOpen(true);
       return;
     }
+    if (row.key === 'email') {
+      setEmailValue(driver?.email || '');
+      setEmailOpen(true);
+      return;
+    }
     if (row.key === 'export-driver-report') {
       exportReport();
       return;
@@ -234,6 +273,10 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   };
 
   const isArchived = driver?.status === 'archived';
+  const pendingActivation = !isArchived && !!driver?.must_change_password;
+  const pendingActivationDays = driver?.password_set_at
+    ? Math.max(0, Math.floor((APP_STARTED_AT_MS - new Date(driver.password_set_at).getTime()) / 86400000))
+    : null;
   const assignedVehicleCount = driver?.vehicles.length ?? 0;
   const licenseVerified = licensePhotosComplete && !!driver?.license_expiry;
   const groups = buildDriverDetailGroups(driver, licenseVerified, pendingSigningCount);
@@ -277,8 +320,8 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
         <DriverHero
           name={driver?.full_name ?? 'ללא שם'}
           avatarLetter={(driver?.full_name ?? '?').trim().charAt(0)}
-          statusColor={driver?.status === 'archived' ? DC_COLORS.gray : DC_COLORS.green}
-          subtitleParts={[driver?.status === 'archived' ? 'לא פעיל' : 'פעיל']}
+          statusColor={isArchived ? DC_COLORS.gray : pendingActivation ? DC_COLORS.orange : DC_COLORS.green}
+          subtitleParts={[isArchived ? 'לא פעיל' : pendingActivation ? 'ממתין להפעלה' : 'פעיל']}
         />
 
         {isArchived && (
@@ -286,6 +329,20 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
             <Feather name="archive" size={16} color="#9A3412" />
             <AppText style={styles.archivedBannerText}>
               נהג זה נמצא בארכיון ואין לו גישה לאפליקציה. מחיקה לצמיתות מתבצעת ממסך הארכיון.
+            </AppText>
+          </View>
+        )}
+
+        {pendingActivation && (
+          <View style={styles.archivedBanner}>
+            <Feather name="clock" size={16} color="#9A3412" />
+            <AppText style={styles.archivedBannerText}>
+              הנהג עדיין משתמש בסיסמה זמנית ויידרש לקבוע סיסמה קבועה משלו בכניסה הבאה
+              {pendingActivationDays === null
+                ? '.'
+                : pendingActivationDays === 0
+                ? ' (מהיום).'
+                : ` (לפני ${pendingActivationDays} ${pendingActivationDays === 1 ? 'יום' : 'ימים'}).`}
             </AppText>
           </View>
         )}
@@ -366,6 +423,17 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
         onConfirmPasswordChange={setResetConfirm}
         onClose={closeReset}
         onSubmit={submitReset}
+      />
+
+      <EditUserEmailModal
+        visible={emailOpen}
+        driverName={driver?.full_name}
+        email={emailValue}
+        error={emailError}
+        loading={savingEmail}
+        onEmailChange={setEmailValue}
+        onClose={closeEmail}
+        onSubmit={submitEmail}
       />
 
       <ConfirmActionModal

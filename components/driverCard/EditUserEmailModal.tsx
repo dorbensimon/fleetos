@@ -2,26 +2,22 @@ import { Modal, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from 
 import { AppText, PrimaryButton } from '../ui';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
 
-export function ResetDriverPasswordModal({
+export function EditUserEmailModal({
   visible,
   driverName,
-  password,
-  confirmPassword,
+  email,
   error,
   loading,
-  onPasswordChange,
-  onConfirmPasswordChange,
+  onEmailChange,
   onClose,
   onSubmit,
 }: {
   visible: boolean;
   driverName: string | null | undefined;
-  password: string;
-  confirmPassword: string;
+  email: string;
   error: string;
   loading: boolean;
-  onPasswordChange: (value: string) => void;
-  onConfirmPasswordChange: (value: string) => void;
+  onEmailChange: (value: string) => void;
   onClose: () => void;
   onSubmit: () => void;
 }) {
@@ -30,33 +26,21 @@ export function ResetDriverPasswordModal({
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.modal} onPress={(event) => event.stopPropagation()}>
           <AppText weight="bold" style={styles.title}>
-            איפוס סיסמה
+            עדכון כתובת מייל
           </AppText>
           <AppText style={styles.subtitle}>
-            קביעת סיסמה חדשה עבור {driverName ?? 'הנהג'}. הוא יתבקש לקבוע סיסמה קבועה משלו בכניסה הבאה,
-            ולא יוכל להתחבר לפני כן.
+            כתובת המייל של {driverName ?? 'הנהג'} משמשת להתחברות לאפליקציה. עדכון כאן משנה אותה מיידית.
           </AppText>
 
           <TextInput
             style={styles.input}
-            value={password}
-            onChangeText={onPasswordChange}
-            placeholder="סיסמה חדשה (לפחות 4 ספרות)"
-            keyboardType="number-pad"
+            value={email}
+            onChangeText={onEmailChange}
+            placeholder="כתובת מייל"
             placeholderTextColor={COLORS.textFaint}
-            secureTextEntry
+            keyboardType="email-address"
             autoCapitalize="none"
-            textAlign="left"
-          />
-          <TextInput
-            style={styles.input}
-            value={confirmPassword}
-            onChangeText={onConfirmPasswordChange}
-            placeholder="אימות סיסמה"
-            keyboardType="number-pad"
-            placeholderTextColor={COLORS.textFaint}
-            secureTextEntry
-            autoCapitalize="none"
+            autoCorrect={false}
             textAlign="left"
           />
 
@@ -68,7 +52,7 @@ export function ResetDriverPasswordModal({
                 ביטול
               </AppText>
             </TouchableOpacity>
-            <PrimaryButton label="אפס סיסמה" onPress={onSubmit} loading={loading} style={styles.confirmBtn} />
+            <PrimaryButton label="עדכן מייל" onPress={onSubmit} loading={loading} style={styles.confirmBtn} />
           </View>
         </Pressable>
       </Pressable>

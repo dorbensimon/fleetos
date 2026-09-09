@@ -113,6 +113,20 @@ export default function DriverProfileScreen({ navigation }: Props) {
             <Row icon="calendar-outline" label="תוקף רישיון" value={driver?.license_expiry ? formatDate(driver.license_expiry) : null} readOnly />
             <Row icon="time-outline" label="תאריך הצטרפות לאפליקציה" value={driver?.created_at ? formatDate(driver.created_at) : null} readOnly />
           </GlassCard>
+
+          <SectionLabel text="אבטחה" />
+          <GlassCard>
+            <TouchableOpacity
+              style={rowStyles.row}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('SetPassword', { voluntary: true })}
+            >
+              <Ionicons name="lock-closed-outline" size={19} color="rgba(0,0,0,.45)" style={rowStyles.icon} />
+              <AppText style={rowStyles.label}>שינוי סיסמה</AppText>
+              <View style={{ flex: 1 }} />
+              <Ionicons name="chevron-back" size={15} color="rgba(0,0,0,.25)" />
+            </TouchableOpacity>
+          </GlassCard>
         </ScrollView>
       )}
     </View>

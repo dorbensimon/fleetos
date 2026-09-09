@@ -8,6 +8,7 @@
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
+import { isValidTemporaryPassword } from '../_shared/accountSecurity.ts';
 
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
@@ -85,12 +86,12 @@ Deno.serve(async (req) => {
     if (!email?.trim() || !password || !fullName?.trim() || !phone?.trim()) {
       return json({ error: 'שם, טלפון, מייל וסיסמה הם שדות חובה' }, 400);
     }
-    if (password.length < 8) {
-      return json({ error: 'הסיסמה חייבת להכיל לפחות 8 תווים' }, 400);
+    if (!isValidTemporaryPassword(password)) {
+      return json({ error: 'הסיסמה חייבת להכיל לפחות 4 ספרות בלבד' }, 400);
     }
 
     const { data: newUser, error: createUserError } = await adminClient.auth.admin.createUser({
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       password,
       email_confirm: true,
     });
@@ -103,7 +104,7 @@ Deno.serve(async (req) => {
       const message = createUserError?.message ?? '';
       const emailTaken = /already been registered|already registered|email_exists/i.test(message);
       if (emailTaken) {
-        const archivedOwner = await findArchivedDriverByEmail(adminClient, companyId, email.trim());
+        const archivedOwner = await findArchivedDriverByEmail(adminClient, companyId, email.trim().toLowerCase());
         return json(
           {
             error: archivedOwner

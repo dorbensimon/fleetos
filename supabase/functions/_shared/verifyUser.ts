@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { mayUseAuthenticatedCapabilities } from './accountSecurity.ts';
 
 type UserResult =
   | {
@@ -6,11 +7,19 @@ type UserResult =
       adminClient: SupabaseClient;
       userId: string;
       email: string;
-      profile: { role: string; company_id: string | null; full_name: string | null };
+      profile: {
+        role: string;
+        company_id: string | null;
+        full_name: string | null;
+        must_change_password: boolean;
+      };
     }
   | { ok: false; status: number; error: string };
 
-export async function verifyUser(authHeader: string | null): Promise<UserResult> {
+export async function verifyUser(
+  authHeader: string | null,
+  options: { allowPendingPasswordSetup?: boolean } = {},
+): Promise<UserResult> {
   if (!authHeader) return { ok: false, status: 401, error: 'לא מחובר' };
 
   const url = Deno.env.get('SUPABASE_URL')!;
@@ -23,11 +32,18 @@ export async function verifyUser(authHeader: string | null): Promise<UserResult>
   const adminClient = createClient(url, serviceKey);
   const { data: profile, error: profileError } = await adminClient
     .from('profiles')
-    .select('role, company_id, full_name')
+    .select('role, company_id, full_name, must_change_password')
     .eq('id', data.user.id)
     .single();
   if (profileError || !profile || !['owner', 'admin', 'driver'].includes(profile.role)) {
     return { ok: false, status: 403, error: 'אין הרשאה' };
+  }
+
+  if (!mayUseAuthenticatedCapabilities(
+    profile.must_change_password,
+    options.allowPendingPasswordSetup,
+  )) {
+    return { ok: false, status: 403, error: 'יש להחליף את הסיסמה הזמנית לפני ביצוע פעולה זו' };
   }
 
   // Edge Functions use the service-role client for their trusted work, so RLS

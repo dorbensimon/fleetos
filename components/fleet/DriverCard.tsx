@@ -7,6 +7,8 @@ import { DriverRow } from '../../lib/adminApi';
 import { formatPlate } from '../../lib/plate';
 import { FLEET_COLORS, FLEET_FONT, FLEET_SHADOWS, severityFor } from './fleetTheme';
 
+const APP_STARTED_AT_MS = Date.now();
+
 export function DriverCard({
   item,
   pendingSigningCount = 0,
@@ -34,6 +36,9 @@ export function DriverCard({
   const severity = severityFor(state);
   const hasVehicle = !!(item.vehicle_id && item.vehicle_plate);
   const hasPendingSigning = pendingSigningCount > 0;
+  const pendingActivationDays = item.password_set_at
+    ? Math.max(0, Math.floor((APP_STARTED_AT_MS - new Date(item.password_set_at).getTime()) / 86400000))
+    : null;
 
   return (
     <TouchableOpacity activeOpacity={0.85} style={styles.card} onPress={onPress}>
@@ -80,6 +85,18 @@ export function DriverCard({
             <Ionicons name="document-text-outline" size={12} color={FLEET_COLORS.warning.text} />
             <AppText style={styles.signingText} numberOfLines={1}>
               {pendingSigningCount} {pendingSigningCount === 1 ? 'מסמך' : 'מסמכים'} לחתימה
+            </AppText>
+          </View>
+        )}
+        {!!item.must_change_password && (
+          <View style={styles.signingRow}>
+            <Ionicons name="time-outline" size={12} color={FLEET_COLORS.warning.text} />
+            <AppText style={styles.signingText} numberOfLines={1}>
+              {pendingActivationDays === null
+                ? 'ממתין להפעלת החשבון'
+                : pendingActivationDays === 0
+                ? 'ממתין להפעלת החשבון (מהיום)'
+                : `ממתין להפעלת החשבון (${pendingActivationDays} ${pendingActivationDays === 1 ? 'יום' : 'ימים'})`}
             </AppText>
           </View>
         )}

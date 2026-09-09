@@ -13,7 +13,7 @@ import {
 } from '../lib/ownerApi';
 import { pickAndUploadLogo } from '../lib/uploadLogo';
 import { isValidIsraeliPhone } from '../lib/phone';
-import { isValidEmail, MIN_PASSWORD_LENGTH } from '../lib/validation';
+import { isValidEmail, isValidTemporaryPassword } from '../lib/validation';
 import { COLORS } from '../components/owner/ownerTheme';
 import { CompanyCard, CompanyRow } from '../components/owner/CompanyCard';
 import { CompanyActionsSheet } from '../components/owner/CompanyActionsSheet';
@@ -173,7 +173,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
     if (!form.phone.trim()) errors.phone = 'שדה חובה';
     else if (!isValidIsraeliPhone(form.phone)) errors.phone = 'מספר טלפון לא תקין';
     if (!form.password) errors.password = 'שדה חובה';
-    else if (form.password.length < MIN_PASSWORD_LENGTH) errors.password = 'לפחות 8 תווים';
+    else if (!isValidTemporaryPassword(form.password)) errors.password = 'לפחות 4 ספרות בלבד';
     if (!form.confirmPassword) errors.confirmPassword = 'שדה חובה';
     else if (form.confirmPassword !== form.password) errors.confirmPassword = 'הסיסמאות אינן תואמות';
     return errors;

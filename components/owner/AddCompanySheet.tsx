@@ -200,7 +200,8 @@ export function AddCompanySheet({
         <View style={[styles.fieldInputWithIcon, !!fieldErrors.password && styles.fieldInputError]}>
           <TextInput
             style={[styles.fieldInputInner, styles.fieldInputLtr]}
-            placeholder="לפחות 8 תווים"
+            placeholder="לפחות 4 ספרות"
+            keyboardType="number-pad"
             placeholderTextColor={COLORS.grayLight}
             value={form.password}
             onChangeText={(v) => onChangeForm((f) => ({ ...f, password: v }))}
@@ -220,6 +221,7 @@ export function AddCompanySheet({
         <TextInput
           style={[styles.fieldInput, styles.fieldInputLtr, !!fieldErrors.confirmPassword && styles.fieldInputError]}
           placeholder="הזן שוב את הסיסמה"
+          keyboardType="number-pad"
           placeholderTextColor={COLORS.grayLight}
           value={form.confirmPassword}
           onChangeText={(v) => onChangeForm((f) => ({ ...f, confirmPassword: v }))}
