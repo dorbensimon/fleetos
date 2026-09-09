@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DriversVehiclesToggle, { ToggleValue } from '../ui/DriversVehiclesToggle';
@@ -36,12 +36,25 @@ const SHEET_BOTTOM_RGB = '231,236,243'; // rgb() of SHEET_BOTTOM, for the fade-i
  * gray seam from appearing behind the toggle, and lets the last list card
  * sink into the fog instead of getting cut off behind the dock.
  */
-export function FleetDock({ mode, onModeChange }: { mode: ToggleValue; onModeChange: (v: ToggleValue) => void }) {
+export function FleetDock({
+  mode,
+  onModeChange,
+  visibility,
+}: {
+  mode: ToggleValue;
+  onModeChange: (v: ToggleValue) => void;
+  visibility: Animated.Value;
+}) {
   const insets = useSafeAreaInsets();
   const fogHeight = FOG_ABOVE + TOGGLE_HEIGHT + insets.bottom + DOCK_BOTTOM_GAP;
+  const translateY = visibility.interpolate({
+    inputRange: [0, 1],
+    outputRange: [fogHeight, 0],
+    extrapolate: 'clamp',
+  });
 
   return (
-    <View style={styles.root} pointerEvents="box-none">
+    <Animated.View style={[styles.root, { opacity: visibility, transform: [{ translateY }] }]} pointerEvents="box-none">
       <LinearGradient
         pointerEvents="none"
         start={{ x: 0, y: 0 }}
@@ -65,7 +78,7 @@ export function FleetDock({ mode, onModeChange }: { mode: ToggleValue; onModeCha
           <DriversVehiclesToggle value={mode} onChange={onModeChange} />
         </View>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

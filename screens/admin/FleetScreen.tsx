@@ -58,6 +58,8 @@ type LicenseFilter = 'all' | 'valid' | 'soon' | 'expired' | 'no_vehicle';
 type StatusFilter = 'all' | 'active' | 'maintenance' | 'disabled' | 'archived';
 
 const CROSSFADE_MS = 140;
+const DOCK_ANIMATION_MS = 190;
+const DOCK_SCROLL_THRESHOLD = 6;
 
 type DriverSheetItem =
   | { kind: 'chips' }
@@ -373,8 +375,8 @@ export default function FleetScreen() {
     }
   };
 
-  const driversOpacity = useRef(new Animated.Value(1)).current;
-  const vehiclesOpacity = useRef(new Animated.Value(0)).current;
+  const [driversOpacity] = useState(() => new Animated.Value(1));
+  const [vehiclesOpacity] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.parallel([
@@ -398,16 +400,63 @@ export default function FleetScreen() {
   const navHeight = heroNavHeight(insets.top);
   const sheetRestTop = navHeight + HERO_CONTENT_HEIGHT + SPACING.xl;
 
-  const driversScrollY = useRef(new Animated.Value(0)).current;
-  const vehiclesScrollY = useRef(new Animated.Value(0)).current;
+  const [driversScrollY] = useState(() => new Animated.Value(0));
+  const [vehiclesScrollY] = useState(() => new Animated.Value(0));
   const activeScrollY = mode === 'drivers' ? driversScrollY : vehiclesScrollY;
+  const [dockVisibility] = useState(() => new Animated.Value(1));
+  const dockVisible = useRef(true);
+  const lastScrollOffset = useRef<Record<ToggleValue, number>>({ drivers: 0, vehicles: 0 });
+  const scrollDistance = useRef<Record<ToggleValue, number>>({ drivers: 0, vehicles: 0 });
 
+  const setDockVisible = useCallback((visible: boolean) => {
+    if (dockVisible.current === visible) return;
+    dockVisible.current = visible;
+    Animated.timing(dockVisibility, {
+      toValue: visible ? 1 : 0,
+      duration: DOCK_ANIMATION_MS,
+      useNativeDriver: true,
+    }).start();
+  }, [dockVisibility]);
+
+  const handleListScroll = useCallback((listMode: ToggleValue, offset: number) => {
+    const previousOffset = lastScrollOffset.current[listMode];
+    lastScrollOffset.current[listMode] = offset;
+
+    if (offset <= DOCK_SCROLL_THRESHOLD) {
+      scrollDistance.current[listMode] = 0;
+      setDockVisible(true);
+      return;
+    }
+
+    const delta = offset - previousOffset;
+    const accumulated = scrollDistance.current[listMode];
+    scrollDistance.current[listMode] = accumulated !== 0 && Math.sign(accumulated) !== Math.sign(delta)
+      ? delta
+      : accumulated + delta;
+
+    if (Math.abs(scrollDistance.current[listMode]) < DOCK_SCROLL_THRESHOLD) return;
+    setDockVisible(scrollDistance.current[listMode] < 0);
+    scrollDistance.current[listMode] = 0;
+  }, [setDockVisible]);
+
+  // Animated.event intentionally invokes the listener after render; the refs it
+  // reaches are scroll bookkeeping and never affect rendered output directly.
+  // eslint-disable-next-line react-hooks/refs
   const onDriversScroll = Animated.event([{ nativeEvent: { contentOffset: { y: driversScrollY } } }], {
     useNativeDriver: true,
+    listener: (event: { nativeEvent: { contentOffset: { y: number } } }) =>
+      handleListScroll('drivers', event.nativeEvent.contentOffset.y),
   });
+  // eslint-disable-next-line react-hooks/refs
   const onVehiclesScroll = Animated.event([{ nativeEvent: { contentOffset: { y: vehiclesScrollY } } }], {
     useNativeDriver: true,
+    listener: (event: { nativeEvent: { contentOffset: { y: number } } }) =>
+      handleListScroll('vehicles', event.nativeEvent.contentOffset.y),
   });
+
+  useEffect(() => {
+    setDockVisible(true);
+  }, [mode, setDockVisible]);
 
   const sheetTranslateY = (scrollY: Animated.Value) =>
     scrollY.interpolate({ inputRange: [0, HERO_TRAVEL], outputRange: [0, -HERO_TRAVEL], extrapolate: 'clamp' });
@@ -595,7 +644,7 @@ export default function FleetScreen() {
        </View>
       </Animated.View>
 
-      <FleetDock mode={mode} onModeChange={setMode} />
+      <FleetDock mode={mode} onModeChange={setMode} visibility={dockVisibility} />
 
     </Screen>
   );
@@ -609,7 +658,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
+    // The entire sheet moves up by HERO_TRAVEL as the hero collapses.
+    // Extend it by the same amount below the viewport so that movement never
+    // exposes the Screen background when the floating dock slides away.
+    bottom: -HERO_TRAVEL,
     ...FLEET_SHADOWS.sheet,
   },
 });
