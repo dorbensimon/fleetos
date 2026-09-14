@@ -9,7 +9,7 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LoadingState, ErrorState } from '../../components/ui';
 import { DateField } from '../../components/ui/DateField';
-import { DC_COLORS, DC_SPACING, DC_TYPO } from '../../components/driverCard/driverCardTheme';
+import { DC_COLORS, DC_FONT, DC_SPACING, DC_TYPO } from '../../components/driverCard/driverCardTheme';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, updateDriver, DriverRow, DocumentRow } from '../../lib/adminApi';
 import {
@@ -23,7 +23,7 @@ import {
   pickFile,
 } from '../../lib/documents';
 import { scanLicenseImage } from '../../lib/documentScanner';
-import { CONTENT_MAX_WIDTH } from '../../lib/theme';
+import { CONTENT_MAX_WIDTH, BRAND } from '../../lib/theme';
 import { RootStackParamList } from '../../navigation/types';
 import { DriverDossierHero } from '../../components/driverCard/DriverDossierHero';
 
@@ -516,7 +516,7 @@ function formatDdMmYyyy(iso: string): string {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F1F4F7' },
+  screen: { flex: 1, backgroundColor: BRAND.screenBg },
   centerFill: { alignItems: 'center', justifyContent: 'center' },
   processingOverlay: {
     flex: 1,
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: '#FFFFFF',
   },
-  processingTitle: { color: DC_COLORS.label, fontSize: 16, fontWeight: '700' },
+  processingTitle: { color: DC_COLORS.label, fontSize: 16, fontFamily: DC_FONT.bold },
   processingSubtitle: { color: DC_COLORS.labelTertiary, fontSize: 12 },
   navBar: { width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   editAction: { alignItems: 'flex-start', paddingHorizontal: 20, marginTop: -8, marginBottom: 8 },

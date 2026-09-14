@@ -6,10 +6,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, LoadingState, ErrorState, useToast } from '../../components/ui';
+import { AppText, LoadingState, ErrorState, useToast, BackButton } from '../../components/ui';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { GlassPill } from '../../components/ui/GlassPill';
-import { COLORS, CONTENT_MAX_WIDTH, FONT, formatDate } from '../../lib/theme';
+import { COLORS, CONTENT_MAX_WIDTH, FONT, formatDate, FONT_SIZE, BRAND } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
 import { updateCompanyPhone } from '../../lib/companyApi';
@@ -130,11 +130,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
         <AppText weight="bold" style={styles.headerCompany} numberOfLines={1}>
           {company?.name ?? ''}
         </AppText>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8}>
-          <GlassPill size={40} blur={14} bg="rgba(255,255,255,.4)">
-            <Ionicons name="chevron-forward" size={20} color="#1a1a1a" />
-          </GlassPill>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
       </View>
 
       {loading ? (
@@ -338,11 +334,11 @@ const rowStyles = StyleSheet.create({
   },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,.08)' },
   icon: { flexShrink: 0 },
-  label: { fontSize: 14.5, color: '#1a1a1a', flexShrink: 0 },
-  value: { fontSize: 14.5, color: 'rgba(0,0,0,.5)', flexShrink: 1, textAlign: 'left' },
+  label: { fontSize: FONT_SIZE.md, color: '#1a1a1a', flexShrink: 0 },
+  value: { fontSize: FONT_SIZE.md, color: 'rgba(0,0,0,.5)', flexShrink: 1, textAlign: 'left' },
   inputWrap: { maxWidth: 170, alignItems: 'flex-end' },
   input: {
-    fontSize: 14.5,
+    fontSize: FONT_SIZE.md,
     color: '#1a1a1a',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,.15)',
@@ -351,11 +347,11 @@ const rowStyles = StyleSheet.create({
     fontFamily: FONT.regular,
   },
   inputErrorBorder: { borderBottomColor: COLORS.dangerText },
-  errorText: { fontSize: 11, color: COLORS.dangerText, marginTop: 2 },
+  errorText: { fontSize: FONT_SIZE.xs, color: COLORS.dangerText, marginTop: 2 },
 });
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F2F2F7' },
+  screen: { flex: 1, backgroundColor: BRAND.screenBg },
   // Without an explicit flex here, ScrollView (a plain div under react-native-web)
   // sizes to its own content instead of stretching into the remaining flex
   // space under the header, so on web the whole page scrolls instead of just
@@ -370,7 +366,7 @@ const styles = StyleSheet.create({
     maxWidth: CONTENT_MAX_WIDTH,
     alignSelf: 'center',
   },
-  headerCompany: { flex: 1, fontSize: 16, color: '#1a1a1a', textAlign: 'center', marginHorizontal: 8 },
+  headerCompany: { flex: 1, fontSize: FONT_SIZE.lg, color: '#1a1a1a', textAlign: 'center', marginHorizontal: 8 },
   content: { padding: 20, paddingTop: 18, paddingBottom: 40, gap: 4, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   profileBlock: { alignItems: 'center', paddingVertical: 18 },
   avatarWrap: { width: 84, height: 84 },
@@ -383,7 +379,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   editBadgeWrap: { position: 'absolute', bottom: -2, left: -2 },
-  name: { fontSize: 17, color: '#1a1a1a', marginTop: 12 },
-  role: { fontSize: 13, color: 'rgba(20,20,30,.6)', marginTop: 2 },
-  sectionLabel: { fontSize: 12, color: 'rgba(20,20,30,.55)', paddingBottom: 8, paddingTop: 12 },
+  name: { fontSize: FONT_SIZE.xl, color: '#1a1a1a', marginTop: 12 },
+  role: { fontSize: FONT_SIZE.sm, color: 'rgba(20,20,30,.6)', marginTop: 2 },
+  sectionLabel: { fontSize: FONT_SIZE.sm, color: 'rgba(20,20,30,.55)', paddingBottom: 8, paddingTop: 12 },
 });

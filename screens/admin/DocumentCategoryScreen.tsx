@@ -9,7 +9,7 @@ import { Screen, AppText, LoadingState, EmptyState, ErrorState } from '../../com
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { DocumentFileRow } from '../../components/documents/DocumentFileRow';
 import { Procedure6FormModal } from '../../components/documents/Procedure6FormModal';
-import { COLORS, RADIUS, SPACING } from '../../lib/theme';
+import { COLORS, RADIUS, SPACING, FONT_SIZE, BRAND } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { DocumentRow } from '../../lib/adminApi';
 import { listDocuments, readPickedFileBase64, uploadDocument, type PickedFile } from '../../lib/documents';
@@ -235,7 +235,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: '#F1F4F7' },
+  screen: { backgroundColor: BRAND.screenBg },
   scrollContent: { flexGrow: 1 },
   content: { paddingHorizontal: SPACING.lg, paddingTop: 0, gap: SPACING.sm },
   uploadBtn: {
@@ -248,5 +248,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  uploadText: { fontSize: 14.5, color: COLORS.textInverse },
+  uploadText: { fontSize: FONT_SIZE.md, color: COLORS.textInverse },
 });

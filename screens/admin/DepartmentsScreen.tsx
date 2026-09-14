@@ -1,14 +1,13 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, FlatList, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { View, FlatList, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, LoadingState, EmptyState, ErrorState, useToast } from '../../components/ui';
+import { AppText, LoadingState, EmptyState, ErrorState, useToast, BackButton } from '../../components/ui';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
-import { GlassPill } from '../../components/ui/GlassPill';
-import { COLORS, CONTENT_MAX_WIDTH, SPACING, ACCENT_SHADOW } from '../../lib/theme';
+import { COLORS, CONTENT_MAX_WIDTH, SPACING, ACCENT_SHADOW, FONT, FONT_SIZE, BRAND } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listDepartments, createDepartment, updateDepartment, deleteDepartment, countDepartmentUsage, Department } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
@@ -138,18 +137,14 @@ export default function DepartmentsScreen({ navigation }: Props) {
       <AdminGradientBackground />
 
       <View style={[styles.topBar, { paddingTop: insets.top + 20 }]}>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 42 }} />
         <AppText weight="bold" style={styles.topTitle} numberOfLines={1}>
           מחלקות
         </AppText>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8}>
-          <GlassPill size={40} blur={14} bg="rgba(255,255,255,.4)">
-            <Ionicons name="chevron-forward" size={20} color="#1a1a1a" />
-          </GlassPill>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
       </View>
 
-      <View style={styles.content}>
+      <KeyboardAvoidingView style={styles.content} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {loading ? (
           <LoadingState />
         ) : error ? (
@@ -159,7 +154,8 @@ export default function DepartmentsScreen({ navigation }: Props) {
             style={styles.list}
             data={departments}
             keyExtractor={(d) => d.id}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent, { paddingBottom: 40 + insets.bottom }]}
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             ListHeaderComponent={
               <>
@@ -246,13 +242,13 @@ export default function DepartmentsScreen({ navigation }: Props) {
             )}
           />
         )}
-      </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F1F4F7' },
+  screen: { flex: 1, backgroundColor: BRAND.screenBg },
 
   topBar: {
     flexDirection: 'row',
@@ -264,25 +260,25 @@ const styles = StyleSheet.create({
     maxWidth: CONTENT_MAX_WIDTH,
     alignSelf: 'center',
   },
-  topTitle: { flex: 1, fontSize: 18, color: '#101F2C', textAlign: 'center', marginHorizontal: 8 },
+  topTitle: { flex: 1, fontSize: FONT_SIZE.xl, color: BRAND.ink, textAlign: 'center', marginHorizontal: 8 },
 
-  content: { flex: 1, paddingHorizontal: 18, paddingTop: SPACING.lg, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
+  content: { flex: 1, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
 
   sectionHeader: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginBottom: 9 },
   sectionDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: COLORS.accent },
-  sectionTitle: { fontSize: 12, letterSpacing: 0.8, color: 'rgba(16,31,44,.42)' },
+  sectionTitle: { fontSize: FONT_SIZE.sm, letterSpacing: 0.8, color: BRAND.inkSecondary },
 
   card: {
     backgroundColor: 'rgba(255,255,255,.92)',
     borderRadius: 24,
     borderWidth: 0.5,
     borderColor: 'rgba(16,31,44,.045)',
-    shadowColor: '#102A42',
-    shadowOpacity: 0.55,
-    shadowRadius: 32,
-    shadowOffset: { width: 0, height: 16 },
-    elevation: 5,
-    overflow: 'hidden',
+    // Soft card shadow; no overflow:hidden (it drops the shadow on iOS).
+    shadowColor: BRAND.ink,
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
   row: {
     flexDirection: 'row-reverse',
@@ -295,8 +291,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   rowLast: { borderBottomWidth: 0 },
-  input: { flex: 1, fontSize: 16.5, fontWeight: '500', padding: 0, color: '#101F2C', textAlign: 'right' },
-  rowValue: { flex: 1, fontSize: 17, fontWeight: '700', color: '#101F2C', textAlign: 'right' },
+  input: { flex: 1, fontSize: FONT_SIZE.xl, fontFamily: FONT.medium, padding: 0, color: BRAND.ink, textAlign: 'right' },
+  rowValue: { flex: 1, fontSize: FONT_SIZE.xl, fontFamily: FONT.bold, color: BRAND.ink, textAlign: 'right' },
 
   addButton: {
     width: 36,
@@ -309,7 +305,7 @@ const styles = StyleSheet.create({
   addButtonDisabled: { backgroundColor: 'rgba(118,118,128,.18)' },
 
   list: { flex: 1 },
-  listContent: { flexGrow: 1, paddingBottom: 40, gap: SPACING.sm },
+  listContent: { flexGrow: 1, paddingHorizontal: 18, paddingTop: SPACING.lg, paddingBottom: 40, gap: SPACING.sm },
   rowActions: { flexDirection: 'row-reverse', gap: 8 },
   iconButton: {
     width: 32,

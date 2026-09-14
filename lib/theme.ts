@@ -43,6 +43,45 @@ export const COLORS = {
   neutralText: '#666666',
 } as const;
 
+/**
+ * Named values that already exist in screens (stage 1 of the frontend
+ * unification — naming only, no visual change). Screens migrate to these
+ * in stage 2 per the approved decisions.
+ */
+export const BRAND = {
+  /** Hero / avatar gradient (light → deep blue). */
+  heroGradient: ['#5CBBEE', '#0A7FD0'] as const,
+  /** Admin screen background — also the end colour of the admin gradient halo. */
+  screenBg: '#F1F4F7',
+  /** Unified dark text for the newer admin screens. */
+  ink: '#102A42',
+  /** Unified secondary text. */
+  inkSecondary: 'rgba(16,42,66,0.55)',
+  /** Blue-tinted shadow colour used on signing / vehicle detail cards. */
+  shadowInk: '#143C5A',
+} as const;
+
+/** iOS-style category tints for icon tiles (intentional variety). */
+export const TINT = {
+  indigo: '#5E5CE6',
+  purple: '#AF52DE',
+  teal: '#32ADE6',
+  gray: '#8E8E93',
+  orange: '#FF9500',
+  green: '#34C759',
+} as const;
+
+/** Approved type scale (hero titles 26–34 stay as-is). */
+export const FONT_SIZE = {
+  xs: 11,
+  sm: 12.5,
+  md: 14,
+  lg: 15.5,
+  xl: 17,
+  xxl: 20,
+  title: 23,
+} as const;
+
 /** Card elevation, exactly as specified. */
 export const CARD_SHADOW = {
   shadowColor: '#000000',
@@ -72,6 +111,9 @@ export const ACCENT_SHADOW = {
 
 export const FONT = {
   regular: 'Assistant_400Regular',
+  /** Loaded in App.tsx; for form labels/inputs that sit between regular and bold. */
+  medium: 'Assistant_500Medium',
+  semibold: 'Assistant_600SemiBold',
   bold: 'Assistant_700Bold',
 } as const;
 

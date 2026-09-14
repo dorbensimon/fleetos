@@ -5,7 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen, AppText, BackButton } from '../components/ui';
 import { AdminGradientBackground } from '../components/admin/AdminGradientBackground';
-import { SPACING } from '../lib/theme';
+import { SPACING, BRAND } from '../lib/theme';
 import { MENU_CARD_SHADOW, MENU_COLORS, MENU_FONT, MENU_TYPO } from '../components/menu/menuTheme';
 import { supabase } from '../lib/supabase';
 import { showAlert } from '../lib/platformAlert';
@@ -202,7 +202,7 @@ export default function MenuScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: MENU_COLORS.background },
-  adminScreen: { backgroundColor: '#F1F4F7' },
+  adminScreen: { backgroundColor: BRAND.screenBg },
   safe: { flex: 1 },
   topBar: {
     flexDirection: 'row-reverse',

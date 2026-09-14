@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, BackButton, LoadingState, ErrorState, PrimaryButton, useToast } from '../../components/ui';
-import { COLORS, CONTENT_MAX_WIDTH, RADIUS, SPACING, formatDate } from '../../lib/theme';
+import { COLORS, CONTENT_MAX_WIDTH, RADIUS, SPACING, formatDate, BRAND } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, archiveDriver, restoreDriver, resetDriverPassword, getUserEmail, updateUserEmail, listDepartments, DriverRow } from '../../lib/adminApi';
 import { listDocuments } from '../../lib/documents';
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
   licenseRequestApproveText: { color: '#FFFFFF', fontSize: 13.5 },
   licenseRequestReject: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DC2626' },
   licenseRequestRejectText: { color: '#DC2626', fontSize: 13.5 },
-  screen: { flex: 1, backgroundColor: '#F1F4F7' },
+  screen: { flex: 1, backgroundColor: BRAND.screenBg },
   // flex: 1 is required so the ScrollView stretches to fill `screen` instead
   // of sizing to its own content on web (React Native Web) — without it the
   scroll: { flex: 1, backgroundColor: 'transparent' },

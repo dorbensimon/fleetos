@@ -9,9 +9,10 @@ import { ADMIN_BACKGROUND_COLORS, ADMIN_BACKGROUND_LOCATIONS } from '../../compo
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppText, BackButton, LoadingState, useToast } from '../../components/ui';
+import { FormFieldRow } from '../../components/ui/FormFieldRow';
 import { Select } from '../../components/ui/Select';
 import { VehicleDriversEditor } from '../../components/VehicleDriversEditor';
-import { COLORS, CONTENT_MAX_WIDTH, SPACING, ACCENT_SHADOW, parseDateValue } from '../../lib/theme';
+import { COLORS, CONTENT_MAX_WIDTH, SPACING, ACCENT_SHADOW, FONT, parseDateValue, FONT_SIZE, BRAND } from '../../lib/theme';
 import { isStaleDepartmentError } from '../../lib/driverFields';
 import { useCompany } from '../../lib/CompanyContext';
 import {
@@ -89,8 +90,8 @@ const VEHICLE_TYPE_OPTIONS = [
 ] as const satisfies readonly { value: VehicleType; label: string; description: string }[];
 
 const STATUS_OPTIONS = [
-  { value: 'active', label: 'פעיל', color: '#30A46C', bg: 'rgba(48,164,108,.12)' },
-  { value: 'maintenance', label: 'בטיפול', color: '#E09312', bg: 'rgba(240,166,30,.14)' },
+  { value: 'active', label: 'פעיל', color: COLORS.okText, bg: 'rgba(48,164,108,.12)' },
+  { value: 'maintenance', label: 'בטיפול', color: COLORS.warnText, bg: 'rgba(240,166,30,.14)' },
   { value: 'disabled', label: 'מושבת', color: '#6B7A88', bg: 'rgba(107,122,136,.14)' },
 ] as const satisfies readonly { value: VehicleStatus; label: string; color: string; bg: string }[];
 
@@ -472,7 +473,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           <AppText style={styles.progressCounter}>{filledCount}/{REQUIRED_FIELDS.length}</AppText>
           <View style={styles.progressTrack}>
             <LinearGradient
-              colors={['#5CBBEE', '#0A7FD0']}
+              colors={BRAND.heroGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[styles.progressFill, { width: `${progress * 100}%` }]}
@@ -494,7 +495,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         >
           <View style={styles.heroCard}>
             <View style={styles.avatar}>
-              <LinearGradient colors={['#66C4F2', '#0A7FD0']} style={styles.avatarGradient}>
+              <LinearGradient colors={BRAND.heroGradient} style={styles.avatarGradient}>
                 <Ionicons name="car-sport-outline" size={38} color="#FFFFFF" />
               </LinearGradient>
               <View style={styles.avatarBadge}>
@@ -995,36 +996,34 @@ function VehicleFormRow({
   ltr?: boolean;
   keyboardType?: 'default' | 'number-pad';
 }) {
-  const focused = focusedField === fieldKey;
   return (
-    <>
-      <View style={[styles.formRow, focused && styles.rowFocused]}>
-        <View style={[styles.focusRail, focused && styles.focusRailActive]} />
-        <AppText style={[styles.labelWide, focused && styles.labelFocused]}>{label}</AppText>
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          onFocus={() => setFocusedField(fieldKey)}
-          onBlur={() => setFocusedField(null)}
-          placeholder={placeholder}
-          placeholderTextColor="rgba(16,31,44,.3)"
-          style={[styles.input, ltr && styles.ltrInput]}
-          keyboardType={keyboardType}
-          accessibilityLabel={label}
-        />
-        {!!value && (
-          <View style={styles.checkBadge}>
-            <Ionicons name="checkmark" size={14} color="#268A59" />
-          </View>
-        )}
-      </View>
-      {!!error && <AppText style={styles.error}>{error}</AppText>}
-    </>
+    <FormFieldRow
+      label={label}
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor="rgba(16,31,44,.3)"
+      focusedField={focusedField}
+      setFocusedField={setFocusedField}
+      fieldKey={fieldKey}
+      error={error}
+      ltr={ltr}
+      keyboardType={keyboardType}
+      valid={!!value}
+      accessibilityLabel={label}
+      labelWidth={112}
+      rowStyle={styles.formRowOffset}
+      labelStyle={styles.rtlText}
+      inputStyle={styles.rtlText}
+      errorStyle={styles.error}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F3F6F9' },
+  formRowOffset: { marginHorizontal: -16 },
+  rtlText: { textAlign: 'right', writingDirection: 'rtl' },
+  screen: { flex: 1, backgroundColor: BRAND.screenBg },
   halo: {
     position: 'absolute',
     top: 0,
@@ -1055,7 +1054,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 52,
   },
-  headerTitle: { fontSize: 17, lineHeight: 22, color: '#101F2C' },
+  headerTitle: { fontSize: FONT_SIZE.xl, lineHeight: 22, color: BRAND.ink },
   headerSideSpacer: { width: 42 },
   progressRow: {
     flexDirection: 'row-reverse',
@@ -1071,7 +1070,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressFill: { height: '100%', borderRadius: 3 },
-  progressCounter: { width: 30, fontSize: 12, fontWeight: '700', color: '#101F2C', textAlign: 'right' },
+  progressCounter: { width: 30, fontSize: FONT_SIZE.sm, fontFamily: FONT.bold, color: BRAND.ink, textAlign: 'right' },
   content: { paddingHorizontal: 18, gap: 20, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   heroCard: {
     flexDirection: 'row-reverse',
@@ -1088,7 +1087,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,.7)',
-    shadowColor: '#0A7FD0',
+    shadowColor: COLORS.accent,
     shadowOpacity: 0.75,
     shadowRadius: 32,
     shadowOffset: { width: 0, height: 18 },
@@ -1108,7 +1107,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroText: { flex: 1 },
-  heroName: { fontSize: 26, letterSpacing: -0.8, color: '#101F2C', marginBottom: 8 },
+  heroName: { fontSize: 26, letterSpacing: -0.8, color: BRAND.ink, marginBottom: 8 },
   heroBadges: { flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
   glassBadge: {
     minHeight: 24,
@@ -1117,7 +1116,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     justifyContent: 'center',
   },
-  glassBadgeText: { fontSize: 12.5, color: '#101F2C' },
+  glassBadgeText: { fontSize: FONT_SIZE.sm, color: BRAND.ink },
   statusBadge: {
     minHeight: 24,
     borderRadius: 12,
@@ -1127,17 +1126,17 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusBadgeText: { fontSize: 12.5 },
+  statusBadgeText: { fontSize: FONT_SIZE.sm },
   section: { gap: 9 },
   sectionHeader: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   sectionDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: COLORS.accent },
-  sectionTitle: { fontSize: 12, letterSpacing: 0.8, color: 'rgba(16,31,44,.42)' },
+  sectionTitle: { fontSize: FONT_SIZE.sm, letterSpacing: 0.8, color: BRAND.inkSecondary },
   card: {
     backgroundColor: 'rgba(255,255,255,.92)',
     borderRadius: 24,
     borderWidth: 0.5,
     borderColor: 'rgba(16,31,44,.045)',
-    shadowColor: '#102A42',
+    shadowColor: BRAND.ink,
     shadowOpacity: 0.55,
     shadowRadius: 32,
     shadowOffset: { width: 0, height: 16 },
@@ -1159,7 +1158,7 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
     borderWidth: 0.5,
     borderColor: 'rgba(16,31,44,.045)',
-    shadowColor: '#102A42',
+    shadowColor: BRAND.ink,
     shadowOpacity: 0.55,
     shadowRadius: 32,
     shadowOffset: { width: 0, height: 16 },
@@ -1174,17 +1173,17 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   plateTextWrap: { flex: 1, gap: 5 },
-  fieldTitle: { fontSize: 13, color: 'rgba(16,31,44,.42)' },
+  fieldTitle: { fontSize: FONT_SIZE.sm, color: BRAND.inkSecondary },
   plateInput: {
     fontSize: 25,
-    fontWeight: '800',
+    fontFamily: FONT.bold,
     letterSpacing: 0.5,
-    color: '#101F2C',
+    color: BRAND.ink,
     padding: 0,
     textAlign: 'left',
     writingDirection: 'ltr',
   },
-  inputWithError: { color: '#E5484D' },
+  inputWithError: { color: COLORS.dangerText },
   plateBadge: {
     width: 64,
     height: 44,
@@ -1193,13 +1192,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 0.5,
     borderColor: 'rgba(16,31,44,.14)',
-    shadowColor: '#102A42',
+    shadowColor: BRAND.ink,
     shadowOpacity: 0.18,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 7 },
     elevation: 4,
   },
-  plateBadgeText: { fontSize: 13, color: '#1A1A0E', textAlign: 'center' },
+  plateBadgeText: { fontSize: FONT_SIZE.sm, color: '#1A1A0E', textAlign: 'center' },
   lookupButton: {
     minHeight: 44,
     borderRadius: 14,
@@ -1211,10 +1210,10 @@ const styles = StyleSheet.create({
     marginBottom: 7,
   },
   lookupButtonDisabled: { opacity: 0.7 },
-  lookupButtonText: { fontSize: 14.5, color: '#FFFFFF' },
-  lookupHint: { fontSize: 12.5, color: 'rgba(16,31,44,.45)', textAlign: 'right', marginBottom: 12 },
+  lookupButtonText: { fontSize: FONT_SIZE.md, color: '#FFFFFF' },
+  lookupHint: { fontSize: FONT_SIZE.sm, color: BRAND.inkSecondary, textAlign: 'right', marginBottom: 12 },
   lookupMessage: {
-    fontSize: 12.5,
+    fontSize: FONT_SIZE.sm,
     lineHeight: 18,
     color: '#216B44',
     backgroundColor: 'rgba(48,164,108,.10)',
@@ -1237,7 +1236,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 12,
   },
-  choiceDesc: { flex: 1, textAlign: 'left', fontSize: 12, color: 'rgba(16,31,44,.3)' },
+  choiceDesc: { flex: 1, textAlign: 'left', fontSize: FONT_SIZE.sm, color: 'rgba(16,31,44,.3)' },
   typeChips: { flexDirection: 'row-reverse', gap: 7, flexGrow: 1, paddingBottom: 14 },
   typeChip: {
     flex: 1,
@@ -1257,7 +1256,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 5,
   },
-  typeChipText: { fontSize: 13.5, color: '#101F2C' },
+  typeChipText: { fontSize: FONT_SIZE.md, color: BRAND.ink },
   typeChipTextActive: { color: '#FFFFFF' },
   formRow: {
     flexDirection: 'row-reverse',
@@ -1293,9 +1292,9 @@ const styles = StyleSheet.create({
   rowFocused: { backgroundColor: 'rgba(0,136,204,.045)' },
   focusRail: { width: 4, height: 22, borderRadius: 2, backgroundColor: 'transparent' },
   focusRailActive: { backgroundColor: COLORS.accent },
-  labelWide: { width: 112, fontSize: 15.5, fontWeight: '600', color: '#101F2C', textAlign: 'right', writingDirection: 'rtl' },
+  labelWide: { width: 112, fontSize: FONT_SIZE.lg, fontFamily: FONT.semibold, color: BRAND.ink, textAlign: 'right', writingDirection: 'rtl' },
   labelFocused: { color: COLORS.accent },
-  input: { flex: 1, fontSize: 16.5, fontWeight: '500', padding: 0, color: '#101F2C', textAlign: 'right', writingDirection: 'rtl' },
+  input: { flex: 1, fontSize: FONT_SIZE.xl, fontFamily: FONT.medium, padding: 0, color: BRAND.ink, textAlign: 'right', writingDirection: 'rtl' },
   ltrInput: { textAlign: 'left', writingDirection: 'ltr' },
   checkBadge: {
     width: 20,
@@ -1309,7 +1308,7 @@ const styles = StyleSheet.create({
   monthYearWrap: { flex: 1, flexDirection: 'row-reverse', gap: 8 },
   selectHalf: { flex: 1 },
   dateTextWrap: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
-  dateValue: { fontSize: 15, color: '#101F2C', textAlign: 'left', writingDirection: 'ltr' },
+  dateValue: { fontSize: FONT_SIZE.lg, color: BRAND.ink, textAlign: 'left', writingDirection: 'ltr' },
   placeholderText: { color: 'rgba(16,31,44,.3)' },
   dateButton: {
     height: 42,
@@ -1322,8 +1321,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  dateButtonText: { fontSize: 15, color: COLORS.accent },
-  error: { fontSize: 12.5, color: '#E5484D', marginBottom: 10, textAlign: 'right' },
+  dateButtonText: { fontSize: FONT_SIZE.lg, color: COLORS.accent },
+  error: { fontSize: FONT_SIZE.sm, color: COLORS.dangerText, marginBottom: 10, textAlign: 'right' },
   statusControl: {
     flexDirection: 'row-reverse',
     gap: 4,
@@ -1342,7 +1341,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   statusOptionDot: { width: 7, height: 7, borderRadius: 3.5 },
-  statusOptionText: { fontSize: 14.5, color: 'rgba(16,31,44,.55)' },
+  statusOptionText: { fontSize: FONT_SIZE.md, color: 'rgba(16,31,44,.55)' },
   statusOptionTextActive: { color: '#FFFFFF' },
   infoCard: {
     minHeight: 86,
@@ -1363,7 +1362,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  infoText: { flex: 1, fontSize: 13.5, lineHeight: 19, color: 'rgba(16,31,44,.5)' },
+  infoText: { flex: 1, fontSize: FONT_SIZE.md, lineHeight: 19, color: 'rgba(16,31,44,.5)' },
   footer: {
     paddingTop: SPACING.sm,
     paddingBottom: SPACING.lg,
@@ -1377,10 +1376,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 7,
   },
-  ctaText: { fontSize: 15.5, color: '#FFFFFF' },
+  ctaText: { fontSize: FONT_SIZE.lg, color: '#FFFFFF' },
   ctaDisabled: { backgroundColor: 'rgba(118,118,128,.09)', shadowOpacity: 0, elevation: 0 },
   ctaTextDisabled: { color: 'rgba(16,31,44,.33)' },
-  remainingText: { fontSize: 12.5, color: 'rgba(16,31,44,.42)', textAlign: 'center', marginTop: 8 },
+  remainingText: { fontSize: FONT_SIZE.sm, color: BRAND.inkSecondary, textAlign: 'center', marginTop: 8 },
   dateSheetLayer: {
     ...StyleSheet.absoluteFill,
     zIndex: 7,
@@ -1397,7 +1396,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 0.5,
     borderColor: 'rgba(16,31,44,.07)',
-    shadowColor: '#102A42',
+    shadowColor: BRAND.ink,
     shadowOpacity: 0.28,
     shadowRadius: 28,
     shadowOffset: { width: 0, height: 14 },
@@ -1412,8 +1411,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: 'rgba(14,30,43,.07)',
   },
-  dateSheetTitle: { fontSize: 16, color: '#101F2C' },
-  dateSheetCancel: { fontSize: 15, color: 'rgba(16,31,44,.42)' },
-  dateSheetConfirm: { fontSize: 15, color: COLORS.accent },
+  dateSheetTitle: { fontSize: FONT_SIZE.lg, color: BRAND.ink },
+  dateSheetCancel: { fontSize: FONT_SIZE.lg, color: BRAND.inkSecondary },
+  dateSheetConfirm: { fontSize: FONT_SIZE.lg, color: COLORS.accent },
   iosDatePicker: { alignSelf: 'center', height: 190 },
 });

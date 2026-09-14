@@ -6,8 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen, AppText, Card, LoadingState, EmptyState, ErrorState, SecondaryButton, BackButton } from '../../components/ui';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
-import { GlassPill } from '../../components/ui/GlassPill';
-import { COLORS, SPACING, CARD_SHADOW } from '../../lib/theme';
+import { COLORS, SPACING, CARD_SHADOW, BRAND } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listNotifications, markNotificationRead, markAllNotificationsRead, Notification } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
@@ -307,11 +306,7 @@ export default function NotificationsScreen({ navigation }: Props) {
           ) : (
             <View />
           )}
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8}>
-            <GlassPill size={40} blur={14} bg="rgba(255,255,255,.4)">
-              <Ionicons name="chevron-forward" size={20} color="#1a1a1a" />
-            </GlassPill>
-          </TouchableOpacity>
+          <BackButton onPress={() => navigation.goBack()} />
         </View>
       </View>
 
@@ -414,7 +409,7 @@ const styles = StyleSheet.create({
   driverUnreadDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: DC_COLORS.red },
   driverState: { paddingTop: 36 },
   driverBackButton: { position: 'absolute', right: 16 },
-  screen: { backgroundColor: '#F1F4F7' },
+  screen: { backgroundColor: BRAND.screenBg },
   topBar: {
     paddingHorizontal: SPACING.lg,
     paddingBottom: SPACING.md,
