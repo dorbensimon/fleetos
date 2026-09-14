@@ -2,7 +2,10 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { signDocuSealJwt, safeDocusealHost } from '../_shared/docuseal.ts';
 import { isSigningTemplateSourcePath } from '../_shared/signingPaths.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
-import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
+// @cantoo/pdf-lib is a maintained, API-compatible fork of pdf-lib with parser
+// fixes for real-world PDFs (scanner exports, cross-reference streams) that
+// upstream pdf-lib 1.17.1 fails on with "No PDF header found".
+import { PDFDocument, StandardFonts, rgb } from 'npm:@cantoo/pdf-lib@2';
 
 type CompanyLogo = {
   bytes: ArrayBuffer;
@@ -50,7 +53,7 @@ async function logoAsPng(logo: CompanyLogo): Promise<ArrayBuffer | null> {
 }
 
 /** Adds the company logo and a fixed verification mark before DocuSeal signs the PDF. */
-async function prepareSigningPdf(pdfBytes: ArrayBuffer, companyLogo: CompanyLogo | null): Promise<Uint8Array> {
+async function prepareSigningPdf(pdfBytes: Uint8Array, companyLogo: CompanyLogo | null): Promise<Uint8Array> {
   const pdf = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
   const pages = pdf.getPages();
   if (!pages.length) throw new Error('המסמך אינו מכיל עמודים');

@@ -265,6 +265,11 @@ export async function finalizeSigningTemplate(companyId: string, templateId: str
   return invoke<{ success: boolean }>('finalize-signing-template', { companyId, templateId });
 }
 
+/** Links templates built directly in the DocuSeal dashboard, inside the company's folder, to the company. */
+export async function importDocusealTemplates(companyId: string) {
+  return invoke<{ imported: number }>('import-docuseal-templates', { companyId });
+}
+
 export async function listSigningTemplates(companyId: string, includeArchived = false): Promise<SigningTemplate[]> {
   let query = supabase.from('signing_templates').select('*')
     .eq('company_id', companyId).eq('status', 'ready').order('created_at', { ascending: false });

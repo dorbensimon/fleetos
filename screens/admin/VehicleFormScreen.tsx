@@ -9,6 +9,7 @@ import { ADMIN_BACKGROUND_COLORS, ADMIN_BACKGROUND_LOCATIONS } from '../../compo
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppText, BackButton, LoadingState, useToast } from '../../components/ui';
+import { DateField } from '../../components/ui/DateField';
 import { FormFieldRow } from '../../components/ui/FormFieldRow';
 import { Select } from '../../components/ui/Select';
 import { VehicleDriversEditor } from '../../components/VehicleDriversEditor';
@@ -687,52 +688,81 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
                 <AppText style={styles.error}>{errors.production_year || errors.production_month}</AppText>
               )}
 
-              <TouchableOpacity
-                style={styles.dateRow}
-                onPress={openRoadDatePicker}
-                accessibilityRole="button"
-                accessibilityLabel="בחירת תאריך עליה לכביש"
-              >
-                <View style={styles.focusRail} />
-                <AppText style={styles.labelWide}>עליה לכביש</AppText>
+              {Platform.OS === 'web' ? (
+                <View style={styles.dateRow}>
+                  <View style={styles.focusRail} />
+                  <AppText style={styles.labelWide}>עליה לכביש</AppText>
+                  <View style={styles.dateFieldWrap}>
+                    <DateField
+                      value={form.road_registration_date || null}
+                      onChange={(value) => set('road_registration_date', value ?? '')}
+                      placeholder="בחר תאריך"
+                      hasError={!!errors.road_registration_date}
+                    />
+                  </View>
+                </View>
+              ) : (
                 <TouchableOpacity
-                  style={styles.dateButton}
+                  style={styles.dateRow}
                   onPress={openRoadDatePicker}
                   accessibilityRole="button"
-                  accessibilityLabel="בחר תאריך עליה לכביש"
+                  accessibilityLabel="בחירת תאריך עליה לכביש"
                 >
-                  <AppText weight="bold" style={styles.dateButtonText}>בחר תאריך</AppText>
+                  <View style={styles.focusRail} />
+                  <AppText style={styles.labelWide}>עליה לכביש</AppText>
+                  <TouchableOpacity
+                    style={styles.dateButton}
+                    onPress={openRoadDatePicker}
+                    accessibilityRole="button"
+                    accessibilityLabel="בחר תאריך עליה לכביש"
+                  >
+                    <AppText weight="bold" style={styles.dateButtonText}>בחר תאריך</AppText>
+                  </TouchableOpacity>
+                  <View style={styles.dateTextWrap}>
+                    <AppText weight="bold" style={[styles.dateValue, !form.road_registration_date && styles.placeholderText]}>
+                      {formatDateDots(form.road_registration_date) || 'לא נבחר תאריך'}
+                    </AppText>
+                  </View>
                 </TouchableOpacity>
-                <View style={styles.dateTextWrap}>
-                  <AppText weight="bold" style={[styles.dateValue, !form.road_registration_date && styles.placeholderText]}>
-                    {formatDateDots(form.road_registration_date) || 'לא נבחר תאריך'}
-                  </AppText>
-                </View>
-              </TouchableOpacity>
+              )}
               {!!errors.road_registration_date && <AppText style={styles.error}>{errors.road_registration_date}</AppText>}
 
-              <TouchableOpacity
-                style={[styles.dateRow, styles.rowLast]}
-                onPress={openLicenseExpiryPicker}
-                accessibilityRole="button"
-                accessibilityLabel="בחירת תוקף רישיון רכב"
-              >
-                <View style={styles.focusRail} />
-                <AppText style={styles.labelWide}>תוקף רישיון רכב</AppText>
+              {Platform.OS === 'web' ? (
+                <View style={[styles.dateRow, styles.rowLast]}>
+                  <View style={styles.focusRail} />
+                  <AppText style={styles.labelWide}>תוקף רישיון רכב</AppText>
+                  <View style={styles.dateFieldWrap}>
+                    <DateField
+                      value={form.vehicle_license_expiry || null}
+                      onChange={(value) => set('vehicle_license_expiry', value ?? '')}
+                      placeholder="בחר תאריך"
+                    />
+                  </View>
+                </View>
+              ) : (
                 <TouchableOpacity
-                  style={styles.dateButton}
+                  style={[styles.dateRow, styles.rowLast]}
                   onPress={openLicenseExpiryPicker}
                   accessibilityRole="button"
-                  accessibilityLabel="בחר תוקף רישיון רכב"
+                  accessibilityLabel="בחירת תוקף רישיון רכב"
                 >
-                  <AppText weight="bold" style={styles.dateButtonText}>בחר תאריך</AppText>
+                  <View style={styles.focusRail} />
+                  <AppText style={styles.labelWide}>תוקף רישיון רכב</AppText>
+                  <TouchableOpacity
+                    style={styles.dateButton}
+                    onPress={openLicenseExpiryPicker}
+                    accessibilityRole="button"
+                    accessibilityLabel="בחר תוקף רישיון רכב"
+                  >
+                    <AppText weight="bold" style={styles.dateButtonText}>בחר תאריך</AppText>
+                  </TouchableOpacity>
+                  <View style={styles.dateTextWrap}>
+                    <AppText weight="bold" style={[styles.dateValue, !form.vehicle_license_expiry && styles.placeholderText]}>
+                      {formatDateDots(form.vehicle_license_expiry) || 'לא נבחר תאריך'}
+                    </AppText>
+                  </View>
                 </TouchableOpacity>
-                <View style={styles.dateTextWrap}>
-                  <AppText weight="bold" style={[styles.dateValue, !form.vehicle_license_expiry && styles.placeholderText]}>
-                    {formatDateDots(form.vehicle_license_expiry) || 'לא נבחר תאריך'}
-                  </AppText>
-                </View>
-              </TouchableOpacity>
+              )}
             </View>
           </Section>
 
@@ -1308,6 +1338,7 @@ const styles = StyleSheet.create({
   monthYearWrap: { flex: 1, flexDirection: 'row-reverse', gap: 8 },
   selectHalf: { flex: 1 },
   dateTextWrap: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
+  dateFieldWrap: { flex: 1 },
   dateValue: { fontSize: FONT_SIZE.lg, color: BRAND.ink, textAlign: 'left', writingDirection: 'ltr' },
   placeholderText: { color: 'rgba(16,31,44,.3)' },
   dateButton: {

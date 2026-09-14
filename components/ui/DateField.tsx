@@ -1,16 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform, TextInput, Modal, Pressable } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, Platform, Modal, Pressable, ScrollView } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './Text';
-import { COLORS, RADIUS, FONT, formatDate, parseDateValue } from '../../lib/theme';
+import { COLORS, RADIUS, formatDate, parseDateValue } from '../../lib/theme';
 
 /**
  * Date input that stays usable on every target.
  *
- * On iOS/Android it opens the platform picker. On web the native module
- * has no implementation, so it falls back to a plain DD/MM/YYYY text
- * field — which is also what people expect in a browser.
+ * On native it opens the platform picker. On web it uses the same
+ * bottom-sheet interaction rather than exposing a free-form text field.
  *
  * The value is always exchanged as an ISO date string (YYYY-MM-DD) or
  * null, so callers never deal with Date objects or locale parsing.
@@ -22,19 +21,76 @@ function toIso(d: Date): string {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
-/** Parses DD/MM/YYYY. Returns null when incomplete or nonsensical. */
-function fromDisplay(text: string): string | null {
-  const match = text.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!match) return null;
-  const [, dd, mm, yyyy] = match;
-  const day = Number(dd);
-  const month = Number(mm);
-  const year = Number(yyyy);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+const HEBREW_MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 
-  const d = new Date(year, month - 1, day);
-  if (d.getMonth() !== month - 1 || d.getDate() !== day) return null;
-  return toIso(d);
+function WebDatePicker({ value, onConfirm, onClose }: { value: string | null; onConfirm: (iso: string) => void; onClose: () => void }) {
+  const [draft, setDraft] = useState(() => value ? parseDateValue(value) : new Date());
+  const daysInMonth = new Date(draft.getFullYear(), draft.getMonth() + 1, 0).getDate();
+  const years = Array.from({ length: 101 }, (_, index) => new Date().getFullYear() + 20 - index);
+  const dayScrollRef = useRef<ScrollView>(null);
+  const monthScrollRef = useRef<ScrollView>(null);
+  const yearScrollRef = useRef<ScrollView>(null);
+
+  // The browser picker is a bottom-sheet replica of the native wheel. Keep
+  // the selected date in view when it opens; without this the lists start at
+  // day 1 / January / 20 years ahead, even though today's date is selected.
+  useEffect(() => {
+    const scrollToSelected = (ref: React.RefObject<ScrollView | null>, index: number) => {
+      ref.current?.scrollTo({ y: Math.max(0, 76 + index * 38 - 85), animated: false });
+    };
+
+    scrollToSelected(dayScrollRef, draft.getDate() - 1);
+    scrollToSelected(monthScrollRef, draft.getMonth());
+    scrollToSelected(yearScrollRef, years.indexOf(draft.getFullYear()));
+  }, [draft, years]);
+
+  const update = (part: 'day' | 'month' | 'year', nextValue: number) => {
+    const next = new Date(draft);
+    const day = draft.getDate();
+    if (part === 'day') next.setDate(nextValue);
+    if (part === 'month') {
+      next.setDate(1);
+      next.setMonth(nextValue);
+      next.setDate(Math.min(day, new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()));
+    }
+    if (part === 'year') {
+      next.setDate(1);
+      next.setFullYear(nextValue);
+      next.setDate(Math.min(day, new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()));
+    }
+    setDraft(next);
+  };
+
+  const column = (items: { value: number; label: string }[], selected: number, part: 'day' | 'month' | 'year', ref: React.RefObject<ScrollView | null>) => (
+    <ScrollView ref={ref} style={styles.pickerColumn} contentContainerStyle={styles.pickerColumnContent} showsVerticalScrollIndicator={false}>
+      {items.map((item) => {
+        const active = item.value === selected;
+        return <TouchableOpacity key={item.value} style={[styles.pickerOption, active && styles.pickerOptionActive]} onPress={() => update(part, item.value)}>
+          <AppText weight={active ? 'bold' : 'regular'} style={[styles.pickerOptionText, active && styles.pickerOptionTextActive]}>{item.label}</AppText>
+        </TouchableOpacity>;
+      })}
+    </ScrollView>
+  );
+
+  return (
+    <Modal transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.modalBackdrop} onPress={onClose}>
+        <Pressable style={styles.webSheet} onPress={(event) => event.stopPropagation()}>
+          <View style={styles.grabHandle} />
+          <View style={styles.webSheetHeader}>
+            <TouchableOpacity onPress={onClose}><AppText style={styles.sheetAction}>ביטול</AppText></TouchableOpacity>
+            <AppText weight="bold" style={styles.sheetTitle}>בחירת תאריך</AppText>
+            <TouchableOpacity onPress={() => onConfirm(toIso(draft))}><AppText weight="bold" style={styles.sheetAction}>אישור</AppText></TouchableOpacity>
+          </View>
+          <View style={styles.pickerColumns}>
+            {column(Array.from({ length: daysInMonth }, (_, index) => ({ value: index + 1, label: String(index + 1) })), draft.getDate(), 'day', dayScrollRef)}
+            {column(HEBREW_MONTHS.map((label, index) => ({ value: index, label })), draft.getMonth(), 'month', monthScrollRef)}
+            {column(years.map((year) => ({ value: year, label: String(year) })), draft.getFullYear(), 'year', yearScrollRef)}
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
 }
 
 export function DateField({
@@ -51,11 +107,6 @@ export function DateField({
   disabled?: boolean;
 }) {
   const [showPicker, setShowPicker] = useState(false);
-  const [webText, setWebText] = useState(value ? formatDate(value) : '');
-
-  useEffect(() => {
-    setWebText(value ? formatDate(value) : '');
-  }, [value]);
 
   const openPicker = () => {
     if (disabled) return;
@@ -73,42 +124,15 @@ export function DateField({
     setShowPicker(true);
   };
 
-  if (Platform.OS === 'web') {
-    return (
-      <View style={[styles.box, hasError && styles.boxError, disabled && styles.boxDisabled]}>
-        <Ionicons name="calendar-outline" size={17} color={COLORS.textFaint} />
-        <TextInput
-          value={webText}
-          onChangeText={(t) => {
-            setWebText(t);
-            if (t.trim() === '') {
-              onChange(null);
-              return;
-            }
-            const iso = fromDisplay(t);
-            if (iso) onChange(iso);
-          }}
-          placeholder="DD/MM/YYYY"
-          placeholderTextColor={COLORS.textFaint}
-          style={styles.webInput}
-          textAlign="left"
-          editable={!disabled}
-        />
-        {!disabled && !!value && (
-          <TouchableOpacity
-            onPress={() => {
-              setWebText('');
-              onChange(null);
-            }}
-            hitSlop={8}
-          >
-            <Ionicons name="close-circle" size={17} color={COLORS.textFaint} />
-          </TouchableOpacity>
-        )}
-        {disabled && <Ionicons name="lock-closed-outline" size={15} color={COLORS.textFaint} />}
-      </View>
-    );
-  }
+  if (Platform.OS === 'web') return <>
+    <TouchableOpacity activeOpacity={disabled ? 1 : 0.8} onPress={openPicker} style={[styles.box, hasError && styles.boxError, disabled && styles.boxDisabled]}>
+      <Ionicons name="calendar-outline" size={17} color={COLORS.textFaint} />
+      <AppText style={[styles.value, !value && styles.placeholder]}>{value ? formatDate(value) : placeholder}</AppText>
+      {!disabled && !!value && <TouchableOpacity onPress={(event) => { event.stopPropagation(); onChange(null); }} hitSlop={8}><Ionicons name="close-circle" size={17} color={COLORS.textFaint} /></TouchableOpacity>}
+      {disabled && <Ionicons name="lock-closed-outline" size={15} color={COLORS.textFaint} />}
+    </TouchableOpacity>
+    {showPicker && <WebDatePicker value={value} onClose={() => setShowPicker(false)} onConfirm={(iso) => { onChange(iso); setShowPicker(false); }} />}
+  </>;
 
   return (
     <>
@@ -186,12 +210,6 @@ const styles = StyleSheet.create({
   boxDisabled: { opacity: 0.55 },
   value: { flex: 1, fontSize: 15, textAlign: 'left' },
   placeholder: { color: COLORS.textFaint },
-  webInput: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: FONT.regular,
-    color: COLORS.text,
-  },
   iosDone: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 24 },
   iosDoneText: { color: COLORS.accent, fontSize: 15 },
   modalBackdrop: {
@@ -205,4 +223,23 @@ const styles = StyleSheet.create({
     borderTopRightRadius: RADIUS.lg,
     paddingBottom: 8,
   },
+  webSheet: {
+    width: '100%',
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: RADIUS.lg,
+    borderTopRightRadius: RADIUS.lg,
+    paddingHorizontal: 16,
+    paddingBottom: 22,
+  },
+  grabHandle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: COLORS.fieldBorder, marginTop: 9 },
+  webSheetHeader: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
+  sheetTitle: { color: COLORS.text, fontSize: 16 },
+  sheetAction: { color: COLORS.accent, fontSize: 15 },
+  pickerColumns: { flexDirection: 'row-reverse', gap: 8, height: 208 },
+  pickerColumn: { flex: 1, backgroundColor: COLORS.field, borderRadius: RADIUS.md },
+  pickerColumnContent: { paddingVertical: 76 },
+  pickerOption: { minHeight: 38, justifyContent: 'center', alignItems: 'center', marginHorizontal: 4, borderRadius: RADIUS.sm },
+  pickerOptionActive: { backgroundColor: COLORS.accentSoft },
+  pickerOptionText: { color: COLORS.textMuted, fontSize: 15 },
+  pickerOptionTextActive: { color: COLORS.accent },
 });

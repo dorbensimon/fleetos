@@ -16,7 +16,7 @@ export type RootStackParamList = {
   // Admin module
   /** `returnTo: 'driver'` keeps the back affordance honest when a vehicle
    * is opened from inside a driver's dossier rather than from the fleet. */
-  VehicleDetail: { vehicleId: string; returnTo?: 'driver' };
+  VehicleDetail: { vehicleId: string; returnTo?: 'driver'; tab?: 'general' | 'maintenance' | 'documents' | 'drivers' };
   VehicleForm: { vehicleId?: string };
   DriverDetail: { driverId: string };
   DriverArchive: undefined;
@@ -50,6 +50,7 @@ export type RootStackParamList = {
     category: string;
     title: string;
     allowDelete?: boolean;
+    requiresExpiry?: boolean;
   };
   DriverLicenseDocuments: { driverId: string };
   // Driver module

@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen, AppText, LoadingState, EmptyState, ErrorState } from '../../components/ui';
+import { DateField } from '../../components/ui/DateField';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { DocumentFileRow } from '../../components/documents/DocumentFileRow';
 import { Procedure6FormModal } from '../../components/documents/Procedure6FormModal';
@@ -53,6 +54,12 @@ const CATEGORY_HERO_ICONS: Record<string, HeroIcon> = {
   certifications: 'ribbon-outline',
   hazmat: 'flask-outline',
   trainings: 'school-outline',
+  safety_officer_approval: 'shield-checkmark-outline',
+  tachograph_calibration: 'speedometer-outline',
+  brakes_semiannual: 'disc-outline',
+  brakes_annual: 'disc-outline',
+  winter_inspection: 'snow-outline',
+  child_detection: 'eye-outline',
 };
 
 function CategoryHero({
@@ -75,7 +82,7 @@ function CategoryHero({
 }
 
 export default function DocumentCategoryScreen({ route, navigation }: Props) {
-  const { ownerType, ownerId, category, title, allowDelete = true } = route.params;
+  const { ownerType, ownerId, category, title, allowDelete = true, requiresExpiry = false } = route.params;
   const { companyId, profile } = useCompany();
   const insets = useSafeAreaInsets();
 
@@ -89,6 +96,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [expiryDate, setExpiryDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const loadRequest = useRef(0);
 
@@ -117,6 +125,10 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
 
   const addDocument = async () => {
     if (!companyId) return;
+    if (requiresExpiry && !expiryDate) {
+      showAlert('חסר תוקף', 'יש לבחור תאריך תוקף למסמך לפני ההעלאה');
+      return;
+    }
 
     chooseDocumentSource(title, async (source: DocumentSource) => {
       setUploading(true);
@@ -124,7 +136,8 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
         const file = await pickDocumentSource(source);
         if (!file) return;
 
-        await uploadDocument({ companyId, ownerType, ownerId, category, title, file });
+        await uploadDocument({ companyId, ownerType, ownerId, category, title, file, expiryDate });
+        if (requiresExpiry) setExpiryDate(null);
         await load();
       } catch (err: any) {
         showAlert('העלאה נכשלה', err?.message ?? 'נסה שוב');
@@ -193,6 +206,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
                   doc={doc}
                   variant="card"
                   showDate
+                  showExpiry={requiresExpiry}
                   onOpen={openDocument}
                   onDownload={downloadDocumentWithAlert}
                   onDelete={allowDelete ? (item) => confirmDeleteDocument(item, load) : undefined}
@@ -201,23 +215,31 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
             )}
 
             {(!isProcedure6 || canCreateProcedure6) && (
-              <TouchableOpacity
-                style={styles.uploadBtn}
-                activeOpacity={0.85}
-                onPress={() => (isProcedure6 ? setShowProcedure6Form(true) : addDocument())}
-                disabled={uploading}
-              >
-                {uploading ? (
-                  <ActivityIndicator color={COLORS.textInverse} />
-                ) : (
-                  <>
-                    <Ionicons name={isProcedure6 ? 'add-circle-outline' : 'cloud-upload-outline'} size={17} color={COLORS.textInverse} />
-                    <AppText weight="bold" style={styles.uploadText}>
-                      {isProcedure6 ? 'הוסף דיווח נוהל 6' : 'הוסף מסמך'}
-                    </AppText>
-                  </>
+              <>
+                {requiresExpiry && (
+                  <View style={styles.expiryField}>
+                    <AppText weight="bold" style={styles.expiryLabel}>תוקף המסמך</AppText>
+                    <DateField value={expiryDate} onChange={setExpiryDate} placeholder="בחר תאריך תוקף" />
+                  </View>
                 )}
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.uploadBtn}
+                  activeOpacity={0.85}
+                  onPress={() => (isProcedure6 ? setShowProcedure6Form(true) : addDocument())}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <ActivityIndicator color={COLORS.textInverse} />
+                  ) : (
+                    <>
+                      <Ionicons name={isProcedure6 ? 'add-circle-outline' : 'cloud-upload-outline'} size={17} color={COLORS.textInverse} />
+                      <AppText weight="bold" style={styles.uploadText}>
+                        {isProcedure6 ? 'הוסף דיווח נוהל 6' : 'העלה מסמך'}
+                      </AppText>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </>
             )}
           </View>
         )}
@@ -238,6 +260,8 @@ const styles = StyleSheet.create({
   screen: { backgroundColor: BRAND.screenBg },
   scrollContent: { flexGrow: 1 },
   content: { paddingHorizontal: SPACING.lg, paddingTop: 0, gap: SPACING.sm },
+  expiryField: { gap: SPACING.xs, marginTop: SPACING.sm },
+  expiryLabel: { color: COLORS.text, fontSize: 14, textAlign: 'right' },
   uploadBtn: {
     marginTop: SPACING.sm,
     height: 48,

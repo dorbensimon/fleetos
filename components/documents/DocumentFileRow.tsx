@@ -1,15 +1,16 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { AppText } from '../ui';
+import { AppText, ExpiryBadge } from '../ui';
 import type { DocumentRow } from '../../lib/adminApi';
-import { CARD_SHADOW, COLORS, RADIUS, SPACING, formatDate } from '../../lib/theme';
+import { CARD_SHADOW, COLORS, RADIUS, SPACING, expiryState, formatDate } from '../../lib/theme';
 import { documentDisplayName, documentIconName } from '../../lib/documentActions';
 
 type Props = {
   doc: DocumentRow;
   variant?: 'card' | 'compact';
   showDate?: boolean;
+  showExpiry?: boolean;
   onOpen: (doc: DocumentRow) => void;
   onDownload: (doc: DocumentRow) => void;
   onDelete?: (doc: DocumentRow) => void;
@@ -19,11 +20,14 @@ export function DocumentFileRow({
   doc,
   variant = 'compact',
   showDate = false,
+  showExpiry = false,
   onOpen,
   onDownload,
   onDelete,
 }: Props) {
   const isCard = variant === 'card';
+  const expiryStatus = doc.expiry_date ? expiryState(doc.expiry_date) : null;
+  const showExpiryStatus = expiryStatus === 'expired' || expiryStatus === 'soon';
 
   return (
     <View style={[styles.base, isCard ? styles.card : styles.compact]}>
@@ -47,7 +51,12 @@ export function DocumentFileRow({
           >
             {documentDisplayName(doc)}
           </AppText>
-          {showDate && <AppText style={styles.date}>{formatDate(doc.created_at)}</AppText>}
+          {(showDate || showExpiryStatus) && (
+            <View style={styles.meta}>
+              {showDate && <AppText style={styles.date}>{showExpiry ? (doc.expiry_date ? `תוקף עד: ${formatDate(doc.expiry_date)}` : 'לא הוזן תוקף') : formatDate(doc.created_at)}</AppText>}
+              {showExpiryStatus && <ExpiryBadge state={expiryStatus} />}
+            </View>
+          )}
         </View>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => onDownload(doc)} hitSlop={8}>
@@ -99,6 +108,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   textWrap: { flex: 1, gap: 1 },
+  meta: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.xs },
   cardName: { fontSize: 14 },
   compactName: { flex: 1, fontSize: 12.5, color: COLORS.textMuted },
   date: { fontSize: 11.5, color: COLORS.textFaint },

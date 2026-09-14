@@ -66,7 +66,8 @@ Deno.serve(async (req) => {
       if (item.archived_at) return json({ success: true });
       if (item.status === 'pending' && item.docuseal_submission_id) {
         const response = await docusealFetch(`/submissions/${item.docuseal_submission_id}`, { method: 'DELETE' });
-        if (!response.ok) return json({ error: 'לא ניתן לבטל את החתימה ב-DocuSeal כרגע' }, 502);
+        // Already gone on DocuSeal's side (e.g. deleted there directly) — nothing left to cancel.
+        if (!response.ok && response.status !== 404) return json({ error: 'לא ניתן לבטל את החתימה ב-DocuSeal כרגע' }, 502);
       }
       await access.adminClient.from('signature_requests').update({
         archived_at: new Date().toISOString(), archived_by: access.callerId,

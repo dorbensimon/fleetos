@@ -32,6 +32,9 @@ import {
 import { listSignatureRequests } from '../../lib/docuseal';
 import { RootStackParamList } from '../../navigation/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { FleetDesktopView } from '../../components/desktop/FleetDesktopView';
 
 /**
  * A2/A4 — the fleet screen. "Drivers" and "Vehicles" are the same screen:
@@ -81,6 +84,7 @@ export default function FleetScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { companyId, company } = useCompany();
   const insets = useSafeAreaInsets();
+  const isDesktop = useIsDesktop();
 
   const [mode, setMode] = useState<ToggleValue>('drivers');
 
@@ -538,6 +542,69 @@ export default function FleetScreen() {
     ...(filteredVehicles.length === 0 ? [{ kind: 'empty' as const }] : filteredVehicles.map((item) => ({ kind: 'card' as const, item }))),
     { kind: 'action' },
   ];
+
+  // Desktop web gets its own layout (sidebar + tables) over the exact same
+  // data, filters and navigation; phone and narrow web keep the layout below.
+  if (isDesktop) {
+    return (
+      <DesktopShell active="AdminHome" breadcrumbs={['ניהול', mode === 'drivers' ? 'נהגים' : 'רכבים']}>
+        <FleetDesktopView<LicenseFilter, StatusFilter>
+          mode={mode}
+          onModeChange={setMode}
+          drivers={drivers}
+          filteredDrivers={filteredDrivers}
+          driversLoading={driversLoading}
+          driversError={driversError}
+          onRetryDrivers={() => void retryDrivers()}
+          driverSearch={driverSearch}
+          onDriverSearch={setDriverSearch}
+          driverFilter={licenseFilter}
+          onDriverFilter={setLicenseFilter}
+          driverChips={[
+            { value: 'all', label: 'הכל', count: driverCounts.all },
+            { value: 'soon', label: 'רישיון קרוב לפוג', count: driverCounts.soon },
+            { value: 'expired', label: 'רישיון פג', count: driverCounts.expired },
+            { value: 'no_vehicle', label: 'ללא רכב', count: driverCounts.noVehicle },
+          ]}
+          driverKpis={{ total: driverCounts.all, soon: driverCounts.soon, expired: driverCounts.expired }}
+          archivedCount={archivedCount}
+          pendingSigning={pendingSigning}
+          vehicles={vehicles}
+          filteredVehicles={filteredVehicles}
+          vehiclesLoading={vehiclesLoading}
+          vehiclesError={vehiclesError}
+          onRetryVehicles={() => void retryVehicles()}
+          vehicleSearch={vehicleSearch}
+          onVehicleSearch={setVehicleSearch}
+          vehicleFilter={status}
+          onVehicleFilter={setStatus}
+          vehicleChips={[
+            { value: 'all', label: 'הכל', count: vehicleCounts.all },
+            { value: 'active', label: 'פעיל', count: vehicleCounts.active },
+            { value: 'maintenance', label: 'בטיפול', count: vehicleCounts.maintenance },
+            { value: 'disabled', label: 'מושבת', count: vehicleCounts.disabled },
+            { value: 'archived', label: 'בארכיון', count: vehicleCounts.archived },
+          ]}
+          vehicleKpis={{
+            total: vehicleCounts.all,
+            active: vehicleCounts.active,
+            inactive: vehicleCounts.maintenance + vehicleCounts.disabled,
+          }}
+          compliance={compliance}
+          vehicleDrivers={vehicleDrivers}
+          departmentNames={departmentNames}
+          restoringVehicleId={restoringVehicleId}
+          onOpenDriver={(driverId) => navigation.navigate('DriverDetail', { driverId })}
+          onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId })}
+          onAddDriver={() => navigation.navigate('DriverForm', {})}
+          onAddVehicle={() => navigation.navigate('VehicleForm', {})}
+          onOpenArchive={() => navigation.navigate('DriverArchive')}
+          onCallDriver={(phone) => void call(phone)}
+          onRestoreVehicle={(vehicleId) => void restoreVehicle(vehicleId)}
+        />
+      </DesktopShell>
+    );
+  }
 
   return (
     <Screen contentStyle={styles.fleetContent}>

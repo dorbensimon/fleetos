@@ -24,8 +24,15 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
   const base = `<!doctype html><html dir="rtl"><head><meta name="viewport" content="width=device-width,initial-scale=1">
     <style>html,body{margin:0;height:100%;background:#f5f5f7}docuseal-form,docuseal-builder{display:block;min-height:100vh}</style>`;
 
-  if (params.mode === 'document' || params.mode === 'image') {
+  if (params.mode === 'document') {
     return null;
+  }
+
+  // Let the browser render uploaded images inside a constrained viewer.
+  // Loading an image URL directly in an iframe makes mobile Safari display
+  // it at its original (often very large) pixel dimensions.
+  if (params.mode === 'image') {
+    return `${base}<style>body{display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}</style></head><body><img src="${attr(params.src || '')}" alt="${attr(params.title)}" /></body></html>`;
   }
 
   if (params.mode === 'builder') {

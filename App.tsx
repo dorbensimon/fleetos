@@ -21,6 +21,7 @@ import {
   Heebo_700Bold,
   Heebo_800ExtraBold,
 } from '@expo-google-fonts/heebo';
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import LoginScreen from './screens/LoginScreen';
 import SetPasswordScreen from './screens/SetPasswordScreen';
 import OwnerHomeScreen from './screens/OwnerHomeScreen';
@@ -51,6 +52,7 @@ import DriverProfileScreen from './screens/driver/DriverProfileScreen';
 import DriverOdometerScreen from './screens/driver/DriverOdometerScreen';
 import MenuScreen from './screens/MenuScreen';
 import { RootStackParamList } from './navigation/types';
+import { refreshBackFallback } from './lib/refreshSafeBack';
 import { supabase } from './lib/supabase';
 import { resolveRouteForUser } from './lib/session';
 import { CompanyProvider } from './lib/CompanyContext';
@@ -64,6 +66,21 @@ import {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
+const WEB_NAVIGATION_STATE_KEY = 'fleetos.web-navigation-state';
+
+// Web navigation normally restores from the URL. The development server can
+// retain the root URL, though, so also retain the in-app stack for a browser
+// refresh from that root. A non-root URL always takes precedence for direct
+// links and browser history.
+const getWebInitialNavigationState = () => {
+  if (typeof window === 'undefined' || window.location.pathname !== '/' || window.location.search) return undefined;
+  try {
+    const savedState = window.sessionStorage.getItem(WEB_NAVIGATION_STATE_KEY);
+    return savedState ? JSON.parse(savedState) : undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 // On web this maps every in-app screen to a URL and lets React Navigation
 // synchronize its stack with the browser History API. Without it, Safari's
@@ -107,6 +124,7 @@ const linking: LinkingOptions<RootStackParamList> = {
 
 export default function App() {
   const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList | null>(null);
+  const [webInitialNavigationState] = useState(getWebInitialNavigationState);
 
   const [fontsLoaded] = useFonts({
     Assistant_400Regular,
@@ -118,6 +136,12 @@ export default function App() {
     Heebo_600SemiBold,
     Heebo_700Bold,
     Heebo_800ExtraBold,
+    // On web, especially Safari, icon components can render their glyph before
+    // their font file is available. Register every icon family used in the app
+    // with the same blocking font load as the Hebrew typefaces.
+    ...Ionicons.font,
+    ...Feather.font,
+    ...MaterialCommunityIcons.font,
   });
 
   useEffect(() => {
@@ -155,6 +179,7 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         void unregisterPushNotifications().catch(() => undefined);
+        if (typeof window !== 'undefined') window.sessionStorage.removeItem(WEB_NAVIGATION_STATE_KEY);
         setInitialRoute('Login');
       }
     });
@@ -183,7 +208,26 @@ export default function App() {
     <SafeAreaProvider>
       <ToastProvider>
         <CompanyProvider>
-          <NavigationContainer ref={navigationRef} linking={linking}>
+          <NavigationContainer
+            ref={navigationRef}
+            linking={linking}
+            initialState={initialRoute === 'Login' ? undefined : webInitialNavigationState}
+            onStateChange={(state) => {
+              if (typeof window === 'undefined') return;
+              try {
+                window.sessionStorage.setItem(WEB_NAVIGATION_STATE_KEY, JSON.stringify(state));
+              } catch {
+                // Storage may be unavailable in private browsing; URL linking still works.
+              }
+            }}
+            onUnhandledAction={(action) => {
+              if (action.type !== 'GO_BACK' || !navigationRef.isReady()) return;
+              const fallback = refreshBackFallback(navigationRef.getCurrentRoute(), initialRoute);
+              if (fallback) {
+                navigationRef.resetRoot({ index: 0, routes: [fallback as never] });
+              }
+            }}
+          >
             <Stack.Navigator key={initialRoute} screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="SetPassword" component={SetPasswordScreen} />

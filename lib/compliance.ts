@@ -120,12 +120,24 @@ export const VEHICLE_COMPLIANCE: ComplianceItemDef[] = [
   { itemType: 'insurance_comprehensive', category: 'insurance', label: 'ביטוח מקיף' },
 
   { itemType: 'annual_test', category: 'inspection', label: 'טסט שנתי', tracksLastDate: true, validityDays: 365 },
-  { itemType: 'brakes_semiannual', category: 'inspection', label: 'בדיקת בלמים חצי-שנתית', tracksLastDate: true, validityDays: 183 },
-  { itemType: 'winter_check', category: 'inspection', label: 'בדיקת חורף', tracksLastDate: true, validityDays: 365 },
-  { itemType: 'child_detection', category: 'inspection', label: 'בדיקת שכחת ילדים', tracksLastDate: true, validityDays: 365 },
-  { itemType: 'tachograph', category: 'inspection', label: 'טכוגרף' },
-  { itemType: 'safety_officer', category: 'inspection', label: 'ביקורת קצב״ת', tracksLastDate: true, validityDays: 365 },
 ];
+
+/**
+ * These categories were superseded by the vehicle document folders above.
+ * Existing database rows are deliberately retained, but must not reappear in
+ * vehicle-facing summaries as a second representation of the same document.
+ */
+const RETIRED_VEHICLE_COMPLIANCE_ITEM_TYPES = new Set([
+  'brakes_semiannual',
+  'winter_check',
+  'child_detection',
+  'tachograph',
+  'safety_officer',
+]);
+
+export function isRetiredVehicleComplianceItem(itemType: string): boolean {
+  return RETIRED_VEHICLE_COMPLIANCE_ITEM_TYPES.has(itemType);
+}
 
 export const DRIVER_COMPLIANCE: ComplianceItemDef[] = [
   { itemType: 'health_declaration', category: 'health', label: 'הצהרת בריאות' },

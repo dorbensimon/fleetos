@@ -31,6 +31,16 @@ import {
   type DocumentSource,
 } from '../lib/documentActions';
 
+const complianceFolderIcon = (itemType: string): keyof typeof Ionicons.glyphMap => ({
+  vehicle_license: 'car-outline', operating_license: 'document-text-outline',
+  insurance_mandatory: 'shield-checkmark-outline', insurance_comprehensive: 'shield-outline',
+  annual_test: 'car-sport-outline',
+}[itemType] ?? 'document-text-outline') as keyof typeof Ionicons.glyphMap;
+const complianceFolderColor = (itemType: string) => ({
+  vehicle_license: '#0088CC', operating_license: '#5E5CE6', insurance_mandatory: '#34C759',
+  insurance_comprehensive: '#0A7FD0', annual_test: '#FF9500',
+}[itemType] ?? '#8E8E93');
+
 /**
  * The grouped compliance + documents block used by both the vehicle
  * file (A3) and the driver file (A5).
@@ -47,12 +57,16 @@ export function ComplianceSection({
   ownerId,
   focusItemType,
   spacious,
+  folderAppearance = false,
+  hiddenItemTypes = [],
 }: {
   companyId: string;
   ownerType: OwnerType;
   ownerId: string;
   focusItemType?: string | null;
   spacious?: boolean;
+  folderAppearance?: boolean;
+  hiddenItemTypes?: string[];
 }) {
   const { showToast } = useToast();
   const [items, setItems] = useState<Map<string, ComplianceItem>>(new Map());
@@ -170,20 +184,26 @@ export function ComplianceSection({
     );
   }
 
-  const groups = groupByCategory(complianceCatalog(ownerType));
+  const hiddenItems = new Set(hiddenItemTypes);
+  const groups = groupByCategory(complianceCatalog(ownerType))
+    .map((group) => ({ ...group, items: group.items.filter((item) => !hiddenItems.has(item.itemType)) }))
+    .filter((group) => group.items.length > 0);
+  const displayedGroups = folderAppearance
+    ? [{ category: 'folders', label: '', icon: '', items: groups.flatMap((group) => group.items) }]
+    : groups;
 
   return (
     <>
-      {groups.map((group) => (
-        <Card key={group.category} style={[styles.card, spacious && styles.cardSpacious]}>
-          <View style={styles.groupHead}>
+      {displayedGroups.map((group) => (
+        <Card key={group.category} style={[styles.card, spacious && styles.cardSpacious, folderAppearance && styles.folderCard]}>
+          {!folderAppearance && <View style={styles.groupHead}>
             <Ionicons name={group.icon as any} size={18} color={COLORS.accent} />
             <AppText weight="bold" style={styles.groupTitle}>
               {group.label}
             </AppText>
-          </View>
+          </View>}
 
-          {group.items.map((def) => {
+          {group.items.map((def, index) => {
             const item = items.get(def.itemType);
             const itemDocs = docs.filter((d) => d.title === def.label);
             const isOpen = expanded === def.itemType;
@@ -199,46 +219,25 @@ export function ComplianceSection({
                 (draft.expiry_date !== undefined && draft.expiry_date !== (item?.expiry_date ?? null)));
 
             return (
-              <View key={def.itemType} style={styles.item}>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  style={[styles.itemHead, spacious && styles.itemHeadSpacious]}
-                  onPress={() => setExpanded(isOpen ? null : def.itemType)}
-                >
-                  <Ionicons
-                    name={isOpen ? 'chevron-down' : 'chevron-back'}
-                    size={15}
-                    color={COLORS.textFaint}
-                  />
-                  <View style={styles.itemLabelWrap}>
-                    <AppText weight="bold" style={styles.itemLabel}>
-                      {def.label}
-                    </AppText>
-                    {itemDocs.length > 0 && (
-                      <AppText style={styles.itemDocCount}>
-                        {itemDocs.length} מסמכים
-                      </AppText>
-                    )}
-                    {def.tracksLastDate && item?.last_date && !item?.expiry_date && (
-                      <AppText
-                        style={[
-                          styles.itemStatusNote,
-                          { color: EXPIRY_STYLE[badgeState].fg },
-                        ]}
-                      >
-                        בדיקה אחרונה
-                        {derivedTargetDate ? ' · תוקף מחושב אוטומטית' : ''}
-                      </AppText>
-                    )}
-                  </View>
-                  <ExpiryBadge
-                    state={badgeState}
-                    label={complianceBadgeLabel(def, item)}
-                  />
+              <View key={def.itemType} style={[styles.item, folderAppearance && index === 0 && styles.folderFirstItem]}>
+                <TouchableOpacity activeOpacity={0.7} style={folderAppearance ? styles.folderItemHead : [styles.itemHead, spacious && styles.itemHeadSpacious]} onPress={() => setExpanded(isOpen ? null : def.itemType)}>
+                  {folderAppearance ? <>
+                    <View style={[styles.folderIcon, { backgroundColor: complianceFolderColor(def.itemType) }]}><Ionicons name={complianceFolderIcon(def.itemType)} size={18} color="#FFF" /></View>
+                    <View style={styles.itemLabelWrap}><AppText style={styles.folderItemLabel}>{def.label}</AppText>{itemDocs.length > 0 && <AppText style={styles.itemDocCount}>{itemDocs.length} מסמכים</AppText>}</View>
+                    <Ionicons name={isOpen ? 'chevron-down' : 'chevron-back'} size={18} color="rgba(60,60,67,.28)" />
+                  </> : <>
+                    <Ionicons name={isOpen ? 'chevron-down' : 'chevron-back'} size={15} color={COLORS.textFaint} />
+                    <View style={styles.itemLabelWrap}>
+                      <AppText weight="bold" style={styles.itemLabel}>{def.label}</AppText>
+                      {itemDocs.length > 0 && <AppText style={styles.itemDocCount}>{itemDocs.length} מסמכים</AppText>}
+                      {def.tracksLastDate && item?.last_date && !item?.expiry_date && <AppText style={[styles.itemStatusNote, { color: EXPIRY_STYLE[badgeState].fg }]}>בדיקה אחרונה{derivedTargetDate ? ' · תוקף מחושב אוטומטית' : ''}</AppText>}
+                    </View>
+                    <ExpiryBadge state={badgeState} label={complianceBadgeLabel(def, item)} />
+                  </>}
                 </TouchableOpacity>
 
                 {isOpen && (
-                  <View style={[styles.itemBody, spacious && styles.itemBodySpacious]}>
+                  <View style={[styles.itemBody, spacious && styles.itemBodySpacious, folderAppearance && styles.folderItemBody]}>
                     {def.tracksLastDate && (
                       <View style={styles.dateRow}>
                         <AppText style={styles.dateLabel}>בדיקה אחרונה</AppText>
@@ -313,13 +312,13 @@ export function ComplianceSection({
         </Card>
       ))}
 
-      <GeneralDocuments
+      {!folderAppearance && <GeneralDocuments
         companyId={companyId}
         ownerType={ownerType}
         ownerId={ownerId}
         docs={docs.filter((d) => d.category === 'general')}
         onChanged={load}
-      />
+      />}
     </>
   );
 }
@@ -418,7 +417,8 @@ function GeneralDocuments({
 
 const styles = StyleSheet.create({
   card: { gap: 2 },
-  cardSpacious: { marginBottom: SPACING.sm, paddingVertical: SPACING.sm },
+  cardSpacious: { marginHorizontal: 20, marginBottom: SPACING.sm, paddingVertical: SPACING.sm },
+  folderCard: { padding: 0, gap: 0, overflow: 'hidden' },
   groupHead: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -428,6 +428,7 @@ const styles = StyleSheet.create({
   groupTitle: { fontSize: 15.5 },
 
   item: { borderTopWidth: 1, borderTopColor: COLORS.divider },
+  folderFirstItem: { borderTopWidth: 0 },
   itemHead: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -435,6 +436,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   itemHeadSpacious: { paddingVertical: SPACING.md },
+  folderItemHead: { minHeight: 57, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 11 },
+  folderIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  folderItemLabel: { flex: 1, fontSize: 16.5, color: COLORS.text },
+  folderItemBody: { paddingHorizontal: SPACING.lg },
   itemLabelWrap: { flex: 1, gap: 1 },
   itemLabel: { fontSize: 13.5 },
   itemDocCount: { fontSize: 11, color: COLORS.textFaint },
