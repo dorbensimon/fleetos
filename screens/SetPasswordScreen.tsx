@@ -1,15 +1,6 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -17,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { resolveRouteForUser } from '../lib/session';
 import { MIN_PASSWORD_LENGTH } from '../lib/validation';
 import { functionErrorMessage } from '../lib/functionError';
+import { CONTENT_MAX_WIDTH } from '../lib/theme';
 
 /**
  * Shown once, right after a first login with an owner/admin-assigned
@@ -49,7 +41,7 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
   const [saving, setSaving] = useState(false);
 
   const signOut = () => {
-    Alert.alert('התנתקות', 'להתנתק ולחזור למסך ההתחברות?', [
+    showAlert('התנתקות', 'להתנתק ולחזור למסך ההתחברות?', [
       { text: 'ביטול', style: 'cancel' },
       { text: 'התנתק', style: 'destructive', onPress: () => { void supabase.auth.signOut(); } },
     ]);
@@ -96,7 +88,15 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
         return;
       }
 
-      navigation.reset({ index: 0, routes: [{ name: result.route }] });
+      if (!voluntary && result.route === 'DriverHome') {
+        showAlert(
+          'ברוך הבא',
+          'במסך הבית תראה קודם מה דחוף. אפשר לעדכן קילומטרים, לחתום על מסמכים ולצפות במסמכים שלך. פרטים רשמיים ושיוך רכב נשארים באחריות המנהל.',
+          [{ text: 'הבנתי', onPress: () => navigation.reset({ index: 0, routes: [{ name: result.route }] }) }]
+        );
+      } else {
+        navigation.reset({ index: 0, routes: [{ name: result.route }] });
+      }
     } catch {
       setGeneralError('אירעה שגיאה. נסה שוב');
     } finally {
@@ -185,7 +185,7 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
-  content: { flex: 1, justifyContent: 'center', paddingHorizontal: 28 },
+  content: { flex: 1, justifyContent: 'center', paddingHorizontal: 28, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   icon: { alignSelf: 'center', marginBottom: 14 },
   title: { fontSize: 22, fontWeight: '700', color: COLORS.black, textAlign: 'center', marginBottom: 8 },
   subtitle: {

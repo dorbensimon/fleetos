@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from './Text';
-import { COLORS, RADIUS, SPACING, CARD_SHADOW } from '../../lib/theme';
+import { COLORS, CONTENT_MAX_WIDTH, RADIUS, SPACING, CARD_SHADOW } from '../../lib/theme';
 
 const ENTER_MS = 340;
 const EXIT_MS = 220;
@@ -155,6 +155,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: SPACING.sm,
     right: SPACING.sm,
+    maxWidth: CONTENT_MAX_WIDTH,
+    marginHorizontal: 'auto',
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
     maxHeight: '70%',

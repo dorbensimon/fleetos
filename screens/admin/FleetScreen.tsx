@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, RefreshControl, Linking, Alert, Animated, StatusBar } from 'react-native';
+import { View, StyleSheet, RefreshControl, Linking, Animated, StatusBar, Easing } from 'react-native';
+import { showAlert } from '../../lib/platformAlert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -60,6 +61,9 @@ type StatusFilter = 'all' | 'active' | 'maintenance' | 'disabled' | 'archived';
 const CROSSFADE_MS = 140;
 const DOCK_ANIMATION_MS = 190;
 const DOCK_SCROLL_THRESHOLD = 6;
+// Lets the final "add" action rise to the middle of the visible sheet, while
+// remaining a fixed, modest amount instead of creating a full empty page.
+const FLEET_ACTION_CENTERING_PADDING = 220;
 
 type DriverSheetItem =
   | { kind: 'chips' }
@@ -184,7 +188,7 @@ export default function FleetScreen() {
   const call = async (phone: string | null) => {
     const number = phone?.replace(/[^\d+]/g, '') ?? '';
     if (!number || number === '+') {
-      Alert.alert('לא ניתן לחייג', 'לנהג לא מוגדר מספר טלפון תקין');
+      showAlert('לא ניתן לחייג', 'לנהג לא מוגדר מספר טלפון תקין');
       return;
     }
 
@@ -195,7 +199,7 @@ export default function FleetScreen() {
       }
       await Linking.openURL(url);
     } catch (error) {
-      Alert.alert('לא ניתן לחייג', errorMessage(error, 'נסה שוב מאוחר יותר'));
+      showAlert('לא ניתן לחייג', errorMessage(error, 'נסה שוב מאוחר יותר'));
     }
   };
 
@@ -295,10 +299,10 @@ export default function FleetScreen() {
       await updateVehicle(vehicleId, { status: 'active' });
       const refreshed = await loadVehicles();
       if (!refreshed) {
-        Alert.alert('הרכב שוחזר', 'לא הצלחנו לרענן את הרשימה. אפשר למשוך למטה כדי לנסות שוב.');
+        showAlert('הרכב שוחזר', 'לא הצלחנו לרענן את הרשימה. אפשר למשוך למטה כדי לנסות שוב.');
       }
     } catch (error) {
-      Alert.alert('שחזור הרכב נכשל', errorMessage(error, 'נסה שוב מאוחר יותר'));
+      showAlert('שחזור הרכב נכשל', errorMessage(error, 'נסה שוב מאוחר יותר'));
     } finally {
       setRestoringVehicleId(null);
     }
@@ -341,7 +345,7 @@ export default function FleetScreen() {
     setDriversRefreshing(true);
     try {
       const refreshed = await loadDrivers();
-      if (!refreshed) Alert.alert('רענון הנהגים נכשל', 'בדוק את החיבור ונסה שוב.');
+      if (!refreshed) showAlert('רענון הנהגים נכשל', 'בדוק את החיבור ונסה שוב.');
     } finally {
       setDriversRefreshing(false);
     }
@@ -351,7 +355,7 @@ export default function FleetScreen() {
     setVehiclesRefreshing(true);
     try {
       const refreshed = await loadVehicles();
-      if (!refreshed) Alert.alert('רענון הרכבים נכשל', 'בדוק את החיבור ונסה שוב.');
+      if (!refreshed) showAlert('רענון הרכבים נכשל', 'בדוק את החיבור ונסה שוב.');
     } finally {
       setVehiclesRefreshing(false);
     }
@@ -402,11 +406,51 @@ export default function FleetScreen() {
 
   const [driversScrollY] = useState(() => new Animated.Value(0));
   const [vehiclesScrollY] = useState(() => new Animated.Value(0));
-  const activeScrollY = mode === 'drivers' ? driversScrollY : vehiclesScrollY;
   const [dockVisibility] = useState(() => new Animated.Value(1));
   const dockVisible = useRef(true);
   const lastScrollOffset = useRef<Record<ToggleValue, number>>({ drivers: 0, vehicles: 0 });
   const scrollDistance = useRef<Record<ToggleValue, number>>({ drivers: 0, vehicles: 0 });
+
+  // A short list should end naturally after its last card. We only collapse
+  // the hero when its real content already provides enough scroll range;
+  // adding artificial bottom padding here made short driver/vehicle lists
+  // scroll through a large empty sheet.
+  const [driversContentHeight, setDriversContentHeight] = useState(0);
+  const [driversListHeight, setDriversListHeight] = useState(0);
+  const [vehiclesContentHeight, setVehiclesContentHeight] = useState(0);
+  const [vehiclesListHeight, setVehiclesListHeight] = useState(0);
+
+  const canCollapse = useMemo(
+    () => ({
+      drivers: driversContentHeight - driversListHeight > HERO_TRAVEL + 48,
+      vehicles: vehiclesContentHeight - vehiclesListHeight > HERO_TRAVEL + 48,
+    }),
+    [driversContentHeight, driversListHeight, vehiclesContentHeight, vehiclesListHeight]
+  );
+  const canCollapseRef = useRef(canCollapse);
+  useEffect(() => {
+    canCollapseRef.current = canCollapse;
+  }, [canCollapse]);
+
+  const [driversHeroAnim] = useState(() => new Animated.Value(0));
+  const [vehiclesHeroAnim] = useState(() => new Animated.Value(0));
+  const activeHeroAnim = mode === 'drivers' ? driversHeroAnim : vehiclesHeroAnim;
+  const heroCollapsed = useRef<Record<ToggleValue, boolean>>({ drivers: false, vehicles: false });
+
+  const setHeroCollapsed = useCallback(
+    (listMode: ToggleValue, collapsed: boolean) => {
+      if (heroCollapsed.current[listMode] === collapsed) return;
+      heroCollapsed.current[listMode] = collapsed;
+      const anim = listMode === 'drivers' ? driversHeroAnim : vehiclesHeroAnim;
+      Animated.timing(anim, {
+        toValue: collapsed ? HERO_TRAVEL : 0,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    },
+    [driversHeroAnim, vehiclesHeroAnim]
+  );
 
   const setDockVisible = useCallback((visible: boolean) => {
     if (dockVisible.current === visible) return;
@@ -421,6 +465,14 @@ export default function FleetScreen() {
   const handleListScroll = useCallback((listMode: ToggleValue, offset: number) => {
     const previousOffset = lastScrollOffset.current[listMode];
     lastScrollOffset.current[listMode] = offset;
+
+    if (canCollapseRef.current[listMode]) {
+      const wasCollapsed = heroCollapsed.current[listMode];
+      const threshold = wasCollapsed ? 8 : 28;
+      setHeroCollapsed(listMode, offset > threshold);
+    } else if (heroCollapsed.current[listMode]) {
+      setHeroCollapsed(listMode, false);
+    }
 
     if (offset <= DOCK_SCROLL_THRESHOLD) {
       scrollDistance.current[listMode] = 0;
@@ -437,7 +489,7 @@ export default function FleetScreen() {
     if (Math.abs(scrollDistance.current[listMode]) < DOCK_SCROLL_THRESHOLD) return;
     setDockVisible(scrollDistance.current[listMode] < 0);
     scrollDistance.current[listMode] = 0;
-  }, [setDockVisible]);
+  }, [setDockVisible, setHeroCollapsed]);
 
   // Animated.event intentionally invokes the listener after render; the refs it
   // reaches are scroll bookkeeping and never affect rendered output directly.
@@ -458,8 +510,8 @@ export default function FleetScreen() {
     setDockVisible(true);
   }, [mode, setDockVisible]);
 
-  const sheetTranslateY = (scrollY: Animated.Value) =>
-    scrollY.interpolate({ inputRange: [0, HERO_TRAVEL], outputRange: [0, -HERO_TRAVEL], extrapolate: 'clamp' });
+  const sheetTranslateY = (heroAnim: Animated.Value) =>
+    heroAnim.interpolate({ inputRange: [0, HERO_TRAVEL], outputRange: [0, -HERO_TRAVEL], extrapolate: 'clamp' });
 
   // On the blue hero glass, cube numbers use the bright "fill" tones (not
   // the muted "text" tones, which are sized for reading on the white
@@ -488,11 +540,11 @@ export default function FleetScreen() {
   ];
 
   return (
-    <Screen>
+    <Screen contentStyle={styles.fleetContent}>
       <StatusBar barStyle="light-content" />
 
       <FleetHero
-        scrollY={activeScrollY}
+        scrollY={activeHeroAnim}
         stats={mode === 'drivers' ? driverStats : vehicleStats}
         query={mode === 'drivers' ? driverSearch : vehicleSearch}
         onChangeQuery={mode === 'drivers' ? setDriverSearch : setVehicleSearch}
@@ -504,24 +556,35 @@ export default function FleetScreen() {
       <Animated.View
         style={[
           styles.sheet,
-          { top: sheetRestTop, opacity: driversOpacity, transform: [{ translateY: sheetTranslateY(driversScrollY) }] },
+          { top: sheetRestTop, opacity: driversOpacity, transform: [{ translateY: sheetTranslateY(driversHeroAnim) }] },
         ]}
         pointerEvents={mode === 'drivers' ? 'auto' : 'none'}
       >
        <View style={sheetStyles.sheetInner}>
-        <LinearGradient colors={[FLEET_COLORS.sheetFrom, FLEET_COLORS.sheetTo]} style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: FLEET_COLORS.sheetTo }]} />
         {driversLoading ? (
           <DriverListSkeleton />
         ) : driversError && drivers.length === 0 ? (
           <ErrorState message="לא ניתן לטעון את הנהגים" hint={driversError} onRetry={() => void retryDrivers()} />
         ) : (
           <Animated.FlatList
+            style={sheetStyles.flatList}
             data={driverSheetData}
             keyExtractor={(entry, i) => (entry.kind === 'card' ? entry.item.id : `${entry.kind}-${i}`)}
             stickyHeaderIndices={[0]}
             onScroll={onDriversScroll}
+            onContentSizeChange={(_w, h) => {
+              setDriversContentHeight(h);
+            }}
+            onLayout={(e) => {
+              const height = e.nativeEvent.layout.height;
+              setDriversListHeight(height);
+            }}
             scrollEventThrottle={16}
-            contentContainerStyle={[sheetStyles.list, { paddingBottom: FLEET_DOCK_CLEARANCE + insets.bottom }]}
+            contentContainerStyle={[
+              sheetStyles.list,
+              { paddingBottom: FLEET_DOCK_CLEARANCE + FLEET_ACTION_CENTERING_PADDING + insets.bottom },
+            ]}
             refreshControl={<RefreshControl refreshing={driversRefreshing} onRefresh={onRefreshDrivers} />}
             renderItem={({ item: entry }) => {
               if (entry.kind === 'chips') {
@@ -577,24 +640,35 @@ export default function FleetScreen() {
       <Animated.View
         style={[
           styles.sheet,
-          { top: sheetRestTop, opacity: vehiclesOpacity, transform: [{ translateY: sheetTranslateY(vehiclesScrollY) }] },
+          { top: sheetRestTop, opacity: vehiclesOpacity, transform: [{ translateY: sheetTranslateY(vehiclesHeroAnim) }] },
         ]}
         pointerEvents={mode === 'vehicles' ? 'auto' : 'none'}
       >
        <View style={sheetStyles.sheetInner}>
-        <LinearGradient colors={[FLEET_COLORS.sheetFrom, FLEET_COLORS.sheetTo]} style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: FLEET_COLORS.sheetTo }]} />
         {vehiclesLoading ? (
           <VehicleListSkeleton />
         ) : vehiclesError && vehicles.length === 0 ? (
           <ErrorState message="לא ניתן לטעון את הרכבים" hint={vehiclesError} onRetry={() => void retryVehicles()} />
         ) : (
           <Animated.FlatList
+            style={sheetStyles.flatList}
             data={vehicleSheetData}
             keyExtractor={(entry, i) => (entry.kind === 'card' ? entry.item.id : `${entry.kind}-${i}`)}
             stickyHeaderIndices={[0]}
             onScroll={onVehiclesScroll}
+            onContentSizeChange={(_w, h) => {
+              setVehiclesContentHeight(h);
+            }}
+            onLayout={(e) => {
+              const height = e.nativeEvent.layout.height;
+              setVehiclesListHeight(height);
+            }}
             scrollEventThrottle={16}
-            contentContainerStyle={[sheetStyles.list, { paddingBottom: FLEET_DOCK_CLEARANCE + insets.bottom }]}
+            contentContainerStyle={[
+              sheetStyles.list,
+              { paddingBottom: FLEET_DOCK_CLEARANCE + FLEET_ACTION_CENTERING_PADDING + insets.bottom },
+            ]}
             refreshControl={<RefreshControl refreshing={vehiclesRefreshing} onRefresh={onRefreshVehicles} />}
             renderItem={({ item: entry }) => {
               if (entry.kind === 'chips') {
@@ -651,6 +725,9 @@ export default function FleetScreen() {
 }
 
 const styles = StyleSheet.create({
+  // This screen is a dashboard, not a narrow form. It can use the available
+  // desktop canvas while retaining the phone layout at small widths.
+  fleetContent: { maxWidth: 1280 },
   // Shadow lives on this outer view (no overflow:hidden, or RN clips the
   // shadow along with the corners) — `sheetInner` below does the actual
   // rounded clipping + gradient fill.
@@ -673,6 +750,13 @@ const sheetStyles = StyleSheet.create({
     borderTopRightRadius: 40,
     overflow: 'hidden',
   },
+  // Without an explicit flex here the list (a ScrollView under the hood)
+  // sizes itself to its content instead of stretching to sheetInner's
+  // actual height — which made onLayout report ~contentHeight, so
+  // driversListHeight/vehiclesListHeight ended up ~= content height and
+  // canCollapse (see FleetScreen) was always false, permanently locking
+  // the hero expanded.
+  flatList: { flex: 1 },
   list: { gap: SPACING.md },
 
   chipsBar: {

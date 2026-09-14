@@ -3,26 +3,28 @@
     "name": "fleetos",
     "slug": "fleetos",
     "version": "1.0.0",
+    "scheme": "fleetos",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.tolvex.fleetos",
+      "supportsTablet": true,
+      "infoPlist": {
+        "CFBundleDisplayName": "fleetos",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.fleetos"
+      "package": "com.tolvex.fleetos",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -36,7 +38,22 @@
         }
       ],
       "expo-font",
-      "@react-native-community/datetimepicker"
-    ]
+      "expo-notifications",
+      "expo-sharing",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "8db233d7-e6e0-4698-a339-c9114f3b5470"
+      }
+    },
+    "owner": "dor5995"
   }
 }

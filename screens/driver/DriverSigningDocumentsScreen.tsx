@@ -3,9 +3,12 @@ import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { AppText, Card, EmptyState, ErrorState, LoadingState, Screen, ScreenHeader } from '../../components/ui';
+import { AppText, Card, EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
+import { DriverDossierHero } from '../../components/driverCard/DriverDossierHero';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getSigningSession, listSignatureRequests, syncSigningRequest, type SignatureRequest } from '../../lib/docuseal';
+import { defaultSigningTab, type SigningTab } from '../../lib/signingTabs';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import type { RootStackParamList } from '../../navigation/types';
@@ -16,12 +19,13 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
   const { companyId, profile } = useCompany();
   const managedDriverId = route.params?.driverId;
   const isManagerView = profile?.role !== 'driver' && !!managedDriverId;
-  const [tab, setTab] = useState<'pending' | 'completed'>('pending');
+  const [tab, setTab] = useState<SigningTab>('pending');
   const [items, setItems] = useState<SignatureRequest[]>([]);
   const [error, setError] = useState('');
   const [opening, setOpening] = useState('');
   const [loading, setLoading] = useState(true);
   const loadRequest = useRef(0);
+  const insets = useSafeAreaInsets();
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
@@ -37,6 +41,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
       }
       if (requestId !== loadRequest.current) return;
       setItems(rows);
+      setTab(defaultSigningTab(rows));
       setError('');
     } catch (err: any) {
       if (requestId === loadRequest.current) setError(err?.message || 'טעינת המסמכים נכשלה');
@@ -74,7 +79,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
   return (
     <Screen style={styles.screen}>
       <AdminGradientBackground />
-      <ScreenHeader title={isManagerView ? 'מסמכי הנהג לחתימה' : 'מסמכים לחתימה'} onBack={() => navigation.goBack()} />
+      <DriverDossierHero title={isManagerView ? 'מסמכי הנהג לחתימה' : 'מסמכים לחתימה'} subtitle={`${items.length} מסמכים`} icon="create-outline" insetTop={insets.top} onBack={() => navigation.goBack()} />
       <View style={styles.tabs}>
         {(['pending', 'completed'] as const).map((value) => (
           <TouchableOpacity key={value} style={[styles.tab, tab === value && styles.active]} onPress={() => setTab(value)}>

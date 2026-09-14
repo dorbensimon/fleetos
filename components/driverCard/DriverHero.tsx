@@ -43,6 +43,7 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
   },
   avatarShadowWrap: {
+    borderRadius: DC_SPACING.avatarRadius,
     shadowColor: 'rgba(10,132,255,0.28)',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 1,

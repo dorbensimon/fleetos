@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, useToast } from './ui';
 import { Select } from './ui/Select';
@@ -59,7 +60,7 @@ export function VehicleDriversEditor({
       showToast('הנהג שויך לרכב');
     } catch (err: any) {
       if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-      Alert.alert('שיוך הנהג נכשל', String(err?.message ?? 'נסה שוב'));
+      showAlert('שיוך הנהג נכשל', String(err?.message ?? 'נסה שוב'));
     } finally {
       setBusyId(null);
     }
@@ -73,14 +74,14 @@ export function VehicleDriversEditor({
       showToast('נקבע כנהג ראשי');
     } catch (err: any) {
       if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-      Alert.alert('הפעולה נכשלה', String(err?.message ?? 'נסה שוב'));
+      showAlert('הפעולה נכשלה', String(err?.message ?? 'נסה שוב'));
     } finally {
       setBusyId(null);
     }
   };
 
   const confirmRemove = (a: VehicleDriverWithProfile) => {
-    Alert.alert('הסרת שיוך נהג', `להסיר את ${a.full_name ?? 'הנהג'} מהרכב?`, [
+    showAlert('הסרת שיוך נהג', `להסיר את ${a.full_name ?? 'הנהג'} מהרכב?`, [
       { text: 'ביטול', style: 'cancel' },
       {
         text: 'הסר שיוך',
@@ -93,7 +94,7 @@ export function VehicleDriversEditor({
             showToast('השיוך הוסר');
           } catch (err: any) {
             if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-            Alert.alert('הסרת השיוך נכשלה', String(err?.message ?? 'נסה שוב'));
+            showAlert('הסרת השיוך נכשלה', String(err?.message ?? 'נסה שוב'));
           } finally {
             setBusyId(null);
           }

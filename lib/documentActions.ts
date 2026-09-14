@@ -1,4 +1,4 @@
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import type { DocumentRow } from './adminApi';
 import {
   captureImage,
@@ -9,6 +9,7 @@ import {
   pickImage,
   type PickedFile,
 } from './documents';
+import { showAlert } from './platformAlert';
 
 export type DocumentSource = 'camera' | 'gallery' | 'file';
 
@@ -43,7 +44,7 @@ export function chooseDocumentSource(
     return;
   }
 
-  Alert.alert('הוספת מסמך', title, [
+  showAlert('הוספת מסמך', title, [
     { text: 'צלם מסמך', onPress: () => choose('camera') },
     { text: 'בחר תמונה', onPress: () => choose('gallery') },
     { text: 'בחר קובץ', onPress: () => choose('file') },
@@ -53,7 +54,7 @@ export function chooseDocumentSource(
 
 export async function getDocumentViewUrl(doc: DocumentRow): Promise<string | null> {
   const url = await getDocumentUrl(doc);
-  if (!url) Alert.alert('שגיאה', 'לא ניתן לפתוח את המסמך כרגע');
+  if (!url) showAlert('שגיאה', 'לא ניתן לפתוח את המסמך כרגע');
   return url;
 }
 
@@ -61,12 +62,12 @@ export async function downloadDocumentWithAlert(doc: DocumentRow) {
   try {
     await downloadDocument(doc);
   } catch (err: any) {
-    Alert.alert('ההורדה נכשלה', err?.message ?? 'נסה שוב');
+    showAlert('ההורדה נכשלה', err?.message ?? 'נסה שוב');
   }
 }
 
 export function confirmDeleteDocument(doc: DocumentRow, onDeleted: () => void | Promise<void>) {
-  Alert.alert('מחיקת מסמך', `למחוק את "${documentDisplayName(doc)}"? הפעולה אינה הפיכה.`, [
+  showAlert('מחיקת מסמך', `למחוק את "${documentDisplayName(doc)}"? הפעולה אינה הפיכה.`, [
     { text: 'ביטול', style: 'cancel' },
     {
       text: 'מחק',
@@ -76,7 +77,7 @@ export function confirmDeleteDocument(doc: DocumentRow, onDeleted: () => void | 
           await deleteDocument(doc);
           await onDeleted();
         } catch {
-          Alert.alert('מחיקה נכשלה', 'נסה שוב');
+          showAlert('מחיקה נכשלה', 'נסה שוב');
         }
       },
     },

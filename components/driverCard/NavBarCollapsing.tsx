@@ -1,20 +1,15 @@
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { DC_COLORS, DC_TYPO } from './driverCardTheme';
-
-const COLLAPSE_DISTANCE = 40;
+import { CONTENT_MAX_WIDTH } from '../../lib/theme';
 
 export function NavBarCollapsing({
-  scrollY,
   insetTop,
   title,
-  backLabel,
   onBack,
   onMore,
   backgroundColor,
 }: {
-  scrollY: Animated.Value;
   insetTop: number;
   title?: string;
   backLabel: string;
@@ -22,16 +17,6 @@ export function NavBarCollapsing({
   onMore?: () => void;
   backgroundColor?: string;
 }) {
-  const blurOpacity = scrollY.interpolate({
-    inputRange: [0, COLLAPSE_DISTANCE],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
-  const titleOpacity = scrollY.interpolate({
-    inputRange: [0, COLLAPSE_DISTANCE],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
   // Extra buffer below the safe-area inset so the bar clears the Dynamic Island
   // on iPhones that have one (insetTop alone sits flush against it).
   const topBuffer = insetTop + 8;
@@ -39,26 +24,12 @@ export function NavBarCollapsing({
   return (
     <View style={[styles.wrap, { height: 44 + topBuffer }]}>
       <View style={[StyleSheet.absoluteFill, { backgroundColor: backgroundColor ?? DC_COLORS.bg }]} />
-      <Animated.View style={[StyleSheet.absoluteFill, { opacity: blurOpacity }]}>
-        <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(249,249,249,0.82)' }]} />
-        <View style={styles.borderBottom} />
-      </Animated.View>
-
       <View style={[styles.content, { paddingTop: topBuffer }]}>
-        <Pressable onPress={onBack} style={styles.backButton} hitSlop={8}>
-          <Feather name="chevron-right" size={19} color={DC_COLORS.blue} />
-          <Text style={[DC_TYPO.navBackLink, styles.backLabel]}>{backLabel}</Text>
+        <Pressable onPress={onBack} style={styles.backButton} hitSlop={10} accessibilityRole="button" accessibilityLabel="חזור">
+          <Feather name="chevron-right" size={20} color={DC_COLORS.blue} />
         </Pressable>
 
-        {title ? (
-          <Animated.Text
-            style={[DC_TYPO.navTitle, styles.title, { opacity: titleOpacity }]}
-            numberOfLines={1}
-          >
-            {title}
-          </Animated.Text>
-        ) : <View style={styles.titleSpacer} />}
+        {title ? <Text style={[DC_TYPO.navTitle, styles.title]} numberOfLines={1}>{title}</Text> : <View style={styles.titleSpacer} />}
 
         <Pressable onPress={onMore} style={styles.moreButton} hitSlop={8}>
           <Feather name="more-horizontal" size={18} color={DC_COLORS.blue} />
@@ -71,14 +42,8 @@ export function NavBarCollapsing({
 const styles = StyleSheet.create({
   wrap: {
     width: '100%',
-  },
-  borderBottom: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(60,60,67,0.2)',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
   },
   content: {
     flex: 1,
@@ -87,12 +52,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   backButton: {
-    flexDirection: 'row-reverse',
     alignItems: 'center',
-    minWidth: 70,
-  },
-  backLabel: {
-    color: DC_COLORS.blue,
+    justifyContent: 'center',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(10,127,208,0.20)',
+    shadowColor: '#0A7FD0',
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
   title: {
     flex: 1,

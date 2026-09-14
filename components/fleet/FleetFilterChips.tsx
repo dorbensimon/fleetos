@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -34,12 +34,24 @@ export function FleetFilterChips<T extends string>({
     onPress: () => void;
   };
 }) {
+  const scrollRef = useRef<ScrollView>(null);
+
+  // RTL row: children render right-to-left via `row-reverse` below. A plain
+  // horizontal ScrollView still starts scrolled to its LTR content start
+  // (the left edge), which would open on the last chip instead of the
+  // first — jump to the scroll end once, which lands on the row-reverse
+  // layout's first (rightmost) chip.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    scrollRef.current?.scrollToEnd({ animated: false });
+  }, []);
+
   return (
     <ScrollView
+      ref={scrollRef}
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.row}
-      style={styles.scrollFlip}
     >
       <View style={styles.rowFlip}>
         {options.map((opt) => {
@@ -65,7 +77,7 @@ export function FleetFilterChips<T extends string>({
           );
 
           return (
-            <TouchableOpacity key={opt.value} activeOpacity={0.8} disabled={empty} onPress={() => onChange(opt.value)}>
+            <TouchableOpacity key={opt.value} activeOpacity={0.8} onPress={() => onChange(opt.value)}>
               {active ? (
                 <LinearGradient colors={[FLEET_COLORS.primary, FLEET_COLORS.primaryDeep]} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={styles.pill}>
                   {content}
@@ -102,8 +114,7 @@ export function FleetFilterChips<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  scrollFlip: { transform: [{ scaleX: -1 }] },
-  rowFlip: { transform: [{ scaleX: -1 }], flexDirection: 'row-reverse', gap: 11 },
+  rowFlip: { flexDirection: 'row-reverse', gap: 11 },
   // Matches the cards' own `marginHorizontal: SPACING.lg` (DriverCard/VehicleCard)
   // so the first chip lines up with the card edge instead of sitting flush
   // against the screen edge.

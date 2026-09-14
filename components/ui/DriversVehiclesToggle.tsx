@@ -65,12 +65,13 @@ export default function DriversVehiclesToggle({ value = 'drivers', onChange }: P
 
   return (
     <View style={styles.track}>
-      <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+      <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
       <LinearGradient
         colors={['rgba(255,255,255,.5)', 'rgba(255,255,255,.32)']}
         start={{ x: 0.15, y: 0 }}
         end={{ x: 0.75, y: 1 }}
         style={StyleSheet.absoluteFill}
+        pointerEvents="none"
       />
       <View style={styles.trackHairline} pointerEvents="none" />
 
@@ -83,12 +84,13 @@ export default function DriversVehiclesToggle({ value = 'drivers', onChange }: P
           pointerEvents="none"
         >
           <View style={styles.pillClip}>
-            <BlurView intensity={14} tint="light" style={StyleSheet.absoluteFill} />
+            <BlurView intensity={14} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
             <LinearGradient
               colors={['rgba(255,255,255,.92)', 'rgba(255,255,255,.66)']}
               start={{ x: 0.15, y: 0 }}
               end={{ x: 0.75, y: 1 }}
               style={StyleSheet.absoluteFill}
+              pointerEvents="none"
             />
             <View style={styles.pillTopLight} pointerEvents="none" />
           </View>
@@ -136,7 +138,16 @@ function ToggleSegment({
   icon: (color: string) => React.ReactNode;
 }) {
   return (
-    <Pressable style={styles.segment} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
+    <Pressable
+      style={styles.segment}
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      hitSlop={6}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={label}
+    >
       {icon(active ? '#0b0c10' : 'rgba(11,12,16,.5)')}
       <Text style={active ? styles.labelActive : styles.label}>{label}</Text>
     </Pressable>

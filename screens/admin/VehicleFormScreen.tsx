@@ -1,16 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Alert,
-  Animated,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Animated, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { showAlert } from '../../lib/platformAlert';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -18,10 +8,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ADMIN_BACKGROUND_COLORS, ADMIN_BACKGROUND_LOCATIONS } from '../../components/admin/AdminGradientBackground';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { AppText, LoadingState, useToast } from '../../components/ui';
+import { AppText, BackButton, LoadingState, useToast } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
 import { VehicleDriversEditor } from '../../components/VehicleDriversEditor';
-import { COLORS, SPACING, ACCENT_SHADOW, parseDateValue } from '../../lib/theme';
+import { COLORS, CONTENT_MAX_WIDTH, SPACING, ACCENT_SHADOW, parseDateValue } from '../../lib/theme';
 import { isStaleDepartmentError } from '../../lib/driverFields';
 import { useCompany } from '../../lib/CompanyContext';
 import {
@@ -340,7 +330,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         return;
       }
 
-      Alert.alert(
+      showAlert(
         'נמצאו פרטי רכב',
         'נמלא את היצרן, הדגם, השנה, הצבע ותוקף רישיון הרכב. תמיד אפשר לערוך את הפרטים לפני השמירה.',
         [
@@ -430,10 +420,10 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
       if (isStaleDepartmentError(message)) {
         set('department_id', null);
         void refreshDepartments().catch(() => {});
-        Alert.alert('שמירה נכשלה', 'המחלקה שנבחרה נמחקה בינתיים. בחר מחלקה אחרת ונסה שוב.');
+        showAlert('שמירה נכשלה', 'המחלקה שנבחרה נמחקה בינתיים. בחר מחלקה אחרת ונסה שוב.');
         return;
       }
-      Alert.alert(
+      showAlert(
         'שמירה נכשלה',
         message.includes('duplicate') || message.includes('unique')
           ? 'קיים כבר רכב עם מספר הרישוי הזה בחברה'
@@ -474,16 +464,9 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFill} />
         <View style={styles.headerTop}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="חזרה לרכבים"
-          >
-            <AppText weight="bold" style={styles.headerBack}>‹ רכבים</AppText>
-          </TouchableOpacity>
+          <BackButton onPress={() => navigation.goBack()} accessibilityLabel="חזור" />
           <AppText weight="bold" style={styles.headerTitle}>{screenTitle}</AppText>
-          <AppText weight="bold" style={styles.headerDraft}>טיוטה</AppText>
+          <View style={styles.headerSideSpacer} />
         </View>
         <View style={styles.progressRow}>
           <AppText style={styles.progressCounter}>{filledCount}/{REQUIRED_FIELDS.length}</AppText>
@@ -503,7 +486,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           ref={scrollRef}
           contentContainerStyle={[
             styles.content,
-            { paddingTop: VEHICLE_HEADER_HEIGHT + SPACING.lg, paddingBottom: 136 + insets.bottom },
+            { paddingTop: VEHICLE_HEADER_HEIGHT + SPACING.lg, paddingBottom: insets.bottom + SPACING.xl },
           ]}
           keyboardShouldPersistTaps="handled"
           onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
@@ -818,7 +801,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
 
           <Section title="נהגים משויכים">
             {isEdit ? (
-              <View style={styles.card}>
+              <View style={[styles.card, styles.driverAssignmentsCard]}>
                 <VehicleDriversEditor
                   vehicleId={vehicleId!}
                   assignments={vehicleDrivers}
@@ -837,39 +820,17 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
               </View>
             )}
           </Section>
+
+          <SaveFooter
+            canSubmit={canSubmit}
+            saving={saving}
+            isEdit={isEdit}
+            ctaLabel={ctaLabel}
+            remainingCount={remainingCount}
+            onSave={save}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
-
-      <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
-        <LinearGradient colors={['rgba(243,246,249,0)', 'rgba(243,246,249,.92)', '#F3F6F9']} style={StyleSheet.absoluteFill} />
-        <BlurView intensity={14} tint="light" style={StyleSheet.absoluteFill} />
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={save}
-          disabled={!canSubmit || saving}
-          style={[styles.cta, !canSubmit && styles.ctaDisabled, canSubmit && ACCENT_SHADOW]}
-          accessibilityRole="button"
-          accessibilityLabel={canSubmit ? ctaLabel : 'השלם את שדות החובה'}
-        >
-          {saving ? (
-            <AppText weight="bold" style={styles.ctaText}>שומר...</AppText>
-          ) : (
-            <>
-              <Ionicons name={isEdit ? 'checkmark-circle' : 'add-circle'} size={18} color={canSubmit ? '#FFFFFF' : 'rgba(16,31,44,.33)'} />
-              <AppText weight="bold" style={[styles.ctaText, !canSubmit && styles.ctaTextDisabled]}>
-                {canSubmit ? ctaLabel : 'השלם את שדות החובה'}
-              </AppText>
-            </>
-          )}
-        </TouchableOpacity>
-        <AppText style={styles.remainingText}>
-          {canSubmit
-            ? (isEdit ? 'השינויים יישמרו בתיק הרכב' : 'אחרי היצירה תוכל לשייך נהגים ומסמכים')
-            : remainingCount === 1
-              ? 'נותר שדה חובה אחד'
-              : `נותרו ${remainingCount} שדות חובה`}
-        </AppText>
-      </View>
 
       {showRoadDatePicker && (
         Platform.OS === 'ios' ? (
@@ -958,6 +919,47 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   );
 }
 
+function SaveFooter({
+  canSubmit,
+  saving,
+  isEdit,
+  ctaLabel,
+  remainingCount,
+  onSave,
+}: {
+  canSubmit: boolean;
+  saving: boolean;
+  isEdit: boolean;
+  ctaLabel: string;
+  remainingCount: number;
+  onSave: () => void;
+}) {
+  return <View style={styles.footer}>
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={onSave}
+      disabled={!canSubmit || saving}
+      style={[styles.cta, !canSubmit && styles.ctaDisabled, canSubmit && ACCENT_SHADOW]}
+      accessibilityRole="button"
+      accessibilityLabel={canSubmit ? ctaLabel : 'השלם את שדות החובה'}
+    >
+      {saving ? (
+        <AppText weight="bold" style={styles.ctaText}>שומר...</AppText>
+      ) : (
+        <>
+          <Ionicons name={isEdit ? 'checkmark-circle' : 'add-circle'} size={18} color={canSubmit ? '#FFFFFF' : 'rgba(16,31,44,.33)'} />
+          <AppText weight="bold" style={[styles.ctaText, !canSubmit && styles.ctaTextDisabled]}>{canSubmit ? ctaLabel : 'השלם את שדות החובה'}</AppText>
+        </>
+      )}
+    </TouchableOpacity>
+    <AppText style={styles.remainingText}>
+      {canSubmit
+        ? (isEdit ? 'השינויים יישמרו בתיק הרכב' : 'אחרי היצירה תוכל לשייך נהגים ומסמכים')
+        : remainingCount === 1 ? 'נותר שדה חובה אחד' : `נותרו ${remainingCount} שדות חובה`}
+    </AppText>
+  </View>;
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={styles.section}>
@@ -1029,12 +1031,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 300,
+    maxWidth: CONTENT_MAX_WIDTH,
+    marginHorizontal: 'auto',
   },
   header: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+    maxWidth: CONTENT_MAX_WIDTH,
+    marginHorizontal: 'auto',
     zIndex: 5,
     overflow: 'hidden',
     backgroundColor: 'rgba(240,246,251,.72)',
@@ -1049,9 +1055,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 52,
   },
-  headerBack: { fontSize: 17, lineHeight: 22, color: COLORS.accent },
   headerTitle: { fontSize: 17, lineHeight: 22, color: '#101F2C' },
-  headerDraft: { fontSize: 15.5, lineHeight: 21, color: 'rgba(16,31,44,.3)' },
+  headerSideSpacer: { width: 42 },
   progressRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -1067,7 +1072,7 @@ const styles = StyleSheet.create({
   },
   progressFill: { height: '100%', borderRadius: 3 },
   progressCounter: { width: 30, fontSize: 12, fontWeight: '700', color: '#101F2C', textAlign: 'right' },
-  content: { paddingHorizontal: 18, gap: 20 },
+  content: { paddingHorizontal: 18, gap: 20, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   heroCard: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -1138,6 +1143,13 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 16 },
     elevation: 5,
     overflow: 'hidden',
+  },
+  driverAssignmentsCard: {
+    // Keep the add-driver picker comfortably inside this card rather than
+    // visually touching its lower edge.
+    paddingTop: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.lg,
   },
   identityCard: {
     backgroundColor: 'rgba(255,255,255,.92)',
@@ -1353,14 +1365,8 @@ const styles = StyleSheet.create({
   },
   infoText: { flex: 1, fontSize: 13.5, lineHeight: 19, color: 'rgba(16,31,44,.5)' },
   footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 6,
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    overflow: 'hidden',
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.lg,
   },
   cta: {
     height: 56,

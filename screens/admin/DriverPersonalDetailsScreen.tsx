@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   Screen,
-  ScreenHeader,
   AppText,
   Card,
   InfoRow,
@@ -14,6 +14,8 @@ import {
   useToast,
 } from '../../components/ui';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
+import { DriverDossierHero } from '../../components/driverCard/DriverDossierHero';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
@@ -67,6 +69,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
   const [loadError, setLoadError] = useState<string | null>(null);
   const [addingVehicleId, setAddingVehicleId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   const load = useCallback(async () => {
     const [d, dv, v, deps, mail] = await Promise.all([
@@ -138,7 +141,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
       showToast('הרכב שויך לנהג');
     } catch (err: any) {
       if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-      Alert.alert('שיוך הרכב נכשל', String(err?.message ?? 'נסה שוב'));
+      showAlert('שיוך הרכב נכשל', String(err?.message ?? 'נסה שוב'));
     } finally {
       setBusyId(null);
     }
@@ -153,7 +156,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
         showToast('השיוך הוסר');
       } catch (err: any) {
         if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-        Alert.alert('הסרת השיוך נכשלה', String(err?.message ?? 'נסה שוב'));
+        showAlert('הסרת השיוך נכשלה', String(err?.message ?? 'נסה שוב'));
       } finally {
         setBusyId(null);
       }
@@ -163,18 +166,10 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
   return (
     <Screen>
       <AdminGradientBackground />
-      <ScreenHeader
-        title="פרטי נהג"
-        subtitle={driver?.full_name ?? undefined}
-        onBack={() => navigation.goBack()}
-        right={
-          <SecondaryButton
-            label="עריכה"
-            icon="pencil-outline"
-            onPress={() => navigation.navigate('DriverForm', { driverId })}
-          />
-        }
-      />
+      <DriverDossierHero title="פרטי נהג" subtitle={driver?.full_name ?? undefined} icon="person-outline" insetTop={insets.top} onBack={() => navigation.goBack()} />
+      <View style={styles.editAction}>
+        <SecondaryButton label="עריכה" icon="pencil-outline" onPress={() => navigation.navigate('DriverForm', { driverId })} />
+      </View>
 
       {loading ? (
         <LoadingState />
@@ -190,7 +185,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
           }}
         />
       ) : (
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Card style={styles.card}>
             <InfoRow label="שם מלא" value={driver?.full_name} />
             <InfoRow label="חברה" value={company?.name} />
@@ -209,7 +204,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
               busyId={busyId}
               onSelectVehicle={setAddingVehicleId}
               onAddVehicle={addVehicle}
-              onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId })}
+              onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, returnTo: 'driver' })}
               onRemoveVehicle={confirmRemoveVehicle}
             />
 
@@ -222,6 +217,12 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
 }
 
 const styles = StyleSheet.create({
+  // Without an explicit flex here, ScrollView (a plain div under react-native-web)
+  // sizes to its own content instead of stretching into the remaining flex
+  // space under ScreenHeader, so on web the whole page scrolls instead of
+  // just this area.
+  scroll: { flex: 1 },
+  editAction: { alignItems: 'flex-start', paddingHorizontal: SPACING.lg, marginTop: -SPACING.sm, marginBottom: SPACING.sm },
   content: { paddingBottom: 40 },
   card: { margin: SPACING.lg, gap: 4 },
 });

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
+import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -18,6 +19,7 @@ import { pickAndUploadLogo } from '../lib/uploadLogo';
 import { isValidIsraeliPhone } from '../lib/phone';
 import { isValidEmail, isValidTemporaryPassword } from '../lib/validation';
 import { COLORS } from '../components/owner/ownerTheme';
+import { CONTENT_MAX_WIDTH } from '../lib/theme';
 import { sharedStyles as s } from '../components/companyDetail/sharedStyles';
 import { CompanyUser } from '../components/companyDetail/types';
 import { UserRow } from '../components/companyDetail/UserRow';
@@ -238,7 +240,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     const newStatus = company.status === 'active' ? 'disabled' : 'active';
     const { error } = await updateCompany(company.id, { status: newStatus });
     if (error) {
-      Alert.alert('העדכון נכשל', 'לא הצלחנו לעדכן את סטטוס החברה');
+      showAlert('העדכון נכשל', 'לא הצלחנו לעדכן את סטטוס החברה');
       return;
     }
     await load();
@@ -250,7 +252,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     const { data, error } = await deleteCompany(company.id, deleteConfirmText.trim());
     setDeleting(false);
     if (error || !data?.success) {
-      Alert.alert('מחיקת החברה נכשלה', await functionErrorMessage(error, data, 'נסה שוב', false));
+      showAlert('מחיקת החברה נכשלה', await functionErrorMessage(error, data, 'נסה שוב', false));
       return;
     }
     navigation.goBack();
@@ -310,7 +312,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     const { data, error } = await deleteCompanyUser(removeTarget.id);
     setRemoving(false);
     if (error || !data?.success) {
-      Alert.alert('מחיקת המשתמש נכשלה', await functionErrorMessage(error, data, 'נסה שוב', false));
+      showAlert('מחיקת המשתמש נכשלה', await functionErrorMessage(error, data, 'נסה שוב', false));
       return;
     }
     setRemoveTarget(null);
@@ -392,7 +394,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <CompanyInfoCard
           fields={fields}
           active={active}
@@ -537,6 +539,11 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.screenBg },
+  // Without an explicit flex here, ScrollView (a plain div under react-native-web)
+  // sizes to its own content instead of stretching into the remaining flex
+  // space under the header, so on web the whole page scrolls instead of just
+  // this area.
+  scroll: { flex: 1 },
   centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.screenBg },
   header: {
     backgroundColor: COLORS.white,
@@ -548,11 +555,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 10,
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
   },
   backButton: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   headerLogo: { width: 32, height: 32, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border },
   headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: COLORS.black, textAlign: 'right' },
-  content: { padding: 16, gap: 14 },
+  content: { padding: 16, gap: 14, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   badge: { paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 6 },
   badgeActive: { backgroundColor: COLORS.activeBg },
   badgeDisabled: { backgroundColor: COLORS.disabledBg },

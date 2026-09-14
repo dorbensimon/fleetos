@@ -1,5 +1,6 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { Platform } from 'react-native';
 import { Company } from './supabase';
 import { DriverRow } from './adminApi';
 import { SignatureRequest } from './docuseal';
@@ -118,6 +119,9 @@ export async function exportDriverSnapshotReport(
   const html = buildHtml(company, driver, departmentName, signingRequests);
 
   const { uri } = await Print.printToFileAsync({ html, base64: false });
+
+  // Web opens a print dialog and does not create a shareable local file URI.
+  if (Platform.OS === 'web') return;
 
   const canShare = await Sharing.isAvailableAsync();
   if (canShare) {

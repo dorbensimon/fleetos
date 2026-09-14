@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { DE_COLORS, DE_RADIUS, DE_TYPO } from './driverEditTheme';
+import { CONTENT_MAX_WIDTH } from '../../lib/theme';
 
 const ENTER_MS = 340;
 const EXIT_MS = 220;
@@ -113,6 +114,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 8,
     right: 8,
+    maxWidth: CONTENT_MAX_WIDTH,
+    marginHorizontal: 'auto',
     borderRadius: DE_RADIUS.sheet,
     overflow: 'hidden',
     backgroundColor: DE_COLORS.glassSheetBg,

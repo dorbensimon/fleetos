@@ -11,26 +11,40 @@ jest.mock('expo-sharing', () => ({
   shareAsync: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('base64-arraybuffer', () => ({ decode: jest.fn(() => new ArrayBuffer(3)) }));
+jest.mock('../webDownload', () => ({
+  downloadRemoteFileOnWeb: jest.fn(),
+  readBlobUrlAsBase64: jest.fn(),
+}));
 jest.mock('../supabase', () => ({
   supabase: {
     storage: { from: jest.fn() },
     functions: { invoke: jest.fn() },
   },
 }));
-jest.mock('react-native', () => ({
-  Image: {
-    getSize: jest.fn((uri: string, success: (width: number, height: number) => void) => {
-      success(uri.includes('image') ? 1200 : 595, uri.includes('image') ? 1800 : 842);
-    }),
-  },
-}));
+jest.mock('react-native', () => {
+  return {
+    Image: {
+      getSize: jest.fn((uri: string, success: (width: number, height: number) => void) => {
+        success(uri.includes('image') ? 1200 : 595, uri.includes('image') ? 1800 : 842);
+      }),
+    },
+    Platform: {
+      OS: 'ios',
+      select: <T,>(values: { ios?: T; default?: T }) => values.ios ?? values.default,
+    },
+    // expo-modules-core probes this while loading; the test has no native bridge.
+    TurboModuleRegistry: { get: jest.fn(() => null) },
+  };
+});
 
 import * as Print from 'expo-print';
 import { File } from 'expo-file-system';
 import { Image } from 'react-native';
+import { Platform } from 'react-native';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../supabase';
 import { createTemplateBuilderSession } from '../docuseal';
+import { readBlobUrlAsBase64 } from '../webDownload';
 
 const mockUpload = jest.fn();
 const mockRemove = jest.fn();
@@ -63,8 +77,11 @@ function buildPngBytes(width: number, height: number): Uint8Array {
 }
 
 describe('DocuSeal image templates', () => {
+  const nativePlatform = Platform.OS;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: nativePlatform });
     (Print.printToFileAsync as jest.Mock).mockResolvedValue({ uri: 'file://document.pdf', numberOfPages: 1 });
     mockUpload.mockResolvedValue({ error: null });
     (supabase.storage.from as jest.Mock).mockReturnValue({ upload: mockUpload, remove: mockRemove });
@@ -136,6 +153,28 @@ describe('DocuSeal image templates', () => {
       expect.stringMatching(/\/original\.pdf$/),
       expect.any(ArrayBuffer),
       { contentType: 'application/pdf', upsert: false }
+    );
+  });
+
+  it('reads a browser picker blob through the DOM instead of Expo File', async () => {
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' });
+    (readBlobUrlAsBase64 as jest.Mock).mockResolvedValue('aW1hZ2U=');
+
+    await createTemplateBuilderSession('company-1', 'טופס', {
+      uri: 'blob:https://fleetos.local/template-image',
+      name: 'scan.jpg',
+      mimeType: 'image/jpeg',
+      width: 1200,
+      height: 1800,
+    });
+
+    expect(readBlobUrlAsBase64).toHaveBeenCalledWith('blob:https://fleetos.local/template-image');
+    expect(File).not.toHaveBeenCalled();
+    expect(Print.printToFileAsync).not.toHaveBeenCalled();
+    expect(mockUpload).toHaveBeenCalledWith(
+      expect.stringMatching(/\/scan\.pdf$/),
+      expect.any(ArrayBuffer),
+      { contentType: 'image/jpeg', upsert: false }
     );
   });
 

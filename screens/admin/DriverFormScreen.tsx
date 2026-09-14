@@ -1,16 +1,6 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  TouchableOpacity,
-  View,
-  TextInput,
-  Switch,
-  Animated,
-} from 'react-native';
+import { ScrollView, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, View, TextInput, Switch, Animated } from 'react-native';
+import { showAlert } from '../../lib/platformAlert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ADMIN_BACKGROUND_COLORS, ADMIN_BACKGROUND_LOCATIONS } from '../../components/admin/AdminGradientBackground';
 import { BlurView } from 'expo-blur';
@@ -18,9 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { AppText, LoadingState, useToast } from '../../components/ui';
+import { AppText, BackButton, LoadingState, useToast } from '../../components/ui';
 import { Select } from '../../components/ui/Select';
-import { COLORS, SPACING, ACCENT_SHADOW } from '../../lib/theme';
+import { COLORS, CONTENT_MAX_WIDTH, SPACING, ACCENT_SHADOW } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
 import { getDriver, updateDriver, createDriverAccount, listDepartments, getUserEmail, type Department } from '../../lib/adminApi';
@@ -167,7 +157,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
     const e = validateDriverForm(form, isEdit);
     setErrors(e);
     if (Object.keys(e).length > 0) {
-      Alert.alert('לא ניתן לשמור', 'יש לתקן את השדות המסומנים באדום ולנסות שוב.');
+      showAlert('לא ניתן לשמור', 'יש לתקן את השדות המסומנים באדום ולנסות שוב.');
       return;
     }
 
@@ -197,7 +187,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           }
         }
         if (!activeCompanyId) {
-          Alert.alert('שמירה נכשלה', 'לא נמצאה חברה משויכת לחשבון שלך. נסה להתחבר מחדש');
+          showAlert('שמירה נכשלה', 'לא נמצאה חברה משויכת לחשבון שלך. נסה להתחבר מחדש');
           return;
         }
         const result = await createDriverAccount({
@@ -218,10 +208,10 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           if (isStaleDepartmentError(result.error)) {
             setForm((current) => ({ ...current, department_id: null }));
             void refreshDepartments().catch(() => {});
-            Alert.alert('שמירה נכשלה', 'המחלקה שנבחרה נמחקה בינתיים. בחר מחלקה אחרת ונסה שוב.');
+            showAlert('שמירה נכשלה', 'המחלקה שנבחרה נמחקה בינתיים. בחר מחלקה אחרת ונסה שוב.');
             return;
           }
-          Alert.alert('יצירת הנהג נכשלה', result.error);
+          showAlert('יצירת הנהג נכשלה', result.error);
           return;
         }
       }
@@ -232,10 +222,10 @@ export default function DriverFormScreen({ route, navigation }: Props) {
       if (isStaleDepartmentError(message)) {
         setForm((current) => ({ ...current, department_id: null }));
         void refreshDepartments().catch(() => {});
-        Alert.alert('שמירה נכשלה', 'המחלקה שנבחרה נמחקה בינתיים. בחר מחלקה אחרת ונסה שוב.');
+        showAlert('שמירה נכשלה', 'המחלקה שנבחרה נמחקה בינתיים. בחר מחלקה אחרת ונסה שוב.');
         return;
       }
-      Alert.alert('שמירה נכשלה', message || 'נסה שוב');
+      showAlert('שמירה נכשלה', message || 'נסה שוב');
     } finally {
       setSaving(false);
     }
@@ -285,6 +275,8 @@ export default function DriverFormScreen({ route, navigation }: Props) {
   const screenTitle = isEdit ? 'עריכת נהג' : 'נהג חדש';
   const isDriverSelfEdit = isEdit && profile?.role === 'driver';
   const displayTitle = isDriverSelfEdit ? 'הפרטים שלי' : screenTitle;
+  // An existing driver's page must never be presented as a new-driver flow.
+  const backLabel = isEdit || isDriverSelfEdit ? 'חזור' : 'נהגים';
   const ctaLabel = isEdit ? 'שמור שינויים' : 'צור נהג';
   const selectedLicense =
     NEW_DRIVER_LICENSE_OPTIONS.find((option) => option.value === form.license_classes) ??
@@ -306,16 +298,13 @@ export default function DriverFormScreen({ route, navigation }: Props) {
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFill} />
         <View style={styles.headerTop}>
-          <TouchableOpacity
-              onPress={() => navigation.goBack()}
-            hitSlop={8}
-            accessibilityRole="button"
-              accessibilityLabel={isDriverSelfEdit ? 'חזרה לתפריט' : 'חזרה לנהגים'}
-          >
-            <AppText weight="bold" style={styles.headerBack}>‹ {isDriverSelfEdit ? 'חזרה' : 'נהגים'}</AppText>
-          </TouchableOpacity>
+          <BackButton
+            onPress={() => navigation.goBack()}
+            accessibilityLabel={backLabel === 'חזור' ? 'חזור' : 'חזרה לנהגים'}
+          />
           <AppText weight="bold" style={styles.headerTitle}>{displayTitle}</AppText>
-          <AppText weight="bold" style={styles.headerDraft}>טיוטה</AppText>
+          {/* Balances the back action so the title stays visually centered. */}
+          <View style={styles.headerSideSpacer} />
         </View>
 
         {/* Progress bar */}
@@ -337,7 +326,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           ref={scrollRef}
           contentContainerStyle={[
             styles.content,
-            { paddingTop: CREATE_HEADER_HEIGHT + SPACING.lg, paddingBottom: 134 + insets.bottom },
+            { paddingTop: CREATE_HEADER_HEIGHT + SPACING.lg, paddingBottom: insets.bottom + SPACING.xl },
           ]}
           keyboardShouldPersistTaps="handled"
           onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
@@ -360,7 +349,11 @@ export default function DriverFormScreen({ route, navigation }: Props) {
               <View style={styles.heroBadges}>
                 <View style={styles.glassBadge}>
                   <AppText weight="bold" style={styles.glassBadgeText}>
-                    {selectedLicense ? `דרגה ${selectedLicense.label}` : 'נהג חדש'}
+                    {selectedLicense
+                      ? `דרגה ${selectedLicense.label}`
+                      : isEdit
+                        ? 'נהג קיים'
+                        : 'נהג חדש'}
                   </AppText>
                 </View>
                 <AppText style={styles.heroCaption}>הוסף תמונה</AppText>
@@ -617,40 +610,36 @@ export default function DriverFormScreen({ route, navigation }: Props) {
               </View>
             </View>
           )}
+          <View style={styles.footer}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={save}
+              disabled={!canSubmit || saving}
+              style={[styles.cta, !canSubmit && styles.ctaDisabled, canSubmit && ACCENT_SHADOW]}
+              accessibilityRole="button"
+              accessibilityLabel={canSubmit ? ctaLabel : 'השלם את שדות החובה'}
+            >
+              {saving ? (
+                <AppText weight="bold" style={styles.ctaText}>שומר...</AppText>
+              ) : (
+                <>
+                  <Ionicons name={isEdit ? 'checkmark-circle' : 'add-circle'} size={18} color={canSubmit ? '#FFFFFF' : 'rgba(14,30,43,.35)'} />
+                  <AppText weight="bold" style={[styles.ctaText, !canSubmit && styles.ctaTextDisabled]}>
+                    {canSubmit ? ctaLabel : 'השלם את שדות החובה'}
+                  </AppText>
+                </>
+              )}
+            </TouchableOpacity>
+            <AppText style={styles.remainingText}>
+              {canSubmit
+                ? (isEdit ? 'השינויים יישמרו בפרטי הנהג' : 'הנהג יתווסף לצי ויקבל הרשאות מיד')
+                : remainingCount === 1
+                  ? 'נותר שדה חובה אחד'
+                  : `נותרו ${remainingCount} שדות חובה`}
+            </AppText>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Footer */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.lg }]}>
-        <LinearGradient colors={['rgba(243,246,249,0)', 'rgba(243,246,249,.92)', '#F3F6F9']} style={StyleSheet.absoluteFill} />
-        <BlurView intensity={14} tint="light" style={StyleSheet.absoluteFill} />
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={save}
-          disabled={!canSubmit || saving}
-          style={[styles.cta, !canSubmit && styles.ctaDisabled, canSubmit && ACCENT_SHADOW]}
-          accessibilityRole="button"
-          accessibilityLabel={canSubmit ? ctaLabel : 'השלם את שדות החובה'}
-        >
-          {saving ? (
-            <AppText weight="bold" style={styles.ctaText}>שומר...</AppText>
-          ) : (
-            <>
-              <Ionicons name={isEdit ? 'checkmark-circle' : 'add-circle'} size={18} color={canSubmit ? '#FFFFFF' : 'rgba(14,30,43,.35)'} />
-              <AppText weight="bold" style={[styles.ctaText, !canSubmit && styles.ctaTextDisabled]}>
-                {canSubmit ? ctaLabel : 'השלם את שדות החובה'}
-              </AppText>
-            </>
-          )}
-        </TouchableOpacity>
-        <AppText style={styles.remainingText}>
-          {canSubmit
-            ? (isEdit ? 'השינויים יישמרו בפרטי הנהג' : 'הנהג יתווסף לצי ויקבל הרשאות מיד')
-            : remainingCount === 1
-              ? 'נותר שדה חובה אחד'
-              : `נותרו ${remainingCount} שדות חובה`}
-        </AppText>
-      </View>
 
       {/* Date picker */}
       {showDatePicker && (
@@ -768,12 +757,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 300,
+    maxWidth: CONTENT_MAX_WIDTH,
+    marginHorizontal: 'auto',
   },
   header: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+    maxWidth: CONTENT_MAX_WIDTH,
+    marginHorizontal: 'auto',
     zIndex: 5,
     overflow: 'hidden',
     backgroundColor: 'rgba(240,246,251,.72)',
@@ -788,9 +781,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 52,
   },
-  headerBack: { fontSize: 17, lineHeight: 22, color: COLORS.accent },
   headerTitle: { fontSize: 17, lineHeight: 22, color: '#101F2C' },
-  headerDraft: { fontSize: 15.5, lineHeight: 21, color: 'rgba(16,31,44,.3)' },
+  headerSideSpacer: { width: 42 },
   progressRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -809,7 +801,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   progressCounter: { width: 30, fontSize: 12, fontWeight: '700', color: '#101F2C', textAlign: 'right' },
-  content: { paddingHorizontal: 18, gap: 20 },
+  content: { paddingHorizontal: 18, gap: 20, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   heroCard: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -992,14 +984,8 @@ const styles = StyleSheet.create({
   smsTitle: { fontSize: 15.5, color: '#101F2C', marginBottom: 3 },
   smsCaption: { fontSize: 12.5, color: 'rgba(16,31,44,.42)' },
   footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 6,
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    overflow: 'hidden',
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.lg,
   },
   cta: {
     height: 56,

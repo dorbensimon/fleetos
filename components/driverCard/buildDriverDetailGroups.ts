@@ -13,7 +13,7 @@ export function maskNationalId(id: string | null | undefined): string {
 
 export function buildDriverDetailGroups(
   driver: DriverRow | null,
-  licenseVerified: boolean,
+  licenseStatus: 'expired' | 'verified' | 'pending',
   pendingSigningCount = 0
 ): DriverCardGroup[] {
   const vehicles = driver?.vehicles ?? [];
@@ -34,7 +34,10 @@ export function buildDriverDetailGroups(
     ...group,
     rows: group.rows.flatMap((row): DriverCardRow[] => {
       if (row.key === 'license-documents' && row.kind === 'nav') {
-        return [{ ...row, badge: licenseVerified ? 'מאומת' : 'ממתין להשלמה', tone: licenseVerified ? 'muted' : 'warn' }];
+        const badge =
+          licenseStatus === 'expired' ? 'פג תוקף' : licenseStatus === 'verified' ? 'מאומת' : 'ממתין להשלמה';
+        const tone = licenseStatus === 'expired' ? 'bad' : licenseStatus === 'verified' ? 'muted' : 'warn';
+        return [{ ...row, badge, tone }];
       }
       if (row.key === 'signing-documents' && row.kind === 'nav') {
         return [

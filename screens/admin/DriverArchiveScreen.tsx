@@ -10,7 +10,7 @@ import { ConfirmActionModal } from '../../components/driverCard/ConfirmActionMod
 import { useCompany } from '../../lib/CompanyContext';
 import { listArchivedDrivers, restoreDriver, deleteDriver, type DriverRow } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
-import { formatDate } from '../../lib/theme';
+import { CONTENT_MAX_WIDTH, formatDate } from '../../lib/theme';
 
 /**
  * The driver archive — the only screen that shows archived drivers, and
@@ -106,6 +106,7 @@ export default function DriverArchiveScreen({ navigation }: Props) {
         <ErrorState message={error} onRetry={load} />
       ) : (
         <FlatList
+          style={s.scroll}
           data={rows}
           keyExtractor={(x) => x.id}
           contentContainerStyle={s.list}
@@ -182,12 +183,20 @@ export default function DriverArchiveScreen({ navigation }: Props) {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F1F4F7' },
+  // Without an explicit flex here, FlatList (a ScrollView under the hood, a
+  // plain div on react-native-web) sizes to its own content instead of
+  // stretching into the remaining flex space under the header, so on web
+  // the whole page scrolls instead of just this area.
+  scroll: { flex: 1 },
   header: {
     paddingHorizontal: 18,
     paddingBottom: 18,
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
   },
   back: {
     width: 42,
@@ -201,7 +210,7 @@ const s = StyleSheet.create({
   title: { fontSize: 20, color: '#102A42', textAlign: 'center' },
   subtitle: { fontSize: 12, color: 'rgba(16,42,66,.58)', marginTop: 2, textAlign: 'center' },
 
-  list: { padding: 18, paddingTop: 4, gap: 12, paddingBottom: 42 },
+  list: { padding: 18, paddingTop: 4, gap: 12, paddingBottom: 42, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   card: {
     backgroundColor: 'rgba(255,255,255,.92)',
     borderRadius: 20,

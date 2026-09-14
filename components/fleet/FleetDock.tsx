@@ -8,7 +8,7 @@ import { FLEET_COLORS } from './fleetTheme';
 // Dock content height, used both to size the fog behind it and to tell
 // the scrollable lists how much bottom padding they need to clear it.
 const TOGGLE_HEIGHT = 54;
-const DOCK_BOTTOM_GAP = 14; // matches the `bottom: insets.bottom + 14` offset below
+const DOCK_BOTTOM_GAP = 2; // matches the `bottom: insets.bottom + 2` offset below
 // Fade zone above the toggle — without it the gradient is too compressed and
 // reads as a hard edge instead of a fog the cards sink into.
 const FOG_ABOVE = 76;
@@ -85,9 +85,15 @@ export function FleetDock({
 const styles = StyleSheet.create({
   root: {
     position: 'absolute',
+    top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    // The dock is intentionally interactive above both absolute list sheets.
+    // Without an explicit stacking level, Safari can paint it correctly but
+    // route taps to the sheet underneath it.
+    zIndex: 100,
+    elevation: 100,
   },
   fog: {
     position: 'absolute',
@@ -99,6 +105,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 20,
     right: 20,
+    zIndex: 1,
+    elevation: 1,
   },
   toggleWrap: { marginTop: -14 },
 });

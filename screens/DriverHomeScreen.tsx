@@ -11,7 +11,7 @@ import { useCompany } from '../lib/CompanyContext';
 import { countUnreadNotifications, getDriver, listActiveDriverVehicles, listCompliance, type ComplianceItem, type DriverRow, type Vehicle } from '../lib/adminApi';
 import { VEHICLE_TYPE_LABELS, complianceTargetDate, findComplianceDef } from '../lib/compliance';
 import { listSignatureRequests } from '../lib/docuseal';
-import { expiryState, formatDate, timeGreeting, type ExpiryState } from '../lib/theme';
+import { CONTENT_MAX_WIDTH, expiryState, formatDate, timeGreeting, type ExpiryState } from '../lib/theme';
 import type { RootStackParamList } from '../navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverHome'>;
 type Severity = 'danger' | 'warning' | 'success';
@@ -22,13 +22,21 @@ function Avatar({ initial, size = 44, dark = false }: { initial: string; size?: 
 function LicensePlate({ value }: { value: string }) { return <View style={styles.plate}><View style={styles.plateNumber}><AppText weight="bold" style={styles.plateNumberText}>{value}</AppText></View><View style={styles.plateIl}><AppText weight="bold" style={styles.plateIlText}>IL</AppText></View></View>; }
 function DocumentSketch() { return <View pointerEvents="none" style={styles.documentSketch}><View style={styles.sketchPage} /><View style={styles.sketchFold} /><View style={[styles.sketchLine, { top: 39, width: 52 }]} /><View style={[styles.sketchLine, { top: 51, width: 52 }]} /><View style={[styles.sketchLine, { top: 63, width: 34 }]} /><View style={styles.sketchSignature}><View style={styles.sketchCurve} /><View style={[styles.sketchCurve, styles.sketchCurveSecond]} /></View></View>; }
 function severityFor(state: ExpiryState): Severity { return state === 'expired' ? 'danger' : state === 'soon' ? 'warning' : 'success'; }
-function Timeline({ items, onPress }: { items: Array<{ title: string; detail: string; severity: Severity; item?: ComplianceItem }>; onPress: (item?: ComplianceItem) => void }) { if (!items.length) return <AppText style={styles.emptyLine}>אין נתוני תוקף ותחזוקה זמינים</AppText>; return <View>{items.map((item, index) => <TouchableOpacity key={`${item.title}-${index}`} style={styles.timelineRow} activeOpacity={.75} onPress={() => onPress(item.item)}><View style={styles.timelineRail}><View style={[styles.timelineHalo, { backgroundColor: severityMeta[item.severity].halo }]}><View style={[styles.timelineDot, { backgroundColor: severityMeta[item.severity].dot }]} /></View>{index < items.length - 1 && <View style={styles.timelineLine} />}</View><View style={styles.timelineText}><AppText weight="bold" style={[styles.timelineTitle, { color: severityMeta[item.severity].tint }]}>{item.title}</AppText><AppText style={styles.timelineDetail}>{item.detail}</AppText></View><Ionicons name="chevron-back" size={17} color="rgba(11,12,16,.35)" /></TouchableOpacity>)}</View>; }
+function Timeline({ items, onPress }: { items: Array<{ title: string; detail: string; severity: Severity; item?: ComplianceItem }>; onPress: (item?: ComplianceItem) => void }) { if (!items.length) return <View><AppText weight="bold" style={styles.allGood}>הכול תקין כרגע</AppText><AppText style={styles.emptyLine}>אין משימות תוקף או תחזוקה שממתינות לך</AppText></View>; const urgent = items.filter((item) => item.severity === 'danger').length; const soon = items.filter((item) => item.severity === 'warning').length; return <View><AppText weight="bold" style={[styles.priorityTitle, urgent > 0 && styles.dangerText]}>{urgent ? `${urgent} דברים דחופים לטיפול` : soon ? `${soon} דברים שכדאי לטפל בהם בקרוב` : 'הכול תקין כרגע'}</AppText>{items.map((item, index) => <TouchableOpacity key={`${item.title}-${index}`} style={styles.timelineRow} activeOpacity={.75} onPress={() => onPress(item.item)}><View style={styles.timelineRail}><View style={[styles.timelineHalo, { backgroundColor: severityMeta[item.severity].halo }]}><View style={[styles.timelineDot, { backgroundColor: severityMeta[item.severity].dot }]} /></View>{index < items.length - 1 && <View style={styles.timelineLine} />}</View><View style={styles.timelineText}><AppText weight="bold" style={[styles.timelineTitle, { color: severityMeta[item.severity].tint }]}>{item.title}</AppText><AppText style={styles.timelineDetail}>{item.detail} · לחץ לפרטים ולטיפול</AppText></View><Ionicons name="chevron-back" size={17} color="rgba(11,12,16,.35)" /></TouchableOpacity>)}</View>; }
 
 export default function DriverHomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets(); const { company, profile } = useCompany();
   const [driver, setDriver] = useState<DriverRow | null>(null); const [vehicle, setVehicle] = useState<Vehicle | null>(null); const [compliance, setCompliance] = useState<ComplianceItem[]>([]); const [pendingSignatures, setPendingSignatures] = useState(0); const [unreadNotifications, setUnreadNotifications] = useState(0); const [loading, setLoading] = useState(true); const [error, setError] = useState('');
   const loadRequest = useRef(0);
-  const load = useCallback(async () => { if (!profile) return; const requestId = ++loadRequest.current; try { setError(''); const [loadedDriver, assignments, signatures, unread] = await Promise.all([getDriver(profile.id), listActiveDriverVehicles(profile.id), listSignatureRequests(), company?.id ? countUnreadNotifications(company.id) : Promise.resolve(0)]); if (requestId !== loadRequest.current) return; const primary = assignments.find((a) => a.is_primary) ?? assignments[0] ?? null; const loadedCompliance = primary ? await listCompliance('vehicle', primary.vehicle.id) : []; if (requestId !== loadRequest.current) return; setDriver(loadedDriver); setVehicle(primary?.vehicle ?? null); setCompliance(loadedCompliance); setPendingSignatures(signatures.filter((item) => ['pending', 'declined'].includes(item.status)).length); setUnreadNotifications(unread); } catch (err: any) { if (requestId === loadRequest.current) setError(err?.message || 'טעינת נתוני המסך נכשלה'); } finally { if (requestId === loadRequest.current) setLoading(false); } }, [company?.id, profile]);
+  const load = useCallback(async () => {
+    if (!profile) {
+      setError('פרופיל הנהג אינו זמין');
+      setLoading(false);
+      return;
+    }
+    const requestId = ++loadRequest.current;
+    try { setError(''); const [loadedDriver, assignments, signatures, unread] = await Promise.all([getDriver(profile.id), listActiveDriverVehicles(profile.id), listSignatureRequests(), company?.id ? countUnreadNotifications(company.id) : Promise.resolve(0)]); if (requestId !== loadRequest.current) return; const primary = assignments.find((a) => a.is_primary) ?? assignments[0] ?? null; const loadedCompliance = primary ? await listCompliance('vehicle', primary.vehicle.id) : []; if (requestId !== loadRequest.current) return; setDriver(loadedDriver); setVehicle(primary?.vehicle ?? null); setCompliance(loadedCompliance); setPendingSignatures(signatures.filter((item) => ['pending', 'declined'].includes(item.status)).length); setUnreadNotifications(unread); } catch (err: any) { if (requestId === loadRequest.current) setError(err?.message || 'טעינת נתוני המסך נכשלה'); } finally { if (requestId === loadRequest.current) setLoading(false); }
+  }, [company, profile]);
   useFocusEffect(useCallback(() => { setLoading(true); load(); return () => { loadRequest.current += 1; }; }, [load]));
   const fullName = driver?.full_name?.trim() || profile?.full_name?.trim() || ''; const firstName = fullName.split(/\s+/)[0] || ''; const managerName = company?.safety_officer_name?.trim() || ''; const managerPhone = company?.safety_officer_phone || ''; const licenseState = expiryState(driver?.license_expiry);
   const timelineItems = useMemo(() => { if (!vehicle) return []; return compliance.map((item) => { const def = findComplianceDef('vehicle', item.item_type); const target = def ? complianceTargetDate(def, item) : item.expiry_date; if (!def && !target) return null; const severity = severityFor(expiryState(target)); return { title: def?.label || item.item_type, detail: target ? formatDate(target) : 'תאריך חסר', severity, item }; }).filter(Boolean).sort((a: any, b: any) => ({ danger: 0, warning: 1, success: 2 } as Record<string, number>)[a.severity] - ({ danger: 0, warning: 1, success: 2 } as Record<string, number>)[b.severity]).slice(0, 3) as Array<{ title: string; detail: string; severity: Severity; item: ComplianceItem }>; }, [compliance, vehicle]);
@@ -45,6 +53,8 @@ const styles = StyleSheet.create({
     right: 0,
     left: 0,
     height: 400,
+    maxWidth: CONTENT_MAX_WIDTH,
+    marginHorizontal: 'auto',
     overflow: 'hidden',
     borderBottomRightRadius: 40,
     borderBottomLeftRadius: 40,
@@ -68,7 +78,7 @@ const styles = StyleSheet.create({
     borderRadius: 145,
     backgroundColor: 'rgba(255,255,255,0.16)',
   },
-  topBar: { position: 'absolute', right: 20, left: 20, zIndex: 4 },
+  topBar: { position: 'absolute', right: 20, left: 20, maxWidth: CONTENT_MAX_WIDTH - 40, marginHorizontal: 'auto', zIndex: 4 },
   topBarInner: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -129,7 +139,7 @@ const styles = StyleSheet.create({
   },
   privateText: { color: '#fff', fontSize: 12 },
   scroll: { flex: 1, zIndex: 3 },
-  scrollContent: { paddingTop: 374, paddingHorizontal: 16, gap: 12 },
+  scrollContent: { paddingTop: 374, paddingHorizontal: 16, gap: 12, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   glassOuter: {
     overflow: 'hidden',
     borderWidth: 1,
@@ -160,6 +170,8 @@ const styles = StyleSheet.create({
   timelineTitle: { fontSize: 15, textAlign: 'right' },
   timelineDetail: { marginTop: 3, fontSize: 12, color: 'rgba(11,12,16,0.50)', textAlign: 'right' },
   emptyLine: { padding: 20, fontSize: 13, color: 'rgba(11,12,16,0.60)', textAlign: 'center' },
+  priorityTitle: { paddingHorizontal: 20, paddingBottom: 12, fontSize: 14, color: '#b26200', textAlign: 'right' },
+  allGood: { paddingHorizontal: 20, paddingTop: 10, fontSize: 15, color: '#1e8e3e', textAlign: 'center' },
   noVehicleLine: { minHeight: 120, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
   noVehicleText: { fontSize: 15, color: 'rgba(11,12,16,0.60)', textAlign: 'center' },
   tilesRow: { flexDirection: 'row-reverse', gap: 10 },
@@ -207,6 +219,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     left: 16,
+    maxWidth: CONTENT_MAX_WIDTH - 32,
+    marginHorizontal: 'auto',
     minHeight: 64,
     borderRadius: 30,
     zIndex: 6,

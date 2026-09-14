@@ -1,23 +1,19 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  Screen,
-  Card,
-  ToggleRow,
   LoadingState,
   ErrorState,
   AppText,
+  BackButton,
   useToast,
 } from '../components/ui';
 import { AdminGradientBackground } from '../components/admin/AdminGradientBackground';
-import { GlassPill } from '../components/ui/GlassPill';
-import { COLORS, SPACING } from '../lib/theme';
 import { useCompany } from '../lib/CompanyContext';
 import { RootStackParamList } from '../navigation/types';
+import { DC_COLORS, DC_SPACING, DC_TYPO } from '../components/driverCard/driverCardTheme';
 import {
   ADMIN_NOTIFICATION_TYPES,
   DRIVER_NOTIFICATION_TYPES,
@@ -33,6 +29,48 @@ import {
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'NotificationPreferences'>;
 
+function IosSwitch({
+  value,
+  onValueChange,
+  disabled,
+  accessibilityLabel,
+}: {
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+  disabled?: boolean;
+  accessibilityLabel: string;
+}) {
+  const progress = React.useRef(new Animated.Value(value ? 1 : 0)).current;
+
+  React.useEffect(() => {
+    Animated.timing(progress, {
+      toValue: value ? 1 : 0,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [progress, value]);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      disabled={disabled}
+      onPress={() => onValueChange(!value)}
+      style={[styles.iosSwitch, disabled && styles.iosSwitchDisabled]}
+      accessibilityRole="switch"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: !!disabled, checked: value }}
+    >
+      <Animated.View style={[styles.iosSwitchOnTrack, { opacity: progress }]} />
+      <Animated.View
+        style={[
+          styles.iosSwitchThumb,
+          { transform: [{ translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, 20] }) }] },
+        ]}
+      />
+    </TouchableOpacity>
+  );
+}
+
 export default function NotificationPreferencesScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { profile } = useCompany();
@@ -45,14 +83,14 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
   const loadRequest = useRef(0);
 
   const isDriver = profile?.role === 'driver';
-  const isAdmin = profile?.role === 'admin';
+  const profileId = profile?.id;
   const visibleTypes = isDriver ? DRIVER_NOTIFICATION_TYPES : ADMIN_NOTIFICATION_TYPES;
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
     setLoading(true);
     setError(null);
-    if (!profile?.id) {
+    if (!profileId) {
       if (requestId === loadRequest.current) {
         setError('פרופיל המשתמש אינו זמין');
         setLoading(false);
@@ -60,7 +98,7 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
       return;
     }
     try {
-      const data = await getPreferences(profile.id);
+      const data = await getPreferences(profileId);
       if (requestId !== loadRequest.current) return;
       setPrefs(data);
     } catch (err: any) {
@@ -68,7 +106,7 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
-  }, [profile?.id]);
+  }, [profileId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -78,15 +116,15 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
   );
 
   const toggle = async (type: NotificationType, next: boolean) => {
-    if (!profile?.id || !prefs) return;
+    if (!profileId || !prefs) return;
     const previous = prefs[type];
 
     // Optimistic + immediate save, per the PRD's "no save button" rule.
     setPrefs({ ...prefs, [type]: next });
     setSavingType(type);
     try {
-      await setPreference(profile.id, type, next);
-    } catch (err: any) {
+      await setPreference(profileId, type, next);
+    } catch {
       setPrefs((p) => (p ? { ...p, [type]: previous } : p));
       showToast('שמירת ההעדפה נכשלה, נסה שוב');
     } finally {
@@ -95,79 +133,99 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
   };
 
   return (
-    <Screen style={isAdmin ? styles.screen : undefined}>
-      {isAdmin && <AdminGradientBackground />}
-      <View style={[styles.topBar, { paddingTop: insets.top + 20 }]}>
-        <View style={styles.topBarInner}>
-          <View style={styles.topTitleOverlay} pointerEvents="none">
-            <AppText weight="bold" style={styles.topTitle} numberOfLines={1}>
-              ניהול התראות
-            </AppText>
-            <AppText style={styles.topSubtitle} numberOfLines={1}>
-              ניהול העדפות התראה
-            </AppText>
-          </View>
-          <View style={{ width: 40 }} />
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8}>
-            <GlassPill size={40} blur={14} bg="rgba(255,255,255,.4)">
-              <Ionicons name="chevron-forward" size={20} color="#1a1a1a" />
-            </GlassPill>
-          </TouchableOpacity>
-        </View>
+    <View style={styles.screen}>
+      <AdminGradientBackground />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + 76, paddingBottom: DC_SPACING.listBottomPadding + insets.bottom },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <AppText style={[DC_TYPO.largeTitle, styles.title]}>ניהול התראות</AppText>
+        {loading ? (
+          <View style={styles.state}><LoadingState /></View>
+        ) : error ? (
+          <View style={styles.state}><ErrorState message={error} onRetry={load} /></View>
+        ) : (
+          <>
+            <AppText style={styles.hint}>בחר אילו עדכונים תרצה לקבל. כל שינוי נשמר מיד עבורך בלבד.</AppText>
+            <AppText style={[DC_TYPO.groupTitle, styles.sectionTitle]}>העדפות אישיות</AppText>
+            <View style={styles.list}>
+              {visibleTypes.map((item, index) => (
+                <View key={item.type} style={[styles.row, index === visibleTypes.length - 1 && styles.rowLast]}>
+                  <View style={styles.rowText}>
+                    <AppText style={[DC_TYPO.rowLabel, styles.label]}>{item.label}</AppText>
+                    {!!item.description && <AppText style={styles.description}>{item.description}</AppText>}
+                  </View>
+                  <IosSwitch
+                    value={prefs?.[item.type] ?? true}
+                    onValueChange={(value) => toggle(item.type, value)}
+                    disabled={savingType === item.type}
+                    accessibilityLabel={item.label}
+                  />
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+      </ScrollView>
+      <View style={[styles.backButton, { top: insets.top + 12 }]}>
+        <BackButton onPress={() => navigation.goBack()} />
       </View>
-
-      {loading ? (
-        <LoadingState />
-      ) : error ? (
-        <View style={styles.content}>
-          <ErrorState message={error} onRetry={load} />
-        </View>
-      ) : (
-        <View style={styles.content}>
-          <AppText style={styles.hint}>
-            שליטה על ההתראות שאתה מקבל באפליקציה. השינוי נשמר באופן מיידי.
-          </AppText>
-          <Card style={styles.card}>
-            {visibleTypes.map((item, index) => (
-              <View key={item.type} style={index > 0 ? styles.divider : undefined}>
-                <ToggleRow
-                  label={item.label}
-                  description={item.description}
-                  value={prefs?.[item.type] ?? true}
-                  onValueChange={(v) => toggle(item.type, v)}
-                  disabled={savingType === item.type}
-                />
-              </View>
-            ))}
-          </Card>
-        </View>
-      )}
-    </Screen>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: '#F1F4F7' },
-  topBar: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.md,
-  },
-  topBarInner: {
-    position: 'relative',
-    minHeight: 44,
-    flexDirection: 'row',
+  screen: { flex: 1, backgroundColor: DC_COLORS.bg },
+  scroll: { flex: 1 },
+  content: { paddingHorizontal: DC_SPACING.screenPaddingH },
+  title: { color: DC_COLORS.label, textAlign: 'right', writingDirection: 'rtl', marginBottom: 26 },
+  hint: { color: DC_COLORS.labelSecondary, fontSize: 14, textAlign: 'right', writingDirection: 'rtl', marginBottom: 26 },
+  sectionTitle: { color: DC_COLORS.labelTertiary, textAlign: 'right', writingDirection: 'rtl', marginBottom: 8, marginRight: 2 },
+  list: { backgroundColor: DC_COLORS.surface, borderRadius: DC_SPACING.groupRadius, overflow: 'hidden' },
+  row: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: DC_SPACING.iconTextGap,
+    minHeight: 62,
+    paddingHorizontal: DC_SPACING.rowPaddingH,
+    paddingVertical: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: DC_COLORS.separator,
   },
-  topTitleOverlay: {
-    ...StyleSheet.absoluteFill,
-    alignItems: 'center',
+  rowLast: { borderBottomWidth: 0 },
+  rowText: { flex: 1, gap: 3 },
+  label: { color: DC_COLORS.label, textAlign: 'right', writingDirection: 'rtl' },
+  description: { color: DC_COLORS.labelSecondary, fontSize: 12.5, textAlign: 'right', writingDirection: 'rtl' },
+  state: { paddingTop: 36 },
+  backButton: { position: 'absolute', right: 16 },
+  iosSwitch: {
+    width: 51,
+    height: 31,
+    borderRadius: 16,
+    backgroundColor: '#E9E9EA',
     justifyContent: 'center',
+    paddingHorizontal: 2,
   },
-  topTitle: { fontSize: 18, color: COLORS.text, textAlign: 'center' },
-  topSubtitle: { fontSize: 12.5, color: COLORS.textMuted, marginTop: 2, textAlign: 'center' },
-  content: { padding: SPACING.lg, gap: SPACING.md },
-  card: { gap: 0 },
-  divider: { borderTopWidth: 1, borderTopColor: COLORS.divider },
-  hint: { fontSize: 12.5, color: COLORS.textMuted, paddingHorizontal: 2 },
+  iosSwitchOnTrack: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 16,
+    backgroundColor: '#34C759',
+  },
+  iosSwitchThumb: {
+    width: 27,
+    height: 27,
+    borderRadius: 14,
+    backgroundColor: DC_COLORS.surface,
+    alignSelf: 'flex-start',
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  iosSwitchDisabled: { opacity: 0.5 },
 });

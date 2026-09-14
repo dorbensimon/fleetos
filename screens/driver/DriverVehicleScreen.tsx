@@ -2,12 +2,11 @@ import React, { useCallback, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, ErrorState, ExpiryBadge } from '../../components/ui';
-import { COLORS, RADIUS, SPACING, CARD_SHADOW, expiryState, formatDate } from '../../lib/theme';
+import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, ErrorState, ExpiryBadge, SecondaryButton } from '../../components/ui';
+import { COLORS, SPACING, expiryState, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listActiveDriverVehicles, listComplianceForOwners, DriverVehicleAssignment, ComplianceItem } from '../../lib/adminApi';
-import { VEHICLE_TYPE_LABELS } from '../../lib/compliance';
-import { complianceBadgeLabel, complianceBadgeState, findComplianceDef } from '../../lib/compliance';
+import { VEHICLE_TYPE_LABELS, complianceBadgeLabel, complianceBadgeState, findComplianceDef } from '../../lib/compliance';
 import { RootStackParamList } from '../../navigation/types';
 
 /**
@@ -80,6 +79,7 @@ export default function DriverVehicleScreen({ navigation }: Props) {
               isPrimary={a.is_primary}
               showPrimaryBadge={assignments.length > 1}
               compliance={compliance.get(a.vehicle.id) ?? []}
+              onOdometer={() => navigation.navigate('DriverOdometer', { vehicleId: a.vehicle.id, currentOdometer: a.vehicle.odometer })}
             />
           ))}
         </View>
@@ -93,11 +93,13 @@ function VehicleCard({
   isPrimary,
   showPrimaryBadge,
   compliance,
+  onOdometer,
 }: {
   vehicle: DriverVehicleAssignment['vehicle'];
   isPrimary: boolean;
   showPrimaryBadge: boolean;
   compliance: ComplianceItem[];
+  onOdometer: () => void;
 }) {
   const expiryOf = (itemType: string) =>
     compliance.find((c) => c.item_type === itemType)?.expiry_date ?? null;
@@ -140,14 +142,13 @@ function VehicleCard({
             label={testDef ? complianceBadgeLabel(testDef, testItem) : testItem?.expiry_date ? formatDate(testItem.expiry_date) : 'חסר'}
           />
         </View>
-        {!!vehicle.odometer && (
-          <View style={styles.metaRow}>
-            <AppText style={styles.metaLabel}>קילומטראז׳</AppText>
-            <AppText weight="bold" style={styles.metaValue}>
-              {vehicle.odometer.toLocaleString('he-IL')} ק"מ
-            </AppText>
-          </View>
-        )}
+        <View style={styles.metaRow}>
+          <AppText style={styles.metaLabel}>קילומטראז׳</AppText>
+          <AppText weight="bold" style={styles.metaValue}>{vehicle.odometer.toLocaleString('he-IL')} ק״מ</AppText>
+        </View>
+        <View style={styles.actions}>
+          <SecondaryButton label="עדכון קילומטרים" icon="speedometer-outline" onPress={onOdometer} style={styles.action} />
+        </View>
       </Card>
     </>
   );
@@ -184,4 +185,6 @@ const styles = StyleSheet.create({
   },
   metaLabel: { fontSize: 14, color: COLORS.textMuted },
   metaValue: { fontSize: 14 },
+  actions: { flexDirection: 'row-reverse', gap: 8, marginTop: 8 },
+  action: { flex: 1 },
 });

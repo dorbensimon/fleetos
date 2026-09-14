@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator, AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  createNavigationContainerRef,
+  type LinkingOptions,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
   useFonts,
@@ -44,6 +48,7 @@ import DriverVehicleScreen from './screens/driver/DriverVehicleScreen';
 import DriverDocumentsScreen from './screens/driver/DriverDocumentsScreen';
 import DriverSigningDocumentsScreen from './screens/driver/DriverSigningDocumentsScreen';
 import DriverProfileScreen from './screens/driver/DriverProfileScreen';
+import DriverOdometerScreen from './screens/driver/DriverOdometerScreen';
 import MenuScreen from './screens/MenuScreen';
 import { RootStackParamList } from './navigation/types';
 import { supabase } from './lib/supabase';
@@ -51,8 +56,54 @@ import { resolveRouteForUser } from './lib/session';
 import { CompanyProvider } from './lib/CompanyContext';
 import { ToastProvider } from './components/ui';
 import { flushPendingAssignmentOperations } from './lib/adminApi';
+import {
+  listenForPushNotificationResponses,
+  registerForPushNotifications,
+  unregisterPushNotifications,
+} from './lib/pushNotifications';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
+// On web this maps every in-app screen to a URL and lets React Navigation
+// synchronize its stack with the browser History API. Without it, Safari's
+// back button only knows the page that opened the app, not its inner screens.
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: ['fleetos://'],
+  config: {
+    screens: {
+      Login: 'login',
+      SetPassword: 'set-password',
+      OwnerHome: 'owner',
+      AdminHome: 'fleet',
+      DriverHome: 'driver',
+      CompanyDetail: 'companies/:companyId',
+      VehicleDetail: 'vehicles/:vehicleId',
+      VehicleForm: 'vehicles/edit/:vehicleId?',
+      DriverDetail: 'drivers/:driverId',
+      DriverArchive: 'drivers/archive',
+      DriverPersonalDetails: 'drivers/:driverId/personal-details',
+      DriverForm: 'drivers/edit/:driverId?',
+      Departments: 'departments',
+      ActivityLog: 'activity-log',
+      Attention: 'attention',
+      Reports: 'reports',
+      AdminProfile: 'admin/profile',
+      Notifications: 'notifications',
+      AdminDocumentSigning: 'documents/signing',
+      DocusealWebView: 'documents/view',
+      NotificationPreferences: 'notification-preferences',
+      DocumentCategory: 'documents/:ownerType/:ownerId/:category',
+      DriverLicenseDocuments: 'drivers/:driverId/license-documents',
+      DriverVehicle: 'my-vehicle',
+      DriverDocuments: 'my-documents',
+      DriverSigningDocuments: 'my-documents/signing',
+      DriverProfile: 'my-profile',
+      DriverOdometer: 'my-vehicle/odometer/:vehicleId',
+      Menu: 'menu',
+    },
+  },
+};
 
 export default function App() {
   const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList | null>(null);
@@ -102,10 +153,21 @@ export default function App() {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') setInitialRoute('Login');
+      if (event === 'SIGNED_OUT') {
+        void unregisterPushNotifications().catch(() => undefined);
+        setInitialRoute('Login');
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!initialRoute || initialRoute === 'Login') return;
+    void registerForPushNotifications().catch(() => undefined);
+    return listenForPushNotificationResponses((screen) => {
+      if (navigationRef.isReady()) navigationRef.navigate(screen);
+    });
+  }, [initialRoute]);
 
   if (!initialRoute || !fontsLoaded) {
     return (
@@ -121,7 +183,7 @@ export default function App() {
     <SafeAreaProvider>
       <ToastProvider>
         <CompanyProvider>
-          <NavigationContainer>
+          <NavigationContainer ref={navigationRef} linking={linking}>
             <Stack.Navigator key={initialRoute} screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
@@ -160,6 +222,7 @@ export default function App() {
               <Stack.Screen name="DriverDocuments" component={DriverDocumentsScreen} />
               <Stack.Screen name="DriverSigningDocuments" component={DriverSigningDocumentsScreen} />
               <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />
+              <Stack.Screen name="DriverOdometer" component={DriverOdometerScreen} />
             </Stack.Navigator>
           </NavigationContainer>
         </CompanyProvider>

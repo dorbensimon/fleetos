@@ -1,8 +1,10 @@
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
+import { Platform } from 'react-native';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
 import { extensionForMimeType, isAllowedLogoMimeType } from './fileTypes';
+import { readBlobUrlAsBase64 } from './webDownload';
 
 const MAX_LOGO_BYTES = 5 * 1024 * 1024;
 
@@ -28,7 +30,9 @@ export async function pickAndUploadLogo(): Promise<string | null> {
   if (!isAllowedLogoMimeType(mimeType)) {
     throw new Error('סוג הלוגו אינו נתמך. ניתן להעלות JPG, PNG או WEBP');
   }
-  const base64 = await new File(asset.uri).base64();
+  const base64 = Platform.OS === 'web'
+    ? await readBlobUrlAsBase64(asset.uri)
+    : await new File(asset.uri).base64();
   const arrayBuffer = decode(base64);
   if (arrayBuffer.byteLength > MAX_LOGO_BYTES) {
     throw new Error('הלוגו גדול מדי. ניתן להעלות תמונה עד 5MB');

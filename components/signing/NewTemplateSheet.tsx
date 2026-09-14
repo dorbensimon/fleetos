@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from '../ui';
 import { SG_COLORS, SG_RADIUS, SG_SHADOW, SG_TYPO } from './signingTheme';
+import { CONTENT_MAX_WIDTH } from '../../lib/theme';
 
 export function NewTemplateSheet({
   visible,
@@ -89,6 +90,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    maxWidth: CONTENT_MAX_WIDTH,
+    marginHorizontal: 'auto',
     backgroundColor: SG_COLORS.white,
     borderTopLeftRadius: SG_RADIUS.sheetTop,
     borderTopRightRadius: SG_RADIUS.sheetTop,

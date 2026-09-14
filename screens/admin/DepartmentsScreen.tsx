@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, FlatList, StyleSheet, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { View, FlatList, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, LoadingState, EmptyState, ErrorState, useToast } from '../../components/ui';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { GlassPill } from '../../components/ui/GlassPill';
-import { COLORS, SPACING, ACCENT_SHADOW } from '../../lib/theme';
+import { COLORS, CONTENT_MAX_WIDTH, SPACING, ACCENT_SHADOW } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listDepartments, createDepartment, updateDepartment, deleteDepartment, countDepartmentUsage, Department } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
@@ -73,7 +74,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
       await load();
       showToast('נשמר בהצלחה');
     } catch (err: any) {
-      Alert.alert('הוספת מחלקה נכשלה', String(err?.message ?? 'נסה שוב'));
+      showAlert('הוספת מחלקה נכשלה', String(err?.message ?? 'נסה שוב'));
     } finally {
       setAdding(false);
     }
@@ -90,7 +91,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
       await load();
       showToast('נשמר בהצלחה');
     } catch (err: any) {
-      Alert.alert('שינוי השם נכשל', String(err?.message ?? 'נסה שוב'));
+      showAlert('שינוי השם נכשל', String(err?.message ?? 'נסה שוב'));
     }
   };
 
@@ -111,7 +112,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
       ? `למחוק את "${dept.name}"? ${parts.join(' ו')} ${isSingular ? 'משויך' : 'משויכים'} אליה כרגע, ו${isSingular ? 'יישאר' : 'יישארו'} ללא מחלקה.`
       : `למחוק את "${dept.name}"?`;
 
-    Alert.alert(
+    showAlert(
       'מחיקת מחלקה',
       message,
       [
@@ -124,7 +125,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
               await deleteDepartment(companyId, dept.id);
               await load();
             } catch (err: any) {
-              Alert.alert('מחיקה נכשלה', String(err?.message ?? 'נסה שוב'));
+              showAlert('מחיקה נכשלה', String(err?.message ?? 'נסה שוב'));
             }
           },
         },
@@ -259,10 +260,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 18,
     paddingBottom: SPACING.md,
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
   },
   topTitle: { flex: 1, fontSize: 18, color: '#101F2C', textAlign: 'center', marginHorizontal: 8 },
 
-  content: { flex: 1, paddingHorizontal: 18, paddingTop: SPACING.lg },
+  content: { flex: 1, paddingHorizontal: 18, paddingTop: SPACING.lg, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
 
   sectionHeader: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginBottom: 9 },
   sectionDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: COLORS.accent },

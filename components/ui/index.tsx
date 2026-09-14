@@ -7,6 +7,8 @@ import {
   TouchableOpacityProps,
   TextInput,
   TextInputProps,
+  StyleProp,
+  ViewStyle,
   ActivityIndicator,
   ScrollView,
   Switch,
@@ -22,6 +24,7 @@ import {
   FONT,
   ExpiryState,
   EXPIRY_STYLE,
+  CONTENT_MAX_WIDTH,
 } from '../../lib/theme';
 
 export { AppText } from './Text';
@@ -35,12 +38,40 @@ export { DriverMenuButton } from './DriverMenuButton';
 export { default as DriversVehiclesToggle } from './DriversVehiclesToggle';
 export type { ToggleValue } from './DriversVehiclesToggle';
 
+/** The single compact back affordance used in app navigation headers. */
+export function BackButton({
+  onPress,
+  accessibilityLabel = 'חזור',
+  style,
+}: {
+  onPress: () => void;
+  accessibilityLabel?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[styles.appBackButton, style]}
+      hitSlop={10}
+      activeOpacity={0.75}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      <Ionicons name="chevron-forward" size={20} color={COLORS.accent} />
+    </TouchableOpacity>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Screen                                                              */
 /* ------------------------------------------------------------------ */
 
-export function Screen({ style, ...rest }: ViewProps) {
-  return <View {...rest} style={[styles.screen, style]} />;
+export function Screen({ style, contentStyle, children, ...rest }: ViewProps & { contentStyle?: StyleProp<ViewStyle> }) {
+  return (
+    <View {...rest} style={[styles.screen, style]}>
+      <View style={[styles.screenContent, contentStyle]}>{children}</View>
+    </View>
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -72,11 +103,7 @@ export function ScreenHeader({
 }) {
   return (
     <View style={styles.header}>
-      {onBack && (
-        <TouchableOpacity onPress={onBack} style={styles.backBtn} hitSlop={10}>
-          <Ionicons name="chevron-forward" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-      )}
+      {onBack && <BackButton onPress={onBack} />}
       <View style={styles.headerText}>
         <AppText weight="bold" style={styles.headerTitle} numberOfLines={1}>
           {title}
@@ -485,6 +512,7 @@ export function InfoRow({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.screen },
+  screenContent: { flex: 1, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
 
   card: {
     backgroundColor: COLORS.card,
@@ -503,7 +531,21 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     ...SUBTLE_SHADOW,
   },
-  backBtn: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
+  appBackButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(10,127,208,0.20)',
+    shadowColor: '#0A7FD0',
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerText: { flex: 1 },
   headerTitle: { fontSize: 21 },
   headerSubtitle: { fontSize: 12.5, color: COLORS.textMuted, marginTop: 2 },

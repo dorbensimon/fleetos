@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
@@ -7,6 +8,7 @@ import { supabase } from './supabase';
 import { DocumentRow, OwnerType } from './adminApi';
 import { safeFileName } from './fileNames';
 import { extensionForMimeType, isAllowedDocumentMimeType } from './fileTypes';
+import { downloadRemoteFileOnWeb, readBlobUrlAsBase64 } from './webDownload';
 
 /**
  * Documents live in a PRIVATE storage bucket, unlike company logos.
@@ -33,7 +35,11 @@ function rawBase64(value: string): string {
 }
 
 export async function readPickedFileBase64(file: PickedFile): Promise<string> {
-  return rawBase64(file.base64 || await new File(file.uri).base64());
+  if (file.base64) return rawBase64(file.base64);
+  // expo-file-system's File class is an unimplemented stub on web — a
+  // picker result's blob: URL must be read back through the DOM instead.
+  if (Platform.OS === 'web') return await readBlobUrlAsBase64(file.uri);
+  return rawBase64(await new File(file.uri).base64());
 }
 
 /** Opens the photo library, for scans and photographed paperwork. */
@@ -276,6 +282,8 @@ export async function getDocumentUrl(doc: DocumentRow): Promise<string | null> {
 export async function downloadDocument(doc: DocumentRow): Promise<void> {
   const url = await getDocumentUrl(doc);
   if (!url) throw new Error('לא ניתן להוריד את המסמך כרגע');
+
+  if (await downloadRemoteFileOnWeb(url, safeFileName(doc.file_name ?? doc.title, 'document'))) return;
 
   const response = await fetch(url);
   const buffer = new Uint8Array(await response.arrayBuffer());

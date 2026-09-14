@@ -70,6 +70,7 @@ const styles = StyleSheet.create({
   },
   modal: {
     width: '100%',
+    maxWidth: 420,
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Modal, Pressable, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from '../ui';
-import { COLORS, RADIUS, SPACING } from '../../lib/theme';
+import { COLORS, CONTENT_MAX_WIDTH, RADIUS, SPACING } from '../../lib/theme';
 
 export interface ExportReportCategoryOption<T extends string> {
   value: T;
@@ -76,6 +76,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
     backgroundColor: COLORS.card,
     borderTopLeftRadius: RADIUS.lg,
     borderTopRightRadius: RADIUS.lg,

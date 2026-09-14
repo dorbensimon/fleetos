@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <!--
+      This is an app UI, not a document — pinch/double-tap zoom lets a user
+      drag the whole layout around the viewport on iOS Safari (reported as
+      "the screen can be moved around, bottom cut off, gap at the top"),
+      since a zoomed viewport can pan even though `body{overflow:hidden}`
+      below blocks ordinary scrolling. `maximum-scale=1, user-scalable=no`
+      disables that. `viewport-fit=cover` lets safe-area-inset-* report the
+      real notch/home-indicator insets instead of 0, so the header/dock
+      backgrounds can extend under them instead of leaving a bare gap.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <!--
+      A page opened as a normal Safari tab always keeps Safari's own address
+      bar and bottom toolbar — no CSS can draw over or hide them, so the app
+      background can never reach past them from inside a tab. These tags
+      only take effect once the user adds the page to the Home Screen (Share
+      → "הוסף למסך הבית") and opens it from that icon: then iOS runs it
+      "standalone" with none of Safari's chrome, so the background truly
+      fills the whole screen edge-to-edge.
+    -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="%WEB_TITLE%" />
+    <title>%WEB_TITLE%</title>
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* `position: fixed` pins the body to iOS Safari's *layout* viewport,
+         which stays at its largest size and doesn't shrink/grow as the
+         address bar collapses — so a height of `100%` (or even `100dvh`)
+         on a fixed body stops tracking the real, current viewport and
+         leaves a gap at the bottom where the page background doesn't
+         reach. Using `overscroll-behavior` instead of `position: fixed`
+         still blocks the rubber-band bounce, but leaves the body in normal
+         flow so its height stays tied to the *visual* viewport. */
+      @supports (height: 100dvh) {
+        html,
+        body {
+          height: 100dvh;
+        }
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+        overscroll-behavior: none;
+        touch-action: none;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+        /* #root itself needs to opt back in to touch handling that the
+           body-level touch-action:none above turns off, or nothing inside
+           the app (scroll views, buttons) would receive touches. */
+        touch-action: auto;
+      }
+      /* Safari otherwise reduces the placeholder's opacity after React
+         Native Web has applied its colour, making the fleet search hint fade
+         into the blue glass pill. */
+      input::placeholder,
+      input::-webkit-input-placeholder {
+        color: rgba(255, 255, 255, 0.9);
+        opacity: 1;
+      }
+      /* React Native Web renders TextInput as a native HTML input. iOS
+         Safari adds its own bright-blue focus ring inside it, which looks
+         like a second rectangle around the typed text. Focus is already
+         represented by each screen's field border, so remove that browser
+         decoration consistently from every editable control. */
+      input,
+      textarea,
+      select {
+        -webkit-appearance: none;
+        appearance: none;
+        outline: none;
+      }
+      input:focus,
+      input:focus-visible,
+      textarea:focus,
+      textarea:focus-visible,
+      select:focus,
+      select:focus-visible {
+        outline: none !important;
+        box-shadow: none !important;
+      }
+      /* iOS Safari paints saved email/password values with its own blue
+         autofill layer. It sits inside the React Native Web input and looks
+         like a second blue rectangle, unrelated to our focus border. Keep
+         Safari's password manager available, but make its filled value blend
+         with the field's normal, subtle background. */
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover,
+      input:-webkit-autofill:focus,
+      input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.02) inset !important;
+        -webkit-text-fill-color: #1d1d1f !important;
+        caret-color: #1d1d1f;
+        transition: background-color 9999s ease-out 0s;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+    <script>
+      // `100dvh` (above) tracks Safari's address-bar collapse, but on iOS it
+      // does NOT shrink for the on-screen keyboard — the keyboard instead
+      // makes iOS auto-scroll the whole page to keep the focused input
+      // visible, which fights with our fixed-size body/root and shows up as
+      // "the screen doesn't reach the bottom" / "the screen jumps up" when
+      // a text field is focused. `window.visualViewport` reports the real,
+      // keyboard-aware height, so we pin html/body to that in JS instead.
+      (function () {
+        function applyViewportHeight() {
+          var vv = window.visualViewport;
+          var h = (vv && vv.height) || window.innerHeight;
+          document.documentElement.style.height = h + 'px';
+          document.body.style.height = h + 'px';
+        }
+        // iOS separately pans the *visual* viewport itself to keep a
+        // focused input above the keyboard, on top of the resize above —
+        // since applyViewportHeight() already makes our layout fit the
+        // keyboard-shrunk space, that extra pan just scrolls past our
+        // (already-correctly-sized) content into blank space beyond it.
+        // Undoing it here every time it happens is what actually keeps
+        // that gap from appearing.
+        function lockScroll() {
+          if (window.scrollX !== 0 || window.scrollY !== 0) {
+            window.scrollTo(0, 0);
+          }
+        }
+        applyViewportHeight();
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', function () {
+            applyViewportHeight();
+            lockScroll();
+          });
+          window.visualViewport.addEventListener('scroll', lockScroll);
+        }
+        window.addEventListener('scroll', lockScroll, { passive: true });
+        window.addEventListener('orientationchange', applyViewportHeight);
+        document.addEventListener('focusin', function () {
+          setTimeout(lockScroll, 50);
+          setTimeout(lockScroll, 350);
+        });
+      })();
+    </script>
+  </body>
+</html>

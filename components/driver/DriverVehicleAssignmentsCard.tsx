@@ -1,4 +1,5 @@
-import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { showAlert } from '../../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, Card, PrimaryButton } from '../ui';
 import { Select } from '../ui/Select';
@@ -89,7 +90,7 @@ export function confirmVehicleRemoval(
   assignment: DriverVehicleAssignment,
   onConfirm: () => void,
 ) {
-  Alert.alert('הסרת שיוך רכב', `להסיר את הנהג מהרכב ${formatPlate(assignment.vehicle.plate_number)}?`, [
+  showAlert('הסרת שיוך רכב', `להסיר את הנהג מהרכב ${formatPlate(assignment.vehicle.plate_number)}?`, [
     { text: 'ביטול', style: 'cancel' },
     { text: 'הסר שיוך', style: 'destructive', onPress: onConfirm },
   ]);

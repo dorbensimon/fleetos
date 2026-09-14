@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, StyleSheet, Alert, TextInput, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { View, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BlurView } from 'expo-blur';
@@ -8,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, LoadingState, ErrorState, useToast } from '../../components/ui';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { GlassPill } from '../../components/ui/GlassPill';
-import { COLORS, FONT, formatDate } from '../../lib/theme';
+import { COLORS, CONTENT_MAX_WIDTH, FONT, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
 import { updateCompanyPhone } from '../../lib/companyApi';
@@ -97,11 +98,11 @@ export default function AdminProfileScreen({ navigation }: Props) {
     setSaving(false);
 
     if (error) {
-      Alert.alert('שמירה נכשלה', 'לא הצלחנו לשמור את השינויים. נסה שוב');
+      showAlert('שמירה נכשלה', 'לא הצלחנו לשמור את השינויים. נסה שוב');
       return;
     }
     if (companyPhoneError) {
-      Alert.alert('שמירה נכשלה', companyPhoneError);
+      showAlert('שמירה נכשלה', companyPhoneError);
       return;
     }
     setEditing(false);
@@ -110,7 +111,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
   };
 
   const signOut = () => {
-    Alert.alert('התנתקות', 'להתנתק מהחשבון?', [
+    showAlert('התנתקות', 'להתנתק מהחשבון?', [
       { text: 'ביטול', style: 'cancel' },
       { text: 'התנתק', style: 'destructive', onPress: () => supabase.auth.signOut() },
     ]);
@@ -141,7 +142,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
       ) : loadError ? (
         <ErrorState message={loadError} onRetry={load} />
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.profileBlock}>
             <View style={styles.avatarWrap}>
               <View style={styles.avatar}>
@@ -355,14 +356,22 @@ const rowStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F2F2F7' },
+  // Without an explicit flex here, ScrollView (a plain div under react-native-web)
+  // sizes to its own content instead of stretching into the remaining flex
+  // space under the header, so on web the whole page scrolls instead of just
+  // this area.
+  scroll: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
   },
   headerCompany: { flex: 1, fontSize: 16, color: '#1a1a1a', textAlign: 'center', marginHorizontal: 8 },
-  content: { padding: 20, paddingTop: 18, paddingBottom: 40, gap: 4 },
+  content: { padding: 20, paddingTop: 18, paddingBottom: 40, gap: 4, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   profileBlock: { alignItems: 'center', paddingVertical: 18 },
   avatarWrap: { width: 84, height: 84 },
   avatar: {

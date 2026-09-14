@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, TextInput, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import { View, TextInput, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -24,11 +24,11 @@ import { FLEET_COLORS, FLEET_FONT } from './fleetTheme';
  */
 
 export const FLEET_HERO = {
-  // Gap between the nav row (menu/greeting/bell) and the stat cubes below
-  // it — 40px at rest so the cubes don't read as glued to the bell, down
-  // to a minimum of 18px once the search field has risen into their spot.
-  navGapRest: 40,
-  navGapCollapsed: 18,
+  // Keep the fleet status immediately below the greeting. On a phone, a
+  // larger gap pushes the useful content below the fold before the list
+  // starts, so the resting gap is deliberately compact.
+  navGapRest: 18,
+  navGapCollapsed: 14,
   cubeRowHeight: 78,
   fieldHeight: 54,
   buttonHeight: 44,
@@ -40,8 +40,8 @@ const { navGapRest, navGapCollapsed, cubeRowHeight, fieldHeight, buttonHeight, g
 /** Scroll distance (px) over which the hero fully collapses. */
 export const HERO_TRAVEL = navGapRest - navGapCollapsed + cubeRowHeight + gap;
 
-/** Content height below the nav row, at rest (top gap + cubes + gaps + field + button). */
-export const HERO_CONTENT_HEIGHT = navGapRest + cubeRowHeight + gap + fieldHeight + gap + buttonHeight + gap + buttonHeight;
+/** Content height below the nav row, at rest. Quick actions live beside search on the same row. */
+export const HERO_CONTENT_HEIGHT = navGapRest + cubeRowHeight + gap + fieldHeight + gap;
 
 export function heroNavHeight(insetsTop: number) {
   return insetsTop + 56;
@@ -115,7 +115,7 @@ export function FleetHero({
       <View style={styles.glowCyan} pointerEvents="none" />
       <View style={styles.glowWhite} pointerEvents="none" />
 
-      <View style={[styles.navRow, { top: insets.top + 14, height: navHeight - (insets.top + 14) }]}>
+      <View style={[styles.navRow, { top: insets.top + 2, height: navHeight - (insets.top + 2) }]}>
         <FleetMenuButton />
         <View style={styles.greetingWrap}>
           <AppText style={styles.greeting} numberOfLines={1}>
@@ -154,33 +154,50 @@ export function FleetHero({
 
       <Animated.View
         style={[
-          styles.search,
-          searchFocused && styles.searchFocused,
+          styles.searchRow,
           { top: navHeight + navGapRest + cubeRowHeight + gap, transform: [{ translateY: riseTranslateY }] },
         ]}
       >
-        <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFill} />
-        <LinearGradient
-          colors={
-            searchFocused
-              ? ['rgba(255,255,255,.34)', 'rgba(255,255,255,.2)']
-              : ['rgba(255,255,255,.26)', 'rgba(255,255,255,.15)']
-          }
-          start={{ x: 0.15, y: 0 }}
-          end={{ x: 0.75, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <Ionicons name="search" size={17} color="rgba(255,255,255,.85)" />
-        <TextInput
-          value={query}
-          onChangeText={onChangeQuery}
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
-          placeholder={searchPlaceholder}
-          placeholderTextColor="rgba(255,255,255,.82)"
-          style={styles.searchInput}
-          textAlign="right"
-        />
+        <View style={[styles.search, searchFocused && styles.searchFocused]}>
+          {/* Safari can composite a web BlurView over the native input layer,
+              which makes the search text itself look out of focus. The web
+              tint + gradient below keep the same glass appearance without
+              blurring the editable text. */}
+          {Platform.OS !== 'web' && <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />}
+          {Platform.OS === 'web' && <View style={[StyleSheet.absoluteFill, styles.searchWebTint]} pointerEvents="none" />}
+          <LinearGradient
+            colors={searchFocused ? ['rgba(255,255,255,.34)', 'rgba(255,255,255,.2)'] : ['rgba(255,255,255,.26)', 'rgba(255,255,255,.15)']}
+            start={{ x: 0.15, y: 0 }}
+            end={{ x: 0.75, y: 1 }}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <Ionicons name="search" size={20} color="rgba(255,255,255,.9)" pointerEvents="none" />
+          <TextInput
+            value={query}
+            onChangeText={onChangeQuery}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            placeholder={searchPlaceholder}
+            placeholderTextColor="#FFFFFF"
+            style={styles.searchInput}
+            textAlign="right"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            accessibilityLabel={searchPlaceholder}
+          />
+        </View>
+        {!!onAttentionPress && (
+          <TouchableOpacity activeOpacity={0.82} onPress={onAttentionPress} style={[styles.quickAction, styles.attentionBtn]} accessibilityLabel="דורש טיפול">
+            <Ionicons name="alert-circle-outline" size={24} color="#102A42" />
+          </TouchableOpacity>
+        )}
+        {!!onActivityLogPress && (
+          <TouchableOpacity activeOpacity={0.82} onPress={onActivityLogPress} style={[styles.quickAction, styles.activityBtn]} accessibilityLabel="יומן פעולות">
+            <Ionicons name="time-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        )}
       </Animated.View>
 
       {!!onExportPress && (
@@ -211,22 +228,6 @@ export function FleetHero({
             <AppText weight="bold" style={styles.exportText}>
               ייצוא דוחות
             </AppText>
-          </TouchableOpacity>
-        </Animated.View>
-      )}
-      {!!onActivityLogPress && (
-        <Animated.View style={[styles.activityWrap, { top: navHeight + navGapRest + cubeRowHeight + gap + fieldHeight + gap + buttonHeight + gap, transform: [{ translateY: riseTranslateY }] }]}>
-          <TouchableOpacity activeOpacity={0.82} onPress={onActivityLogPress} style={styles.activityBtn}>
-            <Ionicons name="time-outline" size={16} color="#fff" />
-            <AppText weight="bold" style={styles.activityText}>יומן פעולות</AppText>
-          </TouchableOpacity>
-        </Animated.View>
-      )}
-      {!!onAttentionPress && (
-        <Animated.View style={[styles.attentionWrap, { top: navHeight + navGapRest + cubeRowHeight + gap + fieldHeight + gap, transform: [{ translateY: riseTranslateY }] }]}>
-          <TouchableOpacity activeOpacity={0.82} onPress={onAttentionPress} style={styles.attentionBtn}>
-            <Ionicons name="alert-circle-outline" size={16} color="#102A42" />
-            <AppText weight="bold" style={styles.attentionText}>דורש טיפול</AppText>
           </TouchableOpacity>
         </Animated.View>
       )}
@@ -277,23 +278,34 @@ const styles = StyleSheet.create({
   statsBar: {
     flex: 1,
     flexDirection: 'row-reverse',
-    alignItems: 'stretch',
+    gap: 14,
+  },
+  statsSeg: {
+    flex: 1,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.14)',
-    backgroundColor: 'rgba(255,255,255,.12)',
-    paddingVertical: 13,
-    paddingHorizontal: 4,
+    borderColor: 'rgba(255,255,255,.24)',
+    backgroundColor: 'rgba(255,255,255,.14)',
+    paddingHorizontal: 8,
   },
-  statsSeg: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 6 },
-  statsVal: { fontSize: 22, fontFamily: FLEET_FONT.black },
-  statsLabel: { fontSize: 11, color: 'rgba(255,255,255,.7)', fontFamily: FLEET_FONT.regular },
-  statsDivider: { width: 1, alignSelf: 'stretch', backgroundColor: 'rgba(255,255,255,.18)', marginVertical: 4 },
+  statsVal: { fontSize: 28, fontFamily: FLEET_FONT.black },
+  statsLabel: {
+    fontSize: 11.5,
+    color: 'rgba(255,255,255,.94)',
+    fontFamily: FLEET_FONT.bold,
+    textShadowColor: 'rgba(8,36,94,.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  statsDivider: { display: 'none' },
 
+  searchRow: { position: 'absolute', left: 20, right: 20, height: fieldHeight, flexDirection: 'row-reverse', gap: 12 },
   search: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
+    flex: 1,
     height: fieldHeight,
     borderRadius: 23,
     overflow: 'hidden',
@@ -311,6 +323,9 @@ const styles = StyleSheet.create({
   },
   searchFocused: {
     borderColor: 'rgba(255,255,255,.55)',
+  },
+  searchWebTint: {
+    backgroundColor: 'rgba(9,55,130,.4)',
   },
   searchInput: {
     flex: 1,
@@ -339,10 +354,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   exportText: { color: '#0a3fa8', fontSize: 14, fontFamily: FLEET_FONT.bold },
-  activityWrap: { position: 'absolute', left: 20, right: 20, height: buttonHeight },
-  activityBtn: { flex: 1, borderRadius: 22, backgroundColor: 'rgba(8,44,105,.38)', borderWidth: 1, borderColor: 'rgba(255,255,255,.42)', flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 9 },
-  activityText: { color: '#fff', fontSize: 14, fontFamily: FLEET_FONT.bold },
-  attentionWrap: { position: 'absolute', left: 20, right: 20, height: buttonHeight },
-  attentionBtn: { flex: 1, borderRadius: 22, backgroundColor: 'rgba(255,255,255,.88)', borderWidth: 1, borderColor: 'rgba(255,255,255,.9)', flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 9 },
-  attentionText: { color: '#102A42', fontSize: 14, fontFamily: FLEET_FONT.bold },
+  quickAction: { width: fieldHeight, height: fieldHeight, borderRadius: fieldHeight / 2, alignItems: 'center', justifyContent: 'center' },
+  activityBtn: { backgroundColor: 'rgba(8,44,105,.38)', borderWidth: 1, borderColor: 'rgba(255,255,255,.42)' },
+  attentionBtn: { backgroundColor: 'rgba(255,255,255,.88)', borderWidth: 1, borderColor: 'rgba(255,255,255,.9)' },
 });

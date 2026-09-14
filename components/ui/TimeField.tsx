@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform, TextInput, Modal, Pressable } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -50,10 +50,6 @@ export function TimeField({
   const [showPicker, setShowPicker] = useState(false);
   const [webText, setWebText] = useState(value ?? '');
 
-  useEffect(() => {
-    setWebText(value ?? '');
-  }, [value]);
-
   const openPicker = () => {
     if (disabled) return;
     if (Platform.OS === 'android') {
@@ -84,7 +80,7 @@ export function TimeField({
               return;
             }
             const parsed = parseTypedTime(t);
-            if (parsed) onChange(parsed);
+            onChange(parsed);
           }}
           placeholder="HH:MM"
           placeholderTextColor={COLORS.textFaint}

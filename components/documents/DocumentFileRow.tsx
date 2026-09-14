@@ -12,7 +12,7 @@ type Props = {
   showDate?: boolean;
   onOpen: (doc: DocumentRow) => void;
   onDownload: (doc: DocumentRow) => void;
-  onDelete: (doc: DocumentRow) => void;
+  onDelete?: (doc: DocumentRow) => void;
 };
 
 export function DocumentFileRow({
@@ -53,9 +53,11 @@ export function DocumentFileRow({
       <TouchableOpacity onPress={() => onDownload(doc)} hitSlop={8}>
         <Ionicons name="download-outline" size={isCard ? 17 : 16} color={COLORS.accent} />
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => onDelete(doc)} hitSlop={8}>
-        <Ionicons name="trash-outline" size={isCard ? 17 : 16} color={COLORS.dangerText} />
-      </TouchableOpacity>
+      {onDelete && (
+        <TouchableOpacity onPress={() => onDelete(doc)} hitSlop={8}>
+          <Ionicons name="trash-outline" size={isCard ? 17 : 16} color={COLORS.dangerText} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

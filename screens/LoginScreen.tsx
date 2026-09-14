@@ -43,6 +43,8 @@ interface AnimatedFieldProps {
   onToggle?: () => void;
   showPassword?: boolean;
   keyboardType?: 'default' | 'email-address';
+  textContentType?: 'emailAddress' | 'password' | 'username';
+  autoComplete?: 'email' | 'current-password' | 'username';
 }
 
 function AnimatedField({
@@ -55,6 +57,8 @@ function AnimatedField({
   onToggle,
   showPassword,
   keyboardType = 'default',
+  textContentType,
+  autoComplete,
 }: AnimatedFieldProps) {
   const [isFocused, setIsFocused] = useState(false);
   const anim = useRef(new Animated.Value(value ? 1 : 0)).current;
@@ -96,6 +100,8 @@ function AnimatedField({
             autoCapitalize="none"
             keyboardType={keyboardType}
             secureTextEntry={secureTextEntry}
+            textContentType={textContentType}
+            autoComplete={autoComplete}
             textAlign="right"
           />
         </View>
@@ -193,16 +199,8 @@ export default function LoginScreen({ navigation }: Props) {
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
+  const content = (
+    <>
           {/* לוגו */}
           <View style={styles.logoWrap}>
             <Image
@@ -227,6 +225,8 @@ export default function LoginScreen({ navigation }: Props) {
               onChangeText={setIdentifier}
               icon="mail-outline"
               keyboardType="email-address"
+              textContentType="username"
+              autoComplete="email"
             />
 
             <View style={{ height: 14 }} />
@@ -240,6 +240,8 @@ export default function LoginScreen({ navigation }: Props) {
               showToggle
               showPassword={showPassword}
               onToggle={() => setShowPassword(!showPassword)}
+              textContentType="password"
+              autoComplete="current-password"
             />
 
             {!!errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
@@ -260,19 +262,46 @@ export default function LoginScreen({ navigation }: Props) {
           <Text style={styles.contactText}>
             לפניות: <Text style={styles.contactEmail}>trytolvex@gmail.com</Text>
           </Text>
-        </ScrollView>
-      </KeyboardAvoidingView>
+    </>
+  );
+
+  return (
+    <View style={styles.container}>
+      {Platform.OS === 'web' ? (
+        <View style={styles.webContent}>{content}</View>
+      ) : (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.keyboardAvoidingView}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {content}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
+  keyboardAvoidingView: { flex: 1 },
+  webContent: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 40,
+    width: '100%',
+  },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
     paddingVertical: 40,
+    width: '100%',
   },
   logoWrap: { alignItems: 'center', marginBottom: 36 },
   logoImage: {

@@ -1,16 +1,6 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Image,
-  Modal,
-  Animated,
-  ActivityIndicator,
-  Alert,
-  Platform,
-} from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Image, Modal, Animated, ActivityIndicator, Platform } from 'react-native';
+import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BlurView } from 'expo-blur';
@@ -32,7 +22,10 @@ import {
   captureImage,
   pickFile,
 } from '../../lib/documents';
+import { scanLicenseImage } from '../../lib/documentScanner';
+import { CONTENT_MAX_WIDTH } from '../../lib/theme';
 import { RootStackParamList } from '../../navigation/types';
+import { DriverDossierHero } from '../../components/driverCard/DriverDossierHero';
 
 /**
  * Dedicated license-photos screen — replaces the generic DocumentCategory
@@ -48,8 +41,9 @@ const SHEET_ANIM_MS = 280;
 
 export default function DriverLicenseDocumentsScreen({ route, navigation }: Props) {
   const { driverId } = route.params;
-  const { companyId } = useCompany();
+  const { companyId, profile } = useCompany();
   const insets = useSafeAreaInsets();
+  const isDriverSelf = profile?.role === 'driver' && profile.id === driverId;
 
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [docs, setDocs] = useState<Record<Side, DocumentRow | null>>({ front: null, back: null });
@@ -138,7 +132,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
     }
   };
 
-  const pickAndUpload = async (source: 'camera' | 'gallery' | 'file') => {
+  const pickAndUpload = async (source: 'camera' | 'gallery' | 'file' | 'scan') => {
     const side = sheetFor;
     if (!side || !companyId) return;
     // Close the sheet's Modal synchronously (not via the animated closeSheet(),
@@ -155,7 +149,12 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       // presenting another one on iOS — react state updating is not the
       // same as the UIViewController finishing its dismiss transition.
       if (Platform.OS === 'ios') await new Promise((resolve) => setTimeout(resolve, 400));
-      const file = source === 'camera' ? await captureImage() : source === 'gallery' ? await pickImage() : await pickFile();
+      const file =
+        source === 'camera' || source === 'scan'
+          ? await captureImage()
+          : source === 'gallery'
+          ? await pickImage()
+          : await pickFile();
       if (!file) {
         setUploadingSide(null);
         return;
@@ -176,9 +175,23 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       const url = await getDocumentUrl(uploaded);
       setDocs((prev) => ({ ...prev, [side]: uploaded }));
       setImageUrl((prev) => ({ ...prev, [side]: url }));
+
+      if (source === 'scan') {
+        const scan = await scanLicenseImage(file);
+        if (scan.extractedDate) {
+          await updateDriver(driverId, { license_expiry: scan.extractedDate });
+          setDriver((prev) => (prev ? { ...prev, license_expiry: scan.extractedDate } : prev));
+          setExpiryDraft(scan.extractedDate);
+          setToast(`זוהה תוקף: ${formatDdMmYyyy(scan.extractedDate)}`);
+        } else {
+          setToast('התמונה הועלתה, אך לא זוהה תאריך תוקף — ניתן להזין ידנית');
+        }
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => setToast(null), 2400);
+      }
     } catch (err: any) {
       setFailedSide(side);
-      Alert.alert('ההעלאה נכשלה', err?.message ?? 'נסה שוב');
+      showAlert('ההעלאה נכשלה', err?.message ?? 'נסה שוב');
     } finally {
       setProcessingSide(null);
       setUploadingSide(null);
@@ -193,7 +206,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       setDocs((prev) => ({ ...prev, [side]: null }));
       setImageUrl((prev) => ({ ...prev, [side]: null }));
     } catch {
-      Alert.alert('מחיקה נכשלה', 'נסה שוב');
+      showAlert('מחיקה נכשלה', 'נסה שוב');
     }
   };
 
@@ -217,7 +230,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       if (toastTimer.current) clearTimeout(toastTimer.current);
       toastTimer.current = setTimeout(() => setToast(null), 1800);
     } catch (err: any) {
-      Alert.alert('השמירה נכשלה', err?.message ?? 'נסה שוב');
+      showAlert('השמירה נכשלה', err?.message ?? 'נסה שוב');
     } finally {
       setSaving(false);
     }
@@ -229,11 +242,9 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
     try {
       await downloadDocument(doc);
     } catch (err: any) {
-      Alert.alert('ההורדה נכשלה', err?.message ?? 'נסה שוב');
+      showAlert('ההורדה נכשלה', err?.message ?? 'נסה שוב');
     }
   };
-
-  const topBuffer = insets.top + 8;
 
   if (loading) {
     return (
@@ -256,23 +267,14 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
   return (
     <View style={styles.screen}>
       <AdminGradientBackground />
-      <View style={[styles.navBar, { height: 44 + topBuffer, paddingTop: topBuffer }]}>
-        <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(242,242,247,0.9)' }]} />
-        <View style={styles.navBorder} />
-        <View style={styles.navContent}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.navBack} hitSlop={8}>
-            <Feather name="chevron-right" size={19} color={DC_COLORS.blueLight} />
-            <Text style={[DC_TYPO.navBackLink, { color: DC_COLORS.blueLight }]}>חזרה</Text>
-          </Pressable>
-          <Text style={[DC_TYPO.navTitle, styles.navTitle]} numberOfLines={1}>
-            מסמכי רישיון נהיגה
-          </Text>
+      <DriverDossierHero title="מסמכי רישיון נהיגה" subtitle={isVerified ? 'המסמכים מאומתים' : 'ממתין להשלמה'} icon="card-outline" insetTop={insets.top} onBack={() => navigation.goBack()} />
+      {!isDriverSelf && (
+        <View style={styles.editAction}>
           <Pressable onPress={toggleEdit} style={styles.navEdit} hitSlop={8}>
-            <Text style={[DC_TYPO.navBackLink, { color: DC_COLORS.blueLight }]}>{editMode ? 'סיום' : 'עריכה'}</Text>
+            <Text style={[DC_TYPO.navBackLink, { color: DC_COLORS.blueLight }]}>{editMode ? 'סיום עריכה' : 'עריכה'}</Text>
           </Pressable>
         </View>
-      </View>
+      )}
 
       <View style={styles.body}>
         <View style={styles.grid}>
@@ -302,9 +304,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
           <View style={styles.detailsRow}>
             <Text style={[DC_TYPO.rowLabel, styles.detailsLabel]}>תוקף הרישיון</Text>
             {editMode ? (
-              <View style={styles.expiryField}>
-                <DateField value={expiryDraft} onChange={setExpiryDraft} placeholder="לא הוזן" />
-              </View>
+              <DateField value={expiryDraft} onChange={setExpiryDraft} placeholder="לא הוזן" />
             ) : (
               <Text style={[DC_TYPO.rowValue, styles.detailsValue]}>
                 {driver?.license_expiry ? formatDdMmYyyy(driver.license_expiry) : 'לא הוזן'}
@@ -366,6 +366,8 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
                 <SheetAction label="בחירה מהתמונות" onPress={() => pickAndUpload('gallery')} />
                 <View style={styles.sheetDivider} />
                 <SheetAction label="בחירה מקבצים" onPress={() => pickAndUpload('file')} />
+                <View style={styles.sheetDivider} />
+                <SheetAction label="סריקה (זיהוי תוקף אוטומטי)" onPress={() => pickAndUpload('scan')} />
               </View>
               <View style={styles.sheetCard}>
                 <SheetAction label="ביטול" onPress={closeSheet} bold />
@@ -533,7 +535,8 @@ const styles = StyleSheet.create({
   },
   processingTitle: { color: DC_COLORS.label, fontSize: 16, fontWeight: '700' },
   processingSubtitle: { color: DC_COLORS.labelTertiary, fontSize: 12 },
-  navBar: { width: '100%' },
+  navBar: { width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
+  editAction: { alignItems: 'flex-start', paddingHorizontal: 20, marginTop: -8, marginBottom: 8 },
   navBorder: {
     position: 'absolute',
     left: 0,
@@ -552,7 +555,7 @@ const styles = StyleSheet.create({
   navTitle: { flex: 1, textAlign: 'center', color: DC_COLORS.label },
   navEdit: { minWidth: 50, alignItems: 'flex-start' },
 
-  body: { flex: 1, padding: DC_SPACING.screenPaddingH },
+  body: { flex: 1, padding: DC_SPACING.screenPaddingH, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   grid: { flexDirection: 'row-reverse', gap: 12 },
   tileWrap: { flex: 1, gap: 6 },
   tile: {
@@ -621,7 +624,6 @@ const styles = StyleSheet.create({
   detailsLabel: { color: DC_COLORS.label },
   detailsValue: { color: DC_COLORS.labelSecondary },
   detailsSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: DC_COLORS.separator },
-  expiryField: { width: 160 },
 
   footer: { color: DC_COLORS.labelTertiary, textAlign: 'right', lineHeight: 18, marginTop: 16 },
 
@@ -630,6 +632,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    maxWidth: CONTENT_MAX_WIDTH,
+    marginHorizontal: 'auto',
     paddingTop: 12,
     paddingHorizontal: DC_SPACING.screenPaddingH,
   },
@@ -653,7 +657,7 @@ const styles = StyleSheet.create({
   toastText: { color: '#FFFFFF', fontFamily: DC_TYPO.rowLabel.fontFamily, fontSize: 14 },
 
   sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.32)', justifyContent: 'flex-end' },
-  sheetContainer: { paddingHorizontal: 8, gap: 8 },
+  sheetContainer: { paddingHorizontal: 8, gap: 8, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   sheetCard: { backgroundColor: 'rgba(255,255,255,0.97)', borderRadius: 14, overflow: 'hidden' },
   sheetTitle: {
     textAlign: 'center',

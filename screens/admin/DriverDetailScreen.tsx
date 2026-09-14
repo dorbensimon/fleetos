@@ -1,25 +1,18 @@
 import React, { useCallback, useRef, useState } from 'react';
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  Animated,
-  Linking,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, Linking } from 'react-native';
+import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, LoadingState, ErrorState, PrimaryButton, useToast } from '../../components/ui';
-import { COLORS, RADIUS, SPACING } from '../../lib/theme';
+import { AppText, BackButton, LoadingState, ErrorState, PrimaryButton, useToast } from '../../components/ui';
+import { COLORS, CONTENT_MAX_WIDTH, RADIUS, SPACING, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, archiveDriver, restoreDriver, resetDriverPassword, getUserEmail, updateUserEmail, listDepartments, DriverRow } from '../../lib/adminApi';
 import { listDocuments } from '../../lib/documents';
 import { listSignatureRequests } from '../../lib/docuseal';
 import { exportDriverSnapshotReport } from '../../lib/driverSnapshotReport';
 import { RootStackParamList } from '../../navigation/types';
-import { NavBarCollapsing } from '../../components/driverCard/NavBarCollapsing';
 import { DriverHero } from '../../components/driverCard/DriverHero';
 import { QuickActionCard } from '../../components/driverCard/QuickActionCard';
 import { ListGroup } from '../../components/driverCard/ListGroup';
@@ -36,6 +29,11 @@ import { ConfirmActionModal } from '../../components/driverCard/ConfirmActionMod
 import { buildDriverDetailGroups } from '../../components/driverCard/buildDriverDetailGroups';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { isValidTemporaryPassword } from '../../lib/validation';
+import {
+  getPendingLicenseUpdateForDriver,
+  reviewLicenseUpdateRequest,
+  type LicenseUpdateRequest,
+} from '../../lib/licenseUpdate';
 
 const APP_STARTED_AT_MS = Date.now();
 
@@ -74,7 +72,6 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [exportingReport, setExportingReport] = useState(false);
-  const scrollY = useRef(new Animated.Value(0)).current;
   const loadRequest = useRef(0);
 
   const [resetOpen, setResetOpen] = useState(false);
@@ -87,6 +84,27 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   const [emailValue, setEmailValue] = useState('');
   const [emailError, setEmailError] = useState('');
   const [savingEmail, setSavingEmail] = useState(false);
+
+  const [pendingLicenseRequest, setPendingLicenseRequest] = useState<LicenseUpdateRequest | null>(null);
+  const [reviewingLicense, setReviewingLicense] = useState(false);
+
+  const reviewLicense = async (approve: boolean) => {
+    if (!pendingLicenseRequest) return;
+    setReviewingLicense(true);
+    try {
+      await reviewLicenseUpdateRequest(pendingLicenseRequest.id, approve);
+      setPendingLicenseRequest(null);
+      if (approve) {
+        const refreshed = await getDriver(driverId);
+        setDriver(refreshed);
+      }
+      showToast(approve ? 'עדכון הרישיון אושר' : 'עדכון הרישיון נדחה');
+    } catch (err: any) {
+      showToast(err?.message || 'הפעולה נכשלה, נסה שוב');
+    } finally {
+      setReviewingLicense(false);
+    }
+  };
 
   const closeReset = () => {
     setResetOpen(false);
@@ -140,7 +158,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       return;
     }
     closeReset();
-    Alert.alert('הסיסמה אופסה', 'הנהג יתבקש לקבוע סיסמה קבועה משלו בכניסה הבאה.');
+    showAlert('הסיסמה אופסה', 'הנהג יתבקש לקבוע סיסמה קבועה משלו בכניסה הבאה.');
   };
 
   const runArchive = async () => {
@@ -150,7 +168,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     setArchiving(false);
     setArchiveConfirmOpen(false);
     if (!result.ok) {
-      Alert.alert('ההעברה לארכיון נכשלה', result.error);
+      showAlert('ההעברה לארכיון נכשלה', result.error);
       return;
     }
     showToast('הנהג הועבר לארכיון וגישתו לאפליקציה נחסמה');
@@ -163,7 +181,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     const result = await restoreDriver(driverId, companyId);
     setRestoring(false);
     if (!result.ok) {
-      Alert.alert('שחזור הנהג נכשל', result.error);
+      showAlert('שחזור הנהג נכשל', result.error);
       return;
     }
     showToast('הנהג שוחזר מהארכיון');
@@ -183,6 +201,15 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       ]);
       if (requestId !== loadRequest.current) return;
       setDriver(d ? { ...d, email } : d);
+      // A pending licence request only adds a status badge. It must never
+      // prevent the driver's full profile from opening if that optional table
+      // has not yet been granted to the current database role.
+      try {
+        setPendingLicenseRequest(await getPendingLicenseUpdateForDriver(driverId));
+      } catch (pendingLicenseError) {
+        console.warn('Unable to load pending license update request', pendingLicenseError);
+        setPendingLicenseRequest(null);
+      }
       setLicensePhotosComplete(
         licenseDocs.some((doc) => doc.title === 'צד קדמי') && licenseDocs.some((doc) => doc.title === 'צד אחורי')
       );
@@ -233,7 +260,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
           : driver?.vehicle_id
           ? { id: driver.vehicle_id }
           : null;
-      if (targetVehicle?.id) navigation.navigate('VehicleDetail', { vehicleId: targetVehicle.id });
+      if (targetVehicle?.id) navigation.navigate('VehicleDetail', { vehicleId: targetVehicle.id, returnTo: 'driver' });
       return;
     }
     if (row.key === 'phone') {
@@ -278,8 +305,10 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     ? Math.max(0, Math.floor((APP_STARTED_AT_MS - new Date(driver.password_set_at).getTime()) / 86400000))
     : null;
   const assignedVehicleCount = driver?.vehicles.length ?? 0;
-  const licenseVerified = licensePhotosComplete && !!driver?.license_expiry;
-  const groups = buildDriverDetailGroups(driver, licenseVerified, pendingSigningCount);
+  const licenseExpired = !!driver?.license_expiry && driver.license_expiry < new Date().toISOString().slice(0, 10);
+  const licenseStatus: 'expired' | 'verified' | 'pending' =
+    licenseExpired ? 'expired' : licensePhotosComplete && !!driver?.license_expiry ? 'verified' : 'pending';
+  const groups = buildDriverDetailGroups(driver, licenseStatus, pendingSigningCount);
 
   if (loading) {
     return (
@@ -302,21 +331,18 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   return (
     <View style={styles.screen}>
       <AdminGradientBackground />
-      <NavBarCollapsing
-        scrollY={scrollY}
-        insetTop={insets.top}
-        backLabel="נהגים"
-        onBack={() => navigation.goBack()}
-        onMore={() => navigation.navigate('DriverForm', { driverId })}
-        backgroundColor="transparent"
-      />
-
-      <Animated.ScrollView
+      <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-        scrollEventThrottle={16}
+        contentContainerStyle={[styles.content, { paddingBottom: DC_SPACING.listBottomPadding + insets.bottom }]}
       >
+        <TouchableOpacity
+          onPress={() => navigation.navigate('DriverForm', { driverId })}
+          style={styles.editDriverButton}
+          accessibilityRole="button"
+          accessibilityLabel="עריכת פרטי נהג"
+        >
+          <Ionicons name="create-outline" size={20} color={COLORS.accent} />
+        </TouchableOpacity>
         <DriverHero
           name={driver?.full_name ?? 'ללא שם'}
           avatarLetter={(driver?.full_name ?? '?').trim().charAt(0)}
@@ -362,7 +388,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
                 if (action.label === 'התקשר' && driver?.phone) dialPhone(driver.phone);
                 else if (action.label === 'הודעה' && driver?.phone) Linking.openURL(`sms:${driver.phone}`);
                 else if (action.label === 'רכב משויך' && driver?.vehicle_id) {
-                  navigation.navigate('VehicleDetail', { vehicleId: driver.vehicle_id });
+                  navigation.navigate('VehicleDetail', { vehicleId: driver.vehicle_id, returnTo: 'driver' });
                 }
               }}
             />
@@ -372,6 +398,38 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
         {groups.map((group) => (
           <ListGroup key={group.title} group={group} onRowPress={handleRowPress} />
         ))}
+
+        {pendingLicenseRequest && (
+          <View style={styles.licenseRequestCard}>
+            <AppText style={[DC_TYPO.destructiveBold, styles.licenseRequestTitle]}>
+              בקשת עדכון רישיון ממתינה
+            </AppText>
+            <AppText style={styles.licenseRequestLine}>
+              מספר: {pendingLicenseRequest.requested_license_number} · דרגות: {pendingLicenseRequest.requested_license_classes}
+            </AppText>
+            <AppText style={styles.licenseRequestLine}>
+              תוקף עד: {formatDate(pendingLicenseRequest.requested_license_expiry)}
+            </AppText>
+            <View style={styles.licenseRequestActions}>
+              <TouchableOpacity
+                style={[styles.licenseRequestBtn, styles.licenseRequestApprove]}
+                onPress={() => reviewLicense(true)}
+                disabled={reviewingLicense}
+                activeOpacity={0.7}
+              >
+                <AppText weight="bold" style={styles.licenseRequestApproveText}>אשר</AppText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.licenseRequestBtn, styles.licenseRequestReject]}
+                onPress={() => reviewLicense(false)}
+                disabled={reviewingLicense}
+                activeOpacity={0.7}
+              >
+                <AppText weight="bold" style={styles.licenseRequestRejectText}>דחה</AppText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Permanent deletion deliberately does not live here: it is only
             reachable from the driver archive, so an irreversible action
@@ -407,10 +465,14 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
             הצטרף לאפליקציה בתאריך {new Date(driver.created_at).toLocaleDateString('he-IL')}
             {driver?.updated_at
               ? `\nעדכון אחרון: ${new Date(driver.updated_at).toLocaleDateString('he-IL')}`
-              : ''}
+          : ''}
           </AppText>
         )}
-      </Animated.ScrollView>
+      </ScrollView>
+
+      <View style={[styles.floatingNavigation, { top: insets.top + 12 }]}>
+        <BackButton onPress={() => navigation.goBack()} />
+      </View>
 
       <ResetDriverPasswordModal
         visible={resetOpen}
@@ -456,9 +518,22 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  floatingNavigation: { position: 'absolute', zIndex: 100, elevation: 100, right: DC_SPACING.screenPaddingH },
+  editDriverButton: { position: 'absolute', top: 18, left: DC_SPACING.screenPaddingH, zIndex: 2, width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(10,127,208,0.20)', alignItems: 'center', justifyContent: 'center', shadowColor: '#0A7FD0', shadowOpacity: 0.14, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  licenseRequestCard: { marginTop: 16, padding: 16, borderRadius: 12, backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FDBA74' },
+  licenseRequestTitle: { fontSize: 14.5, marginBottom: 6, color: '#9A3412' },
+  licenseRequestLine: { fontSize: 13, color: '#7C2D12', marginBottom: 2 },
+  licenseRequestActions: { flexDirection: 'row-reverse', gap: 8, marginTop: 10 },
+  licenseRequestBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
+  licenseRequestApprove: { backgroundColor: '#16A34A' },
+  licenseRequestApproveText: { color: '#FFFFFF', fontSize: 13.5 },
+  licenseRequestReject: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DC2626' },
+  licenseRequestRejectText: { color: '#DC2626', fontSize: 13.5 },
   screen: { flex: 1, backgroundColor: '#F1F4F7' },
-  scroll: { backgroundColor: 'transparent' },
-  content: { paddingBottom: DC_SPACING.listBottomPadding, paddingTop: 12 },
+  // flex: 1 is required so the ScrollView stretches to fill `screen` instead
+  // of sizing to its own content on web (React Native Web) — without it the
+  scroll: { flex: 1, backgroundColor: 'transparent' },
+  content: { paddingBottom: DC_SPACING.listBottomPadding, paddingTop: 12, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   quickActions: {
     flexDirection: 'row-reverse',
     gap: 10,

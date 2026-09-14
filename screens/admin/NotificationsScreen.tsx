@@ -1,16 +1,17 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Screen, AppText, Card, LoadingState, EmptyState, ErrorState, SecondaryButton } from '../../components/ui';
+import { Screen, AppText, Card, LoadingState, EmptyState, ErrorState, SecondaryButton, BackButton } from '../../components/ui';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { GlassPill } from '../../components/ui/GlassPill';
 import { COLORS, SPACING, CARD_SHADOW } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listNotifications, markNotificationRead, markAllNotificationsRead, Notification } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
+import { DC_COLORS, DC_SPACING, DC_TYPO, type DriverCardTint } from '../../components/driverCard/driverCardTheme';
 
 /**
  * Logs every driver self-edit (name/phone/ID/license/department) so
@@ -30,6 +31,17 @@ export function timeAgo(iso: string): string {
   if (hours < 24) return `לפני ${hours} שע׳`;
   const days = Math.floor(hours / 24);
   return `לפני ${days} ימים`;
+}
+
+function driverNotificationAppearance(type: string | null): {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  tint: DriverCardTint;
+} {
+  if (type === 'signature_request_assigned') return { icon: 'create-outline', tint: 'orange' };
+  if (type === 'vehicle_assignment') return { icon: 'car-outline', tint: 'indigo' };
+  if (type?.startsWith('vehicle_')) return { icon: 'warning-outline', tint: 'orange' };
+  if (type === 'license_update_reviewed') return { icon: 'card-outline', tint: 'green' };
+  return { icon: 'person-outline', tint: 'blue' };
 }
 
 export default function NotificationsScreen({ navigation }: Props) {
@@ -84,6 +96,8 @@ export default function NotificationsScreen({ navigation }: Props) {
     if (n.notification_type === 'vehicle_assignment') return 'DriverVehicle';
     if (n.notification_type === 'driver_profile_updated_by_manager') return 'DriverProfile';
     if (n.notification_type === 'vehicle_inspection_last_date_expiry') return 'DriverVehicle';
+    if (n.notification_type === 'driver_odometer_update') return 'DriverVehicle';
+    if (n.notification_type === 'license_update_reviewed') return 'DriverProfile';
     return null;
   };
 
@@ -122,10 +136,19 @@ export default function NotificationsScreen({ navigation }: Props) {
     | { screen: 'AdminDocumentSigning' }
     | { screen: 'AdminHome' }
     | { screen: 'DriverPersonalDetails'; driverId: string }
+    | { screen: 'DriverDetail'; driverId: string }
     | null => {
     if (n.notification_type === 'signature_request_assigned') return { screen: 'AdminDocumentSigning' };
-    if (n.notification_type === 'driver_profile_update' && n.actor_id) {
+    if (
+      (n.notification_type === 'driver_profile_update'
+        || n.notification_type?.startsWith('driver_document_')
+        || n.notification_type === 'driver_odometer_update')
+      && n.actor_id
+    ) {
       return { screen: 'DriverPersonalDetails', driverId: n.actor_id };
+    }
+    if (n.notification_type === 'license_update_requested' && n.actor_id) {
+      return { screen: 'DriverDetail', driverId: n.actor_id };
     }
     if (
       n.notification_type === 'vehicle_assignment' ||
@@ -162,10 +185,10 @@ export default function NotificationsScreen({ navigation }: Props) {
 
     const target = targetForAdminNotification(n);
     if (!target) return;
-    if (target.screen === 'DriverPersonalDetails') {
-      navigation.navigate('DriverPersonalDetails', { driverId: target.driverId });
+    if (target.screen === 'DriverPersonalDetails' || target.screen === 'DriverDetail') {
+      navigation.navigate(target.screen, { driverId: target.driverId });
     } else {
-      navigation.navigate(target.screen);
+      navigation.navigate(target.screen, undefined);
     }
   };
 
@@ -179,6 +202,95 @@ export default function NotificationsScreen({ navigation }: Props) {
       setUnreadIds(previousUnreadIds);
     }
   };
+
+  const actionLabel = (n: Notification) => {
+    if (n.notification_type === 'signature_request_assigned') return 'פתח מסמך לחתימה';
+    if (n.notification_type === 'vehicle_assignment') return 'הצג רכב';
+    if (n.notification_type === 'driver_profile_updated_by_manager') return 'הצג את הפרטים שלי';
+    if (n.notification_type === 'driver_profile_update' || n.notification_type?.startsWith('driver_document_')) return 'פתח תיק נהג';
+    if (n.notification_type === 'driver_odometer_update') return profile?.role === 'driver' ? 'הצג רכב' : 'פתח תיק נהג';
+    if (n.notification_type === 'license_update_requested') return 'לאישור הבקשה';
+    if (n.notification_type === 'license_update_reviewed') return 'הצג פרטים';
+    if (n.notification_type?.startsWith('vehicle_')) return profile?.role === 'driver' ? 'בדוק מה נדרש' : 'פתח צי רכבים';
+    return null;
+  };
+
+  const driverContent = loading ? (
+    <LoadingState />
+  ) : error ? (
+    <View style={styles.driverState}>
+      <ErrorState message={error} onRetry={load} />
+    </View>
+  ) : items.length === 0 ? (
+    <View style={styles.driverState}>
+      <EmptyState icon="notifications-outline" title="אין עדיין התראות" hint="עדכונים מהמנהל שלך יופיעו כאן" />
+    </View>
+  ) : (
+    <>
+      <AppText style={[DC_TYPO.groupTitle, styles.driverSectionTitle]}>עדכונים אחרונים</AppText>
+      <View style={styles.driverList}>
+        {items.map((n, index) => {
+          const appearance = driverNotificationAppearance(n.notification_type);
+          const action = actionLabel(n);
+          const isUnread = unreadIds.has(n.id);
+          return (
+            <TouchableOpacity
+              key={n.id}
+              activeOpacity={0.65}
+              onPress={() => openNotification(n)}
+              accessibilityRole="button"
+              accessibilityLabel={n.message}
+              style={[styles.driverRow, index === items.length - 1 && styles.driverRowLast]}
+            >
+              <View style={[styles.driverIcon, { backgroundColor: DC_COLORS[appearance.tint] }]}>
+                <Ionicons name={appearance.icon} size={18} color={DC_COLORS.surface} />
+              </View>
+              <View style={styles.driverTextWrap}>
+                <AppText style={[DC_TYPO.rowLabel, styles.driverMessage]} numberOfLines={2}>
+                  {n.message}
+                </AppText>
+                <View style={styles.driverMeta}>
+                  <AppText style={styles.driverTime}>{timeAgo(n.created_at)}</AppText>
+                  {!!action && <AppText style={styles.driverAction}>{action}</AppText>}
+                </View>
+              </View>
+              {isUnread && <View style={styles.driverUnreadDot} />}
+              <Ionicons name="chevron-back" size={19} color={DC_COLORS.chevron} />
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </>
+  );
+
+  if (profile?.role === 'driver') {
+    return (
+      <View style={styles.driverScreen}>
+        <AdminGradientBackground />
+        <ScrollView
+          style={styles.driverScroll}
+          contentContainerStyle={[
+            styles.driverContent,
+            { paddingTop: insets.top + 76, paddingBottom: DC_SPACING.listBottomPadding + insets.bottom },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.driverTitleRow}>
+            <AppText style={[DC_TYPO.largeTitle, styles.driverTitle]}>התראות</AppText>
+            {unreadIds.size > 0 && (
+              <TouchableOpacity onPress={markAllRead} activeOpacity={0.65} accessibilityRole="button">
+                <AppText style={styles.markAllText}>קרא הכל</AppText>
+              </TouchableOpacity>
+            )}
+          </View>
+          {driverContent}
+        </ScrollView>
+        <View style={[styles.driverBackButton, { top: insets.top + 12 }]}>
+          <BackButton onPress={() => navigation.goBack()} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <Screen style={styles.screen}>
@@ -211,7 +323,7 @@ export default function NotificationsScreen({ navigation }: Props) {
         <EmptyState
           icon="notifications-outline"
           title="אין עדיין התראות"
-          hint={profile?.role === 'driver' ? 'עדכונים מהמנהל שלך יופיעו כאן' : 'עדכונים הקשורים לחברה יופיעו כאן'}
+          hint="עדכונים הקשורים לחברה יופיעו כאן"
         />
       ) : (
         <View style={styles.content}>
@@ -238,6 +350,7 @@ export default function NotificationsScreen({ navigation }: Props) {
                     {n.message}
                   </AppText>
                   <AppText style={styles.time}>{timeAgo(n.created_at)}</AppText>
+                  {!!actionLabel(n) && <AppText weight="bold" style={styles.actionLabel}>{actionLabel(n)}</AppText>}
                 </View>
                 {unreadIds.has(n.id) && <View style={styles.unreadDot} />}
               </Card>
@@ -250,6 +363,57 @@ export default function NotificationsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  driverScreen: { flex: 1, backgroundColor: DC_COLORS.bg },
+  driverScroll: { flex: 1 },
+  driverContent: { paddingHorizontal: DC_SPACING.screenPaddingH },
+  driverTitleRow: {
+    minHeight: 39,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 26,
+  },
+  driverTitle: { color: DC_COLORS.label, textAlign: 'right', writingDirection: 'rtl' },
+  markAllText: {
+    ...DC_TYPO.navTitle,
+    color: DC_COLORS.blue,
+    textAlign: 'left',
+    writingDirection: 'rtl',
+  },
+  driverSectionTitle: {
+    color: DC_COLORS.labelTertiary,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    marginBottom: 8,
+    marginRight: 2,
+  },
+  driverList: { backgroundColor: DC_COLORS.surface, borderRadius: DC_SPACING.groupRadius, overflow: 'hidden' },
+  driverRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: DC_SPACING.iconTextGap,
+    minHeight: 68,
+    paddingHorizontal: DC_SPACING.rowPaddingH,
+    paddingVertical: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: DC_COLORS.separator,
+  },
+  driverRowLast: { borderBottomWidth: 0 },
+  driverIcon: {
+    width: DC_SPACING.iconSquare,
+    height: DC_SPACING.iconSquare,
+    borderRadius: DC_SPACING.iconRadius,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  driverTextWrap: { flex: 1, gap: 4 },
+  driverMessage: { color: DC_COLORS.label, textAlign: 'right', writingDirection: 'rtl' },
+  driverMeta: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  driverTime: { color: DC_COLORS.labelSecondary, fontSize: 12, writingDirection: 'rtl' },
+  driverAction: { color: DC_COLORS.blue, fontSize: 12, writingDirection: 'rtl' },
+  driverUnreadDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: DC_COLORS.red },
+  driverState: { paddingTop: 36 },
+  driverBackButton: { position: 'absolute', right: 16 },
   screen: { backgroundColor: '#F1F4F7' },
   topBar: {
     paddingHorizontal: SPACING.lg,
@@ -288,5 +452,6 @@ const styles = StyleSheet.create({
   textWrap: { flex: 1, gap: 2 },
   message: { fontSize: 13.5, textAlign: 'right' },
   time: { fontSize: 11.5, color: COLORS.textFaint },
+  actionLabel: { marginTop: 4, fontSize: 12, color: COLORS.accent, textAlign: 'right' },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.dangerText },
 });

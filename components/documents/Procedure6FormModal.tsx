@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Alert, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { showAlert } from '../../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, Card, Field, Input, InputLtr } from '../ui';
 import { AdminGradientBackground } from '../admin/AdminGradientBackground';
 import { DateField } from '../ui/DateField';
 import { TimeField } from '../ui/TimeField';
-import { COLORS, RADIUS, SPACING, SUBTLE_SHADOW, formatDate } from '../../lib/theme';
+import { COLORS, CONTENT_MAX_WIDTH, RADIUS, SPACING, SUBTLE_SHADOW, formatDate } from '../../lib/theme';
 import { formatPhone, isValidIsraeliPhone } from '../../lib/phone';
 import { captureImage, pickImage, type PickedFile } from '../../lib/documents';
 import { Procedure6FormValues } from '../../lib/procedure6Report';
@@ -47,7 +48,7 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
   };
 
   const addPhoto = () => {
-    Alert.alert('הוספת תיעוד', undefined, [
+    showAlert('הוספת תיעוד', undefined, [
       { text: 'צלם', onPress: () => void captureImage().then((f) => f && setPhoto(f)).catch(() => undefined) },
       { text: 'בחר מהגלריה', onPress: () => void pickImage().then((f) => f && setPhoto(f)).catch(() => undefined) },
       { text: 'ביטול', style: 'cancel' },
@@ -86,7 +87,7 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
       );
       reset();
     } catch (err: any) {
-      Alert.alert('שמירה נכשלה', err?.message ?? 'נסה שוב');
+      showAlert('שמירה נכשלה', err?.message ?? 'נסה שוב');
     } finally {
       setSaving(false);
     }
@@ -206,7 +207,13 @@ const styles = StyleSheet.create({
   cancelText: { fontSize: 14.5, color: COLORS.textMuted },
   saveText: { fontSize: 14.5, color: COLORS.accent },
   saveTextDisabled: { opacity: 0.5 },
-  content: { padding: SPACING.lg, paddingBottom: SPACING.xxl },
+  content: {
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
+  },
   formCard: { gap: SPACING.md },
   multiline: { height: 96, paddingTop: 12, textAlignVertical: 'top' },
   photoAddBtn: {

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -15,6 +16,7 @@ import { pickAndUploadLogo } from '../lib/uploadLogo';
 import { isValidIsraeliPhone } from '../lib/phone';
 import { isValidEmail, isValidTemporaryPassword } from '../lib/validation';
 import { COLORS } from '../components/owner/ownerTheme';
+import { CONTENT_MAX_WIDTH } from '../lib/theme';
 import { CompanyCard, CompanyRow } from '../components/owner/CompanyCard';
 import { CompanyActionsSheet } from '../components/owner/CompanyActionsSheet';
 import { AddCompanySheet, EMPTY_OWNER_COMPANY_FORM, OwnerCompanyForm } from '../components/owner/AddCompanySheet';
@@ -143,7 +145,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
     const newStatus = menuCompany.status === 'active' ? 'disabled' : 'active';
     const { error } = await updateCompanyStatus(menuCompany.id, newStatus);
     if (error) {
-      Alert.alert('העדכון נכשל', 'לא הצלחנו לעדכן את סטטוס החברה');
+      showAlert('העדכון נכשל', 'לא הצלחנו לעדכן את סטטוס החברה');
       return;
     }
     setMenuCompany(null);
@@ -156,7 +158,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
     const { data, error } = await deleteOwnedCompany(menuCompany.id, deleteConfirmText.trim());
     setDeleting(false);
     if (error || !data?.success) {
-      Alert.alert('מחיקת החברה נכשלה', await functionErrorMessage(error, data, 'נסה שוב', false));
+      showAlert('מחיקת החברה נכשלה', await functionErrorMessage(error, data, 'נסה שוב', false));
       return;
     }
     closeAll();
@@ -231,6 +233,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
 
   return (
     <View style={styles.screen}>
+     <View style={styles.centeredColumn}>
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Tolvex</Text>
@@ -284,6 +287,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         <ErrorState message={loadError} onRetry={loadCompanies} />
       ) : (
         <FlatList
+          style={styles.scroll}
           data={filteredCompanies}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
@@ -303,6 +307,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
           )}
         />
       )}
+     </View>
 
       <CompanyActionsSheet
         company={menuCompany}
@@ -345,6 +350,11 @@ export default function OwnerHomeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.screenBg },
+  // Without an explicit flex here, FlatList sizes to its own content on web
+  // instead of stretching under the filter/header row above it, so the
+  // whole page scrolls instead of just this area.
+  scroll: { flex: 1 },
+  centeredColumn: { flex: 1, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
   emptyText: { color: COLORS.gray, fontSize: 14 },
   header: {

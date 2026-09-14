@@ -1,5 +1,6 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { Platform } from 'react-native';
 import { Company } from './supabase';
 import { DriverRow } from './adminApi';
 import { expiryState, formatDate } from './theme';
@@ -122,6 +123,10 @@ export async function exportDriversReport(
   const html = buildHtml(company, filtered, category);
 
   const { uri } = await Print.printToFileAsync({ html, base64: false });
+
+  // On web Expo opens the browser print dialog instead of writing a local PDF.
+  // Local file URIs cannot be passed to the Web Share API.
+  if (Platform.OS === 'web') return;
 
   const canShare = await Sharing.isAvailableAsync();
   if (canShare) {

@@ -2,10 +2,11 @@ import { decode } from 'base64-arraybuffer';
 import { File, Paths } from 'expo-file-system';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { Image } from 'react-native';
+import { Image, Platform } from 'react-native';
 import { supabase } from './supabase';
 import { functionErrorMessage } from './functionError';
 import { safeFileName } from './fileNames';
+import { downloadRemoteFileOnWeb, readBlobUrlAsBase64 } from './webDownload';
 
 export type SigningTemplate = {
   id: string;
@@ -76,13 +77,22 @@ function sanitizeStorageFileName(name: string): string {
   return `${base || 'document'}.${ext || 'pdf'}`;
 }
 
+function asPdfFileName(name: string): string {
+  return `${name.replace(/\.[^.]+$/, '') || 'document'}.pdf`;
+}
+
 function rawBase64(value: string): string {
   const separator = value.indexOf(',');
   return value.startsWith('data:') && separator >= 0 ? value.slice(separator + 1) : value;
 }
 
 async function readFileBase64(file: SigningFile): Promise<string> {
-  return rawBase64(file.base64 || await new File(file.uri).base64());
+  if (file.base64) return rawBase64(file.base64);
+  // On web, Expo's File class is only a stub and cannot read the blob: URL
+  // returned by the native browser file picker. Read it through the DOM API
+  // instead, just as regular document uploads do.
+  if (Platform.OS === 'web') return await readBlobUrlAsBase64(file.uri);
+  return rawBase64(await new File(file.uri).base64());
 }
 
 async function invoke<T>(name: string, body: Record<string, unknown>): Promise<T> {
@@ -220,14 +230,21 @@ async function imageToPdf(file: SigningFile): Promise<SigningFile> {
 }
 
 async function uploadSigningSourceFile(companyId: string, picked: SigningFile): Promise<{ file: SigningFile; path: string }> {
-  const file = await imageToPdf(picked);
-  const bytes = decode(await readFileBase64(file));
+  // Expo Print creates a local PDF file only in native apps. In a browser it
+  // opens the print dialog and returns no file, so keep the image bytes here
+  // and let the protected Edge Function create the equivalent PDF instead.
+  const convertImageOnServer = Platform.OS === 'web' && picked.mimeType.startsWith('image/');
+  const file = convertImageOnServer
+    ? { ...picked, name: asPdfFileName(picked.name), mimeType: 'application/pdf' }
+    : await imageToPdf(picked);
+  const sourceFile = convertImageOnServer ? picked : file;
+  const bytes = decode(await readFileBase64(sourceFile));
   const localId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const storageFileName = sanitizeStorageFileName(file.name);
   const path = `${companyId}/signing-templates/${localId}/${storageFileName}`;
   const { error: uploadError } = await supabase.storage
     .from('documents')
-    .upload(path, bytes, { contentType: 'application/pdf', upsert: false });
+    .upload(path, bytes, { contentType: sourceFile.mimeType, upsert: false });
   if (uploadError) throw uploadError;
   return { file, path };
 }
@@ -274,6 +291,8 @@ export async function downloadSigningTemplate(template: SigningTemplate): Promis
   const url = await getSigningTemplateSourceUrl(template);
   if (!url) throw new Error('לא ניתן להוריד את התבנית כרגע');
 
+  if (await downloadRemoteFileOnWeb(url, safeFileName(template.source_file_name ?? `${template.title}.pdf`, 'template.pdf'))) return;
+
   const response = await fetch(url);
   const buffer = new Uint8Array(await response.arrayBuffer());
   const file = new File(Paths.cache, safeFileName(template.source_file_name ?? `${template.title}.pdf`, 'template.pdf'));
@@ -290,9 +309,12 @@ export async function downloadSignedRequest(request: SignatureRequest): Promise<
     throw new Error('המסמך החתום עדיין לא זמין להורדה');
   }
 
+  const fileName = safeFileName(`${request.template?.title || request.template_title || 'signed-document'}.pdf`, 'signed-document.pdf');
+  if (await downloadRemoteFileOnWeb(session.src, fileName)) return;
+
   const response = await fetch(session.src);
   const buffer = new Uint8Array(await response.arrayBuffer());
-  const file = new File(Paths.cache, safeFileName(`${request.template?.title || request.template_title || 'signed-document'}.pdf`, 'signed-document.pdf'));
+  const file = new File(Paths.cache, fileName);
   file.write(buffer);
 
   if (await Sharing.isAvailableAsync()) {

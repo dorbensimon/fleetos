@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { COLORS } from './ownerTheme';
+import { CONTENT_MAX_WIDTH } from '../../lib/theme';
 
 /** A bottom sheet that slides up over a dim overlay, dismissible by tapping outside. */
 export function BottomSheet({
@@ -86,6 +87,9 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
   },
   sheetContentContainer: {
     padding: 20,
@@ -122,6 +126,7 @@ export const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 22,
     width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
     gap: 14,
   },
 });

@@ -113,6 +113,46 @@ async function prepareSigningPdf(pdfBytes: ArrayBuffer, companyLogo: CompanyLogo
   return pdf.save();
 }
 
+/**
+ * The storage response's `Content-Type` header reflects what was declared at
+ * upload time, which is not always trustworthy by the time it comes back
+ * (proxies/CDNs can rewrite it, and browser uploads name the object `.pdf`
+ * before it has actually been converted). Reading the file's own magic bytes
+ * is the only reliable way to know what we actually received.
+ */
+function sniffContentType(bytes: Uint8Array, declaredContentType: string): string {
+  if (bytes.length >= 5 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46 && bytes[4] === 0x2d) {
+    return 'application/pdf'; // %PDF-
+  }
+  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+    return 'image/png';
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  return declaredContentType;
+}
+
+/** Browser uploads keep image bytes in private storage; convert supported images to a one-page PDF here. */
+async function sourceAsPdf(sourceBytes: ArrayBuffer, declaredContentType: string): Promise<Uint8Array> {
+  const contentType = sniffContentType(new Uint8Array(sourceBytes), declaredContentType);
+  if (contentType === 'application/pdf') return new Uint8Array(sourceBytes);
+
+  const pdf = await PDFDocument.create();
+  let image;
+  if (contentType === 'image/png') image = await pdf.embedPng(sourceBytes);
+  else if (contentType === 'image/jpeg' || contentType === 'image/jpg') image = await pdf.embedJpg(sourceBytes);
+  else throw new Error('unsupported source image');
+
+  const longestEdge = 842;
+  const scale = longestEdge / Math.max(image.width, image.height);
+  const width = Math.max(72, Math.round(image.width * scale));
+  const height = Math.max(72, Math.round(image.height * scale));
+  const page = pdf.addPage([width, height]);
+  page.drawImage(image, { x: 0, y: 0, width, height });
+  return pdf.save();
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);
@@ -165,12 +205,17 @@ Deno.serve(async (req) => {
 
     const sourceResponse = await fetch(signed.signedUrl);
     if (!sourceResponse.ok) return json({ error: 'לא ניתן להוריד את המסמך לצורך הטבעת החותמת' }, 502);
+    const sourceContentType = (sourceResponse.headers.get('content-type') || 'application/pdf').split(';')[0].toLowerCase();
     let stampedPdf: Uint8Array;
     try {
-      stampedPdf = await prepareSigningPdf(await sourceResponse.arrayBuffer(), companyLogo);
+      const sourcePdf = await sourceAsPdf(await sourceResponse.arrayBuffer(), sourceContentType);
+      stampedPdf = await prepareSigningPdf(sourcePdf, companyLogo);
     } catch (error) {
       if (error instanceof Error && error.message === 'unsupported company logo') {
         return json({ error: 'לא הצלחנו להכין את לוגו החברה למסמך. יש להעלות PNG, JPG או WEBP.' }, 400);
+      }
+      if (error instanceof Error && error.message === 'unsupported source image') {
+        return json({ error: 'ניתן להעלות לתבנית החתימה PDF, JPG או PNG. נסה לשמור את התמונה כ-JPG או PNG ולבחור אותה שוב.' }, 400);
       }
       throw error;
     }

@@ -1,5 +1,6 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { Platform } from 'react-native';
 import { Company } from './supabase';
 import { Vehicle, ComplianceItem, VehicleDriverWithProfile } from './adminApi';
 import { daysUntilExpiry, formatDate } from './theme';
@@ -210,6 +211,9 @@ export async function exportVehiclesReport(
   const html = buildHtml(company, filtered, category);
 
   const { uri } = await Print.printToFileAsync({ html, base64: false });
+
+  // Web opens a print dialog and does not create a shareable local file URI.
+  if (Platform.OS === 'web') return;
 
   const canShare = await Sharing.isAvailableAsync();
   if (canShare) {

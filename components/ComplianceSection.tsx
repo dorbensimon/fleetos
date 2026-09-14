@@ -1,12 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  Linking,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, Card, ExpiryBadge, PrimaryButton, useToast } from './ui';
 import { DocumentFileRow } from './documents/DocumentFileRow';
@@ -129,7 +123,7 @@ export function ComplianceSection({
       await load();
       showToast('נשמר בהצלחה');
     } catch {
-      Alert.alert('שמירה נכשלה', 'לא הצלחנו לשמור את התאריך. נסה שוב.');
+      showAlert('שמירה נכשלה', 'לא הצלחנו לשמור את התאריך. נסה שוב.');
     } finally {
       setSavingItem(null);
     }
@@ -155,7 +149,7 @@ export function ComplianceSection({
         });
         await load();
       } catch (err: any) {
-        Alert.alert('העלאה נכשלה', err?.message ?? 'נסה שוב');
+        showAlert('העלאה נכשלה', err?.message ?? 'נסה שוב');
       } finally {
         setBusyItem(null);
       }
@@ -362,7 +356,7 @@ function GeneralDocuments({
         });
         await onChanged();
       } catch (err: any) {
-        Alert.alert('העלאה נכשלה', err?.message ?? 'נסה שוב');
+        showAlert('העלאה נכשלה', err?.message ?? 'נסה שוב');
       } finally {
         setBusy(false);
       }

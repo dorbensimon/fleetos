@@ -3,11 +3,12 @@ import { View, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Screen, AppText } from '../components/ui';
+import { Screen, AppText, BackButton } from '../components/ui';
 import { AdminGradientBackground } from '../components/admin/AdminGradientBackground';
 import { SPACING } from '../lib/theme';
 import { MENU_CARD_SHADOW, MENU_COLORS, MENU_FONT, MENU_TYPO } from '../components/menu/menuTheme';
 import { supabase } from '../lib/supabase';
+import { showAlert } from '../lib/platformAlert';
 import { useCompany } from '../lib/CompanyContext';
 import { listSignatureRequests } from '../lib/docuseal';
 import { RootStackParamList } from '../navigation/types';
@@ -32,6 +33,7 @@ type MenuItem = {
 
 const DRIVER_ITEMS: MenuItem[] = [
   { key: 'DriverProfile', icon: 'person-outline', label: 'הפרטים שלי' },
+  { key: 'DriverDocuments', icon: 'folder-outline', label: 'המסמכים שלי' },
   { key: 'NotificationPreferences', icon: 'notifications-outline', label: 'ניהול התראות' },
 ];
 
@@ -71,6 +73,9 @@ export default function MenuScreen({ navigation }: Props) {
       case 'DriverProfile':
         navigation.navigate('DriverProfile');
         break;
+      case 'DriverDocuments':
+        navigation.navigate('DriverDocuments');
+        break;
       case 'AdminProfile':
         navigation.navigate('AdminProfile');
         break;
@@ -105,26 +110,33 @@ export default function MenuScreen({ navigation }: Props) {
     }, [isAdmin, companyId])
   );
 
-  const logout = async () => {
-    await supabase.auth.signOut();
-    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+  const completeLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    } catch {
+      showAlert('ההתנתקות נכשלה', 'נסה שוב בעוד רגע.');
+    }
+  };
+
+  const logout = () => {
+    showAlert('התנתקות', 'האם אתה בטוח שברצונך להתנתק מהחשבון?', [
+      { text: 'ביטול', style: 'cancel' },
+      { text: 'התנתק', style: 'destructive', onPress: completeLogout },
+    ]);
   };
 
   const initials = (profile?.full_name || '?').trim().charAt(0);
   const subtitle = profile?.job_title || (profile?.role ? ROLE_LABEL[profile.role] : '');
 
   return (
-    <Screen style={isAdmin ? styles.adminScreen : styles.screen}>
-      {isAdmin && <AdminGradientBackground />}
+    <Screen style={styles.adminScreen}>
+      <AdminGradientBackground />
       <SafeAreaView style={styles.safe}>
         <View style={styles.topBar}>
-          <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-forward" size={19} color={MENU_COLORS.text} />
-          </TouchableOpacity>
+          <BackButton onPress={() => navigation.goBack()} />
           <AppText style={MENU_TYPO.version}>גרסה 1.0.0</AppText>
         </View>
-
-        <AppText style={[MENU_TYPO.title, styles.title]}>תפריט</AppText>
 
         <TouchableOpacity
           style={styles.profileCard}
@@ -199,27 +211,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
   },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: MENU_COLORS.backBtnBg,
-    borderWidth: 1,
-    borderColor: MENU_COLORS.backBtnBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    textAlign: 'right',
-    paddingHorizontal: SPACING.lg,
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.xl,
-  },
   profileCard: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: SPACING.md,
     marginHorizontal: SPACING.lg,
+    marginTop: SPACING.lg,
     marginBottom: SPACING.lg,
     padding: SPACING.md,
     borderRadius: 18,

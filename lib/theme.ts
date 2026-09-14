@@ -91,6 +91,15 @@ export const SPACING = {
   xxl: 32,
 } as const;
 
+/**
+ * Widest a screen's content is allowed to grow. The app is designed
+ * mobile-first; on a desktop-width browser window we center the same
+ * layout in this column instead of stretching it, so nothing on native
+ * or on a phone-width browser is affected (their viewport never exceeds
+ * this width).
+ */
+export const CONTENT_MAX_WIDTH = 640;
+
 /** Text presets, so screens don't re-declare font/size/colour each time. */
 export const TYPO = {
   screenTitle: { fontFamily: FONT.bold, fontSize: 23, color: COLORS.text },

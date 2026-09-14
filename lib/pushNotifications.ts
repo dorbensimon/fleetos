@@ -1,0 +1,104 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
+import { supabase, type UserRole } from './supabase';
+import { routeForPushNotification } from './pushNotificationRoutes';
+
+const STORED_TOKEN_KEY = 'fleetos_expo_push_token';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+type Navigate = (screen: ReturnType<typeof routeForPushNotification>) => void;
+
+function projectId(): string | undefined {
+  return Constants.easConfig?.projectId
+    ?? Constants.expoConfig?.extra?.eas?.projectId;
+}
+
+async function currentUserRole(): Promise<UserRole | null> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user.id;
+  if (!userId) return null;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle();
+
+  return profile?.role === 'owner' || profile?.role === 'admin' || profile?.role === 'driver'
+    ? profile.role
+    : null;
+}
+
+async function openNotification(
+  response: Notifications.NotificationResponse,
+  navigate: Navigate,
+) {
+  const role = await currentUserRole();
+  if (!role) return;
+
+  const data = response.notification.request.content.data ?? {};
+  navigate(routeForPushNotification(role, {
+    notificationType: typeof data.notificationType === 'string' ? data.notificationType : null,
+  }));
+}
+
+/** Registers this physical device. Push permissions can always be changed later in iOS Settings. */
+export async function registerForPushNotifications(): Promise<void> {
+  if (Platform.OS === 'web' || !Device.isDevice) return;
+
+  const existing = await Notifications.getPermissionsAsync();
+  const permission = existing.status === 'granted'
+    ? existing
+    : await Notifications.requestPermissionsAsync();
+  if (permission.status !== 'granted') return;
+
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'התראות כלליות',
+      importance: Notifications.AndroidImportance.MAX,
+    });
+  }
+
+  const id = projectId();
+  if (!id) return;
+  const expoPushToken = (await Notifications.getExpoPushTokenAsync({ projectId: id })).data;
+  const { error } = await supabase.functions.invoke('register-push-token', {
+    body: { expoPushToken, platform: Platform.OS },
+  });
+  if (error) throw error;
+  await AsyncStorage.setItem(STORED_TOKEN_KEY, expoPushToken);
+}
+
+/** Removes this device when the user signs out, so a shared device never receives their alerts. */
+export async function unregisterPushNotifications(): Promise<void> {
+  const expoPushToken = await AsyncStorage.getItem(STORED_TOKEN_KEY);
+  if (!expoPushToken) return;
+  try {
+    await supabase.functions.invoke('register-push-token', {
+      body: { action: 'remove', expoPushToken },
+    });
+  } finally {
+    await AsyncStorage.removeItem(STORED_TOKEN_KEY);
+  }
+}
+
+export function listenForPushNotificationResponses(navigate: Navigate) {
+  const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    void openNotification(response, navigate);
+  });
+  void Notifications.getLastNotificationResponseAsync().then((response) => {
+    if (response) return openNotification(response, navigate);
+  }).catch(() => undefined);
+  return () => subscription.remove();
+}
