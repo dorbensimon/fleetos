@@ -1,7 +1,15 @@
-// Shared HTML/PDF report shell — Broadsheet design system (newsprint, RTL/Hebrew).
-// Used by driverReport.ts, vehicleReport.ts and driverSnapshotReport.ts so every
-// document the app exports for drivers/vehicles shares one masthead, meta-row,
+// Shared HTML/PDF report shell — an "editorial dossier" treatment: a warm
+// paper page, a large serif masthead (Frank Ruhl Libre, one of the few
+// distinctive Google fonts with real Hebrew glyphs) paired with Heebo for
+// body/label text, and the app's own #0088CC accent used sparingly as a
+// single confident thread through rules, section marks and tags. Used by
+// driverReport.ts, vehicleReport.ts and driverSnapshotReport.ts so every
+// document the app exports for drivers/vehicles shares one header, meta-grid,
 // table and footer treatment.
+
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import { Platform } from 'react-native';
 
 export type TagTone = 'accent' | 'accent2' | 'neutral' | 'outline';
 
@@ -13,11 +21,11 @@ export function esc(value: string | null | undefined): string {
 export function statusTag(label: string, tone: TagTone): string {
   const cls =
     tone === 'accent'
-      ? 'tag tag-accent'
+      ? 'tag tag-ok'
       : tone === 'accent2'
-      ? 'tag tag-accent-2'
+      ? 'tag tag-danger'
       : tone === 'outline'
-      ? 'tag tag-outline'
+      ? 'tag tag-warn'
       : 'tag tag-neutral';
   return `<span class="${cls}">${esc(label)}</span>`;
 }
@@ -52,150 +60,227 @@ export function todayHe(): string {
 }
 
 const REPORT_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Heebo:wght@300;400;500;600;700&display=swap');
 
   :root {
-    --color-bg: #f3f2f2;
-    --color-text: #201e1d;
-    --color-accent: #0088b0;
-    --color-accent-2: #d6006c;
-    --color-accent-100: #e9f8ff;
-    --color-accent-700: #006786;
-    --color-accent-800: #004961;
-    --color-accent-2-100: #fff1f4;
-    --color-accent-2-700: #aa0b56;
-    --color-accent-2-800: #790e3d;
-    --color-neutral-100: #f8f4f4;
-    --color-neutral-800: #444141;
-    --color-divider: rgba(32, 30, 29, 0.16);
-    --font-heading: 'Source Serif 4', Georgia, 'Times New Roman', serif;
-    --font-body: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --color-paper: #faf8f4;
+    --color-backdrop: #e8e4db;
+    --color-ink: #1c1a16;
+    --color-ink-muted: #6f6a5f;
+    --color-ink-faint: #a29c8d;
+    --color-accent: #0088cc;
+    --color-accent-deep: #045a86;
+    --color-accent-soft: rgba(0, 136, 204, 0.09);
+    --color-field: #f2efe7;
+    --color-rule: #ded8c9;
+    --color-ok-bg: #e7f0e6;
+    --color-ok-text: #47713f;
+    --color-warn-bg: #fbf0dc;
+    --color-warn-text: #93630f;
+    --color-danger-bg: #f7e6e1;
+    --color-danger-text: #a33a24;
+    --color-neutral-bg: #ecebe6;
+    --color-neutral-text: #6f6a5f;
+    --font-display: 'Frank Ruhl Libre', 'Times New Roman', serif;
+    --font-body: 'Heebo', -apple-system, 'Segoe UI', Roboto, sans-serif;
   }
 
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
-    background: var(--color-bg);
-    color: var(--color-text);
+    color: var(--color-ink);
     font-family: var(--font-body);
     direction: rtl;
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
   }
-  body { padding: 34px 32px 30px; }
+  html { background: var(--color-backdrop); }
+  body { background: var(--color-backdrop); }
 
-  .page { display: flex; flex-direction: column; }
+  .page {
+    position: relative;
+    max-width: 720px;
+    margin: 32px auto;
+    padding: 42px 44px 34px;
+    background: var(--color-paper);
+    box-shadow: 0 1px 2px rgba(28, 26, 22, 0.06), 0 16px 36px rgba(28, 26, 22, 0.14);
+    overflow: hidden;
+  }
+  /* A faint paper grain behind the masthead only — atmosphere, not noise. */
+  .page::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    height: 190px;
+    background-image: radial-gradient(rgba(28, 26, 22, 0.05) 0.6px, transparent 0.6px);
+    background-size: 3px 3px;
+    -webkit-mask-image: linear-gradient(to bottom, black, transparent);
+    mask-image: linear-gradient(to bottom, black, transparent);
+    pointer-events: none;
+  }
+
+  @media print {
+    html, body { background: var(--color-paper); }
+    .page { margin: 0; max-width: none; box-shadow: none; padding: 6px 4px; }
+    .page::before { display: none; }
+  }
 
   .masthead {
+    position: relative;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 16px;
-    border-bottom: 3px solid var(--color-text);
-    padding-bottom: 10px;
+    gap: 20px;
+  }
+  .masthead-heading { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .masthead-kicker {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-accent-deep);
   }
   .masthead h1 {
-    font-family: var(--font-heading);
-    font-weight: 800;
-    font-size: 32px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 30px;
     margin: 0;
-    line-height: 1.05;
+    line-height: 1.18;
     letter-spacing: -0.01em;
+    color: var(--color-ink);
   }
   .masthead-date {
-    text-align: left;
-    font-size: 11px;
-    opacity: 0.7;
-    white-space: nowrap;
+    text-align: center;
     flex: none;
+    border: 1px solid var(--color-rule);
+    padding: 9px 15px 8px;
+  }
+  .masthead-date .date-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
   }
   .masthead-date .date-value {
-    font-family: var(--font-heading);
+    font-family: var(--font-display);
     font-weight: 700;
     font-size: 15px;
-    color: var(--color-text);
-    margin-top: 2px;
+    color: var(--color-ink);
+    margin-top: 3px;
+    white-space: nowrap;
   }
-  .masthead-rule { height: 1px; background: var(--color-text); opacity: 0.15; margin-top: 1px; }
+  .masthead-rule {
+    position: relative;
+    height: 4px;
+    margin-top: 6px;
+  }
+  .masthead-rule::before {
+    content: '';
+    position: absolute; inset-inline-start: 0; top: 0;
+    width: 46px; height: 3px;
+    background: var(--color-accent);
+  }
+  .masthead-rule::after {
+    content: '';
+    position: absolute; inset-inline-start: 0; bottom: 0;
+    width: 100%; height: 1px;
+    background: var(--color-rule);
+  }
 
-  .meta-row {
-    display: flex;
-    gap: 28px;
-    margin-top: 18px;
-    flex-wrap: wrap;
+  .meta-row, .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 20px 22px;
+    margin-top: 28px;
   }
-  .meta-col { min-width: 120px; }
-  .meta-col-push { margin-inline-start: auto; text-align: left; }
+  .meta-col { min-width: 0; }
+  .meta-col-push { text-align: left; justify-self: end; }
   .meta-label {
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    opacity: 0.55;
-    margin-bottom: 3px;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    color: var(--color-ink-faint);
+    margin-bottom: 5px;
   }
-  .meta-value { font-family: var(--font-heading); font-weight: 700; font-size: 15px; }
-  .meta-value-big { font-size: 22px; color: var(--color-accent-700); }
-  .meta-sub { font-size: 11px; opacity: 0.65; margin-top: 1px; }
+  .meta-value { font-weight: 600; font-size: 14.5px; color: var(--color-ink); }
+  .meta-value-big { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--color-accent-deep); }
+  .meta-sub { font-size: 11.5px; color: var(--color-ink-faint); margin-top: 2px; }
   .ltr { direction: ltr; text-align: left; unicode-bidi: isolate; }
 
   .company-logo {
-    width: 34px; height: 34px; border-radius: 6px; object-fit: cover;
-    border: 1px solid var(--color-divider);
+    width: 34px; height: 34px; object-fit: cover;
     margin-bottom: 4px;
   }
 
   h2.section-title {
-    font-family: var(--font-heading);
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    font-family: var(--font-body);
     font-weight: 700;
-    font-size: 15px;
-    color: var(--color-accent-700);
-    margin: 22px 0 8px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid var(--color-divider);
+    font-size: 11.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-accent-deep);
+    margin: 36px 0 14px;
+  }
+  h2.section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--color-rule);
   }
 
-  .table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    margin-top: 4px;
+  }
   .table th {
     text-align: right;
-    font-size: 10.5px;
-    letter-spacing: 0.06em;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: rgba(32, 30, 29, 0.6);
-    padding: 8px 8px;
-    border-bottom: 1px solid var(--color-divider);
+    color: var(--color-ink-faint);
+    padding: 0 10px 8px;
+    border-bottom: 1px solid var(--color-ink);
   }
   .table td {
-    padding: 7px 8px;
-    border-bottom: 1px solid rgba(32, 30, 29, 0.08);
+    padding: 11px 10px;
+    border-bottom: 1px solid var(--color-rule);
     text-align: right;
   }
-  .table tbody tr:nth-child(even) td { background: rgba(32, 30, 29, 0.03); }
-  .text-muted { color: rgba(32, 30, 29, 0.55); }
+  .table tbody tr:last-child td { border-bottom: none; }
+  .text-muted { color: var(--color-ink-muted); }
 
   .tag {
     display: inline-flex; align-items: center; white-space: nowrap;
-    font-size: 10.5px; letter-spacing: 0.02em;
-    padding: 2px 9px; border-radius: 1.5px;
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em;
+    padding: 3px 10px; border-radius: 999px;
   }
-  .tag-accent { background: var(--color-accent-100); color: var(--color-accent-800); }
-  .tag-accent-2 { background: var(--color-accent-2-100); color: var(--color-accent-2-800); }
-  .tag-neutral { background: var(--color-neutral-100); color: var(--color-neutral-800); }
-  .tag-outline { border: 1px solid var(--color-accent-2); color: var(--color-accent-2-700); }
-
-  .grid { display: flex; flex-wrap: wrap; gap: 14px 26px; }
-  .grid .meta-col { min-width: 140px; }
+  .tag-ok { background: var(--color-ok-bg); color: var(--color-ok-text); }
+  .tag-danger { background: var(--color-danger-bg); color: var(--color-danger-text); }
+  .tag-neutral { background: var(--color-neutral-bg); color: var(--color-neutral-text); }
+  .tag-warn { background: var(--color-warn-bg); color: var(--color-warn-text); }
 
   .empty-state {
     text-align: center;
-    padding: 26px 0;
-    color: rgba(32, 30, 29, 0.5);
+    padding: 30px 0;
+    color: var(--color-ink-faint);
     font-size: 12.5px;
+    border: 1px dashed var(--color-rule);
   }
 
   .footnote {
-    margin-top: 26px;
-    padding-top: 10px;
-    border-top: 1px solid var(--color-divider);
-    font-size: 11px;
-    opacity: 0.5;
+    margin-top: 38px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-rule);
+    font-size: 10.5px;
+    color: var(--color-ink-faint);
   }
 `;
 
@@ -221,13 +306,16 @@ export function buildReportDocument(opts: ReportDocumentOptions): string {
 <body>
   <div class="page">
     <div class="masthead">
-      <h1>${esc(opts.title)}</h1>
+      <div class="masthead-heading">
+        <div class="masthead-kicker">Tolvex · דוח מערכת</div>
+        <h1>${esc(opts.title)}</h1>
+        <div class="masthead-rule"></div>
+      </div>
       <div class="masthead-date">
-        <div>תאריך הפקה</div>
+        <div class="date-label">תאריך הפקה</div>
         <div class="date-value">${esc(generatedAt)}</div>
       </div>
     </div>
-    <div class="masthead-rule"></div>
 
     <div class="meta-row">
       ${opts.metaColumns.map(metaColumnHtml).join('')}
@@ -239,4 +327,34 @@ export function buildReportDocument(opts: ReportDocumentOptions): string {
   </div>
 </body>
 </html>`;
+}
+
+/**
+ * Turns a full report HTML document into a PDF the user can share (native) or
+ * print (web). expo-print's web shim ignores the `html` it's given and just
+ * calls `window.print()` on whatever page is currently open — so on web we
+ * open the report in its own window and print that instead, rather than
+ * printing a screenshot of the screen the user pressed the button from.
+ */
+export async function printOrShareReport(html: string, dialogTitle: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    const reportWindow = window.open('', '_blank');
+    if (!reportWindow) throw new Error('חסימת חלונות קופצים מנעה את פתיחת הדוח');
+    reportWindow.document.open();
+    reportWindow.document.write(html);
+    reportWindow.document.close();
+    reportWindow.focus();
+    reportWindow.print();
+    return;
+  }
+
+  const { uri } = await Print.printToFileAsync({ html, base64: false });
+  const canShare = await Sharing.isAvailableAsync();
+  if (canShare) {
+    await Sharing.shareAsync(uri, {
+      mimeType: 'application/pdf',
+      dialogTitle,
+      UTI: 'com.adobe.pdf',
+    });
+  }
 }

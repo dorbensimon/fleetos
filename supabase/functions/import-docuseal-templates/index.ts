@@ -1,12 +1,19 @@
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { docusealFetch } from '../_shared/docuseal.ts';
-import { isSignedRequestPath, isSigningTemplateSourcePath } from '../_shared/signingPaths.ts';
-import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
+import { verifyUser } from '../_shared/verifyUser.ts';
 
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
+
+// Every company reads and sends the same global templates; none has its own.
+// Global rows carry no real company, but storage policies require the first
+// path segment to be a uuid, so this sentinel stands in for "no company".
+const GLOBAL_COMPANY_SENTINEL = '00000000-0000-0000-0000-000000000000';
+// Fixed folder name, not derived from a human-typed company name, so this
+// match can never go stale the way per-company folder matching did.
+const GLOBAL_FOLDER_NAME = 'FleetOS-Global';
 
 type RemoteTemplate = {
   id?: number;
@@ -29,116 +36,54 @@ async function listAllTemplates(): Promise<RemoteTemplate[]> {
     const result = await response.json();
     templates.push(...(result?.data ?? []));
     after = result?.pagination?.next ?? null;
-    if (!after) break;
+    if (!after) return templates;
   }
-  return templates;
+  throw new Error('Template pagination exceeded safe limit');
 }
 
-/** DocuSeal folder paths are "/"-separated, e.g. "ניהול צי רכבים / אלמוג" — the company's own folder is whichever segment carries its name. */
-function folderMatchesCompany(folderName: string | null | undefined, companyId: string, companyName: string): boolean {
-  if (!folderName) return false;
-  if (folderName === `FleetOS-${companyId}`) return true;
-  if (!companyName) return false;
-  return folderName.split('/').map((segment) => segment.trim()).includes(companyName);
-}
-
-/**
- * A template deleted directly in DocuSeal has nothing left to sync — mirror
- * that by permanently removing its FleetOS row too, using the same safety
- * rule as the in-app "delete forever" action: a signed document only goes
- * away once its PDF is confirmed saved in our own storage, never before.
- */
-async function deleteOrphanedTemplates(
-  adminClient: SupabaseClient,
-  companyId: string,
-  remoteIds: Set<number>,
-): Promise<number> {
-  const { data: local } = await adminClient
-    .from('signing_templates')
-    .select('id, title, source_file_path, docuseal_template_id')
-    .eq('company_id', companyId)
+/** Missing provider templates are archived locally; reconciliation never
+ * deletes submissions or signed evidence. */
+async function archiveOrphanedGlobalTemplates(adminClient: SupabaseClient, remoteIds: Set<number>): Promise<number> {
+  const { data: local, error } = await adminClient.from('signing_templates')
+    .select('id, docuseal_template_id').is('company_id', null).is('archived_at', null)
     .not('docuseal_template_id', 'is', null);
-  const orphaned = (local ?? []).filter((template) => !remoteIds.has(Number(template.docuseal_template_id)));
-  if (!orphaned.length) return 0;
-
-  let deleted = 0;
-  for (const template of orphaned) {
-    const { data: requests } = await adminClient
-      .from('signature_requests')
-      .select('id, company_id, driver_id, status, docuseal_submission_id, signed_file_path')
-      .eq('template_id', template.id).eq('company_id', companyId);
-    const signed = (requests ?? []).filter((request) => request.status === 'completed');
-    const nonCompleted = (requests ?? []).filter((request) => request.status !== 'completed');
-    // A signed document whose PDF never made it into our storage would vanish with no evidence left — keep the template until it's synced.
-    if (signed.some((request) => !isSignedRequestPath(request.company_id, request.driver_id, request.id, request.signed_file_path))) {
-      console.error('import-docuseal-templates: orphaned template kept, unsynced signed document', template.id);
-      continue;
-    }
-
-    const { data: ok } = await adminClient.rpc('delete_signing_template_records', {
-      target_template_id: template.id, target_company_id: companyId, template_title_snapshot: template.title,
-    });
-    if (!ok) continue;
-    deleted += 1;
-
-    for (const request of nonCompleted) {
-      if (!request.docuseal_submission_id) continue;
-      const response = await docusealFetch(`/submissions/${request.docuseal_submission_id}`, { method: 'DELETE' });
-      if (!response.ok && response.status !== 404) {
-        console.error('import-docuseal-templates: docuseal submission cleanup failed', request.id, response.status);
-      }
-    }
-    const paths = [
-      ...(isSigningTemplateSourcePath(companyId, template.source_file_path) ? [template.source_file_path as string] : []),
-      ...nonCompleted.flatMap((request) => isSignedRequestPath(companyId, request.driver_id, request.id, request.signed_file_path)
-        ? [request.signed_file_path as string] : []),
-    ];
-    if (paths.length) {
-      const { error: storageError } = await adminClient.storage.from('documents').remove(paths);
-      if (storageError) console.error('import-docuseal-templates: storage cleanup failed', template.id, storageError.message);
-    }
-  }
-  return deleted;
+  if (error) throw error;
+  const missing = (local || []).filter(template => !remoteIds.has(Number(template.docuseal_template_id)));
+  if (!missing.length) return 0;
+  const { error: archiveError } = await adminClient.from('signing_templates')
+    .update({ archived_at: new Date().toISOString() }).in('id', missing.map(template => template.id));
+  if (archiveError) throw archiveError;
+  return missing.length;
 }
 
 /**
- * Templates built directly in the DocuSeal dashboard have no FleetOS row. A
- * template placed anywhere under the company's folder — a folder named
- * exactly the company name, a subfolder of it, or the `FleetOS-<companyId>`
- * folder the in-app builder uses — is imported as a ready template of that
- * company, with its PDF copied into storage so the preview and download
- * flows work exactly as for in-app templates.
+ * Templates built directly in DocuSeal, inside the fixed "FleetOS-Global"
+ * folder, apply to every company. No company creates its own templates
+ * anymore — this is the only way a template comes into existence, and only
+ * the platform owner may trigger the sync.
  */
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);
 
   try {
-    const { companyId } = await req.json();
-    const access = await verifyCompanyAccess(req.headers.get('Authorization'), companyId ?? null);
-    if (!access.ok) return json({ error: access.error }, access.status);
-    if (access.callerRole !== 'admin' && access.callerRole !== 'owner') return json({ error: 'אין הרשאה לייבא תבניות' }, 403);
-
-    const { data: company } = await access.adminClient.from('companies').select('name').eq('id', companyId).single();
-    if (!company) return json({ error: 'החברה לא נמצאה' }, 404);
-
-    let companyName = typeof company.name === 'string' ? company.name.trim() : '';
-    if (companyName) {
-      // A name shared by two companies can't tell them apart, so only the id folder counts then.
-      const { count } = await access.adminClient.from('companies').select('id', { count: 'exact', head: true }).eq('name', company.name);
-      if (count !== 1) companyName = '';
-    }
+    const user = await verifyUser(req.headers.get('Authorization'));
+    if (!user.ok) return json({ error: user.error }, user.status);
+    if (user.profile.role !== 'owner') return json({ error: 'רק הבעלים יכול לסנכרן תבניות' }, 403);
+    const { adminClient, userId } = user;
 
     const remoteTemplates = await listAllTemplates();
     const remoteIds = new Set(remoteTemplates.map((remote) => remote.id).filter((id): id is number => typeof id === 'number'));
-    const deletedCount = await deleteOrphanedTemplates(access.adminClient, companyId, remoteIds);
+    const archivedCount = await archiveOrphanedGlobalTemplates(adminClient, remoteIds);
 
-    // In-app templates carry the local row id as external_id (including unfinished drafts), so skip them.
+    // Templates built through the (now retired) in-app builder carried the
+    // local row id as external_id — skip any leftovers so they are never
+    // mistaken for a new global template.
     const candidates = remoteTemplates.filter((remote) =>
-      remote.id && !remote.external_id && folderMatchesCompany(remote.folder_name, companyId, companyName));
-    if (!candidates.length) return json({ imported: 0, deleted: deletedCount });
+      remote.id && !remote.external_id && remote.folder_name === GLOBAL_FOLDER_NAME);
+    if (!candidates.length) return json({ imported: 0, deleted: 0, archived: archivedCount });
 
-    const { data: known } = await access.adminClient
+    const { data: known } = await adminClient
       .from('signing_templates')
       .select('docuseal_template_id')
       .in('docuseal_template_id', candidates.map((remote) => remote.id));
@@ -157,19 +102,30 @@ Deno.serve(async (req) => {
         console.error('import-docuseal-templates: document download failed', remote.id, pdfResponse.status);
         continue;
       }
-      const filePath = `${companyId}/signing-templates/docuseal-${remote.id}-${crypto.randomUUID()}.pdf`;
-      const { error: uploadError } = await access.adminClient.storage
+      const pdfBytes = new Uint8Array(await pdfResponse.arrayBuffer());
+      // A partial/aborted download can still resolve with a 200 status, so verify the
+      // bytes themselves: they must start with the PDF magic number, and — when
+      // DocuSeal told us how many bytes to expect — match that count exactly.
+      const declaredLength = Number(pdfResponse.headers.get('content-length'));
+      const isPdfHeader = pdfBytes.length >= 5
+        && pdfBytes[0] === 0x25 && pdfBytes[1] === 0x50 && pdfBytes[2] === 0x44 && pdfBytes[3] === 0x46 && pdfBytes[4] === 0x2d;
+      if (!isPdfHeader || (Number.isFinite(declaredLength) && declaredLength > 0 && declaredLength !== pdfBytes.length)) {
+        console.error('import-docuseal-templates: downloaded document looks corrupt', remote.id, `bytes=${pdfBytes.length}`, `declared=${declaredLength}`);
+        continue;
+      }
+      const filePath = `${GLOBAL_COMPANY_SENTINEL}/signing-templates/${crypto.randomUUID()}/docuseal-${remote.id}.pdf`;
+      const { error: uploadError } = await adminClient.storage
         .from('documents')
-        .upload(filePath, await pdfResponse.arrayBuffer(), { contentType: 'application/pdf' });
+        .upload(filePath, pdfBytes, { contentType: 'application/pdf' });
       if (uploadError) {
         console.error('import-docuseal-templates: storage upload failed', remote.id, uploadError.message);
         continue;
       }
 
       const title = (remote.name || 'מסמך').trim().slice(0, 200) || 'מסמך';
-      const { error: insertError } = await access.adminClient.from('signing_templates').insert({
-        company_id: companyId,
-        created_by: access.callerId,
+      const { error: insertError } = await adminClient.from('signing_templates').insert({
+        company_id: null,
+        created_by: userId,
         title,
         source_file_path: filePath,
         source_file_name: `${title}.pdf`.slice(0, 255),
@@ -177,15 +133,15 @@ Deno.serve(async (req) => {
         status: 'ready',
       });
       if (insertError) {
-        // A concurrent import already linked this template (docuseal_template_id is unique).
-        await access.adminClient.storage.from('documents').remove([filePath]);
+        // A concurrent sync already linked this template (docuseal_template_id is unique).
+        await adminClient.storage.from('documents').remove([filePath]);
         continue;
       }
       imported += 1;
     }
-    return json({ imported, deleted: deletedCount });
+    return json({ imported, deleted: 0, archived: archivedCount });
   } catch (error) {
     console.error('import-docuseal-templates failed', error instanceof Error ? error.message : 'unknown');
-    return json({ error: 'ייבוא התבניות מ-DocuSeal נכשל' }, 500);
+    return json({ error: 'סנכרון התבניות מ-DocuSeal נכשל' }, 500);
   }
 });

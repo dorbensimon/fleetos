@@ -41,6 +41,7 @@ import ReportsScreen from './screens/admin/ReportsScreen';
 import AdminProfileScreen from './screens/admin/AdminProfileScreen';
 import NotificationsScreen from './screens/admin/NotificationsScreen';
 import AdminDocumentSigningScreen from './screens/admin/AdminDocumentSigningScreen';
+import GlobalSigningTemplatesScreen from './screens/GlobalSigningTemplatesScreen';
 import DocusealWebViewScreen from './screens/DocusealWebViewScreen';
 import DocumentCategoryScreen from './screens/admin/DocumentCategoryScreen';
 import DriverLicenseDocumentsScreen from './screens/admin/DriverLicenseDocumentsScreen';
@@ -108,6 +109,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       AdminProfile: 'admin/profile',
       Notifications: 'notifications',
       AdminDocumentSigning: 'documents/signing',
+      GlobalSigningTemplates: 'owner/signing-templates',
       DocusealWebView: 'documents/view',
       NotificationPreferences: 'notification-preferences',
       DocumentCategory: 'documents/:ownerType/:ownerId/:category',
@@ -256,6 +258,7 @@ export default function App() {
               <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               <Stack.Screen name="AdminDocumentSigning" component={AdminDocumentSigningScreen} />
+              <Stack.Screen name="GlobalSigningTemplates" component={GlobalSigningTemplatesScreen} />
               <Stack.Screen name="DocusealWebView" component={DocusealWebViewScreen} />
               <Stack.Screen name="DocumentCategory" component={DocumentCategoryScreen} />
               <Stack.Screen name="DriverLicenseDocuments" component={DriverLicenseDocumentsScreen} />

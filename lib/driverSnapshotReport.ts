@@ -1,13 +1,10 @@
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import { Platform } from 'react-native';
 import { Company } from './supabase';
 import { DriverRow } from './adminApi';
 import { SignatureRequest } from './docuseal';
 import { expiryState, formatDate } from './theme';
 import { formatPlate } from './plate';
 import { formatPhone } from './phone';
-import { buildReportDocument, emptyState, esc, statusTag, TagTone } from './reportTemplate';
+import { buildReportDocument, emptyState, esc, printOrShareReport, statusTag, TagTone } from './reportTemplate';
 
 function licenseStatus(driver: DriverRow): { label: string; tone: TagTone } {
   const state = expiryState(driver.license_expiry);
@@ -117,18 +114,5 @@ export async function exportDriverSnapshotReport(
   signingRequests: SignatureRequest[]
 ): Promise<void> {
   const html = buildHtml(company, driver, departmentName, signingRequests);
-
-  const { uri } = await Print.printToFileAsync({ html, base64: false });
-
-  // Web opens a print dialog and does not create a shareable local file URI.
-  if (Platform.OS === 'web') return;
-
-  const canShare = await Sharing.isAvailableAsync();
-  if (canShare) {
-    await Sharing.shareAsync(uri, {
-      mimeType: 'application/pdf',
-      dialogTitle: `תמונת מצב — ${driver.full_name ?? 'נהג'}`,
-      UTI: 'com.adobe.pdf',
-    });
-  }
+  await printOrShareReport(html, `תמונת מצב — ${driver.full_name ?? 'נהג'}`);
 }

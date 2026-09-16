@@ -29,6 +29,8 @@ export type RootStackParamList = {
   AdminProfile: undefined;
   Notifications: undefined;
   AdminDocumentSigning: { companyId?: string } | undefined;
+  /** Owner-only: manage the global signing templates shared by every company. */
+  GlobalSigningTemplates: undefined;
   DocusealWebView: {
     mode: 'builder' | 'sign' | 'preview' | 'document' | 'image';
     title: string;
@@ -56,7 +58,7 @@ export type RootStackParamList = {
   // Driver module
   DriverVehicle: undefined;
   DriverDocuments: undefined;
-  DriverSigningDocuments: { driverId?: string } | undefined;
+  DriverSigningDocuments: { driverId?: string; folderId?: string } | undefined;
   DriverProfile: undefined;
   DriverOdometer: { vehicleId: string; currentOdometer: number };
 

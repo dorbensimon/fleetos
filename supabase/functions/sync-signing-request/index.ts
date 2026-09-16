@@ -17,12 +17,31 @@ Deno.serve(async (req) => {
     const user = await verifyUser(req.headers.get('Authorization'));
     if (!user.ok) return json({ error: user.error }, user.status);
     const { data: local } = await user.adminClient.from('signature_requests').select('*').eq('id', requestId).single();
-    if (!local || local.archived_at) return json({ error: 'המסמך לא נמצא' }, 404);
+    if (!local || (local.archived_at && local.status !== 'completed')) return json({ error: 'המסמך לא נמצא' }, 404);
     const allowed = local.driver_id === user.userId
       || user.profile.role === 'owner'
       || (user.profile.role === 'admin' && user.profile.company_id === local.company_id);
     if (!allowed) return json({ error: 'אין הרשאה למסמך זה' }, 403);
     if (!local.docuseal_submitter_id) return json({ status: local.status });
+    // Repair a failed PDF download without ever changing a signed status or
+    // replacing evidence already saved by the webhook.
+    if (local.status === 'completed' && !local.signed_file_path) {
+      const response = await docusealFetch(`/submitters/${local.docuseal_submitter_id}`);
+      if (!response.ok) return json({ error: 'טעינת המסמך החתום נכשלה' }, 502);
+      const signer = await response.json();
+      const url = signer.documents?.[0]?.url;
+      if (!url || signer.status !== 'completed') return json({ success: true, status: 'completed', filePending: true });
+      const documentResponse = await fetch(url);
+      if (!documentResponse.ok) return json({ error: 'הורדת המסמך החתום נכשלה' }, 502);
+      const path = `${local.company_id}/driver/${local.driver_id}/signed/${local.id}.pdf`;
+      const { error: uploadError } = await user.adminClient.storage.from('documents')
+        .upload(path, new Uint8Array(await documentResponse.arrayBuffer()), { contentType: 'application/pdf', upsert: false });
+      if (uploadError && String(uploadError.statusCode) !== '409') throw uploadError;
+      const { error: repairError } = await user.adminClient.from('signature_requests').update({ signed_file_path: path })
+        .eq('id', local.id).eq('status', 'completed').is('signed_file_path', null);
+      if (repairError) throw repairError;
+      return json({ success: true, status: 'completed' });
+    }
     // A terminal record is authoritative. The webhook owns the signed-file
     // evidence, so a user refresh never races it merely to refill a cache.
     if (local.status !== 'pending') return json({ success: true, status: local.status });

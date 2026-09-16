@@ -139,7 +139,7 @@ export default function FleetScreen() {
       if (requestId !== driverLoadRequest.current) return false;
       const signingMap = new Map<string, number>();
       for (const request of signatureRequests) {
-        if (request.status !== 'pending' && request.status !== 'declined') continue;
+        if (request.status !== 'pending' || !request.docuseal_submitter_slug) continue;
         signingMap.set(request.driver_id, (signingMap.get(request.driver_id) ?? 0) + 1);
       }
       setDrivers(rows);
@@ -415,27 +415,6 @@ export default function FleetScreen() {
   const lastScrollOffset = useRef<Record<ToggleValue, number>>({ drivers: 0, vehicles: 0 });
   const scrollDistance = useRef<Record<ToggleValue, number>>({ drivers: 0, vehicles: 0 });
 
-  // A short list should end naturally after its last card. We only collapse
-  // the hero when its real content already provides enough scroll range;
-  // adding artificial bottom padding here made short driver/vehicle lists
-  // scroll through a large empty sheet.
-  const [driversContentHeight, setDriversContentHeight] = useState(0);
-  const [driversListHeight, setDriversListHeight] = useState(0);
-  const [vehiclesContentHeight, setVehiclesContentHeight] = useState(0);
-  const [vehiclesListHeight, setVehiclesListHeight] = useState(0);
-
-  const canCollapse = useMemo(
-    () => ({
-      drivers: driversContentHeight - driversListHeight > HERO_TRAVEL + 48,
-      vehicles: vehiclesContentHeight - vehiclesListHeight > HERO_TRAVEL + 48,
-    }),
-    [driversContentHeight, driversListHeight, vehiclesContentHeight, vehiclesListHeight]
-  );
-  const canCollapseRef = useRef(canCollapse);
-  useEffect(() => {
-    canCollapseRef.current = canCollapse;
-  }, [canCollapse]);
-
   const [driversHeroAnim] = useState(() => new Animated.Value(0));
   const [vehiclesHeroAnim] = useState(() => new Animated.Value(0));
   const activeHeroAnim = mode === 'drivers' ? driversHeroAnim : vehiclesHeroAnim;
@@ -470,13 +449,9 @@ export default function FleetScreen() {
     const previousOffset = lastScrollOffset.current[listMode];
     lastScrollOffset.current[listMode] = offset;
 
-    if (canCollapseRef.current[listMode]) {
-      const wasCollapsed = heroCollapsed.current[listMode];
-      const threshold = wasCollapsed ? 8 : 28;
-      setHeroCollapsed(listMode, offset > threshold);
-    } else if (heroCollapsed.current[listMode]) {
-      setHeroCollapsed(listMode, false);
-    }
+    const wasCollapsed = heroCollapsed.current[listMode];
+    const threshold = wasCollapsed ? 8 : 28;
+    setHeroCollapsed(listMode, offset > threshold);
 
     if (offset <= DOCK_SCROLL_THRESHOLD) {
       scrollDistance.current[listMode] = 0;
@@ -640,13 +615,6 @@ export default function FleetScreen() {
             keyExtractor={(entry, i) => (entry.kind === 'card' ? entry.item.id : `${entry.kind}-${i}`)}
             stickyHeaderIndices={[0]}
             onScroll={onDriversScroll}
-            onContentSizeChange={(_w, h) => {
-              setDriversContentHeight(h);
-            }}
-            onLayout={(e) => {
-              const height = e.nativeEvent.layout.height;
-              setDriversListHeight(height);
-            }}
             scrollEventThrottle={16}
             contentContainerStyle={[
               sheetStyles.list,
@@ -724,13 +692,6 @@ export default function FleetScreen() {
             keyExtractor={(entry, i) => (entry.kind === 'card' ? entry.item.id : `${entry.kind}-${i}`)}
             stickyHeaderIndices={[0]}
             onScroll={onVehiclesScroll}
-            onContentSizeChange={(_w, h) => {
-              setVehiclesContentHeight(h);
-            }}
-            onLayout={(e) => {
-              const height = e.nativeEvent.layout.height;
-              setVehiclesListHeight(height);
-            }}
             scrollEventThrottle={16}
             contentContainerStyle={[
               sheetStyles.list,
@@ -819,10 +780,7 @@ const sheetStyles = StyleSheet.create({
   },
   // Without an explicit flex here the list (a ScrollView under the hood)
   // sizes itself to its content instead of stretching to sheetInner's
-  // actual height — which made onLayout report ~contentHeight, so
-  // driversListHeight/vehiclesListHeight ended up ~= content height and
-  // canCollapse (see FleetScreen) was always false, permanently locking
-  // the hero expanded.
+  // actual height, breaking scrolling for short lists.
   flatList: { flex: 1 },
   list: { gap: SPACING.md },
 

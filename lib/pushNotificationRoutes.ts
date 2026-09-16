@@ -7,7 +7,7 @@ export type PushNotificationData = {
 export function routeForPushNotification(
   role: UserRole,
   data: PushNotificationData,
-): 'Notifications' | 'DriverSigningDocuments' | 'DriverVehicle' | 'DriverProfile' | 'AdminDocumentSigning' {
+): 'Notifications' | 'DriverSigningDocuments' | 'DriverVehicle' | 'DriverProfile' {
   const type = data.notificationType;
 
   if (role === 'driver') {
@@ -19,6 +19,5 @@ export function routeForPushNotification(
     return 'Notifications';
   }
 
-  if (type === 'signature_request_assigned') return 'AdminDocumentSigning';
   return 'Notifications';
 }

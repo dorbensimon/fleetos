@@ -132,12 +132,11 @@ export default function NotificationsScreen({ navigation }: Props) {
   const targetForAdminNotification = (
     n: Notification
   ):
-    | { screen: 'AdminDocumentSigning' }
     | { screen: 'AdminHome' }
     | { screen: 'DriverPersonalDetails'; driverId: string }
     | { screen: 'DriverDetail'; driverId: string }
     | null => {
-    if (n.notification_type === 'signature_request_assigned') return { screen: 'AdminDocumentSigning' };
+    if (n.notification_type === 'signature_request_assigned' && n.recipient_id) return { screen: 'DriverDetail', driverId: n.recipient_id };
     if (
       (n.notification_type === 'driver_profile_update'
         || n.notification_type?.startsWith('driver_document_')

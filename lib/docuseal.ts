@@ -10,7 +10,8 @@ import { downloadRemoteFileOnWeb, readBlobUrlAsBase64 } from './webDownload';
 
 export type SigningTemplate = {
   id: string;
-  company_id: string;
+  /** null means an Owner-managed template shared by every company. */
+  company_id: string | null;
   title: string;
   source_file_path: string | null;
   source_file_name: string | null;
@@ -30,6 +31,9 @@ export type SignatureRequest = {
   created_at: string;
   archived_at?: string | null;
   deleted_at?: string | null;
+  sent_at?: string | null;
+  expires_at?: string | null;
+  docuseal_submitter_slug?: string | null;
   template_title?: string | null;
   failure_reason?: string | null;
   email_reminder_count?: number;
@@ -37,6 +41,7 @@ export type SignatureRequest = {
   next_email_reminder_at?: string | null;
   template?: { title: string } | null;
   driverName?: string | null;
+  companyName?: string | null;
 };
 
 export type CompanySigningSettings = {
@@ -265,14 +270,29 @@ export async function finalizeSigningTemplate(companyId: string, templateId: str
   return invoke<{ success: boolean }>('finalize-signing-template', { companyId, templateId });
 }
 
-/** Links templates built directly in the DocuSeal dashboard, inside the company's folder, to the company. */
-export async function importDocusealTemplates(companyId: string) {
-  return invoke<{ imported: number }>('import-docuseal-templates', { companyId });
+/** Owner-only: pulls in templates built directly in the DocuSeal dashboard's "FleetOS-Global" folder, and removes ones deleted there. */
+export async function syncGlobalSigningTemplates() {
+  return invoke<{ imported: number; deleted: number }>('import-docuseal-templates', {});
 }
 
+// Every template is global (company_id is null) and shared by every
+// company, so "my company's templates" really means "every ready template".
 export async function listSigningTemplates(companyId: string, includeArchived = false): Promise<SigningTemplate[]> {
   let query = supabase.from('signing_templates').select('*')
-    .eq('company_id', companyId).eq('status', 'ready').order('created_at', { ascending: false });
+    .or(`company_id.eq.${companyId},company_id.is.null`)
+    .eq('status', 'ready')
+    .order('created_at', { ascending: false });
+  query = includeArchived ? query.not('archived_at', 'is', null) : query.is('archived_at', null);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []) as SigningTemplate[];
+}
+
+// Owner-only screen: every template (global rows only exist now), archived or not.
+export async function listGlobalSigningTemplates(includeArchived = false): Promise<SigningTemplate[]> {
+  let query = supabase.from('signing_templates').select('*')
+    .is('company_id', null)
+    .order('created_at', { ascending: false });
   query = includeArchived ? query.not('archived_at', 'is', null) : query.is('archived_at', null);
   const { data, error } = await query;
   if (error) throw error;
@@ -314,7 +334,7 @@ export async function downloadSignedRequest(request: SignatureRequest): Promise<
     throw new Error('המסמך החתום עדיין לא זמין להורדה');
   }
 
-  const fileName = safeFileName(`${request.template?.title || request.template_title || 'signed-document'}.pdf`, 'signed-document.pdf');
+  const fileName = safeFileName(`${request.template_title || request.template?.title || 'signed-document'}.pdf`, 'signed-document.pdf');
   if (await downloadRemoteFileOnWeb(session.src, fileName)) return;
 
   const response = await fetch(session.src);
@@ -349,6 +369,34 @@ export async function listSignatureRequests(companyId?: string, includeArchived 
   return withDriverNames(requests);
 }
 
+/** Owner-only control-room query. Keeps company and driver context next to each
+ * request, so an Owner never has to infer a document's tenant from its title. */
+export async function listAllSignatureRequests(): Promise<SignatureRequest[]> {
+  const { data, error } = await supabase.from('signature_requests')
+    .select('*, template:signing_templates(title)')
+    .is('deleted_at', null)
+    .is('archived_at', null)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  const requests = (data || []) as unknown as SignatureRequest[];
+  if (!requests.length) return requests;
+  const driverIds = [...new Set(requests.map((item) => item.driver_id))];
+  const companyIds = [...new Set(requests.map((item) => item.company_id))];
+  const [{ data: profiles, error: profilesError }, { data: companies, error: companiesError }] = await Promise.all([
+    supabase.from('profiles').select('id, full_name').in('id', driverIds),
+    supabase.from('companies').select('id, name').in('id', companyIds),
+  ]);
+  if (profilesError || companiesError) throw profilesError || companiesError;
+  const names = new Map((profiles || []).map((profile) => [profile.id, profile.full_name]));
+  const companyNames = new Map((companies || []).map((company) => [company.id, company.name]));
+  return requests.map((item) => ({
+    ...item,
+    driverName: names.get(item.driver_id) || null,
+    companyName: companyNames.get(item.company_id) || null,
+  }));
+}
+
 // Signed documents an admin cleared out of the archive. They are hidden from
 // every other list, and this is the only place they can still be reached.
 export async function listRemovedSignatureRequests(companyId: string): Promise<SignatureRequest[]> {
@@ -365,6 +413,20 @@ export async function assignSigningTemplate(companyId: string, templateId: strin
   return invoke<{ success: boolean; created: number; failed: string[]; message?: string }>('assign-signing-template', {
     companyId, templateId, driverIds,
   });
+}
+
+export async function listDriverSigningRequests(driverId: string): Promise<SignatureRequest[]> {
+  const { data, error } = await supabase.from('signature_requests')
+    .select('*, template:signing_templates(title)')
+    .eq('driver_id', driverId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  // Preserve access to historical signed evidence, including the old archive.
+  return (data || []).filter((row) => row.status === 'completed' || (!row.archived_at && !row.deleted_at));
+}
+
+export async function renameSigningTemplate(templateId: string, title: string) {
+  return invoke<{ success: boolean }>('rename-signing-template', { templateId, title });
 }
 
 export async function getSigningSession(requestId: string): Promise<DocuSealSession> {
@@ -399,6 +461,9 @@ export async function updateCompanySigningSettings(companyId: string, settings: 
   });
 }
 
-export async function deleteSigningRecord(companyId: string, kind: 'template' | 'request', id: string, action: 'archive' | 'restore' | 'permanent-delete' = 'archive') {
-  return invoke<{ success: boolean }>('delete-signing-record', { companyId, kind, id, action });
+// companyId is required for a request (it always belongs to one company),
+// but meaningless for a template — every template is global and only the
+// owner may manage it, so callers acting on a template may omit it.
+export async function deleteSigningRecord(companyId: string | null, kind: 'template' | 'request', id: string, action: 'archive' | 'restore' | 'permanent-delete' = 'archive') {
+  return invoke<{ success: boolean; cleanupPending?: boolean }>('delete-signing-record', { companyId, kind, id, action });
 }

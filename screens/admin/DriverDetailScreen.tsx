@@ -16,6 +16,7 @@ import { RootStackParamList } from '../../navigation/types';
 import { DriverHero } from '../../components/driverCard/DriverHero';
 import { QuickActionCard } from '../../components/driverCard/QuickActionCard';
 import { ListGroup } from '../../components/driverCard/ListGroup';
+import { SigningFolders } from '../../components/driverCard/SigningFolders';
 import { DC_COLORS, DC_SPACING, DC_TYPO } from '../../components/driverCard/driverCardTheme';
 import {
   DRIVER_CARD_GROUPS,
@@ -308,7 +309,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   const licenseExpired = !!driver?.license_expiry && driver.license_expiry < new Date().toISOString().slice(0, 10);
   const licenseStatus: 'expired' | 'verified' | 'pending' =
     licenseExpired ? 'expired' : licensePhotosComplete && !!driver?.license_expiry ? 'verified' : 'pending';
-  const groups = buildDriverDetailGroups(driver, licenseStatus, pendingSigningCount);
+  const groups = buildDriverDetailGroups(driver, licenseStatus, pendingSigningCount).map(group => ({ ...group, rows: group.rows.filter(row => row.key !== 'signing-documents') }));
 
   if (loading) {
     return (
@@ -395,6 +396,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
           ))}
         </View>
 
+        <SigningFolders driverId={driverId} onOpen={folder => navigation.navigate('DriverSigningDocuments', { driverId, folderId: folder.id })} />
         {groups.map((group) => (
           <ListGroup key={group.title} group={group} onRowPress={handleRowPress} />
         ))}

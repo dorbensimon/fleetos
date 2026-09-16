@@ -273,10 +273,16 @@ export default function OwnerHomeScreen({ navigation }: Props) {
             </TouchableOpacity>
           ))}
         </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.7}>
-          <Ionicons name="log-out-outline" size={14} color={COLORS.red} />
-          <Text style={styles.logoutButtonText}>התנתקות</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActionsRow}>
+          <TouchableOpacity style={styles.templatesButton} onPress={() => navigation.navigate('GlobalSigningTemplates')} activeOpacity={0.7}>
+            <Ionicons name="document-text-outline" size={14} color={COLORS.blue} />
+            <Text style={styles.templatesButtonText}>תבניות חתימה</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.7}>
+            <Ionicons name="log-out-outline" size={14} color={COLORS.red} />
+            <Text style={styles.logoutButtonText}>התנתקות</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
@@ -403,6 +409,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   filterChipsRow: { flexDirection: 'row-reverse', gap: 8 },
+  headerActionsRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   logoutButton: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -415,6 +422,18 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   logoutButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.red },
+  templatesButton: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+    height: 32,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#D6E6ED',
+    backgroundColor: COLORS.white,
+  },
+  templatesButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.blue },
   filterChip: {
     paddingHorizontal: 14,
     height: 32,

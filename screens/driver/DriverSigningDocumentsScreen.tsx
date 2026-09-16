@@ -6,132 +6,113 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppText, Card, EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { DriverDossierHero } from '../../components/driverCard/DriverDossierHero';
+import { SigningFolders } from '../../components/driverCard/SigningFolders';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getSigningSession, listSignatureRequests, syncSigningRequest, type SignatureRequest } from '../../lib/docuseal';
-import { defaultSigningTab, type SigningTab } from '../../lib/signingTabs';
-import { COLORS, RADIUS, SPACING } from '../../lib/theme';
+import { assignSigningTemplate, getSigningSession, listDriverSigningRequests, listSigningTemplates, syncSigningRequest, type SignatureRequest } from '../../lib/docuseal';
+import { buildSigningFolders, type SigningFolder } from '../../lib/signingFolders';
+import { getDriver, type DriverRow } from '../../lib/adminApi';
+import { COLORS, SPACING, CONTENT_MAX_WIDTH } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import type { RootStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverSigningDocuments'>;
+const time = (date: string) => new Date(date).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
 
 export default function DriverSigningDocumentsScreen({ navigation, route }: Props) {
-  const { companyId, profile } = useCompany();
-  const managedDriverId = route.params?.driverId;
-  const isManagerView = profile?.role !== 'driver' && !!managedDriverId;
-  const [tab, setTab] = useState<SigningTab>('pending');
-  const [items, setItems] = useState<SignatureRequest[]>([]);
+  const { profile } = useCompany();
+  const driverId = profile?.role === 'driver' ? profile.id : route.params?.driverId;
+  const folderId = route.params?.folderId;
+  const [driver, setDriver] = useState<DriverRow | null>(null);
+  const [folder, setFolder] = useState<SigningFolder | null>(null);
   const [error, setError] = useState('');
   const [opening, setOpening] = useState('');
+  const [sending, setSending] = useState(false);
+  const sendingLock = useRef(false);
   const [loading, setLoading] = useState(true);
   const loadRequest = useRef(0);
   const insets = useSafeAreaInsets();
-
+  const canSend = !!driver && (profile?.role === 'owner' || (profile?.role === 'admin' && profile.company_id === driver.company_id));
   const load = useCallback(async () => {
-    const requestId = ++loadRequest.current;
-    setLoading(true);
+    const generation = ++loadRequest.current;
+    if (!driverId) { setError('יש לפתוח את המסמך מתוך פרופיל נהג'); setLoading(false); return; }
     try {
-      let rows = await listSignatureRequests(isManagerView ? companyId ?? undefined : undefined);
-      if (managedDriverId) rows = rows.filter((item) => item.driver_id === managedDriverId);
-      const requestsToSync = rows.filter((item) => item.status === 'pending' || (item.status === 'completed' && !item.signed_file_path));
-      if (requestsToSync.length) {
-        await Promise.allSettled(requestsToSync.map((item) => syncSigningRequest(item.id)));
-        rows = await listSignatureRequests(isManagerView ? companyId ?? undefined : undefined);
-        if (managedDriverId) rows = rows.filter((item) => item.driver_id === managedDriverId);
-      }
-      if (requestId !== loadRequest.current) return;
-      setItems(rows);
-      setTab(defaultSigningTab(rows));
-      setError('');
-    } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message || 'טעינת המסמכים נכשלה');
-    } finally {
-      if (requestId === loadRequest.current) setLoading(false);
-    }
-  }, [companyId, isManagerView, managedDriverId]);
-
+      const target = await getDriver(driverId);
+      if (!target?.company_id) throw new Error('הנהג לא נמצא');
+      const [templates, initial] = await Promise.all([listSigningTemplates(target.company_id), listDriverSigningRequests(driverId)]);
+      const toSync = initial.filter(item => (item.status === 'pending' && item.docuseal_submitter_slug) || (item.status === 'completed' && !item.signed_file_path));
+      const results = await Promise.allSettled(toSync.map(item => syncSigningRequest(item.id)));
+      const requests = toSync.length ? await listDriverSigningRequests(driverId) : initial;
+      if (generation !== loadRequest.current) return;
+      setDriver(target);
+      setFolder(buildSigningFolders(templates, requests).find(item => item.id === folderId) || null);
+      setError(results.some(result => result.status === 'rejected') ? 'לא ניתן לעדכן כרגע את כל מצבי החתימה. מוצג המידע האחרון שנשמר.' : '');
+    } catch (err: any) { if (generation === loadRequest.current) setError(err?.message || 'טעינת המסמכים נכשלה'); }
+    finally { if (generation === loadRequest.current) setLoading(false); }
+  }, [driverId, folderId]);
   useFocusEffect(useCallback(() => {
-    load();
-    return () => { loadRequest.current += 1; };
+    setLoading(true); load();
+    const interval = setInterval(load, 60_000);
+    return () => { loadRequest.current += 1; clearInterval(interval); };
   }, [load]));
-
   const open = async (item: SignatureRequest) => {
     setOpening(item.id);
     try {
       const session = await getSigningSession(item.id);
-      navigation.navigate('DocusealWebView', {
-        ...session,
-        title: item.status === 'completed' ? 'מסמך חתום' : 'חתימה על מסמך',
-        requestId: item.id,
-      });
+      navigation.navigate('DocusealWebView', { ...session, title: item.template_title || folder?.title || 'מסמך', requestId: item.id });
     } catch (err: any) { setError(err?.message || 'פתיחת המסמך נכשלה'); }
     finally { setOpening(''); }
   };
-
-  const visible = items
-    .filter((item) => tab === 'completed' ? item.status === 'completed' : ['pending', 'declined'].includes(item.status))
-    .sort((a, b) => {
-      const aDate = tab === 'completed' ? (a.completed_at ?? a.created_at) : a.created_at;
-      const bDate = tab === 'completed' ? (b.completed_at ?? b.created_at) : b.created_at;
-      return new Date(bDate).getTime() - new Date(aDate).getTime();
-    });
-
-  return (
-    <Screen style={styles.screen}>
-      <AdminGradientBackground />
-      <DriverDossierHero title={isManagerView ? 'מסמכי הנהג לחתימה' : 'מסמכים לחתימה'} subtitle={`${items.length} מסמכים`} icon="create-outline" insetTop={insets.top} onBack={() => navigation.goBack()} />
-      <View style={styles.tabs}>
-        {(['pending', 'completed'] as const).map((value) => (
-          <TouchableOpacity key={value} style={[styles.tab, tab === value && styles.active]} onPress={() => setTab(value)}>
-            <AppText weight="bold" style={{ color: tab === value ? COLORS.accent : COLORS.textMuted }}>
-              {value === 'pending' ? 'ממתינים לחתימה' : 'מסמכים חתומים'}
-            </AppText>
-          </TouchableOpacity>
-        ))}
-      </View>
-      {loading ? <LoadingState /> : error && items.length === 0 ? <ErrorState message={error} onRetry={load} /> : <ScrollView contentContainerStyle={styles.content}>
-        {!!error && <AppText style={styles.error}>{error}</AppText>}
-        {visible.map((item) => (
-          <TouchableOpacity key={item.id} disabled={opening === item.id} onPress={() => open(item)}>
+  const send = async () => {
+    if (!canSend || !driver?.company_id || !folder?.template || sendingLock.current) return;
+    sendingLock.current = true; setSending(true); setError('');
+    try {
+      const result = await assignSigningTemplate(driver.company_id, folder.template.id, [driver.id]);
+      await load();
+      if (!result.success || result.created !== 1) setError(result.message || 'השליחה לא אושרה. נסה שוב.');
+    } catch (err: any) { setError(err?.message || 'השליחה נכשלה. נסה שוב.'); }
+    finally { sendingLock.current = false; setSending(false); }
+  };
+  const pending = folder?.requests.find(item => item.status === 'pending' && !!item.docuseal_submitter_slug);
+  const completed = folder?.requests.find(item => item.status === 'completed');
+  return <Screen style={styles.screen}>
+    <AdminGradientBackground />
+    <DriverDossierHero title={folder?.title || 'טפסים ומסמכים'} subtitle={driver?.full_name || ''} icon="folder-outline" insetTop={insets.top} onBack={() => navigation.goBack()} />
+    {loading ? <LoadingState /> : !driver ? <ErrorState message={error || 'הנהג לא נמצא'} onRetry={load} /> : <ScrollView contentContainerStyle={styles.content}>
+      {!!error && <AppText style={styles.error}>{error}</AppText>}
+      {!folderId ? <SigningFolders driverId={driver.id} onOpen={item => navigation.push('DriverSigningDocuments', { driverId: driver.id, folderId: item.id })} /> : !folder ? <EmptyState title="התיקייה אינה זמינה" /> : <>
+        {canSend && folder.template && <TouchableOpacity accessibilityRole="button" disabled={sending || !!pending} onPress={() => completed ? open(completed) : send()} style={[styles.send, (sending || !!pending) && styles.disabled]}>
+          <Ionicons name={completed && !pending ? 'document-text-outline' : 'send-outline'} size={18} color={COLORS.accent} />
+          <AppText weight="bold" style={styles.sendText}>{sending ? 'שולח…' : pending ? 'נשלח — ממתין לחתימה' : completed ? 'צפייה במסמך' : `שלח ${folder.title} לחתימה`}</AppText>
+        </TouchableOpacity>}
+        {folder.requests.map(item => {
+          const ready = item.status === 'pending' && !!item.docuseal_submitter_slug;
+          const expired = ready && !!item.expires_at && Date.parse(item.expires_at) <= Date.now();
+          const openable = item.status === 'completed' || (ready && !expired && profile?.role === 'driver');
+          return <TouchableOpacity key={item.id} accessibilityRole="button" disabled={opening === item.id || !openable} onPress={() => open(item)}>
             <Card style={styles.card}>
-              <View style={[styles.icon, item.status === 'completed' && styles.doneIcon]}>
-                <Ionicons name={item.status === 'completed' ? 'checkmark' : 'create-outline'} size={22} color={item.status === 'completed' ? COLORS.okText : COLORS.accent} />
-              </View>
+              <Ionicons name={item.status === 'completed' ? 'checkmark-circle' : ready ? 'time-outline' : 'alert-circle-outline'} size={24} color={item.status === 'completed' ? COLORS.okText : ready ? COLORS.accent : COLORS.dangerText} />
               <View style={styles.text}>
-                <AppText weight="bold">{item.template?.title || item.template_title || 'מסמך לחתימה'}</AppText>
-                <AppText style={styles.meta}>
-                  {item.status === 'completed'
-                    ? `נחתם ${new Date(item.completed_at ?? item.created_at).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
-                    : item.status === 'declined' ? 'החתימה נדחתה'
-                    : `נשלח ${new Date(item.created_at).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })}`}
-                </AppText>
-                {item.status === 'completed' && (
-                  <View style={styles.docusealBadge}>
-                    <Ionicons name="shield-checkmark-outline" size={13} color={COLORS.okText} />
-                    <AppText style={styles.docusealBadgeText}>חתום דיגיטלית · DocuSeal</AppText>
-                  </View>
-                )}
+                <AppText weight="bold">{item.template_title || folder.title}</AppText>
+                <AppText style={styles.meta}>{item.status === 'completed' ? `נחתם ${time(item.completed_at || item.created_at)}` : ready ? `נשלח ${time(item.sent_at || item.created_at)}` : item.status === 'declined' ? 'החתימה נדחתה' : 'השליחה לא אושרה — ניתן לנסות שוב'}</AppText>
+                {ready && item.expires_at && <AppText style={styles.meta}>{expired ? 'זמן החתימה הסתיים — ממתין לניקוי' : `ניתן לחתום עד ${time(item.expires_at)}`}</AppText>}
+                {openable && <AppText style={styles.link}>{item.status === 'completed' ? 'צפייה במסמך' : 'חתימה על המסמך'}</AppText>}
               </View>
-              <Ionicons name="chevron-back" size={18} color={COLORS.textFaint} />
+              {openable && <Ionicons name="chevron-back" size={18} color={COLORS.textFaint} />}
             </Card>
-          </TouchableOpacity>
-        ))}
-        {!visible.length && <EmptyState icon="document-text-outline" title={tab === 'completed' ? 'אין מסמכים חתומים' : 'אין מסמכים שממתינים לחתימה'} />}
-      </ScrollView>}
-    </Screen>
-  );
+          </TouchableOpacity>;
+        })}
+        {!folder.requests.length && <EmptyState icon="folder-outline" title="התיקייה ריקה" />}
+      </>}
+    </ScrollView>}
+  </Screen>;
 }
-
 const styles = StyleSheet.create({
-  screen: { backgroundColor: '#F1F4F7' },
-  tabs: { flexDirection: 'row-reverse', margin: SPACING.lg, marginBottom: 0, padding: 4, borderRadius: RADIUS.md, backgroundColor: COLORS.neutralBg },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: RADIUS.sm },
-  active: { backgroundColor: COLORS.card }, content: { padding: SPACING.lg, gap: SPACING.md },
+  screen: { backgroundColor: COLORS.screen },
+  content: { padding: SPACING.lg, gap: SPACING.md, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   card: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.md, padding: SPACING.md },
-  icon: { width: 43, height: 43, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.accentSoft },
-  doneIcon: { backgroundColor: COLORS.okBg }, text: { flex: 1, alignItems: 'flex-end' },
-  meta: { fontSize: 12.5, color: COLORS.textMuted, marginTop: 3 },
-  docusealBadge: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, marginTop: 6, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 9, backgroundColor: COLORS.okBg },
-  docusealBadgeText: { fontSize: 11.5, color: COLORS.okText },
-  error: { color: COLORS.dangerText, textAlign: 'center' },
+  text: { flex: 1, alignItems: 'flex-end' },
+  meta: { fontSize: 12.5, color: COLORS.textMuted, marginTop: 3, textAlign: 'right' },
+  link: { color: COLORS.accent, marginTop: 8 }, error: { color: COLORS.dangerText, textAlign: 'center' },
+  send: { padding: SPACING.md, backgroundColor: COLORS.accentSoft, borderRadius: 12, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  sendText: { color: COLORS.accent }, disabled: { opacity: 0.55 },
 });

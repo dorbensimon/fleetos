@@ -22,10 +22,11 @@ Deno.serve(async (req) => {
 
     const { data: request } = await user.adminClient
       .from('signature_requests')
-      .select('id, company_id, driver_id, docuseal_submitter_id, status, archived_at, next_email_reminder_at')
+      .select('id, company_id, driver_id, docuseal_submitter_id, status, archived_at, expires_at, next_email_reminder_at')
       .eq('id', requestId)
       .single();
     if (!request || request.archived_at) return json({ error: 'בקשת החתימה לא נמצאה' }, 404);
+    if (request.expires_at && Date.parse(request.expires_at) <= Date.now()) return json({ error: 'זמן החתימה הסתיים' }, 410);
 
     const allowed = user.profile.role === 'owner' || user.profile.company_id === request.company_id;
     if (!allowed) return json({ error: 'אין הרשאה לבקשה זו' }, 403);

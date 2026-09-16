@@ -3,6 +3,11 @@ import { docusealFetch } from '../_shared/docuseal.ts';
 import { isSigningTemplateSourcePath } from '../_shared/signingPaths.ts';
 import { verifyUser } from '../_shared/verifyUser.ts';
 
+// Matches the sentinel used for global templates' storage paths (see
+// import-docuseal-templates) — storage policies require a uuid-shaped first
+// path segment, so global rows have no real company to key their files by.
+const GLOBAL_COMPANY_SENTINEL = '00000000-0000-0000-0000-000000000000';
+
 type DocuSealTemplate = {
   fields?: Array<{
     name?: string;
@@ -28,15 +33,20 @@ Deno.serve(async (req) => {
     if (!user.ok) return json({ error: user.error }, user.status);
     if (user.profile.role !== 'admin' && user.profile.role !== 'owner') return json({ error: 'אין הרשאה לצפות בתבנית' }, 403);
 
+    // Admins may preview their own company's templates plus any global one
+    // (company_id is null); the owner may preview all of them.
     let templateQuery = user.adminClient
       .from('signing_templates')
       .select('id, company_id, docuseal_template_id, source_file_path')
       .eq('id', templateId)
       .eq('status', 'ready')
       .is('archived_at', null);
-    if (user.profile.role === 'admin') templateQuery = templateQuery.eq('company_id', user.profile.company_id);
+    if (user.profile.role === 'admin') {
+      templateQuery = templateQuery.or(`company_id.eq.${user.profile.company_id},company_id.is.null`);
+    }
     const { data: template } = await templateQuery.single();
-    if (!template?.docuseal_template_id || !isSigningTemplateSourcePath(template.company_id, template.source_file_path)) {
+    const sourcePathCompanyId = template?.company_id ?? GLOBAL_COMPANY_SENTINEL;
+    if (!template?.docuseal_template_id || !isSigningTemplateSourcePath(sourcePathCompanyId, template.source_file_path)) {
       return json({ error: 'התבנית לא נמצאה' }, 404);
     }
 

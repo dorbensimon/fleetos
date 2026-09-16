@@ -1,6 +1,8 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { docusealFetch } from '../_shared/docuseal.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
+import { signingDeadline } from '../_shared/signingExpiry.ts';
+import { missingPrefill, type TemplateField } from '../_shared/signingPrefill.ts';
 
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -10,6 +12,8 @@ type DocuSealSubmitter = {
   id?: number;
   submission_id?: number;
   slug?: string;
+  sent_at?: string | null;
+  created_at?: string;
 };
 
 type CompanySigningSettings = {
@@ -37,19 +41,25 @@ Deno.serve(async (req) => {
     if (!access.ok) return json({ error: access.error }, access.status);
     if (access.callerRole !== 'admin' && access.callerRole !== 'owner') return json({ error: 'אין הרשאה לשלוח מסמכים' }, 403);
 
-    const ids = [...new Set(Array.isArray(driverIds) ? driverIds : [])].slice(0, 100);
-    if (!ids.length) return json({ error: 'יש לבחור לפחות נהג אחד' }, 400);
+    const ids = [...new Set(Array.isArray(driverIds) ? driverIds : [])];
+    if (ids.length !== 1 || typeof ids[0] !== 'string') return json({ error: 'ניתן לשלוח מסמך אחד לנהג אחד בלבד מתוך פרופיל הנהג' }, 400);
 
+    // A template is either scoped to this company or global (company_id
+    // is null), in which case every company may send it.
     const { data: template } = await access.adminClient
       .from('signing_templates')
       .select('id, company_id, title, docuseal_template_id, archived_at')
       .eq('id', templateId)
-      .eq('company_id', companyId)
       .eq('status', 'ready')
+      .or(`company_id.eq.${companyId},company_id.is.null`)
       .single();
     if (!template || template.archived_at || !template.docuseal_template_id) {
       return json({ error: 'התבנית אינה מוכנה לשליחה' }, 400);
     }
+    const templateResponse = await docusealFetch(`/templates/${template.docuseal_template_id}`);
+    if (!templateResponse.ok) return json({ error: 'לא ניתן לבדוק את שדות התבנית. נסה שוב.' }, 502);
+    const remoteTemplate = await templateResponse.json() as { fields?: TemplateField[]; submitters?: Array<{ name: string; uuid: string }> };
+    if (remoteTemplate.submitters?.length !== 1) return json({ error: 'התבנית חייבת להכיל חותם יחיד — נהג' }, 400);
 
     const { data: company } = await access.adminClient
       .from('companies')
@@ -59,18 +69,18 @@ Deno.serve(async (req) => {
 
     const { data: drivers } = await access.adminClient
       .from('profiles')
-      .select('id, full_name')
+      .select('id, full_name, phone')
       .in('id', ids)
       .eq('company_id', companyId)
       .eq('role', 'driver');
     if (!drivers?.length) return json({ error: 'לא נמצאו נהגים תקינים' }, 400);
     const { data: activeDetails } = await access.adminClient
       .from('driver_details')
-      .select('id')
+      .select('id, national_id, license_number, license_classes, license_expiry')
       .in('id', drivers.map((driver) => driver.id))
       .eq('company_id', companyId)
       .eq('status', 'active');
-    const activeDriverIds = new Set((activeDetails ?? []).map((detail) => detail.id));
+    const activeDriverDetails = new Map((activeDetails ?? []).map((detail) => [detail.id, detail]));
 
     const { data: actor } = await access.adminClient
       .from('profiles')
@@ -94,27 +104,40 @@ Deno.serve(async (req) => {
     let failureMessage = '';
 
     for (const driver of drivers) {
-      if (!activeDriverIds.has(driver.id)) {
+      const driverDetails = activeDriverDetails.get(driver.id);
+      if (!driverDetails) {
         failed.push(driver.id);
         failureMessage ||= 'לא ניתן לשלוח מסמך לנהג שאינו פעיל';
         continue;
       }
       const { data: authData } = await access.adminClient.auth.admin.getUserById(driver.id);
       const email = authData?.user?.email;
-      if (!email) {
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         failed.push(driver.id);
-        failureMessage ||= 'לנהג אין חשבון משתמש תקין';
+        failureMessage ||= 'יש לעדכן כתובת אימייל תקינה בפרופיל הנהג לפני השליחה';
         continue;
       }
+      const values = {
+        company_name: company?.name, driver_full_name: driver.full_name,
+        driver_phone: driver.phone, driver_national_id: driverDetails.national_id,
+        driver_license_number: driverDetails.license_number,
+        driver_license_classes: driverDetails.license_classes,
+        driver_license_expiry: driverDetails.license_expiry,
+      };
+      const missing = missingPrefill(remoteTemplate.fields || [], values);
+      if (!company?.name) missing.push('שם החברה');
+      if (!driver.full_name) missing.push('שם הנהג');
+      if (missing.length) { failed.push(driver.id); failureMessage ||= `יש להשלים לפני השליחה: ${[...new Set(missing)].join(', ')}`; continue; }
 
-      const { data: existing } = await access.adminClient
+      const { data: existing, error: existingError } = await access.adminClient
         .from('signature_requests')
-        .select('id, docuseal_submission_id, docuseal_submitter_id, docuseal_submitter_slug, provisioning_locked_until')
+        .select('id, docuseal_submission_id, docuseal_submitter_id, docuseal_submitter_slug, provisioning_locked_until, expires_at, expiry_locked_until')
         .eq('template_id', templateId)
         .eq('driver_id', driver.id)
         .eq('status', 'pending')
         .is('archived_at', null)
         .maybeSingle();
+      if (existingError) throw existingError;
       const provisioningLockUntil = new Date(Date.now() + PROVISIONING_LOCK_MINUTES * 60 * 1000).toISOString();
       let requestRow = existing;
       if (requestRow?.docuseal_submitter_id && requestRow.docuseal_submission_id && requestRow.docuseal_submitter_slug) {
@@ -123,6 +146,9 @@ Deno.serve(async (req) => {
         continue;
       }
       if (requestRow) {
+        if ((requestRow.expires_at && Date.parse(requestRow.expires_at) <= Date.now()) || (requestRow.expiry_locked_until && Date.parse(requestRow.expiry_locked_until) > Date.now())) {
+          failed.push(driver.id); failureMessage ||= 'הבקשה הקודמת הסתיימה וממתינה לניקוי. נסה שוב לאחר הניקוי.'; continue;
+        }
         const lockActive = requestRow.provisioning_locked_until
           && new Date(requestRow.provisioning_locked_until).getTime() > Date.now();
         if (lockActive) {
@@ -151,10 +177,12 @@ Deno.serve(async (req) => {
             template_id: templateId,
             driver_id: driver.id,
             created_by: access.callerId,
+            template_title: template.title,
+            expires_at: signingDeadline(new Date().toISOString()),
             next_email_reminder_at: initialReminderAt,
             provisioning_locked_until: provisioningLockUntil,
           })
-          .select('id, docuseal_submission_id, docuseal_submitter_id, docuseal_submitter_slug, provisioning_locked_until')
+          .select('id, docuseal_submission_id, docuseal_submitter_id, docuseal_submitter_slug, provisioning_locked_until, expires_at, expiry_locked_until')
           .single();
         requestRow = inserted;
         if (requestError || !requestRow) {
@@ -179,20 +207,25 @@ Deno.serve(async (req) => {
       }
 
       const sentDate = new Date().toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      let sentAt = submitter?.sent_at || submitter?.created_at || new Date().toISOString();
+      let expiresAt = signingDeadline(sentAt);
       const submissionName = [template.title, driver.full_name, sentDate].filter(Boolean).join(' - ');
       // Folder groups all of a driver's documents together: CompanyName / DriverName
       const folderName = [company?.name, driver.full_name].filter(Boolean).join('/');
-      const response = submitter ? null : await docusealFetch('/submissions', {
+      let response: Response | null;
+      try {
+      response = submitter ? null : await docusealFetch('/submissions', {
         method: 'POST',
         body: JSON.stringify({
           template_id: template.docuseal_template_id,
+          expire_at: expiresAt,
           // Name appears in DocuSeal dashboard and in the stored PDF filename.
           name: submissionName,
           ...(folderName ? { folder_name: folderName } : {}),
           // FleetOS uses email only. SMS is intentionally never requested.
           send_email: true,
           submitters: [{
-            role: 'Driver',
+            role: remoteTemplate.submitters[0].name,
             email,
             name: driver.full_name || undefined,
             external_id: requestRow.id,
@@ -200,12 +233,30 @@ Deno.serve(async (req) => {
             // Drivers sign directly in-app; DocuSeal's email/phone OTP step is redundant here.
             require_email_2fa: false,
             require_phone_2fa: false,
+            fields: Object.entries(values).filter(([, value]) => value != null && value !== '').map(([name, default_value]) => ({ name, default_value, readonly: true })),
+            // Global templates use these read-only text fields when relevant.
+            // Unknown names are intentionally ignored by DocuSeal, so a simple
+            // template can still use only company_name while health forms can
+            // merge the driver's official details into the same shared PDF.
+            values: {
+              ...(company?.name ? { company_name: company.name } : {}),
+              ...(driver.full_name ? { driver_full_name: driver.full_name } : {}),
+              ...(driver.phone ? { driver_phone: driver.phone } : {}),
+              ...(driverDetails.national_id ? { driver_national_id: driverDetails.national_id } : {}),
+              ...(driverDetails.license_number ? { driver_license_number: driverDetails.license_number } : {}),
+              ...(driverDetails.license_classes ? { driver_license_classes: driverDetails.license_classes } : {}),
+              ...(driverDetails.license_expiry ? { driver_license_expiry: driverDetails.license_expiry } : {}),
+            },
           }],
         }),
       });
+      } catch {
+        await access.adminClient.from('signature_requests').update({ provisioning_locked_until: null, failure_reason: 'Submission response unavailable' }).eq('id', requestRow.id).eq('status', 'pending');
+        failed.push(driver.id); failureMessage ||= 'השליחה לא אושרה. נסה שוב כדי לבדוק את הבקשה הקיימת.'; continue;
+      }
       if (response && !response.ok) {
         await access.adminClient.from('signature_requests').update({
-          status: 'failed', failed_at: new Date().toISOString(), failure_reason: 'DocuSeal rejected the submission request', provisioning_locked_until: null,
+          status: response.status >= 500 ? 'pending' : 'failed', failed_at: new Date().toISOString(), failure_reason: 'DocuSeal rejected the submission request', provisioning_locked_until: null,
         }).eq('id', requestRow.id);
         failed.push(driver.id);
         failureMessage ||= 'DocuSeal דחו את יצירת בקשת החתימה';
@@ -227,8 +278,25 @@ Deno.serve(async (req) => {
         failureMessage ||= 'DocuSeal לא החזיר קישור חתימה תקין';
         continue;
       }
+      const providerSentAt = submitter.sent_at || submitter.created_at;
+      if (providerSentAt && Number.isFinite(Date.parse(providerSentAt))) {
+        sentAt = new Date(providerSentAt).toISOString();
+        expiresAt = signingDeadline(sentAt);
+      }
+
+      // Recovered requests may predate the deadline field. Confirm the
+      // provider actually enforces the same deadline before exposing the link.
+      const expiryResponse = await docusealFetch(`/submissions/${submitter.submission_id}`, {
+        method: 'PUT', body: JSON.stringify({ expire_at: expiresAt }),
+      });
+      if (!expiryResponse.ok) {
+        await access.adminClient.from('signature_requests').update({ provisioning_locked_until: null, failure_reason: 'Unable to confirm expiration' }).eq('id', requestRow.id).eq('status', 'pending');
+        failed.push(driver.id); failureMessage ||= 'הבקשה נוצרה אך אימות מועד הסיום נכשל. נסה שוב לסנכרון.'; continue;
+      }
 
       const { error: linkError } = await access.adminClient.from('signature_requests').update({
+        sent_at: sentAt,
+        expires_at: expiresAt,
         docuseal_submission_id: submitter.submission_id,
         docuseal_submitter_id: submitter.id,
         docuseal_submitter_slug: submitter.slug,
@@ -252,6 +320,7 @@ Deno.serve(async (req) => {
         recipient_id: driver.id,
         message: `נשלח אליך מסמך חדש לחתימה: ${template.title}`,
         notification_type: 'signature_request_assigned',
+        signature_request_id: requestRow.id,
       });
       if (notificationError) console.error('failed to create signing notification');
       created += 1;

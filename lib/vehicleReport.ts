@@ -1,6 +1,3 @@
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import { Platform } from 'react-native';
 import { Company } from './supabase';
 import { Vehicle, ComplianceItem, VehicleDriverWithProfile } from './adminApi';
 import { daysUntilExpiry, formatDate } from './theme';
@@ -19,7 +16,7 @@ import {
   remainingTone,
   worstTone,
 } from './fleetCardHelpers';
-import { buildReportDocument, emptyState, esc, statusTag, TagTone } from './reportTemplate';
+import { buildReportDocument, emptyState, esc, printOrShareReport, statusTag, TagTone } from './reportTemplate';
 
 export type VehicleReportCategory = 'all' | 'insurance' | 'test' | 'service' | 'issues';
 
@@ -209,18 +206,5 @@ export async function exportVehiclesReport(
   const summaries = activeVehicles.map((v) => summarize(v, compliance, vehicleDrivers));
   const filtered = filterVehicles(summaries, category);
   const html = buildHtml(company, filtered, category);
-
-  const { uri } = await Print.printToFileAsync({ html, base64: false });
-
-  // Web opens a print dialog and does not create a shareable local file URI.
-  if (Platform.OS === 'web') return;
-
-  const canShare = await Sharing.isAvailableAsync();
-  if (canShare) {
-    await Sharing.shareAsync(uri, {
-      mimeType: 'application/pdf',
-      dialogTitle: CATEGORY_TITLES[category],
-      UTI: 'com.adobe.pdf',
-    });
-  }
+  await printOrShareReport(html, CATEGORY_TITLES[category]);
 }

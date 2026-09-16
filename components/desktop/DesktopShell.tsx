@@ -11,7 +11,6 @@ import {
   markAllNotificationsRead,
   Notification,
 } from '../../lib/adminApi';
-import { listSignatureRequests } from '../../lib/docuseal';
 import { supabase } from '../../lib/supabase';
 import { showAlert } from '../../lib/platformAlert';
 import { formatDateTime } from '../../lib/theme';
@@ -61,7 +60,6 @@ export function DesktopShell({
   const isAdmin = profile?.role === 'admin';
 
   const [attentionCount, setAttentionCount] = useState(0);
-  const [pendingSigningCount, setPendingSigningCount] = useState(0);
   const [unread, setUnread] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -76,11 +74,6 @@ export function DesktopShell({
     getAttentionSummary(companyId)
       .then((summary) => {
         if (!cancelled) setAttentionCount(Object.values(summary).reduce((sum, n) => sum + n, 0));
-      })
-      .catch(() => undefined);
-    listSignatureRequests(companyId)
-      .then((requests) => {
-        if (!cancelled) setPendingSigningCount(requests.filter((r) => r.status === 'pending').length);
       })
       .catch(() => undefined);
     return () => { cancelled = true; };
@@ -134,7 +127,6 @@ export function DesktopShell({
     ? [
         { key: 'AdminHome', label: 'צי נהגים ורכבים', icon: 'car-sport' },
         { key: 'Attention', label: 'דורש טיפול', icon: 'warning', badge: attentionCount },
-        { key: 'AdminDocumentSigning', label: 'מסמכים לחתימה', icon: 'document-text', badge: pendingSigningCount },
         { key: 'Reports', label: 'דוחות', icon: 'bar-chart' },
         { key: 'Departments', label: 'מחלקות', icon: 'grid' },
         { key: 'ActivityLog', label: 'יומן פעולות', icon: 'time' },

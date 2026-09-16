@@ -1,6 +1,5 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { View, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen, AppText, BackButton } from '../components/ui';
@@ -10,7 +9,6 @@ import { MENU_CARD_SHADOW, MENU_COLORS, MENU_FONT, MENU_TYPO } from '../componen
 import { supabase } from '../lib/supabase';
 import { showAlert } from '../lib/platformAlert';
 import { useCompany } from '../lib/CompanyContext';
-import { listSignatureRequests } from '../lib/docuseal';
 import { RootStackParamList } from '../navigation/types';
 
 /**
@@ -28,7 +26,6 @@ type MenuItem = {
   key: keyof RootStackParamList;
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
-  badgeKey?: 'pendingSigning';
 };
 
 const DRIVER_ITEMS: MenuItem[] = [
@@ -46,7 +43,6 @@ const OWNER_ITEMS: MenuItem[] = [
 const ADMIN_ITEMS: MenuItem[] = [
   ...OWNER_ITEMS.slice(0, 2),
   { key: 'Reports', icon: 'document-text-outline', label: 'ייצוא דוחות' },
-  { key: 'AdminDocumentSigning', icon: 'document-text-outline', label: 'מסמכים לחתימה', badgeKey: 'pendingSigning' },
   OWNER_ITEMS[2],
 ];
 
@@ -57,9 +53,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export default function MenuScreen({ navigation }: Props) {
-  const { profile, companyId } = useCompany();
-  const [pendingSigningCount, setPendingSigningCount] = useState(0);
-  const isAdmin = profile?.role === 'admin';
+  const { profile } = useCompany();
 
   const items =
     profile?.role === 'driver'
@@ -94,21 +88,6 @@ export default function MenuScreen({ navigation }: Props) {
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!isAdmin || !companyId) return;
-      let cancelled = false;
-      listSignatureRequests(companyId)
-        .then((requests) => {
-          if (cancelled) return;
-          setPendingSigningCount(requests.filter((r) => r.status === 'pending').length);
-        })
-        .catch(() => {});
-      return () => {
-        cancelled = true;
-      };
-    }, [isAdmin, companyId])
-  );
 
   const completeLogout = async () => {
     try {
@@ -175,13 +154,6 @@ export default function MenuScreen({ navigation }: Props) {
               </AppText>
               <View style={styles.iconWrap}>
                 <Ionicons name={item.icon} size={22} color={MENU_COLORS.text} />
-                {item.badgeKey === 'pendingSigning' && pendingSigningCount > 0 && (
-                  <View style={styles.badge}>
-                    <AppText style={styles.badgeText} numberOfLines={1}>
-                      {pendingSigningCount > 99 ? '99+' : pendingSigningCount}
-                    </AppText>
-                  </View>
-                )}
               </View>
             </TouchableOpacity>
           ))}

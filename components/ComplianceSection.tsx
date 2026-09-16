@@ -71,7 +71,6 @@ export function ComplianceSection({
   const { showToast } = useToast();
   const [items, setItems] = useState<Map<string, ComplianceItem>>(new Map());
   const [docs, setDocs] = useState<DocumentRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [busyItem, setBusyItem] = useState<string | null>(null);
 
@@ -94,11 +93,11 @@ export function ComplianceSection({
 
   useEffect(() => {
     (async () => {
-      setLoading(true);
       try {
         await load();
-      } finally {
-        setLoading(false);
+      } catch {
+        // The folder structure is useful before its document counts arrive.
+        // Individual uploads and date saves still surface their own errors.
       }
     })();
   }, [load]);
@@ -175,14 +174,6 @@ export function ComplianceSection({
     if (!url) return;
     Linking.openURL(url);
   };
-
-  if (loading) {
-    return (
-      <Card>
-        <ActivityIndicator color={COLORS.accent} />
-      </Card>
-    );
-  }
 
   const hiddenItems = new Set(hiddenItemTypes);
   const groups = groupByCategory(complianceCatalog(ownerType))

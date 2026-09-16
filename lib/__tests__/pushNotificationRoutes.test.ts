@@ -11,10 +11,10 @@ describe('routeForPushNotification', () => {
       .toBe('DriverVehicle');
   });
 
-  it('keeps manager alerts in the notification inbox except signing', () => {
+  it('keeps manager alerts in the notification inbox without a generic signing page', () => {
     expect(routeForPushNotification('admin', { notificationType: 'driver_document_upload' }))
       .toBe('Notifications');
     expect(routeForPushNotification('admin', { notificationType: 'signature_request_assigned' }))
-      .toBe('AdminDocumentSigning');
+      .toBe('Notifications');
   });
 });

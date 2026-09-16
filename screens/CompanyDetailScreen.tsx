@@ -411,12 +411,12 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         />
 
         <View style={s.card}>
-          <TouchableOpacity style={s.sectionHeaderRow} onPress={() => navigation.navigate('AdminDocumentSigning', { companyId })}>
+          <TouchableOpacity style={s.sectionHeaderRow} onPress={() => navigation.navigate('GlobalSigningTemplates')}>
             <Ionicons name="chevron-back" size={20} color={COLORS.gray} />
-            <Text style={s.sectionTitle}>מסמכים לחתימה</Text>
+            <Text style={s.sectionTitle}>תבניות מסמכים</Text>
             <Ionicons name="document-text-outline" size={20} color={COLORS.blue} />
           </TouchableOpacity>
-          <Text style={s.emptyText}>ניהול תבניות, שליחה מרוכזת לנהגים ותזכורות במייל עבור חברה זו.</Text>
+          <Text style={s.emptyText}>ניהול התבניות המשותפות לכל החברות. שליחה לחתימה מתבצעת בתיקייה המתאימה בפרופיל הנהג.</Text>
         </View>
 
         <View style={s.card}>

@@ -8,6 +8,7 @@ import { AppText, BackButton, ErrorState, LoadingState } from '../../components/
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { DriverHero } from '../../components/driverCard/DriverHero';
 import { ListGroup } from '../../components/driverCard/ListGroup';
+import { SigningFolders } from '../../components/driverCard/SigningFolders';
 import { buildDriverDetailGroups } from '../../components/driverCard/buildDriverDetailGroups';
 import { DC_COLORS, DC_SPACING } from '../../components/driverCard/driverCardTheme';
 import type { DriverCardRow } from '../../components/driverCard/driverCardSections';
@@ -94,7 +95,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
     : licensePhotosComplete && !!driver?.license_expiry
     ? 'verified'
     : 'pending';
-  const groups = buildDriverDetailGroups(driver, licenseStatus, pendingSigningCount).filter(
+  const groups = buildDriverDetailGroups(driver, licenseStatus, pendingSigningCount).map(group => ({ ...group, rows: group.rows.filter(row => row.key !== 'signing-documents') })).filter(
     (group) => group.title !== 'דוחות' && group.title !== 'ניהול החשבון'
   );
 
@@ -164,6 +165,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
           statusColor={DC_COLORS.green}
           subtitleParts={['פעיל']}
         />
+        {!!profileId && <SigningFolders driverId={profileId} onOpen={folder => navigation.navigate('DriverSigningDocuments', { folderId: folder.id })} />}
         {groups.map((group) => (
           <ListGroup key={group.title} group={group} onRowPress={handleRowPress} />
         ))}
