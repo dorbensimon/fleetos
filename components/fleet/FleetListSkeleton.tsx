@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { RADIUS, SPACING } from '../../lib/theme';
-import { FLEET_COLORS, FLEET_SHADOWS } from './fleetTheme';
+import { FLEET_COLORS, FLEET_SHADOWS } from '../../lib/colors';
 
 const BONE_COLOR = FLEET_COLORS.divider;
 

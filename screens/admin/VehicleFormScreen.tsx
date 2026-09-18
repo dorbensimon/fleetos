@@ -37,6 +37,9 @@ import { formatPlate } from '../../lib/plate';
 import { RootStackParamList } from '../../navigation/types';
 import { dateOnlyIsoFromLocalDate, formatDateDots } from '../../lib/driverFormValidation';
 import { lookupVehicleRegistry, VehicleRegistryDetails } from '../../lib/vehicleRegistry';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { VehicleFormDesktopView } from '../../components/desktop/VehicleFormDesktopView';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleForm'>;
 type FormVehicleType = VehicleType | '';
@@ -179,6 +182,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   const { companyId } = useCompany();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
+  const isDesktop = useIsDesktop();
 
   const [form, setForm] = useState<FormState>(EMPTY);
   const [departments, setDepartments] = useState<{ value: string; label: string }[]>([]);
@@ -437,6 +441,13 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   };
 
   if (loading) {
+    if (isDesktop) {
+      return (
+        <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'רכבים', vehicleId ? 'עריכת רכב' : 'רכב חדש']}>
+          <LoadingState />
+        </DesktopShell>
+      );
+    }
     return (
       <View style={styles.screen}>
         <LinearGradient colors={ADMIN_BACKGROUND_COLORS} locations={ADMIN_BACKGROUND_LOCATIONS} style={styles.halo} />
@@ -458,6 +469,43 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   const heroTitle =
     [form.manufacturer, form.model].filter(Boolean).join(' ').trim() ||
     (form.plate_number ? formatPlate(form.plate_number) : 'רכב ללא זיהוי');
+
+  const remainingText = canSubmit
+    ? (isEdit ? 'השינויים יישמרו בתיק הרכב' : 'אחרי היצירה תוכל לשייך נהגים ומסמכים')
+    : remainingCount === 1 ? 'נותר שדה חובה אחד' : `נותרו ${remainingCount} שדות חובה`;
+
+  if (isDesktop) {
+    return (
+      <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'רכבים', screenTitle]}>
+        <VehicleFormDesktopView
+          isEdit={isEdit}
+          vehicleId={vehicleId}
+          form={form}
+          set={set}
+          errors={errors}
+          departments={departments}
+          vehicleTypeOptions={VEHICLE_TYPE_OPTIONS as unknown as { value: VehicleType; label: string; description: string }[]}
+          statusOptions={STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+          dealTypeOptions={DEAL_TYPE_OPTIONS}
+          monthOptions={MONTH_OPTIONS}
+          yearOptions={years}
+          drivers={drivers}
+          vehicleDrivers={vehicleDrivers}
+          onReloadVehicleDrivers={() => void reloadVehicleDrivers()}
+          onOpenRoadDatePicker={openRoadDatePicker}
+          onOpenLicenseExpiryPicker={openLicenseExpiryPicker}
+          onLookupVehicle={() => void lookupVehicle()}
+          lookupLoading={lookupLoading}
+          lookupMessage={lookupMessage}
+          canSubmit={canSubmit}
+          saving={saving}
+          ctaLabel={ctaLabel}
+          remainingText={remainingText}
+          onSave={() => void save()}
+        />
+      </DesktopShell>
+    );
+  }
 
   return (
     <View style={styles.screen}>

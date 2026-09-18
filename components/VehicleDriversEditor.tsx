@@ -4,6 +4,7 @@ import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, useToast } from './ui';
 import { Select } from './ui/Select';
+import { DesktopSelect } from './desktop/primitives';
 import { COLORS, RADIUS, SPACING } from '../lib/theme';
 import { formatPhone } from '../lib/phone';
 import {
@@ -15,8 +16,8 @@ import {
 } from '../lib/adminApi';
 
 /**
- * Up to 2 active driver assignments for one vehicle (primary + secondary),
- * with add/remove/promote actions — the one place this UI is built, reused
+ * Active driver assignments for one vehicle, with add/remove/promote actions
+ * — the one place this UI is built, reused
  * by both VehicleFormScreen (editing an existing vehicle) and
  * VehicleDetailScreen's "נהגים" tab, per the product decision that these
  * must be the same experience, not two separate implementations.
@@ -31,6 +32,7 @@ export function VehicleDriversEditor({
   driverOptions,
   onChanged,
   onOpenDriver,
+  desktop = false,
 }: {
   vehicleId: string;
   /** Active assignments for this vehicle, primary first. */
@@ -39,6 +41,8 @@ export function VehicleDriversEditor({
   driverOptions: { value: string; label: string }[];
   onChanged: () => void | Promise<void>;
   onOpenDriver?: (driverId: string) => void;
+  /** Use a compact desktop dropdown rather than the mobile bottom sheet. */
+  desktop?: boolean;
 }) {
   const { showToast } = useToast();
   const [addingDriverId, setAddingDriverId] = useState<string | null>(null);
@@ -46,7 +50,6 @@ export function VehicleDriversEditor({
 
   const assignedIds = new Set(assignments.map((a) => a.driver_id));
   const availableOptions = driverOptions.filter((d) => !assignedIds.has(d.value));
-  const canAddMore = assignments.length < 2;
 
   const addDriver = async () => {
     if (!addingDriverId) return;
@@ -104,7 +107,7 @@ export function VehicleDriversEditor({
   };
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, desktop && styles.desktopWrap]}>
       {assignments.length === 0 ? (
         <AppText style={styles.empty}>לא משויכים נהגים לרכב זה</AppText>
       ) : (
@@ -158,9 +161,17 @@ export function VehicleDriversEditor({
         ))
       )}
 
-      {canAddMore ? (
-        <View style={styles.addRow}>
-          <View style={styles.addSelect}>
+      <View style={[styles.addRow, desktop && styles.desktopAddRow]}>
+        <View style={[styles.addSelect, desktop && styles.desktopAddSelect]}>
+          {desktop ? (
+            <DesktopSelect
+              value={addingDriverId}
+              onChange={setAddingDriverId}
+              options={availableOptions}
+              placeholder={availableOptions.length ? 'הוסף נהג' : 'אין נהגים זמינים להוספה'}
+              allowClear
+            />
+          ) : (
             <Select
               value={addingDriverId}
               onChange={setAddingDriverId}
@@ -168,27 +179,26 @@ export function VehicleDriversEditor({
               placeholder={availableOptions.length ? 'הוסף נהג' : 'אין נהגים זמינים להוספה'}
               allowClear
             />
-          </View>
-          {!!addingDriverId && (
-            <TouchableOpacity
-              style={styles.addBtn}
-              onPress={addDriver}
-              disabled={busyId === '__new__'}
-              accessibilityLabel="אשר הוספת נהג"
-            >
-              <Ionicons name="checkmark" size={19} color={COLORS.textInverse} />
-            </TouchableOpacity>
           )}
         </View>
-      ) : (
-        <AppText style={styles.maxHint}>הגעת למספר הנהגים המרבי לרכב (2)</AppText>
-      )}
+        {!!addingDriverId && (
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={addDriver}
+            disabled={busyId === '__new__'}
+            accessibilityLabel="אשר הוספת נהג"
+          >
+            <Ionicons name="checkmark" size={19} color={COLORS.textInverse} />
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { gap: SPACING.sm },
+  desktopWrap: { maxWidth: 390, alignSelf: 'flex-end', width: '100%' },
   empty: { fontSize: 13, color: COLORS.textFaint, paddingVertical: SPACING.sm },
 
   row: {
@@ -216,6 +226,8 @@ const styles = StyleSheet.create({
 
   addRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.sm, paddingTop: SPACING.xs },
   addSelect: { flex: 1 },
+  desktopAddRow: { justifyContent: 'flex-start' },
+  desktopAddSelect: { flexGrow: 0, flexBasis: 255 },
   addBtn: {
     width: 44,
     height: 44,
@@ -224,5 +236,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  maxHint: { fontSize: 12, color: COLORS.textFaint, paddingTop: SPACING.xs },
 });

@@ -13,6 +13,10 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);
 
   try {
+    // Signing delivery is intentionally limited to the FleetOS app.
+    // Keep this endpoint non-delivering so a stale client cannot trigger mail.
+    return json({ error: 'תזכורות במייל כבויות. החתימה זמינה רק באפליקציה.' }, 409);
+    /*
     const { requestId } = await req.json();
     const user = await verifyUser(req.headers.get('Authorization'));
     if (!user.ok) return json({ error: user.error }, user.status);
@@ -22,11 +26,10 @@ Deno.serve(async (req) => {
 
     const { data: request } = await user.adminClient
       .from('signature_requests')
-      .select('id, company_id, driver_id, docuseal_submitter_id, status, archived_at, expires_at, next_email_reminder_at')
+      .select('id, company_id, driver_id, docuseal_submitter_id, status, archived_at, next_email_reminder_at')
       .eq('id', requestId)
       .single();
     if (!request || request.archived_at) return json({ error: 'בקשת החתימה לא נמצאה' }, 404);
-    if (request.expires_at && Date.parse(request.expires_at) <= Date.now()) return json({ error: 'זמן החתימה הסתיים' }, 410);
 
     const allowed = user.profile.role === 'owner' || user.profile.company_id === request.company_id;
     if (!allowed) return json({ error: 'אין הרשאה לבקשה זו' }, 403);
@@ -101,6 +104,7 @@ Deno.serve(async (req) => {
     }
 
     return json({ success: true, channel: 'email' });
+    */
   } catch (error) {
     console.error('resend-signing-request failed', error instanceof Error ? error.message : 'unknown');
     return json({ error: 'שליחת התזכורת נכשלה' }, 500);

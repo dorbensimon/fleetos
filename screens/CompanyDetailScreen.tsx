@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -36,6 +37,10 @@ import { EditUserModal, EditUserForm } from '../components/companyDetail/EditUse
 import { InfoSuccessModal } from '../components/companyDetail/InfoSuccessModal';
 import { ErrorState } from '../components/ui';
 import { functionErrorMessage } from '../lib/functionError';
+import { useIsDesktop } from '../lib/useDesktopLayout';
+import { DesktopShell } from '../components/desktop/DesktopShell';
+import { DText, HoverPressable, StatusPill } from '../components/desktop/primitives';
+import { DESKTOP_COLORS } from '../components/desktop/desktopTheme';
 
 /**
  * Owner-only screen: one company's editable details + its admins/drivers
@@ -62,6 +67,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CompanyDetail'>;
 
 export default function CompanyDetailScreen({ route, navigation }: Props) {
   const { companyId } = route.params;
+  const insets = useSafeAreaInsets();
+  const isDesktop = useIsDesktop();
 
   const [company, setCompany] = useState<Company | null>(null);
   const [users, setUsers] = useState<CompanyUser[]>([]);
@@ -358,6 +365,13 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   };
 
   if (loadError && !company) {
+    if (isDesktop) {
+      return (
+        <DesktopShell active="OwnerHome" breadcrumbs={['חברות', 'שגיאה']}>
+          <ErrorState message={loadError} onRetry={load} />
+        </DesktopShell>
+      );
+    }
     return (
       <View style={styles.centerFill}>
         <ErrorState message={loadError} onRetry={load} />
@@ -366,6 +380,13 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   }
 
   if (loading || !company) {
+    if (isDesktop) {
+      return (
+        <DesktopShell active="OwnerHome" breadcrumbs={['חברות', '…']}>
+          <ActivityIndicator color={DESKTOP_COLORS.brand} />
+        </DesktopShell>
+      );
+    }
     return (
       <View style={styles.centerFill}>
         <ActivityIndicator color={COLORS.blue} />
@@ -377,10 +398,167 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   const drivers = users.filter((u) => u.role === 'driver');
   const active = company.status === 'active';
 
+  const modals = (
+    <>
+      <DeleteCompanyModal
+        visible={deleteOpen}
+        companyName={company.name}
+        confirmText={deleteConfirmText}
+        deleting={deleting}
+        onChangeConfirmText={setDeleteConfirmText}
+        onClose={() => {
+          setDeleteOpen(false);
+          setDeleteConfirmText('');
+        }}
+        onConfirm={confirmDeleteCompany}
+      />
+
+      <AddAdminModal
+        visible={addAdminOpen}
+        form={newAdminForm}
+        fieldErrors={newAdminFieldErrors}
+        showPassword={showNewAdminPassword}
+        submitting={addingAdmin}
+        submitError={addAdminError}
+        onClose={() => {
+          setAddAdminOpen(false);
+          setNewAdminFieldErrors({});
+        }}
+        onChangeForm={setNewAdminForm}
+        onToggleShowPassword={() => setShowNewAdminPassword((v) => !v)}
+        onSubmit={addAdmin}
+      />
+
+      <InfoSuccessModal
+        visible={addAdminSuccessOpen}
+        title="האדמין נוסף בהצלחה"
+        description="האדמין יכול להתחבר עכשיו עם המייל והסיסמה שקבעת, ויתבקש לקבוע סיסמה קבועה משלו בכניסה הראשונה."
+        onClose={() => setAddAdminSuccessOpen(false)}
+      />
+
+      <RemoveUserModal target={removeTarget} removing={removing} onClose={() => setRemoveTarget(null)} onConfirm={removeUser} />
+
+      <ResetPasswordModal
+        target={resetTarget}
+        form={resetForm}
+        fieldErrors={resetFieldErrors}
+        showPassword={showResetPassword}
+        submitting={resetting}
+        submitError={resetError}
+        onClose={() => {
+          setResetTarget(null);
+          setResetForm(EMPTY_RESET_PASSWORD_FORM);
+          setResetFieldErrors({});
+          setResetError('');
+        }}
+        onChangeForm={setResetForm}
+        onToggleShowPassword={() => setShowResetPassword((v) => !v)}
+        onSubmit={resetPassword}
+      />
+
+      <InfoSuccessModal
+        visible={resetSuccessOpen}
+        title="הסיסמה אופסה בהצלחה"
+        description="המשתמש יכול להתחבר עכשיו עם הסיסמה החדשה שקבעת, ויתבקש לקבוע סיסמה קבועה משלו בכניסה הבאה."
+        onClose={() => setResetSuccessOpen(false)}
+      />
+
+      <EditUserModal
+        target={editTarget}
+        form={editForm}
+        fieldErrors={editFieldErrors}
+        submitting={editing}
+        submitError={editError}
+        onClose={() => setEditTarget(null)}
+        onChangeForm={setEditForm}
+        onSubmit={saveEdit}
+      />
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <>
+        <DesktopShell active="OwnerHome" breadcrumbs={['חברות', company.name]}>
+          <View style={ds.wrap}>
+            <View style={ds.headRow}>
+              <View style={ds.headMain}>
+                {!!company.logo_url && <Image source={{ uri: company.logo_url }} style={ds.logo} resizeMode="cover" />}
+                <DText weight="bold" style={ds.heading} numberOfLines={1}>{company.name}</DText>
+                <StatusPill tone={active ? 'ok' : 'neutral'} label={active ? 'פעיל' : 'מושבת'} />
+              </View>
+            </View>
+
+            <View style={ds.card}>
+              <CompanyInfoCard
+                fields={fields}
+                active={active}
+                hasChanges={hasChanges}
+                saving={saving}
+                saveError={saveError}
+                uploadingLogo={uploadingLogo}
+                logoError={logoError}
+                onChangeFields={setFields}
+                onPickLogo={handlePickLogo}
+                onSave={saveChanges}
+                onToggleActive={toggleActive}
+                onRequestDelete={() => setDeleteOpen(true)}
+              />
+            </View>
+
+            <HoverPressable style={ds.linkCard} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={() => navigation.navigate('GlobalSigningTemplates')}>
+              <Ionicons name="document-text-outline" size={16} color={DESKTOP_COLORS.brand} />
+              <View style={{ flex: 1 }}>
+                <DText weight="semiBold" style={ds.linkTitle}>תבניות מסמכים</DText>
+                <DText style={ds.linkSubtitle}>ניהול התבניות המשותפות לכל החברות</DText>
+              </View>
+              <Ionicons name="chevron-back" size={16} color={DESKTOP_COLORS.inkFaint} />
+            </HoverPressable>
+
+            <View style={ds.sectionHeadRow}>
+              <DText weight="bold" style={ds.sectionTitle}>אדמינים ({admins.length})</DText>
+              <HoverPressable style={ds.addButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={() => setAddAdminOpen(true)}>
+                <Ionicons name="add" size={14} color={DESKTOP_COLORS.brand} />
+                <DText weight="semiBold" style={ds.addButtonText}>הוסף אדמין</DText>
+              </HoverPressable>
+            </View>
+            <View style={ds.card}>
+              {admins.length === 0 ? (
+                <DText style={ds.empty}>אין אדמינים עדיין</DText>
+              ) : (
+                admins.map((u) => (
+                  <UserRow key={u.id} user={u} onRemove={() => setRemoveTarget(u)} onResetPassword={() => setResetTarget(u)} onEdit={() => openEdit(u)} />
+                ))
+              )}
+            </View>
+
+            <DText weight="bold" style={ds.sectionTitle}>נהגים ({drivers.length})</DText>
+            <View style={ds.card}>
+              {drivers.length === 0 ? (
+                <DText style={ds.empty}>אין נהגים עדיין</DText>
+              ) : (
+                drivers.map((u) => (
+                  <UserRow key={u.id} user={u} onRemove={() => setRemoveTarget(u)} onResetPassword={() => setResetTarget(u)} onEdit={() => openEdit(u)} />
+                ))
+              )}
+            </View>
+          </View>
+        </DesktopShell>
+        {modals}
+      </>
+    );
+  }
+
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="חזור"
+        >
           <Ionicons name="chevron-forward" size={20} color={COLORS.black} />
         </TouchableOpacity>
         {!!company.logo_url && <Image source={{ uri: company.logo_url }} style={styles.headerLogo} resizeMode="cover" />}
@@ -460,79 +638,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         </View>
       </ScrollView>
 
-      <DeleteCompanyModal
-        visible={deleteOpen}
-        companyName={company.name}
-        confirmText={deleteConfirmText}
-        deleting={deleting}
-        onChangeConfirmText={setDeleteConfirmText}
-        onClose={() => {
-          setDeleteOpen(false);
-          setDeleteConfirmText('');
-        }}
-        onConfirm={confirmDeleteCompany}
-      />
-
-      <AddAdminModal
-        visible={addAdminOpen}
-        form={newAdminForm}
-        fieldErrors={newAdminFieldErrors}
-        showPassword={showNewAdminPassword}
-        submitting={addingAdmin}
-        submitError={addAdminError}
-        onClose={() => {
-          setAddAdminOpen(false);
-          setNewAdminFieldErrors({});
-        }}
-        onChangeForm={setNewAdminForm}
-        onToggleShowPassword={() => setShowNewAdminPassword((v) => !v)}
-        onSubmit={addAdmin}
-      />
-
-      <InfoSuccessModal
-        visible={addAdminSuccessOpen}
-        title="האדמין נוסף בהצלחה"
-        description="האדמין יכול להתחבר עכשיו עם המייל והסיסמה שקבעת, ויתבקש לקבוע סיסמה קבועה משלו בכניסה הראשונה."
-        onClose={() => setAddAdminSuccessOpen(false)}
-      />
-
-      <RemoveUserModal target={removeTarget} removing={removing} onClose={() => setRemoveTarget(null)} onConfirm={removeUser} />
-
-      <ResetPasswordModal
-        target={resetTarget}
-        form={resetForm}
-        fieldErrors={resetFieldErrors}
-        showPassword={showResetPassword}
-        submitting={resetting}
-        submitError={resetError}
-        onClose={() => {
-          setResetTarget(null);
-          setResetForm(EMPTY_RESET_PASSWORD_FORM);
-          setResetFieldErrors({});
-          setResetError('');
-        }}
-        onChangeForm={setResetForm}
-        onToggleShowPassword={() => setShowResetPassword((v) => !v)}
-        onSubmit={resetPassword}
-      />
-
-      <InfoSuccessModal
-        visible={resetSuccessOpen}
-        title="הסיסמה אופסה בהצלחה"
-        description="המשתמש יכול להתחבר עכשיו עם הסיסמה החדשה שקבעת, ויתבקש לקבוע סיסמה קבועה משלו בכניסה הבאה."
-        onClose={() => setResetSuccessOpen(false)}
-      />
-
-      <EditUserModal
-        target={editTarget}
-        form={editForm}
-        fieldErrors={editFieldErrors}
-        submitting={editing}
-        submitError={editError}
-        onClose={() => setEditTarget(null)}
-        onChangeForm={setEditForm}
-        onSubmit={saveEdit}
-      />
+      {modals}
     </View>
   );
 }
@@ -547,7 +653,6 @@ const styles = StyleSheet.create({
   centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.screenBg },
   header: {
     backgroundColor: COLORS.white,
-    paddingTop: 56,
     paddingHorizontal: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
@@ -569,4 +674,36 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 11, fontWeight: '600' },
   badgeTextActive: { color: COLORS.activeText },
   badgeTextDisabled: { color: COLORS.disabledText },
+});
+
+const ds = StyleSheet.create({
+  wrap: { padding: 24, maxWidth: 620, alignSelf: 'center', width: '100%', gap: 14 },
+  headRow: { marginBottom: 4 },
+  headMain: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  logo: { width: 32, height: 32, borderRadius: 7, borderWidth: 1, borderColor: DESKTOP_COLORS.border },
+  heading: { fontSize: 17, flexShrink: 1 },
+  card: {
+    backgroundColor: DESKTOP_COLORS.surface,
+    borderWidth: 1,
+    borderColor: DESKTOP_COLORS.border,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  linkCard: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 10,
+    padding: 14,
+    backgroundColor: DESKTOP_COLORS.surface,
+    borderWidth: 1,
+    borderColor: DESKTOP_COLORS.border,
+    borderRadius: 8,
+  },
+  linkTitle: { fontSize: 13 },
+  linkSubtitle: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint, marginTop: 2 },
+  sectionHeadRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitle: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
+  addButton: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, height: 28, paddingHorizontal: 10, borderRadius: 6 },
+  addButtonText: { fontSize: 12, color: DESKTOP_COLORS.brand },
+  empty: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint, textAlign: 'center', paddingVertical: 20 },
 });

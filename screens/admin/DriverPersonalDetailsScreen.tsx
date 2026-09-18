@@ -38,6 +38,10 @@ import { RootStackParamList } from '../../navigation/types';
 import { DriverVehicleAssignmentsCard, confirmVehicleRemoval } from '../../components/driver/DriverVehicleAssignmentsCard';
 import { departmentNameById } from '../../lib/driverFields';
 import { supabase } from '../../lib/supabase';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { DesktopFieldRow, DesktopInput, DText, HoverPressable } from '../../components/desktop/primitives';
+import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
 
 /**
  * Read-only view of exactly the fields DriverFormScreen collects -
@@ -70,6 +74,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
   const [addingVehicleId, setAddingVehicleId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
+  const isDesktop = useIsDesktop();
 
   const load = useCallback(async () => {
     const [d, dv, v, deps, mail] = await Promise.all([
@@ -163,6 +168,62 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
     });
   };
 
+  if (isDesktop) {
+    return (
+      <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', driver?.full_name ?? 'פרטי נהג']}>
+        {loading ? (
+          <LoadingState />
+        ) : loadError ? (
+          <ErrorState
+            message={loadError}
+            onRetry={() => {
+              setLoading(true);
+              setLoadError(null);
+              load()
+                .catch((err: any) => setLoadError(err?.message ?? 'טעינת פרטי הנהג נכשלה'))
+                .finally(() => setLoading(false));
+            }}
+          />
+        ) : (
+          <View style={desktopStyles.wrap}>
+            <HoverPressable style={desktopStyles.editButton} onPress={() => navigation.navigate('DriverForm', { driverId })}>
+              <DText weight="semiBold" style={desktopStyles.editButtonText}>עריכה</DText>
+            </HoverPressable>
+            <View style={desktopStyles.card}>
+              <DesktopFieldRow label="שם מלא"><DesktopInput value={driver?.full_name ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label="חברה"><DesktopInput value={company?.name ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label="מייל להתחברות"><DesktopInput value={email ?? ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label="טלפון"><DesktopInput value={driver?.phone ? formatPhone(driver.phone) : ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label="תעודת זהות"><DesktopInput value={driver?.national_id ?? ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label="מספר עובד"><DesktopInput value={driver?.employee_number ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label="מחלקה"><DesktopInput value={departmentName ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label="דרגת רישיון"><DesktopInput value={driver?.license_classes ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label="תוקף רישיון" last><DesktopInput value={driver?.license_expiry ?? ''} editable={false} ltr /></DesktopFieldRow>
+            </View>
+
+            <DText weight="bold" style={desktopStyles.sectionTitle}>רכבים משויכים</DText>
+            <View style={desktopStyles.card}>
+              <DriverVehicleAssignmentsCard
+                driverVehicles={driverVehicles}
+                availableVehicles={availableVehicles}
+                addingVehicleId={addingVehicleId}
+                busyId={busyId}
+                onSelectVehicle={setAddingVehicleId}
+                onAddVehicle={addVehicle}
+                onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, returnTo: 'driver' })}
+                onRemoveVehicle={confirmRemoveVehicle}
+              />
+            </View>
+
+            <DText style={desktopStyles.footNote}>
+              הצטרף לאפליקציה ב-{driver?.created_at ? formatDate(driver.created_at) : '—'}
+            </DText>
+          </View>
+        )}
+      </DesktopShell>
+    );
+  }
+
   return (
     <Screen>
       <AdminGradientBackground />
@@ -225,4 +286,29 @@ const styles = StyleSheet.create({
   editAction: { alignItems: 'flex-start', paddingHorizontal: SPACING.lg, marginTop: -SPACING.sm, marginBottom: SPACING.sm },
   content: { paddingBottom: 40 },
   card: { margin: SPACING.lg, gap: 4 },
+});
+
+const desktopStyles = StyleSheet.create({
+  wrap: { padding: 24, maxWidth: 560, alignSelf: 'center', width: '100%', gap: 10 },
+  editButton: {
+    alignSelf: 'flex-start',
+    height: 30,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: DESKTOP_COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: DESKTOP_COLORS.surface,
+  },
+  editButtonText: { fontSize: 12, color: DESKTOP_COLORS.brand },
+  card: {
+    backgroundColor: DESKTOP_COLORS.surface,
+    borderWidth: 1,
+    borderColor: DESKTOP_COLORS.border,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+  },
+  sectionTitle: { fontSize: 12, letterSpacing: 0.4, color: DESKTOP_COLORS.inkMuted, marginTop: 8 },
+  footNote: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint, textAlign: 'center', marginTop: 6 },
 });

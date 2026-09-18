@@ -25,6 +25,9 @@ import {
   getRequiredDriverFields,
   validateDriverForm,
 } from '../../lib/driverFormValidation';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { DriverFormDesktopView } from '../../components/desktop/DriverFormDesktopView';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverForm'>;
 type FieldKey = keyof FormState;
@@ -77,6 +80,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
   const { companyId, profile } = useCompany();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
+  const isDesktop = useIsDesktop();
 
   const [form, setForm] = useState<FormState>(EMPTY);
   const [departments, setDepartments] = useState<{ value: string; label: string }[]>([]);
@@ -259,6 +263,13 @@ export default function DriverFormScreen({ route, navigation }: Props) {
   };
 
   if (loading) {
+    if (isDesktop) {
+      return (
+        <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', driverId ? 'עריכת נהג' : 'נהג חדש']}>
+          <LoadingState />
+        </DesktopShell>
+      );
+    }
     return (
       <LinearGradient colors={ADMIN_BACKGROUND_COLORS} locations={ADMIN_BACKGROUND_LOCATIONS} style={styles.screen}>
         <LoadingState />
@@ -291,6 +302,36 @@ export default function DriverFormScreen({ route, navigation }: Props) {
         return { value: option.value, label, description };
       })
     : [...NEW_DRIVER_LICENSE_OPTIONS];
+
+  const remainingText = canSubmit
+    ? (isEdit ? 'השינויים יישמרו בפרטי הנהג' : 'הנהג יתווסף לצי ויקבל הרשאות מיד')
+    : remainingCount === 1
+      ? 'נותר שדה חובה אחד'
+      : `נותרו ${remainingCount} שדות חובה`;
+
+  if (isDesktop) {
+    return (
+      <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', displayTitle]}>
+        <DriverFormDesktopView
+          isEdit={isEdit}
+          form={form}
+          set={set}
+          errors={errors}
+          liveErrors={liveErrors}
+          departments={departments}
+          licenseOptions={licenseOptions as { value: string; label: string; description: string }[]}
+          selectedLicenseLabel={selectedLicense?.label ?? null}
+          licenseExpiryLabel={formatDateDots(form.license_expiry)}
+          onOpenDatePicker={openDatePicker}
+          canSubmit={canSubmit}
+          saving={saving}
+          ctaLabel={ctaLabel}
+          remainingText={remainingText}
+          onSave={() => void save()}
+        />
+      </DesktopShell>
+    );
+  }
 
   return (
     <View style={styles.screen}>

@@ -1,7 +1,15 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyUser } from '../_shared/verifyUser.ts';
 
-const VEHICLE_RESOURCE_ID = '053cea08-09bc-40ec-8f7a-156f0677aff3';
+// Israel's vehicle registry (data.gov.il) splits vehicles across several
+// datasets by category — a single resource never covers the whole fleet.
+// The fleet here includes cars, minibuses, buses and trucks, so every
+// lookup has to try each relevant dataset in turn until one matches.
+const VEHICLE_RESOURCE_IDS = [
+  '053cea08-09bc-40ec-8f7a-156f0677aff3', // כלי רכב פרטיים ומסחריים עד 3.5 טון
+  'cf29862d-ca25-4691-84f6-1be60dcb4a1e', // כלי רכב ציבוריים (אוטובוסים, מיניבוסים)
+  'cd3acc5c-03c3-4c89-9c54-d40f93c0d790', // כלי רכב מעל 3.5 טון (משאיות)
+];
 const LOOKUP_TIMEOUT_MS = 8_000;
 
 type RegistryRecord = {
@@ -59,27 +67,39 @@ Deno.serve(async (req) => {
       return json({ error: 'מספר הרישוי חייב להכיל 7–8 ספרות' }, 400);
     }
 
-    const url = new URL('https://data.gov.il/api/3/action/datastore_search');
-    url.searchParams.set('resource_id', VEHICLE_RESOURCE_ID);
-    url.searchParams.set('limit', '1');
-    url.searchParams.set('filters', JSON.stringify({ mispar_rechev: plate }));
+    let record: RegistryRecord | null = null;
+    let anyRequestSucceeded = false;
+    for (const resourceId of VEHICLE_RESOURCE_IDS) {
+      const url = new URL('https://data.gov.il/api/3/action/datastore_search');
+      url.searchParams.set('resource_id', resourceId);
+      url.searchParams.set('limit', '1');
+      url.searchParams.set('filters', JSON.stringify({ mispar_rechev: Number(plate) }));
 
-    let response: Response;
-    try {
-      response = await fetch(url, { signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) });
-    } catch (error) {
-      console.error('vehicle registry request failed', error instanceof Error ? error.name : 'unknown');
-      return json({ error: 'מאגר משרד התחבורה אינו זמין כרגע. אפשר לנסות שוב או למלא ידנית.' }, 503);
+      let response: Response;
+      try {
+        response = await fetch(url, { signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) });
+      } catch (error) {
+        console.error('vehicle registry request failed', resourceId, error instanceof Error ? error.name : 'unknown');
+        continue;
+      }
+
+      if (!response.ok) {
+        console.error('vehicle registry response failed', resourceId, response.status);
+        continue;
+      }
+
+      anyRequestSucceeded = true;
+      const payload = await response.json() as RegistryResponse;
+      const found = payload.success ? payload.result?.records?.[0] : null;
+      if (found) { record = found; break; }
     }
 
-    if (!response.ok) {
-      console.error('vehicle registry response failed', response.status);
-      return json({ error: 'מאגר משרד התחבורה אינו זמין כרגע. אפשר לנסות שוב או למלא ידנית.' }, 503);
+    if (!record) {
+      if (!anyRequestSucceeded) {
+        return json({ error: 'מאגר משרד התחבורה אינו זמין כרגע. אפשר לנסות שוב או למלא ידנית.' }, 503);
+      }
+      return json({ found: false });
     }
-
-    const payload = await response.json() as RegistryResponse;
-    const record = payload.success ? payload.result?.records?.[0] : null;
-    if (!record) return json({ found: false });
 
     const commercialModel = optionalText(record.kinuy_mishari);
     return json({

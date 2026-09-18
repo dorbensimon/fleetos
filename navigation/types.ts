@@ -9,21 +9,22 @@ export type RootStackParamList = {
    */
   SetPassword: { voluntary?: boolean } | undefined;
   OwnerHome: undefined;
-  AdminHome: undefined; // the drivers list — where an admin lands
+  /** The fleet workspace. Desktop breadcrumbs may open a specific tab. */
+  AdminHome: { mode?: 'drivers' | 'vehicles' } | undefined;
   DriverHome: undefined;
   CompanyDetail: { companyId: string };
 
   // Admin module
   /** `returnTo: 'driver'` keeps the back affordance honest when a vehicle
    * is opened from inside a driver's dossier rather than from the fleet. */
-  VehicleDetail: { vehicleId: string; returnTo?: 'driver'; tab?: 'general' | 'maintenance' | 'documents' | 'drivers' };
+  VehicleDetail: { vehicleId: string; returnTo?: 'driver'; tab?: 'general' | 'maintenance' | 'documents' | 'drivers' | 'licensing' };
   VehicleForm: { vehicleId?: string };
   DriverDetail: { driverId: string };
   DriverArchive: undefined;
   DriverPersonalDetails: { driverId: string };
   DriverForm: { driverId?: string };
   Departments: undefined;
-  ActivityLog: undefined;
+  CompanyDocuments: undefined;
   Attention: undefined;
   Reports: undefined;
   AdminProfile: undefined;

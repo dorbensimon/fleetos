@@ -17,7 +17,6 @@ import { supabase } from '../supabase';
 import { VehicleDriverAssignment, VehicleDriverWithProfile, DriverVehicleAssignment } from './types';
 import { chunkIds } from './paging';
 
-const MAX_DRIVERS_PER_VEHICLE = 2;
 const PENDING_ASSIGNMENT_OPERATIONS_KEY = 'fleetos.pending-assignment-operations.v1';
 
 type PendingAssignmentOperation =
@@ -121,6 +120,10 @@ export async function listActiveVehicleDrivers(vehicleId: string): Promise<Vehic
       ...(rest as VehicleDriverAssignment),
       full_name: profiles?.full_name ?? null,
       phone: profiles?.phone ?? null,
+      // This detail view only needs the driver's identity. The fleet table
+      // uses the batched variant below, which loads license expiry once for
+      // all rows instead of issuing another request per vehicle.
+      license_expiry: null,
     };
   });
 }
@@ -147,12 +150,24 @@ export async function listActiveVehicleDriversForVehicles(
     if (error) throw error;
     rows.push(...(data ?? []));
   }
+  const driverIds = [...new Set(rows.map((row) => row.driver_id))];
+  const licenseByDriver = new Map<string, string | null>();
+  for (const driverIdBatch of chunkIds(driverIds)) {
+    const { data: details, error: detailsError } = await supabase
+      .from('driver_details')
+      .select('id, license_expiry')
+      .in('id', driverIdBatch);
+    if (detailsError) throw detailsError;
+    for (const detail of details ?? []) licenseByDriver.set(detail.id, detail.license_expiry);
+  }
+
   for (const row of rows) {
     const { profiles, ...rest } = row;
     const assignment: VehicleDriverWithProfile = {
       ...(rest as VehicleDriverAssignment),
       full_name: profiles?.full_name ?? null,
       phone: profiles?.phone ?? null,
+      license_expiry: licenseByDriver.get(rest.driver_id) ?? null,
     };
     const list = map.get(assignment.vehicle_id) ?? [];
     list.push(assignment);
@@ -182,8 +197,8 @@ export async function listActiveDriverVehicles(driverId: string): Promise<Driver
 
 /**
  * Assigns a driver to a vehicle without touching any existing active
- * assignment — the DB trigger rejects a 3rd active driver, a duplicate
- * active pair, or a 2nd active primary, but we check first so the UI can
+ * assignment — the DB trigger rejects a duplicate active pair or a 2nd
+ * active primary, but we check first so the UI can
  * show a clear Hebrew message immediately instead of a raw SQL error.
  */
 export async function assignDriverToVehicle(
@@ -197,9 +212,6 @@ export async function assignDriverToVehicle(
 
     if (existing.some((a) => a.driver_id === driverId)) {
       throw new Error('הנהג כבר משויך לרכב זה');
-    }
-    if (existing.length >= MAX_DRIVERS_PER_VEHICLE) {
-      throw new Error('לא ניתן לשייך יותר משני נהגים לרכב אחד');
     }
     if (isPrimary && existing.some((a) => a.is_primary)) {
       throw new Error('לרכב זה כבר יש נהג ראשי פעיל — יש להסיר אותו לפני קביעת נהג ראשי חדש');

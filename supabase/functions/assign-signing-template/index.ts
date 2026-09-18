@@ -1,7 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { docusealFetch } from '../_shared/docuseal.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
-import { signingDeadline } from '../_shared/signingExpiry.ts';
 import { missingPrefill, type TemplateField } from '../_shared/signingPrefill.ts';
 
 function json(body: Record<string, unknown>, status = 200) {
@@ -14,11 +13,6 @@ type DocuSealSubmitter = {
   slug?: string;
   sent_at?: string | null;
   created_at?: string;
-};
-
-type CompanySigningSettings = {
-  email_reminders_enabled: boolean;
-  initial_reminder_delay_hours: number;
 };
 
 const PROVISIONING_LOCK_MINUTES = 10;
@@ -88,17 +82,6 @@ Deno.serve(async (req) => {
       .eq('id', access.callerId)
       .single();
 
-    const { data: signingSettings, error: signingSettingsError } = await access.adminClient
-      .from('company_signing_settings')
-      .select('email_reminders_enabled, initial_reminder_delay_hours')
-      .eq('company_id', companyId)
-      .maybeSingle();
-    if (signingSettingsError) return json({ error: 'טעינת הגדרות תזכורות המייל נכשלה' }, 500);
-    const settings = signingSettings as CompanySigningSettings | null;
-    const initialReminderAt = settings?.email_reminders_enabled === false
-      ? null
-      : new Date(Date.now() + (settings?.initial_reminder_delay_hours ?? 72) * 60 * 60 * 1000).toISOString();
-
     let created = 0;
     const failed: string[] = [];
     let failureMessage = '';
@@ -131,7 +114,7 @@ Deno.serve(async (req) => {
 
       const { data: existing, error: existingError } = await access.adminClient
         .from('signature_requests')
-        .select('id, docuseal_submission_id, docuseal_submitter_id, docuseal_submitter_slug, provisioning_locked_until, expires_at, expiry_locked_until')
+        .select('id, docuseal_submission_id, docuseal_submitter_id, docuseal_submitter_slug, provisioning_locked_until')
         .eq('template_id', templateId)
         .eq('driver_id', driver.id)
         .eq('status', 'pending')
@@ -140,15 +123,7 @@ Deno.serve(async (req) => {
       if (existingError) throw existingError;
       const provisioningLockUntil = new Date(Date.now() + PROVISIONING_LOCK_MINUTES * 60 * 1000).toISOString();
       let requestRow = existing;
-      if (requestRow?.docuseal_submitter_id && requestRow.docuseal_submission_id && requestRow.docuseal_submitter_slug) {
-        failed.push(driver.id);
-        failureMessage ||= 'כבר יש לנהג מסמך שממתין לחתימה';
-        continue;
-      }
       if (requestRow) {
-        if ((requestRow.expires_at && Date.parse(requestRow.expires_at) <= Date.now()) || (requestRow.expiry_locked_until && Date.parse(requestRow.expiry_locked_until) > Date.now())) {
-          failed.push(driver.id); failureMessage ||= 'הבקשה הקודמת הסתיימה וממתינה לניקוי. נסה שוב לאחר הניקוי.'; continue;
-        }
         const lockActive = requestRow.provisioning_locked_until
           && new Date(requestRow.provisioning_locked_until).getTime() > Date.now();
         if (lockActive) {
@@ -169,7 +144,40 @@ Deno.serve(async (req) => {
           failureMessage ||= 'בקשת החתימה כבר נוצרת, נסה שוב בעוד כמה דקות';
           continue;
         }
-      } else {
+
+        // A manager deliberately sending the same template again replaces the
+        // unsigned request. Cancel the remote submission before hiding the local
+        // request, so an old email link cannot still be used to sign.
+        if (requestRow.docuseal_submitter_id && requestRow.docuseal_submission_id && requestRow.docuseal_submitter_slug) {
+          const cancelResponse = await docusealFetch(`/submissions/${requestRow.docuseal_submission_id}`, { method: 'DELETE' });
+          if (!cancelResponse.ok && cancelResponse.status !== 404) {
+            await access.adminClient.from('signature_requests').update({ provisioning_locked_until: null })
+              .eq('id', requestRow.id).eq('status', 'pending');
+            failed.push(driver.id);
+            failureMessage ||= 'לא ניתן לבטל את הבקשה הקודמת ב-DocuSeal. לא נשלחה בקשה חדשה.';
+            continue;
+          }
+          const { error: archiveError } = await access.adminClient.from('signature_requests').update({
+            status: 'cancelled',
+            cancelled_at: new Date().toISOString(),
+            cancelled_by: access.callerId,
+            archived_at: new Date().toISOString(),
+            archived_by: access.callerId,
+            provisioning_locked_until: null,
+            next_email_reminder_at: null,
+            email_reminder_locked_until: null,
+          }).eq('id', requestRow.id).eq('status', 'pending');
+          if (archiveError) {
+            failed.push(driver.id);
+            failureMessage ||= 'הבקשה הקודמת בוטלה ב-DocuSeal אך לא ניתן היה להחליף אותה באפליקציה. נסה שוב.';
+            continue;
+          }
+          // Archived requests are not shown in the driver's folder. A fresh row
+          // also receives a fresh external_id, avoiding any provider reuse.
+          requestRow = null;
+        }
+      }
+      if (!requestRow) {
         const { data: inserted, error: requestError } = await access.adminClient
           .from('signature_requests')
           .insert({
@@ -178,11 +186,11 @@ Deno.serve(async (req) => {
             driver_id: driver.id,
             created_by: access.callerId,
             template_title: template.title,
-            expires_at: signingDeadline(new Date().toISOString()),
-            next_email_reminder_at: initialReminderAt,
+            // Signing is in-app only. No email reminder is ever scheduled.
+            next_email_reminder_at: null,
             provisioning_locked_until: provisioningLockUntil,
           })
-          .select('id, docuseal_submission_id, docuseal_submitter_id, docuseal_submitter_slug, provisioning_locked_until, expires_at, expiry_locked_until')
+          .select('id, docuseal_submission_id, docuseal_submitter_id, docuseal_submitter_slug, provisioning_locked_until')
           .single();
         requestRow = inserted;
         if (requestError || !requestRow) {
@@ -208,7 +216,6 @@ Deno.serve(async (req) => {
 
       const sentDate = new Date().toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
       let sentAt = submitter?.sent_at || submitter?.created_at || new Date().toISOString();
-      let expiresAt = signingDeadline(sentAt);
       const submissionName = [template.title, driver.full_name, sentDate].filter(Boolean).join(' - ');
       // Folder groups all of a driver's documents together: CompanyName / DriverName
       const folderName = [company?.name, driver.full_name].filter(Boolean).join('/');
@@ -218,15 +225,16 @@ Deno.serve(async (req) => {
         method: 'POST',
         body: JSON.stringify({
           template_id: template.docuseal_template_id,
-          expire_at: expiresAt,
           // Name appears in DocuSeal dashboard and in the stored PDF filename.
           name: submissionName,
           ...(folderName ? { folder_name: folderName } : {}),
-          // FleetOS uses email only. SMS is intentionally never requested.
-          send_email: true,
+          // FleetOS opens the signing form only inside the authenticated app.
+          // Keep the address for DocuSeal's signer record, but never email it.
+          send_email: false,
           submitters: [{
             role: remoteTemplate.submitters[0].name,
             email,
+            send_email: false,
             name: driver.full_name || undefined,
             external_id: requestRow.id,
             metadata: { signature_request_id: requestRow.id, company_id: companyId },
@@ -279,24 +287,11 @@ Deno.serve(async (req) => {
         continue;
       }
       const providerSentAt = submitter.sent_at || submitter.created_at;
-      if (providerSentAt && Number.isFinite(Date.parse(providerSentAt))) {
-        sentAt = new Date(providerSentAt).toISOString();
-        expiresAt = signingDeadline(sentAt);
-      }
-
-      // Recovered requests may predate the deadline field. Confirm the
-      // provider actually enforces the same deadline before exposing the link.
-      const expiryResponse = await docusealFetch(`/submissions/${submitter.submission_id}`, {
-        method: 'PUT', body: JSON.stringify({ expire_at: expiresAt }),
-      });
-      if (!expiryResponse.ok) {
-        await access.adminClient.from('signature_requests').update({ provisioning_locked_until: null, failure_reason: 'Unable to confirm expiration' }).eq('id', requestRow.id).eq('status', 'pending');
-        failed.push(driver.id); failureMessage ||= 'הבקשה נוצרה אך אימות מועד הסיום נכשל. נסה שוב לסנכרון.'; continue;
-      }
+      if (providerSentAt && Number.isFinite(Date.parse(providerSentAt))) sentAt = new Date(providerSentAt).toISOString();
 
       const { error: linkError } = await access.adminClient.from('signature_requests').update({
         sent_at: sentAt,
-        expires_at: expiresAt,
+        expires_at: null,
         docuseal_submission_id: submitter.submission_id,
         docuseal_submitter_id: submitter.id,
         docuseal_submitter_slug: submitter.slug,

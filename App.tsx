@@ -35,7 +35,7 @@ import DriverDetailScreen from './screens/admin/DriverDetailScreen';
 import DriverFormScreen from './screens/admin/DriverFormScreen';
 import DriverArchiveScreen from './screens/admin/DriverArchiveScreen';
 import DepartmentsScreen from './screens/admin/DepartmentsScreen';
-import ActivityLogScreen from './screens/admin/ActivityLogScreen';
+import CompanyDocumentsScreen from './screens/admin/CompanyDocumentsScreen';
 import AttentionScreen from './screens/admin/AttentionScreen';
 import ReportsScreen from './screens/admin/ReportsScreen';
 import AdminProfileScreen from './screens/admin/AdminProfileScreen';
@@ -103,7 +103,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       DriverPersonalDetails: 'drivers/:driverId/personal-details',
       DriverForm: 'drivers/edit/:driverId?',
       Departments: 'departments',
-      ActivityLog: 'activity-log',
+      CompanyDocuments: 'company-documents',
       Attention: 'attention',
       Reports: 'reports',
       AdminProfile: 'admin/profile',
@@ -252,7 +252,7 @@ export default function App() {
               <Stack.Screen name="DriverForm" component={DriverFormScreen} />
               <Stack.Screen name="DriverArchive" component={DriverArchiveScreen} />
               <Stack.Screen name="Departments" component={DepartmentsScreen} />
-              <Stack.Screen name="ActivityLog" component={ActivityLogScreen} />
+              <Stack.Screen name="CompanyDocuments" component={CompanyDocumentsScreen} />
               <Stack.Screen name="Attention" component={AttentionScreen} />
               <Stack.Screen name="Reports" component={ReportsScreen} />
               <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />

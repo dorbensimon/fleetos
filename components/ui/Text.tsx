@@ -9,7 +9,7 @@ import { COLORS, FONT } from '../../lib/theme';
  * — using fontWeight alone would not pick the right Assistant file.
  */
 export interface AppTextProps extends TextProps {
-  weight?: 'regular' | 'bold';
+  weight?: 'regular' | 'semiBold' | 'bold';
 }
 
 export function AppText({ weight = 'regular', style, ...rest }: AppTextProps) {
@@ -18,7 +18,7 @@ export function AppText({ weight = 'regular', style, ...rest }: AppTextProps) {
       {...rest}
       style={[
         styles.base,
-        { fontFamily: weight === 'bold' ? FONT.bold : FONT.regular },
+        { fontFamily: weight === 'regular' ? FONT.regular : FONT.bold },
         style,
       ]}
     />

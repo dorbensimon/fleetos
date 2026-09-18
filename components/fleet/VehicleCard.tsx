@@ -23,7 +23,7 @@ import {
   chipFor,
 } from '../../lib/fleetCardHelpers';
 import { StatCell, statsRowStyles } from './StatCell';
-import { FLEET_COLORS, FLEET_FONT, FLEET_SHADOWS } from './fleetTheme';
+import { FLEET_COLORS, FLEET_FONT, FLEET_SHADOWS } from '../../lib/colors';
 
 export function VehicleCard({
   item,

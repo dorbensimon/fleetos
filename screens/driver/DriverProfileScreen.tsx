@@ -15,7 +15,11 @@ import { formatPhone, isValidIsraeliPhone } from '../../lib/phone';
 import { RootStackParamList } from '../../navigation/types';
 import { departmentNameById } from '../../lib/driverFields';
 import { showAlert } from '../../lib/platformAlert';
-import { GlassPill } from '../../components/ui/GlassPill';
+import { GlassPill, GLASS_SHADOW_COLOR } from '../../components/ui/GlassPill';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { DesktopFieldRow, DesktopInput, DText, HoverPressable } from '../../components/desktop/primitives';
+import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverProfile'>;
 
@@ -23,6 +27,7 @@ export default function DriverProfileScreen({ navigation }: Props) {
   const { profile, company, companyId } = useCompany();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
+  const isDesktop = useIsDesktop();
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [email, setEmail] = useState<string | null>(null);
@@ -112,12 +117,72 @@ export default function DriverProfileScreen({ navigation }: Props) {
   ]);
   const departmentName = departmentNameById(departments, driver?.department_id);
 
+  if (isDesktop) {
+    return (
+      <DesktopShell active="DriverProfile" breadcrumbs={['חשבון', 'הפרטים שלי']}>
+        {loading ? (
+          <LoadingState />
+        ) : error ? (
+          <ErrorState message={error} onRetry={load} />
+        ) : (
+          <View style={ds.wrap}>
+            <View style={ds.headRow}>
+              <DText weight="bold" style={ds.heading}>{driver?.full_name || '—'}</DText>
+              <HoverPressable style={ds.editButton} onPress={toggleEdit} disabled={saving}>
+                <DText weight="semiBold" style={ds.editButtonText}>{editMode ? (saving ? 'שומר…' : 'שמירה') : 'עריכה'}</DText>
+              </HoverPressable>
+            </View>
+
+            <DText weight="bold" style={ds.sectionTitle}>פרטים אישיים</DText>
+            <View style={ds.card}>
+              <DesktopFieldRow label="אימייל"><DesktopInput value={email ?? ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label="טלפון" error={fieldErrors.phone}>
+                {editMode ? (
+                  <DesktopInput value={phoneDraft} onChangeText={setPhoneDraft} keyboardType="phone-pad" ltr hasError={!!fieldErrors.phone} />
+                ) : (
+                  <DesktopInput value={driver?.phone ? formatPhone(driver.phone) : ''} editable={false} ltr />
+                )}
+              </DesktopFieldRow>
+              <DesktopFieldRow label="שם מלא" error={fieldErrors.full_name}>
+                {editMode ? (
+                  <DesktopInput value={nameDraft} onChangeText={setNameDraft} hasError={!!fieldErrors.full_name} />
+                ) : (
+                  <DesktopInput value={driver?.full_name ?? ''} editable={false} />
+                )}
+              </DesktopFieldRow>
+              <DesktopFieldRow label="תפקיד" last><DesktopInput value="נהג" editable={false} /></DesktopFieldRow>
+            </View>
+
+            <DText weight="bold" style={ds.sectionTitle}>פרטי עבודה</DText>
+            <View style={ds.card}>
+              <DesktopFieldRow label="חברה"><DesktopInput value={company?.name ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label="מספר עובד"><DesktopInput value={driver?.employee_number ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label="מחלקה" last><DesktopInput value={departmentName ?? ''} editable={false} /></DesktopFieldRow>
+            </View>
+
+            <DText weight="bold" style={ds.sectionTitle}>רישיון נהיגה</DText>
+            <View style={ds.card}>
+              <DesktopFieldRow label="תעודת זהות"><DesktopInput value={driver?.national_id ?? ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label="דרגת רישיון"><DesktopInput value={driver?.license_classes ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label="תוקף רישיון"><DesktopInput value={driver?.license_expiry ? formatDate(driver.license_expiry) : ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label="הצטרפות לאפליקציה" last><DesktopInput value={driver?.created_at ? formatDate(driver.created_at) : ''} editable={false} ltr /></DesktopFieldRow>
+            </View>
+
+            <HoverPressable style={ds.signOutButton} onPress={signOut}>
+              <DText weight="semiBold" style={ds.signOutText}>התנתקות</DText>
+            </HoverPressable>
+          </View>
+        )}
+      </DesktopShell>
+    );
+  }
+
   return (
     <View style={styles.screen}>
       <AdminGradientBackground />
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <TouchableOpacity onPress={signOut} activeOpacity={0.8}>
-          <GlassPill size={40} blur={14} bg="rgba(255,255,255,.4)"><Ionicons name="log-out-outline" size={20} color="#1a1a1a" /></GlassPill>
+          <GlassPill size={40} blur={14} bg="rgba(255,255,255,.4)"><Ionicons name="log-out-outline" size={20} color={COLORS.text} /></GlassPill>
         </TouchableOpacity>
         <AppText weight="bold" style={styles.headerCompany} numberOfLines={1}>{company?.name ?? ''}</AppText>
         <BackButton onPress={() => navigation.goBack()} />
@@ -130,7 +195,7 @@ export default function DriverProfileScreen({ navigation }: Props) {
               <View style={styles.avatar}><Ionicons name="person" size={40} color="rgba(0,0,0,.28)" /></View>
               <TouchableOpacity onPress={toggleEdit} activeOpacity={0.8} style={styles.editBadgeWrap} disabled={saving}>
                 <GlassPill size={28} blur={10} bg="rgba(255,255,255,.55)">
-                  <Ionicons name={editMode ? 'checkmark' : 'pencil'} size={13} color="#1a1a1a" />
+                  <Ionicons name={editMode ? 'checkmark' : 'pencil'} size={13} color={COLORS.text} />
                 </GlassPill>
               </TouchableOpacity>
             </View>
@@ -193,12 +258,24 @@ function Row({
     ) : <AppText style={rowStyles.value} numberOfLines={1}>{value || '—'}</AppText>}
   </View>;
 }
-const cardStyles = StyleSheet.create({ wrap: { overflow: 'hidden', borderRadius: 22, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.6)', ...Platform.select({ ios: { shadowColor: '#505a82', shadowOpacity: 0.12, shadowOffset: { width: 0, height: 8 }, shadowRadius: 24 }, android: { elevation: 4 } }) }, tint: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.42)' } });
-const rowStyles = StyleSheet.create({ row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 }, divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,.08)' }, icon: { flexShrink: 0 }, label: { fontSize: 14.5, color: '#1a1a1a', flexShrink: 0 }, value: { fontSize: 14.5, color: 'rgba(0,0,0,.5)', flexShrink: 1, textAlign: 'left' }, inputWrap: { maxWidth: 170, alignItems: 'flex-end' }, input: { fontSize: 14.5, color: '#1a1a1a', borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,.15)', paddingVertical: 2, minWidth: 90, fontFamily: FONT.regular }, inputErrorBorder: { borderBottomColor: COLORS.dangerText }, errorText: { fontSize: 11, color: COLORS.dangerText, marginTop: 2 } });
-const styles = StyleSheet.create({ screen: { flex: 1, backgroundColor: '#F2F2F7' }, header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' }, headerCompany: { flex: 1, fontSize: 16, color: '#1a1a1a', textAlign: 'center', marginHorizontal: 8 },
+const cardStyles = StyleSheet.create({ wrap: { overflow: 'hidden', borderRadius: 22, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.6)', ...Platform.select({ ios: { shadowColor: GLASS_SHADOW_COLOR, shadowOpacity: 0.12, shadowOffset: { width: 0, height: 8 }, shadowRadius: 24 }, android: { elevation: 4 } }) }, tint: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.42)' } });
+const rowStyles = StyleSheet.create({ row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 }, divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,.08)' }, icon: { flexShrink: 0 }, label: { fontSize: 14.5, color: COLORS.text, flexShrink: 0 }, value: { fontSize: 14.5, color: 'rgba(0,0,0,.5)', flexShrink: 1, textAlign: 'left' }, inputWrap: { maxWidth: 170, alignItems: 'flex-end' }, input: { fontSize: 14.5, color: COLORS.text, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,.15)', paddingVertical: 2, minWidth: 90, fontFamily: FONT.regular }, inputErrorBorder: { borderBottomColor: COLORS.dangerText }, errorText: { fontSize: 11, color: COLORS.dangerText, marginTop: 2 } });
+const styles = StyleSheet.create({ screen: { flex: 1, backgroundColor: '#F2F2F7' }, header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' }, headerCompany: { flex: 1, fontSize: 16, color: COLORS.text, textAlign: 'center', marginHorizontal: 8 },
   // Without an explicit flex here, ScrollView (a plain div under react-native-web)
   // sizes to its own content instead of stretching into the remaining flex
   // space under `header`/`editBar`, so on web the whole page scrolls instead
   // of just this area.
   scroll: { flex: 1 },
-  content: { padding: 20, paddingTop: 18, paddingBottom: 40, gap: 4, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' }, profileBlock: { alignItems: 'center', paddingVertical: 18 }, avatarWrap: { width: 84, height: 84 }, avatar: { width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(0,0,0,.06)', alignItems: 'center', justifyContent: 'center' }, editBadgeWrap: { position: 'absolute', bottom: -2, left: -2 }, name: { fontSize: 17, color: '#1a1a1a', marginTop: 12 }, role: { fontSize: 13, color: 'rgba(20,20,30,.6)', marginTop: 2 }, sectionLabel: { fontSize: 12, color: 'rgba(20,20,30,.55)', paddingBottom: 8, paddingTop: 12 } });
+  content: { padding: 20, paddingTop: 18, paddingBottom: 40, gap: 4, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' }, profileBlock: { alignItems: 'center', paddingVertical: 18 }, avatarWrap: { width: 84, height: 84 }, avatar: { width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(0,0,0,.06)', alignItems: 'center', justifyContent: 'center' }, editBadgeWrap: { position: 'absolute', bottom: -2, left: -2 }, name: { fontSize: 17, color: COLORS.text, marginTop: 12 }, role: { fontSize: 13, color: 'rgba(20,20,30,.6)', marginTop: 2 }, sectionLabel: { fontSize: 12, color: 'rgba(20,20,30,.55)', paddingBottom: 8, paddingTop: 12 } });
+
+const ds = StyleSheet.create({
+  wrap: { padding: 24, maxWidth: 520, alignSelf: 'center', width: '100%', gap: 6 },
+  headRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  heading: { fontSize: 16 },
+  editButton: { height: 30, paddingHorizontal: 14, borderRadius: 6, borderWidth: 1, borderColor: DESKTOP_COLORS.border, alignItems: 'center', justifyContent: 'center', backgroundColor: DESKTOP_COLORS.surface },
+  editButtonText: { fontSize: 12, color: DESKTOP_COLORS.brand },
+  sectionTitle: { fontSize: 12, letterSpacing: 0.4, color: DESKTOP_COLORS.inkMuted, marginTop: 10, marginBottom: 6 },
+  card: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 8, paddingHorizontal: 16 },
+  signOutButton: { alignSelf: 'center', marginTop: 20, height: 32, paddingHorizontal: 16, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  signOutText: { fontSize: 12.5, color: DESKTOP_COLORS.danger },
+});

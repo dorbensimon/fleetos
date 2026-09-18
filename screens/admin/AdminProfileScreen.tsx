@@ -8,13 +8,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, LoadingState, ErrorState, useToast, BackButton } from '../../components/ui';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
-import { GlassPill } from '../../components/ui/GlassPill';
+import { GlassPill, GLASS_SHADOW_COLOR } from '../../components/ui/GlassPill';
 import { COLORS, CONTENT_MAX_WIDTH, FONT, formatDate, FONT_SIZE, BRAND } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
 import { updateCompanyPhone } from '../../lib/companyApi';
 import { formatPhone, isValidIsraeliPhone } from '../../lib/phone';
 import { RootStackParamList } from '../../navigation/types';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { AdminProfileDesktopView } from '../../components/desktop/AdminProfileDesktopView';
 
 /** The logged-in admin's own details, reached from the hamburger menu. */
 type Props = NativeStackScreenProps<RootStackParamList, 'AdminProfile'>;
@@ -23,6 +26,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
   const { profile, company, refresh } = useCompany();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
+  const isDesktop = useIsDesktop();
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -117,6 +121,31 @@ export default function AdminProfileScreen({ navigation }: Props) {
     ]);
   };
 
+  if (isDesktop) {
+    return (
+      <DesktopShell active="AdminProfile" breadcrumbs={['חשבון', 'הפרטים שלי']}>
+        {loading ? null : loadError ? (
+          <ErrorState message={loadError} onRetry={load} />
+        ) : (
+          <AdminProfileDesktopView
+            fullName={editing ? form.fullName || profile?.full_name || '' : profile?.full_name || ''}
+            role="אדמין"
+            email={email}
+            company={company}
+            editing={editing}
+            form={form}
+            errors={errors}
+            saving={saving}
+            onToggleEdit={toggleEdit}
+            onChangeField={(field, value) => setForm((f) => ({ ...f, [field]: value }))}
+            onChangePassword={() => navigation.navigate('SetPassword', { voluntary: true })}
+            createdAt={profile?.created_at ?? null}
+          />
+        )}
+      </DesktopShell>
+    );
+  }
+
   return (
     <View style={styles.screen}>
       <AdminGradientBackground />
@@ -124,7 +153,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <TouchableOpacity onPress={signOut} activeOpacity={0.8}>
           <GlassPill size={40} blur={14} bg="rgba(255,255,255,.4)">
-            <Ionicons name="log-out-outline" size={20} color="#1a1a1a" />
+            <Ionicons name="log-out-outline" size={20} color={COLORS.text} />
           </GlassPill>
         </TouchableOpacity>
         <AppText weight="bold" style={styles.headerCompany} numberOfLines={1}>
@@ -146,7 +175,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
               </View>
               <TouchableOpacity onPress={toggleEdit} activeOpacity={0.8} style={styles.editBadgeWrap} disabled={saving}>
                 <GlassPill size={28} blur={10} bg="rgba(255,255,255,.55)">
-                  <Ionicons name={editing ? 'checkmark' : 'pencil'} size={13} color="#1a1a1a" />
+                  <Ionicons name={editing ? 'checkmark' : 'pencil'} size={13} color={COLORS.text} />
                 </GlassPill>
               </TouchableOpacity>
             </View>
@@ -313,7 +342,7 @@ const cardStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.6)',
     ...Platform.select({
       ios: {
-        shadowColor: '#505a82',
+        shadowColor: GLASS_SHADOW_COLOR,
         shadowOpacity: 0.12,
         shadowOffset: { width: 0, height: 8 },
         shadowRadius: 24,
@@ -334,12 +363,12 @@ const rowStyles = StyleSheet.create({
   },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,.08)' },
   icon: { flexShrink: 0 },
-  label: { fontSize: FONT_SIZE.md, color: '#1a1a1a', flexShrink: 0 },
+  label: { fontSize: FONT_SIZE.md, color: COLORS.text, flexShrink: 0 },
   value: { fontSize: FONT_SIZE.md, color: 'rgba(0,0,0,.5)', flexShrink: 1, textAlign: 'left' },
   inputWrap: { maxWidth: 170, alignItems: 'flex-end' },
   input: {
     fontSize: FONT_SIZE.md,
-    color: '#1a1a1a',
+    color: COLORS.text,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,.15)',
     paddingVertical: 2,
@@ -366,7 +395,7 @@ const styles = StyleSheet.create({
     maxWidth: CONTENT_MAX_WIDTH,
     alignSelf: 'center',
   },
-  headerCompany: { flex: 1, fontSize: FONT_SIZE.lg, color: '#1a1a1a', textAlign: 'center', marginHorizontal: 8 },
+  headerCompany: { flex: 1, fontSize: FONT_SIZE.lg, color: COLORS.text, textAlign: 'center', marginHorizontal: 8 },
   content: { padding: 20, paddingTop: 18, paddingBottom: 40, gap: 4, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   profileBlock: { alignItems: 'center', paddingVertical: 18 },
   avatarWrap: { width: 84, height: 84 },
@@ -379,7 +408,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   editBadgeWrap: { position: 'absolute', bottom: -2, left: -2 },
-  name: { fontSize: FONT_SIZE.xl, color: '#1a1a1a', marginTop: 12 },
+  name: { fontSize: FONT_SIZE.xl, color: COLORS.text, marginTop: 12 },
   role: { fontSize: FONT_SIZE.sm, color: 'rgba(20,20,30,.6)', marginTop: 2 },
   sectionLabel: { fontSize: FONT_SIZE.sm, color: 'rgba(20,20,30,.55)', paddingBottom: 8, paddingTop: 12 },
 });

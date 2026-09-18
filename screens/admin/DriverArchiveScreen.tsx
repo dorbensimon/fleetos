@@ -10,7 +10,11 @@ import { ConfirmActionModal } from '../../components/driverCard/ConfirmActionMod
 import { useCompany } from '../../lib/CompanyContext';
 import { listArchivedDrivers, restoreDriver, deleteDriver, type DriverRow } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
-import { CONTENT_MAX_WIDTH, formatDate, FONT_SIZE, BRAND } from '../../lib/theme';
+import { CONTENT_MAX_WIDTH, formatDate, COLORS, FONT_SIZE, BRAND } from '../../lib/theme';
+import { FLEET_COLORS } from '../../lib/colors';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { DriverArchiveDesktopView } from '../../components/desktop/DriverArchiveDesktopView';
 
 /**
  * The driver archive — the only screen that shows archived drivers, and
@@ -29,6 +33,7 @@ export default function DriverArchiveScreen({ navigation }: Props) {
   const { companyId } = useCompany();
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
+  const isDesktop = useIsDesktop();
 
   const [rows, setRows] = useState<DriverRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +89,38 @@ export default function DriverArchiveScreen({ navigation }: Props) {
     showToast(`${name} נמחק לצמיתות`);
     await load();
   };
+
+  if (isDesktop) {
+    return (
+      <>
+        <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', 'ארכיון']}>
+          {loading ? null : error ? (
+            <ErrorState message={error} onRetry={load} />
+          ) : (
+            <DriverArchiveDesktopView
+              drivers={rows}
+              restoringId={restoringId}
+              onOpenDriver={(driverId) => navigation.navigate('DriverDetail', { driverId })}
+              onRestore={(driver) => void runRestore(driver)}
+              onDelete={setDeleteTarget}
+            />
+          )}
+        </DesktopShell>
+        <ConfirmActionModal
+          visible={!!deleteTarget}
+          title="מחיקת נהג לצמיתות"
+          message={`הפעולה תמחק את ${deleteTarget?.full_name ?? 'הנהג'}, את המסמכים שהועלו לתיק שלו ואת קובצי החתימות השמורים באפליקציה. הטפסים החתומים יישארו במערכת החתימות בלבד. הפעולה אינה ניתנת לשחזור.`}
+          confirmLabel="מחק לצמיתות"
+          destructive
+          loading={deleting}
+          requireTypedText={deleteTarget?.full_name ?? null}
+          typedTextHint={`לאישור, הקלד את שם הנהג: ${deleteTarget?.full_name ?? ''}`}
+          onConfirm={runDelete}
+          onClose={() => setDeleteTarget(null)}
+        />
+      </>
+    );
+  }
 
   return (
     <View style={s.screen}>
@@ -148,13 +185,13 @@ export default function DriverArchiveScreen({ navigation }: Props) {
                   disabled={restoringId === item.id}
                   onPress={() => void runRestore(item)}
                 >
-                  <Ionicons name="arrow-undo-outline" size={16} color="#0088CC" />
+                  <Ionicons name="arrow-undo-outline" size={16} color={COLORS.accent} />
                   <AppText weight="bold" style={s.restoreText}>
                     {restoringId === item.id ? 'משחזר…' : 'שחזור'}
                   </AppText>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.delete} activeOpacity={0.7} onPress={() => setDeleteTarget(item)}>
-                  <Ionicons name="trash-outline" size={16} color="#C0392B" />
+                  <Ionicons name="trash-outline" size={16} color={FLEET_COLORS.danger.text} />
                   <AppText weight="bold" style={s.deleteText}>מחיקת נהג</AppText>
                 </TouchableOpacity>
               </View>
@@ -248,7 +285,7 @@ const s = StyleSheet.create({
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderLeftColor: 'rgba(16,42,66,.12)',
   },
-  restoreText: { fontSize: FONT_SIZE.lg, color: '#0088CC' },
+  restoreText: { fontSize: FONT_SIZE.lg, color: COLORS.accent },
   delete: {
     flex: 1,
     height: 48,
@@ -257,5 +294,5 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     gap: 7,
   },
-  deleteText: { fontSize: FONT_SIZE.lg, color: '#C0392B' },
+  deleteText: { fontSize: FONT_SIZE.lg, color: FLEET_COLORS.danger.text },
 });

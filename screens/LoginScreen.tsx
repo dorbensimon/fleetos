@@ -10,6 +10,7 @@ import {
   ScrollView,
   Image,
   Animated,
+  Easing,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +33,24 @@ const COLORS = {
   inputBorder: 'rgba(255, 255, 255, 0.55)',
   text: '#1D1D1F',
 };
+
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+
+/** Fades a line of text in on mount instead of letting it pop under the field. */
+function FadeInLine({ children, style }: { children: React.ReactNode; style: any }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    anim.setValue(0);
+    Animated.timing(anim, { toValue: 1, duration: 180, easing: EASE_OUT, useNativeDriver: true }).start();
+  }, [children, anim]);
+  return (
+    <Animated.View
+      style={{ opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-4, 0] }) }] }}
+    >
+      <Text style={style}>{children}</Text>
+    </Animated.View>
+  );
+}
 
 interface AnimatedFieldProps {
   label: string;
@@ -244,8 +263,8 @@ export default function LoginScreen({ navigation }: Props) {
               autoComplete="current-password"
             />
 
-            {!!errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
-            {!!successMessage && <Text style={styles.successText}>{successMessage}</Text>}
+            {!!errorMessage && <FadeInLine style={styles.errorText}>{errorMessage}</FadeInLine>}
+            {!!successMessage && <FadeInLine style={styles.successText}>{successMessage}</FadeInLine>}
 
             <ShimmerButton
               onPress={handleLogin}
@@ -268,7 +287,9 @@ export default function LoginScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       {Platform.OS === 'web' ? (
-        <View style={styles.webContent}>{content}</View>
+        <View style={styles.webContent}>
+          <View style={styles.webContentInner}>{content}</View>
+        </View>
       ) : (
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -292,9 +313,14 @@ const styles = StyleSheet.create({
   webContent: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: 24,
     paddingVertical: 40,
     width: '100%',
+  },
+  webContentInner: {
+    width: '100%',
+    maxWidth: 440,
   },
   scrollContent: {
     flexGrow: 1,

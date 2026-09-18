@@ -17,13 +17,13 @@ export function UserRow({
 }) {
   return (
     <View style={styles.userRow}>
-      <TouchableOpacity onPress={onRemove} style={styles.userRemoveButton}>
+      <TouchableOpacity onPress={onRemove} style={styles.userRemoveButton} activeOpacity={0.55}>
         <Ionicons name="trash-outline" size={16} color={COLORS.red} />
       </TouchableOpacity>
-      <TouchableOpacity onPress={onResetPassword} style={styles.userRemoveButton}>
+      <TouchableOpacity onPress={onResetPassword} style={styles.userRemoveButton} activeOpacity={0.55}>
         <Ionicons name="key-outline" size={16} color={COLORS.blue} />
       </TouchableOpacity>
-      <TouchableOpacity onPress={onEdit} style={styles.userRemoveButton}>
+      <TouchableOpacity onPress={onEdit} style={styles.userRemoveButton} activeOpacity={0.55}>
         <Ionicons name="pencil-outline" size={16} color={COLORS.gray} />
       </TouchableOpacity>
       <View style={styles.userInfo}>

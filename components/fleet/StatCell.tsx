@@ -3,7 +3,7 @@ import { View, StyleSheet, Animated, Easing } from 'react-native';
 import { AppText } from '../ui';
 import { RADIUS, SPACING } from '../../lib/theme';
 import { TONE_BAD } from '../../lib/fleetCardHelpers';
-import { FLEET_COLORS, FLEET_FONT } from './fleetTheme';
+import { FLEET_COLORS, FLEET_FONT } from '../../lib/colors';
 
 /**
  * One column of the insurance/test/service stats row: a coloured dot +

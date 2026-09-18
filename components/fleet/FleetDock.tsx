@@ -3,7 +3,7 @@ import { Animated, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DriversVehiclesToggle, { ToggleValue } from '../ui/DriversVehiclesToggle';
-import { FLEET_COLORS } from './fleetTheme';
+import { FLEET_COLORS } from '../../lib/colors';
 
 // Dock content height, used both to size the fog behind it and to tell
 // the scrollable lists how much bottom padding they need to clear it.

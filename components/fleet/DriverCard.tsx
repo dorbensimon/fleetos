@@ -5,7 +5,7 @@ import { AppText } from '../ui';
 import { SPACING, expiryState, daysUntilExpiry, formatDate } from '../../lib/theme';
 import { DriverRow } from '../../lib/adminApi';
 import { formatPlate } from '../../lib/plate';
-import { FLEET_COLORS, FLEET_FONT, FLEET_SHADOWS, severityFor } from './fleetTheme';
+import { FLEET_COLORS, FLEET_FONT, FLEET_SHADOWS, severityFor } from '../../lib/colors';
 
 const APP_STARTED_AT_MS = Date.now();
 
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     backgroundColor: FLEET_COLORS.card,
     borderWidth: 1.5,
     borderColor: FLEET_COLORS.card,
-    shadowColor: '#08245e',
+    shadowColor: FLEET_COLORS.primaryInk,
     shadowOpacity: 0.14,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },

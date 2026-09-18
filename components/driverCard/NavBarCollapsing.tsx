@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { DC_COLORS, DC_TYPO } from './driverCardTheme';
+import { DOSSIER_BLUE } from '../../lib/dossierColors';
 import { CONTENT_MAX_WIDTH } from '../../lib/theme';
 
 export function NavBarCollapsing({
@@ -25,13 +26,19 @@ export function NavBarCollapsing({
     <View style={[styles.wrap, { height: 44 + topBuffer }]}>
       <View style={[StyleSheet.absoluteFill, { backgroundColor: backgroundColor ?? DC_COLORS.bg }]} />
       <View style={[styles.content, { paddingTop: topBuffer }]}>
-        <Pressable onPress={onBack} style={styles.backButton} hitSlop={10} accessibilityRole="button" accessibilityLabel="חזור">
+        <Pressable
+          onPress={onBack}
+          style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="חזור"
+        >
           <Feather name="chevron-right" size={20} color={DC_COLORS.blue} />
         </Pressable>
 
         {title ? <Text style={[DC_TYPO.navTitle, styles.title]} numberOfLines={1}>{title}</Text> : <View style={styles.titleSpacer} />}
 
-        <Pressable onPress={onMore} style={styles.moreButton} hitSlop={8}>
+        <Pressable onPress={onMore} style={({ pressed }) => [styles.moreButton, pressed && styles.moreButtonPressed]} hitSlop={8}>
           <Feather name="more-horizontal" size={18} color={DC_COLORS.blue} />
         </Pressable>
       </View>
@@ -60,11 +67,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: 'rgba(10,127,208,0.20)',
-    shadowColor: '#0A7FD0',
+    shadowColor: DOSSIER_BLUE,
     shadowOpacity: 0.14,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
+  },
+  backButtonPressed: {
+    backgroundColor: 'rgba(10,127,208,0.08)',
   },
   title: {
     flex: 1,
@@ -79,5 +89,8 @@ const styles = StyleSheet.create({
     backgroundColor: DC_COLORS.fill,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  moreButtonPressed: {
+    opacity: 0.6,
   },
 });

@@ -26,6 +26,7 @@ import {
   EXPIRY_STYLE,
   CONTENT_MAX_WIDTH,
 } from '../../lib/theme';
+import { DOSSIER_BLUE } from '../../lib/dossierColors';
 
 export { AppText } from './Text';
 export { AdminBottomBar } from './AdminBottomBar';
@@ -538,7 +539,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: 'rgba(10,127,208,0.20)',
-    shadowColor: '#0A7FD0',
+    shadowColor: DOSSIER_BLUE,
     shadowOpacity: 0.14,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },

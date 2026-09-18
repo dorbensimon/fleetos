@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,9 @@ import { useCompany } from '../../lib/CompanyContext';
 import { listNotifications, markNotificationRead, markAllNotificationsRead, Notification } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
 import { DC_COLORS, DC_SPACING, DC_TYPO, type DriverCardTint } from '../../components/driverCard/driverCardTheme';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { NotificationsDesktopView } from '../../components/desktop/NotificationsDesktopView';
 
 /**
  * Logs every driver self-edit (name/phone/ID/license/department) so
@@ -45,6 +48,7 @@ function driverNotificationAppearance(type: string | null): {
 
 export default function NotificationsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const isDesktop = useIsDesktop();
   const { companyId, profile } = useCompany();
   const [items, setItems] = useState<Notification[]>([]);
   const [unreadIds, setUnreadIds] = useState<Set<string>>(new Set());
@@ -213,80 +217,106 @@ export default function NotificationsScreen({ navigation }: Props) {
     return null;
   };
 
-  const driverContent = loading ? (
+  const driverListEmpty = loading ? (
     <LoadingState />
   ) : error ? (
     <View style={styles.driverState}>
       <ErrorState message={error} onRetry={load} />
     </View>
-  ) : items.length === 0 ? (
+  ) : (
     <View style={styles.driverState}>
       <EmptyState icon="notifications-outline" title="אין עדיין התראות" hint="עדכונים מהמנהל שלך יופיעו כאן" />
     </View>
-  ) : (
-    <>
-      <AppText style={[DC_TYPO.groupTitle, styles.driverSectionTitle]}>עדכונים אחרונים</AppText>
-      <View style={styles.driverList}>
-        {items.map((n, index) => {
-          const appearance = driverNotificationAppearance(n.notification_type);
-          const action = actionLabel(n);
-          const isUnread = unreadIds.has(n.id);
-          return (
-            <TouchableOpacity
-              key={n.id}
-              activeOpacity={0.65}
-              onPress={() => openNotification(n)}
-              accessibilityRole="button"
-              accessibilityLabel={n.message}
-              style={[styles.driverRow, index === items.length - 1 && styles.driverRowLast]}
-            >
-              <View style={[styles.driverIcon, { backgroundColor: DC_COLORS[appearance.tint] }]}>
-                <Ionicons name={appearance.icon} size={18} color={DC_COLORS.surface} />
-              </View>
-              <View style={styles.driverTextWrap}>
-                <AppText style={[DC_TYPO.rowLabel, styles.driverMessage]} numberOfLines={2}>
-                  {n.message}
-                </AppText>
-                <View style={styles.driverMeta}>
-                  <AppText style={styles.driverTime}>{timeAgo(n.created_at)}</AppText>
-                  {!!action && <AppText style={styles.driverAction}>{action}</AppText>}
-                </View>
-              </View>
-              {isUnread && <View style={styles.driverUnreadDot} />}
-              <Ionicons name="chevron-back" size={19} color={DC_COLORS.chevron} />
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </>
   );
+
+  const renderDriverItem = ({ item: n, index }: { item: Notification; index: number }) => {
+    const appearance = driverNotificationAppearance(n.notification_type);
+    const action = actionLabel(n);
+    const isUnread = unreadIds.has(n.id);
+    return (
+      <TouchableOpacity
+        activeOpacity={0.65}
+        onPress={() => openNotification(n)}
+        accessibilityRole="button"
+        accessibilityLabel={n.message}
+        style={[
+          styles.driverRow,
+          index === 0 && styles.driverRowFirst,
+          index === items.length - 1 && styles.driverRowLast,
+        ]}
+      >
+        <View style={[styles.driverIcon, { backgroundColor: DC_COLORS[appearance.tint] }]}>
+          <Ionicons name={appearance.icon} size={18} color={DC_COLORS.surface} />
+        </View>
+        <View style={styles.driverTextWrap}>
+          <AppText style={[DC_TYPO.rowLabel, styles.driverMessage]} numberOfLines={2}>
+            {n.message}
+          </AppText>
+          <View style={styles.driverMeta}>
+            <AppText style={styles.driverTime}>{timeAgo(n.created_at)}</AppText>
+            {!!action && <AppText style={styles.driverAction}>{action}</AppText>}
+          </View>
+        </View>
+        {isUnread && <View style={styles.driverUnreadDot} />}
+        <Ionicons name="chevron-back" size={19} color={DC_COLORS.chevron} />
+      </TouchableOpacity>
+    );
+  };
 
   if (profile?.role === 'driver') {
     return (
       <View style={styles.driverScreen}>
         <AdminGradientBackground />
-        <ScrollView
+        <FlatList
           style={styles.driverScroll}
+          data={items}
+          keyExtractor={(n) => n.id}
+          renderItem={renderDriverItem}
+          ListHeaderComponent={
+            <>
+              <View style={styles.driverTitleRow}>
+                <AppText style={[DC_TYPO.largeTitle, styles.driverTitle]}>התראות</AppText>
+                {unreadIds.size > 0 && (
+                  <TouchableOpacity onPress={markAllRead} activeOpacity={0.65} accessibilityRole="button">
+                    <AppText style={styles.markAllText}>קרא הכל</AppText>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {items.length > 0 && (
+                <AppText style={[DC_TYPO.groupTitle, styles.driverSectionTitle]}>עדכונים אחרונים</AppText>
+              )}
+            </>
+          }
+          ListEmptyComponent={driverListEmpty}
           contentContainerStyle={[
             styles.driverContent,
             { paddingTop: insets.top + 76, paddingBottom: DC_SPACING.listBottomPadding + insets.bottom },
           ]}
           showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.driverTitleRow}>
-            <AppText style={[DC_TYPO.largeTitle, styles.driverTitle]}>התראות</AppText>
-            {unreadIds.size > 0 && (
-              <TouchableOpacity onPress={markAllRead} activeOpacity={0.65} accessibilityRole="button">
-                <AppText style={styles.markAllText}>קרא הכל</AppText>
-              </TouchableOpacity>
-            )}
-          </View>
-          {driverContent}
-        </ScrollView>
+        />
         <View style={[styles.driverBackButton, { top: insets.top + 12 }]}>
           <BackButton onPress={() => navigation.goBack()} />
         </View>
       </View>
+    );
+  }
+
+  if (isDesktop) {
+    return (
+      <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'התראות']}>
+        <NotificationsDesktopView
+          items={items}
+          unreadIds={unreadIds}
+          loading={loading}
+          error={error}
+          onRetry={load}
+          onOpen={(n) => void openNotification(n)}
+          onMarkAllRead={() => void markAllRead()}
+          iconFor={(type) => driverNotificationAppearance(type).icon}
+          timeAgo={timeAgo}
+          actionLabel={actionLabel}
+        />
+      </DesktopShell>
     );
   }
 
@@ -313,16 +343,20 @@ export default function NotificationsScreen({ navigation }: Props) {
         <LoadingState />
       ) : error ? (
         <ErrorState message={error} onRetry={load} />
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon="notifications-outline"
-          title="אין עדיין התראות"
-          hint="עדכונים הקשורים לחברה יופיעו כאן"
-        />
       ) : (
-        <View style={styles.content}>
-          {items.map((n) => (
-            <TouchableOpacity key={n.id} activeOpacity={0.7} onPress={() => openNotification(n)}>
+        <FlatList
+          data={items}
+          keyExtractor={(n) => n.id}
+          contentContainerStyle={styles.content}
+          ListEmptyComponent={
+            <EmptyState
+              icon="notifications-outline"
+              title="אין עדיין התראות"
+              hint="עדכונים הקשורים לחברה יופיעו כאן"
+            />
+          }
+          renderItem={({ item: n }) => (
+            <TouchableOpacity activeOpacity={0.7} onPress={() => openNotification(n)}>
               <Card style={[styles.row, unreadIds.has(n.id) && styles.rowUnread]}>
                 <View style={styles.icon}>
                   <Ionicons
@@ -349,8 +383,8 @@ export default function NotificationsScreen({ navigation }: Props) {
                 {unreadIds.has(n.id) && <View style={styles.unreadDot} />}
               </Card>
             </TouchableOpacity>
-          ))}
-        </View>
+          )}
+        />
       )}
     </Screen>
   );
@@ -381,7 +415,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginRight: 2,
   },
-  driverList: { backgroundColor: DC_COLORS.surface, borderRadius: DC_SPACING.groupRadius, overflow: 'hidden' },
   driverRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -391,8 +424,17 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderBottomWidth: 1,
     borderBottomColor: DC_COLORS.separator,
+    backgroundColor: DC_COLORS.surface,
   },
-  driverRowLast: { borderBottomWidth: 0 },
+  // FlatList renders each row separately (no shared wrapping card, for
+  // virtualization), so the "grouped rows" look comes from rounding the
+  // first/last row's own corners instead of clipping a parent container.
+  driverRowFirst: { borderTopLeftRadius: DC_SPACING.groupRadius, borderTopRightRadius: DC_SPACING.groupRadius },
+  driverRowLast: {
+    borderBottomWidth: 0,
+    borderBottomLeftRadius: DC_SPACING.groupRadius,
+    borderBottomRightRadius: DC_SPACING.groupRadius,
+  },
   driverIcon: {
     width: DC_SPACING.iconSquare,
     height: DC_SPACING.iconSquare,

@@ -51,7 +51,7 @@ function harness(name, options = {}) {
       if (id.includes('@supabase/supabase-js')) return { createClient: () => admin };
       if (id.endsWith('/docuseal.ts')) return { docusealFetch: async (url, init = {}) => {
         calls.push({ url, method: init.method || 'GET', body: init.body && JSON.parse(init.body) });
-        if (options.remoteFailure || (options.failSubmission && init.method === 'POST')) return new Response('{}', { status: 503 });
+        if (options.remoteFailure || (options.failSubmission && init.method === 'POST') || (options.failCancellation && url.startsWith('/submissions/') && init.method === 'DELETE')) return new Response('{}', { status: 503 });
         const data = url.startsWith('/templates/') ? { submitters: [{ name: 'Driver', uuid: 'signer' }], fields: [{ name: 'driver_national_id', required: true }] }
           : url.startsWith('/submitters?') ? { data: [] }
           : init.method === 'POST' ? [{ id: 2, submission_id: 3, slug: 'link', sent_at: '2026-09-10T12:00:00Z' }]
@@ -91,12 +91,18 @@ test('missing email or required profile data prevents creating or emailing a req
     assert.equal(h.calls.some(c => c.action === 'insert' || c.method === 'POST'), false);
   }
 });
-test('an existing confirmed request cannot send a duplicate', async () => {
+test('sending again replaces the existing unsigned request before creating a fresh one', async () => {
   const h = harness('assign-signing-template', { existing: { id: 'request', docuseal_submitter_id: 2, docuseal_submission_id: 3, docuseal_submitter_slug: 'link' } });
+  assert.equal((await h.run(send)).body.created, 1);
+  assert.ok(h.calls.findIndex(c => c.method === 'DELETE') < h.calls.findIndex(c => c.method === 'POST'));
+  assert.ok(h.calls.some(c => c.action === 'update' && c.body?.status === 'cancelled' && c.body?.archived_at));
+});
+test('a replacement never sends a new request when DocuSeal cannot cancel the old one', async () => {
+  const h = harness('assign-signing-template', { existing: { id: 'request', docuseal_submitter_id: 2, docuseal_submission_id: 3, docuseal_submitter_slug: 'link' }, failCancellation: true });
   assert.equal((await h.run(send)).body.created, 0);
   assert.equal(h.calls.some(c => c.method === 'POST'), false);
 });
-test('successful send fills readonly details and persists provider send time plus exactly 48 hours', async () => {
+test('successful send fills readonly details and remains available until it is signed or replaced', async () => {
   const h = harness('assign-signing-template');
   const result = await h.run(send);
   assert.equal(result.body.created, 1);
@@ -105,8 +111,13 @@ test('successful send fills readonly details and persists provider send time plu
   assert.equal(remote.body.submitters[0].values.company_name, 'Company A');
   assert.equal(remote.body.submitters[0].fields.find(f => f.name === 'company_name').readonly, true);
   const saved = h.calls.find(c => c.action === 'update' && c.body?.sent_at);
-  assert.equal(Date.parse(saved.body.expires_at) - Date.parse(saved.body.sent_at), 48 * 60 * 60 * 1000);
+  assert.equal(saved.body.expires_at, null);
   assert.equal(saved.body.sent_at, '2026-09-10T12:00:00.000Z');
+  assert.equal('expire_at' in remote.body, false);
+  assert.equal(remote.body.send_email, false);
+  assert.equal(remote.body.submitters[0].send_email, false);
+  const inserted = h.calls.find(c => c.action === 'insert' && c.table === 'signature_requests');
+  assert.equal(inserted.body.next_email_reminder_at, null);
 });
 test('only Owner can rename a template', async () => {
   const h = harness('rename-signing-template', { role: 'admin' });

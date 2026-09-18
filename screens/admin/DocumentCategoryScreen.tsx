@@ -27,6 +27,10 @@ import {
 } from '../../lib/documentActions';
 import { RootStackParamList } from '../../navigation/types';
 import { DriverDossierHero } from '../../components/driverCard/DriverDossierHero';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { DText, HoverPressable } from '../../components/desktop/primitives';
+import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
 
 /**
  * A generic "one category, one screen" document list — reused by every
@@ -85,6 +89,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const { ownerType, ownerId, category, title, allowDelete = true, requiresExpiry = false } = route.params;
   const { companyId, profile } = useCompany();
   const insets = useSafeAreaInsets();
+  const isDesktop = useIsDesktop();
 
   // נוהל 6 replaces the plain "upload any file" flow with a structured
   // form that produces a PDF (see Procedure6FormModal) — drivers may only
@@ -171,6 +176,84 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       src: url,
     });
   };
+
+  const desktopBody = loading ? (
+    <LoadingState />
+  ) : error ? (
+    <ErrorState message={error} onRetry={load} />
+  ) : (
+    <View style={desktopStyles.wrap}>
+      {docs.length === 0 ? (
+        <EmptyState
+          icon="document-text-outline"
+          title={isProcedure6 ? 'אין עדיין דיווחי נוהל 6' : 'אין עדיין מסמכים'}
+          hint={
+            isProcedure6
+              ? canCreateProcedure6
+                ? 'הוסף דיווח כדי ליצור את המסמך הראשון'
+                : 'המנהל עדיין לא הוסיף דיווח בקטגוריה זו'
+              : 'הנהג עדיין לא צילם או העלה מסמכים בקטגוריה זו'
+          }
+        />
+      ) : (
+        <View style={desktopStyles.list}>
+          {docs.map((doc) => (
+            <DocumentFileRow
+              key={doc.id}
+              doc={doc}
+              variant="card"
+              showDate
+              showExpiry={requiresExpiry}
+              onOpen={openDocument}
+              onDownload={downloadDocumentWithAlert}
+              onDelete={allowDelete ? (item) => confirmDeleteDocument(item, load) : undefined}
+            />
+          ))}
+        </View>
+      )}
+
+      {(!isProcedure6 || canCreateProcedure6) && (
+        <>
+          {requiresExpiry && (
+            <View style={desktopStyles.expiryField}>
+              <DText weight="semiBold" style={desktopStyles.expiryLabel}>תוקף המסמך</DText>
+              <DateField value={expiryDate} onChange={setExpiryDate} placeholder="בחר תאריך תוקף" />
+            </View>
+          )}
+          <HoverPressable
+            style={desktopStyles.uploadBtn}
+            hoverStyle={{ backgroundColor: DESKTOP_COLORS.brandHover }}
+            onPress={() => (isProcedure6 ? setShowProcedure6Form(true) : addDocument())}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name={isProcedure6 ? 'add-circle-outline' : 'cloud-upload-outline'} size={15} color="#FFFFFF" />
+                <DText weight="semiBold" style={desktopStyles.uploadText}>
+                  {isProcedure6 ? 'הוסף דיווח נוהל 6' : 'העלה מסמך'}
+                </DText>
+              </>
+            )}
+          </HoverPressable>
+        </>
+      )}
+    </View>
+  );
+
+  if (isDesktop) {
+    return (
+      <>
+        <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', title]}>
+          {desktopBody}
+        </DesktopShell>
+        {isProcedure6 && (
+          <Procedure6FormModal visible={showProcedure6Form} onClose={() => setShowProcedure6Form(false)} onSubmit={createProcedure6} />
+        )}
+      </>
+    );
+  }
 
   return (
     <Screen style={styles.screen}>
@@ -273,4 +356,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   uploadText: { fontSize: FONT_SIZE.md, color: COLORS.textInverse },
+});
+
+const desktopStyles = StyleSheet.create({
+  wrap: { padding: 24, maxWidth: 560, alignSelf: 'center', width: '100%', gap: 14 },
+  list: { gap: 10 },
+  expiryField: { gap: 6, marginTop: 4 },
+  expiryLabel: { fontSize: 13 },
+  uploadBtn: {
+    marginTop: 4,
+    height: 36,
+    borderRadius: 7,
+    backgroundColor: DESKTOP_COLORS.brand,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  uploadText: { fontSize: 13, color: '#FFFFFF' },
 });

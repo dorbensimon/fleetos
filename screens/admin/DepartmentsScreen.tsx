@@ -11,6 +11,9 @@ import { COLORS, CONTENT_MAX_WIDTH, SPACING, ACCENT_SHADOW, FONT, FONT_SIZE, BRA
 import { useCompany } from '../../lib/CompanyContext';
 import { listDepartments, createDepartment, updateDepartment, deleteDepartment, countDepartmentUsage, Department } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { DepartmentsDesktopView } from '../../components/desktop/DepartmentsDesktopView';
 
 /**
  * Manages the company's internal org units ("תפעול", "הסעות" ...) that
@@ -33,6 +36,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
   const [editingName, setEditingName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const loadRequest = useRef(0);
+  const isDesktop = useIsDesktop();
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
@@ -131,6 +135,30 @@ export default function DepartmentsScreen({ navigation }: Props) {
       ]
     );
   };
+
+  if (isDesktop) {
+    return (
+      <DesktopShell active="Departments" breadcrumbs={['ניהול', 'מחלקות']}>
+        {loading ? null : error ? (
+          <ErrorState message={error} onRetry={load} />
+        ) : (
+          <DepartmentsDesktopView
+            departments={departments}
+            newName={newName}
+            onChangeNewName={setNewName}
+            onAdd={() => void addDepartment()}
+            adding={adding}
+            editingId={editingId}
+            editingName={editingName}
+            onChangeEditingName={setEditingName}
+            onStartEdit={(dept) => { setEditingId(dept.id); setEditingName(dept.name); }}
+            onSaveEdit={(id) => void saveRename(id)}
+            onDelete={(dept) => void confirmDelete(dept)}
+          />
+        )}
+      </DesktopShell>
+    );
+  }
 
   return (
     <View style={styles.screen}>

@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, StyleSheet, RefreshControl, Linking, Animated, StatusBar, Easing } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen, EmptyState, ErrorState } from '../../components/ui';
 import { ToggleValue } from '../../components/ui/DriversVehiclesToggle';
@@ -13,7 +14,7 @@ import { FleetHero, FleetStat, heroNavHeight, HERO_CONTENT_HEIGHT, HERO_TRAVEL }
 import { FleetDock, FLEET_DOCK_CLEARANCE } from '../../components/fleet/FleetDock';
 import { FleetAddButton } from '../../components/fleet/FleetAddButton';
 import { FleetFilterChips } from '../../components/fleet/FleetFilterChips';
-import { FLEET_COLORS, FLEET_SHADOWS } from '../../components/fleet/fleetTheme';
+import { FLEET_COLORS, FLEET_SHADOWS } from '../../lib/colors';
 import { SPACING, expiryState } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
@@ -62,8 +63,8 @@ type LicenseFilter = 'all' | 'valid' | 'soon' | 'expired' | 'no_vehicle';
 type StatusFilter = 'all' | 'active' | 'maintenance' | 'disabled' | 'archived';
 
 const CROSSFADE_MS = 140;
-const DOCK_ANIMATION_MS = 190;
 const DOCK_SCROLL_THRESHOLD = 6;
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 // Lets the final "add" action rise to the middle of the visible sheet, while
 // remaining a fixed, modest amount instead of creating a full empty page.
 const FLEET_ACTION_CENTERING_PADDING = 220;
@@ -82,11 +83,19 @@ type VehicleSheetItem =
 
 export default function FleetScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'AdminHome'>>();
   const { companyId, company } = useCompany();
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
 
-  const [mode, setMode] = useState<ToggleValue>('drivers');
+  const [mode, setMode] = useState<ToggleValue>(route.params?.mode ?? 'drivers');
+
+  // The desktop breadcrumb can return directly to the relevant fleet tab.
+  // React Navigation may keep this screen mounted, so also react to a later
+  // navigation request instead of only reading the initial route params.
+  useEffect(() => {
+    if (route.params?.mode) setMode(route.params.mode);
+  }, [route.params?.mode]);
 
   /* ---------------------------------------------------------------- */
   /* Drivers                                                           */
@@ -391,11 +400,13 @@ export default function FleetScreen() {
       Animated.timing(driversOpacity, {
         toValue: mode === 'drivers' ? 1 : 0,
         duration: CROSSFADE_MS,
+        easing: EASE_OUT,
         useNativeDriver: true,
       }),
       Animated.timing(vehiclesOpacity, {
         toValue: mode === 'vehicles' ? 1 : 0,
         duration: CROSSFADE_MS,
+        easing: EASE_OUT,
         useNativeDriver: true,
       }),
     ]).start();
@@ -425,11 +436,13 @@ export default function FleetScreen() {
       if (heroCollapsed.current[listMode] === collapsed) return;
       heroCollapsed.current[listMode] = collapsed;
       const anim = listMode === 'drivers' ? driversHeroAnim : vehiclesHeroAnim;
-      Animated.timing(anim, {
+      Animated.spring(anim, {
         toValue: collapsed ? HERO_TRAVEL : 0,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
+        stiffness: 220,
+        damping: 30,
+        mass: 1,
+        overshootClamping: true,
       }).start();
     },
     [driversHeroAnim, vehiclesHeroAnim]
@@ -438,10 +451,13 @@ export default function FleetScreen() {
   const setDockVisible = useCallback((visible: boolean) => {
     if (dockVisible.current === visible) return;
     dockVisible.current = visible;
-    Animated.timing(dockVisibility, {
+    Animated.spring(dockVisibility, {
       toValue: visible ? 1 : 0,
-      duration: DOCK_ANIMATION_MS,
       useNativeDriver: true,
+      stiffness: 260,
+      damping: 30,
+      mass: 1,
+      overshootClamping: true,
     }).start();
   }, [dockVisibility]);
 
@@ -492,6 +508,11 @@ export default function FleetScreen() {
   const sheetTranslateY = (heroAnim: Animated.Value) =>
     heroAnim.interpolate({ inputRange: [0, HERO_TRAVEL], outputRange: [0, -HERO_TRAVEL], extrapolate: 'clamp' });
 
+  // A hair of scale alongside the translate — the sheet reads as a material
+  // settling into place rather than a flat layer sliding on rails.
+  const sheetScale = (heroAnim: Animated.Value) =>
+    heroAnim.interpolate({ inputRange: [0, HERO_TRAVEL], outputRange: [1, 0.996], extrapolate: 'clamp' });
+
   // On the blue hero glass, cube numbers use the bright "fill" tones (not
   // the muted "text" tones, which are sized for reading on the white
   // sheet) — same idea as the spec's bright status-dot variants reserved
@@ -522,7 +543,7 @@ export default function FleetScreen() {
   // data, filters and navigation; phone and narrow web keep the layout below.
   if (isDesktop) {
     return (
-      <DesktopShell active="AdminHome" breadcrumbs={['ניהול', mode === 'drivers' ? 'נהגים' : 'רכבים']}>
+      <DesktopShell active="AdminHome" breadcrumbs={['דשבורד']}>
         <FleetDesktopView<LicenseFilter, StatusFilter>
           mode={mode}
           onModeChange={setMode}
@@ -591,14 +612,17 @@ export default function FleetScreen() {
         query={mode === 'drivers' ? driverSearch : vehicleSearch}
         onChangeQuery={mode === 'drivers' ? setDriverSearch : setVehicleSearch}
         searchPlaceholder={mode === 'drivers' ? 'חפש לפי שם, ת.ז או מספר עובד' : 'חיפוש לפי מספר רישוי'}
-        onActivityLogPress={() => navigation.navigate('ActivityLog')}
         onAttentionPress={() => navigation.navigate('Attention')}
       />
 
       <Animated.View
         style={[
           styles.sheet,
-          { top: sheetRestTop, opacity: driversOpacity, transform: [{ translateY: sheetTranslateY(driversHeroAnim) }] },
+          {
+            top: sheetRestTop,
+            opacity: driversOpacity,
+            transform: [{ translateY: sheetTranslateY(driversHeroAnim) }, { scale: sheetScale(driversHeroAnim) }],
+          },
         ]}
         pointerEvents={mode === 'drivers' ? 'auto' : 'none'}
       >
@@ -675,7 +699,11 @@ export default function FleetScreen() {
       <Animated.View
         style={[
           styles.sheet,
-          { top: sheetRestTop, opacity: vehiclesOpacity, transform: [{ translateY: sheetTranslateY(vehiclesHeroAnim) }] },
+          {
+            top: sheetRestTop,
+            opacity: vehiclesOpacity,
+            transform: [{ translateY: sheetTranslateY(vehiclesHeroAnim) }, { scale: sheetScale(vehiclesHeroAnim) }],
+          },
         ]}
         pointerEvents={mode === 'vehicles' ? 'auto' : 'none'}
       >

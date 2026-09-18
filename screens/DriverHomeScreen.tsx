@@ -12,10 +12,23 @@ import { countUnreadNotifications, getDriver, listActiveDriverVehicles, listComp
 import { VEHICLE_TYPE_LABELS, complianceTargetDate, findComplianceDef, isRetiredVehicleComplianceItem } from '../lib/compliance';
 import { listSignatureRequests } from '../lib/docuseal';
 import { CONTENT_MAX_WIDTH, expiryState, formatDate, timeGreeting, type ExpiryState } from '../lib/theme';
+import { FLEET_COLORS } from '../lib/colors';
 import type { RootStackParamList } from '../navigation/types';
+import { useIsDesktop } from '../lib/useDesktopLayout';
+import { DesktopShell } from '../components/desktop/DesktopShell';
+import { DText, HoverPressable, StatusPill } from '../components/desktop/primitives';
+import { DESKTOP_COLORS, DESKTOP_TONES } from '../components/desktop/desktopTheme';
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverHome'>;
 type Severity = 'danger' | 'warning' | 'success';
-const severityMeta: Record<Severity, { dot: string; tint: string; halo: string }> = { danger: { dot: '#ff3b30', tint: '#d70015', halo: 'rgba(255,59,48,.18)' }, warning: { dot: '#ff9f0a', tint: '#b26200', halo: 'rgba(255,159,10,.18)' }, success: { dot: '#34c759', tint: '#1e8e3e', halo: 'rgba(52,199,89,.18)' } };
+// Reuses FLEET_COLORS' severity fill/text instead of re-declaring the same
+// hex values locally — this screen already matched them by hand, so it was
+// a silent duplicate, not a deliberate second palette. `halo` stays its own
+// value: it's a glow-behind-the-dot opacity, not the badge-tint FLEET_COLORS exposes.
+const severityMeta: Record<Severity, { dot: string; tint: string; halo: string }> = {
+  danger: { dot: FLEET_COLORS.danger.fill, tint: FLEET_COLORS.danger.text, halo: 'rgba(255,59,48,.18)' },
+  warning: { dot: FLEET_COLORS.warning.fill, tint: FLEET_COLORS.warning.text, halo: 'rgba(255,159,10,.18)' },
+  success: { dot: FLEET_COLORS.success.fill, tint: FLEET_COLORS.success.text, halo: 'rgba(52,199,89,.18)' },
+};
 
 function GlassCard({ children, style, innerStyle, intensity = 45 }: { children: React.ReactNode; style?: any; innerStyle?: any; intensity?: number }) { return <View style={[styles.glassOuter, style]}><BlurView intensity={intensity} tint="light" style={StyleSheet.absoluteFill} /><View style={[styles.glassInner, innerStyle]}>{children}</View></View>; }
 function Avatar({ initial, size = 44, dark = false }: { initial: string; size?: number; dark?: boolean }) { return <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }, dark && styles.avatarDark]}><AppText weight="bold" style={[styles.avatarText, { fontSize: size * .36 }, dark && styles.avatarTextDark]}>{initial || '?'}</AppText></View>; }
@@ -26,6 +39,7 @@ function Timeline({ items, onPress }: { items: Array<{ title: string; detail: st
 
 export default function DriverHomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets(); const { company, profile } = useCompany();
+  const isDesktop = useIsDesktop();
   const [driver, setDriver] = useState<DriverRow | null>(null); const [vehicle, setVehicle] = useState<Vehicle | null>(null); const [compliance, setCompliance] = useState<ComplianceItem[]>([]); const [pendingSignatures, setPendingSignatures] = useState(0); const [unreadNotifications, setUnreadNotifications] = useState(0); const [loading, setLoading] = useState(true); const [error, setError] = useState('');
   const loadRequest = useRef(0);
   const load = useCallback(async () => {
@@ -41,8 +55,98 @@ export default function DriverHomeScreen({ navigation }: Props) {
   const fullName = driver?.full_name?.trim() || profile?.full_name?.trim() || ''; const firstName = fullName.split(/\s+/)[0] || ''; const managerName = company?.safety_officer_name?.trim() || ''; const managerPhone = company?.safety_officer_phone || ''; const licenseState = expiryState(driver?.license_expiry);
   const timelineItems = useMemo(() => { if (!vehicle) return []; return compliance.filter((item) => !isRetiredVehicleComplianceItem(item.item_type)).map((item) => { const def = findComplianceDef('vehicle', item.item_type); const target = def ? complianceTargetDate(def, item) : item.expiry_date; if (!def && !target) return null; const severity = severityFor(expiryState(target)); return { title: def?.label || item.item_type, detail: target ? formatDate(target) : 'תאריך חסר', severity, item }; }).filter(Boolean).sort((a: any, b: any) => ({ danger: 0, warning: 1, success: 2 } as Record<string, number>)[a.severity] - ({ danger: 0, warning: 1, success: 2 } as Record<string, number>)[b.severity]).slice(0, 3) as Array<{ title: string; detail: string; severity: Severity; item: ComplianceItem }>; }, [compliance, vehicle]);
   const openManager = (kind: 'tel' | 'sms') => { if (managerPhone) Linking.openURL(`${kind}:${managerPhone}`).catch(() => undefined); };
+  if (isDesktop) {
+    return (
+      <DesktopShell active="DriverHome" breadcrumbs={['הבית שלי']}>
+        {loading ? (
+          <LoadingState />
+        ) : error && !driver ? (
+          <ErrorState message={error} onRetry={() => { setLoading(true); load(); }} />
+        ) : (
+          <View style={ds.wrap}>
+            <View style={ds.columns}>
+              <View style={ds.mainCol}>
+                <View style={ds.card}>
+                  <DText weight="bold" style={ds.cardTitle}>תוקף ותחזוקה</DText>
+                  {vehicle ? (
+                    timelineItems.length === 0 ? (
+                      <DText style={ds.allGood}>הכול תקין כרגע</DText>
+                    ) : (
+                      timelineItems.map((item, index) => (
+                        <HoverPressable
+                          key={`${item.title}-${index}`}
+                          style={[ds.timelineRow, index === timelineItems.length - 1 && ds.rowLast]}
+                          hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}
+                          onPress={() => navigation.navigate('DriverVehicle')}
+                        >
+                          <StatusPill tone={item.severity === 'danger' ? 'bad' : item.severity === 'warning' ? 'warn' : 'ok'} label={item.detail} />
+                          <DText weight="semiBold" style={ds.timelineTitle}>{item.title}</DText>
+                        </HoverPressable>
+                      ))
+                    )
+                  ) : (
+                    <HoverPressable style={ds.noVehicleLine} onPress={() => navigation.navigate('Menu')}>
+                      <DText style={ds.noVehicleText}>פנה למנהל הצי לשיוך רכב</DText>
+                    </HoverPressable>
+                  )}
+                </View>
+
+                <View style={ds.tilesRow}>
+                  <HoverPressable style={ds.tile} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={() => navigation.navigate('DriverSigningDocuments')}>
+                    <DText weight="bold" style={ds.tileNumber}>{pendingSignatures}</DText>
+                    <DText weight="semiBold" style={ds.tileTitle}>טפסים ומסמכים</DText>
+                    <DText style={ds.tileDetail}>{pendingSignatures ? 'ממתינים לפעולה' : 'אין מסמכים ממתינים'}</DText>
+                  </HoverPressable>
+                  <HoverPressable style={ds.tile} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={() => navigation.navigate('DriverProfile')}>
+                    <DText weight="bold" style={[ds.tileNumber, licenseState === 'ok' && { color: DESKTOP_TONES.ok.fg }, licenseState === 'expired' && { color: DESKTOP_TONES.bad.fg }]}>
+                      {driver?.license_expiry ? formatDate(driver.license_expiry) : '—'}
+                    </DText>
+                    <DText weight="semiBold" style={ds.tileTitle}>רישיון נהיגה</DText>
+                    <DText style={[ds.tileDetail, licenseState === 'expired' && { color: DESKTOP_TONES.bad.fg }]}>
+                      {driver?.license_classes ? `דרגה ${driver.license_classes} · ${licenseState === 'expired' ? 'לא בתוקף' : 'מאומת'}` : 'פרטים חסרים'}
+                    </DText>
+                  </HoverPressable>
+                </View>
+              </View>
+
+              <View style={ds.sideCol}>
+                <View style={ds.card}>
+                  <DText style={ds.sideLabel}>הרכב המשויך אליי</DText>
+                  <DText weight="bold" style={ds.vehicleName}>
+                    {vehicle ? [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || VEHICLE_TYPE_LABELS[vehicle.vehicle_type] : 'לא שויך רכב'}
+                  </DText>
+                  {vehicle && (
+                    <View style={ds.plateRow}>
+                      <DText weight="bold" style={ds.plateText}>{vehicle.plate_number}</DText>
+                      <StatusPill tone="neutral" label={VEHICLE_TYPE_LABELS[vehicle.vehicle_type] || 'פרטי'} />
+                    </View>
+                  )}
+                </View>
+
+                <View style={ds.card}>
+                  <DText style={ds.sideLabel}>מנהל הצי</DText>
+                  <DText weight="semiBold" style={ds.managerName}>{managerName || 'לא הוגדר'}</DText>
+                  <View style={ds.managerActions}>
+                    <HoverPressable style={ds.managerButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} disabled={!managerPhone} onPress={() => openManager('tel')}>
+                      <Ionicons name="call-outline" size={13} color={managerPhone ? DESKTOP_TONES.ok.fg : DESKTOP_COLORS.inkFaint} />
+                      <DText weight="semiBold" style={[ds.managerButtonText, { color: managerPhone ? DESKTOP_TONES.ok.fg : DESKTOP_COLORS.inkFaint }]}>התקשר</DText>
+                    </HoverPressable>
+                    <HoverPressable style={ds.managerButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} disabled={!managerPhone} onPress={() => openManager('sms')}>
+                      <Ionicons name="chatbubble-outline" size={13} color={managerPhone ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
+                      <DText weight="semiBold" style={[ds.managerButtonText, { color: managerPhone ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint }]}>הודעה</DText>
+                    </HoverPressable>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+      </DesktopShell>
+    );
+  }
+
   if (loading) return <View style={styles.screen}><LoadingState /></View>; if (error && !driver) return <View style={styles.screen}><ErrorState message={error} onRetry={() => { setLoading(true); load(); }} /></View>;
-  return <View style={styles.screen}><StatusBar barStyle="light-content" /><LinearGradient colors={['#0a84ff', '#0a3fa8', '#08245e']} locations={[0, .6, 1]} pointerEvents="box-none" style={[styles.hero, { paddingTop: insets.top + 52 }]}><View style={styles.glowCyan} /><View style={styles.glowWhite} /><View style={styles.vehicleBlock}><AppText style={styles.heroLabel}>הרכב המשויך אליי</AppText><AppText weight="bold" style={styles.vehicleName}>{vehicle ? [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || VEHICLE_TYPE_LABELS[vehicle.vehicle_type] : 'לא שויך רכב'}</AppText>{vehicle && <View style={styles.vehicleMeta}><LicensePlate value={vehicle.plate_number} /><View style={styles.privateChip}><AppText weight="bold" style={styles.privateText}>{VEHICLE_TYPE_LABELS[vehicle.vehicle_type] || 'פרטי'}</AppText></View></View>}</View></LinearGradient><View style={[styles.topBar, { top: insets.top + 52 }]}><View style={styles.topBarInner}><TouchableOpacity onPress={() => navigation.navigate('Menu')} style={styles.heroButton} accessibilityLabel="תפריט"><View style={styles.menuLine} /><View style={styles.menuLine} /><View style={[styles.menuLine, { width: 11 }]} /></TouchableOpacity><View style={styles.heroGreeting}><AppText style={styles.greeting}>{timeGreeting()}</AppText><AppText weight="bold" style={styles.name}>{firstName || 'נהג'}</AppText></View><TouchableOpacity onPress={() => navigation.navigate('Notifications')} style={styles.heroButton} accessibilityLabel="התראות"><Ionicons name="notifications-outline" size={21} color="#fff" />{unreadNotifications > 0 && <View style={styles.notificationDot} />}</TouchableOpacity></View></View><ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 130 }]} showsVerticalScrollIndicator={false}><GlassCard style={[styles.complianceCard, pendingSignatures > 0 && styles.pendingBorder]} intensity={45}><AppText weight="bold" style={styles.cardTitle}>תוקף ותחזוקה</AppText>{vehicle ? <Timeline items={timelineItems} onPress={() => navigation.navigate('DriverVehicle')} /> : <TouchableOpacity style={styles.noVehicleLine} onPress={() => navigation.navigate('Menu')}><AppText weight="bold" style={styles.noVehicleText}>פנה למנהל הצי לשיוך רכב</AppText></TouchableOpacity>}</GlassCard><View style={styles.tilesRow}><TouchableOpacity style={styles.tileWrap} activeOpacity={.8} onPress={() => navigation.navigate('DriverSigningDocuments')}><GlassCard style={styles.tile} innerStyle={styles.tileInner}><DocumentSketch /><View style={styles.tileContent}><AppText weight="bold" style={styles.tileNumber}>{pendingSignatures}</AppText><AppText weight="bold" style={styles.tileTitle}>מסמכים לחתימה</AppText><AppText style={styles.tileDetail}>{pendingSignatures ? 'ממתינים לפעולה' : 'אין מסמכים ממתינים'}</AppText></View></GlassCard></TouchableOpacity><TouchableOpacity style={styles.tileWrap} activeOpacity={.8} onPress={() => navigation.navigate('DriverProfile')}><GlassCard style={styles.tile} innerStyle={styles.tileInner}><View style={styles.tileContent}><AppText weight="bold" style={[styles.tileNumber, licenseState === 'ok' && styles.successText, licenseState === 'expired' && styles.dangerText]}>{driver?.license_expiry ? formatDate(driver.license_expiry) : '—'}</AppText><AppText weight="bold" style={styles.tileTitle}>רישיון נהיגה</AppText><AppText style={[styles.tileDetail, licenseState === 'expired' && styles.dangerText]}>{driver?.license_classes ? `דרגה ${driver.license_classes} · ${licenseState === 'expired' ? 'לא בתוקף' : 'מאומת'}` : 'פרטים חסרים'}</AppText></View></GlassCard></TouchableOpacity></View></ScrollView><GlassCard style={[styles.dock, { bottom: insets.bottom + 22 }]} innerStyle={styles.dockInner} intensity={48}><Avatar initial={managerName.slice(0, 1)} size={40} /><View style={styles.managerText}><AppText weight="bold" numberOfLines={1} style={styles.managerName}>{managerName || 'מנהל הצי'}</AppText><AppText style={styles.managerRole}>{managerName ? 'מנהל הצי' : 'פרטי מנהל הצי לא הוגדרו'}</AppText></View><TouchableOpacity disabled={!managerPhone} onPress={() => openManager('tel')} style={[styles.callButton, !managerPhone && styles.disabledButton]}><Ionicons name="call-outline" size={16} color="#1e8e3e" /><AppText weight="bold" style={styles.callText}>התקשר</AppText></TouchableOpacity><TouchableOpacity disabled={!managerPhone} onPress={() => openManager('sms')} style={[styles.messageButton, !managerPhone && styles.disabledMessage]}><Ionicons name="chatbubble-outline" size={16} color="#fff" /><AppText weight="bold" style={styles.messageText}>הודעה</AppText></TouchableOpacity></GlassCard></View>;
+  return <View style={styles.screen}><StatusBar barStyle="light-content" /><LinearGradient colors={[FLEET_COLORS.primary, FLEET_COLORS.primaryDeep, FLEET_COLORS.primaryInk]} locations={[0, .6, 1]} pointerEvents="box-none" style={[styles.hero, { paddingTop: insets.top + 52 }]}><View style={styles.glowCyan} /><View style={styles.glowWhite} /><View style={styles.vehicleBlock}><AppText style={styles.heroLabel}>הרכב המשויך אליי</AppText><AppText weight="bold" style={styles.vehicleName}>{vehicle ? [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || VEHICLE_TYPE_LABELS[vehicle.vehicle_type] : 'לא שויך רכב'}</AppText>{vehicle && <View style={styles.vehicleMeta}><LicensePlate value={vehicle.plate_number} /><View style={styles.privateChip}><AppText weight="bold" style={styles.privateText}>{VEHICLE_TYPE_LABELS[vehicle.vehicle_type] || 'פרטי'}</AppText></View></View>}</View></LinearGradient><View style={[styles.topBar, { top: insets.top + 52 }]}><View style={styles.topBarInner}><TouchableOpacity onPress={() => navigation.navigate('Menu')} style={styles.heroButton} accessibilityLabel="תפריט"><View style={styles.menuLine} /><View style={styles.menuLine} /><View style={[styles.menuLine, { width: 11 }]} /></TouchableOpacity><View style={styles.heroGreeting}><AppText style={styles.greeting}>{timeGreeting()}</AppText><AppText weight="bold" style={styles.name}>{firstName || 'נהג'}</AppText></View><TouchableOpacity onPress={() => navigation.navigate('Notifications')} style={styles.heroButton} accessibilityLabel="התראות"><Ionicons name="notifications-outline" size={21} color="#fff" />{unreadNotifications > 0 && <View style={styles.notificationDot} />}</TouchableOpacity></View></View><ScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 130 }]} showsVerticalScrollIndicator={false}><GlassCard style={[styles.complianceCard, pendingSignatures > 0 && styles.pendingBorder]} intensity={45}><AppText weight="bold" style={styles.cardTitle}>תוקף ותחזוקה</AppText>{vehicle ? <Timeline items={timelineItems} onPress={() => navigation.navigate('DriverVehicle')} /> : <TouchableOpacity style={styles.noVehicleLine} onPress={() => navigation.navigate('Menu')}><AppText weight="bold" style={styles.noVehicleText}>פנה למנהל הצי לשיוך רכב</AppText></TouchableOpacity>}</GlassCard><View style={styles.tilesRow}><TouchableOpacity style={styles.tileWrap} activeOpacity={.8} onPress={() => navigation.navigate('DriverSigningDocuments')}><GlassCard style={styles.tile} innerStyle={styles.tileInner}><DocumentSketch /><View style={styles.tileContent}><AppText weight="bold" style={styles.tileNumber}>{pendingSignatures}</AppText><AppText weight="bold" style={styles.tileTitle}>טפסים ומסמכים</AppText><AppText style={styles.tileDetail}>{pendingSignatures ? 'ממתינים לפעולה' : 'אין מסמכים ממתינים'}</AppText></View></GlassCard></TouchableOpacity><TouchableOpacity style={styles.tileWrap} activeOpacity={.8} onPress={() => navigation.navigate('DriverProfile')}><GlassCard style={styles.tile} innerStyle={styles.tileInner}><View style={styles.tileContent}><AppText weight="bold" style={[styles.tileNumber, licenseState === 'ok' && styles.successText, licenseState === 'expired' && styles.dangerText]}>{driver?.license_expiry ? formatDate(driver.license_expiry) : '—'}</AppText><AppText weight="bold" style={styles.tileTitle}>רישיון נהיגה</AppText><AppText style={[styles.tileDetail, licenseState === 'expired' && styles.dangerText]}>{driver?.license_classes ? `דרגה ${driver.license_classes} · ${licenseState === 'expired' ? 'לא בתוקף' : 'מאומת'}` : 'פרטים חסרים'}</AppText></View></GlassCard></TouchableOpacity></View></ScrollView><GlassCard style={[styles.dock, { bottom: insets.bottom + 22 }]} innerStyle={styles.dockInner} intensity={48}><Avatar initial={managerName.slice(0, 1)} size={40} /><View style={styles.managerText}><AppText weight="bold" numberOfLines={1} style={styles.managerName}>{managerName || 'מנהל הצי'}</AppText><AppText style={styles.managerRole}>{managerName ? 'מנהל הצי' : 'פרטי מנהל הצי לא הוגדרו'}</AppText></View><TouchableOpacity disabled={!managerPhone} onPress={() => openManager('tel')} style={[styles.callButton, !managerPhone && styles.disabledButton]}><Ionicons name="call-outline" size={16} color="#1e8e3e" /><AppText weight="bold" style={styles.callText}>התקשר</AppText></TouchableOpacity><TouchableOpacity disabled={!managerPhone} onPress={() => openManager('sms')} style={[styles.messageButton, !managerPhone && styles.disabledMessage]}><Ionicons name="chatbubble-outline" size={16} color="#fff" /><AppText weight="bold" style={styles.messageText}>הודעה</AppText></TouchableOpacity></GlassCard></View>;
 }
 
 const styles = StyleSheet.create({
@@ -145,7 +249,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.88)',
     backgroundColor: 'rgba(255,255,255,0.58)',
-    shadowColor: '#08245e',
+    shadowColor: FLEET_COLORS.primaryInk,
     shadowOpacity: 0.22,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 12 },
@@ -154,7 +258,7 @@ const styles = StyleSheet.create({
   glassInner: { flex: 1 },
   complianceCard: { minHeight: 244, borderRadius: 38 },
   pendingBorder: { borderColor: 'rgba(255,159,10,0.30)' },
-  cardTitle: { color: '#0b0c10', fontSize: 16, paddingHorizontal: 20, paddingTop: 20, marginBottom: 12 },
+  cardTitle: { color: FLEET_COLORS.textPrimary, fontSize: 16, paddingHorizontal: 20, paddingTop: 20, marginBottom: 12 },
   timelineRow: {
     minHeight: 59,
     flexDirection: 'row-reverse',
@@ -179,8 +283,8 @@ const styles = StyleSheet.create({
   tile: { minHeight: 174, borderRadius: 28 },
   tileInner: { overflow: 'hidden', padding: 18 },
   tileContent: { zIndex: 2, alignItems: 'flex-end' },
-  tileNumber: { color: '#0b0c10', fontSize: 19, letterSpacing: -0.4 },
-  tileTitle: { color: '#0b0c10', fontSize: 13, marginTop: 8, textAlign: 'right' },
+  tileNumber: { color: FLEET_COLORS.textPrimary, fontSize: 19, letterSpacing: -0.4 },
+  tileTitle: { color: FLEET_COLORS.textPrimary, fontSize: 13, marginTop: 8, textAlign: 'right' },
   tileDetail: { color: 'rgba(11,12,16,0.50)', fontSize: 11, marginTop: 2, textAlign: 'right' },
   successText: { color: '#1e8e3e' },
   dangerText: { color: '#d70015' },
@@ -199,7 +303,7 @@ const styles = StyleSheet.create({
     width: 68,
     height: 102,
     borderWidth: 2,
-    borderColor: '#0b0c10',
+    borderColor: FLEET_COLORS.textPrimary,
   },
   sketchFold: {
     position: 'absolute',
@@ -209,11 +313,11 @@ const styles = StyleSheet.create({
     height: 24,
     borderLeftWidth: 2,
     borderBottomWidth: 2,
-    borderColor: '#0b0c10',
+    borderColor: FLEET_COLORS.textPrimary,
   },
-  sketchLine: { position: 'absolute', left: 27, height: 2, borderRadius: 1, backgroundColor: '#0b0c10' },
+  sketchLine: { position: 'absolute', left: 27, height: 2, borderRadius: 1, backgroundColor: FLEET_COLORS.textPrimary },
   sketchSignature: { position: 'absolute', left: 27, top: 89, width: 40, height: 16 },
-  sketchCurve: { width: 22, height: 10, borderTopWidth: 2, borderColor: '#0b0c10', transform: [{ rotate: '-12deg' }] },
+  sketchCurve: { width: 22, height: 10, borderTopWidth: 2, borderColor: FLEET_COLORS.textPrimary, transform: [{ rotate: '-12deg' }] },
   sketchCurveSecond: { position: 'absolute', right: 0, top: 3, transform: [{ rotate: '10deg' }] },
   dock: {
     position: 'absolute',
@@ -227,11 +331,11 @@ const styles = StyleSheet.create({
   },
   dockInner: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 6 },
   avatar: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#d5e6ff' },
-  avatarDark: { backgroundColor: '#0b0c10' },
+  avatarDark: { backgroundColor: FLEET_COLORS.textPrimary },
   avatarText: { color: '#0a4ea8' },
   avatarTextDark: { color: '#fff' },
   managerText: { flex: 1, minWidth: 0, alignItems: 'flex-end' },
-  managerName: { color: '#0b0c10', fontSize: 13, textAlign: 'right' },
+  managerName: { color: FLEET_COLORS.textPrimary, fontSize: 13, textAlign: 'right' },
   managerRole: { color: 'rgba(11,12,16,0.50)', fontSize: 11, textAlign: 'right' },
   callButton: {
     minHeight: 44,
@@ -250,7 +354,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 12,
     borderRadius: 22,
-    backgroundColor: '#0b0c10',
+    backgroundColor: FLEET_COLORS.textPrimary,
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
@@ -259,4 +363,46 @@ const styles = StyleSheet.create({
   messageText: { color: '#fff', fontSize: 13 },
   disabledButton: { opacity: 0.45 },
   disabledMessage: { opacity: 0.35 },
+});
+
+const ds = StyleSheet.create({
+  wrap: { padding: 24, maxWidth: 820, alignSelf: 'center', width: '100%' },
+  columns: { flexDirection: 'row-reverse', gap: 16, alignItems: 'flex-start' },
+  mainCol: { flex: 2, gap: 16 },
+  sideCol: { flex: 1, gap: 16, minWidth: 220 },
+  card: {
+    backgroundColor: DESKTOP_COLORS.surface,
+    borderWidth: 1,
+    borderColor: DESKTOP_COLORS.border,
+    borderRadius: 8,
+    padding: 16,
+  },
+  cardTitle: { fontSize: 13, marginBottom: 10 },
+  allGood: { fontSize: 13, color: DESKTOP_TONES.ok.fg, paddingVertical: 12, textAlign: 'center' },
+  timelineRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10, height: 42, borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft, borderRadius: 6, paddingHorizontal: 4 },
+  rowLast: { borderBottomWidth: 0 },
+  timelineTitle: { fontSize: 13, flex: 1, textAlign: 'right' },
+  noVehicleLine: { paddingVertical: 24, alignItems: 'center' },
+  noVehicleText: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
+  tilesRow: { flexDirection: 'row-reverse', gap: 16 },
+  tile: {
+    flex: 1,
+    backgroundColor: DESKTOP_COLORS.surface,
+    borderWidth: 1,
+    borderColor: DESKTOP_COLORS.border,
+    borderRadius: 8,
+    padding: 16,
+    gap: 4,
+  },
+  tileNumber: { fontSize: 17 },
+  tileTitle: { fontSize: 12.5 },
+  tileDetail: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint },
+  sideLabel: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint, marginBottom: 6 },
+  vehicleName: { fontSize: 15 },
+  plateRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginTop: 10 },
+  plateText: { fontSize: 13, writingDirection: 'ltr' },
+  managerName: { fontSize: 13, marginBottom: 10 },
+  managerActions: { flexDirection: 'row-reverse', gap: 8 },
+  managerButton: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 5, height: 32, borderRadius: 6, borderWidth: 1, borderColor: DESKTOP_COLORS.border },
+  managerButtonText: { fontSize: 12 },
 });

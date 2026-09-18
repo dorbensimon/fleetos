@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   Modal,
   Pressable,
   Animated,
+  Easing,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
@@ -11,7 +12,16 @@ import {
 import { COLORS } from './ownerTheme';
 import { CONTENT_MAX_WIDTH } from '../../lib/theme';
 
-/** A bottom sheet that slides up over a dim overlay, dismissible by tapping outside. */
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+
+/**
+ * A bottom sheet that slides up over a dim overlay, dismissible by tapping
+ * outside. The overlay's dim and the sheet's slide share one driving value
+ * so they read as a single material moving together, not two separate
+ * transitions (the `Modal`'s own `fade` plus a manual slide). The sheet also
+ * stays mounted through its close animation instead of vanishing the
+ * instant `visible` flips, so the exit actually gets to play.
+ */
 export function BottomSheet({
   visible,
   onClose,
@@ -22,22 +32,28 @@ export function BottomSheet({
   children: React.ReactNode;
 }) {
   const translateY = useRef(new Animated.Value(300)).current;
+  const [mounted, setMounted] = useState(visible);
 
   useEffect(() => {
-    Animated.timing(translateY, {
-      toValue: visible ? 0 : 300,
-      duration: 220,
-      useNativeDriver: true,
-    }).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `translateY` is a stable ref
-  }, [visible]);
+    if (visible) {
+      setMounted(true);
+      Animated.timing(translateY, { toValue: 0, duration: 220, easing: EASE_OUT, useNativeDriver: true }).start();
+    } else {
+      Animated.timing(translateY, { toValue: 300, duration: 200, easing: EASE_OUT, useNativeDriver: true }).start(
+        ({ finished }) => finished && setMounted(false)
+      );
+    }
+  }, [visible, translateY]);
 
-  if (!visible) return null;
+  if (!mounted) return null;
+
+  const overlayOpacity = translateY.interpolate({ inputRange: [0, 300], outputRange: [1, 0], extrapolate: 'clamp' });
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <Pressable style={styles.overlay} onPress={onClose}>
+        <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
           <Animated.View style={[styles.sheetContainer, { transform: [{ translateY }], maxHeight: '85%' }]}>
             <Pressable onPress={(e) => e.stopPropagation()}>
               <ScrollView
@@ -49,7 +65,7 @@ export function BottomSheet({
               </ScrollView>
             </Pressable>
           </Animated.View>
-        </Pressable>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );

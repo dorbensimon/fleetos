@@ -35,11 +35,15 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);
 
+  // Signing delivery is in-app only. The cron job is also unscheduled, but
+  // this guard prevents a delayed request or a stale scheduler from emailing.
+  return json({ success: true, sent: 0, skipped: 0, disabled: true });
+
   const suppliedSecret = req.headers.get('x-signing-reminder-cron-secret') || '';
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!supabaseUrl || !serviceRoleKey) return json({ error: 'הגדרות השרת חסרות' }, 500);
-  const admin = createClient(supabaseUrl, serviceRoleKey);
+  const admin = createClient(supabaseUrl!, serviceRoleKey!);
 
   // The scheduled database call provides a secret stored in Vault. The Edge
   // Function never stores that secret in its source or environment; only its
@@ -59,7 +63,6 @@ Deno.serve(async (req) => {
       .from('signature_requests')
       .select('id, company_id, driver_id, docuseal_submitter_id, email_reminder_count, email_reminder_locked_until')
       .eq('status', 'pending')
-      .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
       .is('archived_at', null)
       .not('next_email_reminder_at', 'is', null)
       .lte('next_email_reminder_at', nowIso)
@@ -107,7 +110,6 @@ Deno.serve(async (req) => {
         .update({ email_reminder_locked_until: lockUntil })
         .eq('id', candidate.id)
         .eq('status', 'pending')
-        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .is('archived_at', null)
         .lte('next_email_reminder_at', nowIso)
         .or(`email_reminder_locked_until.is.null,email_reminder_locked_until.lt.${nowIso}`)
@@ -125,7 +127,7 @@ Deno.serve(async (req) => {
           .maybeSingle();
         if (error) throw error;
         settings = data as CompanySigningSettings | null;
-        settingsCache.set(candidate.company_id, settings);
+        settingsCache.set(candidate.company_id, settings ?? null);
       }
 
       const remindersEnabled = settings?.email_reminders_enabled ?? true;
@@ -179,7 +181,7 @@ Deno.serve(async (req) => {
 
     return json({ success: true, channel: 'email', sent, skipped, failed });
   } catch (error) {
-    console.error('process-signing-email-reminders failed', error instanceof Error ? error.message : 'unknown');
+    console.error('process-signing-email-reminders failed', String(error));
     return json({ error: 'עיבוד תזכורות המייל נכשל' }, 500);
   }
 });

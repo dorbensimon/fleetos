@@ -1,7 +1,7 @@
 export type VehicleStatus = 'active' | 'maintenance' | 'disabled' | 'archived';
 export type VehicleType = 'car' | 'minibus' | 'bus' | 'truck';
 export type AcquisitionType = 'purchase' | 'leasing' | 'rental';
-export type OwnerType = 'vehicle' | 'driver';
+export type OwnerType = 'vehicle' | 'driver' | 'company';
 
 export interface Vehicle {
   id: string;
@@ -111,6 +111,10 @@ export interface DocumentRow {
   file_name: string | null;
   mime_type: string | null;
   file_size: number | null;
+  /** Optional business date selected when the document was added. */
+  document_date?: string | null;
+  /** Optional plain-language context supplied by the uploader. */
+  description?: string | null;
   expiry_date: string | null;
   created_at: string;
 }
@@ -162,6 +166,8 @@ export interface VehicleDriverAssignment {
 export interface VehicleDriverWithProfile extends VehicleDriverAssignment {
   full_name: string | null;
   phone: string | null;
+  /** Driver-license expiry shown alongside the assigned vehicle on the fleet dashboard. */
+  license_expiry: string | null;
 }
 
 /** An active assignment joined with the vehicle, for the driver-facing screens. */

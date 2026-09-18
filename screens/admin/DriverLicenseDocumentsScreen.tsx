@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Image, Modal, Animated, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, Modal, Animated, ActivityIndicator, Platform, Easing } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -26,6 +26,10 @@ import { scanLicenseImage } from '../../lib/documentScanner';
 import { CONTENT_MAX_WIDTH, BRAND } from '../../lib/theme';
 import { RootStackParamList } from '../../navigation/types';
 import { DriverDossierHero } from '../../components/driverCard/DriverDossierHero';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { DText, HoverPressable } from '../../components/desktop/primitives';
+import { DESKTOP_COLORS, DESKTOP_TONES } from '../../components/desktop/desktopTheme';
 
 /**
  * Dedicated license-photos screen — replaces the generic DocumentCategory
@@ -38,12 +42,14 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DriverLicenseDocuments'
 type Side = 'front' | 'back';
 const SIDE_TITLE: Record<Side, string> = { front: 'צד קדמי', back: 'צד אחורי' };
 const SHEET_ANIM_MS = 280;
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
 export default function DriverLicenseDocumentsScreen({ route, navigation }: Props) {
   const { driverId } = route.params;
   const { companyId, profile } = useCompany();
   const insets = useSafeAreaInsets();
   const isDriverSelf = profile?.role === 'driver' && profile.id === driverId;
+  const isDesktop = useIsDesktop();
 
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [docs, setDocs] = useState<Record<Side, DocumentRow | null>>({ front: null, back: null });
@@ -64,8 +70,35 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
   const [viewerSide, setViewerSide] = useState<Side | null>(null);
 
   const sheetAnim = useRef(new Animated.Value(0)).current;
+  const toastAnim = useRef(new Animated.Value(0)).current;
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadRequest = useRef(0);
+
+  // The save bar slides in/out with edit mode instead of popping — matches
+  // the material language already used for the toast above, which this bar
+  // previously didn't share.
+  const saveBarAnim = useRef(new Animated.Value(0)).current;
+  const [saveBarMounted, setSaveBarMounted] = useState(false);
+  React.useEffect(() => {
+    if (editMode) {
+      setSaveBarMounted(true);
+      Animated.spring(saveBarAnim, { toValue: 1, useNativeDriver: true, stiffness: 260, damping: 30, mass: 1, overshootClamping: true }).start();
+    } else {
+      Animated.spring(saveBarAnim, { toValue: 0, useNativeDriver: true, stiffness: 260, damping: 30, mass: 1, overshootClamping: true }).start(
+        ({ finished }) => finished && setSaveBarMounted(false)
+      );
+    }
+  }, [editMode, saveBarAnim]);
+
+  const showToast = useCallback((message: string, duration: number) => {
+    setToast(message);
+    toastAnim.setValue(0);
+    Animated.timing(toastAnim, { toValue: 1, duration: 220, easing: EASE_OUT, useNativeDriver: true }).start();
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => {
+      Animated.timing(toastAnim, { toValue: 0, duration: 160, easing: EASE_OUT, useNativeDriver: true }).start(() => setToast(null));
+    }, duration);
+  }, [toastAnim]);
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
@@ -182,12 +215,10 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
           await updateDriver(driverId, { license_expiry: scan.extractedDate });
           setDriver((prev) => (prev ? { ...prev, license_expiry: scan.extractedDate } : prev));
           setExpiryDraft(scan.extractedDate);
-          setToast(`זוהה תוקף: ${formatDdMmYyyy(scan.extractedDate)}`);
+          showToast(`זוהה תוקף: ${formatDdMmYyyy(scan.extractedDate)}`, 2400);
         } else {
-          setToast('התמונה הועלתה, אך לא זוהה תאריך תוקף — ניתן להזין ידנית');
+          showToast('התמונה הועלתה, אך לא זוהה תאריך תוקף — ניתן להזין ידנית', 2400);
         }
-        if (toastTimer.current) clearTimeout(toastTimer.current);
-        toastTimer.current = setTimeout(() => setToast(null), 2400);
       }
     } catch (err: any) {
       setFailedSide(side);
@@ -226,9 +257,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       await updateDriver(driverId, { license_expiry: expiryDraft });
       setDriver((prev) => (prev ? { ...prev, license_expiry: expiryDraft } : prev));
       setEditMode(false);
-      setToast('הפרטים נשמרו');
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-      toastTimer.current = setTimeout(() => setToast(null), 1800);
+      showToast('הפרטים נשמרו', 1800);
     } catch (err: any) {
       showAlert('השמירה נכשלה', err?.message ?? 'נסה שוב');
     } finally {
@@ -246,7 +275,117 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
     }
   };
 
+  const overlays = (
+    <>
+      {!!toast && (
+        <Animated.View
+          style={[
+            styles.toast,
+            {
+              bottom: insets.bottom + 24,
+              opacity: toastAnim,
+              transform: [
+                { translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) },
+              ],
+            },
+          ]}
+        >
+          <Text style={styles.toastText}>{toast}</Text>
+        </Animated.View>
+      )}
+
+      <Modal visible={!!sheetFor} transparent animationType="none" onRequestClose={closeSheet}>
+        <Pressable style={styles.sheetOverlay} onPress={closeSheet}>
+          <Animated.View
+            style={[
+              styles.sheetContainer,
+              { paddingBottom: insets.bottom + 12 },
+              {
+                transform: [
+                  {
+                    translateY: sheetAnim.interpolate({ inputRange: [0, 1], outputRange: [400, 0] }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <Pressable onPress={(e) => e.stopPropagation()}>
+              <View style={styles.sheetCard}>
+                <Text style={styles.sheetTitle}>{sheetFor ? `צילום ${SIDE_TITLE[sheetFor]}` : ''}</Text>
+                <View style={styles.sheetDivider} />
+                <SheetAction label="צילום מסמך" onPress={() => pickAndUpload('camera')} />
+                <View style={styles.sheetDivider} />
+                <SheetAction label="בחירה מהתמונות" onPress={() => pickAndUpload('gallery')} />
+                <View style={styles.sheetDivider} />
+                <SheetAction label="בחירה מקבצים" onPress={() => pickAndUpload('file')} />
+                <View style={styles.sheetDivider} />
+                <SheetAction label="סריקה (זיהוי תוקף אוטומטי)" onPress={() => pickAndUpload('scan')} />
+              </View>
+              <View style={styles.sheetCard}>
+                <SheetAction label="ביטול" onPress={closeSheet} bold />
+              </View>
+            </Pressable>
+          </Animated.View>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={!!viewerSide} animationType="fade" onRequestClose={() => setViewerSide(null)}>
+        <View style={[styles.viewer, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}>
+          <View style={styles.viewerHeader}>
+            <Pressable onPress={() => setViewerSide(null)} hitSlop={8}>
+              <Text style={styles.viewerAction}>סגירה</Text>
+            </Pressable>
+            <Text style={styles.viewerTitle} numberOfLines={1}>
+              {viewerSide ? `${SIDE_TITLE[viewerSide]} · ${docs[viewerSide]?.file_name ?? ''}` : ''}
+            </Text>
+          </View>
+          {viewerSide && imageUrl[viewerSide] ? (
+            <Image source={{ uri: imageUrl[viewerSide]! }} style={styles.viewerImage} resizeMode="contain" />
+          ) : null}
+          <View style={styles.viewerActions}>
+            <Pressable
+              style={({ pressed }) => [styles.viewerActionBtn, pressed && styles.viewerActionBtnPressed]}
+              onPress={() => viewerSide && download(viewerSide)}
+            >
+              <Feather name="download" size={18} color="#FFFFFF" />
+              <Text style={styles.viewerActionText}>הורדה</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.viewerActionBtn, pressed && styles.viewerActionBtnPressed]}
+              onPress={() => {
+                if (!viewerSide) return;
+                const side = viewerSide;
+                setViewerSide(null);
+                openSheet(side);
+              }}
+            >
+              <Feather name="refresh-cw" size={18} color="#FFFFFF" />
+              <Text style={styles.viewerActionText}>החלפה</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={!!processingSide} transparent animationType="fade">
+        <View style={styles.processingOverlay}>
+          <View style={styles.processingCard}>
+            <ActivityIndicator size="large" color={DC_COLORS.blueLight} />
+            <Text style={styles.processingTitle}>מעבד את התמונה…</Text>
+            <Text style={styles.processingSubtitle}>אנא המתן, אין צורך לבחור שוב</Text>
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+
   if (loading) {
+    if (isDesktop) {
+      return (
+        <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', 'מסמכי רישיון נהיגה']}>
+          <LoadingState />
+        </DesktopShell>
+      );
+    }
     return (
       <View style={[styles.screen, styles.centerFill]}>
         <AdminGradientBackground />
@@ -256,11 +395,86 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
   }
 
   if (loadError) {
+    if (isDesktop) {
+      return (
+        <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', 'מסמכי רישיון נהיגה']}>
+          <ErrorState message={loadError} onRetry={load} />
+        </DesktopShell>
+      );
+    }
     return (
       <View style={styles.screen}>
         <AdminGradientBackground />
         <ErrorState message={loadError} onRetry={load} />
       </View>
+    );
+  }
+
+  const desktopTileGrid = (
+    <View style={desktopStyles.grid}>
+      <SideTile
+        label="צד קדמי"
+        fileName={docs.front?.file_name ?? null}
+        url={imageUrl.front}
+        editMode={editMode}
+        uploading={uploadingSide === 'front'}
+        failed={failedSide === 'front'}
+        onPress={() => handleTilePress('front')}
+        onRemove={() => removeSide('front')}
+      />
+      <SideTile
+        label="צד אחורי"
+        fileName={docs.back?.file_name ?? null}
+        url={imageUrl.back}
+        editMode={editMode}
+        uploading={uploadingSide === 'back'}
+        failed={failedSide === 'back'}
+        onPress={() => handleTilePress('back')}
+        onRemove={() => removeSide('back')}
+      />
+    </View>
+  );
+
+  if (isDesktop) {
+    return (
+      <>
+        <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', 'מסמכי רישיון נהיגה']}>
+          <View style={desktopStyles.wrap}>
+            {!isDriverSelf && (
+              <HoverPressable style={desktopStyles.editButton} onPress={toggleEdit}>
+                <DText weight="semiBold" style={desktopStyles.editButtonText}>{editMode ? 'סיום עריכה' : 'עריכה'}</DText>
+              </HoverPressable>
+            )}
+            {desktopTileGrid}
+            <View style={desktopStyles.card}>
+              <View style={desktopStyles.row}>
+                <DText weight="semiBold" style={desktopStyles.rowLabel}>תוקף הרישיון</DText>
+                {editMode ? (
+                  <DateField value={expiryDraft} onChange={setExpiryDraft} placeholder="לא הוזן" />
+                ) : (
+                  <DText style={desktopStyles.rowValue}>
+                    {driver?.license_expiry ? formatDdMmYyyy(driver.license_expiry) : 'לא הוזן'}
+                  </DText>
+                )}
+              </View>
+              <View style={desktopStyles.rowLast}>
+                <DText weight="semiBold" style={desktopStyles.rowLabel}>סטטוס</DText>
+                <DText weight="semiBold" style={{ color: isVerified ? DESKTOP_TONES.ok.fg : DESKTOP_TONES.warn.fg, fontSize: 12.5 }}>
+                  {status}
+                </DText>
+              </View>
+            </View>
+            <DText style={desktopStyles.footer}>{footerText}</DText>
+            {saving && <DText style={desktopStyles.footer}>שומר…</DText>}
+            {editMode && (
+              <HoverPressable style={desktopStyles.saveButton} onPress={save} disabled={saving}>
+                <DText weight="bold" style={desktopStyles.saveButtonText}>{saving ? 'שומר…' : 'שמירת שינויים'}</DText>
+              </HoverPressable>
+            )}
+          </View>
+        </DesktopShell>
+        {overlays}
+      </>
     );
   }
 
@@ -323,103 +537,33 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
         <Text style={[DC_TYPO.footer, styles.footer]}>{footerText}</Text>
       </View>
 
-      {editMode && (
-        <View style={[styles.saveBar, { paddingBottom: insets.bottom + 12 }]}>
+      {saveBarMounted && (
+        <Animated.View
+          style={[
+            styles.saveBar,
+            { paddingBottom: insets.bottom + 12 },
+            {
+              opacity: saveBarAnim,
+              transform: [{ translateY: saveBarAnim.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }],
+            },
+          ]}
+        >
           <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
-          <Pressable style={styles.saveButton} onPress={save} disabled={saving}>
+          <Pressable
+            style={({ pressed }) => [styles.saveButton, pressed && styles.saveButtonPressed]}
+            onPress={save}
+            disabled={saving}
+          >
             {saving ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.saveButtonText}>שמירת שינויים</Text>
             )}
           </Pressable>
-        </View>
+        </Animated.View>
       )}
 
-      {!!toast && (
-        <View style={[styles.toast, { bottom: insets.bottom + 24 }]}>
-          <Text style={styles.toastText}>{toast}</Text>
-        </View>
-      )}
-
-      <Modal visible={!!sheetFor} transparent animationType="none" onRequestClose={closeSheet}>
-        <Pressable style={styles.sheetOverlay} onPress={closeSheet}>
-          <Animated.View
-            style={[
-              styles.sheetContainer,
-              { paddingBottom: insets.bottom + 12 },
-              {
-                transform: [
-                  {
-                    translateY: sheetAnim.interpolate({ inputRange: [0, 1], outputRange: [400, 0] }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <Pressable onPress={(e) => e.stopPropagation()}>
-              <View style={styles.sheetCard}>
-                <Text style={styles.sheetTitle}>{sheetFor ? `צילום ${SIDE_TITLE[sheetFor]}` : ''}</Text>
-                <View style={styles.sheetDivider} />
-                <SheetAction label="צילום מסמך" onPress={() => pickAndUpload('camera')} />
-                <View style={styles.sheetDivider} />
-                <SheetAction label="בחירה מהתמונות" onPress={() => pickAndUpload('gallery')} />
-                <View style={styles.sheetDivider} />
-                <SheetAction label="בחירה מקבצים" onPress={() => pickAndUpload('file')} />
-                <View style={styles.sheetDivider} />
-                <SheetAction label="סריקה (זיהוי תוקף אוטומטי)" onPress={() => pickAndUpload('scan')} />
-              </View>
-              <View style={styles.sheetCard}>
-                <SheetAction label="ביטול" onPress={closeSheet} bold />
-              </View>
-            </Pressable>
-          </Animated.View>
-        </Pressable>
-      </Modal>
-
-      <Modal visible={!!viewerSide} animationType="fade" onRequestClose={() => setViewerSide(null)}>
-        <View style={[styles.viewer, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}>
-          <View style={styles.viewerHeader}>
-            <Pressable onPress={() => setViewerSide(null)} hitSlop={8}>
-              <Text style={styles.viewerAction}>סגירה</Text>
-            </Pressable>
-            <Text style={styles.viewerTitle} numberOfLines={1}>
-              {viewerSide ? `${SIDE_TITLE[viewerSide]} · ${docs[viewerSide]?.file_name ?? ''}` : ''}
-            </Text>
-          </View>
-          {viewerSide && imageUrl[viewerSide] ? (
-            <Image source={{ uri: imageUrl[viewerSide]! }} style={styles.viewerImage} resizeMode="contain" />
-          ) : null}
-          <View style={styles.viewerActions}>
-            <Pressable style={styles.viewerActionBtn} onPress={() => viewerSide && download(viewerSide)}>
-              <Feather name="download" size={18} color="#FFFFFF" />
-              <Text style={styles.viewerActionText}>הורדה</Text>
-            </Pressable>
-            <Pressable
-              style={styles.viewerActionBtn}
-              onPress={() => {
-                if (!viewerSide) return;
-                const side = viewerSide;
-                setViewerSide(null);
-                openSheet(side);
-              }}
-            >
-              <Feather name="refresh-cw" size={18} color="#FFFFFF" />
-              <Text style={styles.viewerActionText}>החלפה</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={!!processingSide} transparent animationType="fade">
-        <View style={styles.processingOverlay}>
-          <View style={styles.processingCard}>
-            <ActivityIndicator size="large" color={DC_COLORS.blueLight} />
-            <Text style={styles.processingTitle}>מעבד את התמונה…</Text>
-            <Text style={styles.processingSubtitle}>אנא המתן, אין צורך לבחור שוב</Text>
-          </View>
-        </View>
-      </Modal>
+      {overlays}
     </View>
   );
 }
@@ -450,7 +594,7 @@ function SideTile({
       <Pressable
         onPress={onPress}
         disabled={uploading}
-        style={[styles.tile, !filled && styles.tileEmpty]}
+        style={({ pressed }) => [styles.tile, !filled && styles.tileEmpty, pressed && styles.tilePressed]}
       >
         {filled ? (
           <>
@@ -578,6 +722,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(60,60,67,0.3)',
     gap: 8,
   },
+  tilePressed: { opacity: 0.85 },
   tileEmptyText: { fontFamily: DC_TYPO.badge.fontFamily, fontSize: 13, color: DC_COLORS.labelTertiary },
   tileImage: { width: '100%', height: '100%' },
   tileEditOverlay: {
@@ -644,6 +789,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  saveButtonPressed: { opacity: 0.85 },
   saveButtonText: { color: '#FFFFFF', fontFamily: DC_TYPO.rowValue.fontFamily, fontSize: 16 },
 
   toast: {
@@ -684,5 +830,50 @@ const styles = StyleSheet.create({
   viewerImage: { flex: 1, marginVertical: 16, borderRadius: 14 },
   viewerActions: { flexDirection: 'row-reverse', justifyContent: 'center', gap: 32, paddingTop: 8 },
   viewerActionBtn: { alignItems: 'center', gap: 4 },
+  viewerActionBtnPressed: { opacity: 0.6 },
   viewerActionText: { color: '#FFFFFF', fontFamily: DC_TYPO.badge.fontFamily, fontSize: 12.5 },
+});
+
+const desktopStyles = StyleSheet.create({
+  wrap: { padding: 24, maxWidth: 460, alignSelf: 'center', width: '100%', gap: 16 },
+  editButton: {
+    alignSelf: 'flex-start',
+    height: 30,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: DESKTOP_COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: DESKTOP_COLORS.surface,
+  },
+  editButtonText: { fontSize: 12, color: DESKTOP_COLORS.brand },
+  grid: { flexDirection: 'row-reverse', gap: 12 },
+  card: {
+    backgroundColor: DESKTOP_COLORS.surface,
+    borderWidth: 1,
+    borderColor: DESKTOP_COLORS.border,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+  },
+  row: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 46,
+    borderBottomWidth: 1,
+    borderBottomColor: DESKTOP_COLORS.borderSoft,
+  },
+  rowLast: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', height: 46 },
+  rowLabel: { fontSize: 13 },
+  rowValue: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
+  footer: { fontSize: 12, color: DESKTOP_COLORS.inkFaint, lineHeight: 18 },
+  saveButton: {
+    height: 36,
+    borderRadius: 7,
+    backgroundColor: DESKTOP_COLORS.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonText: { fontSize: 13, color: '#FFFFFF' },
 });

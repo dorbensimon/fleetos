@@ -31,6 +31,7 @@ import {
  */
 
 type NavKey = keyof RootStackParamList;
+type Breadcrumb = string | { label: string; onPress: () => void };
 type NavItem = {
   key: NavKey;
   label: string;
@@ -52,12 +53,14 @@ export function DesktopShell({
   children,
 }: {
   active: NavKey;
-  breadcrumbs: string[];
+  breadcrumbs: Breadcrumb[];
   children: React.ReactNode;
 }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { profile, company, companyId } = useCompany();
   const isAdmin = profile?.role === 'admin';
+  const isOwner = profile?.role === 'owner';
+  const isDriver = profile?.role === 'driver';
 
   const [attentionCount, setAttentionCount] = useState(0);
   const [unread, setUnread] = useState(0);
@@ -122,14 +125,24 @@ export function DesktopShell({
     ]);
   };
 
-  // Only routes this role can already open from the phone app appear here.
+  // Only routes this role can already open from the phone app appear here —
+  // mirrors MenuScreen's per-role item lists, the app's existing source of
+  // truth for "what can this role reach."
   const manageItems: NavItem[] = isAdmin
     ? [
-        { key: 'AdminHome', label: 'צי נהגים ורכבים', icon: 'car-sport' },
-        { key: 'Attention', label: 'דורש טיפול', icon: 'warning', badge: attentionCount },
-        { key: 'Reports', label: 'דוחות', icon: 'bar-chart' },
-        { key: 'Departments', label: 'מחלקות', icon: 'grid' },
-        { key: 'ActivityLog', label: 'יומן פעולות', icon: 'time' },
+        { key: 'AdminHome', label: 'דשבורד', icon: 'grid' },
+        { key: 'CompanyDocuments', label: 'מסמכי חברה', icon: 'folder-open' },
+      ]
+    : isOwner
+    ? [
+        { key: 'OwnerHome', label: 'חברות', icon: 'business' },
+        { key: 'GlobalSigningTemplates', label: 'תבניות גלובליות', icon: 'document-text' },
+      ]
+    : isDriver
+    ? [
+        { key: 'DriverHome', label: 'הבית שלי', icon: 'home' },
+        { key: 'DriverDocuments', label: 'המסמכים שלי', icon: 'folder' },
+        { key: 'DriverSigningDocuments', label: 'מסמכים לחתימה', icon: 'create' },
       ]
     : [];
   const accountItems: NavItem[] = isAdmin
@@ -137,12 +150,57 @@ export function DesktopShell({
         { key: 'AdminProfile', label: 'הפרטים שלי', icon: 'person' },
         { key: 'NotificationPreferences', label: 'ניהול התראות', icon: 'notifications' },
       ]
+    : isOwner
+    ? [
+        { key: 'AdminProfile', label: 'הפרטים שלי', icon: 'person' },
+        { key: 'NotificationPreferences', label: 'ניהול התראות', icon: 'notifications' },
+      ]
+    : isDriver
+    ? [
+        { key: 'DriverProfile', label: 'הפרטים שלי', icon: 'person' },
+        { key: 'NotificationPreferences', label: 'ניהול התראות', icon: 'notifications' },
+      ]
     : [];
 
   const go = (key: NavKey) => {
-    if (key === active) return;
+    // `active` is only a highlight hint — detail screens (driver/vehicle)
+    // pass their parent's key (e.g. "AdminHome") so the right sidebar item
+    // lights up, even though that parent isn't the focused route. Guarding
+    // navigation on `key === active` used to make that item a dead click
+    // from inside those screens. `navigate` itself already no-ops when the
+    // target is the actual focused route, so no guard is needed here.
     // Every sidebar destination is parameterless.
     (navigation.navigate as (name: NavKey) => void)(key);
+  };
+
+  /**
+   * Every shared desktop header receives simple breadcrumb labels. Resolve the
+   * labels that represent actual parent screens here, so they work uniformly
+   * without each screen reimplementing the same navigation wiring.
+   */
+  const breadcrumbAction = (label: string): (() => void) | undefined => {
+    switch (label) {
+      case 'ניהול':
+        return () => navigation.navigate('AdminHome');
+      case 'נהגים':
+        return () => navigation.navigate('AdminHome', { mode: 'drivers' });
+      case 'רכבים':
+        return () => navigation.navigate('AdminHome', { mode: 'vehicles' });
+      case 'חברות':
+        return () => navigation.navigate('OwnerHome');
+      case 'חשבון':
+        return () => navigation.navigate(isDriver ? 'DriverProfile' : 'AdminProfile');
+      case 'הבית שלי':
+        return () => navigation.navigate('DriverHome');
+      case 'הרכב שלי':
+        return () => navigation.navigate('DriverVehicle');
+      case 'המסמכים שלי':
+        return () => navigation.navigate('DriverDocuments');
+      case 'מסמכים לחתימה':
+        return () => navigation.navigate('DriverSigningDocuments');
+      default:
+        return undefined;
+    }
   };
 
   const fullName = profile?.full_name?.trim() || '';
@@ -191,14 +249,26 @@ export function DesktopShell({
       <View style={styles.main}>
         <View style={styles.header}>
           <View style={styles.breadcrumbs}>
-            {breadcrumbs.map((crumb, index) => {
+            {breadcrumbs.map((breadcrumb, index) => {
               const last = index === breadcrumbs.length - 1;
+              const crumb = typeof breadcrumb === 'string' ? breadcrumb : breadcrumb.label;
+              const onPress = last ? undefined : (typeof breadcrumb === 'string' ? breadcrumbAction(crumb) : breadcrumb.onPress);
               return (
                 <React.Fragment key={`${crumb}-${index}`}>
                   {index > 0 && <DText style={styles.crumb}>/</DText>}
-                  <DText weight={last ? 'semiBold' : 'regular'} style={[styles.crumb, last && styles.crumbCurrent]}>
-                    {crumb}
-                  </DText>
+                  {onPress ? (
+                    <HoverPressable
+                      onPress={onPress}
+                      hoverStyle={styles.crumbInteractiveHover}
+                      accessibilityLabel={`מעבר אל ${crumb}`}
+                    >
+                      <DText weight="regular" style={[styles.crumb, styles.crumbInteractive]}>{crumb}</DText>
+                    </HoverPressable>
+                  ) : (
+                    <DText weight={last ? 'semiBold' : 'regular'} style={[styles.crumb, last && styles.crumbCurrent]}>
+                      {crumb}
+                    </DText>
+                  )}
                 </React.Fragment>
               );
             })}
@@ -394,6 +464,8 @@ const styles = StyleSheet.create({
   },
   breadcrumbs: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   crumb: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
+  crumbInteractive: { color: DESKTOP_COLORS.inkMuted, textDecorationLine: 'underline', textDecorationColor: 'transparent' },
+  crumbInteractiveHover: { opacity: 0.78 },
   crumbCurrent: { color: DESKTOP_COLORS.ink },
   headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   bellWrap: { position: 'relative', zIndex: 30 },

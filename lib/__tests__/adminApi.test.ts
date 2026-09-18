@@ -83,12 +83,12 @@ describe('assignDriverToVehicle', () => {
     expect(supabase.from).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects a 3rd driver once the vehicle already has 2 active drivers', async () => {
+  it('allows a 3rd driver when the vehicle already has 2 active drivers', async () => {
     mockFromSequence(chain({ data: [driverA, driverB], error: null }));
+    const inserted = { ...driverB, id: 'a3', driver_id: 'd-c' };
+    (supabase.rpc as jest.Mock).mockResolvedValue({ data: inserted, error: null });
 
-    await expect(assignDriverToVehicle('v1', 'd-c', false)).rejects.toThrow(
-      'לא ניתן לשייך יותר משני נהגים לרכב אחד'
-    );
+    await expect(assignDriverToVehicle('v1', 'd-c', false)).resolves.toEqual(inserted);
   });
 
   it('rejects setting a 2nd primary driver while one is already active', async () => {

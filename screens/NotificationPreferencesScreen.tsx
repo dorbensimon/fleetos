@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import {
   BackButton,
   useToast,
 } from '../components/ui';
+import { LiquidGlassSwitch } from '../components/ui/LiquidGlassSwitch';
 import { AdminGradientBackground } from '../components/admin/AdminGradientBackground';
 import { useCompany } from '../lib/CompanyContext';
 import { RootStackParamList } from '../navigation/types';
@@ -22,6 +23,10 @@ import {
   getPreferences,
   setPreference,
 } from '../lib/notificationPreferencesApi';
+import { useIsDesktop } from '../lib/useDesktopLayout';
+import { DesktopShell } from '../components/desktop/DesktopShell';
+import { DText } from '../components/desktop/primitives';
+import { DESKTOP_COLORS, DESKTOP_TONES } from '../components/desktop/desktopTheme';
 
 /**
  * Notification preferences, reached from Settings — shared by admin and
@@ -29,52 +34,11 @@ import {
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'NotificationPreferences'>;
 
-function IosSwitch({
-  value,
-  onValueChange,
-  disabled,
-  accessibilityLabel,
-}: {
-  value: boolean;
-  onValueChange: (value: boolean) => void;
-  disabled?: boolean;
-  accessibilityLabel: string;
-}) {
-  const progress = React.useRef(new Animated.Value(value ? 1 : 0)).current;
-
-  React.useEffect(() => {
-    Animated.timing(progress, {
-      toValue: value ? 1 : 0,
-      duration: 220,
-      useNativeDriver: true,
-    }).start();
-  }, [progress, value]);
-
-  return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      disabled={disabled}
-      onPress={() => onValueChange(!value)}
-      style={[styles.iosSwitch, disabled && styles.iosSwitchDisabled]}
-      accessibilityRole="switch"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ disabled: !!disabled, checked: value }}
-    >
-      <Animated.View style={[styles.iosSwitchOnTrack, { opacity: progress }]} />
-      <Animated.View
-        style={[
-          styles.iosSwitchThumb,
-          { transform: [{ translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, 20] }) }] },
-        ]}
-      />
-    </TouchableOpacity>
-  );
-}
-
 export default function NotificationPreferencesScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { profile } = useCompany();
   const { showToast } = useToast();
+  const isDesktop = useIsDesktop();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +96,39 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
     }
   };
 
+  if (isDesktop) {
+    return (
+      <DesktopShell active="NotificationPreferences" breadcrumbs={['חשבון', 'ניהול התראות']}>
+        {loading ? (
+          <LoadingState />
+        ) : error ? (
+          <ErrorState message={error} onRetry={load} />
+        ) : (
+          <View style={ds.wrap}>
+            <DText style={ds.hint}>בחר אילו עדכונים תרצה לקבל. כל שינוי נשמר מיד עבורך בלבד.</DText>
+            <View style={ds.card}>
+              {visibleTypes.map((item, index) => (
+                <View key={item.type} style={[ds.row, index === visibleTypes.length - 1 && ds.rowLast]}>
+                  <View style={{ flex: 1 }}>
+                    <DText weight="semiBold" style={ds.label}>{item.label}</DText>
+                    {!!item.description && <DText style={ds.description}>{item.description}</DText>}
+                  </View>
+                  <LiquidGlassSwitch
+                    value={prefs?.[item.type] ?? true}
+                    onValueChange={(value) => toggle(item.type, value)}
+                    disabled={savingType === item.type}
+                    accessibilityLabel={item.label}
+                    tint={DESKTOP_TONES.ok.fg}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+      </DesktopShell>
+    );
+  }
+
   return (
     <View style={styles.screen}>
       <AdminGradientBackground />
@@ -159,7 +156,7 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
                     <AppText style={[DC_TYPO.rowLabel, styles.label]}>{item.label}</AppText>
                     {!!item.description && <AppText style={styles.description}>{item.description}</AppText>}
                   </View>
-                  <IosSwitch
+                  <LiquidGlassSwitch
                     value={prefs?.[item.type] ?? true}
                     onValueChange={(value) => toggle(item.type, value)}
                     disabled={savingType === item.type}
@@ -202,30 +199,14 @@ const styles = StyleSheet.create({
   description: { color: DC_COLORS.labelSecondary, fontSize: 12.5, textAlign: 'right', writingDirection: 'rtl' },
   state: { paddingTop: 36 },
   backButton: { position: 'absolute', right: 16 },
-  iosSwitch: {
-    width: 51,
-    height: 31,
-    borderRadius: 16,
-    backgroundColor: '#E9E9EA',
-    justifyContent: 'center',
-    paddingHorizontal: 2,
-  },
-  iosSwitchOnTrack: {
-    ...StyleSheet.absoluteFill,
-    borderRadius: 16,
-    backgroundColor: '#34C759',
-  },
-  iosSwitchThumb: {
-    width: 27,
-    height: 27,
-    borderRadius: 14,
-    backgroundColor: DC_COLORS.surface,
-    alignSelf: 'flex-start',
-    shadowColor: '#000',
-    shadowOpacity: 0.16,
-    shadowRadius: 2,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
-  },
-  iosSwitchDisabled: { opacity: 0.5 },
+});
+
+const ds = StyleSheet.create({
+  wrap: { padding: 24, maxWidth: 520, alignSelf: 'center', width: '100%', gap: 12 },
+  hint: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
+  card: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 8, paddingHorizontal: 16 },
+  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 52, borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
+  rowLast: { borderBottomWidth: 0 },
+  label: { fontSize: 13 },
+  description: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint, marginTop: 2 },
 });

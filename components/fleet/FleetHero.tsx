@@ -8,7 +8,7 @@ import { AppText } from '../ui';
 import { FleetMenuButton, FleetBellButton } from './FleetHeroButtons';
 import { RADIUS, timeGreeting } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { FLEET_COLORS, FLEET_FONT } from './fleetTheme';
+import { FLEET_COLORS, FLEET_FONT } from '../../lib/colors';
 
 /**
  * Field-visit hero for the admin fleet screen — same blue gradient and
@@ -22,6 +22,27 @@ import { FLEET_COLORS, FLEET_FONT } from './fleetTheme';
  * below is the shared layout math the screen needs to size the sheet
  * that rises to meet this hero.
  */
+
+/**
+ * Deterministic "grain" dot field — a fixed, seeded scatter (not
+ * re-randomized per render) that breaks up the hero's flat gradient with a
+ * whisper of texture, the same idea as a noise overlay on a web hero but
+ * built from plain Views since this project has no SVG/noise-image
+ * dependency to reach for.
+ */
+const GRAIN_DOTS = (() => {
+  let seed = 1337;
+  const rand = () => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+  return Array.from({ length: 44 }, () => ({
+    left: `${(rand() * 100).toFixed(1)}%`,
+    top: `${(rand() * 100).toFixed(1)}%`,
+    size: 1 + Math.round(rand()),
+    opacity: 0.025 + rand() * 0.045,
+  }));
+})();
 
 export const FLEET_HERO = {
   // Keep the fleet status immediately below the greeting. On a phone, a
@@ -56,7 +77,6 @@ export function FleetHero({
   onChangeQuery,
   searchPlaceholder,
   onExportPress,
-  onActivityLogPress,
   onAttentionPress,
 }: {
   scrollY: Animated.Value;
@@ -65,7 +85,6 @@ export function FleetHero({
   onChangeQuery: (v: string) => void;
   searchPlaceholder: string;
   onExportPress?: () => void;
-  onActivityLogPress?: () => void;
   onAttentionPress?: () => void;
 }) {
   const insets = useSafeAreaInsets();
@@ -74,11 +93,17 @@ export function FleetHero({
   const navHeight = heroNavHeight(insets.top);
   const [searchFocused, setSearchFocused] = useState(false);
   const exportPress = useRef(new Animated.Value(1)).current;
+  const attentionPress = useRef(new Animated.Value(1)).current;
 
   const exportPressIn = () =>
     Animated.spring(exportPress, { toValue: 0.97, useNativeDriver: true, stiffness: 400, damping: 24 }).start();
   const exportPressOut = () =>
     Animated.spring(exportPress, { toValue: 1, useNativeDriver: true, stiffness: 400, damping: 24 }).start();
+
+  const pressIn = (v: Animated.Value) =>
+    Animated.spring(v, { toValue: 0.94, useNativeDriver: true, stiffness: 400, damping: 24 }).start();
+  const pressOut = (v: Animated.Value) =>
+    Animated.spring(v, { toValue: 1, useNativeDriver: true, stiffness: 400, damping: 24 }).start();
 
   const cubesOpacity = scrollY.interpolate({
     inputRange: [0, HERO_TRAVEL],
@@ -109,11 +134,34 @@ export function FleetHero({
       <LinearGradient
         colors={[FLEET_COLORS.primary, FLEET_COLORS.primaryDeep, FLEET_COLORS.primaryInk]}
         locations={[0, 0.6, 1]}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.85, y: 1 }}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
+      {/* Three off-center, unevenly sized glows instead of a mirrored
+          pair — a mesh-like read rather than the generic symmetric
+          "SaaS hero" blob pattern. */}
+      <View style={styles.glowIndigo} pointerEvents="none" />
       <View style={styles.glowCyan} pointerEvents="none" />
       <View style={styles.glowWhite} pointerEvents="none" />
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {GRAIN_DOTS.map((dot, i) => (
+          <View
+            key={i}
+            style={{
+              position: 'absolute',
+              left: dot.left as any,
+              top: dot.top as any,
+              width: dot.size,
+              height: dot.size,
+              borderRadius: dot.size,
+              backgroundColor: '#fff',
+              opacity: dot.opacity,
+            }}
+          />
+        ))}
+      </View>
 
       <View style={[styles.navRow, { top: insets.top + 2, height: navHeight - (insets.top + 2) }]}>
         <FleetMenuButton />
@@ -136,10 +184,10 @@ export function FleetHero({
         pointerEvents="none"
       >
         <View style={styles.statsBar}>
-          {stats.map((stat, index) => (
+          {stats.map((stat) => (
             <React.Fragment key={stat.label}>
-              {index > 0 && <View style={styles.statsDivider} />}
               <View style={styles.statsSeg}>
+                <View style={styles.statsSegTopLight} pointerEvents="none" />
                 <AppText weight="bold" style={[styles.statsVal, { color: stat.tint }]}>
                   {stat.value}
                 </AppText>
@@ -179,7 +227,7 @@ export function FleetHero({
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             placeholder={searchPlaceholder}
-            placeholderTextColor="#FFFFFF"
+            placeholderTextColor="rgba(255,255,255,.62)"
             style={styles.searchInput}
             textAlign="right"
             autoCapitalize="none"
@@ -189,14 +237,18 @@ export function FleetHero({
           />
         </View>
         {!!onAttentionPress && (
-          <TouchableOpacity activeOpacity={0.82} onPress={onAttentionPress} style={[styles.quickAction, styles.attentionBtn]} accessibilityLabel="דורש טיפול">
-            <Ionicons name="alert-circle-outline" size={24} color="#102A42" />
-          </TouchableOpacity>
-        )}
-        {!!onActivityLogPress && (
-          <TouchableOpacity activeOpacity={0.82} onPress={onActivityLogPress} style={[styles.quickAction, styles.activityBtn]} accessibilityLabel="יומן פעולות">
-            <Ionicons name="time-outline" size={24} color="#fff" />
-          </TouchableOpacity>
+          <Animated.View style={{ transform: [{ scale: attentionPress }] }}>
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={onAttentionPress}
+              onPressIn={() => pressIn(attentionPress)}
+              onPressOut={() => pressOut(attentionPress)}
+              style={[styles.quickAction, styles.attentionBtn]}
+              accessibilityLabel="דורש טיפול"
+            >
+              <Ionicons name="alert-circle-outline" size={24} color="#102A42" />
+            </TouchableOpacity>
+          </Animated.View>
         )}
       </Animated.View>
 
@@ -238,23 +290,32 @@ export function FleetHero({
 const styles = StyleSheet.create({
   wrap: { overflow: 'hidden' },
 
+  glowIndigo: {
+    position: 'absolute',
+    top: -50,
+    left: 30,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: 'rgba(45,70,190,.26)',
+  },
   glowCyan: {
     position: 'absolute',
-    top: 110,
-    left: -70,
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: 'rgba(50,215,225,.35)',
-  },
-  glowWhite: {
-    position: 'absolute',
-    top: 250,
-    right: -50,
+    top: 165,
+    right: -95,
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: 'rgba(255,255,255,.22)',
+    backgroundColor: 'rgba(50,215,225,.3)',
+  },
+  glowWhite: {
+    position: 'absolute',
+    top: 330,
+    left: 4,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255,255,255,.18)',
   },
 
   navRow: {
@@ -291,6 +352,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,.24)',
     backgroundColor: 'rgba(255,255,255,.14)',
     paddingHorizontal: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  statsSegTopLight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,.55)',
   },
   statsVal: { fontSize: 28, fontFamily: FLEET_FONT.black },
   statsLabel: {
@@ -301,7 +372,6 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  statsDivider: { display: 'none' },
 
   searchRow: { position: 'absolute', left: 20, right: 20, height: fieldHeight, flexDirection: 'row-reverse', gap: 12 },
   search: {
@@ -315,7 +385,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,.38)',
-    shadowColor: '#08245e',
+    shadowColor: FLEET_COLORS.primaryInk,
     shadowOpacity: 0.5,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 6 },
@@ -347,14 +417,13 @@ const styles = StyleSheet.create({
     gap: 9,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,.85)',
-    shadowColor: '#08245e',
+    shadowColor: FLEET_COLORS.primaryInk,
     shadowOpacity: 0.5,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 10 },
     elevation: 8,
   },
-  exportText: { color: '#0a3fa8', fontSize: 14, fontFamily: FLEET_FONT.bold },
+  exportText: { color: FLEET_COLORS.primaryDeep, fontSize: 14, fontFamily: FLEET_FONT.bold },
   quickAction: { width: fieldHeight, height: fieldHeight, borderRadius: fieldHeight / 2, alignItems: 'center', justifyContent: 'center' },
-  activityBtn: { backgroundColor: 'rgba(8,44,105,.38)', borderWidth: 1, borderColor: 'rgba(255,255,255,.42)' },
   attentionBtn: { backgroundColor: 'rgba(255,255,255,.88)', borderWidth: 1, borderColor: 'rgba(255,255,255,.9)' },
 });

@@ -29,9 +29,24 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="%WEB_TITLE%" />
+    <!-- The app is light-only (see app.json's userInterfaceStyle), so one
+         theme-color matching the screen background is enough — it's what
+         colours the browser's own address bar / status bar area so it
+         reads as part of the app instead of stock Safari chrome. -->
+    <meta name="theme-color" content="#eef2f7" />
     <title>%WEB_TITLE%</title>
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
+      /* This is an installed-app-style UI, not a document: kill the
+         translucent grey/blue flash Safari/Chrome paint over anything
+         tappable, and stop the OS inflating body-text size in landscape.
+         Every Pressable already draws its own press feedback (scale,
+         opacity, colour), so the browser's own tap highlight only fights
+         it — it's the single most "this is a website" tell otherwise. */
+      html {
+        -webkit-tap-highlight-color: transparent;
+        -webkit-text-size-adjust: 100%;
+      }
       /* These styles make the body full-height */
       html,
       body {

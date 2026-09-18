@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ComplianceItem, DriverRow, Vehicle, VehicleDriverWithProfile } from '../../lib/adminApi';
 import { complianceRemainingDays, findComplianceDef, VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../lib/compliance';
@@ -8,6 +8,7 @@ import { formatPlate } from '../../lib/plate';
 import { daysUntilExpiry, expiryState, formatDate } from '../../lib/theme';
 import { DLtrText, DText, HoverPressable, StatusPill } from './primitives';
 import { DESKTOP_AVATAR_COLORS, DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
+import { DashboardWidgetsRow } from './DashboardWidgets';
 
 /**
  * Desktop body of the fleet screen: drivers/vehicles tabs, search + filter
@@ -19,17 +20,6 @@ import { DESKTOP_AVATAR_COLORS, DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, Des
 type Mode = 'drivers' | 'vehicles';
 
 export type FleetChip<T extends string> = { value: T; label: string; count: number };
-
-type DetailAction = { label: string; onPress: () => void; primary?: boolean; disabled?: boolean };
-type DetailRow = { label: string; value: string; ltr?: boolean; tone?: DesktopTone };
-type Detail = {
-  avatar: string;
-  avatarBg: string;
-  title: string;
-  subtitle: string;
-  actions: DetailAction[];
-  groups: { title: string; rows: DetailRow[] }[];
-};
 
 export interface FleetDesktopViewProps<LF extends string, SF extends string> {
   mode: Mode;
@@ -112,17 +102,7 @@ function initialOf(name: string | null | undefined): string {
 export function FleetDesktopView<LF extends string, SF extends string>(props: FleetDesktopViewProps<LF, SF>) {
   const { mode } = props;
   const isDrivers = mode === 'drivers';
-  const [detail, setDetail] = useState<Detail | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
-
-  useEffect(() => {
-    if (!detail || Platform.OS !== 'web') return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setDetail(null);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [detail]);
 
   const vehicleCompliance = (vehicle: Vehicle) => {
     const items = props.compliance.get(vehicle.id) ?? [];
@@ -143,119 +123,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
     return { primary, extra: Math.max(0, list.length - (primary ? 1 : 0)) };
   };
 
-  const openDriverDetail = (driver: DriverRow, index: number) => {
-    const license = EXPIRY_TONE[expiryState(driver.license_expiry)] ?? EXPIRY_TONE.missing;
-    const plates = driver.vehicles.map((v) => formatPlate(v.plate_number)).join(', ');
-    setDetail({
-      avatar: initialOf(driver.full_name),
-      avatarBg: DESKTOP_AVATAR_COLORS[index % DESKTOP_AVATAR_COLORS.length],
-      title: driver.full_name || 'נהג ללא שם',
-      subtitle: [
-        driver.license_classes ? `דרגה ${driver.license_classes}` : null,
-        driver.license_expiry ? `תוקף ${formatDate(driver.license_expiry)}` : null,
-      ]
-        .filter(Boolean)
-        .join(' · '),
-      actions: [
-        { label: 'פתיחת תיק נהג', primary: true, onPress: () => props.onOpenDriver(driver.id) },
-        { label: 'התקשרות', disabled: !driver.phone, onPress: () => props.onCallDriver(driver.phone) },
-        ...(driver.vehicle_id
-          ? [{ label: 'פתיחת רכב משויך', onPress: () => props.onOpenVehicle(driver.vehicle_id!) }]
-          : []),
-      ],
-      groups: [
-        {
-          title: 'פרטי קשר ורכב',
-          rows: [
-            { label: 'טלפון', value: driver.phone || '—', ltr: true },
-            ...(driver.email ? [{ label: 'מייל', value: driver.email, ltr: true }] : []),
-            { label: 'מספר עובד', value: driver.employee_number || '—', ltr: true },
-            { label: 'רכב משויך', value: plates || 'ללא רכב', ltr: !!plates },
-          ],
-        },
-        {
-          title: 'מסמכים ורישוי',
-          rows: [
-            { label: 'תוקף רישיון', value: formatDate(driver.license_expiry), ltr: true },
-            { label: 'סטטוס רישיון', value: license.label, tone: license.tone },
-            { label: 'מסמכים לחתימה', value: String(props.pendingSigning.get(driver.id) ?? 0) },
-          ],
-        },
-      ],
-    });
-  };
-
-  const openVehicleDetail = (vehicle: Vehicle) => {
-    const { insurance, insuranceInfo, test, testInfo } = vehicleCompliance(vehicle);
-    const { primary, extra } = assignedDrivers(vehicle);
-    const service = serviceInfo(vehicle);
-    const department = vehicle.department_id ? props.departmentNames.get(vehicle.department_id) : null;
-    setDetail({
-      avatar: 'ר',
-      avatarBg: DESKTOP_COLORS.ink,
-      title: vehicleName(vehicle),
-      subtitle: [formatPlate(vehicle.plate_number), VEHICLE_TYPE_LABELS[vehicle.vehicle_type]].filter(Boolean).join(' · '),
-      actions: [
-        { label: 'פתיחת תיק רכב', primary: true, onPress: () => props.onOpenVehicle(vehicle.id) },
-        ...(primary ? [{ label: 'פתיחת נהג ראשי', onPress: () => props.onOpenDriver(primary.driver_id) }] : []),
-        ...(vehicle.status === 'archived'
-          ? [{
-              label: 'שחזור רכב',
-              disabled: props.restoringVehicleId === vehicle.id,
-              onPress: () => props.onRestoreVehicle(vehicle.id),
-            }]
-          : []),
-      ],
-      groups: [
-        {
-          title: 'זיהוי ושיוך',
-          rows: [
-            { label: 'מספר רישוי', value: formatPlate(vehicle.plate_number), ltr: true },
-            ...(vehicle.internal_code ? [{ label: 'קוד פנימי', value: vehicle.internal_code, ltr: true }] : []),
-            { label: 'מחלקה', value: department || '—' },
-            { label: 'נהג ראשי', value: primary?.full_name || '—' },
-            ...(extra > 0 ? [{ label: 'נהגים נוספים', value: String(extra) }] : []),
-          ],
-        },
-        {
-          title: 'תוקפים ותחזוקה',
-          rows: [
-            {
-              label: 'ביטוח חובה',
-              value: insurance?.expiry_date ? `${formatDate(insurance.expiry_date)} · ${insuranceInfo.label}` : insuranceInfo.label,
-              tone: insuranceInfo.tone,
-            },
-            {
-              label: 'טסט שנתי',
-              value: test?.expiry_date ? `${formatDate(test.expiry_date)} · ${testInfo.label}` : testInfo.label,
-              tone: testInfo.tone,
-            },
-            { label: 'טיפול הבא', value: service.label, tone: service.tone },
-            { label: 'קילומטראז׳', value: `${vehicle.odometer.toLocaleString()} ק״מ` },
-          ],
-        },
-      ],
-    });
-  };
-
-  const runAction = (action: DetailAction) => {
-    setDetail(null);
-    action.onPress();
-  };
-
   /* ---------------------------------------------------------------- */
-
-  const kpis = isDrivers
-    ? [
-        { label: 'סה״כ נהגים', value: props.driverKpis.total, color: DESKTOP_COLORS.ink },
-        { label: 'רישיון קרוב לפוג', value: props.driverKpis.soon, color: DESKTOP_TONES.warn.fg },
-        { label: 'רישיון פג תוקף', value: props.driverKpis.expired, color: DESKTOP_TONES.bad.fg },
-      ]
-    : [
-        { label: 'סה״כ רכבים', value: props.vehicleKpis.total, color: DESKTOP_COLORS.ink },
-        { label: 'פעילים', value: props.vehicleKpis.active, color: DESKTOP_TONES.ok.fg },
-        { label: 'בטיפול / מושבתים', value: props.vehicleKpis.inactive, color: DESKTOP_TONES.warn.fg },
-      ];
 
   const loading = isDrivers ? props.driversLoading : props.vehiclesLoading;
   const error = isDrivers
@@ -267,20 +135,13 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
   return (
     <View style={styles.root}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        <DashboardWidgetsRow onOpenDriver={props.onOpenDriver} onOpenVehicle={props.onOpenVehicle} />
+
         <View style={styles.toolbar}>
           <View style={styles.tabs}>
             <Tab label="נהגים" active={isDrivers} onPress={() => props.onModeChange('drivers')} />
             <Tab label="רכבים" active={!isDrivers} onPress={() => props.onModeChange('vehicles')} />
           </View>
-          <HoverPressable
-            style={styles.primaryButton}
-            hoverStyle={styles.primaryButtonHover}
-            onPress={isDrivers ? props.onAddDriver : props.onAddVehicle}
-          >
-            <DText weight="semiBold" style={styles.primaryButtonText}>
-              {isDrivers ? '+ הוספת נהג' : '+ הוספת רכב'}
-            </DText>
-          </HoverPressable>
         </View>
 
         <View style={styles.filters}>
@@ -301,24 +162,36 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                 <Chip key={chip.value} chip={chip} active={props.vehicleFilter === chip.value} onPress={() => props.onVehicleFilter(chip.value)} />
               ))}
           {isDrivers && (
-            <HoverPressable style={styles.archiveLink} onPress={props.onOpenArchive}>
-              <DText weight="semiBold" style={styles.linkText}>ארכיון נהגים ({props.archivedCount})</DText>
+            <HoverPressable style={styles.chip} hoverStyle={styles.secondaryButtonHover} pressStyle={styles.pressDown} onPress={props.onOpenArchive}>
+              <DText weight="semiBold" style={styles.chipText}>ארכיון</DText>
+              <DText weight="semiBold" style={styles.chipCount}>{props.archivedCount}</DText>
             </HoverPressable>
           )}
-        </View>
-
-        <View style={styles.kpis}>
-          {kpis.map((kpi) => (
-            <View key={kpi.label} style={styles.kpi}>
-              <DText weight="extraBold" style={[styles.kpiValue, { color: kpi.color }]}>{kpi.value}</DText>
-              <DText weight="medium" style={styles.kpiLabel}>{kpi.label}</DText>
-            </View>
-          ))}
+          <View style={styles.listActions}>
+            <HoverPressable
+              style={styles.primaryButton}
+              hoverStyle={styles.primaryButtonHover}
+              onPress={isDrivers ? props.onAddDriver : props.onAddVehicle}
+            >
+              <DText weight="semiBold" style={styles.primaryButtonText}>
+                {isDrivers ? '+ הוספת נהג' : '+ הוספת רכב'}
+              </DText>
+            </HoverPressable>
+          </View>
         </View>
 
         {loading ? (
-          <View style={styles.state}>
-            <ActivityIndicator color={DESKTOP_COLORS.brand} />
+          <View style={styles.table}>
+            <TableHeader columns={isDrivers ? DRIVER_COLUMNS : VEHICLE_COLUMNS} />
+            {Array.from({ length: 6 }, (_, i) => (
+              <View key={i} style={styles.row}>
+                <View style={styles.skeletonAvatar} />
+                <View style={[styles.skeletonBar, { flex: 2, maxWidth: 160 }]} />
+                <View style={[styles.skeletonBar, { flex: 1, maxWidth: 90 }]} />
+                <View style={[styles.skeletonBar, { flex: 1, maxWidth: 90 }]} />
+                <View style={[styles.skeletonBar, styles.statusCell]} />
+              </View>
+            ))}
           </View>
         ) : error ? (
           <View style={styles.state}>
@@ -357,7 +230,8 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                   key={driver.id}
                   style={styles.row}
                   hoverStyle={styles.rowHover}
-                  onPress={() => openDriverDetail(driver, index)}
+                  pressStyle={styles.rowPress}
+                  onPress={() => props.onOpenDriver(driver.id)}
                   accessibilityLabel={driver.full_name ?? undefined}
                 >
                   <View style={[styles.cell, { flex: DRIVER_COLUMNS[0].flex }]}>
@@ -382,6 +256,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                   <View style={[styles.cell, styles.statusCell]}>
                     <StatusPill tone={license.tone} label={license.label} />
                   </View>
+                  <Ionicons name="chevron-back" size={13} color={DESKTOP_COLORS.inkFaint} style={styles.rowChevron} />
                 </HoverPressable>
               );
             })}
@@ -399,7 +274,8 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                   key={vehicle.id}
                   style={styles.row}
                   hoverStyle={styles.rowHover}
-                  onPress={() => openVehicleDetail(vehicle)}
+                  pressStyle={styles.rowPress}
+                  onPress={() => props.onOpenVehicle(vehicle.id)}
                   accessibilityLabel={vehicleName(vehicle)}
                 >
                   <View style={[styles.cell, { flex: VEHICLE_COLUMNS[0].flex }]}>
@@ -423,12 +299,18 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                   />
                   <Cell
                     flex={VEHICLE_COLUMNS[3].flex}
+                    text={primary ? formatDate(primary.license_expiry) : '—'}
+                    ltr={!!primary?.license_expiry}
+                    color={primary?.license_expiry ? undefined : DESKTOP_COLORS.inkFaint}
+                  />
+                  <Cell
+                    flex={VEHICLE_COLUMNS[4].flex}
                     text={insuranceInfo.label}
                     weight="semiBold"
                     color={insuranceInfo.tone === 'neutral' ? DESKTOP_COLORS.inkFaint : DESKTOP_TONES[insuranceInfo.tone].fg}
                   />
                   <Cell
-                    flex={VEHICLE_COLUMNS[4].flex}
+                    flex={VEHICLE_COLUMNS[5].flex}
                     text={service.label}
                     color={service.tone === 'neutral' ? undefined : DESKTOP_TONES[service.tone].fg}
                     weight={service.tone === 'neutral' ? undefined : 'semiBold'}
@@ -436,86 +318,13 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                   <View style={[styles.cell, styles.statusCell]}>
                     <StatusPill tone={statusTone} label={VEHICLE_STATUS_LABELS[vehicle.status] ?? vehicle.status} />
                   </View>
+                  <Ionicons name="chevron-back" size={13} color={DESKTOP_COLORS.inkFaint} style={styles.rowChevron} />
                 </HoverPressable>
               );
             })}
           </View>
         )}
       </ScrollView>
-
-      {detail && (
-        <View style={styles.overlay}>
-          <HoverPressable style={StyleSheet.absoluteFill} onPress={() => setDetail(null)} accessibilityLabel="סגירה" />
-          <View style={styles.dialog} accessibilityViewIsModal>
-            <View style={styles.dialogHeader}>
-              <View style={styles.dialogIdentity}>
-                <View style={[styles.dialogAvatar, { backgroundColor: detail.avatarBg }]}>
-                  <DText weight="bold" style={styles.dialogAvatarText}>{detail.avatar}</DText>
-                </View>
-                <View style={styles.flexShrink}>
-                  <DText weight="bold" style={styles.dialogTitle} numberOfLines={1}>{detail.title}</DText>
-                  {!!detail.subtitle && <DText style={styles.dialogSubtitle}>{detail.subtitle}</DText>}
-                </View>
-              </View>
-              <HoverPressable
-                style={styles.closeButton}
-                hoverStyle={styles.secondaryButtonHover}
-                onPress={() => setDetail(null)}
-                accessibilityLabel="סגירה"
-              >
-                <Ionicons name="close" size={14} color={DESKTOP_COLORS.ink} />
-              </HoverPressable>
-            </View>
-
-            <View style={styles.dialogActions}>
-              {detail.actions.map((action) => (
-                <HoverPressable
-                  key={action.label}
-                  disabled={action.disabled}
-                  style={[
-                    action.primary ? styles.primaryButton : styles.secondaryButton,
-                    action.disabled && styles.disabled,
-                  ]}
-                  hoverStyle={action.primary ? styles.primaryButtonHover : styles.secondaryButtonHover}
-                  onPress={() => runAction(action)}
-                >
-                  <DText weight="semiBold" style={action.primary ? styles.primaryButtonText : styles.secondaryButtonText}>
-                    {action.label}
-                  </DText>
-                </HoverPressable>
-              ))}
-            </View>
-
-            <ScrollView style={styles.dialogBody} contentContainerStyle={styles.dialogBodyContent}>
-              {detail.groups.map((group) => (
-                <View key={group.title}>
-                  <DText weight="bold" style={styles.groupTitle}>{group.title}</DText>
-                  <View style={styles.group}>
-                    {group.rows.map((row, i) => (
-                      <View key={row.label} style={[styles.groupRow, i === group.rows.length - 1 && styles.groupRowLast]}>
-                        <DText style={styles.groupLabel}>{row.label}</DText>
-                        {row.ltr ? (
-                          <DLtrText weight="semiBold" style={styles.groupValue}>{row.value}</DLtrText>
-                        ) : (
-                          <DText
-                            weight="semiBold"
-                            style={[
-                              styles.groupValue,
-                              row.tone && row.tone !== 'neutral' && { color: DESKTOP_TONES[row.tone].fg },
-                            ]}
-                          >
-                            {row.value}
-                          </DText>
-                        )}
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      )}
     </View>
   );
 }
@@ -535,6 +344,7 @@ const VEHICLE_COLUMNS = [
   { label: 'רכב', flex: 1.6 },
   { label: 'מספר רישוי', flex: 1 },
   { label: 'נהג ראשי', flex: 1.2 },
+  { label: 'תוקף רישיון נהג', flex: 1.15 },
   { label: 'ביטוח חובה', flex: 1 },
   { label: 'טיפול הבא', flex: 1 },
   { label: 'סטטוס', flex: 0 },
@@ -548,6 +358,7 @@ function TableHeader({ columns }: { columns: { label: string; flex: number }[] }
           <DText weight="bold" style={styles.headerText} numberOfLines={1}>{column.label}</DText>
         </View>
       ))}
+      <View style={styles.rowChevronSpacer} />
     </View>
   );
 }
@@ -579,6 +390,7 @@ function Tab({ label, active, onPress }: { label: string; active: boolean; onPre
   return (
     <HoverPressable
       style={[styles.tab, active && styles.tabActive]}
+      hoverStyle={active ? undefined : styles.tabHover}
       onPress={onPress}
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
@@ -607,10 +419,10 @@ function Chip<T extends string>({ chip, active, onPress }: { chip: FleetChip<T>;
 }
 
 const styles = StyleSheet.create({
+  pressDown: { transform: [{ scale: 0.97 }] },
   root: { flex: 1 },
   scroll: { flex: 1 },
   content: { paddingTop: 18, paddingHorizontal: 22, paddingBottom: 32, width: '100%', maxWidth: 1440, alignSelf: 'center' },
-  flexShrink: { flexShrink: 1 },
 
   toolbar: {
     flexDirection: 'row-reverse',
@@ -620,8 +432,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   tabs: { flexDirection: 'row-reverse', alignItems: 'center', gap: 20 },
-  tab: { paddingVertical: 8, paddingHorizontal: 4, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tab: { paddingVertical: 8, paddingHorizontal: 4, borderBottomWidth: 2, borderBottomColor: 'transparent', borderRadius: 4, ...webOnly({ transition: 'border-color 150ms ease' }) },
   tabActive: { borderBottomColor: DESKTOP_COLORS.brand },
+  tabHover: { borderBottomColor: DESKTOP_COLORS.borderInput },
   tabText: { fontSize: 13, color: DESKTOP_COLORS.inkFaint },
   tabTextActive: { color: DESKTOP_COLORS.ink },
 
@@ -645,9 +458,9 @@ const styles = StyleSheet.create({
   },
   secondaryButtonHover: { backgroundColor: DESKTOP_COLORS.canvas },
   secondaryButtonText: { color: DESKTOP_COLORS.ink, fontSize: 12, textAlign: 'center' },
-  disabled: { opacity: 0.45 },
 
   filters: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
+  listActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginRight: 'auto' },
   search: {
     width: 280,
     height: 32,
@@ -683,25 +496,6 @@ const styles = StyleSheet.create({
   chipTextActive: { color: '#fff' },
   chipCount: { fontSize: 11, color: DESKTOP_COLORS.inkFaint },
   chipCountActive: { color: 'rgba(255,255,255,0.65)' },
-  archiveLink: { marginRight: 'auto' },
-  linkText: { fontSize: 12, color: DESKTOP_COLORS.brand },
-
-  kpis: { flexDirection: 'row-reverse', gap: 10, marginBottom: 18 },
-  kpi: {
-    flex: 1,
-    minWidth: 180,
-    flexDirection: 'row-reverse',
-    alignItems: 'baseline',
-    gap: 8,
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-  },
-  kpiValue: { fontSize: 19 },
-  kpiLabel: { fontSize: 12, color: DESKTOP_COLORS.inkFaint },
 
   state: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 6 },
   stateTitle: { fontSize: 14, color: DESKTOP_COLORS.inkMuted, textAlign: 'center' },
@@ -721,8 +515,12 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderBottomWidth: 1,
     borderBottomColor: DESKTOP_COLORS.borderSoft,
+    ...webOnly({ transition: 'background-color 150ms ease, transform 100ms ease-out' }),
   },
   rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
+  rowPress: { transform: [{ scale: 0.997 }] },
+  rowChevron: { marginLeft: 2, width: 15, flexShrink: 0 },
+  rowChevronSpacer: { width: 15, flexShrink: 0 },
   headerRow: {
     paddingVertical: 8,
     backgroundColor: DESKTOP_COLORS.surfaceMuted,
@@ -736,72 +534,8 @@ const styles = StyleSheet.create({
   plate: { fontSize: 12, ...webOnly({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }) },
   nameCell: { flexDirection: 'row-reverse', alignItems: 'center', gap: 9, minWidth: 0 },
   avatar: { width: 26, height: 26, borderRadius: 6, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  skeletonAvatar: { width: 26, height: 26, borderRadius: 6, backgroundColor: DESKTOP_COLORS.borderSoft, marginLeft: 9 },
+  skeletonBar: { height: 12, borderRadius: 4, backgroundColor: DESKTOP_COLORS.borderSoft, marginLeft: 12 },
   avatarText: { color: '#fff', fontSize: 11, textAlign: 'center' },
   vehicleIcon: { backgroundColor: '#F1F4F7' },
-
-  overlay: {
-    position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
-    backgroundColor: DESKTOP_COLORS.overlay,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 50,
-  },
-  dialog: {
-    width: 460,
-    maxWidth: '92%',
-    maxHeight: '80%',
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
-    overflow: 'hidden',
-    ...webOnly({ boxShadow: '0 16px 40px rgba(16,34,50,0.24)' }),
-  },
-  dialogHeader: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: DESKTOP_COLORS.border,
-  },
-  dialogIdentity: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, flexShrink: 1 },
-  dialogAvatar: { width: 36, height: 36, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  dialogAvatarText: { color: '#fff', fontSize: 14, textAlign: 'center' },
-  dialogTitle: { fontSize: 14.5 },
-  dialogSubtitle: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint },
-  closeButton: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dialogActions: {
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: DESKTOP_COLORS.border,
-  },
-  dialogBody: { flexGrow: 0 },
-  dialogBodyContent: { paddingHorizontal: 18, paddingVertical: 14, gap: 12 },
-  groupTitle: { fontSize: 11, color: DESKTOP_COLORS.inkFaint, letterSpacing: 0.2, marginBottom: 6 },
-  group: { borderWidth: 1, borderColor: DESKTOP_COLORS.borderSoft, borderRadius: 6, overflow: 'hidden' },
-  groupRow: {
-    flexDirection: 'row-reverse',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F2F4F6',
-  },
-  groupRowLast: { borderBottomWidth: 0 },
-  groupLabel: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
-  groupValue: { fontSize: 12.5 },
 });

@@ -12,6 +12,8 @@
  *   - No emoji in the UI — vector icons (Ionicons) only.
  */
 
+import { FLEET_COLORS } from './colors';
+
 export const COLORS = {
   // text
   text: '#1A1A1A',
@@ -32,15 +34,18 @@ export const COLORS = {
   divider: '#ECECEC',
   fieldBorder: '#E2E2E2',
 
-  // semantic status
-  okBg: '#E9F1EC',
-  okText: '#5C8A6E',
-  warnBg: '#FDF3E2',
-  warnText: '#A9720F',
-  dangerBg: '#F8E7E5',
-  dangerText: '#C0392B',
-  neutralBg: '#EFEFEF',
-  neutralText: '#666666',
+  // semantic status — sourced from FLEET_COLORS' severity palette rather
+  // than this file's own separate hex values, which used to mean the same
+  // thing (e.g. "danger") with a different color from the fleet-home
+  // screens. Token names stay the same so existing callers don't change.
+  okBg: FLEET_COLORS.success.tint,
+  okText: FLEET_COLORS.success.text,
+  warnBg: FLEET_COLORS.warning.tint,
+  warnText: FLEET_COLORS.warning.text,
+  dangerBg: FLEET_COLORS.danger.tint,
+  dangerText: FLEET_COLORS.danger.text,
+  neutralBg: FLEET_COLORS.none.tint,
+  neutralText: FLEET_COLORS.none.text,
 } as const;
 
 /**

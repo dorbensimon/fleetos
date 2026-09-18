@@ -1,5 +1,9 @@
 -- Separate rollout step, after function deployment and approval.
 -- Starts in READ-ONLY audit mode. No request is removed by this schedule.
+select cron.unschedule(jobid)
+from cron.job
+where jobname = 'fleetos-process-signing-expiry';
+
 select cron.schedule(
   'fleetos-process-signing-expiry',
   '* * * * *',

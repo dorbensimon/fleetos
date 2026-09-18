@@ -3,10 +3,12 @@ import { View, StyleSheet, TouchableOpacity, ScrollView, Linking } from 'react-n
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, BackButton, LoadingState, ErrorState, PrimaryButton, useToast } from '../../components/ui';
 import { COLORS, CONTENT_MAX_WIDTH, RADIUS, SPACING, formatDate, BRAND } from '../../lib/theme';
+import { FLEET_COLORS } from '../../lib/colors';
+import { DOSSIER_BLUE } from '../../lib/dossierColors';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, archiveDriver, restoreDriver, resetDriverPassword, getUserEmail, updateUserEmail, listDepartments, DriverRow } from '../../lib/adminApi';
 import { listDocuments } from '../../lib/documents';
@@ -35,6 +37,9 @@ import {
   reviewLicenseUpdateRequest,
   type LicenseUpdateRequest,
 } from '../../lib/licenseUpdate';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { DriverDetailDesktopView } from '../../components/desktop/DriverDetailDesktopView';
 
 const APP_STARTED_AT_MS = Date.now();
 
@@ -64,9 +69,9 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   const { companyId, company } = useCompany();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
+  const isDesktop = useIsDesktop();
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [licensePhotosComplete, setLicensePhotosComplete] = useState(false);
-  const [pendingSigningCount, setPendingSigningCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
@@ -194,10 +199,9 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     setLoading(true);
     setLoadError(null);
     try {
-      const [d, licenseDocs, signatureRequests, email] = await Promise.all([
+      const [d, licenseDocs, email] = await Promise.all([
         getDriver(driverId),
         listDocuments('driver', driverId, 'license_docs'),
-        listSignatureRequests(companyId ?? undefined),
         companyId ? getUserEmail(driverId, companyId) : Promise.resolve(null),
       ]);
       if (requestId !== loadRequest.current) return;
@@ -213,11 +217,6 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       }
       setLicensePhotosComplete(
         licenseDocs.some((doc) => doc.title === 'צד קדמי') && licenseDocs.some((doc) => doc.title === 'צד אחורי')
-      );
-      setPendingSigningCount(
-        signatureRequests.filter(
-          (item) => item.driver_id === driverId && (item.status === 'pending' || item.status === 'declined')
-        ).length
       );
     } catch (err: any) {
       if (requestId === loadRequest.current) setLoadError(err?.message ?? 'טעינת הנהג נכשלה');
@@ -309,7 +308,80 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   const licenseExpired = !!driver?.license_expiry && driver.license_expiry < new Date().toISOString().slice(0, 10);
   const licenseStatus: 'expired' | 'verified' | 'pending' =
     licenseExpired ? 'expired' : licensePhotosComplete && !!driver?.license_expiry ? 'verified' : 'pending';
-  const groups = buildDriverDetailGroups(driver, licenseStatus, pendingSigningCount).map(group => ({ ...group, rows: group.rows.filter(row => row.key !== 'signing-documents') }));
+  const groups = buildDriverDetailGroups(driver, licenseStatus).map(group => ({ ...group, rows: group.rows.filter(row => row.key !== 'signing-documents') }));
+
+  if (isDesktop) {
+    return (
+      <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', driver?.full_name?.trim() || 'נהג']}>
+        {loading ? null : loadError ? (
+          <ErrorState message={loadError} onRetry={load} />
+        ) : (
+          <DriverDetailDesktopView
+            driverId={driverId}
+            driver={driver}
+            groups={groups}
+            onRowPress={handleRowPress}
+            onOpenSigningFolder={(folder) => navigation.navigate('DriverSigningDocuments', { driverId, folderId: folder.id })}
+            isArchived={isArchived}
+            pendingActivation={pendingActivation}
+            pendingActivationDays={pendingActivationDays}
+            onEdit={() => navigation.navigate('DriverForm', { driverId })}
+            onCall={() => driver?.phone && dialPhone(driver.phone)}
+            onMessage={() => driver?.phone && Linking.openURL(`sms:${driver.phone}`)}
+            onExportReport={() => void exportReport()}
+            exportingReport={exportingReport}
+            pendingLicenseRequest={pendingLicenseRequest}
+            reviewingLicense={reviewingLicense}
+            onReviewLicense={(approve) => void reviewLicense(approve)}
+            archiving={archiving}
+            restoring={restoring}
+            onArchive={() => setArchiveConfirmOpen(true)}
+            onRestore={() => void runRestore()}
+          />
+        )}
+
+        <ResetDriverPasswordModal
+          visible={resetOpen}
+          driverName={driver?.full_name}
+          password={resetPassword}
+          confirmPassword={resetConfirm}
+          error={resetError}
+          loading={resetting}
+          onPasswordChange={setResetPassword}
+          onConfirmPasswordChange={setResetConfirm}
+          onClose={closeReset}
+          onSubmit={submitReset}
+        />
+
+        <EditUserEmailModal
+          visible={emailOpen}
+          driverName={driver?.full_name}
+          email={emailValue}
+          error={emailError}
+          loading={savingEmail}
+          onEmailChange={setEmailValue}
+          onClose={closeEmail}
+          onSubmit={submitEmail}
+        />
+
+        <ConfirmActionModal
+          visible={archiveConfirmOpen}
+          title="העברה לארכיון"
+          message={
+            `${driver?.full_name ?? 'הנהג'} יאבד את הגישה לאפליקציה ויוסר מרשימת הנהגים.` +
+            (assignedVehicleCount > 0
+              ? ` שיוך ${assignedVehicleCount === 1 ? 'הרכב' : `${assignedVehicleCount} הרכבים`} שלו יבוטל.`
+              : '') +
+            ' תמיד אפשר לשחזר אותו ממסך הארכיון.'
+          }
+          confirmLabel="העבר לארכיון"
+          loading={archiving}
+          onConfirm={runArchive}
+          onClose={() => setArchiveConfirmOpen(false)}
+        />
+      </DesktopShell>
+    );
+  }
 
   if (loading) {
     return (
@@ -342,7 +414,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
           accessibilityRole="button"
           accessibilityLabel="עריכת פרטי נהג"
         >
-          <Ionicons name="create-outline" size={20} color={COLORS.accent} />
+          <Feather name="edit-3" size={18} color={COLORS.accent} />
         </TouchableOpacity>
         <DriverHero
           name={driver?.full_name ?? 'ללא שם'}
@@ -447,7 +519,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
               <AppText style={[DC_TYPO.destructiveBold, styles.restoreText]}>
                 {restoring ? 'משחזר…' : 'שחזור מהארכיון'}
               </AppText>
-              <Feather name="rotate-ccw" size={16} color="#0088CC" style={styles.trashIcon} />
+              <Feather name="rotate-ccw" size={16} color={COLORS.accent} style={styles.trashIcon} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -521,16 +593,16 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   floatingNavigation: { position: 'absolute', zIndex: 100, elevation: 100, right: DC_SPACING.screenPaddingH },
-  editDriverButton: { position: 'absolute', top: 18, left: DC_SPACING.screenPaddingH, zIndex: 2, width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(10,127,208,0.20)', alignItems: 'center', justifyContent: 'center', shadowColor: '#0A7FD0', shadowOpacity: 0.14, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
-  licenseRequestCard: { marginTop: 16, padding: 16, borderRadius: 12, backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FDBA74' },
-  licenseRequestTitle: { fontSize: 14.5, marginBottom: 6, color: '#9A3412' },
-  licenseRequestLine: { fontSize: 13, color: '#7C2D12', marginBottom: 2 },
+  editDriverButton: { position: 'absolute', top: 18, left: DC_SPACING.screenPaddingH, zIndex: 2, width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(10,127,208,0.20)', alignItems: 'center', justifyContent: 'center', shadowColor: DOSSIER_BLUE, shadowOpacity: 0.14, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  licenseRequestCard: { marginTop: 16, padding: 16, borderRadius: 12, backgroundColor: COLORS.warnBg, borderWidth: 1, borderColor: FLEET_COLORS.warning.fill },
+  licenseRequestTitle: { fontSize: 14.5, marginBottom: 6, color: COLORS.warnText },
+  licenseRequestLine: { fontSize: 13, color: COLORS.warnText, marginBottom: 2 },
   licenseRequestActions: { flexDirection: 'row-reverse', gap: 8, marginTop: 10 },
   licenseRequestBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-  licenseRequestApprove: { backgroundColor: '#16A34A' },
+  licenseRequestApprove: { backgroundColor: FLEET_COLORS.success.fill },
   licenseRequestApproveText: { color: '#FFFFFF', fontSize: 13.5 },
-  licenseRequestReject: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DC2626' },
-  licenseRequestRejectText: { color: '#DC2626', fontSize: 13.5 },
+  licenseRequestReject: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: FLEET_COLORS.danger.fill },
+  licenseRequestRejectText: { color: FLEET_COLORS.danger.text, fontSize: 13.5 },
   screen: { flex: 1, backgroundColor: BRAND.screenBg },
   // flex: 1 is required so the ScrollView stretches to fill `screen` instead
   // of sizing to its own content on web (React Native Web) — without it the

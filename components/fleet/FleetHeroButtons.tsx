@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,9 +9,10 @@ import { AppText } from '../ui';
 import { RootStackParamList } from '../../navigation/types';
 import { useCompany } from '../../lib/CompanyContext';
 import { countUnreadNotifications } from '../../lib/adminApi';
-import { FLEET_COLORS, FLEET_FONT, FLEET_SHADOWS } from './fleetTheme';
+import { FLEET_COLORS, FLEET_FONT, FLEET_SHADOWS } from '../../lib/colors';
 
 const CIRCLE = 42;
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
 /** Hamburger menu button for the fleet hero — hero-glass circle, per §4 "Hero על כחול". */
 export function FleetMenuButton() {
@@ -69,8 +70,8 @@ export function FleetBellButton() {
     if (unread > prevUnread.current) {
       badgePulse.setValue(1);
       Animated.sequence([
-        Animated.timing(badgePulse, { toValue: 1.25, duration: 160, useNativeDriver: true }),
-        Animated.timing(badgePulse, { toValue: 1, duration: 160, useNativeDriver: true }),
+        Animated.timing(badgePulse, { toValue: 1.25, duration: 160, easing: EASE_OUT, useNativeDriver: true }),
+        Animated.timing(badgePulse, { toValue: 1, duration: 160, easing: EASE_OUT, useNativeDriver: true }),
       ]).start();
     }
     prevUnread.current = unread;

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -23,6 +24,10 @@ import { AddCompanySheet, EMPTY_OWNER_COMPANY_FORM, OwnerCompanyForm } from '../
 import { DeleteCompanyModal, CompanyCreatedModal } from '../components/owner/DeleteCompanyModal';
 import { ErrorState } from '../components/ui';
 import { functionErrorMessage } from '../lib/functionError';
+import { useIsDesktop } from '../lib/useDesktopLayout';
+import { DesktopShell } from '../components/desktop/DesktopShell';
+import { DesktopInput, DText, HoverPressable, StatusPill } from '../components/desktop/primitives';
+import { DESKTOP_AVATAR_COLORS, DESKTOP_COLORS } from '../components/desktop/desktopTheme';
 
 /**
  * The owner (super-admin) home screen: list every company in the system,
@@ -40,6 +45,8 @@ type StatusFilter = 'all' | 'active' | 'disabled';
 type Props = NativeStackScreenProps<RootStackParamList, 'OwnerHome'>;
 
 export default function OwnerHomeScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
+  const isDesktop = useIsDesktop();
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -231,17 +238,141 @@ export default function OwnerHomeScreen({ navigation }: Props) {
     return matchesSearch && matchesStatus;
   });
 
+  const sheets = (
+    <>
+      <CompanyActionsSheet
+        company={menuCompany}
+        visible={!!menuCompany && !deleteOpen}
+        onClose={closeAll}
+        onToggleActive={toggleActive}
+        onDelete={() => setDeleteOpen(true)}
+      />
+
+      <AddCompanySheet
+        visible={addOpen}
+        form={form}
+        fieldErrors={fieldErrors}
+        showPassword={showPassword}
+        uploadingLogo={uploadingLogo}
+        logoError={logoError}
+        createError={createError}
+        creating={creating}
+        onClose={closeAll}
+        onChangeForm={setForm}
+        onPickLogo={handlePickLogo}
+        onToggleShowPassword={() => setShowPassword((v) => !v)}
+        onSubmit={createCompany}
+      />
+
+      <DeleteCompanyModal
+        visible={deleteOpen}
+        company={menuCompany}
+        confirmText={deleteConfirmText}
+        deleting={deleting}
+        onChangeConfirmText={setDeleteConfirmText}
+        onClose={closeAll}
+        onConfirm={confirmDelete}
+      />
+
+      <CompanyCreatedModal visible={successOpen} onClose={() => setSuccessOpen(false)} />
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <>
+        <DesktopShell active="OwnerHome" breadcrumbs={['חברות']}>
+          <View style={ds.wrap}>
+            <View style={ds.headRow}>
+              <DText weight="bold" style={ds.heading}>
+                {activeCount} חברות פעילות מתוך {companies.length}
+              </DText>
+              <HoverPressable style={ds.addButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.brandHover }} onPress={() => setAddOpen(true)}>
+                <Ionicons name="add" size={14} color="#FFFFFF" />
+                <DText weight="semiBold" style={ds.addButtonText}>חברה חדשה</DText>
+              </HoverPressable>
+            </View>
+
+            <View style={ds.toolRow}>
+              <View style={ds.searchBox}>
+                <DesktopInput value={search} onChangeText={setSearch} placeholder="חיפוש לפי שם חברה" />
+              </View>
+              <View style={ds.filterChipsRow}>
+                {(['all', 'active', 'disabled'] as StatusFilter[]).map((f) => (
+                  <HoverPressable
+                    key={f}
+                    style={[ds.filterChip, statusFilter === f && ds.filterChipActive]}
+                    hoverStyle={statusFilter !== f ? { backgroundColor: DESKTOP_COLORS.rowHover } : undefined}
+                    onPress={() => setStatusFilter(f)}
+                  >
+                    <DText weight={statusFilter === f ? 'semiBold' : 'regular'} style={[ds.filterChipText, statusFilter === f && ds.filterChipTextActive]}>
+                      {f === 'all' ? 'הכל' : f === 'active' ? 'פעיל' : 'מושבת'}
+                    </DText>
+                  </HoverPressable>
+                ))}
+              </View>
+              <HoverPressable style={ds.templatesButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={() => navigation.navigate('GlobalSigningTemplates')}>
+                <Ionicons name="document-text-outline" size={13} color={DESKTOP_COLORS.brand} />
+                <DText weight="semiBold" style={ds.templatesButtonText}>תבניות חתימה</DText>
+              </HoverPressable>
+            </View>
+
+            {loading ? (
+              <View style={ds.centerFill}><ActivityIndicator color={DESKTOP_COLORS.brand} /></View>
+            ) : loadError && companies.length === 0 ? (
+              <ErrorState message={loadError} onRetry={loadCompanies} />
+            ) : filteredCompanies.length === 0 ? (
+              <DText style={ds.empty}>לא נמצאו חברות</DText>
+            ) : (
+              <View style={ds.table}>
+                {filteredCompanies.map((item, index) => {
+                  const active = item.status === 'active';
+                  const avatarColor = active ? DESKTOP_AVATAR_COLORS[index % DESKTOP_AVATAR_COLORS.length] : DESKTOP_COLORS.inkFaint;
+                  return (
+                    <View key={item.id} style={[ds.row, index === filteredCompanies.length - 1 && ds.rowLast]}>
+                      <HoverPressable style={ds.rowMain} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={() => navigation.navigate('CompanyDetail', { companyId: item.id })}>
+                        <View style={[ds.avatar, { backgroundColor: avatarColor }]}>
+                          <DText weight="bold" style={ds.avatarText}>{item.name.trim().charAt(0)}</DText>
+                        </View>
+                        <DText weight="semiBold" style={ds.companyName} numberOfLines={1}>{item.name}</DText>
+                        <StatusPill tone={active ? 'ok' : 'neutral'} label={active ? 'פעיל' : 'מושבת'} />
+                      </HoverPressable>
+                      <View style={ds.rowMeta}>
+                        <DText style={ds.metaText}>{item.admins} אדמינים</DText>
+                        <DText style={ds.metaText}>{item.drivers} נהגים</DText>
+                      </View>
+                      <HoverPressable style={ds.menuButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={() => setMenuCompany(item)}>
+                        <Ionicons name="ellipsis-vertical" size={14} color={DESKTOP_COLORS.inkFaint} />
+                      </HoverPressable>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        </DesktopShell>
+        {sheets}
+      </>
+    );
+  }
+
   return (
     <View style={styles.screen}>
      <View style={styles.centeredColumn}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View>
           <Text style={styles.headerTitle}>Tolvex</Text>
           <Text style={styles.headerSubtitle}>
             {activeCount} חברות פעילות מתוך {companies.length}
           </Text>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={() => setAddOpen(true)} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => setAddOpen(true)}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="חברה חדשה"
+        >
           <Ionicons name="add" size={17} color={COLORS.white} />
           <Text style={styles.addButtonText}>חברה חדשה</Text>
         </TouchableOpacity>
@@ -315,41 +446,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       )}
      </View>
 
-      <CompanyActionsSheet
-        company={menuCompany}
-        visible={!!menuCompany && !deleteOpen}
-        onClose={closeAll}
-        onToggleActive={toggleActive}
-        onDelete={() => setDeleteOpen(true)}
-      />
-
-      <AddCompanySheet
-        visible={addOpen}
-        form={form}
-        fieldErrors={fieldErrors}
-        showPassword={showPassword}
-        uploadingLogo={uploadingLogo}
-        logoError={logoError}
-        createError={createError}
-        creating={creating}
-        onClose={closeAll}
-        onChangeForm={setForm}
-        onPickLogo={handlePickLogo}
-        onToggleShowPassword={() => setShowPassword((v) => !v)}
-        onSubmit={createCompany}
-      />
-
-      <DeleteCompanyModal
-        visible={deleteOpen}
-        company={menuCompany}
-        confirmText={deleteConfirmText}
-        deleting={deleting}
-        onChangeConfirmText={setDeleteConfirmText}
-        onClose={closeAll}
-        onConfirm={confirmDelete}
-      />
-
-      <CompanyCreatedModal visible={successOpen} onClose={() => setSuccessOpen(false)} />
+      {sheets}
     </View>
   );
 }
@@ -365,7 +462,6 @@ const styles = StyleSheet.create({
   emptyText: { color: COLORS.gray, fontSize: 14 },
   header: {
     backgroundColor: COLORS.white,
-    paddingTop: 56,
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
@@ -447,4 +543,33 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: COLORS.blue, borderColor: COLORS.blue },
   filterChipText: { fontSize: 12.5, fontWeight: '600', color: COLORS.gray },
   filterChipTextActive: { color: COLORS.white },
+});
+
+const ds = StyleSheet.create({
+  wrap: { padding: 24, maxWidth: 760, alignSelf: 'center', width: '100%' },
+  headRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  heading: { fontSize: 15 },
+  addButton: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, height: 32, paddingHorizontal: 14, borderRadius: 7, backgroundColor: DESKTOP_COLORS.brand },
+  addButtonText: { fontSize: 12.5, color: '#FFFFFF' },
+  toolRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, marginBottom: 16 },
+  searchBox: { width: 260 },
+  filterChipsRow: { flexDirection: 'row-reverse', gap: 6 },
+  filterChip: { height: 30, paddingHorizontal: 12, borderRadius: 6, borderWidth: 1, borderColor: DESKTOP_COLORS.border, alignItems: 'center', justifyContent: 'center', backgroundColor: DESKTOP_COLORS.surface },
+  filterChipActive: { backgroundColor: DESKTOP_COLORS.brand, borderColor: DESKTOP_COLORS.brand },
+  filterChipText: { fontSize: 12, color: DESKTOP_COLORS.inkMuted },
+  filterChipTextActive: { color: '#FFFFFF' },
+  templatesButton: { marginRight: 'auto' as any, flexDirection: 'row-reverse', alignItems: 'center', gap: 6, height: 30, paddingHorizontal: 12, borderRadius: 6, borderWidth: 1, borderColor: DESKTOP_COLORS.border, backgroundColor: DESKTOP_COLORS.surface },
+  templatesButtonText: { fontSize: 12, color: DESKTOP_COLORS.brand },
+  centerFill: { paddingVertical: 48, alignItems: 'center' },
+  empty: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint, textAlign: 'center', paddingVertical: 32 },
+  table: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 8, overflow: 'hidden' },
+  row: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, height: 52, borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
+  rowLast: { borderBottomWidth: 0 },
+  rowMain: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', gap: 10, borderRadius: 6 },
+  avatar: { width: 28, height: 28, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 12, color: '#FFFFFF' },
+  companyName: { fontSize: 13, maxWidth: 220 },
+  rowMeta: { flexDirection: 'row-reverse', gap: 14 },
+  metaText: { fontSize: 12, color: DESKTOP_COLORS.inkFaint },
+  menuButton: { width: 26, height: 26, borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginRight: 6 },
 });

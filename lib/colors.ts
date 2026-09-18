@@ -1,9 +1,14 @@
 /**
- * Fleet Home color system — scoped to the admin fleet screen (hero, dock,
- * cards, chips) per `FleetOS Admin Home.dc.html` and its bell/colors spec.
- * Deliberately NOT merged into `lib/theme.ts`: the rest of the admin app
- * (detail screens, forms, menu) keeps its existing muted Tolvex palette,
- * same split as `components/owner/ownerTheme.ts` for the owner persona.
+ * The shared color system for the app. Originated as the fleet-home-only
+ * palette (`FleetOS Admin Home.dc.html`'s bell/colors spec) — now promoted
+ * to the app-wide source for severity colors (`danger`/`warning`/`success`/
+ * `info`), since those had drifted into duplicate, unaware-of-each-other
+ * definitions across dozens of screens (e.g. a separate "Tolvex" red in
+ * `lib/theme.ts` that meant the same thing as `danger.fill` here).
+ *
+ * Non-severity tokens (backgrounds, glass levels, plate colors) are still
+ * fleet-home-specific — migrating those app-wide is a separate pass, not
+ * assumed by this move.
  */
 
 export const FLEET_COLORS = {
@@ -26,7 +31,9 @@ export const FLEET_COLORS = {
   divider: 'rgba(11,12,16,.07)',
   trackBg: 'rgba(11,12,16,.09)',
 
-  // severity — fill (progress) / text (numbers, badges) / tint (badge bg)
+  // severity — fill (progress) / text (numbers, badges) / tint (badge bg).
+  // This is the app-wide canonical severity palette — reuse these instead
+  // of redeclaring the same hex values locally.
   success: { fill: '#34c759', text: '#1e8e3e', tint: 'rgba(52,199,89,.14)' },
   warning: { fill: '#ff9f0a', text: '#b26200', tint: 'rgba(255,159,10,.16)' },
   danger: { fill: '#ff3b30', text: '#d70015', tint: 'rgba(255,59,48,.14)' },
@@ -87,9 +94,10 @@ export const FLEET_SHADOWS = {
 
 // Heebo (400–800) is already loaded app-wide in App.tsx, alongside the
 // Assistant weights the rest of the admin app uses via `AppText`'s
-// default. Applied here as a style override on individual `AppText`
-// elements — not by changing `AppText` itself — so this stays scoped to
-// the fleet-home screen instead of re-fonting the whole app.
+// default. Applied as a style override on individual `AppText` elements —
+// not by changing `AppText` itself — and deliberately still used only on
+// the fleet-home screen family, not app-wide, despite this file's new
+// shared location: re-fonting the whole app is a separate decision.
 export const FLEET_FONT = {
   regular: 'Heebo_500Medium',
   bold: 'Heebo_700Bold',

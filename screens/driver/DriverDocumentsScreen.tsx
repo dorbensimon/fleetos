@@ -11,13 +11,16 @@ import { ListGroup } from '../../components/driverCard/ListGroup';
 import { SigningFolders } from '../../components/driverCard/SigningFolders';
 import { buildDriverDetailGroups } from '../../components/driverCard/buildDriverDetailGroups';
 import { DC_COLORS, DC_SPACING } from '../../components/driverCard/driverCardTheme';
+import { DOSSIER_BLUE } from '../../lib/dossierColors';
 import type { DriverCardRow } from '../../components/driverCard/driverCardSections';
 import { CONTENT_MAX_WIDTH } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, type DriverRow } from '../../lib/adminApi';
 import { listDocuments } from '../../lib/documents';
-import { listSignatureRequests } from '../../lib/docuseal';
 import { RootStackParamList } from '../../navigation/types';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { HoverPressable } from '../../components/desktop/primitives';
 
 /**
  * The driver's self-service dossier intentionally uses the same card
@@ -42,10 +45,10 @@ const DOCUMENT_CATEGORY_BY_ROW: Partial<Record<DriverCardRow['key'], string>> = 
 export default function DriverDocumentsScreen({ navigation }: Props) {
   const { profile } = useCompany();
   const insets = useSafeAreaInsets();
+  const isDesktop = useIsDesktop();
   const profileId = profile?.id;
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [licensePhotosComplete, setLicensePhotosComplete] = useState(false);
-  const [pendingSigningCount, setPendingSigningCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadRequest = useRef(0);
@@ -60,18 +63,14 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
       return;
     }
     try {
-      const [loadedDriver, licenseDocs, signatureRequests] = await Promise.all([
+      const [loadedDriver, licenseDocs] = await Promise.all([
         getDriver(profileId),
         listDocuments('driver', profileId, 'license_docs'),
-        listSignatureRequests(),
       ]);
       if (requestId !== loadRequest.current) return;
       setDriver(loadedDriver);
       setLicensePhotosComplete(
         licenseDocs.some((doc) => doc.title === 'צד קדמי') && licenseDocs.some((doc) => doc.title === 'צד אחורי')
-      );
-      setPendingSigningCount(
-        signatureRequests.filter((item) => item.driver_id === profileId && ['pending', 'declined'].includes(item.status)).length
       );
     } catch (loadError: any) {
       if (requestId === loadRequest.current) setError(loadError?.message ?? 'טעינת המסמכים נכשלה');
@@ -95,7 +94,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
     : licensePhotosComplete && !!driver?.license_expiry
     ? 'verified'
     : 'pending';
-  const groups = buildDriverDetailGroups(driver, licenseStatus, pendingSigningCount).map(group => ({ ...group, rows: group.rows.filter(row => row.key !== 'signing-documents') })).filter(
+  const groups = buildDriverDetailGroups(driver, licenseStatus).map(group => ({ ...group, rows: group.rows.filter(row => row.key !== 'signing-documents') })).filter(
     (group) => group.title !== 'דוחות' && group.title !== 'ניהול החשבון'
   );
 
@@ -124,6 +123,37 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
       });
     }
   };
+
+  if (isDesktop) {
+    return (
+      <DesktopShell active="DriverDocuments" breadcrumbs={['המסמכים שלי']}>
+        {loading ? (
+          <LoadingState />
+        ) : error ? (
+          <ErrorState message={error} onRetry={load} />
+        ) : (
+          <View style={desktopStyles.wrap}>
+            <View style={desktopStyles.headRow}>
+              <View>
+                <AppText weight="bold" style={desktopStyles.heading}>{driver?.full_name ?? profile?.full_name ?? 'ללא שם'}</AppText>
+                <AppText style={desktopStyles.subheading}>נהג פעיל</AppText>
+              </View>
+              <HoverPressable style={desktopStyles.editButton} onPress={() => navigation.navigate('DriverProfile')}>
+                <Ionicons name="create-outline" size={14} color={DC_COLORS.blue} />
+              </HoverPressable>
+            </View>
+            {!!profileId && <SigningFolders driverId={profileId} onOpen={folder => navigation.navigate('DriverSigningDocuments', { folderId: folder.id })} />}
+            {groups.map((group) => (
+              <ListGroup key={group.title} group={group} onRowPress={handleRowPress} />
+            ))}
+            <AppText style={desktopStyles.permissionHint}>
+              חלק מהפרטים מנוהלים על ידי מנהל הצי. ניתן לצפות במסמכים ולהעלות מסמכים לפי ההרשאות שלך.
+            </AppText>
+          </View>
+        )}
+      </DesktopShell>
+    );
+  }
 
   if (loading) {
     return (
@@ -198,7 +228,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(10,127,208,0.20)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#0A7FD0',
+    shadowColor: DOSSIER_BLUE,
     shadowOpacity: 0.14,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
@@ -211,5 +241,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     writingDirection: 'rtl',
     paddingHorizontal: DC_SPACING.screenPaddingH,
+  },
+});
+
+const desktopStyles = StyleSheet.create({
+  wrap: { padding: 24, maxWidth: 520, alignSelf: 'center', width: '100%', gap: 12 },
+  headRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  heading: { fontSize: 16, color: DC_COLORS.label },
+  subheading: { fontSize: 12, color: DC_COLORS.labelTertiary, marginTop: 2 },
+  editButton: { width: 30, height: 30, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(10,127,208,0.2)', alignItems: 'center', justifyContent: 'center' },
+  permissionHint: {
+    color: DC_COLORS.labelTertiary,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
   },
 });

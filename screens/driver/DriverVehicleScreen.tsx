@@ -8,6 +8,11 @@ import { useCompany } from '../../lib/CompanyContext';
 import { listActiveDriverVehicles, listComplianceForOwners, DriverVehicleAssignment, ComplianceItem } from '../../lib/adminApi';
 import { VEHICLE_TYPE_LABELS, complianceBadgeLabel, complianceBadgeState, findComplianceDef } from '../../lib/compliance';
 import { RootStackParamList } from '../../navigation/types';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { DText, HoverPressable, StatusPill } from '../../components/desktop/primitives';
+import { DESKTOP_COLORS, DesktopTone } from '../../components/desktop/desktopTheme';
+import { Ionicons } from '@expo/vector-icons';
 
 /**
  * U2 — the driver's own vehicles. A driver can be actively assigned to
@@ -21,6 +26,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DriverVehicle'>;
 
 export default function DriverVehicleScreen({ navigation }: Props) {
   const { profile } = useCompany();
+  const isDesktop = useIsDesktop();
   const [assignments, setAssignments] = useState<DriverVehicleAssignment[]>([]);
   const [compliance, setCompliance] = useState<Map<string, ComplianceItem[]>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -59,6 +65,33 @@ export default function DriverVehicleScreen({ navigation }: Props) {
       };
     }, [load])
   );
+
+  if (isDesktop) {
+    return (
+      <DesktopShell active="DriverHome" breadcrumbs={['הרכב שלי']}>
+        {loading ? (
+          <LoadingState />
+        ) : error ? (
+          <ErrorState message={error} onRetry={load} />
+        ) : assignments.length === 0 ? (
+          <EmptyState icon="car-outline" title="אין רכב משויך" hint="פנה למנהל הצי שלך לשיוך רכב" />
+        ) : (
+          <View style={ds.wrap}>
+            {assignments.map((a) => (
+              <DesktopVehicleCard
+                key={a.id}
+                vehicle={a.vehicle}
+                isPrimary={a.is_primary}
+                showPrimaryBadge={assignments.length > 1}
+                compliance={compliance.get(a.vehicle.id) ?? []}
+                onOdometer={() => navigation.navigate('DriverOdometer', { vehicleId: a.vehicle.id, currentOdometer: a.vehicle.odometer })}
+              />
+            ))}
+          </View>
+        )}
+      </DesktopShell>
+    );
+  }
 
   return (
     <Screen>
@@ -154,6 +187,77 @@ function VehicleCard({
   );
 }
 
+function toneFor(state: ReturnType<typeof expiryState>): DesktopTone {
+  return state === 'expired' ? 'bad' : state === 'soon' ? 'warn' : state === 'missing' ? 'neutral' : 'ok';
+}
+
+function DesktopVehicleCard({
+  vehicle,
+  isPrimary,
+  showPrimaryBadge,
+  compliance,
+  onOdometer,
+}: {
+  vehicle: DriverVehicleAssignment['vehicle'];
+  isPrimary: boolean;
+  showPrimaryBadge: boolean;
+  compliance: ComplianceItem[];
+  onOdometer: () => void;
+}) {
+  const expiryOf = (itemType: string) => compliance.find((c) => c.item_type === itemType)?.expiry_date ?? null;
+  const insurance = expiryOf('insurance_mandatory');
+  const testItem = compliance.find((c) => c.item_type === 'annual_test') ?? null;
+  const testDef = findComplianceDef('vehicle', 'annual_test');
+  const testState = testDef ? complianceBadgeState(testDef, testItem) : expiryState(testItem?.expiry_date);
+  const testLabel = testDef ? complianceBadgeLabel(testDef, testItem) : testItem?.expiry_date ? formatDate(testItem.expiry_date) : 'חסר';
+
+  return (
+    <View style={ds.card}>
+      <View style={ds.headRow}>
+        <View>
+          <DText weight="bold" style={ds.vehicleTitle}>{[vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || 'ללא דגם'}</DText>
+          <DText style={ds.vehicleSub}>
+            {VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type}
+            {showPrimaryBadge ? (isPrimary ? ' · הרכב הראשי שלי' : ' · רכב משני') : ''}
+          </DText>
+        </View>
+        <DText weight="bold" style={ds.plateText}>{vehicle.plate_number}</DText>
+      </View>
+      <View style={ds.metaRow}>
+        <DText style={ds.metaLabel}>ביטוח חובה</DText>
+        <StatusPill tone={toneFor(expiryState(insurance))} label={insurance ? formatDate(insurance) : 'חסר'} />
+      </View>
+      <View style={ds.metaRow}>
+        <DText style={ds.metaLabel}>טסט שנתי</DText>
+        <StatusPill tone={toneFor(testState)} label={testLabel} />
+      </View>
+      <View style={[ds.metaRow, ds.metaRowLast]}>
+        <DText style={ds.metaLabel}>קילומטראז׳</DText>
+        <DText weight="semiBold" style={ds.metaValue}>{vehicle.odometer.toLocaleString('he-IL')} ק״מ</DText>
+      </View>
+      <HoverPressable style={ds.odometerButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.brandHover }} onPress={onOdometer}>
+        <Ionicons name="speedometer-outline" size={14} color="#FFFFFF" />
+        <DText weight="semiBold" style={ds.odometerButtonText}>עדכון קילומטרים</DText>
+      </HoverPressable>
+    </View>
+  );
+}
+
+const ds = StyleSheet.create({
+  wrap: { padding: 24, maxWidth: 420, alignSelf: 'center', width: '100%', gap: 16 },
+  card: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 8, padding: 16, gap: 4 },
+  headRow: { flexDirection: 'row-reverse', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 },
+  vehicleTitle: { fontSize: 15 },
+  vehicleSub: { fontSize: 12, color: DESKTOP_COLORS.inkFaint, marginTop: 2 },
+  plateText: { fontSize: 13, writingDirection: 'ltr' },
+  metaRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', height: 36, borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
+  metaRowLast: {},
+  metaLabel: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
+  metaValue: { fontSize: 12.5 },
+  odometerButton: { marginTop: 10, height: 34, borderRadius: 6, backgroundColor: DESKTOP_COLORS.brand, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  odometerButtonText: { fontSize: 12.5, color: '#FFFFFF' },
+});
+
 const styles = StyleSheet.create({
   content: { padding: SPACING.lg, gap: SPACING.md },
   plateCard: { alignItems: 'center', gap: 6, paddingVertical: SPACING.lg },
@@ -173,7 +277,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   plateFlagText: { color: '#FFFFFF', fontSize: 10 },
-  plateText: { fontSize: 16, color: '#1A1A1A', paddingHorizontal: 10, paddingVertical: 6 },
+  plateText: { fontSize: 16, color: COLORS.text, paddingHorizontal: 10, paddingVertical: 6 },
   vehicleTitle: { fontSize: 17 },
   vehicleSub: { fontSize: 13, color: COLORS.textMuted },
   card: { gap: SPACING.sm },

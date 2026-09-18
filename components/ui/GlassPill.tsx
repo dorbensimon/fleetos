@@ -2,6 +2,9 @@ import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 
+/** Shadow tint shared by every frosted-glass surface (this pill, and the profile screens' own glass cards). */
+export const GLASS_SHADOW_COLOR = '#505a82';
+
 /** Round frosted-glass button used for back/action icons floating directly over a gradient background. */
 export function GlassPill({
   size,
@@ -35,7 +38,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: '#505a82',
+        shadowColor: GLASS_SHADOW_COLOR,
         shadowOpacity: 0.18,
         shadowOffset: { width: 0, height: 2 },
         shadowRadius: 8,

@@ -1,10 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated, Easing } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { FONT } from '../../lib/theme';
+import { FLEET_COLORS } from '../../lib/colors';
 
 /**
  * The drivers/vehicles switch under each admin header. Each option is a
@@ -14,9 +15,11 @@ import { FONT } from '../../lib/theme';
  *
  * Liquid Glass segmented control: a milky glass rail (matches the dock's
  * glass level — this floats over scrolling list content, not the blue
- * hero) holds a lit glass pill that slides between the two tabs. The
- * tabs themselves stay fully transparent; only the pill underneath them
- * carries background, so the crossfade is just a text-color change.
+ * hero) holds a lit glass pill that slides between the two tabs, driven
+ * by a spring so a fast double-tap doesn't fight a mid-flight timing
+ * curve. The active tab picks up the brand blue (icon + label) instead
+ * of plain ink, so the control reads as "this app's switch" rather than
+ * a generic iOS segmented control; the inactive tab stays muted ink.
  */
 
 export type ToggleValue = 'drivers' | 'vehicles';
@@ -30,6 +33,7 @@ const TRACK_HEIGHT = 54;
 const TRACK_RADIUS = 26;
 const TRACK_PAD = 5;
 const PILL_RADIUS = 21;
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
 export default function DriversVehiclesToggle({ value = 'drivers', onChange }: Props) {
   const [segmentWidth, setSegmentWidth] = useState(0);
@@ -37,14 +41,30 @@ export default function DriversVehiclesToggle({ value = 'drivers', onChange }: P
   // 0 = drivers (right, since row-reverse puts the first child there), 1 = vehicles.
   const slide = useRef(new Animated.Value(value === 'drivers' ? 0 : 1)).current;
   const press = useRef(new Animated.Value(1)).current;
+  const driversIconPop = useRef(new Animated.Value(value === 'drivers' ? 1 : 0.86)).current;
+  const vehiclesIconPop = useRef(new Animated.Value(value === 'vehicles' ? 1 : 0.86)).current;
 
   React.useEffect(() => {
-    Animated.timing(slide, {
+    Animated.spring(slide, {
       toValue: value === 'drivers' ? 0 : 1,
-      duration: 380,
+      useNativeDriver: true,
+      stiffness: 280,
+      damping: 30,
+      mass: 1,
+    }).start();
+    Animated.timing(driversIconPop, {
+      toValue: value === 'drivers' ? 1 : 0.86,
+      duration: 180,
+      easing: EASE_OUT,
       useNativeDriver: true,
     }).start();
-  }, [value, slide]);
+    Animated.timing(vehiclesIconPop, {
+      toValue: value === 'vehicles' ? 1 : 0.86,
+      duration: 180,
+      easing: EASE_OUT,
+      useNativeDriver: true,
+    }).start();
+  }, [value, slide, driversIconPop, vehiclesIconPop]);
 
   const select = (v: ToggleValue) => {
     if (v !== value) Haptics.selectionAsync();
@@ -99,11 +119,12 @@ export default function DriversVehiclesToggle({ value = 'drivers', onChange }: P
 
       <View
         style={styles.segmentsRow}
-        onLayout={(e) => setSegmentWidth((e.nativeEvent.layout.width - TRACK_PAD * 2) / 2)}
+        onLayout={(e) => setSegmentWidth(e.nativeEvent.layout.width / 2)}
       >
         <ToggleSegment
           label="נהגים"
           active={value === 'drivers'}
+          pop={driversIconPop}
           onPress={() => select('drivers')}
           onPressIn={pressIn}
           onPressOut={pressOut}
@@ -112,6 +133,7 @@ export default function DriversVehiclesToggle({ value = 'drivers', onChange }: P
         <ToggleSegment
           label="רכבים"
           active={value === 'vehicles'}
+          pop={vehiclesIconPop}
           onPress={() => select('vehicles')}
           onPressIn={pressIn}
           onPressOut={pressOut}
@@ -125,6 +147,7 @@ export default function DriversVehiclesToggle({ value = 'drivers', onChange }: P
 function ToggleSegment({
   label,
   active,
+  pop,
   onPress,
   onPressIn,
   onPressOut,
@@ -132,11 +155,13 @@ function ToggleSegment({
 }: {
   label: string;
   active: boolean;
+  pop: Animated.Value;
   onPress: () => void;
   onPressIn: () => void;
   onPressOut: () => void;
   icon: (color: string) => React.ReactNode;
 }) {
+  const color = active ? FLEET_COLORS.primaryDeep : 'rgba(11,12,16,.5)';
   return (
     <Pressable
       style={styles.segment}
@@ -148,8 +173,10 @@ function ToggleSegment({
       accessibilityState={{ selected: active }}
       accessibilityLabel={label}
     >
-      {icon(active ? '#0b0c10' : 'rgba(11,12,16,.5)')}
-      <Text style={active ? styles.labelActive : styles.label}>{label}</Text>
+      <Animated.View style={{ transform: [{ scale: pop }] }}>{icon(color)}</Animated.View>
+      <Text style={[active ? styles.labelActive : styles.label, active && { color: FLEET_COLORS.primaryDeep }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -201,7 +228,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,.9)',
-    shadowColor: '#08245e',
+    shadowColor: FLEET_COLORS.primaryInk,
     shadowOpacity: 0.3,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 4 },

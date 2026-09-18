@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase';
 import { showAlert } from '../lib/platformAlert';
 import { useCompany } from '../lib/CompanyContext';
 import { RootStackParamList } from '../navigation/types';
+import { useIsDesktop } from '../lib/useDesktopLayout';
 
 /**
  * Full-screen menu reached from the home screen's menu button — replaces
@@ -43,6 +44,7 @@ const OWNER_ITEMS: MenuItem[] = [
 const ADMIN_ITEMS: MenuItem[] = [
   ...OWNER_ITEMS.slice(0, 2),
   { key: 'Reports', icon: 'document-text-outline', label: 'ייצוא דוחות' },
+  { key: 'CompanyDocuments', icon: 'folder-outline', label: 'מסמכי חברה' },
   OWNER_ITEMS[2],
 ];
 
@@ -54,6 +56,19 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default function MenuScreen({ navigation }: Props) {
   const { profile } = useCompany();
+  const isDesktop = useIsDesktop();
+
+  // The desktop sidebar already exposes every item this menu offers, so
+  // this screen (reached via the mobile hamburger button, which doesn't
+  // exist on desktop) has nothing left to add there — send anyone who
+  // still lands on its URL straight to the one destination it always led
+  // to anyway: the signed-in user's own profile.
+  React.useEffect(() => {
+    if (isDesktop) {
+      navigation.replace(profile?.role === 'driver' ? 'DriverProfile' : 'AdminProfile');
+    }
+  }, [isDesktop, navigation, profile?.role]);
+  if (isDesktop) return null;
 
   const items =
     profile?.role === 'driver'
@@ -78,6 +93,9 @@ export default function MenuScreen({ navigation }: Props) {
         break;
       case 'Reports':
         navigation.navigate('Reports');
+        break;
+      case 'CompanyDocuments':
+        navigation.navigate('CompanyDocuments');
         break;
       case 'AdminDocumentSigning':
         navigation.navigate('AdminDocumentSigning');
@@ -120,7 +138,9 @@ export default function MenuScreen({ navigation }: Props) {
         <TouchableOpacity
           style={styles.profileCard}
           activeOpacity={0.7}
-            onPress={() => navigation.navigate(profile?.role === 'driver' ? 'DriverProfile' : 'AdminProfile')}
+          onPress={() => navigation.navigate(profile?.role === 'driver' ? 'DriverProfile' : 'AdminProfile')}
+          accessibilityRole="button"
+          accessibilityLabel={`${profile?.full_name || 'ללא שם'}${subtitle ? `, ${subtitle}` : ''}`}
         >
           <View style={styles.avatar}>
             <AppText weight="bold" style={styles.avatarLetter}>
@@ -147,6 +167,8 @@ export default function MenuScreen({ navigation }: Props) {
               style={[styles.row, index === items.length - 1 && styles.rowLast]}
               activeOpacity={0.6}
               onPress={() => navigateToItem(item)}
+              accessibilityRole="button"
+              accessibilityLabel={item.label}
             >
               <Ionicons name="chevron-back" size={16} color={MENU_COLORS.chevron} />
               <AppText style={[MENU_TYPO.row, styles.rowLabel]} numberOfLines={1}>
@@ -160,7 +182,13 @@ export default function MenuScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.logoutCard}>
-          <TouchableOpacity style={styles.logoutRow} activeOpacity={0.6} onPress={logout}>
+          <TouchableOpacity
+            style={styles.logoutRow}
+            activeOpacity={0.6}
+            onPress={logout}
+            accessibilityRole="button"
+            accessibilityLabel="התנתקות"
+          >
             <AppText style={[MENU_TYPO.row, styles.logoutLabel]} numberOfLines={1}>
               התנתקות
             </AppText>

@@ -4,9 +4,9 @@
  * FleetScreen.tsx so the logic is unit-testable without rendering.
  */
 
-// Kept as literal hex/rgba (not imported from components/fleet/fleetTheme)
-// so this file stays render-free and unit-testable on its own — see the
-// module docstring. Mirrors the fleet-home severity palette exactly.
+// Kept as literal hex/rgba (not imported from lib/colors) so this file
+// stays render-free and unit-testable on its own — see the module
+// docstring. Mirrors FLEET_COLORS.success/warning/danger.fill exactly.
 export const TONE_OK = '#34c759';
 export const TONE_WARN = '#ff9f0a';
 export const TONE_BAD = '#ff3b30';

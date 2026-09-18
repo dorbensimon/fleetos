@@ -125,6 +125,8 @@ async function storeDocumentBytes(params: {
   mimeType: string;
   bytes: ArrayBuffer;
   complianceItemId?: string | null;
+  documentDate?: string | null;
+  description?: string | null;
   expiryDate?: string | null;
 }): Promise<DocumentRow> {
   const ext = extensionForMimeType(params.mimeType);
@@ -151,6 +153,8 @@ async function storeDocumentBytes(params: {
       file_name: params.fileName,
       mime_type: params.mimeType,
       file_size: params.bytes.byteLength,
+      document_date: params.documentDate ?? null,
+      description: params.description?.trim() || null,
       expiry_date: params.expiryDate ?? null,
     })
     .select()
@@ -180,6 +184,8 @@ export async function uploadDocument(params: {
   title: string;
   file: PickedFile;
   complianceItemId?: string | null;
+  documentDate?: string | null;
+  description?: string | null;
   expiryDate?: string | null;
 }): Promise<DocumentRow> {
   const { file } = params;
@@ -203,6 +209,8 @@ export async function uploadDocument(params: {
     mimeType: file.mimeType,
     bytes,
     complianceItemId: params.complianceItemId,
+    documentDate: params.documentDate,
+    description: params.description,
     expiryDate: params.expiryDate,
   });
 }
