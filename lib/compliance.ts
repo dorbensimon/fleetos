@@ -31,6 +31,8 @@ export interface ComplianceItemDef {
   itemType: string;
   category: ComplianceCategory;
   label: string;
+  /** A new supporting document cannot be uploaded without its own expiry date. */
+  requiresExpiryOnUpload?: boolean;
   /** Some items also record when the last check happened, not just the next one. */
   tracksLastDate?: boolean;
   /** When no explicit next date was entered, derive validity from the last check date. */
@@ -113,13 +115,13 @@ export const CATEGORY_ICONS: Record<ComplianceCategory, string> = {
 };
 
 export const VEHICLE_COMPLIANCE: ComplianceItemDef[] = [
-  { itemType: 'vehicle_license', category: 'licensing', label: 'רישיון רכב' },
-  { itemType: 'operating_license', category: 'licensing', label: 'רישיון הפעלה' },
+  { itemType: 'vehicle_license', category: 'licensing', label: 'רישיון רכב', requiresExpiryOnUpload: true },
+  { itemType: 'operating_license', category: 'licensing', label: 'רישיון הפעלה', requiresExpiryOnUpload: true },
 
-  { itemType: 'insurance_mandatory', category: 'insurance', label: 'ביטוח חובה' },
-  { itemType: 'insurance_comprehensive', category: 'insurance', label: 'ביטוח מקיף' },
+  { itemType: 'insurance_mandatory', category: 'insurance', label: 'ביטוח חובה', requiresExpiryOnUpload: true },
+  { itemType: 'insurance_comprehensive', category: 'insurance', label: 'ביטוח מקיף', requiresExpiryOnUpload: true },
 
-  { itemType: 'annual_test', category: 'inspection', label: 'טסט שנתי', tracksLastDate: true, validityDays: 365 },
+  { itemType: 'annual_test', category: 'inspection', label: 'טסט שנתי', tracksLastDate: true, validityDays: 365, requiresExpiryOnUpload: true },
 ];
 
 /**

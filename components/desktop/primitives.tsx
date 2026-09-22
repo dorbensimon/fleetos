@@ -16,8 +16,19 @@ export function DLtrText(props: TextProps & { weight?: Weight }) {
   return <DText {...props} style={[styles.ltr, props.style]} />;
 }
 
-function prefersReducedMotion(): boolean {
+export function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+}
+
+function supportsFinePointerHoverMotion(): boolean {
+  return !prefersReducedMotion()
+    && typeof window !== 'undefined'
+    && !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
+}
+
+/** Entry motion shared by every desktop popover (selects, calendar, overflow menus). */
+export function popoverEnterStyle() {
+  return prefersReducedMotion() ? fieldStyles.popoverInReduced : fieldStyles.popoverIn;
 }
 
 type HoverState = { pressed: boolean; hovered?: boolean; focused?: boolean };
@@ -29,14 +40,20 @@ type HoverState = { pressed: boolean; hovered?: boolean; focused?: boolean };
 export function HoverPressable({
   style,
   hoverStyle,
+  hoverMotionStyle,
   pressStyle,
+  pressMotionStyle,
   children,
   ...rest
 }: Omit<PressableProps, 'style'> & {
   style?: StyleProp<ViewStyle>;
   hoverStyle?: StyleProp<ViewStyle>;
+  /** Pointer-only hover feedback; suppressed for touch, keyboard focus, and reduced motion. */
+  hoverMotionStyle?: StyleProp<ViewStyle>;
   /** Feedback applied the instant the pointer goes down — opt-in, since a scale/transform isn't safe on every layout. */
   pressStyle?: StyleProp<ViewStyle>;
+  /** Press feedback that is suppressed when the user prefers reduced motion. */
+  pressMotionStyle?: StyleProp<ViewStyle>;
 }) {
   return (
     <Pressable
@@ -53,7 +70,9 @@ export function HoverPressable({
           }),
           style,
           (hovered || focused) && !rest.disabled ? hoverStyle : null,
+          hovered && !rest.disabled && supportsFinePointerHoverMotion() ? hoverMotionStyle : null,
           pressed && !rest.disabled ? pressStyle : null,
+          pressed && !rest.disabled && !prefersReducedMotion() ? pressMotionStyle : null,
         ];
       }}
     >
@@ -113,9 +132,13 @@ export function DesktopInput({
   editable = true,
   hasError,
   style,
+  onBlur,
+  onSubmitEditing,
 }: {
   value: string;
   onChangeText?: (v: string) => void;
+  onBlur?: () => void;
+  onSubmitEditing?: () => void;
   placeholder?: string;
   ltr?: boolean;
   keyboardType?: 'default' | 'number-pad' | 'phone-pad' | 'email-address' | 'numeric';
@@ -135,6 +158,8 @@ export function DesktopInput({
       secureTextEntry={secureTextEntry}
       maxLength={maxLength}
       editable={editable}
+      onBlur={onBlur}
+      onSubmitEditing={onSubmitEditing}
       style={[
         fieldStyles.input,
         ltr && fieldStyles.inputLtr,

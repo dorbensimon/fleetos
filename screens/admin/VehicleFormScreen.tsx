@@ -492,8 +492,6 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           drivers={drivers}
           vehicleDrivers={vehicleDrivers}
           onReloadVehicleDrivers={() => void reloadVehicleDrivers()}
-          onOpenRoadDatePicker={openRoadDatePicker}
-          onOpenLicenseExpiryPicker={openLicenseExpiryPicker}
           onLookupVehicle={() => void lookupVehicle()}
           lookupLoading={lookupLoading}
           lookupMessage={lookupMessage}

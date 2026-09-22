@@ -10,6 +10,8 @@ type NotificationRow = {
   recipient_id: string | null;
   message: string;
   notification_type: string | null;
+  vehicle_id: string | null;
+  folder_key: string | null;
 };
 
 type PushTokenRow = { user_id: string; expo_push_token: string };
@@ -49,7 +51,7 @@ Deno.serve(async (req) => {
 
     const { data: notification, error: notificationError } = await admin
       .from('notifications')
-      .select('id, company_id, recipient_id, message, notification_type')
+      .select('id, company_id, recipient_id, message, notification_type, vehicle_id, folder_key')
       .eq('id', notificationId)
       .maybeSingle();
     if (notificationError) throw notificationError;
@@ -98,7 +100,7 @@ Deno.serve(async (req) => {
         title: 'FleetOS',
         body: row.message,
         sound: 'default',
-        data: { notificationId: row.id, notificationType: row.notification_type },
+        data: { notificationId: row.id, notificationType: row.notification_type, vehicleId: row.vehicle_id, folderKey: row.folder_key },
       }));
       const response = await fetch(EXPO_PUSH_ENDPOINT, {
         method: 'POST',

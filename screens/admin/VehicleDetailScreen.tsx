@@ -17,6 +17,8 @@ import { AcquisitionType, ComplianceItem, Department, Vehicle, VehicleDriverWith
 import { DC_FONT, DC_SPACING } from '../../components/driverCard/driverCardTheme';
 import { ACQUISITION_TYPE_LABELS, VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../lib/compliance';
 import { formatPlate } from '../../lib/plate';
+import { deriveNextServiceKm, nextServiceKmOf } from '../../lib/serviceSchedule';
+import { vehicleFolderByKey } from '../../lib/vehicleFolderAlerts';
 import { RootStackParamList } from '../../navigation/types';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { supabase } from '../../lib/supabase';
@@ -39,7 +41,7 @@ const VEHICLE_DOCUMENT_FOLDERS = [
   { category: 'brakes_annual', title: 'בלמים שנתי', icon: 'disc-outline', color: '#0A7FD0', requiresExpiry: true },
   { category: 'winter_inspection', title: 'בדיקת חורף', icon: 'snow-outline', color: '#14B8A6', requiresExpiry: true },
   { category: 'child_detection', title: 'שכחת ילדים', icon: 'eye-outline', color: '#AF52DE', requiresExpiry: true },
-  { category: 'general', title: 'מסמכים כלליים', icon: 'folder-open-outline', color: '#8E8E93', requiresExpiry: false },
+  { category: 'general', title: 'מסמכים כלליים', icon: 'folder-open-outline', color: '#8E8E93', requiresExpiry: true },
 ] as const;
 const isVehicleTab = (value: unknown): value is Tab => value === 'general' || value === 'maintenance' || value === 'documents' || value === 'drivers' || value === 'licensing';
 const numberOrNull = (value: string) => { const n = Number(value.replace(/[^\d.-]/g, '')); return Number.isFinite(n) ? n : null; };
@@ -84,6 +86,30 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     if (isVehicleTab(route.params.tab)) setTab(route.params.tab);
   }, [route.params.tab]);
 
+  // Arriving from an expiry notification: open the folder it is about. The
+  // desktop view does this itself (see onFolderOpened below); on the phone,
+  // compliance folders expand inside the documents tab and document folders
+  // have their own screen.
+  const openFolderParam = route.params.openFolder;
+  useEffect(() => {
+    if (isDesktop || !vehicle || !openFolderParam) return;
+    navigation.setParams({ openFolder: undefined });
+    const folder = vehicleFolderByKey(openFolderParam);
+    if (!folder) return;
+    if (folder.source === 'compliance') {
+      setTab('documents');
+      setFocusItem(folder.folderKey);
+      requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 340, animated: true }));
+      return;
+    }
+    const documentFolder = VEHICLE_DOCUMENT_FOLDERS.find((f) => f.category === folder.folderKey);
+    if (documentFolder) {
+      navigation.navigate('DocumentCategory', {
+        ownerType: 'vehicle', ownerId: vehicleId, category: documentFolder.category, title: documentFolder.title, requiresExpiry: documentFolder.requiresExpiry,
+      });
+    }
+  }, [isDesktop, vehicle, openFolderParam, navigation, vehicleId]);
+
   const openTab = (next: Tab, item?: string) => {
     setTab(next);
     navigation.setParams({ tab: next });
@@ -93,7 +119,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const archive = () => showAlert('העברה לארכיון', `להעביר את ${formatPlate(vehicle?.plate_number)} לארכיון? הרכב יוסתר מהרשימה אך הנתונים יישמרו.`, [{ text: 'ביטול', style: 'cancel' }, { text: 'העבר לארכיון', style: 'destructive', onPress: async () => { await archiveVehicle(vehicleId); navigation.goBack(); } }]);
   const restore = () => showAlert('הסרה מהארכיון', `להחזיר את ${formatPlate(vehicle?.plate_number)} לרשימת הרכבים הפעילה?`, [{ text: 'ביטול', style: 'cancel' }, { text: 'הסר מהארכיון', onPress: async () => { await restoreVehicle(vehicleId); await load(); showToast('הרכב הוסר מהארכיון'); } }]);
   const editMaintenance = () => { if (!vehicle) return; setMaintenance({ odometer: String(vehicle.odometer ?? ''), last_service_km: String(vehicle.last_service_km ?? ''), service_interval_km: vehicle.service_interval_km ? String(vehicle.service_interval_km) : '', next_service_km: vehicle.next_service_km ? String(vehicle.next_service_km) : '' }); setEditingMaintenance(true); };
-  const saveMaintenance = async () => { setSavingMaintenance(true); try { await updateVehicle(vehicleId, { odometer: numberOrNull(maintenance.odometer) ?? 0, last_service_km: numberOrNull(maintenance.last_service_km) ?? 0, service_interval_km: numberOrNull(maintenance.service_interval_km), next_service_km: numberOrNull(maintenance.next_service_km) }); setEditingMaintenance(false); await load(); showToast('נשמר בהצלחה'); } catch (e: any) { showAlert('שמירה נכשלה', String(e?.message ?? 'נסה שוב')); } finally { setSavingMaintenance(false); } };
+  const saveMaintenance = async () => { setSavingMaintenance(true); try { await updateVehicle(vehicleId, { odometer: numberOrNull(maintenance.odometer) ?? 0, last_service_km: numberOrNull(maintenance.last_service_km) ?? 0, service_interval_km: numberOrNull(maintenance.service_interval_km), next_service_km: deriveNextServiceKm(numberOrNull(maintenance.last_service_km) ?? 0, numberOrNull(maintenance.service_interval_km)) ?? numberOrNull(maintenance.next_service_km) }); setEditingMaintenance(false); await load(); showToast('נשמר בהצלחה'); } catch (e: any) { showAlert('שמירה נכשלה', String(e?.message ?? 'נסה שוב')); } finally { setSavingMaintenance(false); } };
   const removePermanently = () => showAlert('מחיקת רכב', `למחוק לצמיתות את ${formatPlate(vehicle?.plate_number)}? פעולה זו אינה ניתנת לביטול.`, [{ text: 'ביטול', style: 'cancel' }, { text: 'מחק לצמיתות', style: 'destructive', onPress: async () => { try { if (!companyId) throw new Error('לא נמצאה חברה משויכת'); await deleteVehicle(vehicleId, companyId); navigation.goBack(); } catch (e: any) { showAlert('מחיקה נכשלה', String(e?.message ?? 'לא ניתן למחוק את הרכב. ייתכן שיש נתונים משויכים')); } } }]);
 
   const saveField = async (patch: Partial<Vehicle>): Promise<string | null> => {
@@ -162,7 +188,9 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   }
 
   const department = departments.find((d) => d.id === vehicle.department_id)?.name ?? null;
-  const serviceRemaining = vehicle.next_service_km == null ? null : vehicle.next_service_km - vehicle.odometer;
+  const nextServiceKm = nextServiceKmOf(vehicle);
+  const serviceRemaining = nextServiceKm == null ? null : nextServiceKm - vehicle.odometer;
+  const derivedNextServiceKm = deriveNextServiceKm(numberOrNull(maintenance.last_service_km) ?? 0, numberOrNull(maintenance.service_interval_km));
   const serviceState: ExpiryState = serviceRemaining == null ? 'missing' : serviceRemaining <= 0 ? 'expired' : serviceRemaining <= 1000 ? 'soon' : 'ok';
   const serviceLabel = serviceRemaining == null ? 'חסר' : serviceRemaining <= 0 ? `חריגה ${Math.abs(serviceRemaining).toLocaleString()} קמ` : `${serviceRemaining.toLocaleString()} קמ`;
   const insurance = compliance.find((c) => c.item_type === 'insurance_mandatory')?.expiry_date ?? null;
@@ -196,6 +224,8 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
           lookupMessage={lookupMessage}
           onSaveField={saveField}
           onLookupPlate={() => void lookupPlate()}
+          openFolder={route.params.openFolder ?? null}
+          onFolderOpened={() => navigation.setParams({ openFolder: undefined })}
         />
       </DesktopShell>
     );
@@ -218,10 +248,10 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
       <Caption label="פרטי רכב ורישוי" /><Group><Row label="מספר רישוי" value={formatPlate(vehicle.plate_number)} icon="car-outline" color="#0088CC" onPress={toForm} /><Row label="יצרן ודגם" value={name} icon="car-outline" color="#32ADE6" onPress={toForm} /><Row label="צבע" value={vehicle.color || '-'} icon="color-palette-outline" color="#AF52DE" onPress={toForm} /><Row label="סוג" value={VEHICLE_TYPE_LABELS[vehicle.vehicle_type]} icon="pricetag-outline" color="#8E8E93" onPress={toForm} /><Row label="שנת ייצור" value={vehicle.production_year ? `${vehicle.production_month ? `${vehicle.production_month}/` : ''}${vehicle.production_year}` : '-'} icon="calendar-outline" color="#8E8E93" onPress={toForm} /><Row label="עליה לכביש" value={vehicle.road_registration_date ? formatDate(vehicle.road_registration_date) : '-'} icon="calendar-outline" color="#8E8E93" onPress={toForm} last /></Group>
       <Caption label="זיהוי וארגון" /><Group><Row label="מספר שילדה" value={vehicle.vin || '-'} icon="barcode-outline" color="#8E8E93" onPress={toForm} /><Row label="קוד פנימי" value={vehicle.internal_code || '-'} icon="code-outline" color="#8E8E93" onPress={toForm} /><Row label="מחלקה" value={department || '-'} icon="business-outline" color="#5E5CE6" onPress={toForm} /><Row label="שימוש הרכב" value={vehicle.usage_type || '-'} icon="remove-outline" color="#C7CBD1" onPress={toForm} /><Row label="סוג עסקה" value={vehicle.acquisition_type ? ACQUISITION_TYPE_LABELS[vehicle.acquisition_type] ?? vehicle.acquisition_type : '-'} icon="pricetag-outline" color="#8E8E93" onPress={toForm} last /></Group>
     </>}
-    {tab === 'maintenance' && <><Caption label="תחזוקה" /><Card style={s.tabCard}>{!editingMaintenance ? <><TouchableOpacity onPress={editMaintenance} style={s.editMaint}><Ionicons name="create-outline" size={17} color={COLORS.accent} /><AppText weight="bold" style={s.editMaintText}>עריכת נתוני טיפול</AppText></TouchableOpacity><InfoRow label="מד אוץ נוכחי" value={`${vehicle.odometer.toLocaleString()} קמ`} /><InfoRow label="עודכן לאחרונה" value={vehicle.odometer_updated_at ? formatDate(vehicle.odometer_updated_at) : null} /><InfoRow label="קמ בטיפול האחרון" value={`${vehicle.last_service_km.toLocaleString()} קמ`} /><InfoRow label="טווח קמ בין טיפולים" value={vehicle.service_interval_km ? `${vehicle.service_interval_km.toLocaleString()} קמ` : null} /><InfoRow label="קמ לטיפול הבא" value={vehicle.next_service_km ? `${vehicle.next_service_km.toLocaleString()} קמ` : null} /></> : <><Field label="מד אוץ נוכחי (קמ)"><InputLtr value={formatKm(maintenance.odometer)} onChangeText={(v) => setMaintenance((x) => ({ ...x, odometer: v.replace(/\D/g, '') }))} keyboardType="number-pad" /></Field><Field label="קמ בטיפול האחרון"><InputLtr value={formatKm(maintenance.last_service_km)} onChangeText={(v) => setMaintenance((x) => ({ ...x, last_service_km: v.replace(/\D/g, '') }))} keyboardType="number-pad" /></Field><Field label="טווח קמ בין טיפולים"><InputLtr value={formatKm(maintenance.service_interval_km)} onChangeText={(v) => setMaintenance((x) => ({ ...x, service_interval_km: v.replace(/\D/g, '') }))} keyboardType="number-pad" /></Field><Field label="קמ לטיפול הבא"><InputLtr value={formatKm(maintenance.next_service_km)} onChangeText={(v) => setMaintenance((x) => ({ ...x, next_service_km: v.replace(/\D/g, '') }))} keyboardType="number-pad" /></Field><View style={s.saveRow}><SecondaryButton label="ביטול" style={s.flex} onPress={() => setEditingMaintenance(false)} /><PrimaryButton label="שמור" style={s.flex} loading={savingMaintenance} onPress={saveMaintenance} /></View></>}</Card></>}
+    {tab === 'maintenance' && <><Caption label="תחזוקה" /><Card style={s.tabCard}>{!editingMaintenance ? <><TouchableOpacity onPress={editMaintenance} style={s.editMaint}><Ionicons name="create-outline" size={17} color={COLORS.accent} /><AppText weight="bold" style={s.editMaintText}>עריכת נתוני טיפול</AppText></TouchableOpacity><InfoRow label="מד אוץ נוכחי" value={`${vehicle.odometer.toLocaleString()} קמ`} /><InfoRow label="עודכן לאחרונה" value={vehicle.odometer_updated_at ? formatDate(vehicle.odometer_updated_at) : null} /><InfoRow label="קמ בטיפול האחרון" value={`${vehicle.last_service_km.toLocaleString()} קמ`} /><InfoRow label="טווח קמ בין טיפולים" value={vehicle.service_interval_km ? `${vehicle.service_interval_km.toLocaleString()} קמ` : null} /><InfoRow label="קמ לטיפול הבא" value={nextServiceKm ? `${nextServiceKm.toLocaleString()} קמ` : null} /></> : <><Field label="מד אוץ נוכחי (קמ)"><InputLtr value={formatKm(maintenance.odometer)} onChangeText={(v) => setMaintenance((x) => ({ ...x, odometer: v.replace(/\D/g, '') }))} keyboardType="number-pad" /></Field><Field label="קמ בטיפול האחרון"><InputLtr value={formatKm(maintenance.last_service_km)} onChangeText={(v) => setMaintenance((x) => ({ ...x, last_service_km: v.replace(/\D/g, '') }))} keyboardType="number-pad" /></Field><Field label="טווח קמ בין טיפולים"><InputLtr value={formatKm(maintenance.service_interval_km)} onChangeText={(v) => setMaintenance((x) => ({ ...x, service_interval_km: v.replace(/\D/g, '') }))} keyboardType="number-pad" /></Field><Field label="קמ לטיפול הבא">{derivedNextServiceKm != null ? <InputLtr value={formatKm(String(derivedNextServiceKm))} editable={false} /> : <InputLtr value={formatKm(maintenance.next_service_km)} onChangeText={(v) => setMaintenance((x) => ({ ...x, next_service_km: v.replace(/\D/g, '') }))} keyboardType="number-pad" />}</Field><View style={s.saveRow}><SecondaryButton label="ביטול" style={s.flex} onPress={() => setEditingMaintenance(false)} /><PrimaryButton label="שמור" style={s.flex} loading={savingMaintenance} onPress={saveMaintenance} /></View></>}</Card></>}
     {tab === 'documents' && <>
       <Caption label="מסמכי רכב" />
-      <ComplianceSection companyId={companyId} ownerType="vehicle" ownerId={vehicleId} focusItemType={focusItem} spacious folderAppearance hiddenItemTypes={['insurance_mandatory', 'insurance_comprehensive', 'annual_test']} />
+      <ComplianceSection companyId={companyId} ownerType="vehicle" ownerId={vehicleId} focusItemType={focusItem} spacious folderAppearance hiddenItemTypes={['annual_test']} />
       <Card style={s.documentFoldersCard}>{VEHICLE_DOCUMENT_FOLDERS.map((folder, index) => <Row key={folder.category} label={folder.title} icon={folder.icon} color={folder.color} onPress={() => openDocumentFolder(folder)} last={index === VEHICLE_DOCUMENT_FOLDERS.length - 1} />)}</Card>
     </>}
     {tab === 'drivers' && <><Caption label="נהגים משויכים" /><Card style={s.tabCard}><VehicleDriversEditor vehicleId={vehicleId} assignments={drivers} driverOptions={driverOptions} onChanged={async () => setDrivers(await listActiveVehicleDrivers(vehicleId))} onOpenDriver={(driverId) => navigation.navigate('DriverDetail', { driverId })} /></Card></>}
@@ -235,6 +265,7 @@ function Tile({ label, icon, color, onPress }: { label: string; icon: keyof type
 function Caption({ label }: { label: string }) { return <AppText weight="bold" style={s.caption}>{label}</AppText>; }
 function Group({ children }: { children: React.ReactNode }) { return <View style={s.group}>{children}</View>; }
 function Row({ label, value, icon, color, valueColor, onPress, last }: { label: string; value?: string; icon: keyof typeof Ionicons.glyphMap; color: string; valueColor?: string; onPress?: () => void; last?: boolean }) { return <TouchableOpacity onPress={onPress} disabled={!onPress} activeOpacity={.66} style={[s.row, last && s.last]}><View style={[s.rowIcon, { backgroundColor: color }]}><Ionicons name={icon} size={18} color="#FFF" /></View><AppText weight="bold" style={s.rowLabel}>{label}</AppText>{value !== undefined && <AppText weight="bold" style={[s.value, valueColor && { color: valueColor }]} numberOfLines={1}>{value}</AppText>}{onPress && <Ionicons name="chevron-back" size={18} color="rgba(60,60,67,.28)" />}</TouchableOpacity>; }
+
 function Shell({ top, onBack, children }: { top: number; onBack: () => void; children: React.ReactNode }) { return <Screen style={s.screen}><AdminGradientBackground /><View style={s.shell}><View style={[s.nav, { paddingTop: top + 12 }]}><BackButton onPress={onBack} accessibilityLabel="חזור" /></View>{children}</View></Screen>; }
 
 const s = StyleSheet.create({

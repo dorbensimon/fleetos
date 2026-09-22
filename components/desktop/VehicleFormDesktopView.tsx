@@ -3,10 +3,9 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPlate } from '../../lib/plate';
-import { formatDateDots } from '../../lib/driverFormValidation';
 import { VehicleDriversEditor } from '../VehicleDriversEditor';
 import { AcquisitionType, VehicleDriverWithProfile, VehicleStatus, VehicleType } from '../../lib/adminApi';
-import { DesktopFieldRow, DesktopInput, DesktopSelect, DesktopSelectOption, DText, HoverPressable } from './primitives';
+import { DesktopDateField, DesktopFieldRow, DesktopInput, DesktopSelect, DesktopSelectOption, DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS } from './desktopTheme';
 
 type FormVehicleType = VehicleType | '';
@@ -50,8 +49,6 @@ export function VehicleFormDesktopView({
   drivers,
   vehicleDrivers,
   onReloadVehicleDrivers,
-  onOpenRoadDatePicker,
-  onOpenLicenseExpiryPicker,
   onLookupVehicle,
   lookupLoading,
   lookupMessage,
@@ -75,8 +72,6 @@ export function VehicleFormDesktopView({
   drivers: { value: string; label: string }[];
   vehicleDrivers: VehicleDriverWithProfile[];
   onReloadVehicleDrivers: () => void;
-  onOpenRoadDatePicker: () => void;
-  onOpenLicenseExpiryPicker: () => void;
   onLookupVehicle: () => void;
   lookupLoading: boolean;
   lookupMessage: string | null;
@@ -176,20 +171,19 @@ export function VehicleFormDesktopView({
           </View>
         </DesktopFieldRow>
         <DesktopFieldRow label="עליה לכביש" error={errors.road_registration_date}>
-          <HoverPressable style={styles.dateBox} hoverStyle={{ borderColor: DESKTOP_COLORS.brand }} onPress={onOpenRoadDatePicker}>
-            <Ionicons name="calendar-outline" size={14} color={DESKTOP_COLORS.inkFaint} />
-            <DText style={[styles.dateBoxText, !form.road_registration_date && { color: DESKTOP_COLORS.inkFaint }]}>
-              {formatDateDots(form.road_registration_date) || 'לא נבחר תאריך'}
-            </DText>
-          </HoverPressable>
+          <DesktopDateField
+            value={form.road_registration_date || null}
+            onChange={(iso) => set('road_registration_date', iso ?? '')}
+            placeholder="לא נבחר תאריך"
+            hasError={!!errors.road_registration_date}
+          />
         </DesktopFieldRow>
         <DesktopFieldRow label="תוקף רישיון רכב" last>
-          <HoverPressable style={styles.dateBox} hoverStyle={{ borderColor: DESKTOP_COLORS.brand }} onPress={onOpenLicenseExpiryPicker}>
-            <Ionicons name="calendar-outline" size={14} color={DESKTOP_COLORS.inkFaint} />
-            <DText style={[styles.dateBoxText, !form.vehicle_license_expiry && { color: DESKTOP_COLORS.inkFaint }]}>
-              {formatDateDots(form.vehicle_license_expiry) || 'לא נבחר תאריך'}
-            </DText>
-          </HoverPressable>
+          <DesktopDateField
+            value={form.vehicle_license_expiry || null}
+            onChange={(iso) => set('vehicle_license_expiry', iso ?? '')}
+            placeholder="לא נבחר תאריך"
+          />
         </DesktopFieldRow>
       </Section>
 
@@ -311,18 +305,6 @@ const styles = StyleSheet.create({
   lookupMessage: { fontSize: 11.5, color: DESKTOP_COLORS.inkMuted, marginTop: 6 },
   pairRow: { flexDirection: 'row-reverse', gap: 8 },
   pairHalf: { flex: 1 },
-  dateBox: {
-    height: 34,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.borderInput,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: DESKTOP_COLORS.surface,
-  },
-  dateBoxText: { fontSize: 13 },
   infoCard: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingVertical: 14 },
   infoText: { flex: 1, fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, lineHeight: 18 },
   footer: { alignItems: 'center', gap: 8, marginTop: 8 },

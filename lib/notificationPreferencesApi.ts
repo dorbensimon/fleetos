@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { VEHICLE_FOLDER_ALERTS } from './vehicleFolderAlerts';
 
 /**
  * Per-user notification preferences (PRD: `.claude/prds/notification-settings.md`).
@@ -22,7 +23,14 @@ export type NotificationType =
   | 'vehicle_insurance_mandatory_expiry'
   | 'vehicle_insurance_comprehensive_expiry'
   | 'vehicle_annual_test_expiry'
-  | 'vehicle_inspection_last_date_expiry'
+  | 'vehicle_license_expiry'
+  | 'vehicle_operating_license_expiry'
+  | 'vehicle_safety_officer_approval_expiry'
+  | 'vehicle_tachograph_calibration_expiry'
+  | 'vehicle_brakes_semiannual_expiry'
+  | 'vehicle_brakes_annual_expiry'
+  | 'vehicle_winter_inspection_expiry'
+  | 'vehicle_child_detection_expiry'
   | 'vehicle_service_due'
   | 'signature_request_assigned'
   | 'vehicle_assignment'
@@ -33,6 +41,14 @@ export interface NotificationTypeInfo {
   label: string;
   description: string;
 }
+
+/** One toggle per vehicle folder (see lib/vehicleFolderAlerts.ts and migration 90). */
+const vehicleFolderTypes = (description: string): NotificationTypeInfo[] =>
+  VEHICLE_FOLDER_ALERTS.map((folder) => ({
+    type: folder.notificationType as NotificationType,
+    label: `תוקף ${folder.label}`,
+    description,
+  }));
 
 /** Hebrew label + short explanation shown per toggle, in the PRD's table order. */
 export const ADMIN_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
@@ -46,30 +62,11 @@ export const ADMIN_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     label: 'העלאת מסמך נהג',
     description: 'נהג העלה מסמך חדש לתיק האישי שלו',
   },
-  {
-    type: 'vehicle_insurance_mandatory_expiry',
-    label: 'תוקף ביטוח חובה',
-    description: 'ביטוח חובה של רכב מתקרב לפקיעה (עד 20 יום מראש)',
-  },
-  {
-    type: 'vehicle_insurance_comprehensive_expiry',
-    label: 'תוקף ביטוח מקיף',
-    description: 'ביטוח מקיף של רכב מתקרב לפקיעה (עד 20 יום מראש)',
-  },
-  {
-    type: 'vehicle_annual_test_expiry',
-    label: 'תוקף טסט שנתי',
-    description: 'טסט שנתי לרכב מתקרב לפקיעה (עד 20 יום מראש)',
-  },
-  {
-    type: 'vehicle_inspection_last_date_expiry',
-    label: 'תוקף בדיקת רכב',
-    description: 'בדיקת רכב שמחושבת לפי תאריך הבדיקה האחרונה כבר פגה ודורשת טיפול',
-  },
+  ...vehicleFolderTypes('לפני שהתוקף פג (לפי זמן ההתראה של החברה) וביום שהוא פג'),
   {
     type: 'vehicle_service_due',
-    label: 'טיפול רכב מתקרב',
-    description: 'נותרו עד 1,000 ק"מ לטיפול התקופתי הבא ברכב',
+    label: 'טיפול רכב',
+    description: 'נותרו עד 1,000 ק"מ לטיפול התקופתי הבא, או שהרכב עבר את מועד הטיפול',
   },
 ];
 
@@ -89,11 +86,7 @@ export const DRIVER_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     label: 'עדכון הפרטים שלי',
     description: 'המנהל עדכן פרטים אישיים או פרטי רישיון בתיק שלך',
   },
-  {
-    type: 'vehicle_inspection_last_date_expiry',
-    label: 'תוקף בדיקת רכב',
-    description: 'אחת מבדיקות הרכב שלך פגה לפי תאריך הבדיקה האחרונה',
-  },
+  ...vehicleFolderTypes('ברכב שלך — לפני שהתוקף פג וביום שהוא פג'),
 ];
 
 export const NOTIFICATION_TYPES: NotificationTypeInfo[] = [
@@ -152,5 +145,30 @@ export async function setPreference(
       { onConflict: 'user_id,notification_type' }
     );
 
+  if (error) throw error;
+}
+
+/**
+ * Company-wide lead time for vehicle folder expiry alerts (migration 90):
+ * how many days before a folder expires the "about to expire" alert goes
+ * out. One value per company, shared by all its admins and drivers.
+ */
+export const DEFAULT_VEHICLE_EXPIRY_LEAD_DAYS = 20;
+export const MIN_VEHICLE_EXPIRY_LEAD_DAYS = 1;
+export const MAX_VEHICLE_EXPIRY_LEAD_DAYS = 90;
+
+export async function getVehicleExpiryLeadDays(companyId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from('companies')
+    .select('vehicle_expiry_lead_days')
+    .eq('id', companyId)
+    .single();
+  if (error) throw error;
+  return (data as { vehicle_expiry_lead_days: number | null }).vehicle_expiry_lead_days ?? DEFAULT_VEHICLE_EXPIRY_LEAD_DAYS;
+}
+
+/** Company rows are owner-only under RLS; admins go through this narrow RPC. */
+export async function setVehicleExpiryLeadDays(companyId: string, days: number): Promise<void> {
+  const { error } = await supabase.rpc('set_vehicle_expiry_lead_days', { p_company_id: companyId, p_days: days });
   if (error) throw error;
 }

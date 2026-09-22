@@ -2,7 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPhone } from '../../lib/phone';
-import { DesktopFieldRow, DesktopInput, DesktopSelect, DesktopSelectOption, DText, HoverPressable } from './primitives';
+import { DesktopDateField, DesktopFieldRow, DesktopInput, DesktopSelect, DesktopSelectOption, DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES } from './desktopTheme';
 
 interface FormState {
@@ -23,8 +23,8 @@ interface FormState {
 /**
  * Desktop body of the driver create/edit form: a dense two-column card
  * (label left of a bounded-width control) instead of the mobile glass
- * card stack. Purely presentational — DriverFormScreen owns state,
- * validation and the date picker.
+ * card stack. Purely presentational — DriverFormScreen owns state and
+ * validation.
  */
 export function DriverFormDesktopView({
   isEdit,
@@ -35,8 +35,6 @@ export function DriverFormDesktopView({
   departments,
   licenseOptions,
   selectedLicenseLabel,
-  licenseExpiryLabel,
-  onOpenDatePicker,
   canSubmit,
   saving,
   ctaLabel,
@@ -51,8 +49,6 @@ export function DriverFormDesktopView({
   departments: DesktopSelectOption<string>[];
   licenseOptions: { value: string; label: string; description: string }[];
   selectedLicenseLabel: string | null;
-  licenseExpiryLabel: string;
-  onOpenDatePicker: () => void;
   canSubmit: boolean;
   saving: boolean;
   ctaLabel: string;
@@ -149,12 +145,13 @@ export function DriverFormDesktopView({
           </DesktopFieldRow>
         )}
         <DesktopFieldRow label="תוקף רישיון" required error={errors.license_expiry} last>
-          <HoverPressable style={styles.dateBox} hoverStyle={{ borderColor: DESKTOP_COLORS.brand }} onPress={onOpenDatePicker}>
-            <Ionicons name="calendar-outline" size={14} color={DESKTOP_COLORS.inkFaint} />
-            <DText style={[styles.dateBoxText, !form.license_expiry && { color: DESKTOP_COLORS.inkFaint }]}>
-              {licenseExpiryLabel || 'לא נבחר תאריך'}
-            </DText>
-          </HoverPressable>
+          <DesktopDateField
+            value={form.license_expiry || null}
+            onChange={(iso) => set('license_expiry', iso ?? '')}
+            placeholder="לא נבחר תאריך"
+            hasError={!!errors.license_expiry}
+            allowClear={false}
+          />
         </DesktopFieldRow>
       </Section>
 
@@ -263,18 +260,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 16,
   },
-  dateBox: {
-    height: 34,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.borderInput,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: DESKTOP_COLORS.surface,
-  },
-  dateBoxText: { fontSize: 13 },
   passwordRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   passwordInput: { flex: 1 },
   passwordToggle: { height: 34, paddingHorizontal: 10, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },

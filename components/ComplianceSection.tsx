@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Image, Linking } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Image, Linking, type ImageStyle } from 'react-native';
 import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, Card, ExpiryBadge, PrimaryButton, useToast } from './ui';
 import { DocumentFileRow } from './documents/DocumentFileRow';
 import { DateField } from './ui/DateField';
-import { COLORS, EXPIRY_STYLE, RADIUS, SPACING } from '../lib/theme';
+import { COLORS, EXPIRY_STYLE, RADIUS, SPACING, expiryState, formatDate } from '../lib/theme';
 import {
   ComplianceItem,
   DocumentRow,
@@ -45,6 +45,11 @@ const complianceFolderColor = (itemType: string) => ({
   vehicle_license: '#0088CC', operating_license: '#5E5CE6', insurance_mandatory: '#34C759',
   insurance_comprehensive: '#0A7FD0', annual_test: '#FF9500',
 }[itemType] ?? '#8E8E93');
+/** The outer folder tile always reflects the expiry of its newest uploaded document. */
+const latestDocument = (docs: DocumentRow[]) => docs.reduce<DocumentRow | null>(
+  (latest, doc) => (!latest || doc.created_at > latest.created_at ? doc : latest),
+  null
+);
 
 /**
  * The grouped compliance + documents block used by both the vehicle
@@ -66,6 +71,7 @@ export function ComplianceSection({
   desktopModal = false,
   hiddenItemTypes = [],
   extraFolderTiles,
+  openRequest,
 }: {
   companyId: string;
   ownerType: ComplianceOwnerType;
@@ -78,6 +84,12 @@ export function ComplianceSection({
   hiddenItemTypes?: string[];
   /** Extra, non-compliance folder tiles (e.g. free-form document categories) rendered in the same grid. */
   extraFolderTiles?: React.ReactNode;
+  /**
+   * Desktop only: open a folder's modal from outside the grid (e.g. the
+   * vehicle card's status rail). `nonce` changes on every request so the
+   * same folder can be reopened after it was closed.
+   */
+  openRequest?: { itemType: string; nonce: number } | null;
 }) {
   const { showToast } = useToast();
   const [items, setItems] = useState<Map<string, ComplianceItem>>(new Map());
@@ -93,6 +105,7 @@ export function ComplianceSection({
   );
   const [savingItem, setSavingItem] = useState<string | null>(null);
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const [hoveredFolder, setHoveredFolder] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [complianceRows, documentRows] = await Promise.all([
@@ -101,7 +114,40 @@ export function ComplianceSection({
     ]);
     setItems(new Map(complianceRows.map((c) => [c.item_type, c])));
     setDocs(documentRows);
+    return { complianceRows, documentRows };
   }, [ownerType, ownerId]);
+
+  /**
+   * The mandatory-insurance badge is read from `insurance_mandatory.expiry_date`
+   * all over the app (fleet cards, dashboard, reports, notifications) — so
+   * that one field has to always reflect the newest uploaded policy document,
+   * never a manual edit left stale after a renewal was uploaded (or removed).
+   */
+  const syncMandatoryInsuranceDate = useCallback(
+    async (documentRows: DocumentRow[], complianceRows: ComplianceItem[]) => {
+      const def = complianceCatalog(ownerType).find((d) => d.itemType === 'insurance_mandatory');
+      if (!def) return;
+      const folderDocs = documentRows.filter((d) => d.title === def.label);
+      const latestDoc = folderDocs.reduce<DocumentRow | null>(
+        (latest, d) => (!latest || d.created_at > latest.created_at ? d : latest),
+        null
+      );
+      const nextExpiry = latestDoc?.expiry_date ?? null;
+      const currentRow = complianceRows.find((c) => c.item_type === 'insurance_mandatory');
+      if (nextExpiry === (currentRow?.expiry_date ?? null)) return;
+      await upsertCompliance({
+        companyId,
+        ownerType,
+        ownerId,
+        category: def.category,
+        itemType: def.itemType,
+        lastDate: currentRow?.last_date ?? null,
+        expiryDate: nextExpiry,
+      });
+      await load();
+    },
+    [companyId, ownerType, ownerId, load]
+  );
 
   useEffect(() => {
     (async () => {
@@ -117,6 +163,10 @@ export function ComplianceSection({
   useEffect(() => {
     if (focusItemType) setExpanded(focusItemType);
   }, [focusItemType]);
+
+  useEffect(() => {
+    if (openRequest) setExpanded(openRequest.itemType);
+  }, [openRequest]);
 
   // Folder tiles show a thumbnail of the most recently uploaded image, so
   // admins can tell folders apart without opening each one.
@@ -183,6 +233,18 @@ export function ComplianceSection({
   };
 
   const addDocument = async (def: ComplianceItemDef) => {
+    // A vehicle compliance document needs the date of the specific document
+    // being uploaded, rather than silently reusing a prior document's date.
+    const requiresExpiryOnUpload = def.requiresExpiryOnUpload === true;
+    const stagedExpiryDate = drafts[def.itemType]?.expiry_date ?? null;
+    if (requiresExpiryOnUpload && !stagedExpiryDate) {
+      showAlert('חסר תוקף', 'יש לבחור תאריך תוקף למסמך לפני ההעלאה');
+      return;
+    }
+    const uploadExpiryDate = requiresExpiryOnUpload
+      ? stagedExpiryDate
+      : items.get(def.itemType)?.expiry_date ?? null;
+
     chooseDocumentSource(def.label, async (source: DocumentSource) => {
       setBusyItem(def.itemType);
       try {
@@ -198,9 +260,27 @@ export function ComplianceSection({
           title: def.label,
           file,
           complianceItemId: items.get(def.itemType)?.id ?? null,
-          expiryDate: items.get(def.itemType)?.expiry_date ?? null,
+          expiryDate: uploadExpiryDate,
         });
-        await load();
+        const { complianceRows, documentRows } = await load();
+        if (requiresExpiryOnUpload) {
+          if (def.itemType !== 'insurance_mandatory') {
+            await upsertCompliance({
+              companyId,
+              ownerType,
+              ownerId,
+              category: def.category,
+              itemType: def.itemType,
+              lastDate: items.get(def.itemType)?.last_date ?? null,
+              expiryDate: uploadExpiryDate,
+            });
+            await load();
+          }
+        }
+        if (def.itemType === 'insurance_mandatory') {
+          await syncMandatoryInsuranceDate(documentRows, complianceRows);
+        }
+        if (requiresExpiryOnUpload) setDrafts((prev) => { const next = { ...prev }; delete next[def.itemType]; return next; });
       } catch (err: any) {
         showAlert('העלאה נכשלה', err?.message ?? 'נסה שוב');
       } finally {
@@ -224,6 +304,19 @@ export function ComplianceSection({
       !!draft &&
       ((draft.last_date !== undefined && draft.last_date !== (item?.last_date ?? null)) ||
         (draft.expiry_date !== undefined && draft.expiry_date !== (item?.expiry_date ?? null)));
+
+    if (def.requiresExpiryOnUpload) {
+      return (
+        <>
+          <View style={styles.dateRow}>
+            <AppText style={styles.dateLabel}>תוקף המסמך החדש</AppText>
+            <View style={styles.dateInput}>
+              <DateField value={draft?.expiry_date ?? null} onChange={(iso) => setDraftDate(def, 'expiry_date', iso)} />
+            </View>
+          </View>
+        </>
+      );
+    }
 
     return (
       <>
@@ -267,6 +360,16 @@ export function ComplianceSection({
       ((draft.last_date !== undefined && draft.last_date !== (item?.last_date ?? null)) ||
         (draft.expiry_date !== undefined && draft.expiry_date !== (item?.expiry_date ?? null)));
 
+    if (def.requiresExpiryOnUpload) {
+      return (
+        <>
+          <View style={styles.desktopDateField}>
+            <DesktopDateField value={draft?.expiry_date ?? null} onChange={(iso) => setDraftDate(def, 'expiry_date', iso)} placeholder="תוקף המסמך החדש" />
+          </View>
+        </>
+      );
+    }
+
     return (
       <>
         {def.tracksLastDate && (
@@ -307,7 +410,12 @@ export function ComplianceSection({
             doc={doc}
             onOpen={openDocument}
             onDownload={downloadDocumentWithAlert}
-            onDelete={(item) => confirmDeleteDocument(item, load)}
+            onDelete={(item) =>
+              confirmDeleteDocument(item, async () => {
+                const { complianceRows, documentRows } = await load();
+                if (def.itemType === 'insurance_mandatory') await syncMandatoryInsuranceDate(documentRows, complianceRows);
+              })
+            }
           />
         ))}
 
@@ -347,13 +455,13 @@ export function ComplianceSection({
             </AppText>
           </View>}
 
-          {folderAppearance ? (
+          {folderAppearance && desktopModal ? (
             <View style={styles.folderGrid}>
               {group.items.map((def) => {
                 const itemDocs = docs.filter((d) => d.title === def.label);
                 const isOpen = expanded === def.itemType;
-                const item = items.get(def.itemType);
-                const badgeState = complianceBadgeState(def, item);
+                const latestDoc = latestDocument(itemDocs);
+                const latestExpiry = latestDoc?.expiry_date ?? null;
                 const thumbnail = thumbnails[def.label];
 
                 return (
@@ -361,25 +469,71 @@ export function ComplianceSection({
                     key={def.itemType}
                     style={[styles.folderTile, isOpen && styles.folderTileOpen]}
                     hoverStyle={styles.folderTileHover}
-                    onPress={() => setExpanded(desktopModal ? def.itemType : isOpen ? null : def.itemType)}
+                    hoverMotionStyle={styles.folderTileHoverMotion}
+                    pressMotionStyle={styles.folderTilePress}
+                    onHoverIn={() => setHoveredFolder(def.itemType)}
+                    onHoverOut={() => setHoveredFolder(null)}
+                    onPress={() => setExpanded(def.itemType)}
                   >
                     {thumbnail ? (
-                      <Image source={{ uri: thumbnail }} style={styles.folderTileThumb} resizeMode="cover" />
+                      <View style={styles.folderTilePreview}>
+                        <Image
+                          source={{ uri: thumbnail }}
+                          style={[styles.folderTilePreviewImage as ImageStyle, hoveredFolder === def.itemType && styles.folderTilePreviewImageHover as ImageStyle]}
+                          resizeMode="cover"
+                        />
+                        <View
+                          pointerEvents="none"
+                          style={[styles.folderTilePreviewScrim, hoveredFolder === def.itemType && styles.folderTilePreviewScrimHover]}
+                        />
+                      </View>
                     ) : (
-                      <View style={[styles.folderTileThumb, styles.folderTileIconWrap, { backgroundColor: complianceFolderColor(def.itemType) }]}>
-                        <Ionicons name={complianceFolderIcon(def.itemType)} size={26} color="#FFF" />
+                      <View style={[
+                        styles.folderTileThumb,
+                        styles.folderTileIconWrap,
+                        styles.folderTileIconWrapDesktop,
+                        hoveredFolder === def.itemType && styles.folderTileIconWrapHover,
+                      ]}>
+                        <Ionicons name={complianceFolderIcon(def.itemType)} size={24} color={DESKTOP_COLORS.brand} />
                       </View>
                     )}
                     <AppText weight="bold" style={styles.folderTileLabel} numberOfLines={1}>{def.label}</AppText>
                     <View style={styles.folderTileMetaRow}>
-                      <ExpiryBadge state={badgeState} label={complianceBadgeLabel(def, item)} />
-                      <AppText style={styles.itemDocCount}>{itemDocs.length > 0 ? `${itemDocs.length} מסמכים` : 'אין מסמכים'}</AppText>
+                      {latestDoc ? <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : 'חסר תוקף'} /> : <AppText style={styles.itemDocCount}>אין מסמכים</AppText>}
                     </View>
                   </HoverPressable>
                 );
               })}
               {extraFolderTiles}
             </View>
+          ) : folderAppearance ? (
+            <>
+              {group.items.map((def, index) => {
+                const isOpen = expanded === def.itemType;
+                const itemDocs = docs.filter((d) => d.title === def.label);
+                const latestDoc = latestDocument(itemDocs);
+                const latestExpiry = latestDoc?.expiry_date ?? null;
+                return (
+                  <TouchableOpacity
+                    key={def.itemType}
+                    activeOpacity={0.66}
+                    style={[styles.folderRow, index === 0 && styles.folderFirstItem]}
+                    onPress={() => setExpanded(isOpen ? null : def.itemType)}
+                  >
+                    <View style={[styles.folderIcon, { backgroundColor: complianceFolderColor(def.itemType) }]}>
+                      <Ionicons name={complianceFolderIcon(def.itemType)} size={18} color="#FFF" />
+                    </View>
+                    <AppText weight="bold" style={styles.folderItemLabel}>{def.label}</AppText>
+                    {latestDoc ? <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : 'חסר תוקף'} /> : <AppText style={styles.itemDocCount}>אין מסמכים</AppText>}
+                    <Ionicons name={isOpen ? 'chevron-down' : 'chevron-back'} size={18} color="rgba(60,60,67,.28)" />
+                  </TouchableOpacity>
+                );
+              })}
+              {group.items.map((def) => expanded === def.itemType && (
+                <View key={`${def.itemType}-body`} style={styles.folderDetailPanel}>{renderItemBody(def)}</View>
+              ))}
+              {extraFolderTiles}
+            </>
           ) : (
             group.items.map((def) => {
               const item = items.get(def.itemType);
@@ -406,9 +560,6 @@ export function ComplianceSection({
             })
           )}
 
-          {folderAppearance && !desktopModal && expanded && group.items.some((def) => def.itemType === expanded) && (
-            <View style={styles.folderDetailPanel}>{renderItemBody(group.items.find((def) => def.itemType === expanded)!)}</View>
-          )}
         </Card>
       ))}
 
@@ -422,7 +573,10 @@ export function ComplianceSection({
             title={openDef.label}
             docs={itemDocs}
             onClose={() => setExpanded(null)}
-            onDeleted={load}
+            onDeleted={async () => {
+              const { complianceRows, documentRows } = await load();
+              if (openDef.itemType === 'insurance_mandatory') await syncMandatoryInsuranceDate(documentRows, complianceRows);
+            }}
             footer={
               <View style={styles.desktopUploadRow}>
                 {renderDesktopDateFields(openDef)}
@@ -441,7 +595,7 @@ export function ComplianceSection({
         ownerType={ownerType}
         ownerId={ownerId}
         docs={docs.filter((d) => d.category === 'general')}
-        onChanged={load}
+        onChanged={async () => { await load(); }}
       />}
     </>
   );
@@ -561,6 +715,7 @@ const styles = StyleSheet.create({
   },
   itemHeadSpacious: { paddingVertical: SPACING.md },
   folderItemHead: { minHeight: 57, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 11 },
+  folderRow: { borderTopWidth: 1, borderTopColor: COLORS.divider, minHeight: 57, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 11 },
   folderIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   folderItemLabel: { flex: 1, fontSize: 16.5, color: COLORS.text },
   folderItemBody: { paddingHorizontal: SPACING.lg },
@@ -578,9 +733,11 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 6,
     backgroundColor: COLORS.card,
-    ...webOnly({ transition: 'background-color 150ms ease, border-color 150ms ease' }),
+    ...webOnly({ transition: 'transform 150ms ease, border-color 150ms ease' }),
   },
-  folderTileHover: { backgroundColor: DESKTOP_COLORS.rowHover },
+  folderTileHover: {},
+  folderTileHoverMotion: webOnly({ transform: 'translateY(-2px)' }),
+  folderTilePress: webOnly({ transform: 'scale(0.97)' }),
   folderTileOpen: { borderColor: COLORS.accent },
   folderTileThumb: {
     width: '100%',
@@ -590,7 +747,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: COLORS.field,
   },
+  folderTilePreview: { width: '100%', height: 72, borderRadius: RADIUS.sm, overflow: 'hidden' },
+  folderTilePreviewImage: {
+    width: '100%',
+    height: '100%',
+    ...webOnly({ transition: 'transform 150ms ease' }),
+  },
+  folderTilePreviewImageHover: webOnly({ transform: 'scale(1.02)' }),
+  folderTilePreviewScrim: {
+    position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
+    backgroundColor: '#FFFFFF',
+    opacity: 0,
+    ...webOnly({ transition: 'opacity 150ms ease' }),
+  },
+  folderTilePreviewScrimHover: { opacity: 0.08 },
   folderTileIconWrap: {},
+  folderTileIconWrapDesktop: {
+    backgroundColor: DESKTOP_COLORS.canvas,
+    ...webOnly({ transition: 'background-color 150ms ease' }),
+  },
+  folderTileIconWrapHover: { backgroundColor: DESKTOP_COLORS.brandFocusRing },
   folderTileLabel: { fontSize: 13, color: COLORS.text, textAlign: 'right' },
   folderTileMetaRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
   folderDetailPanel: { borderTopWidth: 1, borderTopColor: COLORS.divider, paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm },
@@ -600,6 +776,7 @@ const styles = StyleSheet.create({
   dateRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.md },
   dateLabel: { fontSize: 12.5, color: COLORS.textMuted, width: 88 },
   dateInput: { flex: 1 },
+  autoDateValue: { fontSize: 12.5, color: COLORS.textMuted, flex: 1 },
   confirmBtn: { marginTop: 2 },
 
   uploadBtn: {
@@ -618,7 +795,9 @@ const styles = StyleSheet.create({
 
   emptyDocs: { fontSize: 12.5, color: COLORS.textFaint, paddingVertical: SPACING.md },
 
-  desktopUploadRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  // Keep every desktop vehicle-folder footer aligned with the free-form
+  // vehicle folders (for example, "אישור קצין בטיחות").
+  desktopUploadRow: { flexDirection: 'row-reverse', alignSelf: 'flex-end', alignItems: 'center', gap: 8 },
   desktopDateField: { width: 150 },
   desktopConfirmBtn: {
     width: 30,
@@ -636,10 +815,10 @@ const styles = StyleSheet.create({
     height: 32,
     paddingHorizontal: 10,
     alignSelf: 'flex-start',
-    borderRadius: RADIUS.sm,
+    borderRadius: 7,
     borderWidth: 1,
-    borderColor: COLORS.accentSoft,
-    backgroundColor: COLORS.accentSoft,
+    borderColor: DESKTOP_COLORS.borderInput,
+    backgroundColor: 'transparent',
   },
   desktopUploadText: { fontSize: 12.5, color: COLORS.accent },
 });

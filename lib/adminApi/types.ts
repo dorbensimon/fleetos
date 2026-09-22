@@ -150,6 +150,9 @@ export interface Notification {
   message: string;
   read_at: string | null;
   created_at: string;
+  /** Vehicle folder expiry alerts only (migration 90): the vehicle and folder to open on tap. */
+  vehicle_id?: string | null;
+  folder_key?: string | null;
 }
 
 export interface VehicleDriverAssignment {

@@ -1,18 +1,20 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ComplianceItem, DriverRow, Vehicle, VehicleDriverWithProfile } from '../../lib/adminApi';
 import { complianceRemainingDays, findComplianceDef, VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../lib/compliance';
 import { SERVICE_WARN_KM } from '../../lib/fleetCardHelpers';
 import { formatPlate } from '../../lib/plate';
+import { nextServiceKmOf } from '../../lib/serviceSchedule';
 import { daysUntilExpiry, expiryState, formatDate } from '../../lib/theme';
 import { DLtrText, DText, HoverPressable, StatusPill } from './primitives';
 import { DESKTOP_AVATAR_COLORS, DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
-import { DashboardWidgetsRow } from './DashboardWidgets';
+import { FleetOverview, OverviewFocus } from './FleetOverview';
 
 /**
- * Desktop body of the fleet screen: drivers/vehicles tabs, search + filter
- * chips, KPI strip and a dense table. Purely presentational — FleetScreen
+ * Desktop body of the fleet screen: the overview (greeting, fleet health,
+ * needs-attention queue) above a drivers/vehicles table with search + filter
+ * chips. Purely presentational — FleetScreen
  * owns loading, filtering and navigation and hands everything in, so the
  * phone and desktop layouts always show the same data.
  */
@@ -85,8 +87,9 @@ function daysTone(days: number | null): { tone: DesktopTone; label: string } {
 }
 
 function serviceInfo(vehicle: Vehicle): { tone: DesktopTone; label: string } {
-  if (vehicle.next_service_km == null) return { tone: 'neutral', label: '—' };
-  const km = vehicle.next_service_km - vehicle.odometer;
+  const nextServiceKm = nextServiceKmOf(vehicle);
+  if (nextServiceKm == null) return { tone: 'neutral', label: '—' };
+  const km = nextServiceKm - vehicle.odometer;
   if (km <= 0) return { tone: 'bad', label: `באיחור ${Math.abs(km).toLocaleString()} ק״מ` };
   return { tone: km <= SERVICE_WARN_KM ? 'warn' : 'neutral', label: `${km.toLocaleString()} ק״מ` };
 }
@@ -103,6 +106,21 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
   const { mode } = props;
   const isDrivers = mode === 'drivers';
   const [searchFocused, setSearchFocused] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const listTop = useRef(0);
+
+  // Overview legend rows jump to the matching table filter.
+  const focusList = (focus: OverviewFocus) => {
+    props.onModeChange(focus.mode);
+    if (focus.mode === 'drivers') {
+      const chip = props.driverChips.find((c) => c.value === focus.filter);
+      if (chip) props.onDriverFilter(chip.value);
+    } else {
+      const chip = props.vehicleChips.find((c) => c.value === focus.filter);
+      if (chip) props.onVehicleFilter(chip.value);
+    }
+    scrollRef.current?.scrollTo({ y: Math.max(0, listTop.current - 12), animated: true });
+  };
 
   const vehicleCompliance = (vehicle: Vehicle) => {
     const items = props.compliance.get(vehicle.id) ?? [];
@@ -134,13 +152,23 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
 
   return (
     <View style={styles.root}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <DashboardWidgetsRow onOpenDriver={props.onOpenDriver} onOpenVehicle={props.onOpenVehicle} />
+      <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.content}>
+        <FleetOverview
+          drivers={props.drivers}
+          vehicles={props.vehicles}
+          compliance={props.compliance}
+          vehicleDrivers={props.vehicleDrivers}
+          loading={props.driversLoading || props.vehiclesLoading}
+          onFocus={focusList}
+          onOpenDriver={props.onOpenDriver}
+          onOpenVehicle={props.onOpenVehicle}
+        />
 
-        <View style={styles.toolbar}>
-          <View style={styles.tabs}>
-            <Tab label="נהגים" active={isDrivers} onPress={() => props.onModeChange('drivers')} />
-            <Tab label="רכבים" active={!isDrivers} onPress={() => props.onModeChange('vehicles')} />
+        <View style={styles.toolbar} onLayout={(e) => { listTop.current = e.nativeEvent.layout.y; }}>
+          <DText weight="bold" style={styles.sectionTitle}>רשימת הצי</DText>
+          <View style={styles.tabs} accessibilityRole="tablist">
+            <Tab label="נהגים" count={props.driverKpis.total} active={isDrivers} onPress={() => props.onModeChange('drivers')} />
+            <Tab label="רכבים" count={props.vehicleKpis.total} active={!isDrivers} onPress={() => props.onModeChange('vehicles')} />
           </View>
         </View>
 
@@ -386,7 +414,7 @@ function Cell({
   );
 }
 
-function Tab({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+function Tab({ label, count, active, onPress }: { label: string; count: number; active: boolean; onPress: () => void }) {
   return (
     <HoverPressable
       style={[styles.tab, active && styles.tabActive]}
@@ -395,7 +423,8 @@ function Tab({ label, active, onPress }: { label: string; active: boolean; onPre
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
     >
-      <DText weight="bold" style={[styles.tabText, active && styles.tabTextActive]}>{label}</DText>
+      <DText weight="semiBold" style={[styles.tabText, active && styles.tabTextActive]}>{label}</DText>
+      <DText weight="semiBold" style={[styles.tabCount, active && styles.tabCountActive]}>{count}</DText>
     </HoverPressable>
   );
 }
@@ -427,16 +456,36 @@ const styles = StyleSheet.create({
   toolbar: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 14,
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  tabs: { flexDirection: 'row-reverse', alignItems: 'center', gap: 20 },
-  tab: { paddingVertical: 8, paddingHorizontal: 4, borderBottomWidth: 2, borderBottomColor: 'transparent', borderRadius: 4, ...webOnly({ transition: 'border-color 150ms ease' }) },
-  tabActive: { borderBottomColor: DESKTOP_COLORS.brand },
-  tabHover: { borderBottomColor: DESKTOP_COLORS.borderInput },
-  tabText: { fontSize: 13, color: DESKTOP_COLORS.inkFaint },
+  sectionTitle: { fontSize: 13.5, color: DESKTOP_COLORS.ink },
+  tabs: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 2,
+    padding: 3,
+    borderRadius: 9,
+    backgroundColor: '#E9EDF0',
+  },
+  tab: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 7,
+    ...webOnly({ transition: 'background-color 160ms ease, box-shadow 160ms ease' }),
+  },
+  tabActive: {
+    backgroundColor: DESKTOP_COLORS.surface,
+    ...webOnly({ boxShadow: '0 1px 2px rgba(22,34,46,0.10), 0 0 0 0.5px rgba(22,34,46,0.06)' }),
+  },
+  tabHover: { backgroundColor: 'rgba(255,255,255,0.55)' },
+  tabText: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
   tabTextActive: { color: DESKTOP_COLORS.ink },
+  tabCount: { fontSize: 11, color: DESKTOP_COLORS.inkFaint, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+  tabCountActive: { color: DESKTOP_COLORS.brand },
 
   primaryButton: {
     backgroundColor: DESKTOP_COLORS.brand,

@@ -191,8 +191,13 @@ export default function App() {
   useEffect(() => {
     if (!initialRoute || initialRoute === 'Login') return;
     void registerForPushNotifications().catch(() => undefined);
-    return listenForPushNotificationResponses((screen) => {
-      if (navigationRef.isReady()) navigationRef.navigate(screen);
+    return listenForPushNotificationResponses((screen, params) => {
+      if (!navigationRef.isReady()) return;
+      if (screen === 'VehicleDetail') {
+        if (params) navigationRef.navigate('VehicleDetail', params);
+        return;
+      }
+      navigationRef.navigate(screen);
     });
   }, [initialRoute]);
 

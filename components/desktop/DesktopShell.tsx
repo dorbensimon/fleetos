@@ -8,13 +8,16 @@ import {
   countUnreadNotifications,
   getAttentionSummary,
   listNotifications,
+  markNotificationRead,
   markAllNotificationsRead,
   Notification,
+  resolveNotificationVehicleId,
 } from '../../lib/adminApi';
 import { supabase } from '../../lib/supabase';
 import { showAlert } from '../../lib/platformAlert';
 import { formatDateTime } from '../../lib/theme';
 import { RootStackParamList } from '../../navigation/types';
+import { isVehicleFolderNotification } from '../../lib/vehicleFolderAlerts';
 import { DText, HoverPressable } from './primitives';
 import {
   DESKTOP_COLORS,
@@ -105,6 +108,62 @@ export function DesktopShell({
     } catch {
       showAlert('הפעולה נכשלה', 'לא הצלחנו לסמן את ההתראות כנקראו.');
     }
+  };
+
+  const openPreviewNotification = async (notification: Notification) => {
+    if (!notification.read_at) {
+      try {
+        await markNotificationRead(notification.id);
+        setUnread((current) => Math.max(0, current - 1));
+        setNotifications((rows) => rows.map((row) => (
+          row.id === notification.id ? { ...row, read_at: new Date().toISOString() } : row
+        )));
+      } catch {
+        showAlert('הפעולה נכשלה', 'לא הצלחנו לסמן את ההתראה כנקראה.');
+      }
+    }
+
+    setNotifOpen(false);
+
+    const isVehicleNotification = notification.notification_type === 'vehicle_assignment'
+      || notification.notification_type === 'vehicle_inspection_last_date_expiry'
+      || notification.notification_type === 'vehicle_service_due'
+      || isVehicleFolderNotification(notification.notification_type);
+    const vehicleId = isVehicleNotification
+      ? await resolveNotificationVehicleId(notification)
+      : null;
+
+    if (vehicleId) {
+      navigation.navigate('VehicleDetail', {
+        vehicleId,
+        openFolder: notification.folder_key ?? undefined,
+      });
+      return;
+    }
+
+    if (
+      (notification.notification_type === 'driver_profile_update'
+        || notification.notification_type?.startsWith('driver_document_')
+        || notification.notification_type === 'driver_odometer_update')
+      && notification.actor_id
+    ) {
+      navigation.navigate('DriverPersonalDetails', { driverId: notification.actor_id });
+      return;
+    }
+
+    if (notification.notification_type === 'license_update_requested' && notification.actor_id) {
+      navigation.navigate('DriverDetail', { driverId: notification.actor_id });
+      return;
+    }
+
+    if (
+      isVehicleNotification
+    ) {
+      navigation.navigate('AdminHome');
+      return;
+    }
+
+    navigation.navigate('Notifications');
   };
 
   const logout = () => {
@@ -300,7 +359,13 @@ export function DesktopShell({
                       <DText style={styles.popoverEmpty}>אין התראות חדשות</DText>
                     ) : (
                       notifications.map((n) => (
-                        <View key={n.id} style={styles.popoverRow}>
+                        <HoverPressable
+                          key={n.id}
+                          style={styles.popoverRow}
+                          hoverStyle={styles.rowHover}
+                          onPress={() => void openPreviewNotification(n)}
+                          accessibilityLabel={n.message}
+                        >
                           <View style={[styles.popoverDot, !n.read_at && styles.popoverDotUnread]} />
                           <View style={styles.popoverCopy}>
                             <DText weight="semiBold" style={styles.popoverMessage} numberOfLines={2}>
@@ -308,7 +373,7 @@ export function DesktopShell({
                             </DText>
                             <DText style={styles.popoverTime}>{formatDateTime(n.created_at)}</DText>
                           </View>
-                        </View>
+                        </HoverPressable>
                       ))
                     )}
                     <HoverPressable
@@ -345,14 +410,6 @@ export function DesktopShell({
         <View style={styles.body}>{children}</View>
       </View>
 
-      {notifOpen && (
-        // Transparent click-catcher so the popover closes when clicking anywhere else.
-        <HoverPressable
-          style={styles.dismissLayer}
-          onPress={() => setNotifOpen(false)}
-          accessibilityLabel="סגירת התראות"
-        />
-      )}
     </View>
   );
 }
@@ -546,5 +603,4 @@ const styles = StyleSheet.create({
   userRole: { fontSize: 10.5, color: DESKTOP_COLORS.inkFaint, lineHeight: 13 },
 
   body: { flex: 1, minHeight: 0 },
-  dismissLayer: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 10, ...webOnly({ cursor: 'default' }) },
 });

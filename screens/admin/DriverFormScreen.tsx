@@ -321,8 +321,6 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           departments={departments}
           licenseOptions={licenseOptions as { value: string; label: string; description: string }[]}
           selectedLicenseLabel={selectedLicense?.label ?? null}
-          licenseExpiryLabel={formatDateDots(form.license_expiry)}
-          onOpenDatePicker={openDatePicker}
           canSubmit={canSubmit}
           saving={saving}
           ctaLabel={ctaLabel}

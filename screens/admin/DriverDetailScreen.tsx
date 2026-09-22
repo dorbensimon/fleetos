@@ -10,7 +10,7 @@ import { COLORS, CONTENT_MAX_WIDTH, RADIUS, SPACING, formatDate, BRAND } from '.
 import { FLEET_COLORS } from '../../lib/colors';
 import { DOSSIER_BLUE } from '../../lib/dossierColors';
 import { useCompany } from '../../lib/CompanyContext';
-import { getDriver, archiveDriver, restoreDriver, resetDriverPassword, getUserEmail, updateUserEmail, listDepartments, DriverRow } from '../../lib/adminApi';
+import { getDriver, archiveDriver, restoreDriver, resetDriverPassword, getUserEmail, updateUserEmail, updateDriver, listDepartments, DriverRow, type Department } from '../../lib/adminApi';
 import { listDocuments } from '../../lib/documents';
 import { listSignatureRequests } from '../../lib/docuseal';
 import { exportDriverSnapshotReport } from '../../lib/driverSnapshotReport';
@@ -40,6 +40,7 @@ import {
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DriverDetailDesktopView } from '../../components/desktop/DriverDetailDesktopView';
+import { departmentNameById, departmentOptions, isStaleDepartmentError } from '../../lib/driverFields';
 
 const APP_STARTED_AT_MS = Date.now();
 
@@ -66,7 +67,7 @@ const DOCUMENT_CATEGORY_BY_ROW: Partial<Record<DriverCardRow['key'], string>> = 
 
 export default function DriverDetailScreen({ route, navigation }: Props) {
   const { driverId } = route.params;
-  const { companyId, company } = useCompany();
+  const { companyId, company, profile } = useCompany();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
@@ -93,6 +94,36 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
 
   const [pendingLicenseRequest, setPendingLicenseRequest] = useState<LicenseUpdateRequest | null>(null);
   const [reviewingLicense, setReviewingLicense] = useState(false);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!isDesktop || !companyId) return;
+      let active = true;
+      listDepartments(companyId)
+        .then((list) => { if (active) setDepartments(list); })
+        .catch(() => {});
+      return () => { active = false; };
+    }, [isDesktop, companyId])
+  );
+  // Desktop inline editing — one field per save, merged into the loaded row.
+  const saveDriverField = async (patch: Parameters<typeof updateDriver>[1]): Promise<string | null> => {
+    try {
+      await updateDriver(driverId, patch);
+      setDriver((current) => (current ? { ...current, ...patch } : current));
+      return null;
+    } catch (err: any) {
+      if (isStaleDepartmentError(err?.message)) return 'המחלקה שנבחרה נמחקה. יש לבחור מחלקה אחרת';
+      return err?.message || 'השמירה נכשלה, נסה שוב';
+    }
+  };
+  const saveDriverEmail = async (email: string): Promise<string | null> => {
+    if (!companyId) return 'לא נמצאה חברה משויכת';
+    const result = await updateUserEmail(driverId, companyId, email);
+    if (!result.ok) return result.error;
+    setDriver((current) => (current ? { ...current, email } : current));
+    showToast('כתובת המייל עודכנה');
+    return null;
+  };
 
   const reviewLicense = async (approve: boolean) => {
     if (!pendingLicenseRequest) return;
@@ -318,21 +349,27 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
         ) : (
           <DriverDetailDesktopView
             driverId={driverId}
+            companyId={companyId ?? ''}
             driver={driver}
-            groups={groups}
-            onRowPress={handleRowPress}
-            onOpenSigningFolder={(folder) => navigation.navigate('DriverSigningDocuments', { driverId, folderId: folder.id })}
+            departmentName={departmentNameById(departments, driver?.department_id)}
+            departmentOptions={departmentOptions(departments)}
             isArchived={isArchived}
             pendingActivation={pendingActivation}
             pendingActivationDays={pendingActivationDays}
+            pendingLicenseRequest={pendingLicenseRequest}
+            reviewingLicense={reviewingLicense}
+            onReviewLicense={(approve) => void reviewLicense(approve)}
+            canSendSigning={!!driver && (profile?.role === 'owner' || (profile?.role === 'admin' && profile.company_id === driver.company_id))}
+            onSaveField={saveDriverField}
+            onSaveEmail={saveDriverEmail}
+            onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, returnTo: 'driver' })}
+            onOpenSigningSession={(target) => navigation.navigate('DocusealWebView', target)}
             onEdit={() => navigation.navigate('DriverForm', { driverId })}
+            onResetPassword={() => setResetOpen(true)}
             onCall={() => driver?.phone && dialPhone(driver.phone)}
             onMessage={() => driver?.phone && Linking.openURL(`sms:${driver.phone}`)}
             onExportReport={() => void exportReport()}
             exportingReport={exportingReport}
-            pendingLicenseRequest={pendingLicenseRequest}
-            reviewingLicense={reviewingLicense}
-            onReviewLicense={(approve) => void reviewLicense(approve)}
             archiving={archiving}
             restoring={restoring}
             onArchive={() => setArchiveConfirmOpen(true)}

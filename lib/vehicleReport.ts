@@ -2,6 +2,7 @@ import { Company } from './supabase';
 import { Vehicle, ComplianceItem, VehicleDriverWithProfile } from './adminApi';
 import { daysUntilExpiry, formatDate } from './theme';
 import { formatPlate } from './plate';
+import { nextServiceKmOf } from './serviceSchedule';
 import {
   VEHICLE_STATUS_LABELS,
   VEHICLE_TYPE_LABELS,
@@ -63,7 +64,8 @@ function summarize(
   const insurance = insuranceItem?.expiry_date ?? null;
   const insDays = daysUntilExpiry(insurance);
   const testDays = testDef ? complianceRemainingDays(testDef, testItem) : daysUntilExpiry(testItem?.expiry_date ?? null);
-  const kmToService = vehicle.next_service_km != null ? vehicle.next_service_km - vehicle.odometer : null;
+  const nextServiceKm = nextServiceKmOf(vehicle);
+  const kmToService = nextServiceKm != null ? nextServiceKm - vehicle.odometer : null;
 
   const insTone = remainingTone(insDays, 30);
   const testTone = remainingTone(testDays === Number.POSITIVE_INFINITY ? null : testDays, 30);
@@ -141,7 +143,7 @@ function buildHtml(company: Company, summaries: VehicleSummary[], category: Vehi
           <td>${esc(VEHICLE_STATUS_LABELS[v.status] ?? v.status)}</td>
           <td>${s.insurance ? esc(formatDate(s.insurance)) : '—'}</td>
           <td>${s.test ? esc(formatDate(s.test)) : '—'}</td>
-          <td>${v.next_service_km != null ? `${v.next_service_km.toLocaleString()} ק״מ` : '—'}</td>
+          <td>${nextServiceKmOf(v) != null ? `${nextServiceKmOf(v)!.toLocaleString()} ק״מ` : '—'}</td>
           <td>${esc(s.driverName) || 'ללא נהג'}</td>
           <td>${statusTag(STATUS_LABELS[statusKey], statusTone(statusKey))}</td>
         </tr>`;

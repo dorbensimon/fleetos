@@ -6,8 +6,10 @@ import { getDriver } from '../../lib/adminApi';
 import { listDriverSigningRequests, listSigningTemplates } from '../../lib/docuseal';
 import { buildSigningFolders, signingFolderStatus, type SigningFolder } from '../../lib/signingFolders';
 import { DC_COLORS, DC_SPACING, DC_TYPO } from './driverCardTheme';
+import { DText, HoverPressable, StatusPill } from '../desktop/primitives';
+import { DESKTOP_COLORS, webOnly } from '../desktop/desktopTheme';
 
-export function SigningFolders({ driverId, onOpen }: { driverId: string; onOpen: (folder: SigningFolder) => void }) {
+export function SigningFolders({ driverId, onOpen, desktop = false }: { driverId: string; onOpen: (folder: SigningFolder) => void; desktop?: boolean }) {
   const [folders, setFolders] = useState<SigningFolder[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -25,6 +27,34 @@ export function SigningFolders({ driverId, onOpen }: { driverId: string; onOpen:
     })();
     return () => { active = false; };
   }, [driverId]));
+  if (desktop) {
+    return <View style={desktopStyles.wrap}>
+      <DText weight="bold" style={desktopStyles.title}>טפסים ומסמכים</DText>
+      <View style={desktopStyles.card}>
+        {loading ? <DText style={desktopStyles.message}>טוען תיקיות…</DText> : error ? <DText style={desktopStyles.message}>{error}</DText> : folders.map((folder, index) => {
+          const status = signingFolderStatus(folder);
+          const tone = status === 'pending' ? 'warn' : status === 'completed' ? 'ok' : status === 'failed' ? 'bad' : 'neutral';
+          const label = status === 'pending' ? 'ממתין לחתימה' : status === 'completed' ? 'נחתם' : status === 'failed' ? 'דורש טיפול' : 'ריק';
+          return <HoverPressable
+            key={folder.id}
+            accessibilityLabel={`${folder.title}, ${label}`}
+            style={[desktopStyles.row, index > 0 && desktopStyles.divider]}
+            hoverStyle={desktopStyles.rowHover}
+            hoverMotionStyle={desktopStyles.rowHoverMotion}
+            pressMotionStyle={desktopStyles.rowPress}
+            onPress={() => onOpen(folder)}
+          >
+            <View style={desktopStyles.folder}><Ionicons name="folder-outline" size={21} color={DESKTOP_COLORS.brand} /></View>
+            <DText weight="semiBold" style={desktopStyles.label}>{folder.title}</DText>
+            <StatusPill tone={tone} label={label} />
+            <Ionicons name="chevron-back" size={16} color={DESKTOP_COLORS.inkFaint} />
+          </HoverPressable>;
+        })}
+        {!loading && !error && !folders.length && <DText style={desktopStyles.message}>אין עדיין תבניות זמינות</DText>}
+      </View>
+    </View>;
+  }
+
   return <View style={s.wrap}>
     <Text style={[DC_TYPO.groupTitle, s.title]}>טפסים ומסמכים</Text>
     <View style={s.card}>
@@ -53,4 +83,33 @@ const s = StyleSheet.create({
   folder: { backgroundColor: DC_COLORS.fill, borderRadius: DC_SPACING.iconRadius, padding: 5 },
   label: { flex: 1, textAlign: 'right', color: DC_COLORS.label },
   message: { ...DC_TYPO.footer, textAlign: 'center', color: DC_COLORS.labelSecondary, padding: 16 },
+});
+
+const desktopStyles = StyleSheet.create({
+  wrap: { gap: 8 },
+  title: { fontSize: 15, color: DESKTOP_COLORS.ink, letterSpacing: -0.1 },
+  card: {
+    backgroundColor: DESKTOP_COLORS.surface,
+    borderWidth: 1,
+    borderColor: DESKTOP_COLORS.border,
+    borderRadius: 12,
+    overflow: 'hidden',
+    ...webOnly({ boxShadow: '0 12px 30px -22px rgba(22, 34, 46, 0.32)' }),
+  },
+  row: {
+    minHeight: 60,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
+    ...webOnly({ transition: 'background-color 150ms ease, transform 150ms ease' }),
+  },
+  divider: { borderTopWidth: 1, borderColor: DESKTOP_COLORS.borderSoft },
+  rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
+  rowHoverMotion: webOnly({ transform: 'translateY(-2px)' }),
+  rowPress: webOnly({ transform: 'scale(0.98)' }),
+  folder: { width: 34, height: 34, borderRadius: 9, backgroundColor: DESKTOP_COLORS.brandFocusRing, alignItems: 'center', justifyContent: 'center' },
+  label: { flex: 1, textAlign: 'right', color: DESKTOP_COLORS.ink, fontSize: 13, lineHeight: 20 },
+  message: { textAlign: 'center', color: DESKTOP_COLORS.inkMuted, padding: 20, fontSize: 13, lineHeight: 20 },
 });

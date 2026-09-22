@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { ActivityIndicator, Pressable, View, ScrollView, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +9,7 @@ import {
   ErrorState,
   AppText,
   BackButton,
+  Input,
   useToast,
 } from '../components/ui';
 import { LiquidGlassSwitch } from '../components/ui/LiquidGlassSwitch';
@@ -22,11 +24,15 @@ import {
   NotificationPreferencesMap,
   getPreferences,
   setPreference,
+  getVehicleExpiryLeadDays,
+  setVehicleExpiryLeadDays,
+  MIN_VEHICLE_EXPIRY_LEAD_DAYS,
+  MAX_VEHICLE_EXPIRY_LEAD_DAYS,
 } from '../lib/notificationPreferencesApi';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import { DesktopShell } from '../components/desktop/DesktopShell';
-import { DText } from '../components/desktop/primitives';
-import { DESKTOP_COLORS, DESKTOP_TONES } from '../components/desktop/desktopTheme';
+import { DesktopInput, DText, HoverPressable } from '../components/desktop/primitives';
+import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../components/desktop/desktopTheme';
 
 /**
  * Notification preferences, reached from Settings — shared by admin and
@@ -36,7 +42,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'NotificationPreferences
 
 export default function NotificationPreferencesScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const { profile } = useCompany();
+  const { profile, companyId } = useCompany();
   const { showToast } = useToast();
   const isDesktop = useIsDesktop();
 
@@ -44,6 +50,10 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [prefs, setPrefs] = useState<NotificationPreferencesMap | null>(null);
   const [savingType, setSavingType] = useState<NotificationType | null>(null);
+  // Company-wide lead time for vehicle folder expiry alerts (admins only).
+  const [leadDays, setLeadDays] = useState<number | null>(null);
+  const [leadDraft, setLeadDraft] = useState('');
+  const [savingLead, setSavingLead] = useState(false);
   const loadRequest = useRef(0);
 
   const isDriver = profile?.role === 'driver';
@@ -65,12 +75,19 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
       const data = await getPreferences(profileId);
       if (requestId !== loadRequest.current) return;
       setPrefs(data);
+      if (!isDriver && companyId) {
+        // Hidden rather than failing the whole screen if the setting can't be read.
+        const days = await getVehicleExpiryLeadDays(companyId).catch(() => null);
+        if (requestId !== loadRequest.current) return;
+        setLeadDays(days);
+        setLeadDraft(days != null ? String(days) : '');
+      }
     } catch (err: any) {
       if (requestId === loadRequest.current) setError(err?.message ?? 'טעינת ההעדפות נכשלה');
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
-  }, [profileId]);
+  }, [profileId, isDriver, companyId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -96,6 +113,32 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
     }
   };
 
+  const saveLeadDays = async () => {
+    if (!companyId || leadDays == null || savingLead) return;
+    const next = Number(leadDraft);
+    if (!Number.isInteger(next) || next < MIN_VEHICLE_EXPIRY_LEAD_DAYS || next > MAX_VEHICLE_EXPIRY_LEAD_DAYS) {
+      setLeadDraft(String(leadDays));
+      showToast(`יש להזין מספר ימים בין ${MIN_VEHICLE_EXPIRY_LEAD_DAYS} ל-${MAX_VEHICLE_EXPIRY_LEAD_DAYS}`);
+      return;
+    }
+    if (next === leadDays) return;
+    setSavingLead(true);
+    try {
+      await setVehicleExpiryLeadDays(companyId, next);
+      setLeadDays(next);
+      showToast('זמן ההתראה נשמר');
+    } catch {
+      setLeadDraft(String(leadDays));
+      showToast('שמירת זמן ההתראה נכשלה, נסה שוב');
+    } finally {
+      setSavingLead(false);
+    }
+  };
+
+  const leadChanged = leadDays != null && leadDraft !== String(leadDays);
+  const leadLabel = 'זמן התראה לפני פקיעת תוקף';
+  const leadDescription = 'כמה ימים לפני שתוקף של תיקיית רכב פג תישלח התראה. חל על כל המנהלים והנהגים בחברה.';
+
   if (isDesktop) {
     return (
       <DesktopShell active="NotificationPreferences" breadcrumbs={['חשבון', 'ניהול התראות']}>
@@ -104,7 +147,39 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
         ) : error ? (
           <ErrorState message={error} onRetry={load} />
         ) : (
-          <View style={ds.wrap}>
+          <ScrollView style={ds.scroll} contentContainerStyle={ds.wrap}>
+            {leadDays != null && (
+              <View style={ds.card}>
+                <View style={[ds.row, ds.rowLast]}>
+                  <View style={{ flex: 1 }}>
+                    <DText weight="semiBold" style={ds.label}>{leadLabel}</DText>
+                    <DText style={ds.description}>{leadDescription}</DText>
+                  </View>
+                  <View style={ds.leadControl}>
+                    <DesktopInput
+                      value={leadDraft}
+                      onChangeText={(v) => setLeadDraft(v.replace(/\D/g, '').slice(0, 2))}
+                      onSubmitEditing={() => void saveLeadDays()}
+                      editable={!savingLead}
+                      keyboardType="number-pad"
+                      ltr
+                      style={ds.leadInput}
+                    />
+                    <DText style={ds.description}>ימים</DText>
+                    <HoverPressable
+                      style={[ds.confirmBtn, !leadChanged && !savingLead && ds.confirmBtnIdle]}
+                      hoverStyle={ds.confirmBtnHover}
+                      pressStyle={ds.pressDown}
+                      onPress={() => void saveLeadDays()}
+                      disabled={!leadChanged || savingLead}
+                      accessibilityLabel="שמירת זמן ההתראה"
+                    >
+                      {savingLead ? <ActivityIndicator size={12} color="#FFFFFF" /> : <Ionicons name="checkmark" size={13} color="#FFFFFF" />}
+                    </HoverPressable>
+                  </View>
+                </View>
+              </View>
+            )}
             <DText style={ds.hint}>בחר אילו עדכונים תרצה לקבל. כל שינוי נשמר מיד עבורך בלבד.</DText>
             <View style={ds.card}>
               {visibleTypes.map((item, index) => (
@@ -123,7 +198,7 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
                 </View>
               ))}
             </View>
-          </View>
+          </ScrollView>
         )}
       </DesktopShell>
     );
@@ -147,6 +222,41 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
           <View style={styles.state}><ErrorState message={error} onRetry={load} /></View>
         ) : (
           <>
+            {leadDays != null && (
+              <>
+                <AppText style={[DC_TYPO.groupTitle, styles.sectionTitle]}>הגדרות חברה</AppText>
+                <View style={[styles.list, styles.leadList]}>
+                  <View style={[styles.row, styles.rowLast]}>
+                    <View style={styles.rowText}>
+                      <AppText style={[DC_TYPO.rowLabel, styles.label]}>{leadLabel}</AppText>
+                      <AppText style={styles.description}>{leadDescription}</AppText>
+                    </View>
+                    <View style={styles.leadControl}>
+                      <Input
+                        value={leadDraft}
+                        onChangeText={(v) => setLeadDraft(v.replace(/\D/g, '').slice(0, 2))}
+                        onSubmitEditing={() => void saveLeadDays()}
+                        editable={!savingLead}
+                        keyboardType="number-pad"
+                        returnKeyType="done"
+                        textAlign="center"
+                        style={styles.leadInput}
+                      />
+                      <AppText style={styles.description}>ימים</AppText>
+                      <Pressable
+                        style={({ pressed }) => [styles.confirmBtn, !leadChanged && !savingLead && styles.confirmBtnIdle, pressed && styles.pressDown]}
+                        onPress={() => void saveLeadDays()}
+                        disabled={!leadChanged || savingLead}
+                        accessibilityRole="button"
+                        accessibilityLabel="שמירת זמן ההתראה"
+                      >
+                        {savingLead ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Ionicons name="checkmark" size={17} color="#FFFFFF" />}
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+              </>
+            )}
             <AppText style={styles.hint}>בחר אילו עדכונים תרצה לקבל. כל שינוי נשמר מיד עבורך בלבד.</AppText>
             <AppText style={[DC_TYPO.groupTitle, styles.sectionTitle]}>העדפות אישיות</AppText>
             <View style={styles.list}>
@@ -198,15 +308,30 @@ const styles = StyleSheet.create({
   label: { color: DC_COLORS.label, textAlign: 'right', writingDirection: 'rtl' },
   description: { color: DC_COLORS.labelSecondary, fontSize: 12.5, textAlign: 'right', writingDirection: 'rtl' },
   state: { paddingTop: 36 },
+  leadList: { marginBottom: 26 },
+  leadControl: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  leadInput: { width: 56, height: 38, paddingHorizontal: 6 },
+  confirmBtn: { width: 34, height: 34, borderRadius: 9, backgroundColor: DC_COLORS.blue, alignItems: 'center', justifyContent: 'center' },
+  confirmBtnIdle: { opacity: 0.35 },
+  pressDown: { transform: [{ scale: 0.97 }] },
   backButton: { position: 'absolute', right: 16 },
 });
 
 const ds = StyleSheet.create({
-  wrap: { padding: 24, maxWidth: 520, alignSelf: 'center', width: '100%', gap: 12 },
+  // The list outgrows the viewport, so the desktop body scrolls on its own inside the shell.
+  scroll: { flex: 1 },
+  wrap: { padding: 24, paddingBottom: 48, maxWidth: 520, alignSelf: 'center', width: '100%', gap: 12 },
   hint: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
   card: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 8, paddingHorizontal: 16 },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 52, borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
+  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 52, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
   rowLast: { borderBottomWidth: 0 },
   label: { fontSize: 13 },
   description: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint, marginTop: 2 },
+  leadControl: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  leadInput: { width: 52 },
+  // Same chip as the vehicle card's inline ✓ (VehicleDetailDesktopView).
+  confirmBtn: { width: 26, height: 26, borderRadius: 6, backgroundColor: DESKTOP_COLORS.brand, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'opacity 150ms ease, transform 120ms ease-out' }) },
+  confirmBtnIdle: { opacity: 0.35 },
+  confirmBtnHover: { opacity: 0.88 },
+  pressDown: { transform: [{ scale: 0.97 }] },
 });

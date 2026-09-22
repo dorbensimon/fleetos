@@ -12,6 +12,7 @@ import {
   findComplianceDef,
 } from '../../lib/compliance';
 import { formatPlate } from '../../lib/plate';
+import { nextServiceKmOf } from '../../lib/serviceSchedule';
 import {
   TONE_BAD,
   TONE_OK,
@@ -55,10 +56,11 @@ export function VehicleCard({
 
   const insDays = daysUntilExpiry(insurance);
   const testDays = testDef ? complianceRemainingDays(testDef, testItem) : daysUntilExpiry(test);
-  const kmToService = item.next_service_km != null ? item.next_service_km - item.odometer : null;
+  const nextServiceKm = nextServiceKmOf(item);
+  const kmToService = nextServiceKm != null ? nextServiceKm - item.odometer : null;
   const svcTotalKm =
     item.service_interval_km ??
-    (item.next_service_km != null ? item.next_service_km - item.last_service_km : null) ??
+    (nextServiceKm != null ? nextServiceKm - item.last_service_km : null) ??
     10000;
 
   const insTone = remainingTone(insDays, 30);
@@ -162,7 +164,7 @@ export function VehicleCard({
           />
           <StatCell
             label="טיפול"
-            value={item.next_service_km != null ? `${item.next_service_km.toLocaleString()} ק״מ` : 'חסר'}
+            value={nextServiceKm != null ? `${nextServiceKm.toLocaleString()} ק״מ` : 'חסר'}
             note={kmToService == null ? 'חסר' : svcOverdue ? 'פג תוקף' : `בעוד ${kmToService.toLocaleString()} ק״מ`}
             tone={svcTone}
             ratio={remainingRatio(kmToService, svcTotalKm)}

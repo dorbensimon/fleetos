@@ -8,10 +8,11 @@ import { Screen, AppText, Card, LoadingState, EmptyState, ErrorState, SecondaryB
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { COLORS, SPACING, CARD_SHADOW, BRAND } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { listNotifications, markNotificationRead, markAllNotificationsRead, Notification } from '../../lib/adminApi';
+import { listNotifications, markNotificationRead, markAllNotificationsRead, Notification, resolveNotificationVehicleId } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
 import { DC_COLORS, DC_SPACING, DC_TYPO, type DriverCardTint } from '../../components/driverCard/driverCardTheme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { isVehicleFolderNotification } from '../../lib/vehicleFolderAlerts';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { NotificationsDesktopView } from '../../components/desktop/NotificationsDesktopView';
 
@@ -98,49 +99,30 @@ export default function NotificationsScreen({ navigation }: Props) {
     if (n.notification_type === 'signature_request_assigned') return 'DriverSigningDocuments';
     if (n.notification_type === 'vehicle_assignment') return 'DriverVehicle';
     if (n.notification_type === 'driver_profile_updated_by_manager') return 'DriverProfile';
-    if (n.notification_type === 'vehicle_inspection_last_date_expiry') return 'DriverVehicle';
+    if (isVehicleFolderNotification(n.notification_type)) return 'DriverVehicle';
     if (n.notification_type === 'driver_odometer_update') return 'DriverVehicle';
     if (n.notification_type === 'license_update_reviewed') return 'DriverProfile';
     return null;
   };
 
-  /**
-   * Admin-side routing (this screen is shared between roles; the driver
-   * branch above never covered admins, so tapping any notification as an
-   * admin previously did nothing).
-   *
-   * IMPORTANT — verified against the actual schema (supabase/sql 25, 35,
-   * 40, 42 + supabase/functions/assign-signing-template), not guessed:
-   * the `notifications` table stores no dedicated entity-id column
-   * (no driver_id / vehicle_id / document_id / request_id) — only a
-   * human-readable `message` string. Two consequences that shape this
-   * function, both flagged to Rafael for backend follow-up rather than
-   * papered over here:
-   *
-   * 1. `actor_id` happens to already be a usable id, but only for the
-   *    two "driver edited their own record" triggers (`driver_profile_update`,
-   *    `driver_document_upload`) — there the actor IS the driver. We use it.
-   * 2. For `vehicle_assignment` and the `vehicle_*` expiry types, the
-   *    admin-visible row (`recipient_id is null`) has no vehicle id at
-   *    all — the vehicle name is baked into `message` as text only. We
-   *    can't deep-link to a specific `VehicleDetail` (mandatory `vehicleId`
-   *    param) without a schema change, so these route to the fleet list
-   *    instead of doing nothing. `signature_request_assigned` is written
-   *    with a specific driver as `recipient_id`, which per the migration 40
-   *    RLS policy an admin can never actually see (recipient_id must be
-   *    null or the viewer's own id) — that branch is forward-compatible,
-   *    not a currently-reachable path. There is no notification_type at
-   *    all yet for "notification preferences changed", so that one isn't
-   *    wired here — it would be dead code matching nothing in the DB.
-   */
-  const targetForAdminNotification = (
+  /** Routes administrators to the specific vehicle or driver referenced by a notification. */
+  const targetForAdminNotification = async (
     n: Notification
-  ):
+  ): Promise<
     | { screen: 'AdminHome' }
+    | { screen: 'VehicleDetail'; vehicleId: string; openFolder?: string }
     | { screen: 'DriverPersonalDetails'; driverId: string }
     | { screen: 'DriverDetail'; driverId: string }
-    | null => {
+    | null> => {
     if (n.notification_type === 'signature_request_assigned' && n.recipient_id) return { screen: 'DriverDetail', driverId: n.recipient_id };
+    const isVehicleNotification = n.notification_type === 'vehicle_assignment'
+      || n.notification_type === 'vehicle_inspection_last_date_expiry'
+      || n.notification_type === 'vehicle_service_due'
+      || isVehicleFolderNotification(n.notification_type);
+    const vehicleId = isVehicleNotification ? await resolveNotificationVehicleId(n) : null;
+    if (vehicleId) {
+      return { screen: 'VehicleDetail', vehicleId, openFolder: n.folder_key ?? undefined };
+    }
     if (
       (n.notification_type === 'driver_profile_update'
         || n.notification_type?.startsWith('driver_document_')
@@ -152,14 +134,7 @@ export default function NotificationsScreen({ navigation }: Props) {
     if (n.notification_type === 'license_update_requested' && n.actor_id) {
       return { screen: 'DriverDetail', driverId: n.actor_id };
     }
-    if (
-      n.notification_type === 'vehicle_assignment' ||
-      n.notification_type === 'vehicle_inspection_last_date_expiry' ||
-      n.notification_type === 'vehicle_insurance_mandatory_expiry' ||
-      n.notification_type === 'vehicle_insurance_comprehensive_expiry' ||
-      n.notification_type === 'vehicle_annual_test_expiry' ||
-      n.notification_type === 'vehicle_service_due'
-    ) {
+    if (isVehicleNotification) {
       return { screen: 'AdminHome' };
     }
     return null;
@@ -185,9 +160,11 @@ export default function NotificationsScreen({ navigation }: Props) {
       return;
     }
 
-    const target = targetForAdminNotification(n);
+    const target = await targetForAdminNotification(n);
     if (!target) return;
-    if (target.screen === 'DriverPersonalDetails' || target.screen === 'DriverDetail') {
+    if (target.screen === 'VehicleDetail') {
+      navigation.navigate('VehicleDetail', { vehicleId: target.vehicleId, openFolder: target.openFolder });
+    } else if (target.screen === 'DriverPersonalDetails' || target.screen === 'DriverDetail') {
       navigation.navigate(target.screen, { driverId: target.driverId });
     } else {
       navigation.navigate(target.screen, undefined);
@@ -213,6 +190,7 @@ export default function NotificationsScreen({ navigation }: Props) {
     if (n.notification_type === 'driver_odometer_update') return profile?.role === 'driver' ? 'הצג רכב' : 'פתח תיק נהג';
     if (n.notification_type === 'license_update_requested') return 'לאישור הבקשה';
     if (n.notification_type === 'license_update_reviewed') return 'הצג פרטים';
+    if (isVehicleFolderNotification(n.notification_type)) return profile?.role === 'driver' ? 'הצג רכב' : n.vehicle_id ? 'פתח תיקייה' : 'פתח צי רכבים';
     if (n.notification_type?.startsWith('vehicle_')) return profile?.role === 'driver' ? 'בדוק מה נדרש' : 'פתח צי רכבים';
     return null;
   };
@@ -365,7 +343,7 @@ export default function NotificationsScreen({ navigation }: Props) {
                         ? 'create-outline'
                         : n.notification_type === 'vehicle_assignment'
                         ? 'car-outline'
-                        : n.notification_type === 'vehicle_inspection_last_date_expiry'
+                        : n.notification_type === 'vehicle_inspection_last_date_expiry' || isVehicleFolderNotification(n.notification_type)
                         ? 'warning-outline'
                         : 'person-circle-outline'
                     }

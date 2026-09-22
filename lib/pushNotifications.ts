@@ -17,7 +17,10 @@ Notifications.setNotificationHandler({
   }),
 });
 
-type Navigate = (screen: ReturnType<typeof routeForPushNotification>) => void;
+type Navigate = (
+  screen: ReturnType<typeof routeForPushNotification>,
+  params?: { vehicleId: string; openFolder?: string },
+) => void;
 
 function projectId(): string | undefined {
   return Constants.easConfig?.projectId
@@ -48,9 +51,15 @@ async function openNotification(
   if (!role) return;
 
   const data = response.notification.request.content.data ?? {};
-  navigate(routeForPushNotification(role, {
+  const vehicleId = typeof data.vehicleId === 'string' ? data.vehicleId : null;
+  const folderKey = typeof data.folderKey === 'string' ? data.folderKey : null;
+  const screen = routeForPushNotification(role, {
     notificationType: typeof data.notificationType === 'string' ? data.notificationType : null,
-  }));
+    vehicleId,
+    folderKey,
+  });
+  if (screen === 'VehicleDetail' && vehicleId) navigate(screen, { vehicleId, openFolder: folderKey ?? undefined });
+  else navigate(screen);
 }
 
 /** Registers this physical device. Push permissions can always be changed later in iOS Settings. */
