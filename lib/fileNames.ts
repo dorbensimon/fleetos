@@ -10,7 +10,3 @@ export function safeFileName(value: string | null | undefined, fallback: string)
     .slice(0, 120);
   return normalized && normalized !== '.' && normalized !== '..' ? normalized : fallback;
 }
-
-export function safeExtension(value: string | null | undefined, fallback = 'bin'): string {
-  return (value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10) || fallback;
-}

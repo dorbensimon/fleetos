@@ -14,7 +14,8 @@ import { DC_COLORS, DC_SPACING, DC_TYPO, type DriverCardTint } from '../../compo
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { isVehicleFolderNotification } from '../../lib/vehicleFolderAlerts';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
-import { NotificationsDesktopView } from '../../components/desktop/NotificationsDesktopView';
+import { NotificationsHubDesktopView } from '../../components/desktop/NotificationsHubDesktopView';
+import { useNotificationPreferences } from '../../lib/useNotificationPreferences';
 
 /**
  * Logs every driver self-edit (name/phone/ID/license/department) so
@@ -56,6 +57,8 @@ export default function NotificationsScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadRequest = useRef(0);
+  // Desktop shows the notification settings beside the list (one "התראות" page).
+  const preferences = useNotificationPreferences({ enabled: isDesktop });
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
@@ -241,6 +244,26 @@ export default function NotificationsScreen({ navigation }: Props) {
     );
   };
 
+  if (isDesktop) {
+    return (
+      <DesktopShell active="Notifications" breadcrumbs={['התראות']}>
+        <NotificationsHubDesktopView
+          items={items}
+          unreadIds={unreadIds}
+          loading={loading}
+          error={error}
+          onRetry={load}
+          onOpen={(n) => void openNotification(n)}
+          onMarkAllRead={() => void markAllRead()}
+          iconFor={(type) => driverNotificationAppearance(type).icon}
+          timeAgo={timeAgo}
+          actionLabel={actionLabel}
+          prefs={preferences}
+        />
+      </DesktopShell>
+    );
+  }
+
   if (profile?.role === 'driver') {
     return (
       <View style={styles.driverScreen}>
@@ -276,25 +299,6 @@ export default function NotificationsScreen({ navigation }: Props) {
           <BackButton onPress={() => navigation.goBack()} />
         </View>
       </View>
-    );
-  }
-
-  if (isDesktop) {
-    return (
-      <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'התראות']}>
-        <NotificationsDesktopView
-          items={items}
-          unreadIds={unreadIds}
-          loading={loading}
-          error={error}
-          onRetry={load}
-          onOpen={(n) => void openNotification(n)}
-          onMarkAllRead={() => void markAllRead()}
-          iconFor={(type) => driverNotificationAppearance(type).icon}
-          timeAgo={timeAgo}
-          actionLabel={actionLabel}
-        />
-      </DesktopShell>
     );
   }
 

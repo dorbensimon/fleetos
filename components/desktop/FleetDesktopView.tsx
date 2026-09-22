@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ComplianceItem, DriverRow, Vehicle, VehicleDriverWithProfile } from '../../lib/adminApi';
-import { complianceRemainingDays, findComplianceDef, VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../lib/compliance';
+import { complianceRemainingDays, findComplianceDef, VEHICLE_STATUS_LABELS } from '../../lib/compliance';
 import { SERVICE_WARN_KM } from '../../lib/fleetCardHelpers';
 import { formatPlate } from '../../lib/plate';
 import { nextServiceKmOf } from '../../lib/serviceSchedule';

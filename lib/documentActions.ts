@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import type { DocumentRow } from './adminApi';
 import {
   captureImage,
@@ -56,6 +56,27 @@ export async function getDocumentViewUrl(doc: DocumentRow): Promise<string | nul
   const url = await getDocumentUrl(doc);
   if (!url) showAlert('שגיאה', 'לא ניתן לפתוח את המסמך כרגע');
   return url;
+}
+
+/**
+ * Opens a stored document in a new tab (web) or the system viewer (native).
+ * On the web the tab is opened in the click itself, before the signed URL is
+ * fetched: browsers block a tab opened after an await (Safari always, Chrome
+ * once the click is a few seconds old).
+ */
+export async function openDocumentExternally(doc: DocumentRow): Promise<void> {
+  const tab = Platform.OS === 'web' ? window.open('', '_blank') : null;
+  const url = await getDocumentViewUrl(doc);
+  if (!url) {
+    tab?.close();
+    return;
+  }
+  if (tab) {
+    tab.opener = null;
+    tab.location.href = url;
+    return;
+  }
+  Linking.openURL(url).catch(() => showAlert('שגיאה', 'לא ניתן לפתוח את המסמך כרגע'));
 }
 
 export async function downloadDocumentWithAlert(doc: DocumentRow) {

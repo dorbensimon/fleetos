@@ -1,12 +1,12 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPlate } from '../../lib/plate';
 import { VehicleDriversEditor } from '../VehicleDriversEditor';
 import { AcquisitionType, VehicleDriverWithProfile, VehicleStatus, VehicleType } from '../../lib/adminApi';
 import { DesktopDateField, DesktopFieldRow, DesktopInput, DesktopSelect, DesktopSelectOption, DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS } from './desktopTheme';
+import { formDesktopStyles } from './formDesktopStyles';
 
 type FormVehicleType = VehicleType | '';
 
@@ -267,29 +267,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  content: { padding: 24, paddingBottom: 48, maxWidth: 640, width: '100%', alignSelf: 'center' },
-  heroRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, marginBottom: 22 },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    backgroundColor: DESKTOP_COLORS.brandFocusRing,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroText: { gap: 2 },
-  heroName: { fontSize: 17 },
-  heroSub: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
-  section: { marginBottom: 18, gap: 8 },
-  sectionTitle: { fontSize: 12, letterSpacing: 0.4, color: DESKTOP_COLORS.inkMuted },
-  card: {
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-  },
+  ...formDesktopStyles,
   plateRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   plateInput: { flex: 1 },
   lookupButton: {
@@ -307,18 +285,4 @@ const styles = StyleSheet.create({
   pairHalf: { flex: 1 },
   infoCard: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingVertical: 14 },
   infoText: { flex: 1, fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, lineHeight: 18 },
-  footer: { alignItems: 'center', gap: 8, marginTop: 8 },
-  cta: {
-    height: 38,
-    minWidth: 200,
-    borderRadius: 7,
-    backgroundColor: DESKTOP_COLORS.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  ctaDisabled: { backgroundColor: DESKTOP_COLORS.surfaceMuted, borderWidth: 1, borderColor: DESKTOP_COLORS.border },
-  ctaText: { fontSize: 13, color: '#FFFFFF' },
-  ctaTextDisabled: { color: DESKTOP_COLORS.inkFaint },
-  remainingText: { fontSize: 12, color: DESKTOP_COLORS.inkFaint },
 });

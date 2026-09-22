@@ -26,14 +26,6 @@ export interface DriverEditableFields {
   department_id: string | null;
 }
 
-export function splitDriverFullName(fullName: string | null | undefined): { firstName: string; lastName: string } {
-  const [firstName, ...rest] = (fullName ?? '').trim().split(/\s+/).filter(Boolean);
-  return {
-    firstName: firstName ?? '',
-    lastName: rest.join(' '),
-  };
-}
-
 export function splitLicenseClasses(value: string | null | undefined): { primary: string; secondary: string } {
   const [primary, secondary] = (value ?? '')
     .split(',')

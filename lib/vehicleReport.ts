@@ -170,13 +170,9 @@ function buildHtml(company: Company, summaries: VehicleSummary[], category: Vehi
       </table>`;
 
   return buildReportDocument({
+    company: { name: company.name, businessId: company.business_id },
     title: CATEGORY_TITLES[category],
     metaColumns: [
-      {
-        label: 'חברה',
-        value: company.name,
-        sub: company.business_id ? `ח.פ ${company.business_id}` : undefined,
-      },
       {
         label: 'קצין רכב',
         value: company.safety_officer_name ?? '',

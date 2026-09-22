@@ -32,6 +32,7 @@ import {
   type RecordDocumentFolder,
 } from './record/RecordKit';
 import { DriverLicenseModal, LICENSE_SIDE_TITLE } from './driver/DriverLicenseModal';
+import { DRIVER_DOCUMENT_GROUPS } from '../../lib/driverDocumentFolders';
 import { DriverSigningTiles, useDriverSigningFolders, type SigningSessionTarget } from './driver/DriverSigningSection';
 
 /**
@@ -48,34 +49,11 @@ type DriverPatch = Partial<DriverDetails> & { full_name?: string | null; phone?:
 
 const LICENSE_FOLDER = 'license_docs';
 
-/** The driver's document folders, grouped as on the phone card. Category keys match DriverDetailScreen. */
-const DOCUMENT_GROUPS: { title: string; folders: RecordDocumentFolder[] }[] = [
-  {
-    title: 'רישוי ומסמכים',
-    folders: [
-      { category: 'general', title: 'מסמכים כלליים', icon: 'document-text-outline', requiresExpiry: false },
-      { category: 'transport_info', title: 'מסמכי מידע תעבורתי', icon: 'information-circle-outline', requiresExpiry: false },
-    ],
-  },
-  {
-    title: 'תיק נהג',
-    folders: [
-      { category: 'driver_file', title: 'תיק נהג', icon: 'folder-open-outline', requiresExpiry: false },
-      { category: 'notes_feedback', title: 'הערות ותגובות', icon: 'chatbubbles-outline', requiresExpiry: false },
-      { category: 'traffic_reports', title: 'דוחות תעבורה', icon: 'warning-outline', requiresExpiry: false },
-      { category: 'accompanying_drivers', title: 'נהגים נלווים', icon: 'people-outline', requiresExpiry: false },
-    ],
-  },
-  {
-    title: 'בטיחות והדרכות',
-    folders: [
-      { category: 'procedure_6', title: 'נוהל 6', icon: 'shield-checkmark-outline', requiresExpiry: false },
-      { category: 'certifications', title: 'הסמכות והכשרות', icon: 'ribbon-outline', requiresExpiry: false },
-      { category: 'hazmat', title: 'חומרים מסוכנים', icon: 'flask-outline', requiresExpiry: false },
-      { category: 'trainings', title: 'הדרכות והכשרות', icon: 'school-outline', requiresExpiry: false },
-    ],
-  },
-];
+/** Every driver folder here takes uploads without an expiry date, as on the phone. */
+const DOCUMENT_GROUPS: { title: string; folders: RecordDocumentFolder[] }[] = DRIVER_DOCUMENT_GROUPS.map((group) => ({
+  title: group.title,
+  folders: group.folders.map((folder) => ({ ...folder, requiresExpiry: false })),
+}));
 
 // The form's labels carry full weight/passenger limits; the compact inline editor shows only the class and its name.
 const LICENSE_CLASS_SELECT = LICENSE_CLASS_OPTIONS.map((option) => ({ value: option.value, label: option.label.split(',')[0].trim() }));

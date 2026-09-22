@@ -6,7 +6,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCompany } from '../../lib/CompanyContext';
 import {
   countUnreadNotifications,
-  getAttentionSummary,
   listNotifications,
   markNotificationRead,
   markAllNotificationsRead,
@@ -65,7 +64,6 @@ export function DesktopShell({
   const isOwner = profile?.role === 'owner';
   const isDriver = profile?.role === 'driver';
 
-  const [attentionCount, setAttentionCount] = useState(0);
   const [unread, setUnread] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -76,11 +74,6 @@ export function DesktopShell({
     // Badge counts are decoration — a failure must never break the page.
     countUnreadNotifications(companyId)
       .then((count) => { if (!cancelled) setUnread(count); })
-      .catch(() => undefined);
-    getAttentionSummary(companyId)
-      .then((summary) => {
-        if (!cancelled) setAttentionCount(Object.values(summary).reduce((sum, n) => sum + n, 0));
-      })
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, [companyId, isAdmin]);
@@ -207,17 +200,17 @@ export function DesktopShell({
   const accountItems: NavItem[] = isAdmin
     ? [
         { key: 'AdminProfile', label: 'הפרטים שלי', icon: 'person' },
-        { key: 'NotificationPreferences', label: 'ניהול התראות', icon: 'notifications' },
+        { key: 'Notifications', label: 'התראות', icon: 'notifications' },
       ]
     : isOwner
     ? [
         { key: 'AdminProfile', label: 'הפרטים שלי', icon: 'person' },
-        { key: 'NotificationPreferences', label: 'ניהול התראות', icon: 'notifications' },
+        { key: 'Notifications', label: 'התראות', icon: 'notifications' },
       ]
     : isDriver
     ? [
         { key: 'DriverProfile', label: 'הפרטים שלי', icon: 'person' },
-        { key: 'NotificationPreferences', label: 'ניהול התראות', icon: 'notifications' },
+        { key: 'Notifications', label: 'התראות', icon: 'notifications' },
       ]
     : [];
 

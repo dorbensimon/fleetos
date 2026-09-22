@@ -44,7 +44,6 @@ export function FleetFilterChips<T extends string>({
   // (the left edge), which would open on the last chip instead of the
   // first — jump to the scroll end once, which lands on the row-reverse
   // layout's first (rightmost) chip.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     scrollRef.current?.scrollToEnd({ animated: false });
   }, []);

@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Linking, StyleSheet, View, type ImageStyle } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, View, type ImageStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { DocumentRow, DriverRow } from '../../../lib/adminApi';
 import type { LicenseUpdateRequest } from '../../../lib/licenseUpdate';
 import { deleteDocument, getDocumentUrl, listDocuments, uploadDocument } from '../../../lib/documents';
-import { chooseDocumentSource, confirmDeleteDocument, downloadDocumentWithAlert, getDocumentViewUrl, pickDocumentSource } from '../../../lib/documentActions';
+import { chooseDocumentSource, confirmDeleteDocument, downloadDocumentWithAlert, openDocumentExternally, pickDocumentSource } from '../../../lib/documentActions';
 import { scanLicenseImage } from '../../../lib/documentScanner';
 import { showAlert } from '../../../lib/platformAlert';
 import { expiryState, formatDate } from '../../../lib/theme';
@@ -103,11 +103,6 @@ export function DriverLicenseModal({
     });
   };
 
-  const openFull = async (doc: DocumentRow) => {
-    const url = await getDocumentViewUrl(doc);
-    if (url) Linking.openURL(url);
-  };
-
   const bothSides = !!docs.front && !!docs.back;
   const verified = bothSides && !!driver?.license_expiry;
   const expiry = driver?.license_expiry ?? null;
@@ -145,7 +140,7 @@ export function DriverLicenseModal({
                 {!loaded ? (
                   <View style={styles.slot}><ActivityIndicator color={DESKTOP_COLORS.brand} /></View>
                 ) : doc ? (
-                  <HoverPressable style={styles.slot} hoverMotionStyle={styles.slotHoverMotion} onPress={() => openFull(doc)} accessibilityLabel={`פתיחת ${LICENSE_SIDE_TITLE[side]} בגודל מלא`}>
+                  <HoverPressable style={styles.slot} hoverMotionStyle={styles.slotHoverMotion} onPress={() => openDocumentExternally(doc)} accessibilityLabel={`פתיחת ${LICENSE_SIDE_TITLE[side]} בגודל מלא`}>
                     {url && doc.mime_type?.startsWith('image/') ? (
                       <Image source={{ uri: url }} style={styles.slotImage as ImageStyle} resizeMode="cover" />
                     ) : (

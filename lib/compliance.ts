@@ -150,9 +150,6 @@ export const DRIVER_COMPLIANCE: ComplianceItemDef[] = [
   { itemType: 'rp_certificate', category: 'training', label: 'תוקף ר.פ' },
 ];
 
-/** The few vehicle items whose badges appear in the vehicle list (A2). */
-export const VEHICLE_LIST_BADGES = ['insurance_mandatory', 'annual_test'] as const;
-
 export function complianceCatalog(ownerType: 'vehicle' | 'driver'): ComplianceItemDef[] {
   return ownerType === 'vehicle' ? VEHICLE_COMPLIANCE : DRIVER_COMPLIANCE;
 }
@@ -209,6 +206,3 @@ export const ACQUISITION_TYPE_LABELS: Record<string, string> = {
   leasing: 'ליסינג',
   rental: 'השכרה',
 };
-
-/** Israeli driving licence classes, for the driver form. */
-export const LICENSE_CLASSES = ['A', 'A1', 'A2', 'B', 'C', 'C1', 'C3', 'D', 'D1', 'D2', 'D3', 'E'];

@@ -160,13 +160,3 @@ export function useCompany(): CompanyContextValue {
   if (!ctx) throw new Error('useCompany must be used inside a CompanyProvider');
   return ctx;
 }
-
-/**
- * Convenience for screens that cannot render without a company — they
- * are only mounted under an admin session, so the id is guaranteed by
- * the time the provider has finished loading.
- */
-export function useCompanyId(): string {
-  const { companyId } = useCompany();
-  return companyId ?? '';
-}

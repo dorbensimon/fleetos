@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, Platform, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from '../ui';
 import type { DocumentRow } from '../../lib/adminApi';
 import { COLORS, RADIUS, SPACING, formatDate } from '../../lib/theme';
 import { getDocumentUrl } from '../../lib/documents';
-import { confirmDeleteDocument, documentIconName, downloadDocumentWithAlert, getDocumentViewUrl } from '../../lib/documentActions';
+import { confirmDeleteDocument, documentIconName, downloadDocumentWithAlert, openDocumentExternally } from '../../lib/documentActions';
 
 const webOnly = (style: Record<string, unknown>) => (Platform.OS === 'web' ? style : {});
 
@@ -24,12 +24,12 @@ function DocumentThumb({ doc, onDeleted }: { doc: DocumentRow; onDeleted: () => 
     return () => {
       cancelled = true;
     };
+    // Keyed by id: a reload hands in new row objects for the same file, and
+    // re-signing its URL each time would flash the thumbnail.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc.id, isImage]);
 
-  const open = async () => {
-    const viewUrl = await getDocumentViewUrl(doc);
-    if (viewUrl) Linking.openURL(viewUrl);
-  };
+  const open = () => openDocumentExternally(doc);
 
   return (
     <View style={styles.thumbCard}>

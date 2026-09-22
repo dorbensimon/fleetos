@@ -1,11 +1,10 @@
-// Shared HTML/PDF report shell — an "editorial dossier" treatment: a warm
-// paper page, a large serif masthead (Frank Ruhl Libre, one of the few
-// distinctive Google fonts with real Hebrew glyphs) paired with Heebo for
-// body/label text, and the app's own #0088CC accent used sparingly as a
-// single confident thread through rules, section marks and tags. Used by
-// driverReport.ts, vehicleReport.ts and driverSnapshotReport.ts so every
-// document the app exports for drivers/vehicles shares one header, meta-grid,
-// table and footer treatment.
+// Shared HTML/PDF report shell — a clean white card on a light slate page:
+// the system font stack (SF on Apple devices), a header with the title, the
+// company line and the issue date over a dark rule, blue section titles with
+// a hairline underneath, a three-column field grid (two on phones), pill
+// status badges and a centered footer. Used by driverReport.ts,
+// vehicleReport.ts, driverSnapshotReport.ts and procedure6Report.ts so every
+// document the app exports shares one look.
 
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -60,234 +59,168 @@ export function todayHe(): string {
 }
 
 const REPORT_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Heebo:wght@300;400;500;600;700&display=swap');
-
   :root {
-    --color-paper: #faf8f4;
-    --color-backdrop: #e8e4db;
-    --color-ink: #1c1a16;
-    --color-ink-muted: #6f6a5f;
-    --color-ink-faint: #a29c8d;
-    --color-accent: #0088cc;
-    --color-accent-deep: #045a86;
-    --color-accent-soft: rgba(0, 136, 204, 0.09);
-    --color-field: #f2efe7;
-    --color-rule: #ded8c9;
-    --color-ok-bg: #e7f0e6;
-    --color-ok-text: #47713f;
-    --color-warn-bg: #fbf0dc;
-    --color-warn-text: #93630f;
-    --color-danger-bg: #f7e6e1;
-    --color-danger-text: #a33a24;
-    --color-neutral-bg: #ecebe6;
-    --color-neutral-text: #6f6a5f;
-    --font-display: 'Frank Ruhl Libre', 'Times New Roman', serif;
-    --font-body: 'Heebo', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --primary: #2563eb;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --ok-bg: #d1fae5;
+    --ok-text: #047857;
+    --warn-bg: #fef3c7;
+    --warn-text: #b45309;
+    --danger-bg: #fee2e2;
+    --danger-text: #b91c1c;
+    --neutral-bg: #f1f5f9;
+    --neutral-text: #475569;
   }
 
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
-    color: var(--color-ink);
-    font-family: var(--font-body);
     direction: rtl;
+    color: var(--text-main);
+    background-color: var(--bg);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Heebo', sans-serif;
     -webkit-font-smoothing: antialiased;
-    font-variant-numeric: tabular-nums;
+    -webkit-text-size-adjust: 100%;
   }
-  html { background: var(--color-backdrop); }
-  body { background: var(--color-backdrop); }
+  body { padding: 2rem; display: flex; justify-content: center; }
 
   .page {
-    position: relative;
-    max-width: 720px;
-    margin: 32px auto;
-    padding: 42px 44px 34px;
-    background: var(--color-paper);
-    box-shadow: 0 1px 2px rgba(28, 26, 22, 0.06), 0 16px 36px rgba(28, 26, 22, 0.14);
-    overflow: hidden;
-  }
-  /* A faint paper grain behind the masthead only — atmosphere, not noise. */
-  .page::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    height: 190px;
-    background-image: radial-gradient(rgba(28, 26, 22, 0.05) 0.6px, transparent 0.6px);
-    background-size: 3px 3px;
-    -webkit-mask-image: linear-gradient(to bottom, black, transparent);
-    mask-image: linear-gradient(to bottom, black, transparent);
-    pointer-events: none;
+    background: var(--card-bg);
+    width: 100%;
+    max-width: 800px;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    padding: 2.5rem;
+    border: 1px solid var(--border);
   }
 
-  @media print {
-    html, body { background: var(--color-paper); }
-    .page { margin: 0; max-width: none; box-shadow: none; padding: 6px 4px; }
-    .page::before { display: none; }
-  }
-
-  .masthead {
-    position: relative;
+  .header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    gap: 20px;
+    align-items: flex-end;
+    gap: 1rem;
+    border-bottom: 2px solid var(--text-main);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2.5rem;
   }
-  .masthead-heading { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-  .masthead-kicker {
-    font-family: var(--font-body);
-    font-size: 10.5px;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--color-accent-deep);
-  }
-  .masthead h1 {
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 30px;
-    margin: 0;
-    line-height: 1.18;
-    letter-spacing: -0.01em;
-    color: var(--color-ink);
-  }
-  .masthead-date {
-    text-align: center;
-    flex: none;
-    border: 1px solid var(--color-rule);
-    padding: 9px 15px 8px;
-  }
-  .masthead-date .date-label {
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--color-ink-faint);
-  }
-  .masthead-date .date-value {
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 15px;
-    color: var(--color-ink);
-    margin-top: 3px;
-    white-space: nowrap;
-  }
-  .masthead-rule {
-    position: relative;
-    height: 4px;
-    margin-top: 6px;
-  }
-  .masthead-rule::before {
-    content: '';
-    position: absolute; inset-inline-start: 0; top: 0;
-    width: 46px; height: 3px;
-    background: var(--color-accent);
-  }
-  .masthead-rule::after {
-    content: '';
-    position: absolute; inset-inline-start: 0; bottom: 0;
-    width: 100%; height: 1px;
-    background: var(--color-rule);
-  }
-
-  .meta-row, .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 20px 22px;
-    margin-top: 28px;
-  }
-  .meta-col { min-width: 0; }
-  .meta-col-push { text-align: left; justify-self: end; }
-  .meta-label {
-    font-size: 10.5px;
-    font-weight: 500;
-    letter-spacing: 0.03em;
-    color: var(--color-ink-faint);
-    margin-bottom: 5px;
-  }
-  .meta-value { font-weight: 600; font-size: 14.5px; color: var(--color-ink); }
-  .meta-value-big { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--color-accent-deep); }
-  .meta-sub { font-size: 11.5px; color: var(--color-ink-faint); margin-top: 2px; }
-  .ltr { direction: ltr; text-align: left; unicode-bidi: isolate; }
-
-  .company-logo {
-    width: 34px; height: 34px; object-fit: cover;
-    margin-bottom: 4px;
-  }
+  .header-title h1 { margin: 0; font-size: 1.5rem; font-weight: 700; line-height: 1.3; }
+  .company-info { margin-top: 0.5rem; color: var(--text-muted); font-size: 0.875rem; }
+  .company-info strong { color: var(--text-main); }
+  .header-meta { text-align: left; font-size: 0.875rem; color: var(--text-muted); flex: none; }
+  .header-meta strong { color: var(--text-main); font-variant-numeric: tabular-nums; }
 
   h2.section-title {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-    font-family: var(--font-body);
-    font-weight: 700;
-    font-size: 11.5px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--color-accent-deep);
-    margin: 36px 0 14px;
-  }
-  h2.section-title::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--color-rule);
+    color: var(--primary);
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0 0 1.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
   }
 
-  .table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12.5px;
-    margin-top: 4px;
+  .grid, .meta-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    row-gap: 1.5rem;
+    column-gap: 2rem;
+    margin-bottom: 2.5rem;
   }
+  .meta-col { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+  .meta-col-push { text-align: left; }
+  .meta-label { font-size: 0.875rem; color: var(--text-muted); font-weight: 500; }
+  .meta-value { font-size: 1rem; font-weight: 600; color: var(--text-main); font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
+  .meta-value-big { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+  .meta-sub { font-size: 0.8125rem; color: var(--text-muted); }
+  .ltr { direction: ltr; unicode-bidi: isolate; text-align: right; }
+
+  .link { color: var(--primary); text-decoration: none; }
+
+  .table { width: 100%; border-collapse: collapse; font-size: 0.875rem; margin-bottom: 2.5rem; }
   .table th {
     text-align: right;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--color-ink-faint);
-    padding: 0 10px 8px;
-    border-bottom: 1px solid var(--color-ink);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    padding: 0 0.75rem 0.625rem;
+    border-bottom: 1px solid var(--border);
   }
   .table td {
-    padding: 11px 10px;
-    border-bottom: 1px solid var(--color-rule);
     text-align: right;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
   }
   .table tbody tr:last-child td { border-bottom: none; }
-  .text-muted { color: var(--color-ink-muted); }
+  .table .group-row td {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg);
+  }
+  .text-muted { color: var(--text-muted); }
 
   .tag {
-    display: inline-flex; align-items: center; white-space: nowrap;
-    font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em;
-    padding: 3px 10px; border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    white-space: nowrap;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
   }
-  .tag-ok { background: var(--color-ok-bg); color: var(--color-ok-text); }
-  .tag-danger { background: var(--color-danger-bg); color: var(--color-danger-text); }
-  .tag-neutral { background: var(--color-neutral-bg); color: var(--color-neutral-text); }
-  .tag-warn { background: var(--color-warn-bg); color: var(--color-warn-text); }
+  .tag-ok { background-color: var(--ok-bg); color: var(--ok-text); }
+  .tag-warn { background-color: var(--warn-bg); color: var(--warn-text); }
+  .tag-danger { background-color: var(--danger-bg); color: var(--danger-text); }
+  .tag-neutral { background-color: var(--neutral-bg); color: var(--neutral-text); }
 
   .empty-state {
     text-align: center;
-    padding: 30px 0;
-    color: var(--color-ink-faint);
-    font-size: 12.5px;
-    border: 1px dashed var(--color-rule);
+    padding: 2rem;
+    color: var(--text-muted);
+    background: #f1f5f9;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    margin-bottom: 2.5rem;
   }
 
   .footnote {
-    margin-top: 38px;
-    padding-top: 16px;
-    border-top: 1px solid var(--color-rule);
-    font-size: 10.5px;
-    color: var(--color-ink-faint);
+    text-align: center;
+    margin-top: 3.5rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    padding-top: 1.5rem;
+  }
+
+  @media (max-width: 600px) {
+    body { padding: 1rem; }
+    .page { padding: 1.5rem; }
+    .grid, .meta-row { grid-template-columns: 1fr 1fr; }
+    .header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .header-meta { text-align: right; }
+  }
+
+  @media print {
+    html, body { background: #ffffff; }
+    body { padding: 0; display: block; }
+    .page { max-width: none; border: none; box-shadow: none; border-radius: 0; padding: 0; }
+    h2.section-title, .grid, .table tr { break-inside: avoid; }
   }
 `;
 
 export interface ReportDocumentOptions {
   title: string;
   generatedAt?: string;
-  metaColumns: ReportMetaColumn[];
+  /** Shown under the title as "חברה: <name> | ח.פ: <id>". */
+  company?: { name: string; businessId?: string | null };
+  /** Extra header facts, rendered as a field grid under the header. */
+  metaColumns?: ReportMetaColumn[];
   bodyHtml: string;
   footerNote?: string;
 }
@@ -296,30 +229,36 @@ export function buildReportDocument(opts: ReportDocumentOptions): string {
   const generatedAt = opts.generatedAt ?? todayHe();
   const footerNote = opts.footerNote ?? 'מסמך זה הופק אוטומטית על ידי מערכת Tolvex לניהול צי רכב';
 
+  const metaColumns = opts.metaColumns ?? [];
+  const companyLine = opts.company
+    ? `<div class="company-info">חברה: <strong>${esc(opts.company.name)}</strong>${
+        opts.company.businessId ? ` | ח.פ: <span class="ltr">${esc(opts.company.businessId)}</span>` : ''
+      }</div>`
+    : '';
+
   return `
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tolvex - ${esc(opts.title)}</title>
 <style>${REPORT_STYLES}</style>
 </head>
 <body>
   <div class="page">
-    <div class="masthead">
-      <div class="masthead-heading">
-        <div class="masthead-kicker">Tolvex · דוח מערכת</div>
+    <div class="header">
+      <div class="header-title">
         <h1>${esc(opts.title)}</h1>
-        <div class="masthead-rule"></div>
+        ${companyLine}
       </div>
-      <div class="masthead-date">
-        <div class="date-label">תאריך הפקה</div>
-        <div class="date-value">${esc(generatedAt)}</div>
+      <div class="header-meta">
+        תאריך הפקה<br>
+        <strong>${esc(generatedAt)}</strong>
       </div>
     </div>
 
-    <div class="meta-row">
-      ${opts.metaColumns.map(metaColumnHtml).join('')}
-    </div>
+    ${metaColumns.length ? `<div class="meta-row">${metaColumns.map(metaColumnHtml).join('')}</div>` : ''}
 
     ${opts.bodyHtml}
 

@@ -21,6 +21,7 @@ import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { HoverPressable } from '../../components/desktop/primitives';
+import { dateOnlyIsoFromLocalDate } from '../../lib/driverFormValidation';
 
 /**
  * The driver's self-service dossier intentionally uses the same card
@@ -88,7 +89,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
     }, [load])
   );
 
-  const licenseExpired = !!driver?.license_expiry && driver.license_expiry < new Date().toISOString().slice(0, 10);
+  const licenseExpired = !!driver?.license_expiry && driver.license_expiry < dateOnlyIsoFromLocalDate(new Date());
   const licenseStatus: 'expired' | 'verified' | 'pending' = licenseExpired
     ? 'expired'
     : licensePhotosComplete && !!driver?.license_expiry

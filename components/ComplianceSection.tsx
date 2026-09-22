@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Image, Linking, type ImageStyle } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Image, type ImageStyle } from 'react-native';
 import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, Card, ExpiryBadge, PrimaryButton, useToast } from './ui';
@@ -25,7 +25,7 @@ import {
   chooseDocumentSource,
   confirmDeleteDocument,
   downloadDocumentWithAlert,
-  getDocumentViewUrl,
+  openDocumentExternally,
   pickDocumentSource,
   type DocumentSource,
 } from '../lib/documentActions';
@@ -289,12 +289,6 @@ export function ComplianceSection({
     });
   };
 
-  const openDocument = async (doc: DocumentRow) => {
-    const url = await getDocumentViewUrl(doc);
-    if (!url) return;
-    Linking.openURL(url);
-  };
-
   const renderDateFields = (def: ComplianceItemDef) => {
     const item = items.get(def.itemType);
     const draft = drafts[def.itemType];
@@ -408,7 +402,7 @@ export function ComplianceSection({
           <DocumentFileRow
             key={doc.id}
             doc={doc}
-            onOpen={openDocument}
+            onOpen={openDocumentExternally}
             onDownload={downloadDocumentWithAlert}
             onDelete={(item) =>
               confirmDeleteDocument(item, async () => {
@@ -644,11 +638,6 @@ function GeneralDocuments({
     confirmDeleteDocument(doc, onChanged);
   };
 
-  const open = async (doc: DocumentRow) => {
-    const url = await getDocumentViewUrl(doc);
-    if (url) Linking.openURL(url);
-  };
-
   return (
     <Card style={styles.card}>
       <View style={styles.groupHead}>
@@ -666,7 +655,7 @@ function GeneralDocuments({
         <DocumentFileRow
           key={doc.id}
           doc={doc}
-          onOpen={open}
+          onOpen={openDocumentExternally}
           onDownload={downloadDocumentWithAlert}
           onDelete={remove}
         />

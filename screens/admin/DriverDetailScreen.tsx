@@ -41,6 +41,7 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DriverDetailDesktopView } from '../../components/desktop/DriverDetailDesktopView';
 import { departmentNameById, departmentOptions, isStaleDepartmentError } from '../../lib/driverFields';
+import { dateOnlyIsoFromLocalDate } from '../../lib/driverFormValidation';
 
 const APP_STARTED_AT_MS = Date.now();
 
@@ -267,13 +268,14 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     if (!driver || !company || exportingReport) return;
     setExportingReport(true);
     try {
-      const [departments, signatureRequests] = await Promise.all([
+      const [departments, signatureRequests, documents] = await Promise.all([
         companyId ? listDepartments(companyId) : Promise.resolve([]),
         listSignatureRequests(companyId ?? undefined),
+        listDocuments('driver', driverId),
       ]);
       const departmentName = departments.find((d) => d.id === driver.department_id)?.name ?? null;
       const driverSigningRequests = signatureRequests.filter((r) => r.driver_id === driverId);
-      await exportDriverSnapshotReport(company, driver, departmentName, driverSigningRequests);
+      await exportDriverSnapshotReport(company, driver, departmentName, driverSigningRequests, documents);
     } catch (err: any) {
       showToast(err?.message || 'ייצוא הדוח נכשל, נסה שוב');
     } finally {
@@ -336,10 +338,55 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     ? Math.max(0, Math.floor((APP_STARTED_AT_MS - new Date(driver.password_set_at).getTime()) / 86400000))
     : null;
   const assignedVehicleCount = driver?.vehicles.length ?? 0;
-  const licenseExpired = !!driver?.license_expiry && driver.license_expiry < new Date().toISOString().slice(0, 10);
+  const licenseExpired = !!driver?.license_expiry && driver.license_expiry < dateOnlyIsoFromLocalDate(new Date());
   const licenseStatus: 'expired' | 'verified' | 'pending' =
     licenseExpired ? 'expired' : licensePhotosComplete && !!driver?.license_expiry ? 'verified' : 'pending';
   const groups = buildDriverDetailGroups(driver, licenseStatus).map(group => ({ ...group, rows: group.rows.filter(row => row.key !== 'signing-documents') }));
+
+  // Shared by the desktop record and the phone screen.
+  const modals = (
+    <>
+      <ResetDriverPasswordModal
+        visible={resetOpen}
+        driverName={driver?.full_name}
+        password={resetPassword}
+        confirmPassword={resetConfirm}
+        error={resetError}
+        loading={resetting}
+        onPasswordChange={setResetPassword}
+        onConfirmPasswordChange={setResetConfirm}
+        onClose={closeReset}
+        onSubmit={submitReset}
+      />
+
+      <EditUserEmailModal
+        visible={emailOpen}
+        driverName={driver?.full_name}
+        email={emailValue}
+        error={emailError}
+        loading={savingEmail}
+        onEmailChange={setEmailValue}
+        onClose={closeEmail}
+        onSubmit={submitEmail}
+      />
+
+      <ConfirmActionModal
+        visible={archiveConfirmOpen}
+        title="העברה לארכיון"
+        message={
+          `${driver?.full_name ?? 'הנהג'} יאבד את הגישה לאפליקציה ויוסר מרשימת הנהגים.` +
+          (assignedVehicleCount > 0
+            ? ` שיוך ${assignedVehicleCount === 1 ? 'הרכב' : `${assignedVehicleCount} הרכבים`} שלו יבוטל.`
+            : '') +
+          ' תמיד אפשר לשחזר אותו ממסך הארכיון.'
+        }
+        confirmLabel="העבר לארכיון"
+        loading={archiving}
+        onConfirm={runArchive}
+        onClose={() => setArchiveConfirmOpen(false)}
+      />
+    </>
+  );
 
   if (isDesktop) {
     return (
@@ -377,45 +424,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
           />
         )}
 
-        <ResetDriverPasswordModal
-          visible={resetOpen}
-          driverName={driver?.full_name}
-          password={resetPassword}
-          confirmPassword={resetConfirm}
-          error={resetError}
-          loading={resetting}
-          onPasswordChange={setResetPassword}
-          onConfirmPasswordChange={setResetConfirm}
-          onClose={closeReset}
-          onSubmit={submitReset}
-        />
-
-        <EditUserEmailModal
-          visible={emailOpen}
-          driverName={driver?.full_name}
-          email={emailValue}
-          error={emailError}
-          loading={savingEmail}
-          onEmailChange={setEmailValue}
-          onClose={closeEmail}
-          onSubmit={submitEmail}
-        />
-
-        <ConfirmActionModal
-          visible={archiveConfirmOpen}
-          title="העברה לארכיון"
-          message={
-            `${driver?.full_name ?? 'הנהג'} יאבד את הגישה לאפליקציה ויוסר מרשימת הנהגים.` +
-            (assignedVehicleCount > 0
-              ? ` שיוך ${assignedVehicleCount === 1 ? 'הרכב' : `${assignedVehicleCount} הרכבים`} שלו יבוטל.`
-              : '') +
-            ' תמיד אפשר לשחזר אותו ממסך הארכיון.'
-          }
-          confirmLabel="העבר לארכיון"
-          loading={archiving}
-          onConfirm={runArchive}
-          onClose={() => setArchiveConfirmOpen(false)}
-        />
+        {modals}
       </DesktopShell>
     );
   }
@@ -585,45 +594,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
         <BackButton onPress={() => navigation.goBack()} />
       </View>
 
-      <ResetDriverPasswordModal
-        visible={resetOpen}
-        driverName={driver?.full_name}
-        password={resetPassword}
-        confirmPassword={resetConfirm}
-        error={resetError}
-        loading={resetting}
-        onPasswordChange={setResetPassword}
-        onConfirmPasswordChange={setResetConfirm}
-        onClose={closeReset}
-        onSubmit={submitReset}
-      />
-
-      <EditUserEmailModal
-        visible={emailOpen}
-        driverName={driver?.full_name}
-        email={emailValue}
-        error={emailError}
-        loading={savingEmail}
-        onEmailChange={setEmailValue}
-        onClose={closeEmail}
-        onSubmit={submitEmail}
-      />
-
-      <ConfirmActionModal
-        visible={archiveConfirmOpen}
-        title="העברה לארכיון"
-        message={
-          `${driver?.full_name ?? 'הנהג'} יאבד את הגישה לאפליקציה ויוסר מרשימת הנהגים.` +
-          (assignedVehicleCount > 0
-            ? ` שיוך ${assignedVehicleCount === 1 ? 'הרכב' : `${assignedVehicleCount} הרכבים`} שלו יבוטל.`
-            : '') +
-          ' תמיד אפשר לשחזר אותו ממסך הארכיון.'
-        }
-        confirmLabel="העבר לארכיון"
-        loading={archiving}
-        onConfirm={runArchive}
-        onClose={() => setArchiveConfirmOpen(false)}
-      />
+      {modals}
     </View>
   );
 }

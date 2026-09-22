@@ -1,5 +1,6 @@
 import { Company } from './supabase';
-import { DriverRow } from './adminApi';
+import { DocumentRow, DriverRow } from './adminApi';
+import { DRIVER_DOCUMENT_GROUPS, LICENSE_DOCS_CATEGORY, LICENSE_SIDE_TITLES } from './driverDocumentFolders';
 import { SignatureRequest } from './docuseal';
 import { expiryState, formatDate } from './theme';
 import { formatPlate } from './plate';
@@ -22,14 +23,23 @@ const SIGNING_STATUS_LABELS: Record<SignatureRequest['status'], { label: string;
   failed: { label: 'נכשל', tone: 'accent2' },
 };
 
+const field = (label: string, valueHtml: string) =>
+  `<div class="meta-col"><div class="meta-label">${esc(label)}</div><div class="meta-value">${valueHtml || '—'}</div></div>`;
+const ltrField = (label: string, value: string | null | undefined) =>
+  `<div class="meta-col"><div class="meta-label">${esc(label)}</div><div class="meta-value ltr">${esc(value) || '—'}</div></div>`;
+const dateOrDash = (value: string | null | undefined) => (value ? esc(formatDate(value)) : '');
+
 function buildHtml(
   company: Company,
   driver: DriverRow,
   departmentName: string | null,
-  signingRequests: SignatureRequest[]
+  signingRequests: SignatureRequest[],
+  documents: DocumentRow[]
 ): string {
   const license = licenseStatus(driver);
   const vehicles = driver.vehicles ?? [];
+  const licensePhotos = documents.filter((doc) => doc.category === LICENSE_DOCS_CATEGORY);
+  const photoSides = Object.values(LICENSE_SIDE_TITLES).filter((title) => licensePhotos.some((doc) => doc.title === title)).length;
 
   const signingRows = signingRequests
     .map((req) => {
@@ -43,45 +53,74 @@ function buildHtml(
     })
     .join('');
 
+  // Same folders and order as the driver record; the license photos have their own line above.
+  const documentRows = DRIVER_DOCUMENT_GROUPS.map((group) => {
+    const rows = group.folders.map((folder) => {
+      const inFolder = documents.filter((doc) => doc.category === folder.category);
+      const latest = inFolder.reduce<string | null>((max, doc) => (!max || doc.created_at > max ? doc.created_at : max), null);
+      return `
+        <tr>
+          <td>${esc(folder.title)}</td>
+          <td>${inFolder.length ? inFolder.length : statusTag('ריק', 'neutral')}</td>
+          <td>${latest ? esc(formatDate(latest)) : '—'}</td>
+        </tr>`;
+    });
+    return `<tr class="group-row"><td colspan="3">${esc(group.title)}</td></tr>${rows.join('')}`;
+  }).join('');
+
+  // Field order follows the driver record screen, row by row (three per row, right to left).
   const bodyHtml = `
     <h2 class="section-title">פרטים אישיים</h2>
     <div class="grid">
-      <div class="meta-col"><div class="meta-label">שם מלא</div><div class="meta-value">${esc(driver.full_name) || '—'}</div></div>
-      <div class="meta-col"><div class="meta-label">ת.ז</div><div class="meta-value ltr">${esc(driver.national_id) || '—'}</div></div>
-      <div class="meta-col"><div class="meta-label">מספר עובד</div><div class="meta-value ltr">${esc(driver.employee_number) || '—'}</div></div>
-      <div class="meta-col"><div class="meta-label">טלפון</div><div class="meta-value ltr">${esc(driver.phone ? formatPhone(driver.phone) : null) || '—'}</div></div>
-      <div class="meta-col"><div class="meta-label">מחלקה</div><div class="meta-value">${esc(departmentName) || '—'}</div></div>
-      <div class="meta-col"><div class="meta-label">סטטוס</div><div class="meta-value">${driver.status === 'archived' ? 'לא פעיל' : 'פעיל'}</div></div>
+      ${field('שם מלא', esc(driver.full_name))}
+      ${field('טלפון', driver.phone ? `<a class="link ltr" href="tel:${esc(driver.phone)}">${esc(formatPhone(driver.phone))}</a>` : '')}
+      ${field('אימייל', driver.email ? `<span class="ltr">${esc(driver.email).replace(/([@.])/g, '<wbr>$1')}</span>` : '')}
+      ${ltrField('ת.ז', driver.national_id)}
+      ${field('תאריך לידה', dateOrDash(driver.birth_date))}
+      ${field('כתובת', esc(driver.address))}
+      ${ltrField('מספר עובד', driver.employee_number)}
+      ${field('מחלקה', esc(departmentName))}
+      ${field('תחילת העסקה', dateOrDash(driver.employment_start_date))}
+      ${field('סטטוס', driver.status === 'archived' ? 'לא פעיל' : 'פעיל')}
+      ${field('הצטרף לאפליקציה', dateOrDash(driver.created_at))}
+      ${field('עדכון אחרון', dateOrDash(driver.updated_at))}
     </div>
 
     <h2 class="section-title">רישיון נהיגה</h2>
     <div class="grid">
-      <div class="meta-col"><div class="meta-label">דרגת רישיון</div><div class="meta-value">${esc(driver.license_classes) || '—'}</div></div>
-      <div class="meta-col"><div class="meta-label">תוקף רישיון</div><div class="meta-value">${driver.license_expiry ? esc(formatDate(driver.license_expiry)) : '—'}</div></div>
-      <div class="meta-col"><div class="meta-label">סטטוס</div><div class="meta-value">${statusTag(license.label, license.tone)}</div></div>
+      ${ltrField('מספר רישיון', driver.license_number)}
+      ${field('דרגות', esc(driver.license_classes))}
+      ${field('תאריך הנפקה', dateOrDash(driver.license_issue_date))}
+      ${field('תוקף רישיון', dateOrDash(driver.license_expiry))}
+      ${field('מצב', statusTag(license.label, license.tone))}
+      ${field('צילומי רישיון', `${photoSides} מתוך 2 ${statusTag(photoSides === 2 ? 'הושלם' : 'חסר', photoSides === 2 ? 'accent' : 'outline')}`)}
     </div>
 
-    <h2 class="section-title">רכב משויך</h2>
+    <h2 class="section-title">רכבים משויכים</h2>
     ${
       vehicles.length === 0
         ? emptyState('אין רכב משויך לנהג זה')
         : `<div class="grid">
-            ${vehicles
-              .map(
-                (v) => `
-              <div class="meta-col">
-                <div class="meta-label">${vehicles.length > 1 ? (v.is_primary ? 'רכב ראשי' : 'רכב משני') : 'רכב'}</div>
-                <div class="meta-value ltr">${esc(formatPlate(v.plate_number))}</div>
-              </div>`
-              )
-              .join('')}
+            ${vehicles.map((v) => ltrField(v.is_primary ? 'רכב ראשי' : 'רכב משני', formatPlate(v.plate_number))).join('')}
           </div>`
     }
 
-    <h2 class="section-title">מסמכים לחתימה</h2>
+    <h2 class="section-title">מסמכים</h2>
+    <table class="table" dir="rtl">
+      <thead>
+        <tr>
+          <th>תיקייה</th>
+          <th>מסמכים</th>
+          <th>עודכן לאחרונה</th>
+        </tr>
+      </thead>
+      <tbody>${documentRows}</tbody>
+    </table>
+
+    <h2 class="section-title">טפסים לחתימה</h2>
     ${
       signingRequests.length === 0
-        ? emptyState('אין מסמכים לחתימה עבור נהג זה')
+        ? emptyState('לא נשלחו טפסים לחתימה לנהג זה')
         : `<table class="table" dir="rtl">
             <thead>
               <tr>
@@ -95,14 +134,9 @@ function buildHtml(
     }`;
 
   return buildReportDocument({
-    title: `תמונת מצב — ${esc(driver.full_name) || 'נהג'}`,
-    metaColumns: [
-      {
-        label: 'חברה',
-        value: company.name,
-        sub: company.business_id ? `ח.פ ${company.business_id}` : undefined,
-      },
-    ],
+    company: { name: company.name, businessId: company.business_id },
+    // buildReportDocument escapes the title itself.
+    title: `תמונת מצב — ${driver.full_name || 'נהג'}`,
     bodyHtml,
   });
 }
@@ -111,8 +145,9 @@ export async function exportDriverSnapshotReport(
   company: Company,
   driver: DriverRow,
   departmentName: string | null,
-  signingRequests: SignatureRequest[]
+  signingRequests: SignatureRequest[],
+  documents: DocumentRow[]
 ): Promise<void> {
-  const html = buildHtml(company, driver, departmentName, signingRequests);
+  const html = buildHtml(company, driver, departmentName, signingRequests, documents);
   await printOrShareReport(html, `תמונת מצב — ${driver.full_name ?? 'נהג'}`);
 }
