@@ -19,7 +19,7 @@ export type RootStackParamList = {
    * is opened from inside a driver's dossier rather than from the fleet. */
   VehicleDetail: { vehicleId: string; returnTo?: 'driver'; tab?: 'general' | 'maintenance' | 'documents' | 'drivers' | 'licensing'; /** A folder key (lib/vehicleFolderAlerts.ts) to open on arrival, e.g. from an expiry notification. */ openFolder?: string };
   VehicleForm: { vehicleId?: string };
-  DriverDetail: { driverId: string };
+  DriverDetail: { driverId: string; /** A document category to open on arrival, e.g. from a "driver uploaded a document" notification. */ openFolder?: string };
   DriverArchive: undefined;
   DriverPersonalDetails: { driverId: string };
   DriverForm: { driverId?: string };
@@ -28,6 +28,8 @@ export type RootStackParamList = {
   Attention: undefined;
   Reports: undefined;
   AdminProfile: undefined;
+  CompanySettings: undefined;
+  SignedDocuments: undefined;
   Notifications: undefined;
   AdminDocumentSigning: { companyId?: string } | undefined;
   /** Owner-only: manage the global signing templates shared by every company. */
@@ -40,6 +42,12 @@ export type RootStackParamList = {
     host?: string;
     templateId?: string;
     requestId?: string;
+    /** After a driver signs, return to the root "טפסים ומסמכים" screen. */
+    returnToDriverDocuments?: boolean;
+    /** Signed-document download is available to the driver who completed it. */
+    allowDownload?: boolean;
+    /** When the document was signed, shown by the desktop viewer. */
+    signedAt?: string;
     previewFields?: Array<{
       name: string;
       type: 'signature' | 'stamp';

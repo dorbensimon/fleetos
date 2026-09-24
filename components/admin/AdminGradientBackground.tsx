@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-/** Shared visual foundation for native admin screens (the fleet home is excluded). */
+/** Shared visual foundation for mobile screens (the fleet home is excluded). */
 export const ADMIN_BACKGROUND_COLORS = ['#CFE7F5', '#E4EFF6', '#F1F4F7'] as const;
 export const ADMIN_BACKGROUND_LOCATIONS = [0, 0.45, 0.9] as const;
 
@@ -22,6 +22,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 420,
+    bottom: 0,
   },
 });

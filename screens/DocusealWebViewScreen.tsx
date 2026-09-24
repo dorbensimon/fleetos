@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
+import { Ionicons } from '@expo/vector-icons';
 import { AppText, PrimaryButton, Screen, ScreenHeader } from '../components/ui';
 import { useCompany } from '../lib/CompanyContext';
-import { finalizeSigningTemplate, syncSigningRequest } from '../lib/docuseal';
+import { downloadSignedRequest, finalizeSigningTemplate, syncSigningRequest } from '../lib/docuseal';
 import { COLORS, SPACING } from '../lib/theme';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -29,12 +30,12 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
     const send = (type, detail) => window.ReactNativeWebView.postMessage(JSON.stringify({ type, detail }));
     window.addEventListener('error', (event) => send('error', event.message));
   </script>`;
-  const base = `<!doctype html><html dir="rtl"><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-    <style>html,body{margin:0;height:100%;background:#f5f5f7}docuseal-form,docuseal-builder{display:block;min-height:100vh}</style>`;
+  const base = `<!doctype html><html dir="rtl"><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+    <style>html,body{margin:0;width:100%;height:100%;overflow-x:hidden;background:#cdd3db}docuseal-form,docuseal-builder{display:block;width:100%;max-width:100%;min-width:0;min-height:100dvh}</style>`;
 
   if (params.mode === 'document') {
     return `${base}
-      <style>#pages{padding:8px}.page{position:relative;margin:0 auto 10px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.12)}canvas{display:block;width:100%;height:auto}.preview-field{position:absolute;box-sizing:border-box;border:2px dashed #0e7490;background:rgba(14,116,144,.10);color:#075985;display:flex;align-items:center;justify-content:center;font:700 12px sans-serif;pointer-events:none;overflow:hidden}.preview-field.stamp{border-color:#7c3aed;background:rgba(124,58,237,.10);color:#6d28d9}</style>
+      <style>#pages{width:100%;padding:12px;box-sizing:border-box}.page{position:relative;max-width:100%;margin:0 auto 14px;background:#fff;box-shadow:0 3px 16px rgba(26,35,48,.22)}canvas{display:block;width:100%;height:auto}.preview-field{position:absolute;box-sizing:border-box;border:2px dashed #0e7490;background:rgba(14,116,144,.10);color:#075985;display:flex;align-items:center;justify-content:center;font:700 12px sans-serif;pointer-events:none;overflow:hidden}.preview-field.stamp{border-color:#7c3aed;background:rgba(124,58,237,.10);color:#6d28d9}</style>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>${bridge}</head>
       <body><main id="pages"></main><script>
         (async () => {
@@ -149,13 +150,30 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
     }
   };
 
+  const download = async () => {
+    if (!params.requestId) return;
+    setError('');
+    try {
+      await downloadSignedRequest({ id: params.requestId, template_title: params.title });
+    } catch (err: any) {
+      setError(err?.message || 'הורדת המסמך נכשלה');
+    }
+  };
+
   const onMessage = async (event: WebViewMessageEvent) => {
     try {
       const message = JSON.parse(event.nativeEvent.data);
       if ((message.type === 'completed' || message.type === 'declined') && params.requestId) {
         setSaving(true);
         await syncSigningRequest(params.requestId);
-        navigation.goBack();
+        if (message.type === 'completed' && params.returnToDriverDocuments) {
+          navigation.reset({
+            index: 1,
+            routes: [{ name: 'DriverHome' }, { name: 'DriverSigningDocuments' }],
+          });
+        } else {
+          navigation.goBack();
+        }
       } else if (message.type === 'error') {
         setError(params.mode === 'document' ? 'טעינת המסמך נכשלה' : 'טעינת התבנית נכשלה');
         setLoading(false);
@@ -170,7 +188,15 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
 
   return (
     <Screen>
-      <ScreenHeader title={params.title} onBack={() => navigation.goBack()} />
+      <ScreenHeader
+        title={params.title}
+        onBack={() => navigation.goBack()}
+        right={params.allowDownload && params.mode === 'document' ? (
+          <TouchableOpacity style={styles.downloadButton} onPress={() => void download()} accessibilityRole="button" accessibilityLabel="הורדת המסמך החתום">
+            <Ionicons name="download-outline" size={20} color={COLORS.accent} />
+          </TouchableOpacity>
+        ) : undefined}
+      />
       <View style={styles.webWrap}>
         <WebView
           source={{ html: buildHtml(params), baseUrl: `https://${params.host || 'cdn.docuseal.com'}` }}
@@ -213,10 +239,11 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   imageWrap: { flex: 1, backgroundColor: COLORS.screen },
   image: { width: '100%', height: '100%' },
-  webWrap: { flex: 1, backgroundColor: COLORS.screen },
+  webWrap: { flex: 1, width: '100%', overflow: 'hidden', backgroundColor: COLORS.screen },
   webview: { flex: 1, backgroundColor: COLORS.screen },
   loading: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.screen },
   footer: { padding: SPACING.md, backgroundColor: COLORS.card },
   error: { color: COLORS.dangerText, textAlign: 'center', padding: SPACING.sm },
   sync: { flexDirection: 'row-reverse', gap: SPACING.sm, alignItems: 'center', justifyContent: 'center', padding: SPACING.sm },
+  downloadButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: COLORS.accentSoft },
 });

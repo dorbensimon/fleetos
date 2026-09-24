@@ -12,7 +12,8 @@ import { GlassPill, GLASS_SHADOW_COLOR } from '../../components/ui/GlassPill';
 import { COLORS, CONTENT_MAX_WIDTH, FONT, formatDate, FONT_SIZE, BRAND } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
-import { updateCompanyPhone } from '../../lib/companyApi';
+import { updateCompanySettings } from '../../lib/companyApi';
+import { functionErrorMessage } from '../../lib/functionError';
 import { formatPhone, isValidIsraeliPhone } from '../../lib/phone';
 import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
@@ -96,8 +97,8 @@ export default function AdminProfileScreen({ navigation }: Props) {
 
     let companyPhoneError: string | null = null;
     if (!error && form.companyPhone.trim() && form.companyPhone.trim() !== (company.phone || '')) {
-      const { error: fnError } = await updateCompanyPhone(company.id, form.companyPhone.trim());
-      if (fnError) companyPhoneError = fnError.message || 'עדכון טלפון החברה נכשל';
+      const { data, error: fnError } = await updateCompanySettings(company.id, { landline: form.companyPhone.trim() });
+      if (fnError) companyPhoneError = await functionErrorMessage(fnError, data, 'עדכון טלפון החברה נכשל', false);
     }
     setSaving(false);
 
@@ -139,6 +140,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
             onToggleEdit={toggleEdit}
             onChangeField={(field, value) => setForm((f) => ({ ...f, [field]: value }))}
             onChangePassword={() => navigation.navigate('SetPassword', { voluntary: true })}
+            onOpenCompanySettings={() => navigation.navigate('CompanySettings')}
             createdAt={profile?.created_at ?? null}
           />
         )}

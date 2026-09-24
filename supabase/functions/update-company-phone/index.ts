@@ -3,6 +3,10 @@
 // `companies` RLS only grants UPDATE to the platform owner, so a company
 // admin editing their own details screen needs this narrow, server-side
 // path instead — it only ever touches the `phone` column.
+//
+// LEGACY: the current app saves through update-company-settings. This stays
+// deployed only for app builds already installed on phones; delete it once
+// every installed build calls update-company-settings.
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';

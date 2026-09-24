@@ -94,17 +94,18 @@ Deno.serve(async (req) => {
       ...(documentsResult.data ?? []).map((row: { file_path: string | null }) => row.file_path),
       ...(legacyTemplatesResult.data ?? []).map((row: { source_file_path: string | null }) => row.source_file_path),
       ...(templatesResult.data ?? []).map((row: { source_file_path: string | null }) => row.source_file_path),
+      // Signed PDFs live in the same 'documents' bucket, under
+      // <company>/driver/<driver>/signed/<request>.pdf.
+      ...(requestsResult.data ?? []).map((row: { signed_file_path: string | null }) => row.signed_file_path),
     ];
-    const signedPaths = (requestsResult.data ?? []).map((row: { signed_file_path: string | null }) => row.signed_file_path);
     const logoPath = publicObjectPath(company.logo_url, 'company-logos');
 
-    const [documentsClean, signedClean, logoClean] = await Promise.all([
+    const [documentsClean, logoClean] = await Promise.all([
       removePaths(adminClient, 'documents', documentPaths),
-      removePaths(adminClient, 'signed-documents', signedPaths),
       logoPath ? removePaths(adminClient, 'company-logos', [logoPath]) : Promise.resolve(true),
     ]);
 
-    if (!(documentsClean && signedClean && logoClean)) {
+    if (!(documentsClean && logoClean)) {
       return json({
         error: 'ניקוי קבצי החברה נכשל. החברה חסומה וניתן לנסות את המחיקה שוב.',
         cleanupPending: true,

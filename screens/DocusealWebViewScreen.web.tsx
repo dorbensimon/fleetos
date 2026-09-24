@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { AppText, PrimaryButton, Screen, ScreenHeader } from '../components/ui';
 import { useCompany } from '../lib/CompanyContext';
-import { finalizeSigningTemplate, syncSigningRequest } from '../lib/docuseal';
+import { downloadSignedRequest, finalizeSigningTemplate, syncSigningRequest } from '../lib/docuseal';
 import { COLORS, SPACING } from '../lib/theme';
+import { useIsDesktop } from '../lib/useDesktopLayout';
+import { DocumentViewer } from '../components/desktop/signing/DocumentViewer.web';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DocusealWebView'>;
@@ -21,11 +24,36 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
     const send = (type, detail) => window.parent.postMessage({ source: 'fleetos-docuseal', type, detail }, window.location.origin);
     window.addEventListener('error', (event) => send('error', event.message));
   </script>`;
-  const base = `<!doctype html><html dir="rtl"><head><meta name="viewport" content="width=device-width,initial-scale=1">
-    <style>html,body{margin:0;height:100%;background:#f5f5f7}docuseal-form,docuseal-builder{display:block;min-height:100vh}</style>`;
+  const base = `<!doctype html><html dir="rtl"><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+    <style>html,body{margin:0;width:100%;height:100%;overflow-x:hidden;background:#f5f5f7}docuseal-form,docuseal-builder{display:block;width:100%;max-width:100%;min-width:0;min-height:100dvh}</style>`;
 
   if (params.mode === 'document') {
-    return null;
+    return `${base}
+      <style>
+        html,body{background:#c7ced8;overflow-x:hidden;overflow-y:auto}
+        #pages{width:100%;min-height:100%;padding:18px 14px 42px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:18px}
+        .page{position:relative;width:min(100%,760px);background:#fff;border-radius:5px;overflow:hidden;box-shadow:0 18px 44px rgba(24,35,49,.22),0 3px 10px rgba(24,35,49,.16);animation:page-in 260ms cubic-bezier(.23,1,.32,1) both}
+        canvas{display:block;width:100%;height:auto}
+        .preview-field{position:absolute;box-sizing:border-box;border:2px dashed #0088cc;background:rgba(0,136,204,.10);color:#075985;display:flex;align-items:center;justify-content:center;font:700 12px sans-serif;pointer-events:none;overflow:hidden}
+        .preview-field.stamp{border-color:#7c3aed;background:rgba(124,58,237,.10);color:#6d28d9}
+        @keyframes page-in{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+        @media (prefers-reduced-motion:reduce){.page{animation:none}}
+      </style>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>${bridge}</head>
+      <body><main id="pages"></main><script>
+        (async()=>{try{
+          pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          const pdf=await pdfjsLib.getDocument({url:${JSON.stringify(params.src || '')},withCredentials:false}).promise;
+          const root=document.getElementById('pages'); const fields=${JSON.stringify(params.previewFields || [])};
+          const zeroIndexedPages=fields.some((field)=>field.areas.some((area)=>area.page===0));
+          for(let pageNumber=1;pageNumber<=pdf.numPages;pageNumber+=1){
+            const page=await pdf.getPage(pageNumber); const initial=page.getViewport({scale:1});
+            const cssScale=Math.max(.1,Math.min(1.25,(Math.min(window.innerWidth,760)-28)/initial.width)); const pixelRatio=Math.min(window.devicePixelRatio||1,2); const viewport=page.getViewport({scale:cssScale*pixelRatio});
+            const pageWrap=document.createElement('section'); pageWrap.className='page'; pageWrap.style.width=(viewport.width/pixelRatio)+'px'; const canvas=document.createElement('canvas'); canvas.width=viewport.width; canvas.height=viewport.height; pageWrap.appendChild(canvas); root.appendChild(pageWrap); await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+            for(const field of fields) for(const area of field.areas){const fieldPage=zeroIndexedPages?area.page+1:area.page;if(fieldPage!==pageNumber)continue;const marker=document.createElement('div');marker.className='preview-field'+(field.type==='stamp'?' stamp':'');marker.style.left=(area.x*100)+'%';marker.style.top=(area.y*100)+'%';marker.style.width=(area.w*100)+'%';marker.style.height=(area.h*100)+'%';marker.textContent=field.type==='stamp'?'חותמת':'חתימה';pageWrap.appendChild(marker)}
+          } send('document-ready',{pages:pdf.numPages});
+        }catch(error){send('error',error&&error.message?error.message:'PDF load failed')}})();
+      </script></body></html>`;
   }
 
   // Let the browser render uploaded images inside a constrained viewer.
@@ -65,15 +93,36 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const html = useMemo(() => buildHtml(params), [params]);
+  const formRef = useRef<HTMLElement | null>(null);
+  const isSigningForm = params.mode === 'sign' || params.mode === 'preview';
+  const isDesktop = useIsDesktop();
+
+  const finishSigning = useCallback(async (type: 'completed' | 'declined') => {
+    if (!params.requestId) return;
+    setSaving(true);
+    try {
+      await syncSigningRequest(params.requestId);
+      if (type === 'completed' && params.returnToDriverDocuments) {
+        navigation.reset({
+          index: 1,
+          routes: [{ name: 'DriverHome' }, { name: 'DriverSigningDocuments' }],
+        });
+      } else {
+        navigation.goBack();
+      }
+    } catch (err: any) {
+      setError(err?.message || 'סנכרון החתימה נכשל');
+    } finally {
+      setSaving(false);
+    }
+  }, [navigation, params.requestId, params.returnToDriverDocuments]);
 
   useEffect(() => {
     const onMessage = async (event: MessageEvent<IframeMessage & { source?: string }>) => {
       if (event.origin !== window.location.origin || event.data?.source !== 'fleetos-docuseal') return;
       try {
-        if ((event.data.type === 'completed' || event.data.type === 'declined') && params.requestId) {
-          setSaving(true);
-          await syncSigningRequest(params.requestId);
-          navigation.goBack();
+        if (event.data.type === 'completed' || event.data.type === 'declined') {
+          await finishSigning(event.data.type);
         } else if (event.data.type === 'error') {
           setError(params.mode === 'document' ? 'טעינת המסמך נכשלה' : 'טעינת DocuSeal נכשלה');
         }
@@ -83,9 +132,51 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
         setSaving(false);
       }
     };
-    window.addEventListener('message', onMessage);
+    if (!isSigningForm) window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [navigation, params.mode, params.requestId]);
+  }, [finishSigning, isSigningForm, params.mode]);
+
+  // Loading DocuSeal directly into the page keeps iOS Safari's real viewport
+  // all the way through to the form. Safari gives an iframe document a wider
+  // layout viewport, which is why the signed form was rendered zoomed/cut off.
+  useEffect(() => {
+    if (!isSigningForm) return;
+    const form = formRef.current;
+    if (!form) return;
+    const host = params.host || 'cdn.docuseal.com';
+    const completed = () => { void finishSigning('completed'); };
+    const declined = () => { void finishSigning('declined'); };
+    form.addEventListener('completed', completed);
+    form.addEventListener('declined', declined);
+
+    const scriptId = `fleetos-docuseal-form-${host}`;
+    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+    const ready = () => setLoading(false);
+    const failed = () => {
+      setLoading(false);
+      setError('טעינת DocuSeal נכשלה');
+    };
+    if (window.customElements?.get('docuseal-form')) {
+      ready();
+    } else if (script) {
+      script.addEventListener('load', ready);
+      script.addEventListener('error', failed);
+    } else {
+      script = document.createElement('script');
+      script.id = scriptId;
+      script.src = `https://${host}/js/form.js`;
+      script.async = true;
+      script.addEventListener('load', ready);
+      script.addEventListener('error', failed);
+      document.head.appendChild(script);
+    }
+    return () => {
+      form.removeEventListener('completed', completed);
+      form.removeEventListener('declined', declined);
+      script?.removeEventListener('load', ready);
+      script?.removeEventListener('error', failed);
+    };
+  }, [finishSigning, isSigningForm, params.host]);
 
   const finishBuilder = async () => {
     if (!companyId || !params.templateId) return;
@@ -101,14 +192,46 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
     }
   };
 
+  const download = async () => {
+    if (!params.requestId) return;
+    setError('');
+    try {
+      await downloadSignedRequest({ id: params.requestId, template_title: params.title });
+    } catch (err: any) {
+      setError(err?.message || 'הורדת המסמך נכשלה');
+    }
+  };
+
   const documentUrl = params.src;
+  // On a computer a document gets the full-screen viewer; the phone layout
+  // below stays for iPhone-size screens.
+  if (isDesktop && params.mode === 'document' && documentUrl && !params.previewFields?.length) {
+    return <DocumentViewer src={documentUrl} title={params.title} requestId={params.requestId} signedAt={params.signedAt} onClose={() => navigation.goBack()} />;
+  }
   return (
     <Screen>
-      <ScreenHeader title={params.title} onBack={() => navigation.goBack()} />
-      <View style={styles.webWrap}>
-        {documentUrl && !html ? (
-          <iframe title={params.title} src={documentUrl} style={iframeStyle} onLoad={() => setLoading(false)} onError={() => { setLoading(false); setError('טעינת המסמך נכשלה'); }} />
-        ) : html ? (
+      <ScreenHeader
+        title={params.title}
+        onBack={() => navigation.goBack()}
+        right={params.allowDownload && params.mode === 'document' ? (
+          <TouchableOpacity style={styles.downloadButton} onPress={() => void download()} accessibilityRole="button" accessibilityLabel="הורדת המסמך החתום">
+            <Ionicons name="download-outline" size={20} color={COLORS.accent} />
+          </TouchableOpacity>
+        ) : undefined}
+      />
+      <View style={[styles.webWrap, params.mode === 'document' ? styles.documentSurface : styles.signingSurface]}>
+        {isSigningForm ? createElement('docuseal-form', {
+          ref: formRef,
+          'data-src': params.token ? undefined : params.src,
+          'data-token': params.token,
+          'data-preview': params.token ? 'true' : undefined,
+          'data-host': params.host?.includes('.eu') ? params.host : undefined,
+          'data-language': 'he',
+          'data-send-copy-email': 'false',
+          'data-with-send-copy-button': 'false',
+          'data-allow-to-resubmit': 'false',
+          style: directFormStyle,
+        }) : html ? (
           <iframe title={params.title} srcDoc={html} style={iframeStyle} onLoad={() => setLoading(false)} allow="clipboard-read; clipboard-write" />
         ) : null}
         {loading && <View style={styles.loading}><ActivityIndicator color={COLORS.accent} /></View>}
@@ -121,10 +244,14 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
 }
 
 const iframeStyle = { border: 0, width: '100%', height: '100%', display: 'block' } as const;
+const directFormStyle = { display: 'block', width: '100%', minWidth: 0, height: '100%', minHeight: '100dvh' } as const;
 const styles = StyleSheet.create({
-  webWrap: { flex: 1, backgroundColor: COLORS.screen },
+  webWrap: { flex: 1, width: '100%', overflow: 'hidden' },
+  signingSurface: { backgroundColor: COLORS.screen },
+  documentSurface: { backgroundColor: '#CDD3DB' },
   loading: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.screen },
   footer: { padding: SPACING.md, backgroundColor: COLORS.card },
   error: { color: COLORS.dangerText, textAlign: 'center', padding: SPACING.sm },
   sync: { flexDirection: 'row-reverse', gap: SPACING.sm, alignItems: 'center', justifyContent: 'center', padding: SPACING.sm },
+  downloadButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: COLORS.accentSoft },
 });

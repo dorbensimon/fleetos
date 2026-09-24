@@ -16,6 +16,24 @@ export const LICENSE_CLASS_OPTIONS = [
   { value: 'PERMIT', label: 'היתר מכונה ניידת (צמ"ה)' },
 ];
 
+// Stored as the Hebrew label itself (the columns are plain text), so every
+// screen can show the value without a lookup.
+export const MARITAL_STATUS_OPTIONS = ['רווק/ה', 'נשוי/אה', 'ידוע/ה בציבור', 'גרוש/ה', 'פרוד/ה', 'אלמן/ה']
+  .map((label) => ({ value: label, label }));
+
+export const EDUCATION_OPTIONS = ['יסודית', 'תיכונית ללא בגרות', 'בגרות מלאה', 'מקצועית / הנדסאי', 'תואר ראשון', 'תואר שני ומעלה']
+  .map((label) => ({ value: label, label }));
+
+/** Keeps a saved value that is not in the list selectable, so it is never shown as empty. */
+export function optionsWithCurrent(
+  options: { value: string; label: string }[],
+  current: string | null | undefined,
+): { value: string; label: string }[] {
+  const value = current?.trim();
+  if (!value || options.some((option) => option.value === value)) return options;
+  return [...options, { value, label: value }];
+}
+
 export interface DriverEditableFields {
   phone: string;
   national_id: string;

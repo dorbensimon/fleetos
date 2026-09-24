@@ -247,9 +247,10 @@ export function VehicleFormDesktopView({
           onPress={onSave}
           disabled={!canSubmit || saving}
         >
-          <DText weight="bold" style={[styles.ctaText, !canSubmit && styles.ctaTextDisabled]}>
-            {saving ? 'שומר…' : canSubmit ? ctaLabel : 'השלם את שדות החובה'}
+          <DText weight="bold" style={[styles.ctaText, !canSubmit && styles.ctaTextDisabled, saving && { opacity: 0 }]}>
+            {canSubmit ? ctaLabel : 'השלם את שדות החובה'}
           </DText>
+          {saving && <ActivityIndicator size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
         </HoverPressable>
         <DText style={styles.remainingText}>{remainingText}</DText>
       </View>

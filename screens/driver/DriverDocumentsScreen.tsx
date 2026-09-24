@@ -15,12 +15,13 @@ import { DOSSIER_BLUE } from '../../lib/dossierColors';
 import type { DriverCardRow } from '../../components/driverCard/driverCardSections';
 import { CONTENT_MAX_WIDTH } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { getDriver, type DriverRow } from '../../lib/adminApi';
+import { getDriver, updateDriver, type DriverRow } from '../../lib/adminApi';
 import { listDocuments } from '../../lib/documents';
 import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { HoverPressable } from '../../components/desktop/primitives';
+import { DriverLicenseModal, LICENSE_SIDE_TITLE } from '../../components/desktop/driver/DriverLicenseModal';
 import { dateOnlyIsoFromLocalDate } from '../../lib/driverFormValidation';
 
 /**
@@ -43,13 +44,18 @@ const DOCUMENT_CATEGORY_BY_ROW: Partial<Record<DriverCardRow['key'], string>> = 
   training: 'trainings',
 };
 
+function hasBothLicenseSides(docs: { title: string | null }[]): boolean {
+  return docs.some((doc) => doc.title === LICENSE_SIDE_TITLE.front) && docs.some((doc) => doc.title === LICENSE_SIDE_TITLE.back);
+}
+
 export default function DriverDocumentsScreen({ navigation }: Props) {
-  const { profile } = useCompany();
+  const { companyId, profile } = useCompany();
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
   const profileId = profile?.id;
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [licensePhotosComplete, setLicensePhotosComplete] = useState(false);
+  const [licenseModalOpen, setLicenseModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadRequest = useRef(0);
@@ -70,15 +76,32 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
       ]);
       if (requestId !== loadRequest.current) return;
       setDriver(loadedDriver);
-      setLicensePhotosComplete(
-        licenseDocs.some((doc) => doc.title === 'צד קדמי') && licenseDocs.some((doc) => doc.title === 'צד אחורי')
-      );
+      setLicensePhotosComplete(hasBothLicenseSides(licenseDocs));
     } catch (loadError: any) {
       if (requestId === loadRequest.current) setError(loadError?.message ?? 'טעינת המסמכים נכשלה');
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
   }, [profileId]);
+
+  // After a photo changes in the license window, refresh only the license
+  // status, so the page behind the window doesn't flash a loading state.
+  const refreshLicensePhotos = useCallback(async () => {
+    if (!profileId) return;
+    const licenseDocs = await listDocuments('driver', profileId, 'license_docs').catch(() => null);
+    if (licenseDocs) setLicensePhotosComplete(hasBothLicenseSides(licenseDocs));
+  }, [profileId]);
+
+  const saveLicenseExpiry = async (date: string | null): Promise<string | null> => {
+    if (!profileId) return 'פרופיל הנהג אינו זמין';
+    try {
+      await updateDriver(profileId, { license_expiry: date });
+      setDriver((current) => (current ? { ...current, license_expiry: date } : current));
+      return null;
+    } catch (err: any) {
+      return err?.message || 'השמירה נכשלה, נסה שוב';
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -106,7 +129,9 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
       return;
     }
     if (row.key === 'license-documents') {
-      navigation.navigate('DriverLicenseDocuments', { driverId: profileId });
+      // Same license screen the manager uses: a window on desktop, a page on mobile.
+      if (isDesktop) setLicenseModalOpen(true);
+      else navigation.navigate('DriverLicenseDocuments', { driverId: profileId });
       return;
     }
     if (row.key === 'signing-documents') {
@@ -151,6 +176,20 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
               חלק מהפרטים מנוהלים על ידי מנהל הצי. ניתן לצפות במסמכים ולהעלות מסמכים לפי ההרשאות שלך.
             </AppText>
           </View>
+        )}
+        {!!profileId && !!companyId && (
+          <DriverLicenseModal
+            visible={licenseModalOpen}
+            onClose={() => setLicenseModalOpen(false)}
+            companyId={companyId}
+            driverId={profileId}
+            driver={driver}
+            pendingRequest={null}
+            reviewing={false}
+            onReview={() => {}}
+            onSaveExpiry={saveLicenseExpiry}
+            onPhotosChanged={() => void refreshLicensePhotos()}
+          />
         )}
       </DesktopShell>
     );

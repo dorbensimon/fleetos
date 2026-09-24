@@ -63,7 +63,13 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
     setOpening(item.id);
     try {
       const session = await getSigningSession(item.id);
-      navigation.navigate('DocusealWebView', { ...session, title: item.template_title || folder?.title || 'מסמך', requestId: item.id });
+      navigation.navigate('DocusealWebView', {
+        ...session,
+        title: item.template_title || folder?.title || 'מסמך',
+        requestId: item.id,
+        returnToDriverDocuments: profile?.role === 'driver',
+        allowDownload: profile?.role === 'driver' && item.status === 'completed',
+      });
     } catch (err: any) { setError(err?.message || 'פתיחת המסמך נכשלה'); }
     finally { setOpening(''); }
   };

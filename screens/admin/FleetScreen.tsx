@@ -36,6 +36,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { FleetDesktopView } from '../../components/desktop/FleetDesktopView';
+import { AttentionMenu } from '../../components/desktop/FleetOverview';
 
 /**
  * A2/A4 — the fleet screen. "Drivers" and "Vehicles" are the same screen:
@@ -543,7 +544,19 @@ export default function FleetScreen() {
   // data, filters and navigation; phone and narrow web keep the layout below.
   if (isDesktop) {
     return (
-      <DesktopShell active="AdminHome" breadcrumbs={['דשבורד']}>
+      <DesktopShell
+        active="AdminHome"
+        breadcrumbs={['דשבורד']}
+        headerAccessory={
+          <AttentionMenu
+            vehicles={vehicles}
+            compliance={compliance}
+            vehicleDrivers={vehicleDrivers}
+            loading={vehiclesLoading}
+            onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId })}
+          />
+        }
+      >
         <FleetDesktopView<LicenseFilter, StatusFilter>
           mode={mode}
           onModeChange={setMode}

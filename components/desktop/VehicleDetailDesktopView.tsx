@@ -6,6 +6,7 @@ import type {
   ComplianceItem,
   Vehicle,
   VehicleDriverWithProfile,
+  VehicleStatus,
   VehicleType,
 } from '../../lib/adminApi';
 import { ComplianceSection } from '../ComplianceSection';
@@ -42,9 +43,17 @@ import {
   recordStyles,
   Section,
   STATE_LABEL,
+  StatusPicker,
   useOwnerDocuments,
 } from './record/RecordKit';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
+
+/** Statuses an admin can pick from the header pill; archiving has its own action. */
+const STATUS_OPTIONS: { value: VehicleStatus; label: string; tone: DesktopTone }[] = [
+  { value: 'active', label: VEHICLE_STATUS_LABELS.active, tone: 'ok' },
+  { value: 'maintenance', label: VEHICLE_STATUS_LABELS.maintenance, tone: 'warn' },
+  { value: 'disabled', label: VEHICLE_STATUS_LABELS.disabled, tone: 'neutral' },
+];
 
 /**
  * Desktop body of the vehicle card ("תיק רכב"). The desktop record uses
@@ -165,7 +174,7 @@ export function VehicleDetailDesktopView({
   const alertTone: DesktopTone = alerts.some((row) => row.state === 'expired') ? 'bad' : 'warn';
 
   const isArchived = vehicle.status === 'archived';
-  const statusTone: DesktopTone = isArchived ? 'neutral' : vehicle.status === 'active' ? 'ok' : 'warn';
+  const statusTone: DesktopTone = STATUS_OPTIONS.find((o) => o.value === vehicle.status)?.tone ?? 'neutral';
 
   const [plateEditing, setPlateEditing] = React.useState(false);
   const [intervalDraft, setIntervalDraft] = React.useState<number | null>(null);
@@ -201,7 +210,15 @@ export function VehicleDetailDesktopView({
           <View style={styles.recordTitleBlock}>
             <View style={styles.recordTitleRow}>
               <DText weight="bold" style={styles.vehicleName} numberOfLines={1}>{name}</DText>
-              <StatusPill tone={statusTone} label={VEHICLE_STATUS_LABELS[vehicle.status] ?? vehicle.status} />
+              {isArchived ? (
+                <StatusPill tone={statusTone} label={VEHICLE_STATUS_LABELS[vehicle.status] ?? vehicle.status} />
+              ) : (
+                <StatusPicker
+                  value={vehicle.status}
+                  options={STATUS_OPTIONS}
+                  onChange={(status) => onSaveField({ status })}
+                />
+              )}
             </View>
             <View style={styles.recordMeta}>
               <PlateBadge plate={formatPlate(vehicle.plate_number)} />
@@ -632,6 +649,7 @@ function DocumentFolderGrid({
             title={folder.title}
             icon={folder.icon}
             thumbnail={thumbnails[folder.category]}
+            signedVisual
             onPress={() => setOpenFolder(folder)}
             meta={count > 0 ? <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : 'חסר תוקף'} /> : <DText style={styles.folderTileCount}>אין מסמכים</DText>}
           />

@@ -1022,7 +1022,7 @@ function SaveFooter({
       accessibilityLabel={canSubmit ? ctaLabel : 'השלם את שדות החובה'}
     >
       {saving ? (
-        <AppText weight="bold" style={styles.ctaText}>שומר...</AppText>
+        <ActivityIndicator color="#FFFFFF" accessibilityLabel="שומר" />
       ) : (
         <>
           <Ionicons name={isEdit ? 'checkmark-circle' : 'add-circle'} size={18} color={canSubmit ? '#FFFFFF' : 'rgba(16,31,44,.33)'} />

@@ -20,8 +20,20 @@ const STATUS_TONE: Record<FolderStatus, DesktopTone> = { pending: 'warn', comple
 const STATUS_LABEL: Record<FolderStatus, string> = { pending: 'ממתין לחתימה', completed: 'נחתם', failed: 'דורש טיפול', empty: 'לא נשלח' };
 
 const time = (date: string) => new Date(date).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
+const day = (date: string) => new Date(date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-export type SigningSessionTarget = Awaited<ReturnType<typeof getSigningSession>> & { title: string; requestId: string };
+/** When the folder's most recent signed copy was signed, or null if none was. */
+function lastSignedAt(folder: SigningFolder) {
+  let latest: string | null = null;
+  for (const item of folder.requests) {
+    if (item.status !== 'completed') continue;
+    const at = item.completed_at || item.created_at;
+    if (!latest || new Date(at) > new Date(latest)) latest = at;
+  }
+  return latest;
+}
+
+export type SigningSessionTarget = Awaited<ReturnType<typeof getSigningSession>> & { title: string; requestId: string; signedAt?: string };
 
 /** Loads the driver's signing folders (company templates + the driver's requests). */
 export function useDriverSigningFolders(companyId: string | null | undefined, driverId: string) {
@@ -102,14 +114,21 @@ export function DriverSigningTiles({
       <View style={recordStyles.folderGrid}>
         {folders.map((folder) => {
           const status = signingFolderStatus(folder);
+          const signedAt = lastSignedAt(folder);
           return (
             <FolderTile
               key={folder.id}
               title={folder.title}
               icon="create-outline"
+              signedVisual
               onPress={() => setOpenId(folder.id)}
-              accessibilityLabel={`${folder.title}, ${STATUS_LABEL[status]}`}
-              meta={<StatusPill tone={STATUS_TONE[status]} label={STATUS_LABEL[status]} />}
+              accessibilityLabel={`${folder.title}, ${STATUS_LABEL[status]}${signedAt ? `, נחתם לאחרונה ב-${day(signedAt)}` : ''}`}
+              meta={
+                <>
+                  <StatusPill tone={STATUS_TONE[status]} label={STATUS_LABEL[status]} />
+                  {signedAt && <DText style={styles.signedAt}>{day(signedAt)}</DText>}
+                </>
+              }
             />
           );
         })}
@@ -174,7 +193,9 @@ function SigningFolderModal({
     setOpening(item.id);
     try {
       const session = await getSigningSession(item.id);
-      onOpenSession({ ...session, title: item.template_title || folder.title, requestId: item.id });
+      onOpenSession({ ...session, title: item.template_title || folder.title, requestId: item.id, signedAt: item.completed_at ?? undefined });
+      // The document opens full screen; this window must not stay on top of it.
+      onClose();
     } catch (err: any) {
       setMessage(err?.message || 'פתיחת המסמך נכשלה');
     } finally {
@@ -261,6 +282,7 @@ function SigningFolderModal({
 }
 
 const styles = StyleSheet.create({
+  signedAt: { fontSize: 12, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   message: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, paddingVertical: 4 },
   body: { paddingHorizontal: 18, paddingVertical: 16, gap: 12 },
   sendBtn: {

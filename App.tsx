@@ -39,6 +39,8 @@ import CompanyDocumentsScreen from './screens/admin/CompanyDocumentsScreen';
 import AttentionScreen from './screens/admin/AttentionScreen';
 import ReportsScreen from './screens/admin/ReportsScreen';
 import AdminProfileScreen from './screens/admin/AdminProfileScreen';
+import CompanySettingsScreen from './screens/admin/CompanySettingsScreen';
+import SignedDocumentsScreen from './screens/admin/SignedDocumentsScreen';
 import NotificationsScreen from './screens/admin/NotificationsScreen';
 import AdminDocumentSigningScreen from './screens/admin/AdminDocumentSigningScreen';
 import GlobalSigningTemplatesScreen from './screens/GlobalSigningTemplatesScreen';
@@ -64,6 +66,7 @@ import {
   registerForPushNotifications,
   unregisterPushNotifications,
 } from './lib/pushNotifications';
+import { navigateToNotificationTarget } from './lib/notificationTargets';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
@@ -107,6 +110,8 @@ const linking: LinkingOptions<RootStackParamList> = {
       Attention: 'attention',
       Reports: 'reports',
       AdminProfile: 'admin/profile',
+      CompanySettings: 'admin/company-settings',
+      SignedDocuments: 'signed-documents',
       Notifications: 'notifications',
       AdminDocumentSigning: 'documents/signing',
       GlobalSigningTemplates: 'owner/signing-templates',
@@ -191,13 +196,10 @@ export default function App() {
   useEffect(() => {
     if (!initialRoute || initialRoute === 'Login') return;
     void registerForPushNotifications().catch(() => undefined);
-    return listenForPushNotificationResponses((screen, params) => {
+    return listenForPushNotificationResponses((target) => {
       if (!navigationRef.isReady()) return;
-      if (screen === 'VehicleDetail') {
-        if (params) navigationRef.navigate('VehicleDetail', params);
-        return;
-      }
-      navigationRef.navigate(screen);
+      if (target) navigateToNotificationTarget(navigationRef, target);
+      else navigationRef.navigate('Notifications');
     });
   }, [initialRoute]);
 
@@ -261,6 +263,8 @@ export default function App() {
               <Stack.Screen name="Attention" component={AttentionScreen} />
               <Stack.Screen name="Reports" component={ReportsScreen} />
               <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
+              <Stack.Screen name="CompanySettings" component={CompanySettingsScreen} />
+              <Stack.Screen name="SignedDocuments" component={SignedDocumentsScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               <Stack.Screen name="AdminDocumentSigning" component={AdminDocumentSigningScreen} />
               <Stack.Screen name="GlobalSigningTemplates" component={GlobalSigningTemplatesScreen} />

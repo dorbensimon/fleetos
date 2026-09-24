@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { DriverDetails, DriverRow } from '../../lib/adminApi';
@@ -11,7 +11,14 @@ import { formatPlate } from '../../lib/plate';
 import { isValidIsraeliPhone } from '../../lib/phone';
 import { isValidIsraeliNationalId } from '../../lib/driverFormValidation';
 import { isValidEmail } from '../../lib/validation';
-import { joinLicenseClasses, LICENSE_CLASS_OPTIONS, splitLicenseClasses } from '../../lib/driverFields';
+import {
+  EDUCATION_OPTIONS,
+  joinLicenseClasses,
+  LICENSE_CLASS_OPTIONS,
+  MARITAL_STATUS_OPTIONS,
+  optionsWithCurrent,
+  splitLicenseClasses,
+} from '../../lib/driverFields';
 import { DesktopSelect, DLtrText, DText, HoverPressable, StatusPill } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone } from './desktopTheme';
 import {
@@ -75,6 +82,8 @@ export function DriverDetailDesktopView({
   onSaveEmail,
   onOpenVehicle,
   onOpenSigningSession,
+  openFolder: openFolderRequest,
+  onFolderOpened,
   onEdit,
   onResetPassword,
   onCall,
@@ -103,6 +112,9 @@ export function DriverDetailDesktopView({
   onSaveEmail: (email: string) => Promise<string | null>;
   onOpenVehicle: (vehicleId: string) => void;
   onOpenSigningSession: (target: SigningSessionTarget) => void;
+  /** A document category to open on arrival (from a notification); `license_docs` opens the license. */
+  openFolder?: string | null;
+  onFolderOpened?: () => void;
   onEdit: () => void;
   onResetPassword: () => void;
   onCall: () => void;
@@ -124,6 +136,16 @@ export function DriverDetailDesktopView({
   const [licenseOpen, setLicenseOpen] = useState(false);
   const [openFolder, setOpenFolder] = useState<RecordDocumentFolder | null>(null);
   const [signingRequest, setSigningRequest] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openFolderRequest) return;
+    if (openFolderRequest === LICENSE_FOLDER) setLicenseOpen(true);
+    else {
+      const folder = DOCUMENT_GROUPS.flatMap((group) => group.folders).find((f) => f.category === openFolderRequest);
+      if (folder) setOpenFolder(folder);
+    }
+    onFolderOpened?.();
+  }, [openFolderRequest, onFolderOpened]);
 
   const licenseExpiry = driver?.license_expiry ?? null;
   const licenseState = expiryState(licenseExpiry);
@@ -330,6 +352,33 @@ export function DriverDetailDesktopView({
                   onSave={(v) => onSaveField({ address: v.trim() || null })}
                 />
                 <EditableTextField
+                  label="טלפון בבית"
+                  value={driver?.home_phone || '—'}
+                  raw={driver?.home_phone ?? ''}
+                  ltr
+                  keyboardType="number-pad"
+                  validate={(v) => (!v.trim() || isValidIsraeliPhone(v) ? null : 'מספר טלפון לא תקין')}
+                  onSave={(v) => onSaveField({ home_phone: v.trim() || null })}
+                />
+                <EditableSelectField
+                  label="מצב משפחתי"
+                  value={driver?.marital_status || '—'}
+                  raw={driver?.marital_status || null}
+                  options={optionsWithCurrent(MARITAL_STATUS_OPTIONS, driver?.marital_status)}
+                  allowClear
+                  placeholder="לא נבחר"
+                  onSave={(v) => onSaveField({ marital_status: v })}
+                />
+                <EditableSelectField
+                  label="השכלה"
+                  value={driver?.education || '—'}
+                  raw={driver?.education || null}
+                  options={optionsWithCurrent(EDUCATION_OPTIONS, driver?.education)}
+                  allowClear
+                  placeholder="לא נבחרה"
+                  onSave={(v) => onSaveField({ education: v })}
+                />
+                <EditableTextField
                   label="מספר עובד"
                   value={driver?.employee_number || '—'}
                   raw={driver?.employee_number ?? ''}
@@ -401,6 +450,7 @@ export function DriverDetailDesktopView({
                         title="רישיון נהיגה"
                         icon="card-outline"
                         thumbnail={thumbnails[LICENSE_FOLDER]}
+                        signedVisual
                         onPress={() => setLicenseOpen(true)}
                         meta={
                           licenseExpiry
@@ -418,6 +468,7 @@ export function DriverDetailDesktopView({
                           title={folder.title}
                           icon={folder.icon}
                           thumbnail={thumbnails[folder.category]}
+                          signedVisual
                           onPress={() => setOpenFolder(folder)}
                           meta={
                             <DText style={styles.folderTileCount}>
@@ -633,7 +684,7 @@ const styles = StyleSheet.create({
   documentsCard: { padding: 14, gap: 16 },
   documentGroup: { gap: 8 },
   documentGroupTitle: { fontSize: 12, color: DESKTOP_COLORS.inkMuted },
-  tileRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 },
+  tileRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 12 },
   footer: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint, textAlign: 'center', marginTop: 6 },
   emptyValue: { fontSize: 13, marginTop: 7, color: DESKTOP_COLORS.inkMuted },
   vehicleRole: { flex: 1, fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },

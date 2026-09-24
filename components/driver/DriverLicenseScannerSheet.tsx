@@ -239,7 +239,7 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
           {errors.general && <AppText style={styles.error}>{errors.general}</AppText>}
 
           <PrimaryButton
-            label={saving ? 'שומר...' : 'שמור'}
+            label="שמור"
             icon="checkmark-circle-outline"
             onPress={submit}
             loading={saving}

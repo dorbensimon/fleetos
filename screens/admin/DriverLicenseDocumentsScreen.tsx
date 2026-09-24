@@ -438,13 +438,14 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
   if (isDesktop) {
     return (
       <>
-        <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', 'מסמכי רישיון נהיגה']}>
+        <DesktopShell
+          active={isDriverSelf ? 'DriverDocuments' : 'AdminHome'}
+          breadcrumbs={isDriverSelf ? ['המסמכים שלי', 'מסמכי רישיון נהיגה'] : ['ניהול', 'נהגים', 'מסמכי רישיון נהיגה']}
+        >
           <View style={desktopStyles.wrap}>
-            {!isDriverSelf && (
-              <HoverPressable style={desktopStyles.editButton} onPress={toggleEdit}>
-                <DText weight="semiBold" style={desktopStyles.editButtonText}>{editMode ? 'סיום עריכה' : 'עריכה'}</DText>
-              </HoverPressable>
-            )}
+            <HoverPressable style={desktopStyles.editButton} onPress={toggleEdit}>
+              <DText weight="semiBold" style={desktopStyles.editButtonText}>{editMode ? 'סיום עריכה' : 'עריכה'}</DText>
+            </HoverPressable>
             {desktopTileGrid}
             <View style={desktopStyles.card}>
               <View style={desktopStyles.row}>
@@ -465,10 +466,10 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
               </View>
             </View>
             <DText style={desktopStyles.footer}>{footerText}</DText>
-            {saving && <DText style={desktopStyles.footer}>שומר…</DText>}
             {editMode && (
               <HoverPressable style={desktopStyles.saveButton} onPress={save} disabled={saving}>
-                <DText weight="bold" style={desktopStyles.saveButtonText}>{saving ? 'שומר…' : 'שמירת שינויים'}</DText>
+                <DText weight="bold" style={[desktopStyles.saveButtonText, saving && { opacity: 0 }]}>שמירת שינויים</DText>
+                {saving && <ActivityIndicator size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
               </HoverPressable>
             )}
           </View>
@@ -482,13 +483,11 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
     <View style={styles.screen}>
       <AdminGradientBackground />
       <DriverDossierHero title="מסמכי רישיון נהיגה" subtitle={isVerified ? 'המסמכים מאומתים' : 'ממתין להשלמה'} icon="card-outline" insetTop={insets.top} onBack={() => navigation.goBack()} />
-      {!isDriverSelf && (
-        <View style={styles.editAction}>
-          <Pressable onPress={toggleEdit} style={styles.navEdit} hitSlop={8}>
-            <Text style={[DC_TYPO.navBackLink, { color: DC_COLORS.blueLight }]}>{editMode ? 'סיום עריכה' : 'עריכה'}</Text>
-          </Pressable>
-        </View>
-      )}
+      <View style={styles.editAction}>
+        <Pressable onPress={toggleEdit} style={styles.navEdit} hitSlop={8}>
+          <Text style={[DC_TYPO.navBackLink, { color: DC_COLORS.blueLight }]}>{editMode ? 'סיום עריכה' : 'עריכה'}</Text>
+        </Pressable>
+      </View>
 
       <View style={styles.body}>
         <View style={styles.grid}>

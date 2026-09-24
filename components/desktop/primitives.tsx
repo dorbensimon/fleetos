@@ -55,12 +55,27 @@ export function HoverPressable({
   /** Press feedback that is suppressed when the user prefers reduced motion. */
   pressMotionStyle?: StyleProp<ViewStyle>;
 }) {
+  // Hover styling doubles as the keyboard focus ring, but only for keyboard
+  // focus: a mouse click also focuses the element (and a closing modal hands
+  // focus back to it), which left a clicked tile looking hovered for good.
+  const [keyboardFocus, setKeyboardFocus] = useState(false);
+  const { onFocus, onBlur } = rest;
   return (
     <Pressable
       accessibilityRole="button"
       {...rest}
+      onFocus={(event) => {
+        const target = event.nativeEvent?.target as unknown as Element | null;
+        setKeyboardFocus(!!target?.matches?.(':focus-visible'));
+        onFocus?.(event);
+      }}
+      onBlur={(event) => {
+        setKeyboardFocus(false);
+        onBlur?.(event);
+      }}
       style={(state) => {
-        const { hovered, focused, pressed } = state as HoverState;
+        const { hovered, pressed } = state as HoverState;
+        const focused = keyboardFocus;
         return [
           webOnly({
             cursor: rest.disabled ? 'default' : 'pointer',
@@ -134,8 +149,11 @@ export function DesktopInput({
   style,
   onBlur,
   onSubmitEditing,
+  large,
 }: {
   value: string;
+  /** Roomier 44px field for airy settings pages. */
+  large?: boolean;
   onChangeText?: (v: string) => void;
   onBlur?: () => void;
   onSubmitEditing?: () => void;
@@ -162,6 +180,7 @@ export function DesktopInput({
       onSubmitEditing={onSubmitEditing}
       style={[
         fieldStyles.input,
+        large && fieldStyles.inputLarge,
         ltr && fieldStyles.inputLtr,
         !editable && fieldStyles.inputDisabled,
         hasError && fieldStyles.inputError,
@@ -185,9 +204,11 @@ export function DesktopSelect<T extends string>({
   placeholder = 'בחר',
   allowClear,
   hasError,
+  large,
 }: {
   value: T | null;
   options: DesktopSelectOption<T>[];
+  large?: boolean;
   onChange: (v: T | null) => void;
   placeholder?: string;
   allowClear?: boolean;
@@ -208,12 +229,12 @@ export function DesktopSelect<T extends string>({
   return (
     <View ref={triggerRef}>
       <HoverPressable
-        style={[fieldStyles.selectBox, hasError && fieldStyles.inputError]}
+        style={[fieldStyles.selectBox, large && fieldStyles.selectBoxLarge, hasError && fieldStyles.inputError]}
         hoverStyle={{ borderColor: DESKTOP_COLORS.brand }}
         onPress={() => (open ? setOpen(false) : openMenu())}
       >
         <Ionicons name="chevron-down" size={14} color={DESKTOP_COLORS.inkFaint} />
-        <DText style={[fieldStyles.selectValue, !selected && fieldStyles.placeholder]} numberOfLines={1}>
+        <DText style={[fieldStyles.selectValue, large && fieldStyles.selectValueLarge, !selected && fieldStyles.placeholder]} numberOfLines={1}>
           {selected?.label ?? placeholder}
         </DText>
       </HoverPressable>
@@ -272,9 +293,11 @@ export function DesktopDateField({
   placeholder = 'בחר תאריך',
   hasError,
   allowClear = true,
+  large,
 }: {
   value: string | null;
   onChange: (iso: string | null) => void;
+  large?: boolean;
   placeholder?: string;
   hasError?: boolean;
   allowClear?: boolean;
@@ -302,12 +325,12 @@ export function DesktopDateField({
   return (
     <View ref={triggerRef}>
       <HoverPressable
-        style={[fieldStyles.selectBox, hasError && fieldStyles.inputError]}
+        style={[fieldStyles.selectBox, large && fieldStyles.selectBoxLarge, hasError && fieldStyles.inputError]}
         hoverStyle={{ borderColor: DESKTOP_COLORS.brand }}
         onPress={openPicker}
       >
         <Ionicons name="calendar-outline" size={14} color={DESKTOP_COLORS.inkFaint} />
-        <DText style={[fieldStyles.selectValue, !value && fieldStyles.placeholder]} numberOfLines={1}>
+        <DText style={[fieldStyles.selectValue, large && fieldStyles.selectValueLarge, !value && fieldStyles.placeholder]} numberOfLines={1}>
           {value ? formatDate(value) : placeholder}
         </DText>
       </HoverPressable>
@@ -412,6 +435,7 @@ const fieldStyles = StyleSheet.create({
     textAlign: 'right',
     backgroundColor: DESKTOP_COLORS.surface,
   },
+  inputLarge: { height: 44, borderRadius: 10, paddingHorizontal: 14, fontSize: 15 },
   inputLtr: { textAlign: 'left', writingDirection: 'ltr' },
   inputDisabled: { backgroundColor: DESKTOP_COLORS.surfaceMuted, color: DESKTOP_COLORS.inkFaint },
   inputError: { borderColor: DESKTOP_COLORS.danger },
@@ -427,6 +451,8 @@ const fieldStyles = StyleSheet.create({
     backgroundColor: DESKTOP_COLORS.surface,
   },
   selectValue: { flex: 1, fontSize: 13 },
+  selectBoxLarge: { height: 44, borderRadius: 10, paddingHorizontal: 14 },
+  selectValueLarge: { fontSize: 15 },
   placeholder: { color: DESKTOP_COLORS.inkFaint },
   selectCatcher: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   selectMenu: {

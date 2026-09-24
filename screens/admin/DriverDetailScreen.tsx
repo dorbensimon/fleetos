@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, ScrollView, Linking } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
@@ -42,6 +42,7 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DriverDetailDesktopView } from '../../components/desktop/DriverDetailDesktopView';
 import { departmentNameById, departmentOptions, isStaleDepartmentError } from '../../lib/driverFields';
 import { dateOnlyIsoFromLocalDate } from '../../lib/driverFormValidation';
+import { DRIVER_DOCUMENT_GROUPS, LICENSE_DOCS_CATEGORY } from '../../lib/driverDocumentFolders';
 
 const APP_STARTED_AT_MS = Date.now();
 
@@ -264,6 +265,23 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     }, [load])
   );
 
+  // Arriving from a "driver uploaded a document" notification: open the
+  // folder it is about. The desktop view does this itself (see
+  // onFolderOpened below); on the phone each folder has its own screen.
+  const openFolderParam = route.params.openFolder;
+  useEffect(() => {
+    if (isDesktop || !driver || !openFolderParam) return;
+    navigation.setParams({ openFolder: undefined });
+    if (openFolderParam === LICENSE_DOCS_CATEGORY) {
+      navigation.navigate('DriverLicenseDocuments', { driverId });
+      return;
+    }
+    const folder = DRIVER_DOCUMENT_GROUPS.flatMap((group) => group.folders).find((f) => f.category === openFolderParam);
+    if (folder) {
+      navigation.navigate('DocumentCategory', { ownerType: 'driver', ownerId: driverId, category: folder.category, title: folder.title });
+    }
+  }, [isDesktop, driver, openFolderParam, navigation, driverId]);
+
   const exportReport = async () => {
     if (!driver || !company || exportingReport) return;
     setExportingReport(true);
@@ -411,6 +429,8 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
             onSaveEmail={saveDriverEmail}
             onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, returnTo: 'driver' })}
             onOpenSigningSession={(target) => navigation.navigate('DocusealWebView', target)}
+            openFolder={route.params.openFolder ?? null}
+            onFolderOpened={() => navigation.setParams({ openFolder: undefined })}
             onEdit={() => navigation.navigate('DriverForm', { driverId })}
             onResetPassword={() => setResetOpen(true)}
             onCall={() => driver?.phone && dialPhone(driver.phone)}

@@ -1,40 +1,49 @@
-import React, { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, LayoutChangeEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ComplianceItem, DriverRow, Vehicle, VehicleDriverWithProfile } from '../../lib/adminApi';
+import { ComplianceItem, Vehicle, VehicleDriverWithProfile } from '../../lib/adminApi';
 import { useCompany } from '../../lib/CompanyContext';
 import { formatPlate } from '../../lib/plate';
 import { expiryState } from '../../lib/theme';
-import { DText, HoverPressable, prefersReducedMotion } from './primitives';
+import { DLtrText, DText, HoverPressable, prefersReducedMotion } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
-import { DesktopModal } from './DesktopModal';
 import { DepartmentsQuickAction, ReportsQuickAction } from './DashboardWidgets';
 
 /**
- * Top of the desktop dashboard: a personal greeting, a "fleet health"
- * breakdown whose legend rows filter the table below, and an inline
- * "needs attention" queue. Everything is derived from the data FleetScreen
- * already loaded, so the overview and the table can never disagree.
+ * Building blocks of the desktop dashboard, one control per job:
+ * - a segmented control picks what the page is about (drivers / vehicles);
+ * - filter cards are both the numbers and the filters, and the selected one
+ *   fills with its colour (Reminders smart-list style) so the current view
+ *   is never in doubt;
+ * - "needs attention" is a top-bar dropdown grouping only the problems no
+ *   card already covers.
  */
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
+export type FleetMode = 'drivers' | 'vehicles';
 
-export type OverviewFocus =
-  | { mode: 'drivers'; filter: 'all' | 'soon' | 'expired' | 'no_vehicle' }
-  | { mode: 'vehicles'; filter: 'all' | 'active' | 'maintenance' | 'disabled' };
-
-type AttentionItem = {
-  id: string;
+export type FilterCard<T extends string> = {
+  value: T;
+  label: string;
+  hint: string;
   icon: IconName;
-  title: string;
-  subtitle: string;
-  tone: DesktopTone;
-  onPress: () => void;
+  count: number;
+  tone?: DesktopTone;
 };
 
-const ATTENTION_PREVIEW = 6;
-const TONE_ORDER: Record<DesktopTone, number> = { bad: 0, warn: 1, neutral: 2, ok: 3 };
 const TABULAR = webOnly({ fontVariantNumeric: 'tabular-nums' });
+/** Critically damped: the selection glides and settles with no bounce. */
+const SPRING = { stiffness: 340, damping: 37, mass: 1, useNativeDriver: false } as const;
+const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
+
+/** Solid fills for a selected card — dark enough for white text. */
+const TONE_FILL: Record<DesktopTone | 'brand', string> = {
+  brand: DESKTOP_COLORS.brand,
+  ok: '#1E9E4C',
+  warn: '#D97706',
+  bad: '#DC2F26',
+  neutral: '#66727F',
+};
 
 function greetingFor(hour: number): string {
   if (hour >= 5 && hour < 12) return 'בוקר טוב';
@@ -43,524 +52,629 @@ function greetingFor(hour: number): string {
   return 'לילה טוב';
 }
 
-export function FleetOverview({
-  drivers,
-  vehicles,
-  compliance,
-  vehicleDrivers,
-  loading,
-  onFocus,
-  onOpenDriver,
-  onOpenVehicle,
-}: {
-  drivers: DriverRow[];
-  vehicles: Vehicle[];
-  compliance: Map<string, ComplianceItem[]>;
-  vehicleDrivers: Map<string, VehicleDriverWithProfile[]>;
-  loading: boolean;
-  onFocus: (focus: OverviewFocus) => void;
-  onOpenDriver: (driverId: string) => void;
-  onOpenVehicle: (vehicleId: string) => void;
-}) {
-  const { profile } = useCompany();
-  const [showAll, setShowAll] = useState(false);
-  const reduced = prefersReducedMotion();
+/* ------------------------------------------------------------------ */
+/* Header                                                              */
+/* ------------------------------------------------------------------ */
 
+export function FleetHeader() {
+  const { profile } = useCompany();
   const now = new Date();
   const firstName = profile?.full_name?.trim().split(/\s+/)[0] ?? '';
   const greeting = firstName ? `${greetingFor(now.getHours())}, ${firstName}` : greetingFor(now.getHours());
   const dateLine = now.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
 
-  const liveVehicles = useMemo(() => vehicles.filter((v) => v.status !== 'archived'), [vehicles]);
-
-  const driverHealth = useMemo(() => {
-    const counts = { ok: 0, soon: 0, expired: 0, missing: 0, noVehicle: 0 };
-    drivers.forEach((d) => {
-      const state = expiryState(d.license_expiry);
-      counts[state === 'optional' ? 'missing' : state] += 1;
-      if (!d.vehicle_plate) counts.noVehicle += 1;
-    });
-    return counts;
-  }, [drivers]);
-
-  const vehicleHealth = useMemo(() => {
-    const counts = { active: 0, maintenance: 0, disabled: 0, uninsured: 0 };
-    liveVehicles.forEach((v) => {
-      if (v.status === 'active' || v.status === 'maintenance' || v.status === 'disabled') counts[v.status] += 1;
-      const insurance = compliance.get(v.id)?.find((c) => c.item_type === 'insurance_mandatory');
-      const state = expiryState(insurance?.expiry_date);
-      if (state === 'missing' || state === 'expired') counts.uninsured += 1;
-    });
-    return counts;
-  }, [liveVehicles, compliance]);
-
-  const attention = useMemo<AttentionItem[]>(() => {
-    const rows: AttentionItem[] = [];
-    drivers.forEach((d) => {
-      const state = expiryState(d.license_expiry);
-      if (state === 'expired' || state === 'soon') {
-        rows.push({
-          id: `dl-${d.id}`,
-          icon: 'card-outline',
-          title: d.full_name || 'נהג ללא שם',
-          subtitle: state === 'expired' ? 'רישיון נהיגה פג תוקף' : 'רישיון נהיגה קרוב לפוג',
-          tone: state === 'expired' ? 'bad' : 'warn',
-          onPress: () => onOpenDriver(d.id),
-        });
-      }
-    });
-    liveVehicles.forEach((v) => {
-      const insurance = compliance.get(v.id)?.find((c) => c.item_type === 'insurance_mandatory');
-      const state = expiryState(insurance?.expiry_date);
-      if (state === 'missing' || state === 'expired') {
-        rows.push({
-          id: `vi-${v.id}`,
-          icon: 'shield-outline',
-          title: formatPlate(v.plate_number),
-          subtitle: state === 'missing' ? 'ללא ביטוח חובה בתוקף' : 'ביטוח חובה פג תוקף',
-          tone: 'bad',
-          onPress: () => onOpenVehicle(v.id),
-        });
-      }
-      if (!(vehicleDrivers.get(v.id)?.length)) {
-        rows.push({
-          id: `vu-${v.id}`,
-          icon: 'car-outline',
-          title: formatPlate(v.plate_number),
-          subtitle: 'ללא נהג משויך',
-          tone: 'neutral',
-          onPress: () => onOpenVehicle(v.id),
-        });
-      }
-    });
-    return rows.sort((a, b) => TONE_ORDER[a.tone] - TONE_ORDER[b.tone]);
-  }, [drivers, liveVehicles, compliance, vehicleDrivers, onOpenDriver, onOpenVehicle]);
-
-  const urgentCount = attention.filter((row) => row.tone === 'bad').length;
-  const validPct = drivers.length ? Math.round((driverHealth.ok / drivers.length) * 100) : 0;
-
   return (
-    <View style={styles.root}>
-      <View style={[styles.header, enter(0, reduced)]}>
-        <View style={styles.headerText}>
-          <DText weight="bold" style={styles.greeting}>{greeting}</DText>
-          <DText style={styles.dateLine}>{dateLine}</DText>
-        </View>
-        <View style={styles.headerActions}>
-          <ReportsQuickAction />
-          <DepartmentsQuickAction />
-        </View>
+    <View style={[styles.header, enter(0)]}>
+      <View style={styles.headerText}>
+        <DText weight="bold" style={styles.greeting}>
+          {greeting}
+        </DText>
+        <DText style={styles.dateLine}>{dateLine}</DText>
       </View>
-
-      <View style={styles.grid}>
-        {/* מצב הצי */}
-        <View style={[styles.panel, styles.healthPanel, enter(1, reduced)]}>
-          <PanelTitle title="מצב הצי" caption="לחיצה על שורה מסננת את הרשימה" />
-          <View style={styles.healthColumns}>
-            <HealthColumn
-              label="נהגים פעילים"
-              total={drivers.length}
-              caption={drivers.length ? `${validPct}% עם רישיון בתוקף` : 'עדיין אין נהגים'}
-              loading={loading}
-              reduced={reduced}
-              segments={[
-                { key: 'ok', label: 'רישיון בתוקף', count: driverHealth.ok, tone: 'ok' },
-                { key: 'soon', label: 'קרוב לפוג', count: driverHealth.soon, tone: 'warn', onPress: () => onFocus({ mode: 'drivers', filter: 'soon' }) },
-                { key: 'expired', label: 'רישיון פג', count: driverHealth.expired, tone: 'bad', onPress: () => onFocus({ mode: 'drivers', filter: 'expired' }) },
-                { key: 'missing', label: 'ללא תוקף מוזן', count: driverHealth.missing, tone: 'neutral' },
-              ]}
-              footnote={{ label: 'ללא רכב משויך', count: driverHealth.noVehicle, onPress: () => onFocus({ mode: 'drivers', filter: 'no_vehicle' }) }}
-            />
-            <View style={styles.columnRule} />
-            <HealthColumn
-              label="רכבים בצי"
-              total={liveVehicles.length}
-              caption={liveVehicles.length ? `${vehicleHealth.active} זמינים לנסיעה` : 'עדיין אין רכבים'}
-              loading={loading}
-              reduced={reduced}
-              segments={[
-                { key: 'active', label: 'פעיל', count: vehicleHealth.active, tone: 'ok', onPress: () => onFocus({ mode: 'vehicles', filter: 'active' }) },
-                { key: 'maintenance', label: 'בטיפול', count: vehicleHealth.maintenance, tone: 'warn', onPress: () => onFocus({ mode: 'vehicles', filter: 'maintenance' }) },
-                { key: 'disabled', label: 'מושבת', count: vehicleHealth.disabled, tone: 'neutral', onPress: () => onFocus({ mode: 'vehicles', filter: 'disabled' }) },
-              ]}
-              footnote={{ label: 'ביטוח חובה לא בתוקף', count: vehicleHealth.uninsured, tone: vehicleHealth.uninsured > 0 ? 'bad' : undefined }}
-            />
-          </View>
-        </View>
-
-        {/* דרוש טיפול */}
-        <View style={[styles.panel, styles.attentionPanel, enter(2, reduced)]}>
-          <View style={styles.attentionHead}>
-            <PanelTitle title="דרוש טיפול" />
-            {!loading && attention.length > 0 && (
-              <View style={styles.attentionCount}>
-                {urgentCount > 0 && <View style={[styles.pulseDot, !reduced && styles.pulseDotAnim]} />}
-                <DText weight="semiBold" style={[styles.attentionCountText, TABULAR]}>
-                  {urgentCount > 0 ? `${urgentCount} דחופים · ${attention.length} סה״כ` : `${attention.length} פתוחים`}
-                </DText>
-              </View>
-            )}
-          </View>
-
-          {loading ? (
-            <View style={styles.attentionList}>
-              {Array.from({ length: 4 }, (_, i) => (
-                <View key={i} style={styles.skeletonRow}>
-                  <View style={styles.skeletonIcon} />
-                  <View style={styles.skeletonLines}>
-                    <View style={[styles.skeletonBar, { width: '55%' }]} />
-                    <View style={[styles.skeletonBar, { width: '35%', height: 8 }]} />
-                  </View>
-                </View>
-              ))}
-            </View>
-          ) : attention.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <Ionicons name="checkmark" size={18} color={DESKTOP_TONES.ok.fg} />
-              </View>
-              <DText weight="semiBold" style={styles.emptyTitle}>אין פריטים פתוחים</DText>
-              <DText style={styles.emptyHint}>כל הרישיונות והביטוחים בתוקף, וכל הרכבים משויכים לנהג.</DText>
-            </View>
-          ) : (
-            <>
-              <View style={styles.attentionList}>
-                {attention.slice(0, ATTENTION_PREVIEW).map((row, index) => (
-                  <AttentionRow key={row.id} row={row} style={enterRow(index, reduced)} />
-                ))}
-              </View>
-              {attention.length > ATTENTION_PREVIEW && (
-                <HoverPressable style={styles.showAll} hoverStyle={styles.showAllHover} onPress={() => setShowAll(true)}>
-                  <DText weight="semiBold" style={styles.showAllText}>הצג את כל {attention.length} הפריטים</DText>
-                  <Ionicons name="arrow-back" size={13} color={DESKTOP_COLORS.brand} />
-                </HoverPressable>
-              )}
-            </>
-          )}
-        </View>
+      <View style={styles.headerActions}>
+        <ReportsQuickAction />
+        <DepartmentsQuickAction />
       </View>
-
-      <DesktopModal visible={showAll} title="דרוש טיפול" onClose={() => setShowAll(false)}>
-        <View style={styles.modalList}>
-          {attention.map((row) => (
-            <AttentionRow key={row.id} row={{ ...row, onPress: () => { setShowAll(false); row.onPress(); } }} />
-          ))}
-        </View>
-      </DesktopModal>
     </View>
   );
 }
 
 /* ------------------------------------------------------------------ */
+/* Segmented control: drivers / vehicles                               */
+/* ------------------------------------------------------------------ */
 
-type Segment = { key: string; label: string; count: number; tone: DesktopTone; onPress?: () => void };
+/** Offset from the right edge and width of `value` in a row-reverse strip, once every width before it is known. */
+function frameOf<T extends string>(order: T[], widths: Partial<Record<T, number>>, value: T) {
+  const index = order.indexOf(value);
+  if (index < 0) return null;
+  let x = 0;
+  for (let i = 0; i < index; i++) {
+    const w = widths[order[i]];
+    if (w == null) return null;
+    x += w;
+  }
+  const width = widths[value];
+  return width == null ? null : { x, width };
+}
 
-const SEGMENT_COLOR: Record<DesktopTone, string> = {
-  ok: DESKTOP_TONES.ok.fg,
-  warn: '#E8930C',
-  bad: DESKTOP_TONES.bad.fg,
-  neutral: '#C3CBD2',
+const MODES: { value: FleetMode; label: string; icon: IconName }[] = [
+  { value: 'drivers', label: 'נהגים', icon: 'people' },
+  { value: 'vehicles', label: 'רכבים', icon: 'car-sport' },
+];
+
+/** Segmented control: a dark thumb glides to the chosen segment on a critically damped spring. */
+export function ModeSwitch({
+  mode,
+  compact,
+  onChange,
+}: {
+  mode: FleetMode;
+  /** Icon-only segments for narrow windows; the label stays as the accessible name. */
+  compact?: boolean;
+  onChange: (mode: FleetMode) => void;
+}) {
+  const reduce = prefersReducedMotion();
+  // Widths only: RN-web reports size changes reliably but not position shifts, so the thumb's
+  // offset is the sum of the segments before it (row-reverse: counted from the right edge).
+  const widths = useRef<Partial<Record<FleetMode, number>>>({});
+  const x = useRef(new Animated.Value(0)).current;
+  const width = useRef(new Animated.Value(0)).current;
+  const placed = useRef(false);
+
+  const moveTo = (value: FleetMode) => {
+    const frame = frameOf(
+      MODES.map((m) => m.value),
+      widths.current,
+      value,
+    );
+    if (!frame) return;
+    if (!placed.current || reduce) {
+      x.setValue(frame.x);
+      width.setValue(frame.width);
+      placed.current = true;
+      return;
+    }
+    Animated.parallel([
+      Animated.spring(x, { toValue: frame.x, ...SPRING }),
+      Animated.spring(width, { toValue: frame.width, ...SPRING }),
+    ]).start();
+  };
+
+  useEffect(() => {
+    moveTo(mode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  return (
+    <View style={styles.segmented} accessibilityRole="tablist">
+      <Animated.View pointerEvents="none" style={[styles.segmentThumb, { right: Animated.add(x, 3), width }]} />
+      {MODES.map((item) => {
+        const on = item.value === mode;
+        return (
+          <HoverPressable
+            key={item.value}
+            onLayout={(e: LayoutChangeEvent) => {
+              widths.current[item.value] = e.nativeEvent.layout.width;
+              moveTo(mode);
+            }}
+            style={[styles.segment, compact && styles.segmentCompact]}
+            pressMotionStyle={styles.segmentPress}
+            onPress={() => onChange(item.value)}
+            accessibilityLabel={item.label}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            aria-selected={on}
+          >
+            <Ionicons name={item.icon} size={16} color={on ? '#FFFFFF' : DESKTOP_COLORS.inkMuted} />
+            {!compact && (
+              <DText weight="semiBold" style={[styles.segmentText, on && styles.segmentTextOn]}>
+                {item.label}
+              </DText>
+            )}
+          </HoverPressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Filter cards: the numbers are the filters                          */
+/* ------------------------------------------------------------------ */
+
+type FilterCardsProps<T extends string> = {
+  cards: FilterCard<T>[];
+  /** The list's current filter; a value with no card (e.g. archive) selects none. */
+  selected: T;
+  loading: boolean;
+  /** Changing it remounts the rail, so switching drivers/vehicles reads as a new set. */
+  animKey: string;
+  onSelect: (value: T) => void;
 };
 
-function HealthColumn({
-  label,
-  total,
-  caption,
-  segments,
-  footnote,
-  loading,
-  reduced,
-}: {
-  label: string;
-  total: number;
-  caption: string;
-  segments: Segment[];
-  footnote: { label: string; count: number; tone?: DesktopTone; onPress?: () => void };
-  loading: boolean;
-  reduced: boolean;
-}) {
-  const visible = segments.filter((s) => s.count > 0);
+/**
+ * Status rail: every status is both a number and a filter. One coloured pill
+ * slides (spring) under the chosen status and takes on its tone, with a soft
+ * glow in the same colour; numbers count up when they arrive or change.
+ */
+export function FilterCards<T extends string>(props: FilterCardsProps<T>) {
+  return <StatusRail key={props.animKey} {...props} />;
+}
+
+function StatusRail<T extends string>({ cards, selected, loading, onSelect }: FilterCardsProps<T>) {
+  const reduce = prefersReducedMotion();
+  const widths = useRef<Partial<Record<string, number>>>({});
+  const x = useRef(new Animated.Value(0)).current;
+  const width = useRef(new Animated.Value(0)).current;
+  const placed = useRef(false);
+  const current = cards.find((c) => c.value === selected);
+  const fill = TONE_FILL[current?.tone ?? 'brand'];
+
+  const moveTo = (value: T) => {
+    const frame = frameOf(
+      cards.map((c) => c.value),
+      widths.current,
+      value,
+    );
+    if (!frame) return;
+    if (!placed.current || reduce) {
+      x.setValue(frame.x);
+      width.setValue(frame.width);
+      placed.current = true;
+      return;
+    }
+    Animated.parallel([
+      Animated.spring(x, { toValue: frame.x, ...SPRING }),
+      Animated.spring(width, { toValue: frame.width, ...SPRING }),
+    ]).start();
+  };
+
+  useEffect(() => {
+    moveTo(selected);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
 
   return (
-    <View style={styles.healthColumn}>
-      <DText weight="semiBold" style={styles.columnLabel}>{label}</DText>
-      {loading ? (
-        <>
-          <View style={[styles.skeletonBar, { width: 64, height: 30, marginTop: 6 }]} />
-          <View style={[styles.skeletonBar, { width: '100%', height: 8, marginTop: 14 }]} />
-        </>
-      ) : (
-        <>
-          <View style={styles.figureRow}>
-            <DText weight="bold" style={[styles.figure, TABULAR]}>{total}</DText>
-            <DText style={styles.figureCaption}>{caption}</DText>
-          </View>
-          <View style={styles.bar}>
-            {visible.length === 0 ? (
-              <View style={[styles.barSegment, { flex: 1, backgroundColor: DESKTOP_COLORS.borderSoft }]} />
-            ) : (
-              visible.map((segment, index) => (
-                <View
-                  key={segment.key}
-                  style={[
-                    styles.barSegment,
-                    { flex: segment.count, backgroundColor: SEGMENT_COLOR[segment.tone] },
-                    !reduced && barGrow(index),
-                  ]}
-                />
-              ))
-            )}
-          </View>
-        </>
-      )}
-
-      <View style={styles.legend}>
-        {segments.map((segment) => (
-          <LegendRow key={segment.key} label={segment.label} count={segment.count} tone={segment.tone} loading={loading} onPress={segment.onPress} />
-        ))}
-        <View style={styles.legendRule} />
-        <LegendRow label={footnote.label} count={footnote.count} tone={footnote.tone} loading={loading} onPress={footnote.onPress} plain />
-      </View>
+    <View style={styles.rail} accessibilityRole="tablist">
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.railPill,
+          { right: x, width, backgroundColor: fill, opacity: current ? 1 : 0 },
+          webOnly({ boxShadow: `0 8px 18px -8px ${fill}, inset 0 1px 0 rgba(255,255,255,0.28)` }),
+        ]}
+      />
+      {cards.map((card, index) => {
+        const on = card.value === selected;
+        const tone = card.tone ? DESKTOP_TONES[card.tone] : null;
+        // A warning status with nothing in it goes quiet instead of shouting "0" in red.
+        const quiet = !loading && card.count === 0 && !!card.tone && card.tone !== 'ok';
+        const countColor = on
+          ? '#FFFFFF'
+          : quiet
+            ? DESKTOP_COLORS.inkFaint
+            : tone && (card.tone === 'bad' || card.tone === 'warn')
+              ? tone.fg
+              : DESKTOP_COLORS.ink;
+        return (
+          <HoverPressable
+            key={card.value}
+            onLayout={(e: LayoutChangeEvent) => {
+              widths.current[card.value] = e.nativeEvent.layout.width;
+              moveTo(selected);
+            }}
+            style={[styles.stat, enterCard(index)]}
+            hoverStyle={on ? undefined : styles.statHover}
+            pressMotionStyle={styles.statPress}
+            onPress={() => onSelect(card.value)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            aria-selected={on}
+            accessibilityLabel={`${card.label}: ${card.count}. ${card.hint}`}
+          >
+            <View style={styles.statLabelRow}>
+              {!!tone && !on && <View style={[styles.statDot, { backgroundColor: tone.fg }, quiet && styles.quiet]} />}
+              <DText weight="medium" style={[styles.statLabel, on && styles.onWhiteSoft]} numberOfLines={1}>
+                {card.label}
+              </DText>
+            </View>
+            <CountUp value={loading ? null : card.count} style={[styles.statCount, TABULAR, { color: countColor }]} />
+          </HoverPressable>
+        );
+      })}
     </View>
   );
 }
 
-function LegendRow({
-  label,
-  count,
-  tone,
+/** Rolls a number from its previous value to the new one (ease-out quart); instant when motion is reduced. */
+function CountUp({ value, style }: { value: number | null; style: React.ComponentProps<typeof DText>['style'] }) {
+  const [shown, setShown] = useState(0);
+  const shownRef = useRef(0);
+  useEffect(() => {
+    if (value == null) return;
+    const from = shownRef.current;
+    if (from === value || prefersReducedMotion() || typeof requestAnimationFrame === 'undefined') {
+      shownRef.current = value;
+      setShown(value);
+      return;
+    }
+    const start = Date.now();
+    let raf = 0;
+    const tick = () => {
+      const p = Math.min(1, (Date.now() - start) / 650);
+      const next = Math.round(from + (value - from) * (1 - Math.pow(1 - p, 4)));
+      shownRef.current = next;
+      setShown(next);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return (
+    <DText weight="bold" style={style}>
+      {value == null ? '–' : shown}
+    </DText>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Needs attention                                                     */
+/* ------------------------------------------------------------------ */
+
+export type AttentionGroup = {
+  id: string;
+  icon: IconName;
+  title: string;
+  tone: DesktopTone;
+  vehicles: { id: string; plate: string }[];
+};
+
+/**
+ * Vehicle problems that no card filters for, grouped by problem: missing or
+ * expired mandatory insurance, and vehicles nobody is assigned to. License
+ * expiry has its own cards, so it is not repeated here.
+ */
+export function useAttentionGroups(
+  vehicles: Vehicle[],
+  compliance: Map<string, ComplianceItem[]>,
+  vehicleDrivers: Map<string, VehicleDriverWithProfile[]>,
+): AttentionGroup[] {
+  return useMemo(() => {
+    const live = vehicles.filter((v) => v.status !== 'archived');
+    const uninsured = live.filter((v) => {
+      const insurance = compliance.get(v.id)?.find((c) => c.item_type === 'insurance_mandatory');
+      const state = expiryState(insurance?.expiry_date);
+      return state === 'missing' || state === 'expired';
+    });
+    const unassigned = live.filter((v) => !vehicleDrivers.get(v.id)?.length);
+    const plates = (list: Vehicle[]) => list.map((v) => ({ id: v.id, plate: formatPlate(v.plate_number) }));
+    const groups: AttentionGroup[] = [
+      { id: 'insurance', icon: 'shield-outline', title: 'ללא ביטוח חובה בתוקף', tone: 'bad', vehicles: plates(uninsured) },
+      { id: 'unassigned', icon: 'person-add-outline', title: 'רכבים ללא נהג', tone: 'warn', vehicles: plates(unassigned) },
+    ];
+    return groups.filter((g) => g.vehicles.length > 0);
+  }, [vehicles, compliance, vehicleDrivers]);
+}
+
+/**
+ * "Needs attention" lives in the top bar next to the notifications bell: a
+ * red pill with the total that drops down the full grouped list (it scrolls,
+ * however long it gets). Hidden entirely when nothing needs attention.
+ */
+export function AttentionMenu({
+  vehicles,
+  compliance,
+  vehicleDrivers,
   loading,
-  onPress,
-  plain,
+  onOpenVehicle,
 }: {
-  label: string;
-  count: number;
-  tone?: DesktopTone;
-  loading: boolean;
-  onPress?: () => void;
-  plain?: boolean;
+  vehicles: Vehicle[];
+  compliance: Map<string, ComplianceItem[]>;
+  vehicleDrivers: Map<string, VehicleDriverWithProfile[]>;
+  loading?: boolean;
+  onOpenVehicle: (vehicleId: string) => void;
 }) {
-  const muted = !loading && count === 0;
-  const content = (
-    <>
-      {plain ? (
-        <Ionicons name="remove-outline" size={10} color={DESKTOP_COLORS.inkFaint} style={styles.legendDash} />
-      ) : (
-        <View style={[styles.legendSwatch, { backgroundColor: tone ? SEGMENT_COLOR[tone] : DESKTOP_COLORS.inkFaint }, muted && styles.legendSwatchMuted]} />
-      )}
-      <DText style={[styles.legendLabel, muted && styles.legendMuted]} numberOfLines={1}>{label}</DText>
-      <DText
-        weight="semiBold"
-        style={[
-          styles.legendCount,
-          TABULAR,
-          muted && styles.legendMuted,
-          !muted && tone && tone !== 'ok' && tone !== 'neutral' ? { color: DESKTOP_TONES[tone].fg } : null,
-        ]}
+  const groups = useAttentionGroups(vehicles, compliance, vehicleDrivers);
+  const [open, setOpen] = useState(false);
+  const total = groups.reduce((sum, g) => sum + g.vehicles.length, 0);
+
+  // Escape closes the menu, like any native dropdown.
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  if (loading || total === 0) return null;
+
+  const openVehicle = (vehicleId: string) => {
+    setOpen(false);
+    onOpenVehicle(vehicleId);
+  };
+
+  return (
+    <View style={styles.menuWrap}>
+      {open && <Pressable style={styles.menuBackdrop} onPress={() => setOpen(false)} accessibilityLabel="סגירה" />}
+      <HoverPressable
+        style={[styles.attentionPill, open && styles.attentionPillOpen]}
+        hoverStyle={styles.attentionPillHover}
+        pressMotionStyle={styles.chipPress}
+        onPress={() => setOpen((v) => !v)}
+        accessibilityLabel={`דורש טיפול, ${total}`}
+        accessibilityState={{ expanded: open }}
       >
-        {loading ? '–' : count}
-      </DText>
-      <Ionicons name="chevron-back" size={11} color={onPress ? DESKTOP_COLORS.inkFaint : 'transparent'} />
+        <Ionicons name="alert-circle" size={15} color={DESKTOP_TONES.bad.fg} />
+        <DText weight="semiBold" style={[styles.attentionPillText, TABULAR]}>
+          {total === 1 ? 'רכב אחד דורש טיפול' : `${total} רכבים דורשים טיפול`}
+        </DText>
+        <Ionicons
+          name="chevron-down"
+          size={13}
+          color={DESKTOP_TONES.bad.fg}
+          style={[styles.menuChevron, open && styles.menuChevronOpen]}
+        />
+      </HoverPressable>
+      {open && (
+        <View style={[styles.menu, menuEnter()]}>
+          <View style={styles.menuHead}>
+            <DText weight="bold" style={styles.attentionTitle}>
+              דורש טיפול
+            </DText>
+            <DText style={styles.attentionHint}>לחיצה על מספר רישוי פותחת את הרכב</DText>
+          </View>
+          <ScrollView style={styles.menuScroll} contentContainerStyle={styles.menuBody}>
+            <AttentionGroups groups={groups} onOpenVehicle={openVehicle} />
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function AttentionGroups({ groups, onOpenVehicle }: { groups: AttentionGroup[]; onOpenVehicle: (vehicleId: string) => void }) {
+  return (
+    <>
+      {groups.map((group, index) => {
+        const tone = DESKTOP_TONES[group.tone];
+        return (
+          <View key={group.id} style={[styles.group, index > 0 && styles.groupDivider]}>
+            <View style={styles.groupHead}>
+              <View style={[styles.groupIcon, { backgroundColor: tone.bg }]}>
+                <Ionicons name={group.icon} size={15} color={tone.fg} />
+              </View>
+              <DText weight="semiBold" style={styles.groupTitle} numberOfLines={1}>
+                {group.title}
+              </DText>
+              <DText weight="bold" style={[styles.groupCount, TABULAR, { color: tone.fg }]}>
+                {group.vehicles.length}
+              </DText>
+            </View>
+            <View style={styles.chips}>
+              {group.vehicles.map((v) => (
+                <PlateChip key={v.id} plate={v.plate} onPress={() => onOpenVehicle(v.id)} />
+              ))}
+            </View>
+          </View>
+        );
+      })}
     </>
   );
+}
 
-  if (!onPress || loading) return <View style={styles.legendRow}>{content}</View>;
+function PlateChip({ plate, onPress }: { plate: string; onPress: () => void }) {
   return (
-    <HoverPressable style={styles.legendRow} hoverStyle={styles.legendRowHover} pressStyle={styles.pressDown} onPress={onPress}>
-      {content}
+    <HoverPressable
+      style={styles.chip}
+      hoverStyle={styles.chipHover}
+      pressMotionStyle={styles.chipPress}
+      onPress={onPress}
+      accessibilityLabel={`פתח רכב ${plate}`}
+    >
+      <DLtrText weight="semiBold" style={[styles.chipText, TABULAR]}>
+        {plate}
+      </DLtrText>
     </HoverPressable>
   );
 }
 
-function AttentionRow({ row, style }: { row: AttentionItem; style?: object | false }) {
-  const tone = DESKTOP_TONES[row.tone];
-  return (
-    <HoverPressable style={[styles.attentionRow, style || null]} hoverStyle={styles.attentionRowHover} pressStyle={styles.pressDown} onPress={row.onPress}>
-      <View style={[styles.attentionIcon, { backgroundColor: tone.bg }]}>
-        <Ionicons name={row.icon} size={13} color={tone.fg} />
-      </View>
-      <View style={styles.attentionBody}>
-        <DText weight="semiBold" style={styles.attentionTitle} numberOfLines={1}>{row.title}</DText>
-        <DText style={[styles.attentionSubtitle, row.tone === 'bad' && { color: tone.fg }]} numberOfLines={1}>{row.subtitle}</DText>
-      </View>
-      <Ionicons name="chevron-back" size={12} color={DESKTOP_COLORS.inkFaint} />
-    </HoverPressable>
-  );
-}
-
-function PanelTitle({ title, caption }: { title: string; caption?: string }) {
-  return (
-    <View style={styles.panelTitleRow}>
-      <DText weight="bold" style={styles.panelTitle}>{title}</DText>
-      {!!caption && <DText style={styles.panelCaption}>{caption}</DText>}
-    </View>
-  );
-}
-
 /* ------------------------------------------------------------------ */
-/* Motion: web-only CSS keyframes, transform + opacity only.           */
+/* Motion: CSS keyframes on web, transform + opacity only              */
 /* ------------------------------------------------------------------ */
 
-const EASE_OUT = 'cubic-bezier(0.16, 1, 0.3, 1)';
-
-function enter(order: number, reduced: boolean) {
+export function enter(order: number) {
+  const reduced = prefersReducedMotion();
   return webOnly({
     animationKeyframes: reduced
       ? { from: { opacity: 0 }, to: { opacity: 1 } }
-      : { from: { opacity: 0, transform: [{ translateY: 8 }] }, to: { opacity: 1, transform: [{ translateY: 0 }] } },
-    animationDuration: reduced ? '120ms' : '520ms',
+      : { from: { opacity: 0, transform: [{ translateY: 10 }] }, to: { opacity: 1, transform: [{ translateY: 0 }] } },
+    animationDuration: reduced ? '160ms' : '520ms',
     animationTimingFunction: EASE_OUT,
-    animationDelay: reduced ? '0ms' : `${order * 70}ms`,
+    animationDelay: reduced ? '0ms' : `${order * 60}ms`,
     animationFillMode: 'backwards',
   });
 }
 
-function enterRow(index: number, reduced: boolean) {
-  if (reduced) return false;
+/** Cards rise in one after another; opacity only when motion is reduced. */
+function enterCard(index: number) {
+  const reduced = prefersReducedMotion();
   return webOnly({
-    animationKeyframes: { from: { opacity: 0, transform: [{ translateX: -6 }] }, to: { opacity: 1, transform: [{ translateX: 0 }] } },
-    animationDuration: '380ms',
+    animationKeyframes: reduced
+      ? { from: { opacity: 0 }, to: { opacity: 1 } }
+      : {
+          from: { opacity: 0, transform: [{ translateY: 8 }, { scale: 0.98 }] },
+          to: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }] },
+        },
+    animationDuration: reduced ? '160ms' : '380ms',
     animationTimingFunction: EASE_OUT,
-    animationDelay: `${220 + index * 45}ms`,
+    animationDelay: reduced ? '0ms' : `${index * 40}ms`,
     animationFillMode: 'backwards',
   });
 }
 
-function barGrow(index: number) {
+/** Dropdown drops from its trigger: short fade + slight scale, opacity only when motion is reduced. */
+function menuEnter() {
+  const reduced = prefersReducedMotion();
   return webOnly({
-    transformOrigin: 'right center',
-    animationKeyframes: { from: { transform: [{ scaleX: 0 }] }, to: { transform: [{ scaleX: 1 }] } },
-    animationDuration: '700ms',
+    animationKeyframes: reduced
+      ? { from: { opacity: 0 }, to: { opacity: 1 } }
+      : {
+          from: { opacity: 0, transform: [{ translateY: -4 }, { scale: 0.97 }] },
+          to: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }] },
+        },
+    animationDuration: reduced ? '120ms' : '200ms',
     animationTimingFunction: EASE_OUT,
-    animationDelay: `${180 + index * 90}ms`,
+    transformOrigin: 'top left',
+  });
+}
+
+export function enterRow(index: number) {
+  if (prefersReducedMotion()) return false;
+  return webOnly({
+    animationKeyframes: {
+      from: { opacity: 0, transform: [{ translateY: 6 }] },
+      to: { opacity: 1, transform: [{ translateY: 0 }] },
+    },
+    animationDuration: '300ms',
+    animationTimingFunction: EASE_OUT,
+    animationDelay: `${Math.min(index, 10) * 22}ms`,
     animationFillMode: 'backwards',
   });
 }
 
 const styles = StyleSheet.create({
-  root: { marginBottom: 26, gap: 16 },
-
   header: { flexDirection: 'row-reverse', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 },
   headerText: { gap: 2 },
-  greeting: { fontSize: 21, color: DESKTOP_COLORS.ink, letterSpacing: -0.3 },
-  dateLine: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
+  greeting: { fontSize: 28, lineHeight: 34, color: DESKTOP_COLORS.ink, letterSpacing: -0.6 },
+  dateLine: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
   headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
 
-  grid: { flexDirection: 'row-reverse', alignItems: 'stretch', gap: 14 },
-  panel: {
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 14,
-    ...webOnly({ boxShadow: '0 1px 2px rgba(22,34,46,0.04), 0 12px 28px -18px rgba(22,34,46,0.14)' }),
+  segmented: {
+    flexDirection: 'row-reverse',
+    padding: 3,
+    borderRadius: 14,
+    backgroundColor: 'rgba(118,118,128,0.10)',
   },
-  healthPanel: { flex: 1.7, minWidth: 0 },
-  attentionPanel: { flex: 1, minWidth: 0 },
-
-  panelTitleRow: { flexDirection: 'row-reverse', alignItems: 'baseline', gap: 10 },
-  panelTitle: { fontSize: 13.5, color: DESKTOP_COLORS.ink },
-  panelCaption: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint },
-
-  healthColumns: { flexDirection: 'row-reverse', marginTop: 14, gap: 22 },
-  columnRule: { width: 1, backgroundColor: DESKTOP_COLORS.borderSoft },
-  healthColumn: { flex: 1, minWidth: 0 },
-  columnLabel: { fontSize: 11.5, color: DESKTOP_COLORS.inkMuted },
-  figureRow: { flexDirection: 'row-reverse', alignItems: 'baseline', gap: 10, marginTop: 2 },
-  figure: { fontSize: 34, lineHeight: 42, color: DESKTOP_COLORS.ink, letterSpacing: -1 },
-  figureCaption: { fontSize: 12, color: DESKTOP_COLORS.inkMuted },
-
-  bar: { flexDirection: 'row-reverse', height: 8, gap: 2, marginTop: 8, borderRadius: 4, overflow: 'hidden' },
-  barSegment: { height: 8 },
-
-  legend: { marginTop: 12, gap: 1 },
-  legendRow: {
+  segmentThumb: {
+    position: 'absolute',
+    top: 3,
+    bottom: 3,
+    borderRadius: 11,
+    backgroundColor: DESKTOP_COLORS.ink,
+    ...webOnly({ boxShadow: '0 6px 14px -6px rgba(22,34,46,0.55), inset 0 1px 0 rgba(255,255,255,0.12)' }),
+  },
+  segment: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 5,
-    paddingHorizontal: 6,
-    marginHorizontal: -6,
-    borderRadius: 6,
-    ...webOnly({ transition: 'background-color 140ms ease, transform 100ms ease-out' }),
+    justifyContent: 'center',
+    gap: 7,
+    height: 42,
+    minWidth: 92,
+    paddingHorizontal: 14,
+    borderRadius: 11,
   },
-  legendRowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
-  legendSwatch: { width: 8, height: 8, borderRadius: 2 },
-  legendSwatchMuted: { opacity: 0.35 },
-  legendDash: { width: 8 },
-  legendLabel: { flex: 1, fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
-  legendCount: { fontSize: 12.5, color: DESKTOP_COLORS.ink, minWidth: 20, textAlign: 'left' },
-  legendMuted: { color: DESKTOP_COLORS.inkFaint },
-  legendRule: { height: 1, backgroundColor: DESKTOP_COLORS.borderSoft, marginVertical: 5 },
+  segmentCompact: { minWidth: 44, paddingHorizontal: 0 },
+  segmentPress: { transform: [{ scale: 0.95 }] },
+  segmentText: { fontSize: 14, color: DESKTOP_COLORS.inkMuted, ...webOnly({ transition: 'color 200ms ease' }) },
+  segmentTextOn: { color: '#FFFFFF' },
 
-  attentionHead: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  attentionCount: {
+  rail: { flexDirection: 'row-reverse', flexGrow: 1, flexShrink: 1, minWidth: 0 },
+  railPill: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    borderRadius: 16,
+    ...webOnly({ transition: 'background-color 260ms ease' }),
+  },
+  stat: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 'auto',
+    minWidth: 76,
+    height: 50,
+    justifyContent: 'center',
+    gap: 1,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    ...webOnly({ transition: 'background-color 160ms ease' }),
+  },
+  statHover: { backgroundColor: 'rgba(118,118,128,0.08)' },
+  statPress: { transform: [{ scale: 0.96 }] },
+  statLabelRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  statDot: { width: 6, height: 6, borderRadius: 3 },
+  statLabel: { fontSize: 12, color: DESKTOP_COLORS.inkMuted, flexShrink: 1, ...webOnly({ transition: 'color 200ms ease' }) },
+  statCount: {
+    fontSize: 21,
+    lineHeight: 25,
+    letterSpacing: -0.5,
+    textAlign: 'right',
+    ...webOnly({ transition: 'color 200ms ease' }),
+  },
+  quiet: { opacity: 0.45 },
+  onWhiteSoft: { color: 'rgba(255,255,255,0.85)' },
+
+  attentionTitle: { fontSize: 17, color: DESKTOP_COLORS.ink, letterSpacing: -0.2 },
+  attentionHint: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint, marginTop: 3 },
+  group: { paddingVertical: 12 },
+  groupDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DESKTOP_COLORS.border },
+  groupHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  groupIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  groupTitle: { flex: 1, fontSize: 14, color: DESKTOP_COLORS.ink },
+  groupCount: { fontSize: 15 },
+  chips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginTop: 10, marginRight: 40 },
+  attentionPill: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
+    height: 32,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: DESKTOP_TONES.bad.bg,
+    ...webOnly({ transition: 'background-color 150ms ease-out, transform 120ms ease-out' }),
+  },
+  attentionPillHover: { backgroundColor: 'rgba(255,69,58,0.2)' },
+  attentionPillOpen: { backgroundColor: 'rgba(255,69,58,0.2)' },
+  menuWrap: { position: 'relative', zIndex: 31 },
+  menuBackdrop: { ...webOnly({ position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, cursor: 'default' }) },
+  menuChevron: { ...webOnly({ transition: `transform 200ms ${EASE_OUT}` }) },
+  menuChevronOpen: { transform: [{ rotate: '180deg' }] },
+  menu: {
+    position: 'absolute',
+    top: 40,
+    left: 0,
+    width: 360,
+    backgroundColor: DESKTOP_COLORS.surface,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: DESKTOP_COLORS.border,
+    overflow: 'hidden',
+    ...webOnly({ boxShadow: '0 12px 32px rgba(16,34,50,0.18), 0 2px 6px rgba(16,34,50,0.06)' }),
+  },
+  menuHead: {
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: DESKTOP_COLORS.border,
+  },
+  menuScroll: { ...webOnly({ maxHeight: 'calc(100vh - 150px)' }) },
+  menuBody: { paddingHorizontal: 18, paddingVertical: 4 },
+  attentionPillText: { fontSize: 13, color: DESKTOP_TONES.bad.fg },
+  chip: {
+    height: 30,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    justifyContent: 'center',
     backgroundColor: DESKTOP_COLORS.surfaceMuted,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.borderSoft,
+    ...webOnly({ transition: 'background-color 150ms ease-out, border-color 150ms ease-out, transform 120ms ease-out' }),
   },
-  attentionCountText: { fontSize: 11, color: DESKTOP_COLORS.inkMuted },
-  pulseDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: DESKTOP_TONES.bad.fg },
-  pulseDotAnim: webOnly({
-    animationKeyframes: {
-      '0%': { opacity: 1, transform: [{ scale: 1 }] },
-      '50%': { opacity: 0.35, transform: [{ scale: 0.8 }] },
-      '100%': { opacity: 1, transform: [{ scale: 1 }] },
-    },
-    animationDuration: '1800ms',
-    animationTimingFunction: 'ease-in-out',
-    animationIterationCount: 'infinite',
-  }),
-
-  attentionList: { marginTop: 10, gap: 1 },
-  attentionRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 7,
-    paddingHorizontal: 8,
-    marginHorizontal: -8,
-    borderRadius: 8,
-    ...webOnly({ transition: 'background-color 140ms ease, transform 100ms ease-out' }),
+  chipHover: { backgroundColor: DESKTOP_COLORS.brandFocusRing, borderColor: 'rgba(0,136,204,0.28)' },
+  chipPress: { transform: [{ scale: 0.95 }] },
+  chipText: {
+    fontSize: 12.5,
+    color: DESKTOP_COLORS.ink,
+    ...webOnly({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }),
   },
-  attentionRowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
-  attentionIcon: { width: 28, height: 28, borderRadius: 7, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  attentionBody: { flex: 1, minWidth: 0, gap: 1 },
-  attentionTitle: { fontSize: 12.5, color: DESKTOP_COLORS.ink },
-  attentionSubtitle: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint },
-
-  showAll: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    marginTop: 8,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    marginHorizontal: -8,
-    borderRadius: 6,
-  },
-  showAllHover: { backgroundColor: DESKTOP_COLORS.brandFocusRing },
-  showAllText: { fontSize: 12, color: DESKTOP_COLORS.brand },
-
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 26, gap: 6 },
-  emptyIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: DESKTOP_TONES.ok.bg, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  emptyTitle: { fontSize: 13, color: DESKTOP_COLORS.ink },
-  emptyHint: { fontSize: 12, color: DESKTOP_COLORS.inkFaint, textAlign: 'center', maxWidth: 240 },
-
-  skeletonRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingVertical: 7 },
-  skeletonIcon: { width: 28, height: 28, borderRadius: 7, backgroundColor: DESKTOP_COLORS.borderSoft },
-  skeletonLines: { flex: 1, gap: 6, alignItems: 'flex-end' },
-  skeletonBar: { height: 10, borderRadius: 4, backgroundColor: DESKTOP_COLORS.borderSoft },
-
-  modalList: { paddingHorizontal: 18, paddingVertical: 8, gap: 1 },
-  pressDown: { transform: [{ scale: 0.985 }] },
 });

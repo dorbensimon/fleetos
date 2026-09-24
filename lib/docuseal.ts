@@ -328,7 +328,7 @@ export async function downloadSigningTemplate(template: SigningTemplate): Promis
   }
 }
 
-export async function downloadSignedRequest(request: SignatureRequest): Promise<void> {
+export async function downloadSignedRequest(request: Pick<SignatureRequest, 'id' | 'template_title' | 'template'>): Promise<void> {
   const session = await getSigningSession(request.id);
   if (session.mode !== 'document') {
     throw new Error('המסמך החתום עדיין לא זמין להורדה');
@@ -462,8 +462,9 @@ export async function updateCompanySigningSettings(companyId: string, settings: 
 }
 
 // companyId is required for a request (it always belongs to one company),
-// but meaningless for a template — every template is global and only the
-// owner may manage it, so callers acting on a template may omit it.
-export async function deleteSigningRecord(companyId: string | null, kind: 'template' | 'request', id: string, action: 'archive' | 'restore' | 'permanent-delete' = 'archive') {
+// but unused for a template. Global templates are managed by the owner only;
+// `company-delete` lets a company admin delete their own company's template
+// in one step (cancelling requests still waiting for a signature).
+export async function deleteSigningRecord(companyId: string | null, kind: 'template' | 'request', id: string, action: 'archive' | 'restore' | 'permanent-delete' | 'company-delete' = 'archive') {
   return invoke<{ success: boolean; cleanupPending?: boolean }>('delete-signing-record', { companyId, kind, id, action });
 }

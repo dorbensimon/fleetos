@@ -3,19 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-    <!--
-      This is an app UI, not a document — pinch/double-tap zoom lets a user
-      drag the whole layout around the viewport on iOS Safari (reported as
-      "the screen can be moved around, bottom cut off, gap at the top"),
-      since a zoomed viewport can pan even though `body{overflow:hidden}`
-      below blocks ordinary scrolling. `maximum-scale=1, user-scalable=no`
-      disables that. `viewport-fit=cover` lets safe-area-inset-* report the
-      real notch/home-indicator insets instead of 0, so the header/dock
-      backgrounds can extend under them instead of leaving a bare gap.
-    -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
     />
     <!--
       A page opened as a normal Safari tab always keeps Safari's own address
@@ -70,17 +60,12 @@
       body {
         overflow: hidden;
         overscroll-behavior: none;
-        touch-action: none;
       }
       /* These styles make the root element full-height */
       #root {
         display: flex;
         height: 100%;
         flex: 1;
-        /* #root itself needs to opt back in to touch handling that the
-           body-level touch-action:none above turns off, or nothing inside
-           the app (scroll views, buttons) would receive touches. */
-        touch-action: auto;
       }
       /* Safari otherwise reduces the placeholder's opacity after React
          Native Web has applied its colour, making the fleet search hint fade
@@ -135,48 +120,5 @@
     </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-    <script>
-      // `100dvh` (above) tracks Safari's address-bar collapse, but on iOS it
-      // does NOT shrink for the on-screen keyboard — the keyboard instead
-      // makes iOS auto-scroll the whole page to keep the focused input
-      // visible, which fights with our fixed-size body/root and shows up as
-      // "the screen doesn't reach the bottom" / "the screen jumps up" when
-      // a text field is focused. `window.visualViewport` reports the real,
-      // keyboard-aware height, so we pin html/body to that in JS instead.
-      (function () {
-        function applyViewportHeight() {
-          var vv = window.visualViewport;
-          var h = (vv && vv.height) || window.innerHeight;
-          document.documentElement.style.height = h + 'px';
-          document.body.style.height = h + 'px';
-        }
-        // iOS separately pans the *visual* viewport itself to keep a
-        // focused input above the keyboard, on top of the resize above —
-        // since applyViewportHeight() already makes our layout fit the
-        // keyboard-shrunk space, that extra pan just scrolls past our
-        // (already-correctly-sized) content into blank space beyond it.
-        // Undoing it here every time it happens is what actually keeps
-        // that gap from appearing.
-        function lockScroll() {
-          if (window.scrollX !== 0 || window.scrollY !== 0) {
-            window.scrollTo(0, 0);
-          }
-        }
-        applyViewportHeight();
-        if (window.visualViewport) {
-          window.visualViewport.addEventListener('resize', function () {
-            applyViewportHeight();
-            lockScroll();
-          });
-          window.visualViewport.addEventListener('scroll', lockScroll);
-        }
-        window.addEventListener('scroll', lockScroll, { passive: true });
-        window.addEventListener('orientationchange', applyViewportHeight);
-        document.addEventListener('focusin', function () {
-          setTimeout(lockScroll, 50);
-          setTimeout(lockScroll, 350);
-        });
-      })();
-    </script>
   </body>
 </html>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -104,9 +104,8 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
           </TouchableOpacity>
           <AppText weight="bold" style={styles.title}>הוסף מסמך נוהל 6</AppText>
           <TouchableOpacity onPress={submit} disabled={saving} hitSlop={10}>
-            <AppText weight="bold" style={[styles.saveText, saving && styles.saveTextDisabled]}>
-              {saving ? 'שומר...' : 'שמור'}
-            </AppText>
+            <AppText weight="bold" style={[styles.saveText, saving && { opacity: 0 }]}>שמור</AppText>
+            {saving && <ActivityIndicator size="small" color={COLORS.accent} style={StyleSheet.absoluteFill} />}
           </TouchableOpacity>
         </View>
 
@@ -206,7 +205,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 16 },
   cancelText: { fontSize: 14.5, color: COLORS.textMuted },
   saveText: { fontSize: 14.5, color: COLORS.accent },
-  saveTextDisabled: { opacity: 0.5 },
   content: {
     padding: SPACING.lg,
     paddingBottom: SPACING.xxl,

@@ -81,6 +81,88 @@ export function OverflowMenu({ items }: { items: RecordMenuItem[] }) {
   );
 }
 
+/**
+ * Status pill that doubles as its own picker: click it, choose from a short
+ * menu anchored under it. The current value carries a checkmark; saving is
+ * the caller's job, and the pill shows a spinner until it resolves.
+ */
+export function StatusPicker<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: { value: T; label: string; tone: DesktopTone }[];
+  onChange: (value: T) => Promise<unknown>;
+}) {
+  const triggerRef = React.useRef<View>(null);
+  const [anchor, setAnchor] = React.useState<{ top: number; left: number } | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const current = options.find((o) => o.value === value);
+  const tone = DESKTOP_TONES[current?.tone ?? 'neutral'];
+
+  const open = () => {
+    triggerRef.current?.measureInWindow((x, y, _width, height) => setAnchor({ top: y + height + 4, left: x }));
+  };
+  const choose = async (next: T) => {
+    setAnchor(null);
+    if (next === value) return;
+    setSaving(true);
+    try {
+      await onChange(next);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <View ref={triggerRef}>
+      <HoverPressable
+        style={[styles.statusTrigger, { backgroundColor: tone.bg }]}
+        hoverStyle={styles.statusTriggerHover}
+        pressStyle={styles.pressDown}
+        disabled={saving}
+        onPress={() => (anchor ? setAnchor(null) : open())}
+        accessibilityLabel={`סטטוס: ${current?.label ?? value}. לחיצה לשינוי`}
+      >
+        <DText weight="bold" style={[styles.statusTriggerText, { color: tone.fg }]} numberOfLines={1}>
+          {current?.label ?? value}
+        </DText>
+        {saving ? (
+          <ActivityIndicator size="small" color={tone.fg} style={styles.statusSpinner} />
+        ) : (
+          <Ionicons name="chevron-down" size={12} color={tone.fg} />
+        )}
+      </HoverPressable>
+      {anchor && (
+        <Modal transparent visible animationType="none" onRequestClose={() => setAnchor(null)}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setAnchor(null)} />
+          <View style={[styles.menu, { top: anchor.top, left: anchor.left }, popoverEnterStyle(), styles.menuOrigin]}>
+            {options.map((option) => {
+              const selected = option.value === value;
+              return (
+                <HoverPressable
+                  key={option.value}
+                  style={styles.menuItem}
+                  hoverStyle={styles.rowHover}
+                  onPress={() => void choose(option.value)}
+                  accessibilityState={{ selected }}
+                >
+                  <View style={[styles.statusOptionDot, { backgroundColor: DESKTOP_TONES[option.tone].fg }]} />
+                  <DText weight="semiBold" style={[styles.actionText, styles.menuItemText, styles.statusOptionLabel]}>
+                    {option.label}
+                  </DText>
+                  {selected && <Ionicons name="checkmark" size={15} color={DESKTOP_COLORS.brand} />}
+                </HoverPressable>
+              );
+            })}
+          </View>
+        </Modal>
+      )}
+    </View>
+  );
+}
+
 export function PlateBadge({ plate }: { plate: string }) {
   return (
     <View style={styles.plateBadge}>
@@ -332,13 +414,13 @@ export function EditableDateField({
 }
 
 /** Thumbnail that fades in once its bytes have loaded, instead of popping in. */
-export function FadeInImage({ uri, hovered }: { uri: string; hovered: boolean }) {
+export function FadeInImage({ uri, hovered, signedVisual = false }: { uri: string; hovered: boolean; signedVisual?: boolean }) {
   const [loaded, setLoaded] = useState(false);
   return (
-    <View style={styles.folderTilePreview}>
+    <View style={[styles.folderTilePreview, signedVisual && styles.folderTilePreviewSigned]}>
       <Image
         source={{ uri }}
-        style={[styles.folderTilePreviewImage as ImageStyle, styles.fadeImage, loaded && styles.fadeImageLoaded, hovered && styles.folderTilePreviewImageHover as ImageStyle]}
+        style={[styles.folderTilePreviewImage as ImageStyle, signedVisual && styles.folderTilePreviewImageSigned as ImageStyle, styles.fadeImage, loaded && styles.fadeImageLoaded, hovered && styles.folderTilePreviewImageHover as ImageStyle]}
         resizeMode="cover"
         onLoad={() => setLoaded(true)}
       />
@@ -365,6 +447,7 @@ export function FolderTile({
   meta,
   onPress,
   accessibilityLabel,
+  signedVisual = false,
 }: {
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -372,12 +455,14 @@ export function FolderTile({
   meta: React.ReactNode;
   onPress: () => void;
   accessibilityLabel?: string;
+  /** Signed-document card treatment for dossier document grids. */
+  signedVisual?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   return (
     <HoverPressable
-      style={styles.folderTile}
-      hoverStyle={styles.folderTileHover}
+      style={[styles.folderTile, signedVisual && styles.folderTileSigned]}
+      hoverStyle={[styles.folderTileHover, signedVisual && styles.folderTileSignedHover]}
       hoverMotionStyle={styles.folderTileHoverMotion}
       pressMotionStyle={styles.folderTilePress}
       onHoverIn={() => setHovered(true)}
@@ -386,13 +471,13 @@ export function FolderTile({
       accessibilityLabel={accessibilityLabel ?? title}
     >
       {thumbnail ? (
-        <FadeInImage uri={thumbnail} hovered={hovered} />
+        <FadeInImage uri={thumbnail} hovered={hovered} signedVisual={signedVisual} />
       ) : (
-        <View style={[styles.folderTileThumb, styles.folderTileIconWrap, hovered && styles.folderTileIconWrapHover]}>
+        <View style={[styles.folderTileThumb, styles.folderTileIconWrap, signedVisual && styles.folderTileIconWrapSigned, hovered && styles.folderTileIconWrapHover]}>
           <Ionicons name={icon} size={24} color={DESKTOP_COLORS.brand} />
         </View>
       )}
-      <DText weight="semiBold" style={styles.folderTileLabel} numberOfLines={1}>{title}</DText>
+      <DText weight="bold" style={styles.folderTileLabel} numberOfLines={1}>{title}</DText>
       <View style={styles.folderTileMetaRow}>{meta}</View>
     </HoverPressable>
   );
@@ -550,6 +635,20 @@ export const recordStyles = StyleSheet.create({
   menu: { position: 'absolute', minWidth: 170, padding: 4, backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 8, ...webOnly({ boxShadow: '0 8px 24px -6px rgba(22,34,46,0.18)' }) },
   // The menu opens under a trigger at the inline end of the header, so it grows from that corner.
   menuOrigin: webOnly({ transformOrigin: 'top left' }),
+  statusTrigger: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+    height: 24,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    ...webOnly({ cursor: 'pointer', transition: 'filter 150ms ease, transform 120ms ease-out' }),
+  },
+  statusTriggerHover: webOnly({ filter: 'brightness(0.95)' }),
+  statusTriggerText: { fontSize: 12 },
+  statusSpinner: { transform: [{ scale: 0.6 }], width: 12, height: 12 },
+  statusOptionDot: { width: 8, height: 8, borderRadius: 4 },
+  statusOptionLabel: { flex: 1 },
   menuItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, height: 34, paddingHorizontal: 10, borderRadius: 6, ...webOnly({ transition: 'background-color 150ms ease' }) },
 
   recordHeader: {
@@ -637,26 +736,39 @@ export const recordStyles = StyleSheet.create({
 
   disabled: { opacity: 0.5 },
 
-  folderGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 },
+  folderGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 12 },
   folderTile: {
     width: 150,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.borderSoft,
-    borderRadius: 8,
-    padding: 8,
+    borderRadius: 14,
+    padding: 10,
     gap: 6,
+    backgroundColor: DESKTOP_COLORS.surface,
     ...webOnly({ transition: 'transform 150ms ease, border-color 150ms ease' }),
   },
-  folderTileHover: {},
+  // Lifts the hovered tile above its neighbours so its shadow isn't painted
+  // over by the next row (every RN-web view is position: relative).
+  folderTileHover: { zIndex: 1 },
+  folderTileSigned: {
+    borderRadius: 18,
+    ...webOnly({
+      boxShadow: '0 10px 26px -22px rgba(16,34,50,0.58)',
+      transition: 'transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease',
+    }),
+  },
+  folderTileSignedHover: webOnly({ borderColor: 'rgba(0,136,204,0.32)', boxShadow: '0 18px 32px -20px rgba(16,34,50,0.42)' }),
   folderTileHoverMotion: webOnly({ transform: 'translateY(-2px)' }),
   folderTilePress: webOnly({ transform: 'scale(0.97)' }),
-  folderTileThumb: { width: '100%', height: 64, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  folderTilePreview: { width: '100%', height: 64, borderRadius: 6, overflow: 'hidden' },
+  folderTileThumb: { width: '100%', height: 72, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  folderTilePreview: { width: '100%', height: 72, borderRadius: 10, overflow: 'hidden' },
+  folderTilePreviewSigned: { borderRadius: 14, backgroundColor: '#F1F4F8', alignItems: 'center', justifyContent: 'center' },
   folderTilePreviewImage: {
     width: '100%',
     height: '100%',
     ...webOnly({ transition: 'transform 150ms ease' }),
   },
+  folderTilePreviewImageSigned: { width: '78%', height: '84%', borderRadius: 5, backgroundColor: DESKTOP_COLORS.surface, ...webOnly({ boxShadow: '0 6px 16px rgba(16,34,50,0.14)' }) },
   folderTilePreviewImageHover: webOnly({ transform: 'scale(1.02)' }),
   folderTilePreviewScrim: {
     position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
@@ -669,10 +781,11 @@ export const recordStyles = StyleSheet.create({
     backgroundColor: DESKTOP_COLORS.canvas,
     ...webOnly({ transition: 'background-color 150ms ease' }),
   },
+  folderTileIconWrapSigned: { borderRadius: 14, backgroundColor: '#F1F4F8' },
   folderTileIconWrapHover: { backgroundColor: DESKTOP_COLORS.brandFocusRing },
   fadeImage: { opacity: 0, ...(webOnly({ transition: 'opacity 200ms ease-out' }) as object) },
   fadeImageLoaded: { opacity: 1 },
-  folderTileLabel: { fontSize: 12.5 },
+  folderTileLabel: { fontSize: 13 },
   folderTileMetaRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
   folderTileCount: { fontSize: 11, color: DESKTOP_COLORS.inkFaint },
   folderUploadRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },

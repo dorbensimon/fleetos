@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPhone } from '../../lib/phone';
 import { DesktopDateField, DesktopFieldRow, DesktopInput, DesktopSelect, DesktopSelectOption, DText, HoverPressable } from './primitives';
@@ -218,9 +218,10 @@ export function DriverFormDesktopView({
           onPress={onSave}
           disabled={!canSubmit || saving}
         >
-          <DText weight="bold" style={[styles.ctaText, !canSubmit && styles.ctaTextDisabled]}>
-            {saving ? 'שומר…' : canSubmit ? ctaLabel : 'השלם את שדות החובה'}
+          <DText weight="bold" style={[styles.ctaText, !canSubmit && styles.ctaTextDisabled, saving && { opacity: 0 }]}>
+            {canSubmit ? ctaLabel : 'השלם את שדות החובה'}
           </DText>
+          {saving && <ActivityIndicator size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
         </HoverPressable>
         <DText style={styles.remainingText}>{remainingText}</DText>
       </View>

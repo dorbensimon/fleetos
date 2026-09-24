@@ -111,7 +111,7 @@ export default function GlobalSigningTemplatesScreen({ navigation }: Props) {
           try { await renameSigningTemplate(renaming.id, newTitle); setRenaming(null); await load(); }
           catch (err: any) { setError(err?.message || 'שינוי השם נכשל'); setRenaming(null); }
           finally { setSavingName(false); }
-        }}><AppText style={s.syncButtonText}>{savingName ? 'שומר…' : 'שמירת השם באתר וב-DocuSeal'}</AppText></TouchableOpacity>
+        }}><AppText style={[s.syncButtonText, savingName && { opacity: 0 }]}>שמירת השם באתר וב-DocuSeal</AppText>{savingName && <ActivityIndicator size="small" color={BRAND} style={StyleSheet.absoluteFill} />}</TouchableOpacity>
         <TouchableOpacity disabled={savingName} style={s.syncButton} onPress={() => setRenaming(null)}><AppText>ביטול</AppText></TouchableOpacity>
       </View></View>
     </Modal>

@@ -41,4 +41,18 @@ export interface Company {
   safety_officer_name: string | null;
   safety_officer_phone: string | null;
   created_at: string;
+  // Company settings screen (94_company_settings.sql). Optional so older
+  // fixtures and partial selects still type-check.
+  carrier_license_expiry?: string | null;
+  mobile_phone?: string | null;
+  fax?: string | null;
+  email?: string | null;
+  files_email?: string | null;
+  files_email_2?: string | null;
+  odometer_report_email?: string | null;
+  odometer_report_enabled?: boolean;
+  contacts?: { name: string; role: string; phone: string; email: string }[];
+  safety_officer_2_name?: string | null;
+  safety_officer_2_phone?: string | null;
+  stamp_url?: string | null;
 }

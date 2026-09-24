@@ -13,6 +13,7 @@ import { RootStackParamList } from '../../navigation/types';
 import { DC_COLORS, DC_SPACING, DC_TYPO, type DriverCardTint } from '../../components/driverCard/driverCardTheme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { isVehicleFolderNotification } from '../../lib/vehicleFolderAlerts';
+import { navigateToNotificationTarget, notificationTarget } from '../../lib/notificationTargets';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { NotificationsHubDesktopView } from '../../components/desktop/NotificationsHubDesktopView';
 import { useNotificationPreferences } from '../../lib/useNotificationPreferences';
@@ -95,54 +96,6 @@ export default function NotificationsScreen({ navigation }: Props) {
     }, [load])
   );
 
-  const targetRouteForNotification = (
-    n: Notification
-  ): 'DriverSigningDocuments' | 'DriverVehicle' | 'DriverProfile' | null => {
-    if (profile?.role !== 'driver') return null;
-    if (n.notification_type === 'signature_request_assigned') return 'DriverSigningDocuments';
-    if (n.notification_type === 'vehicle_assignment') return 'DriverVehicle';
-    if (n.notification_type === 'driver_profile_updated_by_manager') return 'DriverProfile';
-    if (isVehicleFolderNotification(n.notification_type)) return 'DriverVehicle';
-    if (n.notification_type === 'driver_odometer_update') return 'DriverVehicle';
-    if (n.notification_type === 'license_update_reviewed') return 'DriverProfile';
-    return null;
-  };
-
-  /** Routes administrators to the specific vehicle or driver referenced by a notification. */
-  const targetForAdminNotification = async (
-    n: Notification
-  ): Promise<
-    | { screen: 'AdminHome' }
-    | { screen: 'VehicleDetail'; vehicleId: string; openFolder?: string }
-    | { screen: 'DriverPersonalDetails'; driverId: string }
-    | { screen: 'DriverDetail'; driverId: string }
-    | null> => {
-    if (n.notification_type === 'signature_request_assigned' && n.recipient_id) return { screen: 'DriverDetail', driverId: n.recipient_id };
-    const isVehicleNotification = n.notification_type === 'vehicle_assignment'
-      || n.notification_type === 'vehicle_inspection_last_date_expiry'
-      || n.notification_type === 'vehicle_service_due'
-      || isVehicleFolderNotification(n.notification_type);
-    const vehicleId = isVehicleNotification ? await resolveNotificationVehicleId(n) : null;
-    if (vehicleId) {
-      return { screen: 'VehicleDetail', vehicleId, openFolder: n.folder_key ?? undefined };
-    }
-    if (
-      (n.notification_type === 'driver_profile_update'
-        || n.notification_type?.startsWith('driver_document_')
-        || n.notification_type === 'driver_odometer_update')
-      && n.actor_id
-    ) {
-      return { screen: 'DriverPersonalDetails', driverId: n.actor_id };
-    }
-    if (n.notification_type === 'license_update_requested' && n.actor_id) {
-      return { screen: 'DriverDetail', driverId: n.actor_id };
-    }
-    if (isVehicleNotification) {
-      return { screen: 'AdminHome' };
-    }
-    return null;
-  };
-
   const openNotification = async (n: Notification) => {
     if (unreadIds.has(n.id)) {
       setUnreadIds((prev) => {
@@ -157,21 +110,8 @@ export default function NotificationsScreen({ navigation }: Props) {
       }
     }
 
-    if (profile?.role === 'driver') {
-      const targetRoute = targetRouteForNotification(n);
-      if (targetRoute) navigation.navigate(targetRoute);
-      return;
-    }
-
-    const target = await targetForAdminNotification(n);
-    if (!target) return;
-    if (target.screen === 'VehicleDetail') {
-      navigation.navigate('VehicleDetail', { vehicleId: target.vehicleId, openFolder: target.openFolder });
-    } else if (target.screen === 'DriverPersonalDetails' || target.screen === 'DriverDetail') {
-      navigation.navigate(target.screen, { driverId: target.driverId });
-    } else {
-      navigation.navigate(target.screen, undefined);
-    }
+    const target = await notificationTarget(profile?.role, n, resolveNotificationVehicleId);
+    if (target) navigateToNotificationTarget(navigation, target);
   };
 
   const markAllRead = async () => {
@@ -189,7 +129,8 @@ export default function NotificationsScreen({ navigation }: Props) {
     if (n.notification_type === 'signature_request_assigned') return 'פתח מסמך לחתימה';
     if (n.notification_type === 'vehicle_assignment') return 'הצג רכב';
     if (n.notification_type === 'driver_profile_updated_by_manager') return 'הצג את הפרטים שלי';
-    if (n.notification_type === 'driver_profile_update' || n.notification_type?.startsWith('driver_document_')) return 'פתח תיק נהג';
+    if (n.notification_type?.startsWith('driver_document_')) return 'פתח את המסמך';
+    if (n.notification_type === 'driver_profile_update') return 'פתח תיק נהג';
     if (n.notification_type === 'driver_odometer_update') return profile?.role === 'driver' ? 'הצג רכב' : 'פתח תיק נהג';
     if (n.notification_type === 'license_update_requested') return 'לאישור הבקשה';
     if (n.notification_type === 'license_update_reviewed') return 'הצג פרטים';

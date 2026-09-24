@@ -26,6 +26,7 @@ export function LiquidGlassSwitch({
   disabled,
   accessibilityLabel,
   tint = '#30D158',
+  reduceMotion = false,
 }: {
   value: boolean;
   onValueChange: (value: boolean) => void;
@@ -33,19 +34,29 @@ export function LiquidGlassSwitch({
   accessibilityLabel: string;
   /** On-state tint, as a 6-digit hex. */
   tint?: string;
+  /** Keeps the state legible without spring motion when requested. */
+  reduceMotion?: boolean;
 }) {
   const progress = useRef(new Animated.Value(value ? 1 : 0)).current;
   const press = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    if (reduceMotion) {
+      progress.stopAnimation();
+      progress.setValue(value ? 1 : 0);
+      press.stopAnimation();
+      press.setValue(1);
+      return;
+    }
     Animated.spring(progress, { toValue: value ? 1 : 0, useNativeDriver: false, stiffness: 300, damping: 32, mass: 1 }).start();
-  }, [value, progress]);
+  }, [value, progress, press, reduceMotion]);
 
   const pressIn = () => {
-    if (disabled) return;
+    if (disabled || reduceMotion) return;
     Animated.spring(press, { toValue: 0.92, useNativeDriver: true, stiffness: 420, damping: 20 }).start();
   };
   const pressOut = () => {
+    if (reduceMotion) return;
     Animated.spring(press, { toValue: 1, useNativeDriver: true, stiffness: 420, damping: 20 }).start();
   };
 

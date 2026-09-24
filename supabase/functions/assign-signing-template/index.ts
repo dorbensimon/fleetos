@@ -17,6 +17,9 @@ type DocuSealSubmitter = {
 
 const PROVISIONING_LOCK_MINUTES = 10;
 
+/** The read-only date on a company letterhead (company-signing-template). */
+const LETTERHEAD_DATE_FIELD = 'תאריך המסמך';
+
 async function findRemoteSubmitter(externalId: string): Promise<DocuSealSubmitter | null> {
   const response = await docusealFetch(`/submitters?external_id=${encodeURIComponent(externalId)}&limit=1`);
   if (!response.ok) throw new Error('DocuSeal submitter lookup failed');
@@ -82,6 +85,10 @@ Deno.serve(async (req) => {
       .eq('id', access.callerId)
       .single();
 
+    // DocuSeal's own "signing date" placeholder: it stays open until the driver
+    // signs and is then stamped with that day (in the DocuSeal account's time zone).
+    const signingDate = '{{date}}';
+
     let created = 0;
     const failed: string[] = [];
     let failureMessage = '';
@@ -106,6 +113,8 @@ Deno.serve(async (req) => {
         driver_license_number: driverDetails.license_number,
         driver_license_classes: driverDetails.license_classes,
         driver_license_expiry: driverDetails.license_expiry,
+        // The letterhead date on documents written in "מסמכים חתומים" is the day it is signed.
+        [LETTERHEAD_DATE_FIELD]: signingDate,
       };
       const missing = missingPrefill(remoteTemplate.fields || [], values);
       if (!company?.name) missing.push('שם החברה');
@@ -254,6 +263,7 @@ Deno.serve(async (req) => {
               ...(driverDetails.license_number ? { driver_license_number: driverDetails.license_number } : {}),
               ...(driverDetails.license_classes ? { driver_license_classes: driverDetails.license_classes } : {}),
               ...(driverDetails.license_expiry ? { driver_license_expiry: driverDetails.license_expiry } : {}),
+              [LETTERHEAD_DATE_FIELD]: signingDate,
             },
           }],
         }),

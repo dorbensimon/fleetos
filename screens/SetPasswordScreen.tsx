@@ -9,6 +9,8 @@ import { resolveRouteForUser } from '../lib/session';
 import { MIN_PASSWORD_LENGTH } from '../lib/validation';
 import { functionErrorMessage } from '../lib/functionError';
 import { CONTENT_MAX_WIDTH } from '../lib/theme';
+import { useIsDesktop } from '../lib/useDesktopLayout';
+import { SetPasswordDesktopView } from '../components/desktop/SetPasswordDesktopView';
 
 /**
  * Shown once, right after a first login with an owner/admin-assigned
@@ -32,6 +34,7 @@ const COLORS = {
 type Props = NativeStackScreenProps<RootStackParamList, 'SetPassword'>;
 
 export default function SetPasswordScreen({ navigation, route }: Props) {
+  const isDesktop = useIsDesktop();
   const voluntary = route.params?.voluntary ?? false;
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -105,6 +108,22 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
   };
 
   return (
+    isDesktop ? (
+      <SetPasswordDesktopView
+        voluntary={voluntary}
+        password={password}
+        confirmPassword={confirmPassword}
+        showPassword={showPassword}
+        errors={errors}
+        generalError={generalError}
+        saving={saving}
+        onPasswordChange={setPassword}
+        onConfirmPasswordChange={setConfirmPassword}
+        onTogglePassword={() => setShowPassword((current) => !current)}
+        onSubmit={() => { void submit(); }}
+        onCancel={voluntary ? () => navigation.goBack() : signOut}
+      />
+    ) : (
     <View style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.content}>
@@ -180,6 +199,7 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
         </View>
       </KeyboardAvoidingView>
     </View>
+    )
   );
 }
 

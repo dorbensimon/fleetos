@@ -18,9 +18,14 @@ export function updateCompany(companyId: string, patch: Partial<Company>) {
   return supabase.from('companies').update(patch).eq('id', companyId);
 }
 
-/** Lets an admin update their own company's phone number (RLS only allows the owner to write `companies` directly). */
-export function updateCompanyPhone(companyId: string, phone: string) {
-  return supabase.functions.invoke('update-company-phone', { body: { companyId, phone } });
+/**
+ * The one admin write path for company details (companies RLS is owner-only).
+ * Partial: only the keys sent are validated and saved, e.g. `{ landline }`.
+ */
+export function updateCompanySettings(companyId: string, settings: Record<string, unknown>) {
+  return supabase.functions.invoke<{ success: boolean; company: Company }>('update-company-settings', {
+    body: { companyId, settings },
+  });
 }
 
 export function deleteCompany(companyId: string, confirmName: string) {

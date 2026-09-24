@@ -11,8 +11,14 @@ export function isValidTemporaryPassword(value: string | null | undefined): bool
   return typeof value === 'string' && /^\d{4,}$/.test(value);
 }
 
-/** Basic email format check — good enough to catch typos, not RFC-complete. */
+/**
+ * name@domain.tld — Latin letters only, no leading/trailing/double dots, a real
+ * TLD. Not RFC-complete, but rejects gibberish and Hebrew. Keep in sync with
+ * EMAIL_RE in supabase/functions/update-company-settings.
+ */
+export const EMAIL_RE = /^[A-Za-z0-9_%+-]+(\.[A-Za-z0-9_%+-]+)*@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
+
 export function isValidEmail(value: string | null | undefined): boolean {
   if (!value) return false;
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+  return EMAIL_RE.test(value.trim());
 }

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { ScrollView, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, View, TextInput, Switch, Animated } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, View, TextInput, Switch, Animated } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ADMIN_BACKGROUND_COLORS, ADMIN_BACKGROUND_LOCATIONS } from '../../components/admin/AdminGradientBackground';
@@ -661,7 +661,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
               accessibilityLabel={canSubmit ? ctaLabel : 'השלם את שדות החובה'}
             >
               {saving ? (
-                <AppText weight="bold" style={styles.ctaText}>שומר...</AppText>
+                <ActivityIndicator color="#FFFFFF" accessibilityLabel="שומר" />
               ) : (
                 <>
                   <Ionicons name={isEdit ? 'checkmark-circle' : 'add-circle'} size={18} color={canSubmit ? '#FFFFFF' : 'rgba(14,30,43,.35)'} />

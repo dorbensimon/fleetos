@@ -153,6 +153,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
             onChangeEditingName={setEditingName}
             onStartEdit={(dept) => { setEditingId(dept.id); setEditingName(dept.name); }}
             onSaveEdit={(id) => void saveRename(id)}
+            onCancelEdit={() => { setEditingId(null); setEditingName(''); }}
             onDelete={(dept) => void confirmDelete(dept)}
           />
         )}

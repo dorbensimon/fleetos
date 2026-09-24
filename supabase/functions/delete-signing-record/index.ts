@@ -19,7 +19,8 @@ Deno.serve(async (req) => {
 
   try {
     const { companyId, kind, id, action = 'archive' } = await req.json();
-    if (!['archive', 'restore', 'permanent-delete'].includes(action)) return json({ error: 'פעולה אינה תקינה' }, 400);
+    if (!['archive', 'restore', 'permanent-delete', 'company-delete'].includes(action)) return json({ error: 'פעולה אינה תקינה' }, 400);
+    if (action === 'company-delete' && kind !== 'template') return json({ error: 'פעולה אינה תקינה' }, 400);
 
     if (kind === 'request') {
       const access = await verifyCompanyAccess(req.headers.get('Authorization'), companyId ?? null);
@@ -89,25 +90,32 @@ Deno.serve(async (req) => {
     }
 
     if (kind === 'template') {
-      // Templates are global — shared by every company — so only the
-      // platform owner may archive, restore or delete one. There is no
-      // company context to check against, unlike the request branch above.
+      // Global templates are shared by every company, so only the platform
+      // owner may archive, restore or delete one. A company's own template
+      // (made in "מסמכים חתומים") may also be deleted by that company's admin,
+      // in one step: `company-delete`.
       const user = await verifyUser(req.headers.get('Authorization'));
       if (!user.ok) return json({ error: user.error }, user.status);
-      if (user.profile.role !== 'owner') return json({ error: 'רק הבעלים יכול לנהל תבניות' }, 403);
       const { adminClient, userId } = user;
 
       const { data: template } = await adminClient.from('signing_templates').select('*').eq('id', id).single();
       if (!template) return json({ error: 'התבנית לא נמצאה' }, 404);
       const isGlobal = template.company_id === null;
+      const ownCompanyAdmin = user.profile.role === 'admin' && !isGlobal && template.company_id === user.profile.company_id;
+      if (action === 'company-delete' ? user.profile.role !== 'owner' && !ownCompanyAdmin : user.profile.role !== 'owner') {
+        return json({ error: action === 'company-delete' ? 'אין הרשאה למחוק את המסמך' : 'רק הבעלים יכול לנהל תבניות' }, 403);
+      }
+      if (action === 'company-delete' && isGlobal) return json({ error: 'אי אפשר למחוק מסמך מוכן מהמערכת' }, 403);
       const sourcePathCompanyId = template.company_id ?? GLOBAL_COMPANY_SENTINEL;
 
       if (action === 'restore') {
         await adminClient.from('signing_templates').update({ archived_at: null, archived_by: userId }).eq('id', id);
         return json({ success: true });
       }
-      if (action === 'permanent-delete') {
-        if (!template.archived_at) return json({ error: 'אפשר למחוק לצמיתות רק תבנית שנמצאת בארכיון' }, 409);
+      if (action === 'permanent-delete' || action === 'company-delete') {
+        // `company-delete` skips the archive step: the admin confirmed on screen,
+        // and requests still waiting for a signature are cancelled with it.
+        if (!template.archived_at && action !== 'company-delete') return json({ error: 'אפשר למחוק לצמיתות רק תבנית שנמצאת בארכיון' }, 409);
         let requestsQuery = adminClient.from('signature_requests')
           .select('id, company_id, driver_id, status, docuseal_submission_id, signed_file_path')
           .eq('template_id', id);

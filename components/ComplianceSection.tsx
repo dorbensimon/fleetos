@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Image, type ImageStyle } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, Card, ExpiryBadge, PrimaryButton, useToast } from './ui';
@@ -30,8 +30,9 @@ import {
   type DocumentSource,
 } from '../lib/documentActions';
 import { DocumentFolderModal } from './documents/DocumentFolderModal';
-import { DesktopDateField, HoverPressable } from './desktop/primitives';
-import { DESKTOP_COLORS, webOnly } from './desktop/desktopTheme';
+import { DesktopDateField } from './desktop/primitives';
+import { FolderTile } from './desktop/record/RecordKit';
+import { DESKTOP_COLORS } from './desktop/desktopTheme';
 
 /** compliance_items only tracks driver/vehicle expiries — not company-level documents. */
 type ComplianceOwnerType = 'driver' | 'vehicle';
@@ -105,7 +106,6 @@ export function ComplianceSection({
   );
   const [savingItem, setSavingItem] = useState<string | null>(null);
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
-  const [hoveredFolder, setHoveredFolder] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [complianceRows, documentRows] = await Promise.all([
@@ -453,49 +453,20 @@ export function ComplianceSection({
             <View style={styles.folderGrid}>
               {group.items.map((def) => {
                 const itemDocs = docs.filter((d) => d.title === def.label);
-                const isOpen = expanded === def.itemType;
                 const latestDoc = latestDocument(itemDocs);
                 const latestExpiry = latestDoc?.expiry_date ?? null;
                 const thumbnail = thumbnails[def.label];
 
                 return (
-                  <HoverPressable
+                  <FolderTile
                     key={def.itemType}
-                    style={[styles.folderTile, isOpen && styles.folderTileOpen]}
-                    hoverStyle={styles.folderTileHover}
-                    hoverMotionStyle={styles.folderTileHoverMotion}
-                    pressMotionStyle={styles.folderTilePress}
-                    onHoverIn={() => setHoveredFolder(def.itemType)}
-                    onHoverOut={() => setHoveredFolder(null)}
+                    title={def.label}
+                    icon={complianceFolderIcon(def.itemType)}
+                    thumbnail={thumbnail}
+                    signedVisual
                     onPress={() => setExpanded(def.itemType)}
-                  >
-                    {thumbnail ? (
-                      <View style={styles.folderTilePreview}>
-                        <Image
-                          source={{ uri: thumbnail }}
-                          style={[styles.folderTilePreviewImage as ImageStyle, hoveredFolder === def.itemType && styles.folderTilePreviewImageHover as ImageStyle]}
-                          resizeMode="cover"
-                        />
-                        <View
-                          pointerEvents="none"
-                          style={[styles.folderTilePreviewScrim, hoveredFolder === def.itemType && styles.folderTilePreviewScrimHover]}
-                        />
-                      </View>
-                    ) : (
-                      <View style={[
-                        styles.folderTileThumb,
-                        styles.folderTileIconWrap,
-                        styles.folderTileIconWrapDesktop,
-                        hoveredFolder === def.itemType && styles.folderTileIconWrapHover,
-                      ]}>
-                        <Ionicons name={complianceFolderIcon(def.itemType)} size={24} color={DESKTOP_COLORS.brand} />
-                      </View>
-                    )}
-                    <AppText weight="bold" style={styles.folderTileLabel} numberOfLines={1}>{def.label}</AppText>
-                    <View style={styles.folderTileMetaRow}>
-                      {latestDoc ? <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : 'חסר תוקף'} /> : <AppText style={styles.itemDocCount}>אין מסמכים</AppText>}
-                    </View>
-                  </HoverPressable>
+                    meta={latestDoc ? <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : 'חסר תוקף'} /> : <AppText style={styles.itemDocCount}>אין מסמכים</AppText>}
+                  />
                 );
               })}
               {extraFolderTiles}
@@ -714,50 +685,6 @@ const styles = StyleSheet.create({
   itemStatusNote: { fontSize: 11.5 },
 
   folderGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 12, padding: 14 },
-  folderTile: {
-    width: 150,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    borderRadius: RADIUS.md,
-    padding: 10,
-    gap: 6,
-    backgroundColor: COLORS.card,
-    ...webOnly({ transition: 'transform 150ms ease, border-color 150ms ease' }),
-  },
-  folderTileHover: {},
-  folderTileHoverMotion: webOnly({ transform: 'translateY(-2px)' }),
-  folderTilePress: webOnly({ transform: 'scale(0.97)' }),
-  folderTileOpen: { borderColor: COLORS.accent },
-  folderTileThumb: {
-    width: '100%',
-    height: 72,
-    borderRadius: RADIUS.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.field,
-  },
-  folderTilePreview: { width: '100%', height: 72, borderRadius: RADIUS.sm, overflow: 'hidden' },
-  folderTilePreviewImage: {
-    width: '100%',
-    height: '100%',
-    ...webOnly({ transition: 'transform 150ms ease' }),
-  },
-  folderTilePreviewImageHover: webOnly({ transform: 'scale(1.02)' }),
-  folderTilePreviewScrim: {
-    position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
-    backgroundColor: '#FFFFFF',
-    opacity: 0,
-    ...webOnly({ transition: 'opacity 150ms ease' }),
-  },
-  folderTilePreviewScrimHover: { opacity: 0.08 },
-  folderTileIconWrap: {},
-  folderTileIconWrapDesktop: {
-    backgroundColor: DESKTOP_COLORS.canvas,
-    ...webOnly({ transition: 'background-color 150ms ease' }),
-  },
-  folderTileIconWrapHover: { backgroundColor: DESKTOP_COLORS.brandFocusRing },
-  folderTileLabel: { fontSize: 13, color: COLORS.text, textAlign: 'right' },
-  folderTileMetaRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
   folderDetailPanel: { borderTopWidth: 1, borderTopColor: COLORS.divider, paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm },
 
   itemBody: { paddingBottom: SPACING.md, gap: SPACING.sm },

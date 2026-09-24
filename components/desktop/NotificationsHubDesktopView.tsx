@@ -55,8 +55,7 @@ function dayGroupOf(iso: string, now: Date): string {
   const t = new Date(iso).getTime();
   if (t >= startOfToday) return 'היום';
   if (t >= startOfToday - DAY_MS) return 'אתמול';
-  if (t >= startOfToday - 6 * DAY_MS) return 'השבוע';
-  return 'קודם';
+  return new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso));
 }
 
 type SettingsGroup = { key: string; title: string; footnote?: string; items: NotificationTypeInfo[]; stripPrefix?: boolean };
@@ -115,6 +114,8 @@ export function NotificationsHubDesktopView({
   const [filter, setFilter] = useState<Filter>('all');
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [muteHoverId, setMuteHoverId] = useState<string | null>(null);
+  const [focusedRowId, setFocusedRowId] = useState<string | null>(null);
+  const [focusedMuteId, setFocusedMuteId] = useState<string | null>(null);
   const [undo, setUndo] = useState<{ type: NotificationType; label: string } | null>(null);
   const [flash, setFlash] = useState<{ type: NotificationType; nonce: number } | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,19 +135,29 @@ export function NotificationsHubDesktopView({
     return result;
   }, [items, unreadIds]);
 
+  const urgency = useMemo(() => {
+    let critical = 0;
+    let warning = 0;
+    for (const item of items) {
+      const tone = toneOf(item);
+      if (tone === 'bad') critical += 1;
+      if (tone === 'warn') warning += 1;
+    }
+    return { critical, warning };
+  }, [items]);
+
   const visible = items.filter((n) =>
     filter === 'all' ? true : filter === 'unread' ? unreadIds.has(n.id) : categoryOf(n.notification_type) === filter
   );
 
   const groups = useMemo(() => {
     const now = new Date();
-    const order = ['היום', 'אתמול', 'השבוע', 'קודם'];
     const byDay = new Map<string, Notification[]>();
     for (const n of visible) {
       const key = dayGroupOf(n.created_at, now);
       byDay.set(key, [...(byDay.get(key) ?? []), n]);
     }
-    return order.filter((key) => byDay.has(key)).map((key) => ({ key, items: byDay.get(key)! }));
+    return Array.from(byDay.entries()).map(([key, groupedItems]) => ({ key, items: groupedItems }));
   }, [visible]);
 
   const flashToggle = (type: NotificationType) => {
@@ -173,7 +184,7 @@ export function NotificationsHubDesktopView({
     if (await prefs.toggle(type, true)) flashToggle(type);
   };
 
-  const chips: Filter[] = (['all', 'unread', 'vehicles', 'drivers', 'signing'] as Filter[]).filter(
+  const chips: Filter[] = (['all', 'unread', 'vehicles', 'drivers'] as Filter[]).filter(
     (key) => key === 'all' || key === 'unread' || counts[key] > 0
   );
 
@@ -182,7 +193,14 @@ export function NotificationsHubDesktopView({
       <View style={styles.columns}>
         {/* Settings — right */}
         <View style={styles.settingsColumn}>
-          <DText weight="bold" style={styles.columnTitle}>הגדרות התראות</DText>
+          <View style={styles.settingsHeading}>
+            <View pointerEvents="none" style={styles.settingsAccent} />
+            <View style={styles.settingsIcon}><Ionicons name="options-outline" size={16} color={DESKTOP_COLORS.brand} /></View>
+            <View style={styles.headingCopy}>
+              <DText weight="bold" style={styles.settingsTitle}>ניהול התראות</DText>
+              <DText style={styles.settingsSubtitle}>התאם את מה שחשוב לך לדעת</DText>
+            </View>
+          </View>
           {prefs.loading ? (
             <View style={styles.panel}><ActivityIndicator color={DESKTOP_COLORS.brand} /></View>
           ) : prefs.error ? (
@@ -247,7 +265,8 @@ export function NotificationsHubDesktopView({
                           onValueChange={(value) => void prefs.toggle(item.type, value)}
                           disabled={prefs.savingType === item.type}
                           accessibilityLabel={item.label}
-                          tint={DESKTOP_TONES.ok.fg}
+                          tint={DESKTOP_COLORS.brand}
+                          reduceMotion={reduceMotion}
                         />
                       </View>
                     ))}
@@ -262,37 +281,73 @@ export function NotificationsHubDesktopView({
 
         {/* List — left */}
         <View style={styles.listColumn}>
-          <View style={styles.toolbar}>
-            <DText weight="bold" style={styles.columnTitle}>
-              {items.length === 0 ? 'התראות' : `${items.length} התראות`}
-            </DText>
+          <View style={styles.listHeader}>
+            <View style={styles.headingCopy}>
+              <View style={styles.eyebrowRow}>
+                <View style={styles.liveDot} />
+                <DText weight="semiBold" style={styles.eyebrow}>מרכז עדכונים חי</DText>
+              </View>
+              <View style={styles.titleLine}>
+                <DText weight="bold" style={styles.listTitle}>התראות</DText>
+                {unreadIds.size > 0 && <View style={styles.unreadCount}><DText weight="bold" style={styles.unreadCountText}>{unreadIds.size}</DText></View>}
+              </View>
+              <DText style={styles.listSubtitle}>
+                {items.length === 0 ? 'כל העדכונים מהצי במקום אחד' : `${items.length} עדכונים מהצי שלך`}
+              </DText>
+            </View>
             {unreadIds.size > 0 && (
-              <HoverPressable style={styles.markAll} hoverStyle={styles.rowHover} pressStyle={styles.pressDown} onPress={onMarkAllRead}>
-                <Ionicons name="checkmark-done-outline" size={14} color={DESKTOP_COLORS.brand} />
+              <HoverPressable style={styles.markAll} hoverStyle={styles.markAllHover} pressStyle={styles.pressDown} onPress={onMarkAllRead}>
+                <Ionicons name="checkmark-done-outline" size={14} color="#FFFFFF" />
                 <DText weight="semiBold" style={styles.markAllText}>קרא הכל</DText>
               </HoverPressable>
             )}
           </View>
 
           {items.length > 0 && (
-            <View style={styles.chips}>
-              {chips.map((key) => {
-                const active = filter === key;
-                const count = key === 'all' ? null : counts[key];
-                return (
-                  <HoverPressable
-                    key={key}
-                    style={[styles.chip, active && styles.chipActive]}
-                    hoverStyle={active ? undefined : styles.rowHover}
-                    pressStyle={styles.pressDown}
-                    onPress={() => setFilter(key)}
-                    accessibilityLabel={FILTER_LABEL[key]}
-                  >
-                    <DText weight="semiBold" style={[styles.chipText, active && styles.chipTextActive]}>{FILTER_LABEL[key]}</DText>
-                    {count != null && count > 0 && <DText style={[styles.chipCount, active && styles.chipTextActive]}>{count}</DText>}
-                  </HoverPressable>
-                );
-              })}
+            <View style={styles.commandDeck}>
+              <View style={styles.signalRail}>
+                <View style={[styles.signalMetric, styles.signalMetricPrimary]}>
+                  <DText weight="bold" style={styles.signalValue}>{items.length}</DText>
+                  <DText weight="semiBold" style={styles.signalLabel}>הכול</DText>
+                </View>
+                <View style={styles.signalMetric}>
+                  <View style={[styles.signalMarker, styles.signalMarkerUnread]} />
+                  <DText weight="bold" style={styles.signalValue}>{unreadIds.size}</DText>
+                  <DText weight="semiBold" style={styles.signalLabel}>לא נקראו</DText>
+                </View>
+                <View style={styles.signalMetric}>
+                  <View style={[styles.signalMarker, styles.signalMarkerBad]} />
+                  <DText weight="bold" style={styles.signalValue}>{urgency.critical}</DText>
+                  <DText weight="semiBold" style={styles.signalLabel}>קריטיות</DText>
+                </View>
+                <View style={styles.signalMetric}>
+                  <View style={[styles.signalMarker, styles.signalMarkerWarn]} />
+                  <DText weight="bold" style={styles.signalValue}>{urgency.warning}</DText>
+                  <DText weight="semiBold" style={styles.signalLabel}>דורשות תשומת לב</DText>
+                </View>
+              </View>
+              <View style={styles.filterBar}>
+                <DText weight="semiBold" style={styles.filterLabel}>סינון מהיר</DText>
+                <View style={styles.chips}>
+                {chips.map((key) => {
+                  const active = filter === key;
+                  const count = key === 'all' ? null : counts[key];
+                  return (
+                    <HoverPressable
+                      key={key}
+                      style={[styles.chip, active && styles.chipActive]}
+                      hoverStyle={active ? undefined : styles.rowHover}
+                      pressStyle={styles.pressDown}
+                      onPress={() => setFilter(key)}
+                      accessibilityLabel={FILTER_LABEL[key]}
+                    >
+                      <DText weight="semiBold" style={[styles.chipText, active && styles.chipTextActive]}>{FILTER_LABEL[key]}</DText>
+                      {count != null && count > 0 && <DText style={[styles.chipCount, active && styles.chipTextActive]}>{count}</DText>}
+                    </HoverPressable>
+                  );
+                })}
+                </View>
+              </View>
             </View>
           )}
 
@@ -331,7 +386,10 @@ export function NotificationsHubDesktopView({
             <View key={filter} style={[styles.groups, !reduceMotion && styles.fadeIn]}>
               {groups.map((group) => (
                 <View key={group.key} style={styles.dayGroup}>
-                  <DText weight="semiBold" style={styles.groupTitle}>{group.key}</DText>
+                  <View style={styles.dayHeading}>
+                    <View style={styles.dayRule} />
+                    <DText weight="bold" style={styles.dayTitle}>{group.key}</DText>
+                  </View>
                   <View style={styles.table}>
                     {group.items.map((n, index) => {
                       const unread = unreadIds.has(n.id);
@@ -339,15 +397,29 @@ export function NotificationsHubDesktopView({
                       const tone = toneOf(n);
                       const toneColors = tone === 'brand' ? { bg: DESKTOP_COLORS.brandFocusRing, fg: DESKTOP_COLORS.brand } : DESKTOP_TONES[tone];
                       const type = n.notification_type as NotificationType | null;
+                      const category = categoryOf(n.notification_type);
                       const canMute = !!type && typeInfo.has(type) && (prefs.prefs?.[type] ?? true);
-                      const hovered = hoveredId === n.id || muteHoverId === n.id;
+                      const activeRow = hoveredId === n.id || muteHoverId === n.id || focusedRowId === n.id || focusedMuteId === n.id;
                       // The mute link is a sibling laid over the row, not nested in it — a button may not contain a button.
                       return (
-                        <View key={n.id} style={[styles.rowWrap, index < group.items.length - 1 && styles.rowBorder, hovered && styles.rowHover]}>
+                        <View
+                          key={n.id}
+                          style={[
+                            styles.rowWrap,
+                            index < group.items.length - 1 && styles.rowBorder,
+                            activeRow && styles.rowHover,
+                            !reduceMotion && styles.rowEnter,
+                            !reduceMotion && webOnly({ animationDelay: `${Math.min(index, 5) * 40}ms` }),
+                          ]}
+                        >
+                          <View pointerEvents="none" style={[styles.toneRail, { backgroundColor: toneColors.fg }]} />
                           <HoverPressable
-                            style={styles.row}
+                            style={[styles.row, focusedRowId === n.id && styles.rowFocused]}
+                            hoverMotionStyle={styles.rowHoverMotion}
                             onHoverIn={() => setHoveredId(n.id)}
                             onHoverOut={() => setHoveredId((current) => (current === n.id ? null : current))}
+                            onFocus={() => setFocusedRowId(n.id)}
+                            onBlur={() => setFocusedRowId((current) => (current === n.id ? null : current))}
                             onPress={() => onOpen(n)}
                             accessibilityLabel={n.message}
                           >
@@ -355,22 +427,28 @@ export function NotificationsHubDesktopView({
                               <Ionicons name={iconFor(n.notification_type)} size={15} color={toneColors.fg} />
                             </View>
                             <View style={styles.textWrap}>
+                              <View style={styles.rowKicker}>
+                                {!!category && <DText weight="bold" style={[styles.category, { color: toneColors.fg }]}>{FILTER_LABEL[category]}</DText>}
+                                <DText style={styles.time}>{timeAgo(n.created_at)}</DText>
+                              </View>
                               <DText weight={unread ? 'semiBold' : 'regular'} style={styles.message} numberOfLines={2}>
                                 {n.message}
                               </DText>
                               <View style={styles.metaRow}>
-                                <DText style={styles.time}>{timeAgo(n.created_at)}</DText>
                                 {!!action && <DText weight="semiBold" style={styles.action}>{action}</DText>}
+                                {!!action && <Ionicons name="arrow-back" size={12} color={DESKTOP_COLORS.brand} />}
                               </View>
                             </View>
                             <View style={[styles.unreadDot, !unread && styles.unreadDotRead]} />
                           </HoverPressable>
                           {canMute && (
                             <HoverPressable
-                              style={[styles.muteLink, hovered && styles.muteLinkVisible]}
+                              style={[styles.muteLink, styles.muteLinkVisible, focusedMuteId === n.id && styles.muteLinkFocused]}
                               hoverStyle={styles.muteLinkHover}
                               onHoverIn={() => setMuteHoverId(n.id)}
                               onHoverOut={() => setMuteHoverId((current) => (current === n.id ? null : current))}
+                              onFocus={() => setFocusedMuteId(n.id)}
+                              onBlur={() => setFocusedMuteId((current) => (current === n.id ? null : current))}
                               onPress={() => void mute(type!)}
                               disabled={prefs.savingType === type}
                               accessibilityLabel={`השתקת התראות מסוג ${typeInfo.get(type!)?.label ?? ''}`}
@@ -394,29 +472,44 @@ export function NotificationsHubDesktopView({
 }
 
 const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
-const SHADOW = webOnly({ boxShadow: '0 12px 30px -22px rgba(22, 34, 46, 0.32)' });
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  content: { padding: 22, paddingBottom: 48, maxWidth: 1440, width: '100%', alignSelf: 'center' },
-  columns: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 16 },
-  settingsColumn: { width: 340, flexShrink: 0, gap: 12, ...webOnly({ position: 'sticky', top: 0 }) },
-  listColumn: { flex: 1, minWidth: 0, gap: 12 },
-  columnTitle: { fontSize: 14 },
+  content: { paddingHorizontal: 34, paddingTop: 28, paddingBottom: 64, maxWidth: 1780, width: '100%', alignSelf: 'center' },
+  columns: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 26 },
+  settingsColumn: { width: 394, flexShrink: 0, gap: 14, ...webOnly({ position: 'sticky', top: 18 }) },
+  listColumn: { flex: 1, minWidth: 0, gap: 16 },
+  headingCopy: { gap: 3 },
 
-  panel: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 10, padding: 14, gap: 4, ...SHADOW },
-  panelList: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 10, paddingHorizontal: 14, overflow: 'hidden', ...SHADOW },
+  settingsHeading: { position: 'relative', overflow: 'hidden', flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 76, borderRadius: 20, borderWidth: 1, borderColor: '#D9E4EB', backgroundColor: '#FBFDFE', paddingHorizontal: 18, ...webOnly({ boxShadow: '0 16px 40px rgba(22,34,46,0.07)' }) },
+  settingsAccent: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 4, backgroundColor: DESKTOP_COLORS.brand },
+  settingsIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: DESKTOP_COLORS.brandFocusRing, borderWidth: 1, borderColor: 'rgba(0,136,204,0.18)', alignItems: 'center', justifyContent: 'center' },
+  settingsTitle: { fontSize: 17, letterSpacing: -0.25, color: DESKTOP_COLORS.ink },
+  settingsSubtitle: { fontSize: 12, color: DESKTOP_COLORS.inkMuted },
+
+  listHeader: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', minHeight: 104, paddingHorizontal: 24, borderRadius: 22, borderWidth: 1, borderColor: '#D8E4EB', backgroundColor: '#FBFDFE', ...webOnly({ boxShadow: '0 18px 48px rgba(22,34,46,0.075)' }) },
+  eyebrowRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, marginBottom: 4 },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#23A75A', ...webOnly({ boxShadow: '0 0 0 4px rgba(35,167,90,0.11)' }) },
+  eyebrow: { fontSize: 10.5, letterSpacing: 0.4, color: DESKTOP_COLORS.inkMuted },
+  titleLine: { flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
+  listTitle: { fontSize: 32, lineHeight: 38, letterSpacing: -0.85, color: '#102536' },
+  listSubtitle: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
+  unreadCount: { minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6, backgroundColor: DESKTOP_COLORS.brandFocusRing, alignItems: 'center', justifyContent: 'center' },
+  unreadCountText: { fontSize: 11, lineHeight: 14, color: DESKTOP_COLORS.brandHover, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+
+  panel: { backgroundColor: '#FBFDFE', borderWidth: 1, borderColor: '#DDE6EC', borderRadius: 18, padding: 18, gap: 4, ...webOnly({ boxShadow: '0 10px 28px rgba(22,34,46,0.045)' }) },
+  panelList: { backgroundColor: '#FBFDFE', borderWidth: 1, borderColor: '#DDE6EC', borderRadius: 18, paddingHorizontal: 17, overflow: 'hidden', ...webOnly({ boxShadow: '0 10px 28px rgba(22,34,46,0.04)' }) },
   settingsGroup: { gap: 6 },
   groupTitle: { fontSize: 12, color: DESKTOP_COLORS.inkMuted },
-  toggleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 48, paddingVertical: 8, marginHorizontal: -14, paddingHorizontal: 14 },
+  toggleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 8, marginHorizontal: -16, paddingHorizontal: 16 },
   toggleText: { flex: 1, minWidth: 0 },
   settingLabel: { fontSize: 13 },
-  settingDescription: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint, marginTop: 2 },
-  footnote: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint, paddingHorizontal: 2 },
+  settingDescription: { fontSize: 11.5, color: DESKTOP_COLORS.inkMuted, marginTop: 2 },
+  footnote: { fontSize: 11.5, color: DESKTOP_COLORS.inkMuted, paddingHorizontal: 2 },
   leadControl: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, marginTop: 8 },
   leadInput: { width: 52 },
   // Same chip as the record pages' inline ✓ (components/desktop/record/RecordKit.tsx).
-  confirmBtn: { width: 26, height: 26, borderRadius: 6, backgroundColor: DESKTOP_COLORS.brand, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'opacity 150ms ease, transform 120ms ease-out' }) },
+  confirmBtn: { width: 26, height: 26, borderRadius: 6, backgroundColor: DESKTOP_COLORS.brandHover, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'opacity 150ms ease, transform 120ms ease-out' }) },
   confirmBtnIdle: { opacity: 0.35 },
   confirmBtnHover: { opacity: 0.88 },
   pressDown: { transform: [{ scale: 0.97 }] },
@@ -427,33 +520,45 @@ const styles = StyleSheet.create({
     ...webOnly({ animationKeyframes: { from: { opacity: 1 }, to: { opacity: 0 } }, animationDuration: '1100ms', animationTimingFunction: 'ease-out' }),
   },
 
-  toolbar: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', minHeight: 20 },
   markAll: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 6,
     height: 30,
     paddingHorizontal: 12,
-    borderRadius: 7,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: DESKTOP_COLORS.borderInput,
-    backgroundColor: DESKTOP_COLORS.surface,
-    ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }),
+    borderColor: DESKTOP_COLORS.brandHover,
+    backgroundColor: DESKTOP_COLORS.brandHover,
+    ...webOnly({ transition: 'background-color 150ms ease, border-color 150ms ease, transform 100ms ease-out' }),
   },
-  markAllText: { fontSize: 12, color: DESKTOP_COLORS.brand },
+  markAllHover: { backgroundColor: '#006B9F', borderColor: '#006B9F' },
+  markAllText: { fontSize: 12, color: '#FFFFFF' },
 
-  chips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 },
+  commandDeck: { borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#DDE6EC', backgroundColor: '#FBFDFE' },
+  signalRail: { minHeight: 66, flexDirection: 'row-reverse', alignItems: 'stretch', backgroundColor: '#102536' },
+  signalMetric: { minWidth: 126, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 16, borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.09)' },
+  signalMetricPrimary: { minWidth: 112, backgroundColor: DESKTOP_COLORS.brand },
+  signalValue: { fontSize: 18, lineHeight: 22, color: '#FFFFFF', ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+  signalLabel: { fontSize: 10.5, color: 'rgba(255,255,255,0.7)' },
+  signalMarker: { width: 7, height: 7, borderRadius: 3.5 },
+  signalMarkerUnread: { backgroundColor: '#5FC1F0' },
+  signalMarkerBad: { backgroundColor: '#FF655C' },
+  signalMarkerWarn: { backgroundColor: '#FFB23E' },
+  filterBar: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 54, paddingHorizontal: 16, backgroundColor: '#FBFDFE' },
+  filterLabel: { fontSize: 12, color: DESKTOP_COLORS.inkMuted },
+  chips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, flex: 1 },
   chip: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 6,
-    height: 28,
+    height: 29,
     paddingHorizontal: 12,
-    borderRadius: 14,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.borderInput,
     backgroundColor: DESKTOP_COLORS.surface,
-    ...webOnly({ transition: 'background-color 150ms ease, border-color 150ms ease, transform 120ms ease-out' }),
+    ...webOnly({ transition: `background-color 150ms ease, border-color 150ms ease, transform 120ms ${EASE_OUT}` }),
   },
   chipActive: { backgroundColor: DESKTOP_COLORS.brandFocusRing, borderColor: DESKTOP_COLORS.brand },
   chipText: { fontSize: 12, color: DESKTOP_COLORS.inkMuted },
@@ -483,20 +588,37 @@ const styles = StyleSheet.create({
   stateTitle: { fontSize: 14, color: DESKTOP_COLORS.inkMuted, textAlign: 'center' },
   stateHint: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint, textAlign: 'center', marginBottom: 6 },
 
-  groups: { gap: 14 },
-  dayGroup: { gap: 6 },
-  table: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 10, overflow: 'hidden', ...SHADOW },
-  rowWrap: { position: 'relative', ...webOnly({ transition: 'background-color 150ms ease' }) },
-  row: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
+  groups: { gap: 24 },
+  dayGroup: { gap: 10 },
+  dayHeading: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 4 },
+  dayRule: { height: 1, backgroundColor: '#DCE5EA', flex: 1 },
+  dayTitle: { fontSize: 12.5, color: '#435465' },
+  table: { backgroundColor: '#FBFDFE', borderWidth: 1, borderColor: '#DCE5EA', borderRadius: 20, overflow: 'hidden', ...webOnly({ boxShadow: '0 12px 36px rgba(22,34,46,0.055)' }) },
+  rowWrap: { position: 'relative', overflow: 'hidden', ...webOnly({ transition: 'background-color 150ms ease' }) },
+  rowEnter: webOnly({
+    animationKeyframes: {
+      from: { opacity: 0, transform: [{ translateY: 7 }] },
+      to: { opacity: 1, transform: [{ translateY: 0 }] },
+    },
+    animationDuration: '220ms',
+    animationTimingFunction: EASE_OUT,
+    animationFillMode: 'both',
+  }),
+  toneRail: { position: 'absolute', right: 0, top: 0, bottom: 0, width: 3 },
+  row: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 14, minHeight: 94, paddingHorizontal: 20, paddingVertical: 17, paddingLeft: 132, ...webOnly({ transition: `transform 180ms ${EASE_OUT}` }) },
+  rowHoverMotion: { transform: [{ translateX: -3 }] },
+  rowFocused: webOnly({ outlineWidth: 2, outlineStyle: 'solid', outlineColor: DESKTOP_COLORS.brand, outlineOffset: -2 }),
   rowBorder: { borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
-  rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
-  icon: { width: 30, height: 30, borderRadius: 7, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 },
+  rowHover: { backgroundColor: DESKTOP_COLORS.brandFocusRing },
+  icon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
   textWrap: { flex: 1, gap: 4, minWidth: 0 },
-  message: { fontSize: 13 },
+  rowKicker: { flexDirection: 'row-reverse', alignItems: 'center', gap: 9 },
+  category: { fontSize: 10.5 },
+  message: { fontSize: 14, lineHeight: 20, color: '#172B3A' },
   metaRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, minHeight: 22 },
   time: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint },
   action: { fontSize: 11.5, color: DESKTOP_COLORS.brand },
-  // Revealed on row hover so the list stays calm; the whole row stays the primary target.
+  // Always present so every row exposes its secondary action without hunting for hover.
   muteLink: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -505,13 +627,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     borderRadius: 5,
     position: 'absolute',
-    left: 12,
-    bottom: 10,
-    opacity: 0,
+    left: 16,
+    top: 15,
+    borderWidth: 1,
+    borderColor: DESKTOP_COLORS.borderSoft,
+    backgroundColor: DESKTOP_COLORS.surface,
     ...webOnly({ transition: 'opacity 150ms ease, background-color 150ms ease' }),
   },
   muteLinkVisible: { opacity: 1 },
-  muteLinkHover: { backgroundColor: DESKTOP_COLORS.borderSoft },
+  muteLinkHover: { backgroundColor: DESKTOP_COLORS.brandFocusRing, borderColor: 'rgba(0,122,255,0.28)' },
+  muteLinkFocused: webOnly({ outlineWidth: 2, outlineStyle: 'solid', outlineColor: DESKTOP_COLORS.brand, outlineOffset: 2 }),
   muteText: { fontSize: 11.5, color: DESKTOP_COLORS.inkMuted },
   unreadDot: {
     width: 7,

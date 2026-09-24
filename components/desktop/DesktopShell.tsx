@@ -16,7 +16,7 @@ import { supabase } from '../../lib/supabase';
 import { showAlert } from '../../lib/platformAlert';
 import { formatDateTime } from '../../lib/theme';
 import { RootStackParamList } from '../../navigation/types';
-import { isVehicleFolderNotification } from '../../lib/vehicleFolderAlerts';
+import { navigateToNotificationTarget, notificationTarget } from '../../lib/notificationTargets';
 import { DText, HoverPressable } from './primitives';
 import {
   DESKTOP_COLORS,
@@ -52,10 +52,13 @@ const NOTIFICATION_PREVIEW_COUNT = 5;
 export function DesktopShell({
   active,
   breadcrumbs,
+  headerAccessory,
   children,
 }: {
   active: NavKey;
   breadcrumbs: Breadcrumb[];
+  /** Page-specific control shown in the top bar beside the notifications bell. */
+  headerAccessory?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -118,45 +121,9 @@ export function DesktopShell({
 
     setNotifOpen(false);
 
-    const isVehicleNotification = notification.notification_type === 'vehicle_assignment'
-      || notification.notification_type === 'vehicle_inspection_last_date_expiry'
-      || notification.notification_type === 'vehicle_service_due'
-      || isVehicleFolderNotification(notification.notification_type);
-    const vehicleId = isVehicleNotification
-      ? await resolveNotificationVehicleId(notification)
-      : null;
-
-    if (vehicleId) {
-      navigation.navigate('VehicleDetail', {
-        vehicleId,
-        openFolder: notification.folder_key ?? undefined,
-      });
-      return;
-    }
-
-    if (
-      (notification.notification_type === 'driver_profile_update'
-        || notification.notification_type?.startsWith('driver_document_')
-        || notification.notification_type === 'driver_odometer_update')
-      && notification.actor_id
-    ) {
-      navigation.navigate('DriverPersonalDetails', { driverId: notification.actor_id });
-      return;
-    }
-
-    if (notification.notification_type === 'license_update_requested' && notification.actor_id) {
-      navigation.navigate('DriverDetail', { driverId: notification.actor_id });
-      return;
-    }
-
-    if (
-      isVehicleNotification
-    ) {
-      navigation.navigate('AdminHome');
-      return;
-    }
-
-    navigation.navigate('Notifications');
+    const target = await notificationTarget(profile?.role, notification, resolveNotificationVehicleId);
+    if (target) navigateToNotificationTarget(navigation, target);
+    else navigation.navigate('Notifications');
   };
 
   const logout = () => {
@@ -184,6 +151,7 @@ export function DesktopShell({
     ? [
         { key: 'AdminHome', label: 'דשבורד', icon: 'grid' },
         { key: 'CompanyDocuments', label: 'מסמכי חברה', icon: 'folder-open' },
+        { key: 'SignedDocuments', label: 'מסמכים חתומים', icon: 'create' },
       ]
     : isOwner
     ? [
@@ -292,6 +260,15 @@ export function DesktopShell({
           ))}
         </ScrollView>
 
+        {isAdmin && (
+          <View style={styles.footerNav}>
+            <SidebarItem
+              item={{ key: 'CompanySettings', label: 'הגדרות החברה', icon: 'settings' }}
+              active={active === 'CompanySettings'}
+              onPress={() => go('CompanySettings')}
+            />
+          </View>
+        )}
         <HoverPressable style={styles.logout} hoverStyle={styles.navItemHover} onPress={logout}>
           <Ionicons name="log-out-outline" size={15} color={DESKTOP_COLORS.sidebarText} />
           <DText weight="medium" style={styles.navLabel}>התנתקות</DText>
@@ -327,6 +304,7 @@ export function DesktopShell({
           </View>
 
           <View style={styles.headerActions}>
+            {headerAccessory}
             {isAdmin && (
               <View style={styles.bellWrap}>
                 <HoverPressable
@@ -488,6 +466,12 @@ const styles = StyleSheet.create({
   navLabel: { flex: 1, color: DESKTOP_COLORS.sidebarText, fontSize: 13 },
   navBadge: { backgroundColor: DESKTOP_COLORS.danger, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 },
   navBadgeText: { color: '#fff', fontSize: 10, textAlign: 'center' },
+  footerNav: {
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: DESKTOP_COLORS.sidebarDivider,
+  },
   logout: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

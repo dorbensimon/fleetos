@@ -4,7 +4,9 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { supabase, type UserRole } from './supabase';
-import { routeForPushNotification } from './pushNotificationRoutes';
+import { resolveNotificationVehicleId } from './adminApi/notifications';
+import type { Notification } from './adminApi/types';
+import { notificationTarget, type NotificationTarget } from './notificationTargets';
 
 const STORED_TOKEN_KEY = 'fleetos_expo_push_token';
 
@@ -17,10 +19,8 @@ Notifications.setNotificationHandler({
   }),
 });
 
-type Navigate = (
-  screen: ReturnType<typeof routeForPushNotification>,
-  params?: { vehicleId: string; openFolder?: string },
-) => void;
+/** Called with the record the tapped notification is about, or null for the notifications page. */
+type Navigate = (target: NotificationTarget | null) => void;
 
 function projectId(): string | undefined {
   return Constants.easConfig?.projectId
@@ -50,16 +50,23 @@ async function openNotification(
   const role = await currentUserRole();
   if (!role) return;
 
+  // The push carries the notification's id; the stored row names the driver
+  // or vehicle it is about, so a tap lands exactly where the in-app list would.
   const data = response.notification.request.content.data ?? {};
-  const vehicleId = typeof data.vehicleId === 'string' ? data.vehicleId : null;
-  const folderKey = typeof data.folderKey === 'string' ? data.folderKey : null;
-  const screen = routeForPushNotification(role, {
-    notificationType: typeof data.notificationType === 'string' ? data.notificationType : null,
-    vehicleId,
-    folderKey,
-  });
-  if (screen === 'VehicleDetail' && vehicleId) navigate(screen, { vehicleId, openFolder: folderKey ?? undefined });
-  else navigate(screen);
+  const notificationId = typeof data.notificationId === 'string' ? data.notificationId : null;
+  if (!notificationId) {
+    navigate(null);
+    return;
+  }
+  const { data: row } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('id', notificationId)
+    .maybeSingle();
+  const target = row
+    ? await notificationTarget(role, row as Notification, resolveNotificationVehicleId).catch(() => null)
+    : null;
+  navigate(target);
 }
 
 /** Registers this physical device. Push permissions can always be changed later in iOS Settings. */

@@ -26,19 +26,28 @@ export async function pickAndUploadLogo(): Promise<string | null> {
   }
 
   const asset = result.assets[0];
-  const mimeType = asset.mimeType || 'image/jpeg';
+  return uploadCompanyLogoImage(asset.uri, asset.mimeType || 'image/jpeg');
+}
+
+/**
+ * Uploads a picked image to the `company-logos` bucket and returns its public
+ * URL. `folder` scopes it to a company (admins may only write their own
+ * company's folder); omitted, it lands at the bucket root (owner-only).
+ */
+export async function uploadCompanyLogoImage(uri: string, mimeType: string, folder?: string, prefix?: string): Promise<string> {
   if (!isAllowedLogoMimeType(mimeType)) {
     throw new Error('סוג הלוגו אינו נתמך. ניתן להעלות JPG, PNG או WEBP');
   }
   const base64 = Platform.OS === 'web'
-    ? await readBlobUrlAsBase64(asset.uri)
-    : await new File(asset.uri).base64();
+    ? await readBlobUrlAsBase64(uri)
+    : await new File(uri).base64();
   const arrayBuffer = decode(base64);
   if (arrayBuffer.byteLength > MAX_LOGO_BYTES) {
     throw new Error('הלוגו גדול מדי. ניתן להעלות תמונה עד 5MB');
   }
   const fileExt = extensionForMimeType(mimeType);
-  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+  const baseName = `${prefix ? `${prefix}-` : ''}${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+  const fileName = folder ? `${folder}/${baseName}` : baseName;
 
   const { error } = await supabase.storage.from('company-logos').upload(fileName, arrayBuffer, {
     contentType: mimeType,
