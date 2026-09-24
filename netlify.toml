@@ -27,10 +27,9 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(self), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()"
     Cross-Origin-Opener-Policy = "same-origin"
-    # Report-only first: logs anything the policy would block without breaking
-    # signing (DocuSeal), PDFs (pdf.js) or storage previews. Switch the header
-    # name to Content-Security-Policy once a real session shows no violations.
-    Content-Security-Policy-Report-Only = """
+    # Enforced after a full signed-in pass (fleet, documents, pdf.js previews,
+    # a real DocuSeal signature and download) showed zero violations.
+    Content-Security-Policy = """
       default-src 'self'; \
       script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.docuseal.com https://cdn.docuseal.eu https://docuseal.com https://docuseal.eu; \
       style-src 'self' 'unsafe-inline' https://cdn.docuseal.com https://cdn.docuseal.eu https://docuseal.com https://docuseal.eu; \
