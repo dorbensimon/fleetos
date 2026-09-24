@@ -25,6 +25,7 @@ const HEBREW_MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מ
 
 function WebDatePicker({ value, onConfirm, onClose }: { value: string | null; onConfirm: (iso: string) => void; onClose: () => void }) {
   const [draft, setDraft] = useState(() => value ? parseDateValue(value) : new Date());
+  const [choosingYear, setChoosingYear] = useState(false);
   const daysInMonth = new Date(draft.getFullYear(), draft.getMonth() + 1, 0).getDate();
   const years = Array.from({ length: 101 }, (_, index) => new Date().getFullYear() + 20 - index);
   const dayScrollRef = useRef<ScrollView>(null);
@@ -61,6 +62,11 @@ function WebDatePicker({ value, onConfirm, onClose }: { value: string | null; on
     setDraft(next);
   };
 
+  const chooseYear = (year: number) => {
+    update('year', year);
+    setChoosingYear(false);
+  };
+
   const column = (items: { value: number; label: string }[], selected: number, part: 'day' | 'month' | 'year', ref: React.RefObject<ScrollView | null>) => (
     <ScrollView ref={ref} style={styles.pickerColumn} contentContainerStyle={styles.pickerColumnContent} showsVerticalScrollIndicator={false}>
       {items.map((item) => {
@@ -79,14 +85,27 @@ function WebDatePicker({ value, onConfirm, onClose }: { value: string | null; on
           <View style={styles.grabHandle} />
           <View style={styles.webSheetHeader}>
             <TouchableOpacity onPress={onClose}><AppText style={styles.sheetAction}>ביטול</AppText></TouchableOpacity>
-            <AppText weight="bold" style={styles.sheetTitle}>בחירת תאריך</AppText>
+            <TouchableOpacity onPress={() => setChoosingYear((current) => !current)} accessibilityRole="button" accessibilityLabel="בחירת שנה">
+              <AppText weight="bold" style={styles.sheetTitle}>{choosingYear ? 'בחירת שנה' : 'בחירת תאריך'}</AppText>
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => onConfirm(toIso(draft))}><AppText weight="bold" style={styles.sheetAction}>אישור</AppText></TouchableOpacity>
           </View>
-          <View style={styles.pickerColumns}>
-            {column(Array.from({ length: daysInMonth }, (_, index) => ({ value: index + 1, label: String(index + 1) })), draft.getDate(), 'day', dayScrollRef)}
-            {column(HEBREW_MONTHS.map((label, index) => ({ value: index, label })), draft.getMonth(), 'month', monthScrollRef)}
-            {column(years.map((year) => ({ value: year, label: String(year) })), draft.getFullYear(), 'year', yearScrollRef)}
-          </View>
+          {choosingYear ? (
+            <ScrollView style={styles.yearGridScroll} contentContainerStyle={styles.yearGrid} showsVerticalScrollIndicator={false}>
+              {years.map((year) => {
+                const active = year === draft.getFullYear();
+                return <TouchableOpacity key={year} style={[styles.yearOption, active && styles.yearOptionActive]} onPress={() => chooseYear(year)}>
+                  <AppText weight={active ? 'bold' : 'regular'} style={[styles.yearOptionText, active && styles.yearOptionTextActive]}>{year}</AppText>
+                </TouchableOpacity>;
+              })}
+            </ScrollView>
+          ) : (
+            <View style={styles.pickerColumns}>
+              {column(Array.from({ length: daysInMonth }, (_, index) => ({ value: index + 1, label: String(index + 1) })), draft.getDate(), 'day', dayScrollRef)}
+              {column(HEBREW_MONTHS.map((label, index) => ({ value: index, label })), draft.getMonth(), 'month', monthScrollRef)}
+              {column(years.map((year) => ({ value: year, label: String(year) })), draft.getFullYear(), 'year', yearScrollRef)}
+            </View>
+          )}
         </Pressable>
       </Pressable>
     </Modal>
@@ -242,4 +261,10 @@ const styles = StyleSheet.create({
   pickerOptionActive: { backgroundColor: COLORS.accentSoft },
   pickerOptionText: { color: COLORS.textMuted, fontSize: 15 },
   pickerOptionTextActive: { color: COLORS.accent },
+  yearGridScroll: { height: 208 },
+  yearGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8, paddingBottom: 8 },
+  yearOption: { width: '30.7%', minHeight: 42, borderRadius: RADIUS.md, backgroundColor: COLORS.field, alignItems: 'center', justifyContent: 'center' },
+  yearOptionActive: { backgroundColor: COLORS.accentSoft },
+  yearOptionText: { color: COLORS.textMuted, fontSize: 15 },
+  yearOptionTextActive: { color: COLORS.accent },
 });

@@ -2,9 +2,9 @@ import React, { useState, useRef } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Image, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, Card, Field, Input, PrimaryButton } from '../ui';
-import { COLORS, SPACING, CONTENT_MAX_WIDTH } from '../../lib/theme';
+import { COLORS, SPACING } from '../../lib/theme';
 import { pickImage } from '../../lib/documents';
-import { scanLicenseImage, extractExpiryDate, type ScanResult } from '../../lib/documentScanner';
+import { scanLicenseImage, type ScanResult } from '../../lib/documentScanner';
 
 type Props = {
   visible: boolean;

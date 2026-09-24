@@ -36,9 +36,13 @@ const PREFILL_KINDS: Record<string, string> = {
 const FIELD_KINDS = new Set<string>(['signature', 'date', 'checkbox', 'text', ...Object.keys(PREFILL_KINDS)]);
 
 type PlacedField = { kind: FieldKind; label?: string; page: number; x: number; y: number; w: number; h: number };
-type Inline = { text: string; bold?: boolean; italic?: boolean; underline?: boolean };
+type Inline = { text: string; bold?: boolean; italic?: boolean; underline?: boolean; size?: number; color?: string; highlight?: boolean };
+/** The editor's text sizes, colours and marker (lib/companySigningTemplates.ts); anything else is ignored. */
+const TEXT_SIZES = new Set([13, 20, 24]);
+const TEXT_COLORS = new Set(['#5C6773', '#0088CC', '#D92D20', '#12805C']);
+const HIGHLIGHT = '#FFF1A8';
 type EditorField = { kind: FieldKind; label?: string; x: number; y: number; w: number; h: number };
-type Block = { type: 'h1' | 'h2' | 'p' | 'ul' | 'ol'; align?: 'right' | 'center' | 'left'; content: Inline[][] };
+type Block = { type: 'h1' | 'h2' | 'p' | 'ul' | 'ol' | 'hr'; align?: 'right' | 'center' | 'left' | 'justify'; content: Inline[][] };
 
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -194,10 +198,15 @@ function renderEditorDocument(raw: unknown, fields: EditorField[], letterhead: L
     const node = item as Record<string, unknown>;
     if (typeof node.text !== 'string') return null;
     textLength += node.text.length;
-    let html = escapeHtml(node.text).replace(/\n/g, '<br>');
+    let html = escapeHtml(node.text.replace(/\u200b/g, '')).replace(/\n/g, '<br>');
     if (node.bold) html = `<strong>${html}</strong>`;
     if (node.italic) html = `<em>${html}</em>`;
     if (node.underline) html = `<u>${html}</u>`;
+    const style: string[] = [];
+    if (typeof node.size === 'number' && TEXT_SIZES.has(node.size)) style.push(`font-size: ${node.size}px`);
+    if (typeof node.color === 'string' && TEXT_COLORS.has(node.color)) style.push(`color: ${node.color}`);
+    if (node.highlight === true) style.push(`background-color: ${HIGHLIGHT}`);
+    if (style.length) html = `<span style="${style.join('; ')}">${html}</span>`;
     return html;
   };
 
@@ -211,8 +220,12 @@ function renderEditorDocument(raw: unknown, fields: EditorField[], letterhead: L
   for (const block of raw) {
     if (!block || typeof block !== 'object') return null;
     const { type, align, content } = block as Record<string, unknown>;
+    if (type === 'hr') {
+      out.push('<hr>');
+      continue;
+    }
     if (!['h1', 'h2', 'p', 'ul', 'ol'].includes(type as string) || !Array.isArray(content) || content.length === 0) return null;
-    const textAlign = align === 'center' || align === 'left' ? align : 'right';
+    const textAlign = align === 'center' || align === 'left' || align === 'justify' ? align : 'right';
     const lines = content.map(line);
     if (lines.some((l) => l === null)) return null;
     if (type === 'ul' || type === 'ol') {
@@ -246,6 +259,7 @@ function renderEditorDocument(raw: unknown, fields: EditorField[], letterhead: L
   p { margin: 0 0 8px; }
   ul, ol { margin: 0 0 8px; padding-right: 26px; padding-left: 0; }
   strong { font-weight: 700; }
+  hr { border: none; border-top: 1px solid #C9D1D8; margin: 12px 0; }
   .lh { position: relative; height: ${PAGE.headerH}px; margin-bottom: ${PAGE.headerGap}px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 16px; border-bottom: 1px solid #E1E6EA; direction: rtl; font-family: 'Heebo', 'Arial Hebrew', Arial, sans-serif; }
   .lh::after { content: ''; position: absolute; right: 0; bottom: -2px; width: 56px; height: 3px; border-radius: 2px; background: #0088CC; }
   .lh-brand { display: flex; align-items: center; gap: 14px; min-width: 0; }

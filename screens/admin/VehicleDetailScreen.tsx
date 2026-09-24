@@ -13,7 +13,7 @@ import { COLORS, EXPIRY_STYLE, ExpiryState, SPACING, expiryState, formatDate, BR
 import { FLEET_COLORS } from '../../lib/colors';
 import { DOSSIER_BLUE, DOSSIER_BLUE_LIGHT, DOSSIER_INK } from '../../lib/dossierColors';
 import { useCompany } from '../../lib/CompanyContext';
-import { AcquisitionType, ComplianceItem, Department, Vehicle, VehicleDriverWithProfile, VehicleType, archiveVehicle, deleteVehicle, getVehicle, listActiveVehicleDrivers, listCompliance, listDepartments, listDrivers, listVehicles, restoreVehicle, updateVehicle } from '../../lib/adminApi';
+import { AcquisitionType, ComplianceItem, Department, Vehicle, VehicleDriverWithProfile, VehicleType, archiveVehicle, deleteVehicle, getVehicle, listActiveVehicleDrivers, listActiveVehicleDriversForVehicles, listCompliance, listDepartments, listDrivers, listVehicles, restoreVehicle, updateVehicle } from '../../lib/adminApi';
 import { DC_FONT, DC_SPACING } from '../../components/driverCard/driverCardTheme';
 import { ACQUISITION_TYPE_LABELS, VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../lib/compliance';
 import { formatPlate } from '../../lib/plate';
@@ -27,6 +27,7 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { VehicleDetailDesktopView } from '../../components/desktop/VehicleDetailDesktopView';
 import { isStaleDepartmentError } from '../../lib/driverFields';
 import { lookupVehicleRegistry } from '../../lib/vehicleRegistry';
+import { requiresTachograph } from '../../lib/tachograph';
 
 // 'licensing' only exists on the desktop tab bar (registration/insurance/test
 // status cards) — the phone tiles never set it, but the type has to allow it
@@ -36,7 +37,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'VehicleDetail'>;
 type MaintForm = { odometer: string; last_service_km: string; service_interval_km: string; next_service_km: string };
 const VEHICLE_DOCUMENT_FOLDERS = [
   { category: 'safety_officer_approval', title: 'אישור קצין בטיחות', icon: 'shield-checkmark-outline', color: '#34C759', requiresExpiry: true },
-  { category: 'tachograph_calibration', title: 'כיול טכנוגרף', icon: 'speedometer-outline', color: '#5E5CE6', requiresExpiry: true },
+  { category: 'tachograph_calibration', title: 'תוקף טכוגרף', icon: 'speedometer-outline', color: '#5E5CE6', requiresExpiry: true },
   { category: 'brakes_semiannual', title: 'בלמים חצי-שנתי', icon: 'disc-outline', color: '#FF9500', requiresExpiry: true },
   { category: 'brakes_annual', title: 'בלמים שנתי', icon: 'disc-outline', color: '#0A7FD0', requiresExpiry: true },
   { category: 'winter_inspection', title: 'בדיקת חורף', icon: 'snow-outline', color: '#14B8A6', requiresExpiry: true },
@@ -45,6 +46,8 @@ const VEHICLE_DOCUMENT_FOLDERS = [
 ] as const;
 const isVehicleTab = (value: unknown): value is Tab => value === 'general' || value === 'maintenance' || value === 'documents' || value === 'drivers' || value === 'licensing';
 const numberOrNull = (value: string) => { const n = Number(value.replace(/[^\d.-]/g, '')); return Number.isFinite(n) ? n : null; };
+// The batched variant also carries each driver's license expiry, shown next to the driver on the desktop card.
+const loadVehicleDrivers = async (vehicleId: string) => (await listActiveVehicleDriversForVehicles([vehicleId])).get(vehicleId) ?? [];
 const formatKm = (value: string) => { const digits = value.replace(/\D/g, ''); return digits ? Number(digits).toLocaleString() : ''; };
 
 export default function VehicleDetailScreen({ route, navigation }: Props) {
@@ -70,7 +73,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const [lookupMessage, setLookupMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [loadedVehicle, loadedDrivers, loadedCompliance] = await Promise.all([getVehicle(vehicleId), listActiveVehicleDrivers(vehicleId), listCompliance('vehicle', vehicleId)]);
+    const [loadedVehicle, loadedDrivers, loadedCompliance] = await Promise.all([getVehicle(vehicleId), loadVehicleDrivers(vehicleId), listCompliance('vehicle', vehicleId)]);
     setVehicle(loadedVehicle); setDrivers(loadedDrivers); setCompliance(loadedCompliance);
     if (companyId) { const [deps, companyDrivers] = await Promise.all([listDepartments(companyId), listDrivers(companyId)]); setDepartments(deps); setDriverOptions(companyDrivers.map((d) => ({ value: d.id, label: d.full_name ?? 'ללא שם' }))); }
   }, [companyId, vehicleId]);
@@ -96,6 +99,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     navigation.setParams({ openFolder: undefined });
     const folder = vehicleFolderByKey(openFolderParam);
     if (!folder) return;
+    if (folder.folderKey === 'tachograph_calibration' && !requiresTachograph(vehicle.vehicle_type)) return;
     if (folder.source === 'compliance') {
       setTab('documents');
       setFocusItem(folder.folderKey);
@@ -116,6 +120,9 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     if (item) setFocusItem(item);
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 340, animated: true }));
   };
+  const visibleDocumentFolders = VEHICLE_DOCUMENT_FOLDERS.filter(
+    (folder) => folder.category !== 'tachograph_calibration' || requiresTachograph(vehicle?.vehicle_type ?? 'car'),
+  );
   const archive = () => showAlert('העברה לארכיון', `להעביר את ${formatPlate(vehicle?.plate_number)} לארכיון? הרכב יוסתר מהרשימה אך הנתונים יישמרו.`, [{ text: 'ביטול', style: 'cancel' }, { text: 'העבר לארכיון', style: 'destructive', onPress: async () => { await archiveVehicle(vehicleId); navigation.goBack(); } }]);
   const restore = () => showAlert('הסרה מהארכיון', `להחזיר את ${formatPlate(vehicle?.plate_number)} לרשימת הרכבים הפעילה?`, [{ text: 'ביטול', style: 'cancel' }, { text: 'הסר מהארכיון', onPress: async () => { await restoreVehicle(vehicleId); await load(); showToast('הרכב הוסר מהארכיון'); } }]);
   const editMaintenance = () => { if (!vehicle) return; setMaintenance({ odometer: String(vehicle.odometer ?? ''), last_service_km: String(vehicle.last_service_km ?? ''), service_interval_km: vehicle.service_interval_km ? String(vehicle.service_interval_km) : '', next_service_km: vehicle.next_service_km ? String(vehicle.next_service_km) : '' }); setEditingMaintenance(true); };
@@ -211,10 +218,10 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
           vehicleId={vehicleId}
           drivers={drivers}
           driverOptions={driverOptions}
-          documentFolders={VEHICLE_DOCUMENT_FOLDERS}
+          documentFolders={visibleDocumentFolders}
           focusItem={focusItem}
-          onDriversChanged={async () => setDrivers(await listActiveVehicleDrivers(vehicleId))}
-          onOpenDriver={(driverId) => navigation.navigate('DriverDetail', { driverId })}
+          onDriversChanged={async () => setDrivers(await loadVehicleDrivers(vehicleId))}
+          onOpenDriver={(driverId) => navigation.navigate('DriverDetail', { driverId, fromVehicleId: vehicleId })}
           onOpenDocumentFolder={openDocumentFolder}
           onArchive={archive}
           onRestore={restore}
@@ -252,9 +259,9 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     {tab === 'documents' && <>
       <Caption label="מסמכי רכב" />
       <ComplianceSection companyId={companyId} ownerType="vehicle" ownerId={vehicleId} focusItemType={focusItem} spacious folderAppearance hiddenItemTypes={['annual_test']} />
-      <Card style={s.documentFoldersCard}>{VEHICLE_DOCUMENT_FOLDERS.map((folder, index) => <Row key={folder.category} label={folder.title} icon={folder.icon} color={folder.color} onPress={() => openDocumentFolder(folder)} last={index === VEHICLE_DOCUMENT_FOLDERS.length - 1} />)}</Card>
+      <Card style={s.documentFoldersCard}>{visibleDocumentFolders.map((folder, index) => <Row key={folder.category} label={folder.title} icon={folder.icon} color={folder.color} onPress={() => openDocumentFolder(folder)} last={index === visibleDocumentFolders.length - 1} />)}</Card>
     </>}
-    {tab === 'drivers' && <><Caption label="נהגים משויכים" /><Card style={s.tabCard}><VehicleDriversEditor vehicleId={vehicleId} assignments={drivers} driverOptions={driverOptions} onChanged={async () => setDrivers(await listActiveVehicleDrivers(vehicleId))} onOpenDriver={(driverId) => navigation.navigate('DriverDetail', { driverId })} /></Card></>}
+    {tab === 'drivers' && <><Caption label="נהגים משויכים" /><Card style={s.tabCard}><VehicleDriversEditor vehicleId={vehicleId} assignments={drivers} driverOptions={driverOptions} onChanged={async () => setDrivers(await listActiveVehicleDrivers(vehicleId))} onOpenDriver={(driverId) => navigation.navigate('DriverDetail', { driverId, fromVehicleId: vehicleId })} /></Card></>}
     {tab === 'general' && <><Caption label="פעולות" /><View style={s.actions}><TouchableOpacity onPress={removePermanently} style={s.delete}><Ionicons name="trash-outline" size={17} color={FLEET_COLORS.danger.text} /><AppText weight="bold" style={s.deleteText}>מחיקת רכב</AppText></TouchableOpacity><TouchableOpacity onPress={vehicle.status === 'archived' ? restore : archive} style={s.archive}><Ionicons name={vehicle.status === 'archived' ? 'arrow-undo-outline' : 'archive-outline'} size={17} color={FLEET_COLORS.danger.text} /><AppText weight="bold" style={s.archiveText}>{vehicle.status === 'archived' ? 'הסר מהארכיון' : 'לארכיון'}</AppText></TouchableOpacity></View></>}
   </ScrollView>
     <View style={[s.floatingNavigation, { top: insets.top + 12 }]}><BackButton onPress={() => navigation.goBack()} /></View>

@@ -311,7 +311,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
           : driver?.vehicle_id
           ? { id: driver.vehicle_id }
           : null;
-      if (targetVehicle?.id) navigation.navigate('VehicleDetail', { vehicleId: targetVehicle.id, returnTo: 'driver' });
+      if (targetVehicle?.id) navigation.navigate('VehicleDetail', { vehicleId: targetVehicle.id, returnTo: 'driver', fromDriverId: driverId });
       return;
     }
     if (row.key === 'phone') {
@@ -427,7 +427,8 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
             canSendSigning={!!driver && (profile?.role === 'owner' || (profile?.role === 'admin' && profile.company_id === driver.company_id))}
             onSaveField={saveDriverField}
             onSaveEmail={saveDriverEmail}
-            onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, returnTo: 'driver' })}
+            onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, returnTo: 'driver', fromDriverId: driverId })}
+            onVehiclesChanged={() => void getDriver(driverId).then((d) => d && setDriver((prev) => (prev ? { ...d, email: prev.email } : d))).catch(() => {})}
             onOpenSigningSession={(target) => navigation.navigate('DocusealWebView', target)}
             openFolder={route.params.openFolder ?? null}
             onFolderOpened={() => navigation.setParams({ openFolder: undefined })}
@@ -527,7 +528,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
                 if (action.label === 'התקשר' && driver?.phone) dialPhone(driver.phone);
                 else if (action.label === 'הודעה' && driver?.phone) Linking.openURL(`sms:${driver.phone}`);
                 else if (action.label === 'רכב משויך' && driver?.vehicle_id) {
-                  navigation.navigate('VehicleDetail', { vehicleId: driver.vehicle_id, returnTo: 'driver' });
+                  navigation.navigate('VehicleDetail', { vehicleId: driver.vehicle_id, returnTo: 'driver', fromDriverId: driverId });
                 }
               }}
             />

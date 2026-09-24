@@ -210,7 +210,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
                 busyId={busyId}
                 onSelectVehicle={setAddingVehicleId}
                 onAddVehicle={addVehicle}
-                onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, returnTo: 'driver' })}
+                onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, returnTo: 'driver', fromDriverId: driverId })}
                 onRemoveVehicle={confirmRemoveVehicle}
               />
             </View>
@@ -265,7 +265,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
               busyId={busyId}
               onSelectVehicle={setAddingVehicleId}
               onAddVehicle={addVehicle}
-              onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, returnTo: 'driver' })}
+              onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, returnTo: 'driver', fromDriverId: driverId })}
               onRemoveVehicle={confirmRemoveVehicle}
             />
 

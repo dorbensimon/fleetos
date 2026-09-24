@@ -23,7 +23,12 @@ export function refreshBackFallback(
 
   switch (current.name) {
     case 'VehicleDetail':
-      return { name: params.returnTo === 'driver' ? 'DriverHome' : 'AdminHome' };
+      if (typeof params.fromDriverId === 'string') return { name: 'DriverDetail', params: { driverId: params.fromDriverId } };
+      if (driverHome) return { name: 'DriverHome' };
+      return { name: 'AdminHome', params: { mode: 'vehicles' } };
+    case 'DriverDetail':
+      if (typeof params.fromVehicleId === 'string') return { name: 'VehicleDetail', params: { vehicleId: params.fromVehicleId } };
+      return { name: 'AdminHome', params: { mode: 'drivers' } };
     case 'VehicleForm':
       return typeof params.vehicleId === 'string'
         ? { name: 'VehicleDetail', params: { vehicleId: params.vehicleId } }

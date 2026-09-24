@@ -39,3 +39,19 @@ export async function renderPage(doc: PDFDocumentProxy, pageNumber: number, canv
   if (!context) return;
   await page.render({ canvas, canvasContext: context, viewport }).promise;
 }
+
+/**
+ * First page of a PDF as a PNG data URL, `cssWidth` wide — small previews in
+ * document folders. Loads only page 1, never the whole file's page list.
+ */
+export async function renderPdfThumbnail(url: string, cssWidth: number): Promise<string | null> {
+  const task = pdfjs.getDocument({ url });
+  try {
+    const doc = await task.promise;
+    const canvas = document.createElement('canvas');
+    await renderPage(doc, 1, canvas, cssWidth);
+    return canvas.toDataURL('image/png');
+  } finally {
+    void task.destroy();
+  }
+}

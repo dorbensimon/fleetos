@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getDriver } from '../../lib/adminApi';
 import { listDriverSigningRequests, listSigningTemplates } from '../../lib/docuseal';
+import { useCompany } from '../../lib/CompanyContext';
 import { buildSigningFolders, signingFolderStatus, type SigningFolder } from '../../lib/signingFolders';
 import { DC_COLORS, DC_SPACING, DC_TYPO } from './driverCardTheme';
 import { DText, HoverPressable, StatusPill } from '../desktop/primitives';
@@ -13,6 +14,10 @@ export function SigningFolders({ driverId, onOpen, desktop = false }: { driverId
   const [folders, setFolders] = useState<SigningFolder[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const { profile } = useCompany();
+  // A driver sees only folders with something sent to them; managers also see
+  // empty folders, which is where they send a new document from.
+  const driverView = profile?.role === 'driver';
   useFocusEffect(useCallback(() => {
     let active = true;
     setLoading(true);
@@ -21,12 +26,13 @@ export function SigningFolders({ driverId, onOpen, desktop = false }: { driverId
         const driver = await getDriver(driverId);
         if (!driver?.company_id) throw new Error('לא נמצא שיוך חברה לנהג');
         const [templates, requests] = await Promise.all([listSigningTemplates(driver.company_id), listDriverSigningRequests(driverId)]);
-        if (active) { setFolders(buildSigningFolders(templates, requests)); setError(''); }
+        const all = buildSigningFolders(templates, requests);
+        if (active) { setFolders(driverView ? all.filter(folder => folder.requests.length > 0) : all); setError(''); }
       } catch (err: any) { if (active) setError(err?.message || 'טעינת התיקיות נכשלה'); }
       finally { if (active) setLoading(false); }
     })();
     return () => { active = false; };
-  }, [driverId]));
+  }, [driverId, driverView]));
   if (desktop) {
     return <View style={desktopStyles.wrap}>
       <DText weight="bold" style={desktopStyles.title}>טפסים ומסמכים</DText>
@@ -50,7 +56,7 @@ export function SigningFolders({ driverId, onOpen, desktop = false }: { driverId
             <Ionicons name="chevron-back" size={16} color={DESKTOP_COLORS.inkFaint} />
           </HoverPressable>;
         })}
-        {!loading && !error && !folders.length && <DText style={desktopStyles.message}>אין עדיין תבניות זמינות</DText>}
+        {!loading && !error && !folders.length && <DText style={desktopStyles.message}>{driverView ? 'עדיין לא נשלחו אליך מסמכים' : 'אין עדיין תבניות זמינות'}</DText>}
       </View>
     </View>;
   }
@@ -70,7 +76,7 @@ export function SigningFolders({ driverId, onOpen, desktop = false }: { driverId
           <Ionicons name="chevron-back" size={16} color={DC_COLORS.chevron} />
         </TouchableOpacity>;
       })}
-      {!loading && !error && !folders.length && <Text style={s.message}>אין עדיין תבניות זמינות</Text>}
+      {!loading && !error && !folders.length && <Text style={s.message}>{driverView ? 'עדיין לא נשלחו אליך מסמכים' : 'אין עדיין תבניות זמינות'}</Text>}
     </View>
   </View>;
 }

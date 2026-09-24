@@ -4,7 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, BackButton, EmptyState, ErrorState, LoadingState } from '../../components/ui';
+import { AppText, BackButton, EmptyState, ErrorState, LoadingState, useToast } from '../../components/ui';
 import { DateField } from '../../components/ui/DateField';
 import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { useCompany } from '../../lib/CompanyContext';
@@ -15,6 +15,7 @@ import { formatDate } from '../../lib/theme';
 import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { CompanyDocumentsDesktopView, type CompanyDocumentDraft } from '../../components/desktop/CompanyDocumentsDesktopView';
 import { DText, HoverPressable } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS, webOnly } from '../../components/desktop/desktopTheme';
 import { showAlert } from '../../lib/platformAlert';
@@ -31,6 +32,7 @@ export default function CompanyDocumentsScreen({ navigation }: Props) {
   const { companyId } = useCompany();
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
+  const { showToast } = useToast();
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,7 +103,16 @@ export default function CompanyDocumentsScreen({ navigation }: Props) {
   const composer = <Composer visible={visible} draft={draft} errors={errors} saving={saving} onClose={closeComposer} onChange={(update) => setDraft((current) => ({ ...current, ...update }))} onChooseFile={chooseFile} onSave={() => void save()} />;
   const closePreview = () => Animated.timing(previewProgress, { toValue: 0, duration: reduceMotion ? 0 : 180, easing: Easing.bezier(0.23, 1, 0.32, 1), useNativeDriver: true }).start(() => setDocumentPreview(null));
   const documentOverlay = isDesktop ? <DesktopDocumentPreview preview={documentPreview} progress={previewProgress} onClose={closePreview} /> : null;
-  if (isDesktop) return <><DesktopShell active="CompanyDocuments" breadcrumbs={['ניהול', 'מסמכי חברה']}>{body}</DesktopShell>{composer}{documentOverlay}</>;
+  const uploadFromDesktop = async (d: CompanyDocumentDraft) => {
+    if (!companyId) return false;
+    try {
+      await uploadDocument({ companyId, ownerType: 'company', ownerId: companyId, category: CATEGORY, title: d.title, documentDate: d.date, description: d.description, file: d.file });
+      await load();
+      showToast('המסמך נשמר');
+      return true;
+    } catch (err: any) { showAlert('העלאה נכשלה', err?.message ?? 'נסה שוב'); return false; }
+  };
+  if (isDesktop) return <><DesktopShell active="CompanyDocuments" breadcrumbs={['ניהול', 'מסמכי חברה']}><CompanyDocumentsDesktopView docs={docs} loading={loading && docs.length === 0} error={error} onRetry={load} onOpen={(doc) => void open(doc)} onDownload={downloadDocumentWithAlert} onDelete={(doc) => confirmDeleteDocument(doc, load)} onUpload={uploadFromDesktop} /></DesktopShell>{documentOverlay}</>;
   return <View style={styles.screen}><AdminGradientBackground /><View style={[styles.topBar, { paddingTop: insets.top + 14, flexDirection: 'row' }]}><View style={{ width: 42 }} /><View style={styles.topTitleGroup}><View style={styles.titleGlyph}><Ionicons name="folder-open-outline" size={18} color="#007AFF" /></View><AppText weight="bold" style={styles.topTitle}>מסמכי חברה</AppText></View><BackButton onPress={() => navigation.goBack()} /></View><View style={styles.mobileContent}>{body}</View>{composer}</View>;
 }
 
@@ -224,3 +235,4 @@ const previewStyles = StyleSheet.create({
   zoomLabel: { width: 46, color: '#536B7C', fontSize: 12, textAlign: 'center', writingDirection: 'ltr' },
   frame: { width: '100%', height: '100%', borderWidth: 0, backgroundColor: '#FFFFFF' },
 });
+

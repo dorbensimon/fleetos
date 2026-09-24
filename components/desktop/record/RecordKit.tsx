@@ -4,7 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import type { DocumentRow } from '../../../lib/adminApi';
 import type { OwnerType } from '../../../lib/adminApi/types';
 import { DocumentFolderModal } from '../../documents/DocumentFolderModal';
-import { getDocumentUrl, listDocuments, uploadDocument } from '../../../lib/documents';
+import { FolderDocumentsModal, FolderUploadBar, type FolderLayout } from './FolderDocuments';
+import { getDocumentUrl, listDocuments, uploadDocument, type PickedFile } from '../../../lib/documents';
 import { chooseDocumentSource, pickDocumentSource, type DocumentSource } from '../../../lib/documentActions';
 import { showAlert } from '../../../lib/platformAlert';
 import { ExpiryState } from '../../../lib/theme';
@@ -53,7 +54,7 @@ export function OverflowMenu({ items }: { items: RecordMenuItem[] }) {
         onPress={() => (anchor ? setAnchor(null) : open())}
         accessibilityLabel="פעולות נוספות"
       >
-        <Ionicons name="ellipsis-horizontal" size={16} color={DESKTOP_COLORS.inkMuted} />
+        <Ionicons name="ellipsis-horizontal" size={20} color={DESKTOP_COLORS.ink} />
       </HoverPressable>
       {anchor && (
         <Modal transparent visible animationType="none" onRequestClose={() => setAnchor(null)}>
@@ -536,6 +537,7 @@ export function DocumentFolderUploadModal({
   docs,
   onClose,
   onChanged,
+  layout,
 }: {
   companyId: string;
   ownerType: OwnerType;
@@ -544,38 +546,74 @@ export function DocumentFolderUploadModal({
   docs: DocumentRow[];
   onClose: () => void;
   onChanged: () => void | Promise<void>;
+  /** Opt into the list-style folder window (current document + history, or a gallery). Omitted: the classic thumbnail grid. */
+  layout?: FolderLayout;
 }) {
   const [expiryDate, setExpiryDate] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  const addDocument = async () => {
+  /** Uploads one file into the folder; resolves to whether it uploaded. */
+  const uploadFile = async (file: PickedFile): Promise<boolean> => {
+    if (folder.requiresExpiry && !expiryDate) {
+      showAlert('חסר תוקף', 'יש לבחור תאריך תוקף למסמך לפני ההעלאה');
+      return false;
+    }
+    setUploading(true);
+    try {
+      await uploadDocument({
+        companyId,
+        ownerType,
+        ownerId,
+        category: folder.category,
+        title: folder.title,
+        file,
+        expiryDate: folder.requiresExpiry ? expiryDate : null,
+      });
+      if (folder.requiresExpiry) setExpiryDate(null);
+      await onChanged();
+      return true;
+    } catch (err: any) {
+      showAlert('העלאה נכשלה', err?.message ?? 'נסה שוב');
+      return false;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const addDocument = () => {
     if (folder.requiresExpiry && !expiryDate) {
       showAlert('חסר תוקף', 'יש לבחור תאריך תוקף למסמך לפני ההעלאה');
       return;
     }
     chooseDocumentSource(folder.title, async (source: DocumentSource) => {
-      setUploading(true);
-      try {
-        const file = await pickDocumentSource(source);
-        if (!file) return;
-        await uploadDocument({
-          companyId,
-          ownerType,
-          ownerId,
-          category: folder.category,
-          title: folder.title,
-          file,
-          expiryDate: folder.requiresExpiry ? expiryDate : null,
-        });
-        if (folder.requiresExpiry) setExpiryDate(null);
-        await onChanged();
-      } catch (err: any) {
-        showAlert('העלאה נכשלה', err?.message ?? 'נסה שוב');
-      } finally {
-        setUploading(false);
-      }
+      const file = await pickDocumentSource(source);
+      if (file) await uploadFile(file);
     });
   };
+
+  if (layout) {
+    const folderDocs = docs.filter((d) => d.category === folder.category);
+    return (
+      <FolderDocumentsModal
+        title={folder.title}
+        docs={folderDocs}
+        layout={layout}
+        onClose={onClose}
+        onDeleted={onChanged}
+        upload={
+          <FolderUploadBar
+            requiresExpiry={folder.requiresExpiry}
+            expiryDate={expiryDate}
+            onExpiryChange={setExpiryDate}
+            onUpload={uploadFile}
+            onClose={onClose}
+            uploading={uploading}
+            replacesCurrent={layout === 'versions' && folderDocs.length > 0}
+          />
+        }
+      />
+    );
+  }
 
   return (
     <DocumentFolderModal
@@ -631,7 +669,7 @@ export const recordStyles = StyleSheet.create({
   alertItemText: { fontSize: 12.5 },
   alertItemDetail: { fontSize: 12, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
 
-  iconAction: { width: 32, height: 32, borderWidth: 1, borderColor: DESKTOP_COLORS.borderInput, borderRadius: 7, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
+  iconAction: { width: 40, height: 40, borderWidth: 1, borderColor: DESKTOP_COLORS.borderInput, borderRadius: 12, backgroundColor: DESKTOP_COLORS.surface, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
   menu: { position: 'absolute', minWidth: 170, padding: 4, backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 8, ...webOnly({ boxShadow: '0 8px 24px -6px rgba(22,34,46,0.18)' }) },
   // The menu opens under a trigger at the inline end of the header, so it grows from that corner.
   menuOrigin: webOnly({ transformOrigin: 'top left' }),

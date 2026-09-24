@@ -10,7 +10,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -133,9 +132,8 @@ const SPRING = {
   mass: 1,
   useNativeDriver: false,
 } as const;
-const NAV_STEP = 50; // item height 46 + gap 4
-const PREVIEW_MIN_WIDTH = 1320; // window width where the company card fits beside the form
-const COMPACT_HEIGHT = 860; // below this window height the company card tightens to fit without scrolling
+const NAV_STEP = 56; // item height 52 + gap 4
+const PAGE_TOP = 32; // the page's top padding; section offsets are measured inside the form column
 
 export function CompanySettingsDesktopView({
   form,
@@ -170,8 +168,6 @@ export function CompanySettingsDesktopView({
   onSave: () => void;
   onDiscard: () => void;
 }) {
-  const { width } = useWindowDimensions();
-  const showPreview = width >= PREVIEW_MIN_WIDTH;
   const scrollRef = useRef<ScrollView>(null);
   const offsets = useRef<Partial<Record<SectionKey, number>>>({});
   const [current, setCurrent] = useState<SectionKey>('details');
@@ -202,7 +198,7 @@ export function CompanySettingsDesktopView({
   };
 
   const trackLayout = (key: SectionKey) => (e: { nativeEvent: { layout: { y: number } } }) => {
-    offsets.current[key] = e.nativeEvent.layout.y;
+    offsets.current[key] = PAGE_TOP + e.nativeEvent.layout.y;
   };
 
   // A failed save scrolls to the first section holding an error, so the
@@ -227,16 +223,21 @@ export function CompanySettingsDesktopView({
 
   return (
     <View style={styles.root}>
-      <SectionNav current={current} errors={errors} onSelect={jumpTo} />
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={styles.page}
+        onScroll={onScroll}
+        scrollEventThrottle={32}
+      >
+        {/* The menu rides along with the page (sticky), so it always shows where you are. */}
+        <View style={styles.navColumn}>
+          <SectionNav current={current} errors={errors} onSelect={jumpTo} />
+        </View>
 
-      <View style={styles.main}>
-        <ScrollView
-          ref={scrollRef}
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          onScroll={onScroll}
-          scrollEventThrottle={32}
-        >
+        <View style={styles.main}>
+          <CompanyOverview form={form} onJump={jumpTo} />
+
           <Section {...sectionProps('details', 0)}>
             <Panel>
               <Cell label="שם החברה" required error={errors.name}>
@@ -341,6 +342,7 @@ export function CompanySettingsDesktopView({
                 value={form.reportAuto}
                 onValueChange={(v) => onChange('reportAuto', v)}
               />
+              {form.reportAuto && <NextReportRow email={form.reportEmail} />}
               <EmailCell
                 label="מייל לקבלת הדוח"
                 value={form.reportEmail}
@@ -354,9 +356,9 @@ export function CompanySettingsDesktopView({
           </Section>
 
           <Section {...sectionProps('people', 3)}>
-            <View style={styles.panelRow}>
+            <View style={styles.panelStack}>
               {form.contacts.map((c, i) => (
-                <Panel key={i} title={`איש קשר ${i + 1}`} icon="person-circle-outline" half>
+                <Panel key={i} title={`איש קשר ${i + 1}`} icon="person-circle-outline">
                   <Cell label="שם מלא">
                     <DesktopInput large value={c.name} onChangeText={(v) => onChangeContact(i, 'name', v)} />
                   </Cell>
@@ -389,9 +391,9 @@ export function CompanySettingsDesktopView({
           </Section>
 
           <Section {...sectionProps('safety', 4)}>
-            <View style={styles.panelRow}>
+            <View style={styles.panelStack}>
               {form.officers.map((o, i) => (
-                <Panel key={i} title={i === 0 ? 'קצין בטיחות' : 'קצין בטיחות נוסף'} icon="shield-half-outline" half>
+                <Panel key={i} title={i === 0 ? 'קצין בטיחות' : 'קצין בטיחות נוסף'} icon="shield-half-outline">
                   <Cell label="שם">
                     <DesktopInput large value={o.name} onChangeText={(v) => onChangeOfficer(i, 'name', v)} />
                   </Cell>
@@ -409,7 +411,8 @@ export function CompanySettingsDesktopView({
           </Section>
 
           <Section {...sectionProps('branding', 5)} last>
-            <View style={styles.panelRow}>
+            <View style={styles.brandingRow}>
+              <View style={styles.brandingSlots}>
               <ImageSlot
                 title="לוגו החברה"
                 uri={form.logoUri}
@@ -424,21 +427,21 @@ export function CompanySettingsDesktopView({
                 onPick={() => onPickImage('stamp')}
                 onClear={() => onClearImage('stamp')}
               />
+              </View>
+              <LetterheadPreview form={form} />
             </View>
           </Section>
-        </ScrollView>
+        </View>
+      </ScrollView>
 
-        <SaveCapsule
-          dirty={dirty}
-          saving={saving}
-          errorCount={Object.keys(errors).length}
-          savedNonce={savedNonce}
-          onSave={save}
-          onDiscard={onDiscard}
-        />
-      </View>
-
-      {showPreview && <CompanyCard form={form} onJump={jumpTo} />}
+      <SaveCapsule
+        dirty={dirty}
+        saving={saving}
+        errorCount={Object.keys(errors).length}
+        savedNonce={savedNonce}
+        onSave={save}
+        onDiscard={onDiscard}
+      />
     </View>
   );
 }
@@ -496,11 +499,13 @@ function SectionNav({
       </DText>
       <DText style={styles.navSubtitle}>הפרטים שמופיעים בדוחות, במסמכים ובתקשורת עם החברה.</DText>
 
+      <View style={styles.navCard}>
       <View style={styles.navList}>
         <Animated.View pointerEvents="none" style={[styles.navPlatter, { transform: [{ translateY: y }] }]} />
         {SECTIONS.map((s) => {
           const selected = s.key === current;
-          const flagged = sectionErrorCount(errors, s.key) > 0;
+          const errorCount = sectionErrorCount(errors, s.key);
+          const flagged = errorCount > 0;
           return (
             <HoverPressable
               key={s.key}
@@ -513,7 +518,7 @@ function SectionNav({
               accessibilityLabel={flagged ? `${s.label}, יש שדות לתיקון` : s.label}
             >
               <View style={[styles.navIcon, selected && styles.navIconActive]}>
-                <Ionicons name={s.icon} size={16} color={selected ? '#FFFFFF' : DESKTOP_COLORS.inkMuted} />
+                <Ionicons name={s.icon} size={17} color={selected ? DESKTOP_COLORS.brand : '#FFFFFF'} />
               </View>
               <DText
                 weight={selected ? 'semiBold' : 'medium'}
@@ -522,10 +527,15 @@ function SectionNav({
               >
                 {s.label}
               </DText>
-              {flagged && <View style={styles.navErrorDot} />}
+              {flagged && (
+                <View style={[styles.navErrorBadge, selected && styles.navErrorBadgeActive]}>
+                  <DText weight="bold" style={[styles.navErrorText, selected && styles.navErrorTextActive]}>{errorCount}</DText>
+                </View>
+              )}
             </HoverPressable>
           );
         })}
+      </View>
       </View>
     </View>
   );
@@ -567,60 +577,71 @@ function Section({
       style={[styles.section, last && styles.sectionLast, { opacity: enter, transform: [{ translateY }] }]}
     >
       <View style={styles.sectionHead}>
-        <DText weight="bold" style={styles.sectionTitle} accessibilityRole="header">
-          {meta.label}
-        </DText>
-        <DText style={styles.sectionHint}>{meta.hint}</DText>
+        <View style={styles.sectionGlyph}>
+          <Ionicons name={meta.icon} size={22} color="#FFFFFF" />
+        </View>
+        <View style={styles.sectionHeadText}>
+          <DText weight="bold" style={styles.sectionTitle} accessibilityRole="header">
+            {meta.label}
+          </DText>
+          <DText style={styles.sectionHint}>{meta.hint}</DText>
+        </View>
       </View>
       {children}
     </Animated.View>
   );
 }
 
-/** iOS inset-grouped panel: a white rounded platter on the grouped background. */
-function Panel({ title, icon, half, children }: { title?: string; icon?: IconName; half?: boolean; children: React.ReactNode }) {
+/**
+ * iOS inset-grouped list: a white rounded platter whose fields are rows
+ * split by inset hairlines. The rows sit 1px up so the first row's line
+ * hides under the platter's edge.
+ */
+function Panel({ title, icon, children }: { title?: string; icon?: IconName; children: React.ReactNode }) {
   return (
-    <View style={[styles.panel, half && styles.panelHalf]}>
+    <View style={styles.panel}>
       {!!title && (
         <View style={styles.panelHead}>
-          {!!icon && <Ionicons name={icon} size={18} color={DESKTOP_COLORS.brand} />}
-          <DText weight="semiBold" style={styles.panelTitle}>
+          {!!icon && <Ionicons name={icon} size={20} color={DESKTOP_COLORS.brand} />}
+          <DText weight="bold" style={styles.panelTitle}>
             {title}
           </DText>
         </View>
       )}
-      <View style={styles.grid}>{children}</View>
+      <View style={styles.rows}>{children}</View>
     </View>
   );
 }
 
-/** One field in a panel's grid: label on top. Cells pair up two to a line and wrap when narrow; `wide` takes the full line. */
+/** One field as an iOS form row: the label on the right, the box on the left; on a narrow window the box drops under its label. */
 function Cell({
   label,
   required,
   error,
-  wide,
   children,
 }: {
   label: string;
   required?: boolean;
   error?: string;
+  /** Kept for call sites; every row is full width now. */
   wide?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <View style={[styles.cell, wide && styles.cellWide]}>
+    <View style={styles.cell}>
       <DText weight="semiBold" style={styles.cellLabel}>
         {label}
         {required && <DText style={styles.required}> *</DText>}
       </DText>
-      {children}
-      {!!error && (
-        <View style={styles.cellError}>
-          <Ionicons name="alert-circle" size={13} color={DESKTOP_TONES.bad.fg} />
-          <DText style={styles.cellErrorText}>{error}</DText>
-        </View>
-      )}
+      <View style={styles.cellControl}>
+        {children}
+        {!!error && (
+          <View style={styles.cellError}>
+            <Ionicons name="alert-circle" size={15} color={DESKTOP_TONES.bad.fg} />
+            <DText style={styles.cellErrorText}>{error}</DText>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -772,131 +793,238 @@ function SaveCapsule({
   );
 }
 
+/** Eases a number toward its target (ease-out cubic), for the completion ring. */
+function useCountUp(target: number, duration = 900): number {
+  const [value, setValue] = useState(0);
+  const from = useRef(0);
+  useEffect(() => {
+    if (prefersReducedMotion() || typeof requestAnimationFrame === 'undefined') {
+      from.current = target;
+      setValue(target);
+      return;
+    }
+    const start = performance.now();
+    const origin = from.current;
+    let frame = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const next = origin + (target - origin) * eased;
+      from.current = next;
+      setValue(next);
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target, duration]);
+  return value;
+}
+
 /**
- * Live company card: the company as it is being typed, plus what is still
- * missing. Each missing item jumps to its field's section. The column never
- * scrolls: on shorter screens it tightens, and the checklist rows shrink to
- * fit the height that is left.
+ * The company's identity card, on top of the form: a deep ink platter lit
+ * by a brand glow, the company as it is being typed, and a completion ring.
+ * Every missing detail is a button that jumps straight to its field. It
+ * scrolls away with the page — nothing stays stuck on screen.
  */
-function CompanyCard({ form, onJump }: { form: CompanySettingsForm; onJump: (key: SectionKey) => void }) {
-  const { height } = useWindowDimensions();
-  const compact = height < COMPACT_HEIGHT;
+function CompanyOverview({ form, onJump }: { form: CompanySettingsForm; onJump: (key: SectionKey) => void }) {
   const initial = form.name.trim().charAt(0) || '?';
   const officer = form.officers[0];
   const checklist: { label: string; done: boolean; section: SectionKey }[] = [
-    { label: 'לוגו החברה', done: !!form.logoUri, section: 'branding' },
+    { label: 'לוגו', done: !!form.logoUri, section: 'branding' },
     { label: 'כתובת', done: !!form.address.trim(), section: 'details' },
     { label: 'טלפון קווי', done: !!form.landline, section: 'contact' },
     { label: 'דוא״ל', done: !!form.email, section: 'contact' },
-    {
-      label: 'קצין בטיחות',
-      done: !!officer?.name.trim() && !!officer?.phone,
-      section: 'safety',
-    },
-    {
-      label: 'איש קשר',
-      done: !!form.contacts[0]?.name.trim(),
-      section: 'people',
-    },
+    { label: 'קצין בטיחות', done: !!officer?.name.trim() && !!officer?.phone, section: 'safety' },
+    { label: 'איש קשר', done: !!form.contacts[0]?.name.trim(), section: 'people' },
     { label: 'חותמת', done: !!form.stampUri, section: 'branding' },
   ];
   const doneCount = checklist.filter((c) => c.done).length;
+  const missing = checklist.filter((c) => !c.done);
+  const complete = missing.length === 0;
+  const pct = useCountUp((doneCount / checklist.length) * 100);
+  const ringColor = complete ? '#34C759' : '#5FC1F0';
 
   return (
-    <View style={[styles.aside, compact && styles.asideCompact]}>
-      <View style={[styles.card, compact && styles.cardCompact]}>
-        <View style={styles.cardHead}>
-          <View style={styles.cardMark}>
-            {form.logoUri ? (
-              <Image source={{ uri: form.logoUri }} style={styles.cardLogo} resizeMode="contain" />
-            ) : (
-              <DText weight="bold" style={styles.cardInitial}>
-                {initial}
+    <View style={[styles.hero, heroEnter()]}>
+      <View style={styles.heroGrid} pointerEvents="none" />
+      <View style={styles.heroBody}>
+        <View style={styles.heroIdentity}>
+          <View style={styles.heroTop}>
+            <View style={[styles.heroMark, !!form.logoUri && styles.heroMarkLogo]}>
+              {form.logoUri ? (
+                <Image source={{ uri: form.logoUri }} style={styles.heroLogo} resizeMode="contain" />
+              ) : (
+                <DText weight="extraBold" style={styles.heroInitial}>{initial}</DText>
+              )}
+            </View>
+            <View style={styles.heroNameBlock}>
+              <DText weight="extraBold" style={styles.heroName} numberOfLines={1}>
+                {form.name.trim() || 'שם החברה'}
               </DText>
-            )}
+              <View style={styles.heroIdRow}>
+                <DText style={styles.heroIdLabel}>ח.פ</DText>
+                <DLtrText weight="semiBold" style={[styles.heroIdValue, styles.tabular]}>{form.businessId || '—'}</DLtrText>
+                {!!form.companyType && (
+                  <View style={styles.heroTag}>
+                    <DText weight="semiBold" style={styles.heroTagText}>{form.companyType}</DText>
+                  </View>
+                )}
+              </View>
+            </View>
           </View>
-          <View style={styles.cardIdentity}>
-            <DText weight="bold" style={styles.cardName} numberOfLines={2}>
-              {form.name.trim() || 'שם החברה'}
-            </DText>
-            <View style={styles.cardIdRow}>
-              <DText style={styles.cardMuted}>ח.פ</DText>
-              <DLtrText style={[styles.cardMuted, styles.tabular]}>{form.businessId || '—'}</DLtrText>
-              {!!form.companyType && (
-                <View style={styles.cardChip}>
-                  <DText weight="semiBold" style={styles.cardChipText}>
-                    {form.companyType}
-                  </DText>
-                </View>
+
+          <View style={styles.heroChips}>
+            <HeroChip icon="location-outline" value={form.address.trim()} />
+            <HeroChip icon="call-outline" value={form.landline ? formatPhone(form.landline) : ''} ltr />
+            <HeroChip icon="phone-portrait-outline" value={form.mobile ? formatPhone(form.mobile) : ''} ltr />
+            <HeroChip icon="mail-outline" value={form.email} ltr />
+            <HeroChip
+              icon="shield-checkmark-outline"
+              value={officer?.name.trim() ? `${officer.name.trim()}${officer.phone ? ` · ${formatPhone(officer.phone)}` : ''}` : ''}
+              empty="אין קצין בטיחות"
+            />
+          </View>
+        </View>
+
+        <View style={styles.heroProgress}>
+          <View
+            style={[styles.ring, webOnly({ backgroundImage: `conic-gradient(${ringColor} ${pct}%, rgba(255,255,255,0.1) ${pct}%)` })]}
+            accessibilityLabel={`${doneCount} מתוך ${checklist.length} פרטים מולאו`}
+          >
+            <View style={styles.ringInner}>
+              {complete ? (
+                <Ionicons name="checkmark" size={38} color="#34C759" />
+              ) : (
+                <DLtrText weight="extraBold" style={[styles.ringValue, styles.tabular]}>
+                  {doneCount}
+                  <DText weight="semiBold" style={styles.ringOf}>/{checklist.length}</DText>
+                </DLtrText>
               )}
             </View>
           </View>
+          <View style={styles.heroProgressText}>
+            <DText weight="bold" style={styles.heroProgressTitle}>
+              {complete ? 'כל הפרטים מולאו' : missing.length === 1 ? 'חסר עוד פרט אחד' : `חסרים עוד ${missing.length} פרטים`}
+            </DText>
+            <DText style={styles.heroProgressHint}>
+              {complete ? 'הדוחות והמסמכים יוצאים מלאים.' : 'לחיצה על פרט מובילה ישר למקום שלו:'}
+            </DText>
+            {!complete && (
+              <View style={styles.missingRow}>
+                {missing.map((c) => (
+                  <HoverPressable
+                    key={c.label}
+                    style={styles.missingPill}
+                    hoverStyle={styles.missingPillHover}
+                    pressMotionStyle={styles.missingPillPress}
+                    onPress={() => onJump(c.section)}
+                    accessibilityLabel={`הוספת ${c.label}`}
+                  >
+                    <Ionicons name="add" size={15} color={DESKTOP_COLORS.brand} />
+                    <DText weight="semiBold" style={styles.missingPillText}>{c.label}</DText>
+                  </HoverPressable>
+                ))}
+              </View>
+            )}
+          </View>
         </View>
-
-        <View style={[styles.cardLines, compact && styles.cardLinesCompact]}>
-          <CardLine icon="location-outline" value={form.address.trim()} />
-          <CardLine icon="call-outline" value={form.landline ? formatPhone(form.landline) : ''} ltr />
-          <CardLine icon="phone-portrait-outline" value={form.mobile ? formatPhone(form.mobile) : ''} ltr />
-          <CardLine icon="mail-outline" value={form.email} ltr />
-        </View>
-
-        <View style={[styles.cardFooter, compact && styles.cardFooterCompact]}>
-          <DText style={styles.cardFooterLabel}>קצין בטיחות</DText>
-          <DText weight="semiBold" style={styles.cardFooterValue} numberOfLines={1}>
-            {officer?.name.trim() || '—'}
-            {officer?.phone ? `  ·  ${formatPhone(officer.phone)}` : ''}
-          </DText>
-        </View>
-
-        {!!form.stampUri && <Image source={{ uri: form.stampUri }} style={styles.cardStamp} resizeMode="contain" />}
       </View>
-      {!compact && <DText style={styles.asideNote}>שם החברה, ח.פ וקצין הבטיחות מופיעים בדוחות הנהגים והרכבים.</DText>}
-
-      {/* Once nothing is missing, the checklist has no job left and goes away. */}
-      {doneCount < checklist.length && (
-        <View style={styles.checklist}>
-          <View style={styles.checklistHead}>
-            <DText weight="semiBold" style={styles.checklistTitle}>
-              מה עוד חסר
-            </DText>
-            <DText style={[styles.cardMuted, styles.tabular]}>
-              {doneCount}/{checklist.length}
-            </DText>
-          </View>
-          <View style={styles.meter}>
-            <View style={[styles.meterFill, { width: `${(doneCount / checklist.length) * 100}%` }]} />
-          </View>
-          <View style={styles.checkList}>
-            {checklist.map((c) => (
-              <HoverPressable
-                key={c.label}
-                style={styles.checkItem}
-                hoverStyle={styles.checkItemHover}
-                onPress={() => onJump(c.section)}
-                accessibilityLabel={`${c.label}${c.done ? ', מולא' : ', חסר'}`}
-              >
-                <View style={[styles.checkMark, c.done && styles.checkMarkDone]}>
-                  {c.done && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
-                </View>
-                <DText style={[styles.checkLabel, c.done && styles.checkLabelDone]}>{c.label}</DText>
-                {!c.done && <Ionicons name="chevron-back" size={14} color={DESKTOP_COLORS.inkFaint} />}
-              </HoverPressable>
-            ))}
-          </View>
-        </View>
-      )}
     </View>
   );
 }
 
-function CardLine({ icon, value, ltr }: { icon: IconName; value: string; ltr?: boolean }) {
+function heroEnter() {
+  const reduce = prefersReducedMotion();
+  return webOnly({
+    animationKeyframes: reduce
+      ? { from: { opacity: 0 }, to: { opacity: 1 } }
+      : { from: { opacity: 0, transform: [{ translateY: 12 }, { scale: 0.985 }] }, to: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }] } },
+    animationDuration: reduce ? '200ms' : '600ms',
+    animationTimingFunction: 'cubic-bezier(0.23, 1, 0.32, 1)',
+    animationFillMode: 'backwards',
+  });
+}
+
+function HeroChip({ icon, value, ltr, empty = 'לא הוזן' }: { icon: IconName; value: string; ltr?: boolean; empty?: string }) {
   const Text = ltr && value ? DLtrText : DText;
   return (
-    <View style={styles.cardLine}>
-      <Ionicons name={icon} size={15} color={DESKTOP_COLORS.inkFaint} />
-      <Text style={[styles.cardLineText, !value && styles.cardLineEmpty]} numberOfLines={1}>
-        {value || 'לא הוזן'}
+    <View style={[styles.heroChip, !value && styles.heroChipEmpty]}>
+      <Ionicons name={icon} size={16} color={value ? '#9FD8F5' : 'rgba(255,255,255,0.4)'} />
+      <Text weight={value ? 'medium' : 'regular'} style={[styles.heroChipText, !value && styles.heroChipTextEmpty]} numberOfLines={1}>
+        {value || empty}
       </Text>
+    </View>
+  );
+}
+
+/** When the monthly report goes out next — the 1st of next month. */
+function NextReportRow({ email }: { email: string }) {
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const month = next.toLocaleDateString('he-IL', { month: 'long' });
+  return (
+    <View style={styles.nextReport}>
+      <View style={styles.calTile}>
+        <View style={styles.calTileTop}>
+          <DText weight="bold" style={styles.calTileMonth}>{month}</DText>
+        </View>
+        <DText weight="extraBold" style={styles.calTileDay}>1</DText>
+      </View>
+      <View style={styles.nextReportText}>
+        <DText weight="semiBold" style={styles.nextReportTitle}>{`הדוח הבא יישלח ב-1 ב${month} ${next.getFullYear()}`}</DText>
+        <DText style={styles.nextReportHint} numberOfLines={1}>
+          {email ? `לכתובת ${email}` : 'צריך למלא למטה לאיזה מייל לשלוח אותו'}
+        </DText>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * A live miniature of a company document: the logo in the letterhead, the
+ * company's details under it, and the stamp beside the signature — so it's
+ * clear what the two images are for before anything is printed.
+ */
+function LetterheadPreview({ form }: { form: CompanySettingsForm }) {
+  const details = [form.businessId && `ח.פ ${form.businessId}`, form.address.trim(), form.landline && formatPhone(form.landline)]
+    .filter(Boolean)
+    .join('  ·  ');
+  return (
+    <View style={[styles.panel, styles.paperStage]}>
+      <View style={styles.paperCaption}>
+        <Ionicons name="eye-outline" size={17} color={DESKTOP_COLORS.brand} />
+        <DText weight="semiBold" style={styles.paperCaptionText}>כך זה ייראה על מסמך</DText>
+      </View>
+      <View style={styles.paper}>
+        <View style={styles.paperHead}>
+          <View style={styles.paperLogo}>
+            {form.logoUri ? (
+              <Image source={{ uri: form.logoUri }} style={styles.paperLogoImage} resizeMode="contain" />
+            ) : (
+              <DText style={styles.paperPlaceholder}>לוגו</DText>
+            )}
+          </View>
+          <View style={styles.paperHeadText}>
+            <DText weight="bold" style={styles.paperCompany} numberOfLines={1}>{form.name.trim() || 'שם החברה'}</DText>
+            <DText style={styles.paperDetails} numberOfLines={1}>{details || 'ח.פ · כתובת · טלפון'}</DText>
+          </View>
+        </View>
+        <View style={styles.paperRule} />
+        {[92, 100, 84, 96, 70, 88, 58].map((w, i) => (
+          <View key={i} style={[styles.paperLine, { width: `${w}%` }]} />
+        ))}
+        <View style={styles.paperSign}>
+          <View style={styles.paperSignLine} />
+          <DText style={styles.paperSignLabel}>חתימה</DText>
+          {form.stampUri ? (
+            <Image source={{ uri: form.stampUri }} style={styles.paperStamp} resizeMode="contain" />
+          ) : (
+            <View style={styles.paperStampEmpty}>
+              <DText style={styles.paperPlaceholder}>חותמת</DText>
+            </View>
+          )}
+        </View>
+      </View>
     </View>
   );
 }
@@ -1105,7 +1233,7 @@ function ImageSlot({
   onClear: () => void;
 }) {
   return (
-    <View style={[styles.panel, styles.panelHalf]}>
+    <View style={[styles.panel, styles.slotPanel]}>
       <View style={styles.slotHead}>
         <DText weight="semiBold" style={styles.panelTitle}>
           {title}
@@ -1153,21 +1281,22 @@ const styles = StyleSheet.create({
   root: { flex: 1, flexDirection: 'row-reverse', backgroundColor: GROUPED_BG },
   tabular: webOnly({ fontVariantNumeric: 'tabular-nums' }),
 
-  // Section menu
-  nav: {
-    width: 272,
-    flexShrink: 0,
-    paddingTop: 36,
-    paddingRight: 28,
-    paddingLeft: 16,
-  },
-  navTitle: { fontSize: 28, letterSpacing: -0.6, lineHeight: 34 },
+  // Section menu — an iOS Settings sidebar: a white list whose blue
+  // selection platter glides with the page scroll.
+  nav: {},
+  navTitle: { fontSize: 30, letterSpacing: -0.7, lineHeight: 36 },
   navSubtitle: {
-    fontSize: 13.5,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
     color: DESKTOP_COLORS.inkMuted,
     marginTop: 6,
-    marginBottom: 24,
+    marginBottom: 22,
+  },
+  navCard: {
+    padding: 6,
+    borderRadius: 18,
+    backgroundColor: DESKTOP_COLORS.surface,
+    ...webOnly({ boxShadow: PANEL_SHADOW }),
   },
   navList: { gap: 4 },
   navPlatter: {
@@ -1176,10 +1305,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: NAV_STEP - 4,
-    borderRadius: 12,
-    backgroundColor: DESKTOP_COLORS.surface,
+    borderRadius: 13,
+    backgroundColor: DESKTOP_COLORS.brand,
     ...webOnly({
-      boxShadow: '0 1px 2px rgba(16,24,40,0.06), 0 4px 12px rgba(16,24,40,0.06)',
+      boxShadow: '0 1px 2px rgba(0,136,204,0.25), 0 6px 16px rgba(0,136,204,0.28)',
     }),
   },
   navItem: {
@@ -1188,97 +1317,133 @@ const styles = StyleSheet.create({
     gap: 12,
     height: NAV_STEP - 4,
     paddingHorizontal: 10,
-    borderRadius: 12,
+    borderRadius: 13,
     ...webOnly({ transition: 'background-color 150ms ease-out' }),
   },
   navItemHover: { backgroundColor: 'rgba(120,120,128,0.08)' },
   navIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(120,120,128,0.12)',
+    backgroundColor: DESKTOP_COLORS.brand,
     ...webOnly({ transition: 'background-color 200ms ease-out' }),
   },
-  navIconActive: { backgroundColor: DESKTOP_COLORS.brand },
-  navLabel: { flex: 1, fontSize: 14.5, color: DESKTOP_COLORS.inkMuted },
-  navLabelActive: { color: DESKTOP_COLORS.ink },
-  navErrorDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  navIconActive: { backgroundColor: '#FFFFFF' },
+  navLabel: { flex: 1, fontSize: 16, color: DESKTOP_COLORS.ink, ...webOnly({ transition: 'color 200ms ease-out' }) },
+  navLabelActive: { color: '#FFFFFF' },
+  navErrorBadge: {
+    minWidth: 24,
+    height: 24,
+    paddingHorizontal: 7,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: DESKTOP_COLORS.danger,
   },
+  navErrorBadgeActive: { backgroundColor: '#FFFFFF' },
+  navErrorText: { fontSize: 13, color: '#FFFFFF' },
+  navErrorTextActive: { color: DESKTOP_TONES.bad.fg },
 
   // Form column
-  main: { flex: 1, minWidth: 0 },
   scroll: { flex: 1 },
-  scrollContent: { paddingTop: 36, paddingHorizontal: 28, paddingBottom: 140 },
-  section: { marginBottom: 40 },
+  page: {
+    flexDirection: 'row-reverse',
+    alignItems: 'flex-start',
+    gap: 32,
+    paddingTop: PAGE_TOP,
+    paddingHorizontal: 28,
+    paddingBottom: 150,
+    width: '100%',
+    maxWidth: 1360,
+    alignSelf: 'center',
+  },
+  navColumn: { width: 280, flexShrink: 0, ...webOnly({ position: 'sticky', top: 24 }) },
+  main: { flex: 1, minWidth: 0 },
+  section: { marginBottom: 48 },
   sectionLast: { marginBottom: 0 },
-  sectionHead: { gap: 4, marginBottom: 14, paddingHorizontal: 4 },
-  sectionTitle: { fontSize: 22, letterSpacing: -0.4, lineHeight: 28 },
-  sectionHint: { fontSize: 14, lineHeight: 20, color: DESKTOP_COLORS.inkMuted },
+  sectionHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, marginBottom: 16, paddingHorizontal: 4 },
+  sectionGlyph: {
+    width: 46,
+    height: 46,
+    borderRadius: 13,
+    backgroundColor: DESKTOP_COLORS.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...webOnly({ boxShadow: '0 1px 2px rgba(0,136,204,0.2), 0 4px 12px rgba(0,136,204,0.2)' }),
+  },
+  sectionHeadText: { flex: 1, minWidth: 0, gap: 3 },
+  sectionTitle: { fontSize: 24, letterSpacing: -0.5, lineHeight: 30 },
+  sectionHint: { fontSize: 15, lineHeight: 22, color: DESKTOP_COLORS.inkMuted },
   footnote: {
-    fontSize: 12.5,
+    fontSize: 13.5,
     color: DESKTOP_COLORS.inkFaint,
     marginTop: 10,
-    paddingHorizontal: 4,
+    paddingHorizontal: 20,
   },
 
   panelRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 16 },
+  panelStack: { gap: 20 },
   panel: {
     backgroundColor: DESKTOP_COLORS.surface,
     borderRadius: 18,
-    padding: 22,
+    overflow: 'hidden',
     ...webOnly({ boxShadow: PANEL_SHADOW }),
   },
   panelHalf: { flexGrow: 1, flexBasis: 300, minWidth: 0 },
+  slotPanel: { padding: 20 },
   panelHead: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: DESKTOP_COLORS.surfaceMuted,
+    borderBottomWidth: 1,
+    borderBottomColor: DESKTOP_COLORS.borderSoft,
   },
-  panelTitle: { fontSize: 15.5 },
-  grid: {
+  panelTitle: { fontSize: 16.5 },
+  rows: { marginTop: -1 },
+  cell: {
     flexDirection: 'row-reverse',
     flexWrap: 'wrap',
-    columnGap: 18,
-    rowGap: 18,
+    alignItems: 'center',
+    columnGap: 24,
+    rowGap: 8,
+    minHeight: 76,
+    marginRight: 20,
+    paddingLeft: 20,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: DESKTOP_COLORS.borderSoft,
   },
-  cell: { flexGrow: 1, flexBasis: 210, minWidth: 0, gap: 7 },
-  cellWide: { flexBasis: '100%' },
-  cellLabel: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted },
-  required: { color: DESKTOP_COLORS.danger, fontSize: 13.5 },
-  cellError: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
-  cellErrorText: { fontSize: 12.5, color: DESKTOP_TONES.bad.fg },
+  cellLabel: { flexBasis: 170, flexShrink: 0, fontSize: 16, lineHeight: 22, color: DESKTOP_COLORS.ink },
+  cellControl: { flexGrow: 1, flexBasis: 280, minWidth: 0, maxWidth: 520, gap: 6 },
+  required: { color: DESKTOP_COLORS.danger, fontSize: 16 },
+  cellError: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  cellErrorText: { fontSize: 14, color: DESKTOP_TONES.bad.fg },
 
   toggleRow: {
-    flexBasis: '100%',
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 16,
-    marginHorizontal: -22,
-    marginTop: -22,
-    marginBottom: 4,
-    paddingHorizontal: 22,
-    paddingVertical: 18,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: DESKTOP_COLORS.borderSoft,
+    minHeight: 76,
+    marginRight: 20,
+    paddingLeft: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: DESKTOP_COLORS.borderSoft,
     ...webOnly({
       cursor: 'pointer',
       userSelect: 'none',
-      transition: 'background-color 150ms ease-out',
+      transition: 'opacity 150ms ease-out',
     }),
   },
-  toggleRowHover: { backgroundColor: 'rgba(120,120,128,0.05)' },
+  toggleRowHover: { opacity: 0.85 },
   toggleText: { flex: 1, gap: 2 },
-  toggleTitle: { fontSize: 15.5 },
-  toggleCaption: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted },
+  toggleTitle: { fontSize: 16 },
+  toggleCaption: { fontSize: 14.5, color: DESKTOP_COLORS.inkMuted },
   toggleCaptionOn: { color: DESKTOP_TONES.ok.fg },
   switchTrack: {
     width: SWITCH_W,
@@ -1305,11 +1470,11 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   slotActions: { flexDirection: 'row-reverse', gap: 16 },
-  link: { fontSize: 14, color: DESKTOP_COLORS.brand },
+  link: { fontSize: 15, color: DESKTOP_COLORS.brand },
   linkDanger: { color: DESKTOP_TONES.bad.fg },
   linkHover: { opacity: 0.7 },
   drop: {
-    height: 190,
+    height: 150,
     borderRadius: 14,
     borderWidth: 1.5,
     borderStyle: 'dashed',
@@ -1342,8 +1507,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  dropText: { fontSize: 14.5 },
-  dropHint: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
+  dropText: { fontSize: 16 },
+  dropHint: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
   dropImage: { width: '100%', height: '100%' },
 
   // Save capsule
@@ -1391,7 +1556,7 @@ const styles = StyleSheet.create({
     backgroundColor: DESKTOP_TONES.warn.fg,
     marginHorizontal: 6,
   },
-  capsuleText: { fontSize: 14.5 },
+  capsuleText: { fontSize: 15.5 },
   capsuleActions: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -1405,7 +1570,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   capsuleGhostHover: { backgroundColor: 'rgba(120,120,128,0.12)' },
-  capsuleGhostText: { fontSize: 14.5, color: DESKTOP_COLORS.inkMuted },
+  capsuleGhostText: { fontSize: 15.5, color: DESKTOP_COLORS.inkMuted },
   capsuleCta: {
     height: 44,
     minWidth: 140,
@@ -1420,150 +1585,217 @@ const styles = StyleSheet.create({
   },
   capsuleCtaHover: { backgroundColor: DESKTOP_COLORS.brandHover },
   capsuleCtaPress: { transform: [{ scale: 0.97 }] },
-  capsuleCtaText: { fontSize: 14.5, color: '#FFFFFF' },
+  capsuleCtaText: { fontSize: 15.5, color: '#FFFFFF' },
   busyLabel: { opacity: 0 },
 
-  // Company card
-  aside: {
-    width: 340,
-    flexShrink: 0,
-    paddingTop: 36,
-    paddingBottom: 24,
-    paddingLeft: 28,
-    paddingRight: 4,
-    gap: 12,
+  // Company hero
+  hero: {
+    marginBottom: 44,
+    borderRadius: 28,
     overflow: 'hidden',
-  },
-  asideCompact: { paddingTop: 24, paddingBottom: 16, gap: 10 },
-  cardCompact: { padding: 16 },
-  cardLinesCompact: { marginTop: 12, paddingTop: 12, gap: 6 },
-  cardFooterCompact: { marginTop: 10, paddingVertical: 8 },
-  card: {
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderRadius: 22,
-    padding: 22,
-    overflow: 'hidden',
-    ...webOnly({ boxShadow: PANEL_SHADOW }),
-  },
-  cardHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14 },
-  cardMark: {
-    width: 56,
-    height: 56,
-    borderRadius: 15,
     backgroundColor: DESKTOP_COLORS.ink,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  cardLogo: { width: 56, height: 56, backgroundColor: DESKTOP_COLORS.surface },
-  cardInitial: { color: '#FFFFFF', fontSize: 22 },
-  cardIdentity: { flex: 1, minWidth: 0, gap: 4 },
-  cardName: { fontSize: 18, lineHeight: 23, letterSpacing: -0.3 },
-  cardIdRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
-  cardMuted: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
-  cardChip: {
-    marginRight: 4,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: 'rgba(120,120,128,0.12)',
-  },
-  cardChipText: { fontSize: 11, color: DESKTOP_COLORS.inkMuted },
-  cardLines: {
-    marginTop: 18,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: DESKTOP_COLORS.borderSoft,
-    gap: 10,
-  },
-  cardLine: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
-  cardLineText: { flex: 1, fontSize: 13.5, color: DESKTOP_COLORS.ink },
-  cardLineEmpty: { color: DESKTOP_COLORS.inkFaint },
-  cardFooter: {
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: GROUPED_BG,
-    gap: 2,
-  },
-  cardFooterLabel: { fontSize: 11.5, color: DESKTOP_COLORS.inkMuted },
-  cardFooterValue: { fontSize: 13.5 },
-  cardStamp: {
-    position: 'absolute',
-    left: 14,
-    bottom: 58,
-    width: 76,
-    height: 76,
-    opacity: 0.85,
-    transform: [{ rotate: '-8deg' }],
-  },
-  asideNote: {
-    fontSize: 12,
-    lineHeight: 17,
-    color: DESKTOP_COLORS.inkFaint,
-    paddingHorizontal: 6,
-  },
-
-  checklist: {
-    flexShrink: 1,
-    minHeight: 0,
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderRadius: 18,
-    padding: 16,
-    ...webOnly({ boxShadow: PANEL_SHADOW }),
-  },
-  checklistHead: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-  },
-  checklistTitle: { fontSize: 14.5 },
-  meter: {
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: 'rgba(120,120,128,0.14)',
-    marginTop: 10,
-    marginBottom: 8,
-    marginHorizontal: 4,
-    overflow: 'hidden',
-  },
-  meterFill: {
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: DESKTOP_TONES.ok.fg,
-    alignSelf: 'flex-end',
-    ...webOnly({ transition: 'width 450ms cubic-bezier(0.23, 1, 0.32, 1)' }),
-  },
-  checkList: { flexShrink: 1, minHeight: 0 },
-  // Rows start at 36px and give up height evenly (down to 24px) when the screen is short.
-  checkItem: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 10,
-    flexBasis: 36,
-    flexShrink: 1,
-    minHeight: 24,
-    paddingHorizontal: 6,
-    borderRadius: 9,
-  },
-  checkItemHover: { backgroundColor: 'rgba(120,120,128,0.07)' },
-  checkMark: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1.5,
-    borderColor: '#C7C7CC',
-    alignItems: 'center',
-    justifyContent: 'center',
     ...webOnly({
-      transition: 'background-color 200ms ease-out, border-color 200ms ease-out',
+      backgroundImage:
+        'radial-gradient(90% 120% at 100% 0%, rgba(0,136,204,0.55) 0%, rgba(0,136,204,0) 55%), radial-gradient(60% 90% at 0% 100%, rgba(0,136,204,0.28) 0%, rgba(0,136,204,0) 60%), linear-gradient(160deg, #1D2E3D 0%, #16222E 60%)',
+      boxShadow: '0 2px 4px rgba(16,24,40,0.08), 0 24px 48px -12px rgba(22,34,46,0.35)',
     }),
   },
-  checkMarkDone: {
-    backgroundColor: DESKTOP_TONES.ok.fg,
-    borderColor: DESKTOP_TONES.ok.fg,
+  heroGrid: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    opacity: 0.5,
+    ...webOnly({
+      backgroundImage:
+        'linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)',
+      backgroundSize: '32px 32px',
+      maskImage: 'radial-gradient(80% 100% at 100% 0%, #000 0%, transparent 75%)',
+      WebkitMaskImage: 'radial-gradient(80% 100% at 100% 0%, #000 0%, transparent 75%)',
+    }),
   },
-  checkLabel: { flex: 1, fontSize: 13.5 },
-  checkLabelDone: { color: DESKTOP_COLORS.inkFaint },
+  heroBody: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 28, padding: 28 },
+  heroIdentity: { flexGrow: 1, flexBasis: 380, minWidth: 0, gap: 20 },
+  heroTop: { flexDirection: 'row-reverse', alignItems: 'center', gap: 16 },
+  heroMark: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    ...webOnly({ backdropFilter: 'blur(12px)' }),
+  },
+  heroMarkLogo: { backgroundColor: '#FFFFFF', borderColor: 'rgba(255,255,255,0.6)' },
+  heroLogo: { width: 64, height: 64 },
+  heroInitial: { fontSize: 30, color: '#FFFFFF' },
+  heroNameBlock: { flex: 1, minWidth: 0, gap: 6 },
+  heroName: { fontSize: 34, lineHeight: 40, letterSpacing: -0.9, color: '#FFFFFF' },
+  heroIdRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  heroIdLabel: { fontSize: 15, color: 'rgba(255,255,255,0.6)' },
+  heroIdValue: { fontSize: 15.5, color: '#FFFFFF' },
+  heroTag: {
+    marginRight: 4,
+    paddingHorizontal: 10,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(95,193,240,0.18)',
+  },
+  heroTagText: { fontSize: 13, color: '#9FD8F5' },
+  heroChips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
+  heroChip: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+    maxWidth: '100%',
+    height: 38,
+    paddingHorizontal: 14,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  heroChipEmpty: { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.2)' },
+  heroChipText: { fontSize: 15, color: '#FFFFFF', flexShrink: 1 },
+  heroChipTextEmpty: { color: 'rgba(255,255,255,0.5)' },
+
+  heroProgress: {
+    flexGrow: 1,
+    flexBasis: 320,
+    maxWidth: 460,
+    minWidth: 0,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 20,
+    padding: 20,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.09)',
+    ...webOnly({ backdropFilter: 'blur(16px) saturate(140%)' }),
+  },
+  ring: { width: 108, height: 108, borderRadius: 54, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  ringInner: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#1A2836',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ringValue: { fontSize: 32, color: '#FFFFFF', letterSpacing: -0.5 },
+  ringOf: { fontSize: 17, color: 'rgba(255,255,255,0.55)' },
+  heroProgressText: { flex: 1, minWidth: 0, gap: 4 },
+  heroProgressTitle: { fontSize: 18, color: '#FFFFFF' },
+  heroProgressHint: { fontSize: 14.5, color: 'rgba(255,255,255,0.65)' },
+  missingRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  missingPill: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+    height: 34,
+    paddingRight: 10,
+    paddingLeft: 13,
+    borderRadius: 17,
+    backgroundColor: '#FFFFFF',
+    ...webOnly({ transition: 'background-color 150ms ease, transform 160ms cubic-bezier(0.23, 1, 0.32, 1)' }),
+  },
+  missingPillHover: { backgroundColor: '#E6F4FB' },
+  missingPillPress: { transform: [{ scale: 0.96 }] },
+  missingPillText: { fontSize: 14.5, color: DESKTOP_COLORS.ink },
+
+  // Monthly report: next send date
+  nextReport: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 14,
+    minHeight: 84,
+    marginRight: 20,
+    paddingLeft: 20,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: DESKTOP_COLORS.borderSoft,
+  },
+  calTile: {
+    width: 56,
+    height: 56,
+    borderRadius: 13,
+    overflow: 'hidden',
+    backgroundColor: DESKTOP_COLORS.surface,
+    borderWidth: 1,
+    borderColor: DESKTOP_COLORS.border,
+    alignItems: 'center',
+    ...webOnly({ boxShadow: '0 1px 2px rgba(16,24,40,0.06), 0 4px 10px rgba(16,24,40,0.06)' }),
+  },
+  calTileTop: { alignSelf: 'stretch', height: 18, backgroundColor: DESKTOP_COLORS.brand, alignItems: 'center', justifyContent: 'center' },
+  calTileMonth: { fontSize: 10.5, color: '#FFFFFF' },
+  calTileDay: { fontSize: 24, lineHeight: 34, color: DESKTOP_COLORS.ink },
+  nextReportText: { flex: 1, minWidth: 0, gap: 2 },
+  nextReportTitle: { fontSize: 16, color: DESKTOP_COLORS.ink },
+  nextReportHint: { fontSize: 14.5, color: DESKTOP_COLORS.inkMuted },
+
+  // Branding: two upload slots beside a live letterhead
+  brandingRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 16, alignItems: 'stretch' },
+  brandingSlots: { flexGrow: 1, flexBasis: 300, minWidth: 0, gap: 16 },
+  paperStage: {
+    flexGrow: 1,
+    flexBasis: 320,
+    minWidth: 0,
+    padding: 20,
+    alignItems: 'center',
+    gap: 16,
+    ...webOnly({ backgroundImage: 'radial-gradient(100% 80% at 50% 0%, #FFFFFF 0%, #EEF2F5 100%)' }),
+  },
+  paperCaption: { alignSelf: 'stretch', flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  paperCaptionText: { fontSize: 16, color: DESKTOP_COLORS.ink },
+  paper: {
+    width: 270,
+    aspectRatio: 210 / 297,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 4,
+    padding: 18,
+    gap: 7,
+    ...webOnly({
+      boxShadow: '0 1px 2px rgba(16,24,40,0.08), 0 18px 40px -8px rgba(22,34,46,0.22)',
+      transform: 'perspective(900px) rotateX(4deg)',
+    }),
+  },
+  paperHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  paperLogo: {
+    width: 42,
+    height: 42,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    backgroundColor: DESKTOP_COLORS.surfaceMuted,
+  },
+  paperLogoImage: { width: 42, height: 42 },
+  paperPlaceholder: { fontSize: 10, color: DESKTOP_COLORS.inkFaint },
+  paperHeadText: { flex: 1, minWidth: 0, gap: 1 },
+  paperCompany: { fontSize: 12.5, color: DESKTOP_COLORS.ink },
+  paperDetails: { fontSize: 8.5, color: DESKTOP_COLORS.inkMuted },
+  paperRule: { height: 2, borderRadius: 1, backgroundColor: DESKTOP_COLORS.brand, marginVertical: 6 },
+  paperLine: { height: 5, borderRadius: 3, backgroundColor: '#EAEEF1', alignSelf: 'flex-end' },
+  paperSign: { marginTop: 'auto', flexDirection: 'row-reverse', alignItems: 'flex-end', gap: 8 },
+  paperSignLine: { width: 80, height: 1, backgroundColor: DESKTOP_COLORS.inkFaint, marginBottom: 12 },
+  paperSignLabel: { fontSize: 8.5, color: DESKTOP_COLORS.inkFaint, marginBottom: 8 },
+  paperStamp: { width: 64, height: 64, marginRight: 'auto', transform: [{ rotate: '-10deg' }], opacity: 0.9 },
+  paperStampEmpty: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    marginRight: 'auto',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#C9D2DA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-10deg' }],
+  },
 });

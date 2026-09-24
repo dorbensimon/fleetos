@@ -31,6 +31,7 @@ import {
   ComplianceItem,
 } from '../../lib/adminApi';
 import { listSignatureRequests } from '../../lib/docuseal';
+import { healthDeclarationsByDriver, type HealthDeclarationInfo } from '../../lib/healthDeclaration';
 import { RootStackParamList } from '../../navigation/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
@@ -98,6 +99,14 @@ export default function FleetScreen() {
     if (route.params?.mode) setMode(route.params.mode);
   }, [route.params?.mode]);
 
+  // The chosen tab also lives in the route, so going back — or a reload,
+  // which rebuilds this screen from the saved navigation state — lands on
+  // the same tab instead of snapping back to drivers.
+  const changeMode = useCallback((next: ToggleValue) => {
+    setMode(next);
+    navigation.setParams({ mode: next });
+  }, [navigation]);
+
   /* ---------------------------------------------------------------- */
   /* Drivers                                                           */
   /* ---------------------------------------------------------------- */
@@ -108,6 +117,7 @@ export default function FleetScreen() {
   const [driversError, setDriversError] = useState<string | null>(null);
   const [driverSearch, setDriverSearch] = useState('');
   const [pendingSigning, setPendingSigning] = useState<Map<string, number>>(new Map());
+  const [healthDeclarations, setHealthDeclarations] = useState<Map<string, HealthDeclarationInfo>>(new Map());
   const [licenseFilter, setLicenseFilter] = useState<LicenseFilter>('all');
   // Archived drivers are never part of `drivers` (they are excluded at the
   // query), so the archive button carries its own count.
@@ -127,6 +137,7 @@ export default function FleetScreen() {
       loadedDriversCompanyId.current = companyId ?? null;
       setDrivers([]);
       setPendingSigning(new Map());
+      setHealthDeclarations(new Map());
       setArchivedCount(0);
       setDriversError(null);
     }
@@ -154,6 +165,7 @@ export default function FleetScreen() {
       }
       setDrivers(rows);
       setPendingSigning(signingMap);
+      setHealthDeclarations(healthDeclarationsByDriver(signatureRequests));
       setArchivedCount(archived.length);
       setDriversError(null);
       return true;
@@ -180,11 +192,19 @@ export default function FleetScreen() {
       if (!matchesFilter) return false;
       if (!q) return true;
 
+      // Numbers match with or without dashes/spaces (050-123 finds 050123).
+      const digits = q.replace(/\D/g, '');
+      const hasDigits = (value: string | null | undefined) => !!digits && (value ?? '').replace(/\D/g, '').includes(digits);
       return (
         (d.full_name ?? '').toLowerCase().includes(q) ||
         (d.national_id ?? '').includes(q) ||
         (d.employee_number ?? '').toLowerCase().includes(q) ||
-        (d.phone ?? '').includes(q)
+        (d.phone ?? '').includes(q) ||
+        (d.license_number ?? '').toLowerCase().includes(q) ||
+        hasDigits(d.phone) ||
+        hasDigits(d.national_id) ||
+        hasDigits(d.license_number) ||
+        d.vehicles.some((v) => v.plate_number.toLowerCase().includes(q) || hasDigits(v.plate_number))
       );
     });
   }, [drivers, driverSearch, licenseFilter]);
@@ -287,6 +307,7 @@ export default function FleetScreen() {
         .join(' ');
       return (
         v.plate_number.toLowerCase().includes(q) ||
+        (!!q.replace(/\D/g, '') && v.plate_number.replace(/\D/g, '').includes(q.replace(/\D/g, ''))) ||
         (v.model ?? '').toLowerCase().includes(q) ||
         (v.manufacturer ?? '').toLowerCase().includes(q) ||
         (v.internal_code ?? '').toLowerCase().includes(q) ||
@@ -559,7 +580,7 @@ export default function FleetScreen() {
       >
         <FleetDesktopView<LicenseFilter, StatusFilter>
           mode={mode}
-          onModeChange={setMode}
+          onModeChange={changeMode}
           drivers={drivers}
           filteredDrivers={filteredDrivers}
           driversLoading={driversLoading}
@@ -578,6 +599,7 @@ export default function FleetScreen() {
           driverKpis={{ total: driverCounts.all, soon: driverCounts.soon, expired: driverCounts.expired }}
           archivedCount={archivedCount}
           pendingSigning={pendingSigning}
+          healthDeclarations={healthDeclarations}
           vehicles={vehicles}
           filteredVehicles={filteredVehicles}
           vehiclesLoading={vehiclesLoading}
@@ -787,7 +809,7 @@ export default function FleetScreen() {
        </View>
       </Animated.View>
 
-      <FleetDock mode={mode} onModeChange={setMode} visibility={dockVisibility} />
+      <FleetDock mode={mode} onModeChange={changeMode} visibility={dockVisibility} />
 
     </Screen>
   );

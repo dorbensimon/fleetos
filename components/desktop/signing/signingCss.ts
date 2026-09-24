@@ -308,6 +308,23 @@ export const SIGNING_CSS = `
 @media (hover: hover) and (pointer: fine) { .sd-tb:hover { background: rgba(92,103,115,0.1); } }
 .sd-tb.sd-on { background: var(--sd-tint-soft); color: var(--sd-tint-deep); }
 .sd-tb-sep { width: 1px; height: 24px; background: var(--sd-sep); margin: 0 4px; }
+.sd-tb-wrap { position: relative; display: inline-flex; }
+.sd-tb-size { min-width: 58px; text-align: right; }
+.sd-color-a { display: inline-flex; flex-direction: column; align-items: center; font-size: 17px; line-height: 1; }
+.sd-color-a i { display: block; width: 16px; height: 3px; border-radius: 2px; margin-top: 3px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08); }
+.sd-hl-a { padding: 2px 6px; border-radius: 5px; background: #FFF1A8; color: #16222E; font-size: 15px; line-height: 1.2; }
+.sd-hr-icon { display: block; width: 20px; height: 2px; border-radius: 1px; background: currentColor; }
+.sd-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 10; min-width: 190px; padding: 6px; border-radius: 14px; background: #fff;
+  box-shadow: var(--sd-depth-2), 0 0 0 1px rgba(0,0,0,0.06); transform-origin: top right; animation: sd-menu-in 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes sd-menu-in { from { opacity: 0; transform: scale(0.96) translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .sd-menu { animation: none; } }
+.sd-menu-item { width: 100%; min-height: 44px; padding: 6px 12px; border-radius: 10px; display: flex; align-items: center; gap: 10px; font-size: 15px; line-height: 1.3; color: var(--sd-ink); text-align: right; transition: background-color 140ms ease; }
+@media (hover: hover) and (pointer: fine) { .sd-menu-item:hover { background: rgba(92,103,115,0.1); } }
+.sd-menu-item.sd-on { color: var(--sd-tint-deep); }
+.sd-menu-check { margin-right: auto; width: 18px; display: inline-flex; justify-content: center; color: var(--sd-tint-deep); }
+.sd-swatch { flex: none; width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12); }
 .sd-paper-page {
   /* An A4 sheet at 96dpi: the server renders the very same geometry (EDITOR_PAGE). */
   position: relative; flex: none; width: 794px; min-height: 1123px; background: #fff; border-radius: 4px; padding: 64px 72px;
@@ -331,6 +348,7 @@ export const SIGNING_CSS = `
 .sd-doc h2 { font-family: 'Heebo_700Bold', system-ui, sans-serif; font-weight: normal; font-size: 20px; line-height: 1.4; margin: 20px 0 8px; }
 .sd-doc p { margin: 0 0 8px; }
 .sd-doc ul, .sd-doc ol { margin: 0 0 8px; padding-right: 26px; padding-left: 0; }
+.sd-doc hr { border: none; border-top: 1px solid #C9D1D8; margin: 12px 0; }
 .sd-doc b, .sd-doc strong { font-family: 'Heebo_700Bold', system-ui, sans-serif; font-weight: normal; }
 .sd-doc:empty::before, .sd-doc > p:only-child:has(br:only-child)::before { content: attr(data-placeholder); color: rgba(22,34,46,0.35); pointer-events: none; }
 

@@ -23,7 +23,7 @@ export const VEHICLE_FOLDER_ALERTS: VehicleFolderAlert[] = [
   { folderKey: 'insurance_comprehensive', notificationType: 'vehicle_insurance_comprehensive_expiry', label: 'ביטוח מקיף', source: 'compliance' },
   { folderKey: 'annual_test', notificationType: 'vehicle_annual_test_expiry', label: 'טסט שנתי', source: 'compliance' },
   { folderKey: 'safety_officer_approval', notificationType: 'vehicle_safety_officer_approval_expiry', label: 'אישור קצין בטיחות', source: 'document' },
-  { folderKey: 'tachograph_calibration', notificationType: 'vehicle_tachograph_calibration_expiry', label: 'כיול טכוגרף', source: 'document' },
+  { folderKey: 'tachograph_calibration', notificationType: 'vehicle_tachograph_calibration_expiry', label: 'תוקף טכוגרף', source: 'document' },
   { folderKey: 'brakes_semiannual', notificationType: 'vehicle_brakes_semiannual_expiry', label: 'בלמים חצי-שנתי', source: 'document' },
   { folderKey: 'brakes_annual', notificationType: 'vehicle_brakes_annual_expiry', label: 'בלמים שנתי', source: 'document' },
   { folderKey: 'winter_inspection', notificationType: 'vehicle_winter_inspection_expiry', label: 'בדיקת חורף', source: 'document' },

@@ -8,8 +8,22 @@ describe('refreshBackFallback', () => {
     )).toEqual({ name: 'VehicleDetail', params: { vehicleId: 'vehicle-1', tab: 'documents' } });
   });
 
-  it('returns the fleet from a refreshed vehicle dossier', () => {
-    expect(refreshBackFallback({ name: 'VehicleDetail' }, 'AdminHome')).toEqual({ name: 'AdminHome' });
+  it('returns the fleet vehicles tab from a refreshed vehicle dossier', () => {
+    expect(refreshBackFallback({ name: 'VehicleDetail' }, 'AdminHome')).toEqual({ name: 'AdminHome', params: { mode: 'vehicles' } });
+  });
+
+  it('returns to the driver a vehicle was opened from', () => {
+    expect(refreshBackFallback(
+      { name: 'VehicleDetail', params: { vehicleId: 'vehicle-1', returnTo: 'driver', fromDriverId: 'driver-1' } },
+      'AdminHome',
+    )).toEqual({ name: 'DriverDetail', params: { driverId: 'driver-1' } });
+  });
+
+  it('returns to the vehicle a driver was opened from, else the drivers tab', () => {
+    expect(refreshBackFallback({ name: 'DriverDetail', params: { driverId: 'd', fromVehicleId: 'v' } }, 'AdminHome'))
+      .toEqual({ name: 'VehicleDetail', params: { vehicleId: 'v' } });
+    expect(refreshBackFallback({ name: 'DriverDetail', params: { driverId: 'd' } }, 'AdminHome'))
+      .toEqual({ name: 'AdminHome', params: { mode: 'drivers' } });
   });
 
   it('returns a driver to the driver home', () => {

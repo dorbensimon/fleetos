@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   assignSigningTemplate,
   getSigningSession,
+  getSigningTemplatePreviewSession,
   listDriverSigningRequests,
   listSigningTemplates,
   syncSigningRequest,
@@ -11,16 +12,15 @@ import {
 } from '../../../lib/docuseal';
 import { buildSigningFolders, signingFolderStatus, type SigningFolder } from '../../../lib/signingFolders';
 import { DesktopModal } from '../DesktopModal';
-import { DText, HoverPressable, StatusPill } from '../primitives';
-import { DESKTOP_COLORS, DesktopTone, webOnly } from '../desktopTheme';
-import { FolderTile, recordStyles } from '../record/RecordKit';
+import { DText, HoverPressable } from '../primitives';
+import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
+import { recordStyles } from '../record/RecordKit';
 
 type FolderStatus = ReturnType<typeof signingFolderStatus>;
-const STATUS_TONE: Record<FolderStatus, DesktopTone> = { pending: 'warn', completed: 'ok', failed: 'bad', empty: 'neutral' };
 const STATUS_LABEL: Record<FolderStatus, string> = { pending: 'ממתין לחתימה', completed: 'נחתם', failed: 'דורש טיפול', empty: 'לא נשלח' };
 
 const time = (date: string) => new Date(date).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
-const day = (date: string) => new Date(date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const day = (date: string) => new Date(date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '/');
 
 /** When the folder's most recent signed copy was signed, or null if none was. */
 function lastSignedAt(folder: SigningFolder) {
@@ -33,7 +33,7 @@ function lastSignedAt(folder: SigningFolder) {
   return latest;
 }
 
-export type SigningSessionTarget = Awaited<ReturnType<typeof getSigningSession>> & { title: string; requestId: string; signedAt?: string };
+export type SigningSessionTarget = Awaited<ReturnType<typeof getSigningSession>> & { title: string; requestId?: string; signedAt?: string };
 
 /** Loads the driver's signing folders (company templates + the driver's requests). */
 export function useDriverSigningFolders(companyId: string | null | undefined, driverId: string) {
@@ -65,13 +65,26 @@ export function useDriverSigningFolders(companyId: string | null | undefined, dr
   return { folders, loading, error, reload };
 }
 
+/** When the folder's pending request was sent, or null if nothing is waiting. */
+function lastSentAt(folder: SigningFolder) {
+  const pending = folder.requests.find((item) => item.status === 'pending' && !!item.docuseal_submitter_slug);
+  return pending ? pending.sent_at || pending.created_at : null;
+}
+
+const STATUS_COLOR: Record<FolderStatus, string> = {
+  pending: DESKTOP_TONES.warn.fg,
+  completed: DESKTOP_TONES.ok.fg,
+  failed: DESKTOP_TONES.bad.fg,
+  empty: DESKTOP_COLORS.inkFaint,
+};
+
 /**
- * "טפסים לחתימה" on the desktop driver record: one tile per signing
- * template (with its status), opening a centered modal that lists the
- * folder's requests and sends/re-sends it. The signing document itself still
- * opens in the full DocuSeal page — it does not fit a small modal.
+ * "טפסים לחתימה" on the desktop driver record: one list row per signing
+ * template, with its status in words. A row opens a centered window that
+ * lists the folder's requests and sends / re-sends it. The signing document
+ * itself still opens in the full DocuSeal page — it does not fit a small window.
  */
-export function DriverSigningTiles({
+export function DriverSigningList({
   companyId,
   driverId,
   canSend,
@@ -90,7 +103,7 @@ export function DriverSigningTiles({
   loading: boolean;
   error: string;
   onChanged: () => Promise<void>;
-  /** Opens this folder's modal from outside (the "דרוש טיפול" banner). */
+  /** Opens this folder's window from outside (the "דרוש טיפול" notice). */
   openFolderId?: string | null;
   onFolderOpened?: () => void;
   onOpenSession: (target: SigningSessionTarget) => void;
@@ -107,32 +120,45 @@ export function DriverSigningTiles({
 
   if (loading) return <DText style={styles.message}>טוען טפסים…</DText>;
   if (error) return <DText style={styles.message}>{error}</DText>;
-  if (!folders.length) return <DText style={styles.message}>אין עדיין תבניות חתימה בחברה</DText>;
+  if (!folders.length) return <DText style={styles.message}>אין עדיין טפסים לחתימה בחברה</DText>;
 
   return (
     <>
-      <View style={recordStyles.folderGrid}>
-        {folders.map((folder) => {
-          const status = signingFolderStatus(folder);
-          const signedAt = lastSignedAt(folder);
-          return (
-            <FolderTile
-              key={folder.id}
-              title={folder.title}
-              icon="create-outline"
-              signedVisual
-              onPress={() => setOpenId(folder.id)}
-              accessibilityLabel={`${folder.title}, ${STATUS_LABEL[status]}${signedAt ? `, נחתם לאחרונה ב-${day(signedAt)}` : ''}`}
-              meta={
-                <>
-                  <StatusPill tone={STATUS_TONE[status]} label={STATUS_LABEL[status]} />
-                  {signedAt && <DText style={styles.signedAt}>{day(signedAt)}</DText>}
-                </>
-              }
-            />
-          );
-        })}
-      </View>
+      {folders.map((folder, index) => {
+        const status = signingFolderStatus(folder);
+        const signedAt = lastSignedAt(folder);
+        const sentAt = lastSentAt(folder);
+        const meta = status === 'pending' && sentAt
+          ? `נשלח ב־${day(sentAt)}`
+          : signedAt
+            ? `נחתם ב־${day(signedAt)}`
+            : status === 'failed'
+              ? 'השליחה לא הצליחה'
+              : 'עוד לא נשלח לנהג';
+        const color = STATUS_COLOR[status];
+        return (
+          <HoverPressable
+            key={folder.id}
+            style={[styles.listRow, index > 0 && styles.listDivider]}
+            hoverStyle={recordStyles.rowHover}
+            onPress={() => setOpenId(folder.id)}
+            accessibilityLabel={`${folder.title}, ${STATUS_LABEL[status]}. פתיחה`}
+          >
+            <View style={[styles.listIcon, status === 'completed' && styles.listIconDone]}>
+              <Ionicons name="create-outline" size={16} color={status === 'completed' ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkMuted} />
+            </View>
+            <View style={styles.listText}>
+              <DText weight="semiBold" style={styles.listTitle} numberOfLines={1}>{folder.title}</DText>
+              <DText style={styles.listMeta}>{meta}</DText>
+            </View>
+            <View style={styles.listStatus}>
+              <View style={[styles.listDot, { backgroundColor: color }]} />
+              <DText weight="semiBold" style={[styles.listStatusText, { color }]}>{STATUS_LABEL[status]}</DText>
+            </View>
+            <Ionicons name="chevron-back" size={15} color={DESKTOP_COLORS.inkFaint} />
+          </HoverPressable>
+        );
+      })}
       {openFolder && (
         <SigningFolderModal
           companyId={companyId}
@@ -203,6 +229,22 @@ function SigningFolderModal({
     }
   };
 
+  // The blank form as the driver will get it, so the admin can check it before sending.
+  const preview = async () => {
+    if (!folder.template || opening) return;
+    setOpening('preview');
+    setMessage('');
+    try {
+      const session = await getSigningTemplatePreviewSession(folder.template.id);
+      onOpenSession({ ...session, title: folder.title });
+      onClose();
+    } catch (err: any) {
+      setMessage(err?.message || 'פתיחת המסמך נכשלה. נסה שוב.');
+    } finally {
+      setOpening('');
+    }
+  };
+
   const send = async () => {
     if (!canSend || !folder.template || sendingLock.current) return;
     sendingLock.current = true;
@@ -224,6 +266,20 @@ function SigningFolderModal({
     <DesktopModal visible title={folder.title} onClose={onClose} maxWidth={520}>
       <View style={styles.body}>
         {canSend && folder.template && (
+          <View style={styles.actions}>
+          {!(completed && !pending) && (
+            <HoverPressable
+              style={[styles.previewBtn, opening === 'preview' && recordStyles.disabled]}
+              hoverStyle={styles.previewHover}
+              pressStyle={recordStyles.pressDown}
+              disabled={opening === 'preview' || sending}
+              onPress={preview}
+              accessibilityLabel="צפייה במסמך לפני השליחה"
+            >
+              <Ionicons name="eye-outline" size={16} color={DESKTOP_COLORS.ink} />
+              <DText weight="semiBold" style={styles.previewText}>{opening === 'preview' ? 'פותח…' : 'צפייה במסמך'}</DText>
+            </HoverPressable>
+          )}
           <HoverPressable
             style={[styles.sendBtn, sending && recordStyles.disabled]}
             hoverStyle={recordStyles.rowHover}
@@ -236,6 +292,7 @@ function SigningFolderModal({
               {sending ? 'שולח…' : pending ? 'שליחה מחדש לחתימה' : completed ? 'צפייה במסמך החתום' : 'שליחה לחתימה'}
             </DText>
           </HoverPressable>
+          </View>
         )}
         {!!message && <DText style={styles.error}>{message}</DText>}
         {folder.requests.length === 0 ? (
@@ -282,27 +339,52 @@ function SigningFolderModal({
 }
 
 const styles = StyleSheet.create({
-  signedAt: { fontSize: 12, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
-  message: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, paddingVertical: 4 },
+  message: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted, paddingVertical: 14, paddingHorizontal: 16 },
+  listRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 54, paddingHorizontal: 16, paddingVertical: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },
+  listDivider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
+  listIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: DESKTOP_COLORS.canvas, alignItems: 'center', justifyContent: 'center' },
+  listIconDone: { backgroundColor: 'rgba(0,136,204,0.10)' },
+  listText: { flex: 1, minWidth: 0, gap: 1 },
+  listTitle: { fontSize: 14.5 },
+  listMeta: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+  listStatus: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  listDot: { width: 7, height: 7, borderRadius: 4 },
+  listStatusText: { fontSize: 13 },
   body: { paddingHorizontal: 18, paddingVertical: 16, gap: 12 },
   sendBtn: {
-    alignSelf: 'flex-end',
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.borderInput,
+    flex: 1,
+    height: 42,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,136,204,0.09)',
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 6,
     ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }),
   },
-  sendText: { fontSize: 12.5, color: DESKTOP_COLORS.brand },
-  error: { fontSize: 12, color: DESKTOP_COLORS.danger },
+  actions: { flexDirection: 'row-reverse', gap: 10 },
+  previewBtn: {
+    height: 42,
+    paddingHorizontal: 18,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: DESKTOP_COLORS.border,
+    backgroundColor: DESKTOP_COLORS.surface,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }),
+  },
+  previewHover: { backgroundColor: DESKTOP_COLORS.canvas },
+  previewText: { fontSize: 14.5, color: DESKTOP_COLORS.ink },
+  sendText: { fontSize: 14.5, color: DESKTOP_COLORS.brand },
+  error: { fontSize: 13.5, color: DESKTOP_COLORS.danger },
   list: { borderWidth: 1, borderColor: DESKTOP_COLORS.borderSoft, borderRadius: 8, overflow: 'hidden' },
   row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10, ...webOnly({ transition: 'background-color 150ms ease' }) },
   rowText: { flex: 1, gap: 2 },
-  rowTitle: { fontSize: 13 },
-  rowMeta: { fontSize: 12, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
-  rowLink: { fontSize: 12, color: DESKTOP_COLORS.brand },
+  rowTitle: { fontSize: 14.5 },
+  rowMeta: { fontSize: 13, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+  rowLink: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
 });

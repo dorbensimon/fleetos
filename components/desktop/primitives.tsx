@@ -20,7 +20,7 @@ export function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
-function supportsFinePointerHoverMotion(): boolean {
+export function supportsFinePointerHoverMotion(): boolean {
   return !prefersReducedMotion()
     && typeof window !== 'undefined'
     && !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
@@ -303,12 +303,14 @@ export function DesktopDateField({
   allowClear?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [choosingYear, setChoosingYear] = useState(false);
   const [cursor, setCursor] = useState(() => (value ? parseDateValue(value) : new Date()));
   const [anchor, setAnchor] = useState<{ top: number; left: number; width: number } | null>(null);
   const triggerRef = useRef<View>(null);
 
   const openPicker = () => {
     setCursor(value ? parseDateValue(value) : new Date());
+    setChoosingYear(false);
     triggerRef.current?.measureInWindow((x, y, width, height) => {
       setAnchor({ top: y + height + 4, left: x, width });
       setOpen(true);
@@ -321,6 +323,7 @@ export function DesktopDateField({
   const selected = value ? parseDateValue(value) : null;
   const isSelectedDay = (day: number) =>
     !!selected && selected.getFullYear() === cursor.getFullYear() && selected.getMonth() === cursor.getMonth() && selected.getDate() === day;
+  const years = Array.from({ length: 101 }, (_, index) => new Date().getFullYear() + 20 - index);
 
   return (
     <View ref={triggerRef}>
@@ -347,9 +350,17 @@ export function DesktopDateField({
               >
                 <Ionicons name="chevron-forward" size={14} color={DESKTOP_COLORS.ink} />
               </HoverPressable>
-              <DText weight="semiBold" style={fieldStyles.calendarTitle}>
-                {cursor.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
-              </DText>
+              <HoverPressable
+                style={fieldStyles.calendarTitleButton}
+                hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}
+                onPress={() => setChoosingYear((current) => !current)}
+                accessibilityRole="button"
+                accessibilityLabel="בחירת שנה"
+              >
+                <DText weight="semiBold" style={fieldStyles.calendarTitle}>
+                  {choosingYear ? 'בחירת שנה' : cursor.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
+                </DText>
+              </HoverPressable>
               <HoverPressable
                 style={fieldStyles.calendarNavBtn}
                 hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}
@@ -358,31 +369,52 @@ export function DesktopDateField({
                 <Ionicons name="chevron-back" size={14} color={DESKTOP_COLORS.ink} />
               </HoverPressable>
             </View>
-            <View style={fieldStyles.calendarWeekRow}>
-              {WEEKDAY_LABELS.map((label) => (
-                <DText key={label} style={fieldStyles.calendarWeekday}>{label}</DText>
-              ))}
-            </View>
-            <View style={fieldStyles.calendarGrid}>
-              {Array.from({ length: leadingBlanks }, (_, i) => (
-                <View key={`blank-${i}`} style={fieldStyles.calendarCell} />
-              ))}
-              {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
-                <HoverPressable
-                  key={day}
-                  style={[fieldStyles.calendarCell, isSelectedDay(day) && fieldStyles.calendarCellSelected]}
-                  hoverStyle={!isSelectedDay(day) ? { backgroundColor: DESKTOP_COLORS.rowHover } : null}
-                  onPress={() => {
-                    onChange(toIsoDate(new Date(cursor.getFullYear(), cursor.getMonth(), day)));
-                    setOpen(false);
-                  }}
-                >
-                  <DText weight={isSelectedDay(day) ? 'bold' : 'regular'} style={[fieldStyles.calendarCellText, isSelectedDay(day) && fieldStyles.calendarCellTextSelected]}>
-                    {day}
-                  </DText>
-                </HoverPressable>
-              ))}
-            </View>
+            {choosingYear ? (
+              <ScrollView style={fieldStyles.calendarYearScroll} contentContainerStyle={fieldStyles.calendarYearGrid} showsVerticalScrollIndicator={false}>
+                {years.map((year) => {
+                  const active = year === cursor.getFullYear();
+                  return <HoverPressable
+                    key={year}
+                    style={[fieldStyles.calendarYearOption, active && fieldStyles.calendarYearOptionSelected]}
+                    hoverStyle={!active ? { backgroundColor: DESKTOP_COLORS.rowHover } : null}
+                    onPress={() => {
+                      setCursor(new Date(year, cursor.getMonth(), 1));
+                      setChoosingYear(false);
+                    }}
+                  >
+                    <DText weight={active ? 'bold' : 'regular'} style={[fieldStyles.calendarCellText, active && fieldStyles.calendarCellTextSelected]}>{year}</DText>
+                  </HoverPressable>;
+                })}
+              </ScrollView>
+            ) : (
+              <>
+                <View style={fieldStyles.calendarWeekRow}>
+                  {WEEKDAY_LABELS.map((label) => (
+                    <DText key={label} style={fieldStyles.calendarWeekday}>{label}</DText>
+                  ))}
+                </View>
+                <View style={fieldStyles.calendarGrid}>
+                  {Array.from({ length: leadingBlanks }, (_, i) => (
+                    <View key={`blank-${i}`} style={fieldStyles.calendarCell} />
+                  ))}
+                  {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
+                    <HoverPressable
+                      key={day}
+                      style={[fieldStyles.calendarCell, isSelectedDay(day) && fieldStyles.calendarCellSelected]}
+                      hoverStyle={!isSelectedDay(day) ? { backgroundColor: DESKTOP_COLORS.rowHover } : null}
+                      onPress={() => {
+                        onChange(toIsoDate(new Date(cursor.getFullYear(), cursor.getMonth(), day)));
+                        setOpen(false);
+                      }}
+                    >
+                      <DText weight={isSelectedDay(day) ? 'bold' : 'regular'} style={[fieldStyles.calendarCellText, isSelectedDay(day) && fieldStyles.calendarCellTextSelected]}>
+                        {day}
+                      </DText>
+                    </HoverPressable>
+                  ))}
+                </View>
+              </>
+            )}
             {allowClear && (
               <HoverPressable
                 style={fieldStyles.calendarClear}
@@ -506,6 +538,7 @@ const fieldStyles = StyleSheet.create({
   },
   calendarHeader: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   calendarNavBtn: { width: 24, height: 24, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  calendarTitleButton: { borderRadius: 5, paddingHorizontal: 6, paddingVertical: 3 },
   calendarTitle: { fontSize: 12.5 },
   calendarWeekRow: { flexDirection: 'row-reverse', marginBottom: 2 },
   calendarWeekday: { width: 30, textAlign: 'center', fontSize: 10.5, color: DESKTOP_COLORS.inkFaint },
@@ -514,6 +547,10 @@ const fieldStyles = StyleSheet.create({
   calendarCellSelected: { backgroundColor: DESKTOP_COLORS.brand },
   calendarCellText: { fontSize: 12 },
   calendarCellTextSelected: { color: '#FFFFFF' },
+  calendarYearScroll: { height: 172 },
+  calendarYearGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, paddingBottom: 4 },
+  calendarYearOption: { width: 68, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 6 },
+  calendarYearOptionSelected: { backgroundColor: DESKTOP_COLORS.brand },
   calendarClear: { marginTop: 6, height: 28, borderRadius: 6, alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft, paddingTop: 6 },
   calendarClearText: { fontSize: 12, color: DESKTOP_COLORS.inkMuted },
 });

@@ -1,0 +1,12 @@
+[build]
+  command = "npm run build:web"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+# Every in-app address (e.g. /drivers/123) opens the app, which then shows the right screen.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

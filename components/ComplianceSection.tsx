@@ -20,7 +20,7 @@ import {
   complianceTargetDate,
   groupByCategory,
 } from '../lib/compliance';
-import { getDocumentUrl, listDocuments, uploadDocument } from '../lib/documents';
+import { getDocumentUrl, listDocuments, uploadDocument, type PickedFile } from '../lib/documents';
 import {
   chooseDocumentSource,
   confirmDeleteDocument,
@@ -32,6 +32,7 @@ import {
 import { DocumentFolderModal } from './documents/DocumentFolderModal';
 import { DesktopDateField } from './desktop/primitives';
 import { FolderTile } from './desktop/record/RecordKit';
+import { FolderDocumentsModal, FolderListRow, FolderUploadBar } from './desktop/record/FolderDocuments';
 import { DESKTOP_COLORS } from './desktop/desktopTheme';
 
 /** compliance_items only tracks driver/vehicle expiries — not company-level documents. */
@@ -73,6 +74,7 @@ export function ComplianceSection({
   hiddenItemTypes = [],
   extraFolderTiles,
   openRequest,
+  desktopList = false,
 }: {
   companyId: string;
   ownerType: ComplianceOwnerType;
@@ -91,6 +93,12 @@ export function ComplianceSection({
    * same folder can be reopened after it was closed.
    */
   openRequest?: { itemType: string; nonce: number } | null;
+  /**
+   * Desktop only: the folders as a plain list (one row per folder with its
+   * status), opening the versions-style folder window. Renders the rows
+   * bare, so the caller supplies the surrounding card.
+   */
+  desktopList?: boolean;
 }) {
   const { showToast } = useToast();
   const [items, setItems] = useState<Map<string, ComplianceItem>>(new Map());
@@ -232,25 +240,23 @@ export function ComplianceSection({
     }
   };
 
-  const addDocument = async (def: ComplianceItemDef) => {
+  /** Uploads into a folder. With `picked` (the desktop folder window's chosen or dropped file) no picker opens; resolves to whether it uploaded. */
+  const addDocument = async (def: ComplianceItemDef, picked?: PickedFile): Promise<boolean> => {
     // A vehicle compliance document needs the date of the specific document
     // being uploaded, rather than silently reusing a prior document's date.
     const requiresExpiryOnUpload = def.requiresExpiryOnUpload === true;
     const stagedExpiryDate = drafts[def.itemType]?.expiry_date ?? null;
     if (requiresExpiryOnUpload && !stagedExpiryDate) {
       showAlert('חסר תוקף', 'יש לבחור תאריך תוקף למסמך לפני ההעלאה');
-      return;
+      return false;
     }
     const uploadExpiryDate = requiresExpiryOnUpload
       ? stagedExpiryDate
       : items.get(def.itemType)?.expiry_date ?? null;
 
-    chooseDocumentSource(def.label, async (source: DocumentSource) => {
+    const upload = async (file: PickedFile): Promise<boolean> => {
       setBusyItem(def.itemType);
       try {
-        const file = await pickDocumentSource(source);
-
-        if (!file) return;
 
         await uploadDocument({
           companyId,
@@ -281,12 +287,21 @@ export function ComplianceSection({
           await syncMandatoryInsuranceDate(documentRows, complianceRows);
         }
         if (requiresExpiryOnUpload) setDrafts((prev) => { const next = { ...prev }; delete next[def.itemType]; return next; });
+        return true;
       } catch (err: any) {
         showAlert('העלאה נכשלה', err?.message ?? 'נסה שוב');
+        return false;
       } finally {
         setBusyItem(null);
       }
+    };
+
+    if (picked) return upload(picked);
+    chooseDocumentSource(def.label, async (source: DocumentSource) => {
+      const file = await pickDocumentSource(source);
+      if (file) await upload(file);
     });
+    return false;
   };
 
   const renderDateFields = (def: ComplianceItemDef) => {
@@ -437,6 +452,52 @@ export function ComplianceSection({
   const displayedGroups = folderAppearance
     ? [{ category: 'folders', label: '', icon: '', items: groups.flatMap((group) => group.items) }]
     : groups;
+
+  if (desktopList) {
+    const listItems = groups.flatMap((group) => group.items);
+    const openDef = listItems.find((def) => def.itemType === expanded);
+    return (
+      <>
+        {listItems.map((def, index) => (
+          <FolderListRow
+            key={def.itemType}
+            title={def.label}
+            icon={complianceFolderIcon(def.itemType)}
+            docs={docs.filter((d) => d.title === def.label)}
+            onPress={() => setExpanded(def.itemType)}
+            first={index === 0}
+          />
+        ))}
+        {openDef && (() => {
+          const itemDocs = docs.filter((d) => d.title === openDef.label);
+          return (
+            <FolderDocumentsModal
+              title={openDef.label}
+              docs={itemDocs}
+              layout="versions"
+              onClose={() => setExpanded(null)}
+              onDeleted={async () => {
+                const { complianceRows, documentRows } = await load();
+                if (openDef.itemType === 'insurance_mandatory') await syncMandatoryInsuranceDate(documentRows, complianceRows);
+              }}
+              upload={
+                <FolderUploadBar
+                  requiresExpiry={openDef.requiresExpiryOnUpload === true}
+                  expiryDate={drafts[openDef.itemType]?.expiry_date ?? null}
+                  onExpiryChange={(iso) => setDraftDate(openDef, 'expiry_date', iso)}
+                  onUpload={(file) => addDocument(openDef, file)}
+                  onClose={() => setExpanded(null)}
+                  uploading={busyItem === openDef.itemType}
+                  replacesCurrent={itemDocs.length > 0}
+                  extraFields={openDef.requiresExpiryOnUpload ? undefined : renderDesktopDateFields(openDef)}
+                />
+              }
+            />
+          );
+        })()}
+      </>
+    );
+  }
 
   return (
     <>

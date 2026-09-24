@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "typecheck:functions": "deno check --no-config --lock=supabase/functions/deno.lock --frozen supabase/functions/*/index.ts",
     "test": "jest",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "build:web": "node scripts/build-web.cjs"
   },
   "dependencies": {
     "@expo-google-fonts/assistant": "^0.4.1",

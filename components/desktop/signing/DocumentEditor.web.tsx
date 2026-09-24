@@ -1,6 +1,6 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { EDITOR_PAGE, type EditorBlock, type EditorInline, type EditorPlacedField, type SigningFieldKind } from '../../../lib/companySigningTemplates';
+import { EDITOR_HIGHLIGHT, EDITOR_PAGE, EDITOR_TEXT_COLORS, EDITOR_TEXT_SIZES, type EditorBlock, type EditorInline, type EditorPlacedField, type SigningFieldKind } from '../../../lib/companySigningTemplates';
 import { useCompany } from '../../../lib/CompanyContext';
 import { AUTO_FIELDS, DRIVER_FIELDS, FIELD_META } from './fieldMeta';
 import { FIELD_DRAG_TYPE, FieldBox, FieldInspector, trackPointer } from './FieldBox.web';
@@ -74,12 +74,45 @@ const SIGNING_AREA: [SigningFieldKind, string][] = [
   ['signature', 'חתימת הנהג:'],
 ];
 
-type Marks = { bold?: boolean; italic?: boolean; underline?: boolean };
+type Marks = { bold?: boolean; italic?: boolean; underline?: boolean; size?: number; color?: string; highlight?: boolean };
+
+const BODY_SIZE = 16;
+const BODY_COLOR = '#111111';
+const SIZE_SET = new Set<number>(EDITOR_TEXT_SIZES.map((s) => s.px));
+const COLOR_SET = new Set<string>(EDITOR_TEXT_COLORS.map((c) => c.hex));
+
+/** "rgb(0, 136, 204)" or "#0088cc" as "#0088CC"; null for transparent or unknown. */
+function toHex(value: string): string | null {
+  const v = value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(v)) return v.toUpperCase();
+  const m = v.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
+  if (!m || (m[4] !== undefined && Number(m[4]) === 0)) return null;
+  return `#${[m[1], m[2], m[3]].map((n) => Number(n).toString(16).padStart(2, '0')).join('')}`.toUpperCase();
+}
+
+/** The size, colour and marker an element sets on its text, on top of what it inherits. */
+function styledMarks(el: HTMLElement, marks: Marks): Pick<Marks, 'size' | 'color' | 'highlight'> {
+  let { size, color, highlight } = marks;
+  if (el.style.fontSize) {
+    const px = Math.round(parseFloat(el.style.fontSize));
+    size = SIZE_SET.has(px) && px !== BODY_SIZE ? px : undefined;
+  }
+  const rawColor = el.style.color || (el.tagName === 'FONT' ? el.getAttribute('color') ?? '' : '');
+  if (rawColor) {
+    const hex = toHex(rawColor);
+    color = hex && COLOR_SET.has(hex) && hex !== BODY_COLOR ? hex : undefined;
+  }
+  if (el.style.backgroundColor) highlight = toHex(el.style.backgroundColor) === EDITOR_HIGHLIGHT;
+  return { size, color, highlight };
+}
+
+const sameMarks = (a: Marks, b: Marks) =>
+  !!a.bold === !!b.bold && !!a.italic === !!b.italic && !!a.underline === !!b.underline && a.size === b.size && a.color === b.color && !!a.highlight === !!b.highlight;
 
 function inlines(node: Node, marks: Marks, out: EditorInline[]) {
   node.childNodes.forEach((child) => {
     if (child.nodeType === Node.TEXT_NODE) {
-      const text = (child.textContent ?? '').replace(/\u00a0/g, ' ');
+      const text = (child.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\u200b/g, '');
       if (text) out.push({ text, ...marks });
       return;
     }
@@ -94,6 +127,7 @@ function inlines(node: Node, marks: Marks, out: EditorInline[]) {
       bold: marks.bold || tag === 'B' || tag === 'STRONG' || weight === 'bold' || Number(weight) >= 600,
       italic: marks.italic || tag === 'I' || tag === 'EM' || child.style.fontStyle === 'italic',
       underline: marks.underline || tag === 'U' || child.style.textDecoration.includes('underline'),
+      ...styledMarks(child, marks),
     };
     const isBlock = tag === 'DIV' || tag === 'P' || tag === 'LI';
     if (isBlock && out.length) out.push({ text: '\n', ...marks });
@@ -106,7 +140,7 @@ function compact(items: EditorInline[]): EditorInline[] {
   const out: EditorInline[] = [];
   for (const item of items) {
     const last = out[out.length - 1];
-    if ('text' in item && last && 'text' in last && !!last.bold === !!item.bold && !!last.italic === !!item.italic && !!last.underline === !!item.underline) {
+    if ('text' in item && last && 'text' in last && sameMarks(last, item)) {
       last.text += item.text;
     } else out.push({ ...item });
   }
@@ -123,6 +157,7 @@ function alignOf(el: HTMLElement): EditorBlock['align'] {
   const value = el.style.textAlign || el.getAttribute('align') || '';
   if (value === 'center') return 'center';
   if (value === 'left') return 'left';
+  if (value === 'justify') return 'justify';
   return 'right';
 }
 
@@ -136,7 +171,7 @@ export function serializeEditor(root: HTMLElement): EditorBlock[] {
   };
 
   root.childNodes.forEach((child) => {
-    if (child.nodeType === Node.TEXT_NODE || (child instanceof HTMLElement && (['SPAN', 'B', 'STRONG', 'I', 'EM', 'U', 'BR'].includes(child.tagName)))) {
+    if (child.nodeType === Node.TEXT_NODE || (child instanceof HTMLElement && (['SPAN', 'FONT', 'B', 'STRONG', 'I', 'EM', 'U', 'BR'].includes(child.tagName)))) {
       const wrapper = document.createElement('span');
       wrapper.appendChild(child.cloneNode(true));
       inlines(wrapper, {}, loose);
@@ -145,6 +180,10 @@ export function serializeEditor(root: HTMLElement): EditorBlock[] {
     if (!(child instanceof HTMLElement)) return;
     flushLoose();
     const tag = child.tagName;
+    if (tag === 'HR') {
+      blocks.push({ type: 'hr', content: [] });
+      return;
+    }
     if (tag === 'UL' || tag === 'OL') {
       const items = Array.from(child.children)
         .map((li) => {
@@ -164,10 +203,53 @@ export function serializeEditor(root: HTMLElement): EditorBlock[] {
   flushLoose();
 
   // Blank paragraphs are kept as spacing, but not at the very end.
-  while (blocks.length && blocks[blocks.length - 1].content.every((line) => line.length === 0)) blocks.pop();
+  while (blocks.length && blocks[blocks.length - 1].type !== 'hr' && blocks[blocks.length - 1].content.every((line) => line.length === 0)) blocks.pop();
   return blocks;
 }
 
+
+type StyleKind = 'size' | 'color' | 'hl';
+const STYLE_PROP = { size: 'fontSize', color: 'color', hl: 'backgroundColor' } as const;
+const MARKER = 'fleet-';
+
+function styleValue(kind: StyleKind, value: string) {
+  if (kind === 'size') return `${value}px`;
+  if (kind === 'color') return `#${value}`;
+  return value === '1' ? EDITOR_HIGHLIGHT : 'transparent';
+}
+
+/**
+ * The browser marks a styled selection with a stand-in font name
+ * ("fleet-size-20"); this swaps each mark for a span with the real style and
+ * lets it override the same style on anything inside it.
+ */
+function applyStyleMarks(root: HTMLElement) {
+  root.querySelectorAll<HTMLElement>('font[face], span[style*="font-family"]').forEach((el) => {
+    const face = (el.getAttribute('face') || el.style.fontFamily).replace(/["']/g, '');
+    if (!face.startsWith(MARKER)) return;
+    const [kind, value] = face.slice(MARKER.length).split('-') as [StyleKind, string];
+    if (!STYLE_PROP[kind]) return;
+    const prop = STYLE_PROP[kind];
+    const span = document.createElement('span');
+    if (el.tagName === 'SPAN') span.style.cssText = el.style.cssText;
+    span.style.fontFamily = '';
+    span.style[prop] = styleValue(kind, value);
+    while (el.firstChild) span.appendChild(el.firstChild);
+    span.querySelectorAll<HTMLElement>('span').forEach((inner) => {
+      inner.style[prop] = '';
+    });
+    el.replaceWith(span);
+  });
+}
+
+/** A divider line belongs between paragraphs, never inside one. */
+function liftDividers(root: HTMLElement) {
+  root.querySelectorAll('hr').forEach((hr) => {
+    let top: Node = hr;
+    while (top.parentNode && top.parentNode !== root) top = top.parentNode;
+    if (top !== hr) root.insertBefore(hr, top.nextSibling);
+  });
+}
 
 /** Toolbar buttons keep the editor's selection: mousedown would otherwise move focus off the page. */
 const keepSelection = (event: React.MouseEvent) => event.preventDefault();
@@ -176,6 +258,48 @@ function Tb({ on, label, onPress, children }: { on?: boolean; label: string; onP
   return (
     <button type="button" className={`sd-tb${on ? ' sd-on' : ''}`} title={label} aria-label={label} aria-pressed={on} onMouseDown={keepSelection} onClick={onPress}>
       {children}
+    </button>
+  );
+}
+
+/** A toolbar button that opens a short list of choices under it. */
+function TbMenu({ label, open, onToggle, onClose, button, children }: { label: string; open: boolean; onToggle: () => void; onClose: () => void; button: React.ReactNode; children: React.ReactNode }) {
+  const wrap = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (event: MouseEvent) => {
+      if (!wrap.current?.contains(event.target as Node)) onClose();
+    };
+    const esc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open, onClose]);
+  return (
+    <div className="sd-tb-wrap" ref={wrap}>
+      <button type="button" className={`sd-tb${open ? ' sd-on' : ''}`} title={label} aria-label={label} aria-haspopup="menu" aria-expanded={open} onMouseDown={keepSelection} onClick={onToggle}>
+        {button}
+        <Ionicons name="chevron-down" size={13} color="currentColor" />
+      </button>
+      {open ? (
+        <div className="sd-menu" role="menu" aria-label={label} onMouseDown={keepSelection}>
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MenuItem({ on, onPress, children }: { on: boolean; onPress: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" role="menuitemradio" aria-checked={on} className={`sd-menu-item${on ? ' sd-on' : ''}`} onClick={onPress}>
+      {children}
+      <span className="sd-menu-check">{on ? <Ionicons name="checkmark" size={17} color="currentColor" /> : null}</span>
     </button>
   );
 }
@@ -216,7 +340,7 @@ export function Letterhead() {
   );
 }
 
-type ToolState = { block: string; bold: boolean; italic: boolean; underline: boolean; ul: boolean; ol: boolean; align: string };
+type ToolState = { block: string; bold: boolean; italic: boolean; underline: boolean; ul: boolean; ol: boolean; align: string; size: number; color: string; highlight: boolean };
 
 export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: EditorDraft; onSignatureChange?: (has: boolean) => void }>(function DocumentEditor(
   { initial, onSignatureChange },
@@ -225,7 +349,9 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
   const pageRef = useRef<HTMLDivElement>(null);
   const docRef = useRef<HTMLDivElement>(null);
   const savedRange = useRef<Range | null>(null);
-  const [tools, setTools] = useState<ToolState>({ block: 'p', bold: false, italic: false, underline: false, ul: false, ol: false, align: 'right' });
+  const [tools, setTools] = useState<ToolState>({ block: 'p', bold: false, italic: false, underline: false, ul: false, ol: false, align: 'right', size: BODY_SIZE, color: BODY_COLOR, highlight: false });
+  const [menu, setMenu] = useState<'size' | 'color' | null>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
 
   const [fields, setFields] = useState<EditorField[]>(initial.fields);
   const fieldsRef = useRef(fields);
@@ -365,6 +491,16 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
     if (!el || !selection?.rangeCount || !el.contains(selection.anchorNode)) return;
     savedRange.current = selection.getRangeAt(0).cloneRange();
     const block = String(document.queryCommandValue('formatBlock') || 'p').toLowerCase();
+    const node = selection.anchorNode;
+    const at = node instanceof HTMLElement ? node : node?.parentElement ?? el;
+    const computed = window.getComputedStyle(at);
+    let highlight = false;
+    for (let cur: HTMLElement | null = at; cur && cur !== el; cur = cur.parentElement) {
+      if (cur.style.backgroundColor) {
+        highlight = toHex(cur.style.backgroundColor) === EDITOR_HIGHLIGHT;
+        break;
+      }
+    }
     setTools({
       block,
       bold: document.queryCommandState('bold'),
@@ -372,7 +508,16 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
       underline: document.queryCommandState('underline'),
       ul: document.queryCommandState('insertUnorderedList'),
       ol: document.queryCommandState('insertOrderedList'),
-      align: document.queryCommandState('justifyCenter') ? 'center' : document.queryCommandState('justifyLeft') ? 'left' : 'right',
+      align: document.queryCommandState('justifyCenter')
+        ? 'center'
+        : document.queryCommandState('justifyFull')
+        ? 'justify'
+        : document.queryCommandState('justifyLeft')
+        ? 'left'
+        : 'right',
+      size: Math.round(parseFloat(computed.fontSize)) || BODY_SIZE,
+      color: toHex(computed.color) ?? BODY_COLOR,
+      highlight,
     });
   }, []);
 
@@ -402,6 +547,48 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
   const run = (command: string, value?: string) => {
     restore();
     document.execCommand(command, false, value);
+    refreshTools();
+    measure();
+  };
+
+  /** Text size, colour or marker on the selected words, or on what is typed next. */
+  const applyStyle = (kind: StyleKind, value: string) => {
+    const doc = docRef.current;
+    if (!doc) return;
+    setMenu(null);
+    restore();
+    const selection = window.getSelection();
+    if (!selection?.rangeCount) return;
+    if (selection.isCollapsed) {
+      // Nothing selected: open a styled spot at the caret so the next words get the style.
+      const span = document.createElement('span');
+      span.style[STYLE_PROP[kind]] = styleValue(kind, value);
+      span.textContent = '\u200b';
+      const range = selection.getRangeAt(0);
+      range.insertNode(span);
+      const caret = document.createRange();
+      caret.setStart(span.firstChild!, 1);
+      caret.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(caret);
+    } else {
+      document.execCommand('styleWithCSS', false, 'false');
+      document.execCommand('fontName', false, `${MARKER}${kind}-${value}`);
+      applyStyleMarks(doc);
+    }
+    refreshTools();
+    measure();
+  };
+
+  const insertDivider = () => {
+    const doc = docRef.current;
+    if (!doc) return;
+    restore();
+    const node = window.getSelection()?.anchorNode;
+    const line = node instanceof HTMLElement ? node : node?.parentElement;
+    if (line?.closest('p, h1, h2, li, div:not(.sd-doc)')?.textContent?.trim()) document.execCommand('insertParagraph');
+    document.execCommand('insertHTML', false, '<hr><p><br></p>');
+    liftDividers(doc);
     refreshTools();
     measure();
   };
@@ -623,6 +810,20 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
             טקסט רגיל
           </Tb>
           <span className="sd-tb-sep" />
+          <TbMenu
+            label="גודל הטקסט"
+            open={menu === 'size'}
+            onToggle={() => setMenu(menu === 'size' ? null : 'size')}
+            onClose={closeMenu}
+            button={<span className="sd-sb sd-tb-size">{EDITOR_TEXT_SIZES.find((s) => s.px === tools.size)?.label ?? 'גודל'}</span>}
+          >
+            {EDITOR_TEXT_SIZES.map((s) => (
+              <MenuItem key={s.px} on={tools.size === s.px} onPress={() => applyStyle('size', String(s.px))}>
+                <span style={{ fontSize: s.px }}>{s.label}</span>
+              </MenuItem>
+            ))}
+          </TbMenu>
+          <span className="sd-tb-sep" />
           <Tb label="מודגש" on={tools.bold} onPress={() => run('bold')}>
             <span className="sd-xb" style={{ fontSize: 16 }}>B</span>
           </Tb>
@@ -631,6 +832,28 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
           </Tb>
           <Tb label="קו תחתון" on={tools.underline} onPress={() => run('underline')}>
             <span style={{ textDecoration: 'underline', fontSize: 16 }}>U</span>
+          </Tb>
+          <TbMenu
+            label="צבע הטקסט"
+            open={menu === 'color'}
+            onToggle={() => setMenu(menu === 'color' ? null : 'color')}
+            onClose={closeMenu}
+            button={
+              <span className="sd-color-a sd-b">
+                א
+                <i style={{ background: tools.color }} />
+              </span>
+            }
+          >
+            {EDITOR_TEXT_COLORS.map((c) => (
+              <MenuItem key={c.hex} on={tools.color === c.hex} onPress={() => applyStyle('color', c.hex.slice(1))}>
+                <span className="sd-swatch" style={{ background: c.hex }} />
+                <span style={{ color: c.hex }}>{c.label}</span>
+              </MenuItem>
+            ))}
+          </TbMenu>
+          <Tb label="סימון בצהוב" on={tools.highlight} onPress={() => applyStyle('hl', tools.highlight ? '0' : '1')}>
+            <span className="sd-hl-a sd-b">א</span>
           </Tb>
           <span className="sd-tb-sep" />
           <Tb label="רשימה עם נקודות" on={tools.ul} onPress={() => run('insertUnorderedList')}>
@@ -645,6 +868,13 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
           </Tb>
           <Tb label="מרכוז" on={tools.align === 'center'} onPress={() => run('justifyCenter')}>
             <Ionicons name="menu" size={19} color="currentColor" />
+          </Tb>
+          <Tb label="יישור לשני הצדדים" on={tools.align === 'justify'} onPress={() => run('justifyFull')}>
+            <Ionicons name="reorder-four" size={19} color="currentColor" />
+          </Tb>
+          <span className="sd-tb-sep" />
+          <Tb label="קו מפריד" onPress={insertDivider}>
+            <span className="sd-hr-icon" />
           </Tb>
           <span className="sd-tb-sep" />
           <Tb label="ביטול הפעולה האחרונה" onPress={() => run('undo')}>

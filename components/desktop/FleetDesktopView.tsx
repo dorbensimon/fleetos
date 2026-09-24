@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import type { HealthDeclarationInfo } from '../../lib/healthDeclaration';
 import { ComplianceItem, DriverRow, Vehicle, VehicleDriverWithProfile } from '../../lib/adminApi';
 import { VEHICLE_STATUS_LABELS } from '../../lib/compliance';
 import { SERVICE_WARN_KM } from '../../lib/fleetCardHelpers';
@@ -39,6 +40,7 @@ export interface FleetDesktopViewProps<LF extends string, SF extends string> {
   driverKpis: { total: number; soon: number; expired: number };
   archivedCount: number;
   pendingSigning: Map<string, number>;
+  healthDeclarations: Map<string, HealthDeclarationInfo>;
 
   vehicles: Vehicle[];
   filteredVehicles: Vehicle[];
@@ -98,6 +100,17 @@ function expiryWords(date: string | null | undefined): { tone: DesktopTone; labe
   if (days === 0) return { tone: 'bad', label: 'פג היום' };
   if (days <= 30) return { tone: 'warn', label: days === 1 ? 'פג מחר' : `עוד ${days} ימים` };
   return { tone: 'ok', label: 'בתוקף' };
+}
+
+/** Health declaration: valid, expiring, expired, waiting for signature or never signed. */
+function healthWords(info: HealthDeclarationInfo | undefined): { tone: DesktopTone; label: string; sub: string } {
+  if (info?.expiresAt) {
+    const words = expiryWords(info.expiresAt);
+    if (words.tone === 'bad' && info.pending) return { tone: 'warn', label: 'ממתינה לחתימה', sub: `פגה ${formatDate(info.expiresAt)}` };
+    return { ...words, sub: `עד ${formatDate(info.expiresAt)}` };
+  }
+  if (info?.pending) return { tone: 'warn', label: 'ממתינה לחתימה', sub: '' };
+  return { tone: 'neutral', label: 'לא נחתמה', sub: '' };
 }
 
 function serviceInfo(vehicle: Vehicle): { tone: DesktopTone; label: string } {
@@ -227,12 +240,12 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
             ref={searchRef}
             value={search}
             onChangeText={isDrivers ? props.onDriverSearch : props.onVehicleSearch}
-            placeholder={isDrivers ? 'חיפוש נהג' : 'חיפוש רכב'}
+            placeholder={isDrivers ? 'שם, טלפון, ת.ז., רישיון או רכב' : 'מספר רכב, יצרן, דגם או נהג'}
             placeholderTextColor={DESKTOP_COLORS.inkFaint}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             style={[styles.search, searchFocused && styles.searchFocused]}
-            accessibilityLabel={isDrivers ? 'חיפוש נהג לפי שם, ת.ז או טלפון' : 'חיפוש רכב לפי מספר רישוי, דגם או נהג'}
+            accessibilityLabel={isDrivers ? 'חיפוש נהג לפי שם, טלפון, תעודת זהות, מספר רישיון או מספר רכב' : 'חיפוש רכב לפי מספר רכב, יצרן, דגם, קוד פנימי או שם נהג'}
           />
           {!searchFocused && !search && (
             <View style={styles.kbd} pointerEvents="none">
@@ -353,7 +366,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
               {isDrivers
                 ? props.filteredDrivers.map((driver, index) => {
                     const license = expiryWords(driver.license_expiry);
-                    const plates = driver.vehicles.map((v) => formatPlate(v.plate_number)).join(', ');
+                    const health = healthWords(props.healthDeclarations.get(driver.id));
                     const pending = props.pendingSigning.get(driver.id) ?? 0;
                     return (
                       <HoverPressable
@@ -378,29 +391,73 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                             </View>
                             <TwoLine
                               title={driver.full_name || 'נהג ללא שם'}
-                              subtitle={driver.job_title || driver.phone || ''}
-                              subtitleLtr={!driver.job_title && !!driver.phone}
+                              subtitle={driver.job_title || ''}
                             />
                           </View>
                         </View>
-                        <View style={[styles.cell, { flex: DRIVER_COLUMNS[1].flex }]}>
-                          <ToneLine tone={license.tone} label={license.label} />
-                          {!!driver.license_expiry && (
-                            <DLtrText style={styles.subText} numberOfLines={1}>
-                              {formatDate(driver.license_expiry)}
-                            </DLtrText>
-                          )}
-                        </View>
-                        <Cell flex={DRIVER_COLUMNS[2].flex} text={driver.license_classes || '—'} ltr={!!driver.license_classes} />
                         <Cell
-                          flex={DRIVER_COLUMNS[3].flex}
-                          text={plates || 'ללא רכב'}
-                          ltr={!!plates}
-                          color={plates ? undefined : DESKTOP_COLORS.inkFaint}
-                          mono={!!plates}
+                          flex={DRIVER_COLUMNS[1].flex}
+                          text={driver.phone || 'לא הוזן'}
+                          ltr={!!driver.phone}
+                          color={driver.phone ? DESKTOP_COLORS.ink : DESKTOP_COLORS.inkFaint}
                         />
                         <Cell
-                          flex={DRIVER_COLUMNS[4].flex}
+                          flex={DRIVER_COLUMNS[2].flex}
+                          text={driver.national_id || 'לא הוזן'}
+                          ltr={!!driver.national_id}
+                          color={driver.national_id ? DESKTOP_COLORS.ink : DESKTOP_COLORS.inkFaint}
+                        />
+                        <View style={[styles.cell, { flex: DRIVER_COLUMNS[3].flex }]}>
+                          {driver.license_number ? (
+                            <DLtrText style={[styles.cellText, { color: DESKTOP_COLORS.ink }]} numberOfLines={1}>
+                              {driver.license_number}
+                            </DLtrText>
+                          ) : (
+                            <DText style={[styles.cellText, { color: DESKTOP_COLORS.inkFaint }]} numberOfLines={1}>
+                              לא הוזן
+                            </DText>
+                          )}
+                          {!!driver.license_classes && (
+                            <DText style={styles.subText} numberOfLines={1}>
+                              דרגה {driver.license_classes}
+                            </DText>
+                          )}
+                        </View>
+                        <View style={[styles.cell, { flex: DRIVER_COLUMNS[4].flex }]}>
+                          <ToneLine tone={license.tone} label={license.label} />
+                          {!!driver.license_expiry && (
+                            <DText style={styles.subText} numberOfLines={1}>
+                              עד {formatDate(driver.license_expiry)}
+                            </DText>
+                          )}
+                        </View>
+                        <View style={[styles.cell, { flex: DRIVER_COLUMNS[5].flex }]}>
+                          <ToneLine tone={health.tone} label={health.label} />
+                          {!!health.sub && (
+                            <DText style={styles.subText} numberOfLines={1}>
+                              {health.sub}
+                            </DText>
+                          )}
+                        </View>
+                        <View style={[styles.cell, { flex: DRIVER_COLUMNS[6].flex }]}>
+                          {driver.vehicles.length ? (
+                            driver.vehicles.map((vehicle) => (
+                              <DLtrText
+                                key={vehicle.id}
+                                style={[styles.cellText, styles.mono, vehicle.is_primary && { color: DESKTOP_COLORS.ink }]}
+                                numberOfLines={1}
+                              >
+                                {formatPlate(vehicle.plate_number)}
+                              </DLtrText>
+                            ))
+                          ) : (
+                            <DText style={[styles.cellText, { color: DESKTOP_COLORS.inkFaint }]} numberOfLines={1}>
+                              ללא רכב
+                            </DText>
+                          )}
+                        </View>
+                        <Cell
+                          flex={DRIVER_COLUMNS[7].flex}
                           text={pending > 0 ? countWords(pending, 'מסמך אחד', 'מסמכים') : '—'}
                           color={pending > 0 ? DESKTOP_TONES.warn.fg : DESKTOP_COLORS.inkFaint}
                           weight={pending > 0 ? 'semiBold' : undefined}
@@ -478,11 +535,14 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
 /* ------------------------------------------------------------------ */
 
 const DRIVER_COLUMNS = [
-  { label: 'נהג', flex: 2 },
-  { label: 'רישיון נהיגה', flex: 1.2 },
-  { label: 'דרגה', flex: 0.7 },
-  { label: 'רכב', flex: 1.1 },
-  { label: 'ממתין לחתימה', flex: 1 },
+  { label: 'נהג', flex: 1.7 },
+  { label: 'טלפון נייד', flex: 1.05 },
+  { label: 'תעודת זהות', flex: 0.95 },
+  { label: 'מספר רישיון', flex: 1 },
+  { label: 'תוקף רישיון', flex: 1 },
+  { label: 'הצהרת בריאות', flex: 1.05 },
+  { label: 'רכבים משויכים', flex: 1.1 },
+  { label: 'ממתין לחתימה', flex: 0.9 },
 ];
 
 const VEHICLE_COLUMNS = [

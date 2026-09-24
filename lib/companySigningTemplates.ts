@@ -32,7 +32,7 @@ export type PlacedSigningField = {
 };
 
 export type EditorInline =
-  | { text: string; bold?: boolean; italic?: boolean; underline?: boolean }
+  | { text: string; bold?: boolean; italic?: boolean; underline?: boolean; size?: number; color?: string; highlight?: boolean }
   | { field: SigningFieldKind; label?: string };
 
 /**
@@ -45,6 +45,22 @@ export type EditorInline =
  * takes `headerH` pixels at the top of the first page, then `headerGap`
  * before the text; the server draws the same header at the same size.
  */
+/** Text sizes, colours and the marker the editor offers. The server accepts only these. */
+export const EDITOR_TEXT_SIZES = [
+  { px: 13, label: 'קטן' },
+  { px: 16, label: 'רגיל' },
+  { px: 20, label: 'גדול' },
+  { px: 24, label: 'גדול מאוד' },
+] as const;
+export const EDITOR_TEXT_COLORS = [
+  { hex: '#111111', label: 'שחור' },
+  { hex: '#5C6773', label: 'אפור' },
+  { hex: '#0088CC', label: 'כחול' },
+  { hex: '#D92D20', label: 'אדום' },
+  { hex: '#12805C', label: 'ירוק' },
+] as const;
+export const EDITOR_HIGHLIGHT = '#FFF1A8';
+
 export const EDITOR_PAGE = { width: 794, height: 1123, padX: 72, padY: 64, headerH: 72, headerGap: 32 } as const;
 
 /** A field dropped freely on an editor page. Pixels from the page's top-left corner. */
@@ -59,9 +75,9 @@ export type EditorPlacedField = {
 
 /** A document written in the in-app editor, as sent to the server. */
 export type EditorBlock = {
-  type: 'h1' | 'h2' | 'p' | 'ul' | 'ol';
-  align?: 'right' | 'center' | 'left';
-  /** One line for headings and paragraphs; one entry per item for lists. */
+  type: 'h1' | 'h2' | 'p' | 'ul' | 'ol' | 'hr';
+  align?: 'right' | 'center' | 'left' | 'justify';
+  /** One line for headings and paragraphs; one entry per item for lists; empty for a divider line. */
   content: EditorInline[][];
 };
 
