@@ -5,8 +5,55 @@
 [build.environment]
   NODE_VERSION = "24"
 
+# One public address: the old netlify.app name forwards to the real domain.
+[[redirects]]
+  from = "https://magical-cupcake-cdac7d.netlify.app/*"
+  to = "https://icar-app.com/:splat"
+  status = 301
+  force = true
+
 # Every in-app address (e.g. /drivers/123) opens the app, which then shows the right screen.
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(self), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    # Report-only first: logs anything the policy would block without breaking
+    # signing (DocuSeal), PDFs (pdf.js) or storage previews. Switch the header
+    # name to Content-Security-Policy once a real session shows no violations.
+    Content-Security-Policy-Report-Only = """
+      default-src 'self'; \
+      script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.docuseal.com https://cdn.docuseal.eu https://docuseal.com https://docuseal.eu; \
+      style-src 'self' 'unsafe-inline' https://cdn.docuseal.com https://cdn.docuseal.eu https://docuseal.com https://docuseal.eu; \
+      img-src 'self' data: blob: https:; \
+      font-src 'self' data: https://cdn.docuseal.com https://cdn.docuseal.eu https://docuseal.com https://docuseal.eu; \
+      connect-src 'self' blob: data: https://lnflftptzrfuzfecmhho.supabase.co wss://lnflftptzrfuzfecmhho.supabase.co https://docuseal.com https://*.docuseal.com https://docuseal.eu https://*.docuseal.eu https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; \
+      frame-src 'self' blob: data: https://lnflftptzrfuzfecmhho.supabase.co https://docuseal.com https://*.docuseal.com https://docuseal.eu https://*.docuseal.eu; \
+      worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; \
+      media-src 'self' blob: data: https://lnflftptzrfuzfecmhho.supabase.co; \
+      object-src 'none'; \
+      base-uri 'self'; \
+      form-action 'self' https://docuseal.com https://*.docuseal.com https://docuseal.eu https://*.docuseal.eu; \
+      frame-ancestors 'self'; \
+      upgrade-insecure-requests"""
+
+# File names under these folders change whenever their content changes,
+# so browsers can keep them for a year and never re-download them.
+[[headers]]
+  for = "/_expo/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
