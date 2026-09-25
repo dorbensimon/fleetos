@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import type { Notification } from '../../lib/adminApi';
 import type { NotificationType, NotificationTypeInfo } from '../../lib/notificationPreferencesApi';
@@ -202,7 +203,7 @@ export function NotificationsHubDesktopView({
             </View>
           </View>
           {prefs.loading ? (
-            <View style={styles.panel}><ActivityIndicator color={DESKTOP_COLORS.brand} /></View>
+            <View style={styles.panel}><BrandLoader color={DESKTOP_COLORS.brand} /></View>
           ) : prefs.error ? (
             <View style={styles.panel}>
               <DText style={styles.stateHint}>{prefs.error}</DText>
@@ -235,7 +236,7 @@ export function NotificationsHubDesktopView({
                       disabled={!prefs.leadChanged || prefs.savingLead}
                       accessibilityLabel="שמירת זמן ההתראה"
                     >
-                      {prefs.savingLead ? <ActivityIndicator size={12} color="#FFFFFF" /> : <Ionicons name="checkmark" size={13} color="#FFFFFF" />}
+                      {prefs.savingLead ? <BrandLoader size={12} color="#FFFFFF" /> : <Ionicons name="checkmark" size={13} color="#FFFFFF" />}
                     </HoverPressable>
                   </View>
                 </View>
@@ -362,7 +363,7 @@ export function NotificationsHubDesktopView({
           )}
 
           {loading ? (
-            <View style={styles.state}><ActivityIndicator color={DESKTOP_COLORS.brand} /></View>
+            <View style={styles.state}><BrandLoader color={DESKTOP_COLORS.brand} /></View>
           ) : error ? (
             <View style={styles.state}>
               <DText weight="semiBold" style={styles.stateTitle}>לא ניתן לטעון את ההתראות</DText>

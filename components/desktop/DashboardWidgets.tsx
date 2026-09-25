@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { showAlert } from '../../lib/platformAlert';
 import { useCompany } from '../../lib/CompanyContext';
@@ -112,7 +113,7 @@ export function DepartmentsQuickAction() {
       <HeaderAction icon="business-outline" label="מחלקות" onPress={openModal} />
       <DesktopModal visible={open} title="מחלקות" onClose={() => setOpen(false)}>
         {loading && departments.length === 0 ? (
-          <View style={styles.state}><ActivityIndicator color={DESKTOP_COLORS.brand} /></View>
+          <View style={styles.state}><BrandLoader color={DESKTOP_COLORS.brand} /></View>
         ) : (
           <DepartmentsDesktopView
             departments={departments}
@@ -193,7 +194,7 @@ export function ReportsQuickAction() {
       <HeaderAction icon="document-text-outline" label="דוחות" onPress={openModal} />
       <DesktopModal visible={open} title="ייצוא דוחות" onClose={() => setOpen(false)}>
         {loading && !loaded ? (
-          <View style={styles.state}><ActivityIndicator color={DESKTOP_COLORS.brand} /></View>
+          <View style={styles.state}><BrandLoader color={DESKTOP_COLORS.brand} /></View>
         ) : (
           <ReportsDesktopView
             open={kind}

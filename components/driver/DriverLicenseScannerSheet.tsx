@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Image, Modal } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Image, Modal } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, Card, Field, Input, PrimaryButton } from '../ui';
 import { COLORS, SPACING } from '../../lib/theme';
@@ -151,7 +152,7 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
     if (phase === 'extracting') {
       return (
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color={COLORS.accent} />
+          <BrandLoader size="large" color={COLORS.accent} />
           <AppText style={styles.subtitle}>מחליץ נתונים...</AppText>
         </View>
       );

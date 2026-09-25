@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { Department } from '../../lib/adminApi';
 import { DText, HoverPressable } from './primitives';
@@ -38,7 +39,7 @@ export function DepartmentsDesktopView({ departments, newName, onChangeNewName, 
       <View style={styles.addRow}>
         <TextInput value={newName} onChangeText={onChangeNewName} placeholder="שם המחלקה, למשל: תפעול" placeholderTextColor={DESKTOP_COLORS.inkMuted} textAlign="right" onFocus={() => setFocusedField('new')} onBlur={() => setFocusedField(null)} onSubmitEditing={onAdd} returnKeyType="done" style={[styles.input, focusedField === 'new' && styles.inputFocused, webOnly({ outlineStyle: 'none' })]} />
         <HoverPressable style={[styles.addButton, (!newName.trim() || adding) && styles.addButtonDisabled]} hoverStyle={styles.addButtonHover} pressStyle={styles.addButtonPress} onPress={onAdd} disabled={!newName.trim() || adding}>
-          {adding ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="add" size={18} color="#fff" />}
+          {adding ? <BrandLoader size="small" color="#fff" /> : <Ionicons name="add" size={18} color="#fff" />}
           <DText weight="semiBold" style={styles.addButtonText}>{adding ? 'מוסיף…' : 'הוספת מחלקה'}</DText>
         </HoverPressable>
       </View>

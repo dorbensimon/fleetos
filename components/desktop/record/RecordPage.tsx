@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { BrandLoader } from '../../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { DesktopModal } from '../DesktopModal';
 import {
@@ -194,7 +195,7 @@ export function FieldEditDialog({ editor, onClose }: { editor: FieldEditor | nul
         {!!error && <DText style={pageStyles.editError}>{error}</DText>}
         <View style={pageStyles.editActions}>
           <HoverPressable style={[pageStyles.primaryBtn, pageStyles.editActionBtn, saving && pageStyles.disabled]} hoverStyle={pageStyles.primaryBtnHover} pressStyle={pageStyles.pressDown} onPress={() => void save()} disabled={saving}>
-            {saving && <ActivityIndicator size="small" color="#FFFFFF" />}
+            {saving && <BrandLoader size="small" color="#FFFFFF" />}
             <DText weight="semiBold" style={pageStyles.primaryBtnText}>שמירה</DText>
           </HoverPressable>
           <HoverPressable style={[pageStyles.plainBtn, pageStyles.editActionBtn]} hoverStyle={pageStyles.plainBtnHover} pressStyle={pageStyles.pressDown} onPress={onClose}>

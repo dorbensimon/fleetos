@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { formatPlate } from '../../lib/plate';
 import { VehicleDriversEditor } from '../VehicleDriversEditor';
@@ -216,7 +217,7 @@ export function VehicleFormDesktopView({
                 accessibilityLabel="מילוי פרטי הרכב ממשרד התחבורה"
               >
                 {lookupLoading ? (
-                  <ActivityIndicator size="small" color={DESKTOP_COLORS.brand} />
+                  <BrandLoader size="small" color={DESKTOP_COLORS.brand} />
                 ) : (
                   <Ionicons name="sparkles" size={18} color={DESKTOP_COLORS.brand} />
                 )}

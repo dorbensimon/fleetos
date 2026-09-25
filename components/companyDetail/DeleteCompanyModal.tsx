@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { CenterModal } from '../owner/OwnerModals';
 import { COLORS } from '../owner/ownerTheme';
@@ -57,7 +58,7 @@ export function DeleteCompanyModal({
           disabled={!matches || deleting}
         >
           {deleting ? (
-            <ActivityIndicator color={COLORS.white} />
+            <BrandLoader color={COLORS.white} />
           ) : (
             <Text style={[s.deleteButtonText, !matches && s.deleteButtonTextDisabled]}>מחק לצמיתות</Text>
           )}

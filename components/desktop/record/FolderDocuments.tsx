@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
+import { BrandLoader } from '../../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import type { DocumentRow } from '../../../lib/adminApi';
 import { ExpiryState, expiryState, formatDate, parseDateValue } from '../../../lib/theme';
@@ -252,7 +253,7 @@ export function FolderUploadBar({
 
       <View style={styles.actions}>
         <HoverPressable style={[styles.primaryBtn, styles.actionBtn, uploading && styles.disabled]} hoverStyle={styles.primaryBtnHover} pressStyle={styles.pressDown} onPress={() => void submit()} disabled={uploading}>
-          {uploading ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Ionicons name="cloud-upload-outline" size={18} color="#FFFFFF" />}
+          {uploading ? <BrandLoader size="small" color="#FFFFFF" /> : <Ionicons name="cloud-upload-outline" size={18} color="#FFFFFF" />}
           <DText weight="semiBold" style={styles.primaryBtnText}>{uploading ? 'מעלה…' : 'העלאה'}</DText>
         </HoverPressable>
         {onClose && (

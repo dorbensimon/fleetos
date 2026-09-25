@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, ActivityIndicator, AppState } from 'react-native';
+import { View, AppState } from 'react-native';
+import { BrandLoader } from './components/ui/BrandLoader';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   NavigationContainer,
@@ -23,7 +24,6 @@ import {
 } from '@expo-google-fonts/heebo';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { syncWebThemeColor } from './lib/webThemeColor';
-import { BrandSymbol } from './components/ui/Brand';
 import LoginScreen from './screens/LoginScreen';
 import SetPasswordScreen from './screens/SetPasswordScreen';
 import OwnerHomeScreen from './screens/OwnerHomeScreen';
@@ -211,8 +211,8 @@ export default function App() {
         {/* Boot screen — matches the pre-JS splash in public/index.html so
             the web load is one continuous branded frame. */}
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F5F7' }}>
-          <BrandSymbol size={64} />
-          <ActivityIndicator color="#2F5BFF" style={{ marginTop: 28 }} />
+          {/* 83px = the splash's 64px symbol (77-unit frame) in the loader's 100-unit frame. */}
+          <BrandLoader size={83} />
         </View>
       </SafeAreaProvider>
     );

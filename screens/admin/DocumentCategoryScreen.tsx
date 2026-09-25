@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { BrandLoader } from '../../components/ui/BrandLoader';
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -227,7 +228,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
             disabled={uploading}
           >
             {uploading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <BrandLoader color="#FFFFFF" />
             ) : (
               <>
                 <Ionicons name={isProcedure6 ? 'add-circle-outline' : 'cloud-upload-outline'} size={15} color="#FFFFFF" />
@@ -312,7 +313,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
                   disabled={uploading}
                 >
                   {uploading ? (
-                    <ActivityIndicator color={COLORS.textInverse} />
+                    <BrandLoader color={COLORS.textInverse} />
                   ) : (
                     <>
                       <Ionicons name={isProcedure6 ? 'add-circle-outline' : 'cloud-upload-outline'} size={17} color={COLORS.textInverse} />

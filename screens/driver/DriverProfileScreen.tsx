@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { BrandLoader } from '../../components/ui/BrandLoader';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BlurView } from 'expo-blur';
@@ -233,7 +234,7 @@ export default function DriverProfileScreen({ navigation }: Props) {
               <DText weight="bold" style={ds.heading}>{driver?.full_name || '—'}</DText>
               <HoverPressable style={ds.editButton} onPress={toggleEdit} disabled={saving}>
                 <DText weight="semiBold" style={[ds.editButtonText, saving && { opacity: 0 }]}>{editMode ? 'שמירה' : 'עריכה'}</DText>
-                {saving && <ActivityIndicator size="small" color={DESKTOP_COLORS.brand} style={StyleSheet.absoluteFill} />}
+                {saving && <BrandLoader size="small" color={DESKTOP_COLORS.brand} style={StyleSheet.absoluteFill} />}
               </HoverPressable>
             </View>
 

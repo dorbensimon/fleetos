@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { BrandLoader } from '../components/ui/BrandLoader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
@@ -319,7 +320,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
             </View>
 
             {loading ? (
-              <View style={ds.centerFill}><ActivityIndicator color={DESKTOP_COLORS.brand} /></View>
+              <View style={ds.centerFill}><BrandLoader color={DESKTOP_COLORS.brand} /></View>
             ) : loadError && companies.length === 0 ? (
               <ErrorState message={loadError} onRetry={loadCompanies} />
             ) : filteredCompanies.length === 0 ? (
@@ -419,7 +420,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
 
       {loading ? (
         <View style={styles.centerFill}>
-          <ActivityIndicator color={COLORS.blue} />
+          <BrandLoader color={COLORS.blue} />
         </View>
       ) : loadError && companies.length === 0 ? (
         <ErrorState message={loadError} onRetry={loadCompanies} />

@@ -1,5 +1,6 @@
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { BrandLoader } from '../components/ui/BrandLoader';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, PrimaryButton, Screen, ScreenHeader } from '../components/ui';
@@ -234,11 +235,11 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
         }) : html ? (
           <iframe title={params.title} srcDoc={html} style={iframeStyle} onLoad={() => setLoading(false)} allow="clipboard-read; clipboard-write" />
         ) : null}
-        {loading && <View style={styles.loading}><ActivityIndicator color={COLORS.accent} /></View>}
+        {loading && <View style={styles.loading}><BrandLoader color={COLORS.accent} /></View>}
       </View>
       {!!error && <AppText style={styles.error}>{error}</AppText>}
       {params.mode === 'builder' && <View style={styles.footer}><PrimaryButton label="אשר ושמור כתבנית" icon="checkmark-circle-outline" loading={saving} onPress={finishBuilder} /></View>}
-      {params.mode !== 'builder' && saving && <View style={styles.sync}><ActivityIndicator color={COLORS.accent} /><AppText>שומר את המסמך החתום...</AppText></View>}
+      {params.mode !== 'builder' && saving && <View style={styles.sync}><BrandLoader color={COLORS.accent} /><AppText>שומר את המסמך החתום...</AppText></View>}
     </Screen>
   );
 }

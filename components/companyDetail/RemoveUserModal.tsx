@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { CenterModal } from '../owner/OwnerModals';
 import { COLORS } from '../owner/ownerTheme';
@@ -36,7 +37,7 @@ export function RemoveUserModal({
           <Text style={s.cancelButtonText}>ביטול</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.deleteButton} onPress={onConfirm} disabled={removing}>
-          {removing ? <ActivityIndicator color={COLORS.white} /> : <Text style={s.deleteButtonText}>הסר לצמיתות</Text>}
+          {removing ? <BrandLoader color={COLORS.white} /> : <Text style={s.deleteButtonText}>הסר לצמיתות</Text>}
         </TouchableOpacity>
       </View>
     </CenterModal>

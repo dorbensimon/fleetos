@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, View, type ImageStyle } from 'react-native';
+import { Image, StyleSheet, View, type ImageStyle } from 'react-native';
+import { BrandLoader } from '../../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import type { DocumentRow, DriverRow } from '../../../lib/adminApi';
 import type { LicenseUpdateRequest } from '../../../lib/licenseUpdate';
@@ -138,7 +139,7 @@ export function DriverLicenseModal({
               <View key={side} style={styles.side}>
                 <DText weight="semiBold" style={styles.sideLabel}>{LICENSE_SIDE_TITLE[side]}</DText>
                 {!loaded ? (
-                  <View style={styles.slot}><ActivityIndicator color={DESKTOP_COLORS.brand} /></View>
+                  <View style={styles.slot}><BrandLoader color={DESKTOP_COLORS.brand} /></View>
                 ) : doc ? (
                   <HoverPressable style={styles.slot} hoverMotionStyle={styles.slotHoverMotion} onPress={() => openDocumentExternally(doc)} accessibilityLabel={`פתיחת ${LICENSE_SIDE_TITLE[side]} בגודל מלא`}>
                     {url && doc.mime_type?.startsWith('image/') ? (
@@ -146,11 +147,11 @@ export function DriverLicenseModal({
                     ) : (
                       <Ionicons name="document-text-outline" size={28} color={DESKTOP_COLORS.brand} />
                     )}
-                    {busy && <View style={styles.slotBusy}><ActivityIndicator color={DESKTOP_COLORS.brand} /></View>}
+                    {busy && <View style={styles.slotBusy}><BrandLoader color={DESKTOP_COLORS.brand} /></View>}
                   </HoverPressable>
                 ) : (
                   <HoverPressable style={[styles.slot, styles.slotEmpty]} hoverStyle={styles.slotEmptyHover} onPress={() => upload(side, false)} disabled={busy} accessibilityLabel={`העלאת ${LICENSE_SIDE_TITLE[side]}`}>
-                    {busy ? <ActivityIndicator color={DESKTOP_COLORS.brand} /> : (
+                    {busy ? <BrandLoader color={DESKTOP_COLORS.brand} /> : (
                       <>
                         <Ionicons name="cloud-upload-outline" size={22} color={DESKTOP_COLORS.brand} />
                         <DText weight="semiBold" style={styles.slotEmptyText}>העלאת צילום</DText>

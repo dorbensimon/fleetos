@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
+import { BrandLoader } from '../components/ui/BrandLoader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
@@ -383,13 +384,13 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     if (isDesktop) {
       return (
         <DesktopShell active="OwnerHome" breadcrumbs={['חברות', '…']}>
-          <ActivityIndicator color={DESKTOP_COLORS.brand} />
+          <BrandLoader color={DESKTOP_COLORS.brand} />
         </DesktopShell>
       );
     }
     return (
       <View style={styles.centerFill}>
-        <ActivityIndicator color={COLORS.blue} />
+        <BrandLoader color={COLORS.blue} />
       </View>
     );
   }

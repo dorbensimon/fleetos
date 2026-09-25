@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Image, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheet, styles as sheetStyles } from './OwnerModals';
 import { COLORS } from './ownerTheme';
@@ -87,7 +88,7 @@ export function AddCompanySheet({
         <Text style={styles.fieldLabel}>לוגו החברה (אופציונלי)</Text>
         <TouchableOpacity style={styles.logoPicker} onPress={onPickLogo} disabled={uploadingLogo}>
           {uploadingLogo ? (
-            <ActivityIndicator color={COLORS.blue} />
+            <BrandLoader color={COLORS.blue} />
           ) : form.logoUrl ? (
             <>
               <View style={styles.logoPreviewWrap}>
@@ -240,7 +241,7 @@ export function AddCompanySheet({
         disabled={creating}
         activeOpacity={0.85}
       >
-        {creating ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.createButtonText}>צור חברה</Text>}
+        {creating ? <BrandLoader color={COLORS.white} /> : <Text style={styles.createButtonText}>צור חברה</Text>}
       </TouchableOpacity>
       <Text style={styles.hintText}>
         האדמין יוכל להתחבר עם המייל והסיסמה שקבעת, ויתבקש לקבוע סיסמה קבועה משלו בכניסה הראשונה

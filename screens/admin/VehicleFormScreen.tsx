@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { BrandLoader } from '../../components/ui/BrandLoader';
 import { showAlert } from '../../lib/platformAlert';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -606,7 +607,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
                 accessibilityLabel="חפש פרטי רכב לפי מספר הרישוי"
               >
                 {lookupLoading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <BrandLoader size="small" color="#FFFFFF" />
                 ) : (
                   <Ionicons name="search-outline" size={18} color="#FFFFFF" />
                 )}
@@ -1025,7 +1026,7 @@ function SaveFooter({
       accessibilityLabel={canSubmit ? ctaLabel : 'השלם את שדות החובה'}
     >
       {saving ? (
-        <ActivityIndicator color="#FFFFFF" accessibilityLabel="שומר" />
+        <BrandLoader color="#FFFFFF" accessibilityLabel="שומר" />
       ) : (
         <>
           <Ionicons name={isEdit ? 'checkmark-circle' : 'add-circle'} size={18} color={canSubmit ? '#FFFFFF' : 'rgba(16,31,44,.33)'} />

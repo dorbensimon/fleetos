@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { BrandLoader } from '../components/ui/BrandLoader';
 import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -189,7 +190,7 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
             activeOpacity={0.85}
           >
             {saving ? (
-              <ActivityIndicator color={COLORS.white} />
+              <BrandLoader color={COLORS.white} />
             ) : (
               <Text style={styles.buttonText}>המשך</Text>
             )}

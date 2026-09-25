@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
@@ -114,7 +115,7 @@ export function SetPasswordDesktopView({
             onPress={onSubmit}
             disabled={saving}
           >
-            {saving ? <ActivityIndicator color="#fff" /> : <><DText weight="semiBold" style={styles.submitText}>עדכון סיסמה</DText><Ionicons name="arrow-back" size={17} color="#fff" /></>}
+            {saving ? <BrandLoader color="#fff" /> : <><DText weight="semiBold" style={styles.submitText}>עדכון סיסמה</DText><Ionicons name="arrow-back" size={17} color="#fff" /></>}
           </HoverPressable>
           <HoverPressable style={styles.cancelButton} hoverStyle={styles.cancelButtonHover} pressMotionStyle={styles.pressDown} onPress={onCancel} disabled={saving}>
             <DText weight="semiBold" style={styles.cancelText}>{voluntary ? 'ביטול' : 'זה לא אני / התנתקות'}</DText>

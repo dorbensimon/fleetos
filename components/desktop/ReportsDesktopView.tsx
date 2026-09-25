@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS } from './desktopTheme';
@@ -97,7 +98,7 @@ function ReportGroup({
               >
                 <Ionicons name={category.icon as never} size={15} color={DESKTOP_COLORS.inkMuted} />
                 <DText style={styles.categoryLabel}>{category.label}</DText>
-                {exporting && <ActivityIndicator size="small" color={DESKTOP_COLORS.brand} />}
+                {exporting && <BrandLoader size="small" color={DESKTOP_COLORS.brand} />}
               </HoverPressable>
             );
           })}

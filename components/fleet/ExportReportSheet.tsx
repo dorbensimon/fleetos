@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Modal, Pressable, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from '../ui';
 import { COLORS, CONTENT_MAX_WIDTH, RADIUS, SPACING } from '../../lib/theme';
@@ -46,7 +47,7 @@ export function ExportReportSheet<T extends string>({
             >
               <View style={styles.rowIcon}>
                 {exportingCategory === cat.value ? (
-                  <ActivityIndicator size="small" color={COLORS.accent} />
+                  <BrandLoader size="small" color={COLORS.accent} />
                 ) : (
                   <Ionicons name={cat.icon as any} size={18} color={COLORS.accent} />
                 )}

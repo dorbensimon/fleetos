@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { BrandLoader } from '../components/ui/BrandLoader';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
@@ -129,7 +130,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
               setError('טעינת התמונה נכשלה');
             }}
           />
-          {loading && <View style={styles.loading}><ActivityIndicator color={COLORS.accent} /></View>}
+          {loading && <View style={styles.loading}><BrandLoader color={COLORS.accent} /></View>}
         </View>
         {!!error && <AppText style={styles.error}>{error}</AppText>}
       </Screen>
@@ -221,7 +222,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
           }
           style={styles.webview}
         />
-        {loading && <View style={styles.loading}><ActivityIndicator color={COLORS.accent} /></View>}
+        {loading && <View style={styles.loading}><BrandLoader color={COLORS.accent} /></View>}
       </View>
       {!!error && <AppText style={styles.error}>{error}</AppText>}
       {params.mode === 'builder' && (
@@ -230,7 +231,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
         </View>
       )}
       {params.mode !== 'builder' && saving && (
-        <View style={styles.sync}><ActivityIndicator color={COLORS.accent} /><AppText>שומר את המסמך החתום...</AppText></View>
+        <View style={styles.sync}><BrandLoader color={COLORS.accent} /><AppText>שומר את המסמך החתום...</AppText></View>
       )}
     </Screen>
   );

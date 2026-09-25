@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text, TextInput, TouchableOpacity, ActivityIndicator, View } from 'react-native';
+import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { CenterModal } from '../owner/OwnerModals';
 import { COLORS } from '../owner/ownerTheme';
@@ -146,7 +147,7 @@ export function AddAdminModal({
       {!!submitError && <Text style={s.errorText}>{submitError}</Text>}
 
       <TouchableOpacity style={[s.primaryButton, submitting && s.buttonDisabled]} onPress={onSubmit} disabled={submitting}>
-        {submitting ? <ActivityIndicator color={COLORS.white} /> : <Text style={s.primaryButtonText}>הוסף</Text>}
+        {submitting ? <BrandLoader color={COLORS.white} /> : <Text style={s.primaryButtonText}>הוסף</Text>}
       </TouchableOpacity>
     </CenterModal>
   );

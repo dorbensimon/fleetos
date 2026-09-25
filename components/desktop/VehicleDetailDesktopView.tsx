@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import type {
   AcquisitionType,
@@ -394,7 +395,7 @@ export function VehicleDetailDesktopView({
                   disabled={lookupLoading}
                   accessibilityLabel="מילוי אוטומטי של יצרן, דגם, צבע ושנת ייצור לפי מספר הרכב"
                 >
-                  {lookupLoading ? <ActivityIndicator size="small" color={DESKTOP_COLORS.brand} style={styles.lookupSpinner} /> : <Ionicons name="search-outline" size={13} color={DESKTOP_COLORS.brand} />}
+                  {lookupLoading ? <BrandLoader size="small" color={DESKTOP_COLORS.brand} style={styles.lookupSpinner} /> : <Ionicons name="search-outline" size={13} color={DESKTOP_COLORS.brand} />}
                   <DText weight="semiBold" style={styles.lookupText}>{lookupLoading ? 'מחפש…' : 'מילוי אוטומטי'}</DText>
                 </HoverPressable>
               }

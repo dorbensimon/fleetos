@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
-  ActivityIndicator,
   Animated,
   Easing,
   Image,
@@ -12,6 +11,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate } from '../../lib/theme';
 import { formatPhone } from '../../lib/phone';
@@ -784,7 +784,7 @@ function SaveCapsule({
               <DText weight="semiBold" style={[styles.capsuleCtaText, saving && styles.busyLabel]}>
                 שמור שינויים
               </DText>
-              {saving && <ActivityIndicator size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
+              {saving && <BrandLoader size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
             </HoverPressable>
           </View>
         )}

@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import type { Company } from '../../lib/supabase';
 import { formatDate } from '../../lib/theme';
@@ -66,7 +67,7 @@ export function AdminProfileDesktopView({
           <View style={styles.activeDot} />
         </View>
         <HoverPressable style={styles.editButton} hoverStyle={styles.editButtonHover} pressMotionStyle={styles.pressDown} onPress={onToggleEdit} disabled={saving}>
-          {saving ? <ActivityIndicator size={13} color="#fff" /> : <Ionicons name={editing ? 'checkmark' : 'pencil-outline'} size={15} color="#fff" />}
+          {saving ? <BrandLoader size={13} color="#fff" /> : <Ionicons name={editing ? 'checkmark' : 'pencil-outline'} size={15} color="#fff" />}
           <DText weight="semiBold" style={styles.editButtonText}>{editing ? 'שמור שינויים' : 'עריכת פרטים'}</DText>
         </HoverPressable>
       </View>

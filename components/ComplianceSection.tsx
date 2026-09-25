@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { BrandLoader } from './ui/BrandLoader';
 import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, Card, ExpiryBadge, PrimaryButton, useToast } from './ui';
@@ -396,7 +397,7 @@ export function ComplianceSection({
         {isDirty && (
           <TouchableOpacity style={styles.desktopConfirmBtn} activeOpacity={0.8} onPress={() => confirmDates(def)} disabled={savingItem === def.itemType}>
             {savingItem === def.itemType ? (
-              <ActivityIndicator size="small" color={COLORS.textInverse} />
+              <BrandLoader size="small" color={COLORS.textInverse} />
             ) : (
               <Ionicons name="checkmark" size={14} color={COLORS.textInverse} />
             )}
@@ -431,7 +432,7 @@ export function ComplianceSection({
         <TouchableOpacity style={styles.uploadBtn} activeOpacity={0.8} onPress={() => addDocument(def)} disabled={busyItem === def.itemType}>
           {busyItem === def.itemType ? (
             <>
-              <ActivityIndicator size="small" color={COLORS.accent} />
+              <BrandLoader size="small" color={COLORS.accent} />
               <AppText weight="bold" style={styles.uploadText}>מעבד ומעלה…</AppText>
             </>
           ) : (
@@ -696,7 +697,7 @@ function GeneralDocuments({
       <TouchableOpacity style={styles.uploadBtn} activeOpacity={0.8} onPress={add} disabled={busy}>
         {busy ? (
           <>
-            <ActivityIndicator size="small" color={COLORS.accent} />
+            <BrandLoader size="small" color={COLORS.accent} />
             <AppText weight="bold" style={styles.uploadText}>
               מעבד ומעלה…
             </AppText>

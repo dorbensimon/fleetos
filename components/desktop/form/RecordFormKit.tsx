@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
-  ActivityIndicator,
   Animated,
   Easing,
   LayoutChangeEvent,
@@ -10,6 +9,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { BrandLoader } from '../../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { DLtrText, DText, HoverPressable, prefersReducedMotion } from '../primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
@@ -553,7 +553,7 @@ export function CreateDock({
               {canSubmit ? ctaLabel : `להמשך: ${next?.label ?? ''}`}
             </DText>
           </View>
-          {saving && <ActivityIndicator size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
+          {saving && <BrandLoader size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
         </HoverPressable>
       </Animated.View>
     </View>

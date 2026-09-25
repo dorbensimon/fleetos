@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Image, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../owner/ownerTheme';
 import { formatPhone } from '../../lib/phone';
@@ -62,7 +63,7 @@ export function CompanyInfoCard({
         <Text style={s.fieldLabel}>לוגו החברה</Text>
         <TouchableOpacity style={s.logoPicker} onPress={onPickLogo} disabled={uploadingLogo}>
           {uploadingLogo ? (
-            <ActivityIndicator color={COLORS.blue} />
+            <BrandLoader color={COLORS.blue} />
           ) : fields.logoUrl ? (
             <>
               <View style={s.logoPreviewWrap}>
@@ -158,7 +159,7 @@ export function CompanyInfoCard({
 
       {hasChanges && (
         <TouchableOpacity style={[s.primaryButton, saving && s.buttonDisabled]} onPress={onSave} disabled={saving}>
-          {saving ? <ActivityIndicator color={COLORS.white} /> : <Text style={s.primaryButtonText}>שמור שינויים</Text>}
+          {saving ? <BrandLoader color={COLORS.white} /> : <Text style={s.primaryButtonText}>שמור שינויים</Text>}
         </TouchableOpacity>
       )}
 

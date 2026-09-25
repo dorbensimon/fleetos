@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, TextInput, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Modal, TextInput, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { BrandLoader } from '../components/ui/BrandLoader';
 import { showAlert } from '../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -111,7 +112,7 @@ export default function GlobalSigningTemplatesScreen({ navigation }: Props) {
           try { await renameSigningTemplate(renaming.id, newTitle); setRenaming(null); await load(); }
           catch (err: any) { setError(err?.message || 'שינוי השם נכשל'); setRenaming(null); }
           finally { setSavingName(false); }
-        }}><AppText style={[s.syncButtonText, savingName && { opacity: 0 }]}>שמירת השם באתר וב-DocuSeal</AppText>{savingName && <ActivityIndicator size="small" color={BRAND} style={StyleSheet.absoluteFill} />}</TouchableOpacity>
+        }}><AppText style={[s.syncButtonText, savingName && { opacity: 0 }]}>שמירת השם באתר וב-DocuSeal</AppText>{savingName && <BrandLoader size="small" color={BRAND} style={StyleSheet.absoluteFill} />}</TouchableOpacity>
         <TouchableOpacity disabled={savingName} style={s.syncButton} onPress={() => setRenaming(null)}><AppText>ביטול</AppText></TouchableOpacity>
       </View></View>
     </Modal>
@@ -125,7 +126,7 @@ export default function GlobalSigningTemplatesScreen({ navigation }: Props) {
             <View style={ds.headRow}>
               <DText weight="bold" style={ds.heading}>תבניות משותפות לכל החברות</DText>
               <HoverPressable style={ds.syncButton} onPress={() => load(true)} disabled={syncing}>
-                {syncing ? <ActivityIndicator size="small" color={DESKTOP_COLORS.brand} /> : <Ionicons name="sync-outline" size={14} color={DESKTOP_COLORS.brand} />}
+                {syncing ? <BrandLoader size="small" color={DESKTOP_COLORS.brand} /> : <Ionicons name="sync-outline" size={14} color={DESKTOP_COLORS.brand} />}
                 <DText weight="semiBold" style={ds.syncButtonText}>{syncing ? 'מסנכרן…' : 'סנכרן מדוקושל'}</DText>
               </HoverPressable>
             </View>
@@ -193,7 +194,7 @@ export default function GlobalSigningTemplatesScreen({ navigation }: Props) {
     <View style={[s.navRow, { paddingTop: Math.max(insets.top, 20) + 12 }]}><BackButton style={s.backAction} onPress={() => navigation.goBack()} /></View>
     <View style={s.hero}><AppText style={s.heroTitle}>תבניות גלובליות</AppText><AppText style={s.heroSubtitle}>משותפות לכל החברות · נוצרות ישירות ב-DocuSeal</AppText>
       <TouchableOpacity disabled={syncing} style={[s.syncButton, syncing && s.disabled]} onPress={() => load(true)}>
-        {syncing ? <ActivityIndicator size="small" color={BRAND} /> : <Ionicons name="sync-outline" size={16} color={BRAND} />}
+        {syncing ? <BrandLoader size="small" color={BRAND} /> : <Ionicons name="sync-outline" size={16} color={BRAND} />}
         <AppText style={s.syncButtonText}>{syncing ? 'מסנכרן...' : 'סנכרן מדוקושל'}</AppText>
       </TouchableOpacity>
     </View>

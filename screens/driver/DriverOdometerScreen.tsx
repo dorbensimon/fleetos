@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { BrandLoader } from '../../components/ui/BrandLoader';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppText, Card, Field, InputLtr, PrimaryButton, Screen, ScreenHeader } from '../../components/ui';
 import { updateOwnVehicleOdometer } from '../../lib/driverActions';
@@ -35,7 +36,7 @@ export default function DriverOdometerScreen({ navigation, route }: Props) {
             <DesktopInput value={value} onChangeText={(text) => setValue(text.replace(/\D/g, ''))} placeholder="0" keyboardType="number-pad" ltr />
             <HoverPressable style={[ds.button, invalid && ds.buttonDisabled]} hoverStyle={!invalid ? { backgroundColor: DESKTOP_COLORS.brandHover } : undefined} onPress={save} disabled={saving}>
               <DText weight="semiBold" style={[ds.buttonText, saving && { opacity: 0 }]}>שמור קילומטראז׳</DText>
-              {saving && <ActivityIndicator size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
+              {saving && <BrandLoader size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
             </HoverPressable>
           </View>
         </View>

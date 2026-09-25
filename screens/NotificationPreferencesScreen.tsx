@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, Pressable, View, ScrollView, StyleSheet } from 'react-native';
+import { Pressable, View, ScrollView, StyleSheet } from 'react-native';
+import { BrandLoader } from '../components/ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -99,7 +100,7 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
                         accessibilityRole="button"
                         accessibilityLabel="שמירת זמן ההתראה"
                       >
-                        {savingLead ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Ionicons name="checkmark" size={17} color="#FFFFFF" />}
+                        {savingLead ? <BrandLoader size="small" color="#FFFFFF" /> : <Ionicons name="checkmark" size={17} color="#FFFFFF" />}
                       </Pressable>
                     </View>
                   </View>

@@ -9,10 +9,10 @@ import {
   TextInputProps,
   StyleProp,
   ViewStyle,
-  ActivityIndicator,
   ScrollView,
   Switch,
 } from 'react-native';
+import { BrandLoader } from './BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './Text';
 import {
@@ -184,7 +184,7 @@ export function PrimaryButton({
       style={[styles.primaryBtn, isDisabled && (disabledStyle ?? styles.btnDisabled), style]}
     >
       {loading ? (
-        <ActivityIndicator color={textIconColor} />
+        <BrandLoader color={textIconColor} />
       ) : (
         <>
           {!!icon && <Ionicons name={icon} size={17} color={textIconColor} />}
@@ -379,7 +379,7 @@ export function FilterChips<T extends string>({
 export function LoadingState() {
   return (
     <View style={styles.loadingCentered}>
-      <ActivityIndicator color={COLORS.accent} />
+      <BrandLoader color={COLORS.accent} />
     </View>
   );
 }

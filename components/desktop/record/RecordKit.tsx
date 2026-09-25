@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Modal, Pressable, StyleSheet, View, type ImageStyle } from 'react-native';
+import { Image, Modal, Pressable, StyleSheet, View, type ImageStyle } from 'react-native';
+import { BrandLoader } from '../../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import type { DocumentRow } from '../../../lib/adminApi';
 import type { OwnerType } from '../../../lib/adminApi/types';
@@ -130,7 +131,7 @@ export function StatusPicker<T extends string>({
           {current?.label ?? value}
         </DText>
         {saving ? (
-          <ActivityIndicator size="small" color={tone.fg} style={styles.statusSpinner} />
+          <BrandLoader size="small" color={tone.fg} style={styles.statusSpinner} />
         ) : (
           <Ionicons name="chevron-down" size={12} color={tone.fg} />
         )}
@@ -258,7 +259,7 @@ export function EditableFieldShell({
       <View style={styles.inlineEditRow}>
         <View style={styles.inlineEditControl}>{children}</View>
         <HoverPressable style={[styles.inlineConfirmBtn, saving && styles.disabled]} hoverStyle={styles.saveChipHover} pressStyle={styles.pressDown} onPress={onConfirm} disabled={saving}>
-          {saving ? <ActivityIndicator size={12} color="#FFFFFF" /> : <Ionicons name="checkmark" size={13} color="#FFFFFF" />}
+          {saving ? <BrandLoader size={12} color="#FFFFFF" /> : <Ionicons name="checkmark" size={13} color="#FFFFFF" />}
         </HoverPressable>
         <HoverPressable style={styles.inlineCancelBtn} hoverStyle={styles.rowHover} onPress={onCancel}>
           <Ionicons name="close" size={13} color={DESKTOP_COLORS.inkMuted} />

@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Image, Modal, Animated, ActivityIndicator, Platform, Easing } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, Modal, Animated, Platform, Easing } from 'react-native';
+import { BrandLoader } from '../../components/ui/BrandLoader';
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -369,7 +370,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       <Modal visible={!!processingSide} transparent animationType="fade">
         <View style={styles.processingOverlay}>
           <View style={styles.processingCard}>
-            <ActivityIndicator size="large" color={DC_COLORS.blueLight} />
+            <BrandLoader size="large" color={DC_COLORS.blueLight} />
             <Text style={styles.processingTitle}>מעבד את התמונה…</Text>
             <Text style={styles.processingSubtitle}>אנא המתן, אין צורך לבחור שוב</Text>
           </View>
@@ -469,7 +470,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
             {editMode && (
               <HoverPressable style={desktopStyles.saveButton} onPress={save} disabled={saving}>
                 <DText weight="bold" style={[desktopStyles.saveButtonText, saving && { opacity: 0 }]}>שמירת שינויים</DText>
-                {saving && <ActivityIndicator size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
+                {saving && <BrandLoader size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
               </HoverPressable>
             )}
           </View>
@@ -554,7 +555,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
             disabled={saving}
           >
             {saving ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <BrandLoader color="#FFFFFF" />
             ) : (
               <Text style={styles.saveButtonText}>שמירת שינויים</Text>
             )}
@@ -618,7 +619,7 @@ function SideTile({
             )}
           </>
         ) : uploading ? (
-          <ActivityIndicator color={DC_COLORS.blueLight} />
+          <BrandLoader color={DC_COLORS.blueLight} />
         ) : (
           <>
             <Feather name="camera" size={27} color={DC_COLORS.labelTertiary} />
@@ -627,7 +628,7 @@ function SideTile({
         )}
         {uploading && (
           <View style={styles.tileUploadingOverlay}>
-            <ActivityIndicator color="#FFFFFF" />
+            <BrandLoader color="#FFFFFF" />
           </View>
         )}
       </Pressable>
