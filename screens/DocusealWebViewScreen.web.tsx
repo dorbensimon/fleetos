@@ -10,6 +10,8 @@ import { COLORS, SPACING } from '../lib/theme';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import { DocumentViewer } from '../components/desktop/signing/DocumentViewer.web';
 import type { RootStackParamList } from '../navigation/types';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DK, NightBar, HeroButton } from '../components/driverKit';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DocusealWebView'>;
 type IframeMessage = { type?: 'completed' | 'declined' | 'saved' | 'error' };
@@ -88,7 +90,9 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
 }
 
 export default function DocusealWebViewScreen({ navigation, route }: Props) {
-  const { companyId } = useCompany();
+  const { companyId, profile } = useCompany();
+  const insets = useSafeAreaInsets();
+  const isDriver = profile?.role === 'driver';
   const params = route.params;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -179,6 +183,21 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
     };
   }, [finishSigning, isSigningForm, params.host]);
 
+  // iPhone Safari zooms into any field under 16px when it is focused and
+  // stays zoomed, so the document came back too big after typing a name.
+  // While a driver signs, the page keeps its own scale (pinch-zoom is still
+  // allowed by iOS); the original viewport returns on leaving.
+  useEffect(() => {
+    if (!isDriver || !isSigningForm) return;
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+    if (!meta) return;
+    const original = meta.content;
+    if (!/maximum-scale/.test(original)) meta.content = `${original}, maximum-scale=1`;
+    return () => {
+      meta.content = original;
+    };
+  }, [isDriver, isSigningForm]);
+
   const finishBuilder = async () => {
     if (!companyId || !params.templateId) return;
     setSaving(true);
@@ -209,17 +228,28 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
   if (isDesktop && params.mode === 'document' && documentUrl && !params.previewFields?.length) {
     return <DocumentViewer src={documentUrl} title={params.title} requestId={params.requestId} signedAt={params.signedAt} onClose={() => navigation.goBack()} />;
   }
+  const downloadAction = params.allowDownload && params.mode === 'document';
   return (
-    <Screen>
-      <ScreenHeader
-        title={params.title}
-        onBack={() => navigation.goBack()}
-        right={params.allowDownload && params.mode === 'document' ? (
-          <TouchableOpacity style={styles.downloadButton} onPress={() => void download()} accessibilityRole="button" accessibilityLabel="הורדת המסמך החתום">
-            <Ionicons name="download-outline" size={20} color={COLORS.accent} />
-          </TouchableOpacity>
-        ) : undefined}
-      />
+    <Screen style={isDriver ? styles.driverScreen : undefined}>
+      {isDriver ? (
+        <NightBar
+          insetTop={insets.top}
+          title={params.title}
+          subtitle={isSigningForm ? 'מלא את השדות וחתום' : params.mode === 'document' ? 'צפייה במסמך' : undefined}
+          onBack={() => navigation.goBack()}
+          right={downloadAction ? <HeroButton icon="download-outline" label="הורדת המסמך החתום" onPress={() => void download()} /> : undefined}
+        />
+      ) : (
+        <ScreenHeader
+          title={params.title}
+          onBack={() => navigation.goBack()}
+          right={downloadAction ? (
+            <TouchableOpacity style={styles.downloadButton} onPress={() => void download()} accessibilityRole="button" accessibilityLabel="הורדת המסמך החתום">
+              <Ionicons name="download-outline" size={20} color={COLORS.accent} />
+            </TouchableOpacity>
+          ) : undefined}
+        />
+      )}
       <View style={[styles.webWrap, params.mode === 'document' ? styles.documentSurface : styles.signingSurface]}>
         {isSigningForm ? createElement('docuseal-form', {
           ref: formRef,
@@ -231,6 +261,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
           'data-send-copy-email': 'false',
           'data-with-send-copy-button': 'false',
           'data-allow-to-resubmit': 'false',
+          'data-custom-css': isDriver ? DRIVER_FORM_CSS : undefined,
           style: directFormStyle,
         }) : html ? (
           <iframe title={params.title} srcDoc={html} style={iframeStyle} onLoad={() => setLoading(false)} allow="clipboard-read; clipboard-write" />
@@ -249,7 +280,13 @@ const iframeStyle = { border: 0, width: '100%', height: '100%', display: 'block'
 // submit button at the bottom of this element, so it must end exactly where
 // the screen does — a 100dvh minimum pushed that button below the fold.
 const directFormStyle = { display: 'block', position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, minWidth: 0, overflowY: 'auto' } as const;
+// DocuSeal's own inputs at 16px (below that iPhone zooms in on focus), and
+// its buttons in the icar blue with thumb-sized height.
+const DRIVER_FORM_CSS =
+  'input,textarea,select{font-size:16px!important}' +
+  '.base-button{background-color:#2F5BFF!important;border-color:#2F5BFF!important;color:#FFFFFF!important;min-height:52px;border-radius:16px!important}';
 const styles = StyleSheet.create({
+  driverScreen: { backgroundColor: DK.canvas },
   webWrap: { flex: 1, width: '100%', minHeight: 0, overflow: 'hidden' },
   signingSurface: { backgroundColor: COLORS.screen },
   documentSurface: { backgroundColor: '#CDD3DB' },

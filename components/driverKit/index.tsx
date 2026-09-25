@@ -196,19 +196,26 @@ export function NightHero({
   const size = compact ? 230 : 330;
   return (
     <View style={[styles.hero, { paddingTop: insetTop + 10, paddingBottom: compact ? 44 : 56 }, style]}>
-      <LinearGradient colors={DK.night} locations={[0, 0.55, 1]} start={{ x: 0.85, y: 0 }} end={{ x: 0.2, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
-      <View pointerEvents="none" style={[styles.glow, styles.glowBlue]} />
-      <View pointerEvents="none" style={[styles.glow, styles.glowCyan]} />
+      {/* Top-to-bottom, so the top edge is one flat colour: iOS paints the
+          status bar and the overscroll area with exactly that colour, and
+          nothing decorative reaches the edge to be cut off by it. */}
+      <LinearGradient colors={DK.night} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      {Platform.OS === 'web' && (
+        <>
+          <View pointerEvents="none" style={[styles.glow, styles.glowBlue, { top: insetTop + 10 }]} />
+          <View pointerEvents="none" style={[styles.glow, styles.glowCyan]} />
+        </>
+      )}
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <Animated.Image
+        <Animated.Image
           source={RING}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
           style={[
             styles.heroRing,
-            { width: size, height: size, top: insetTop - size * 0.18, left: -size * 0.28 },
+            { width: size, height: size, top: insetTop + (compact ? 40 : 56), left: -size * 0.34 },
             {
-              opacity: ring.interpolate({ inputRange: [0, 1], outputRange: [0, 0.13] }),
+              opacity: ring.interpolate({ inputRange: [0, 1], outputRange: [0, 0.12] }),
               transform: [{ rotate: ring.interpolate({ inputRange: [0, 1], outputRange: [reduce ? '-24deg' : '-64deg', '-24deg'] }) }],
             },
           ]}
@@ -217,6 +224,16 @@ export function NightHero({
       <View style={styles.heroContent}>{children}</View>
     </View>
   );
+}
+
+/**
+ * The night colour held behind the clock and battery while the page scrolls
+ * (Home Screen app and native, where the page runs under the status bar),
+ * so light cards never slide under white status-bar symbols.
+ */
+export function StatusBand({ insetTop }: { insetTop: number }) {
+  if (!insetTop) return null;
+  return <View pointerEvents="none" style={[styles.statusBand, { height: insetTop }]} />;
 }
 
 /** Round glass button on the night hero (48pt target). */
@@ -259,6 +276,44 @@ export function HeroTitle({
   );
 }
 
+/**
+ * A slim night bar for full-height tools (signing, viewing a document):
+ * back, the title on one line, an optional action — and nothing else, so
+ * the document gets the screen.
+ */
+export function NightBar({
+  insetTop,
+  title,
+  subtitle,
+  onBack,
+  right,
+}: {
+  insetTop: number;
+  title: string;
+  subtitle?: string;
+  onBack: () => void;
+  right?: ReactNode;
+}) {
+  return (
+    <View style={[styles.nightBar, { paddingTop: insetTop + 8 }]}>
+      <StatusBar barStyle="light-content" />
+      <LinearGradient colors={[DK.night[0], DK.night[1]]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      <HeroButton icon="chevron-forward" label="חזרה" onPress={onBack} />
+      <View style={styles.nightBarText}>
+        <DKText variant="heading" color={DK.onNight} numberOfLines={1} accessibilityRole="header">
+          {title}
+        </DKText>
+        {!!subtitle && (
+          <DKText variant="caption" color={DK.onNightMuted} numberOfLines={1}>
+            {subtitle}
+          </DKText>
+        )}
+      </View>
+      <View style={styles.heroBarSlot}>{right}</View>
+    </View>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────
 
 /**
@@ -293,6 +348,7 @@ export function DriverPage({
         </NightHero>
         <View style={styles.pageBody}>{children}</View>
       </ScrollView>
+      <StatusBand insetTop={insetTop} />
       {!!footer && <View style={[styles.pageFooter, { paddingBottom: insetBottom + 12 }]}>{footer}</View>}
     </View>
   );
@@ -514,28 +570,30 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
-    backgroundColor: DK.nightInk,
+    backgroundColor: DK.night[0],
+    // Safari drops a rounded clip while a child is animating (the corners
+    // flash square); a mask keeps the clip on the GPU layer.
+    ...Platform.select({ web: { WebkitMaskImage: '-webkit-radial-gradient(white, black)', isolation: 'isolate' } as any, default: {} }),
   },
-  glow: { position: 'absolute', borderRadius: 999 },
+  // Soft light from the logo's blue and cyan. Radial gradients fade to
+  // nothing inside their own box, so no edge can ever show (a CSS blur
+  // filter is clipped to a hard square on iOS).
+  glow: { position: 'absolute' },
   glowBlue: {
-    width: 360,
-    height: 360,
-    top: -160,
-    right: -120,
-    backgroundColor: DK.glowBlue,
-    opacity: 0.55,
-    ...Platform.select({ web: { filter: 'blur(70px)' } as any, default: { opacity: 0.28 } }),
-  },
+    width: 420,
+    height: 420,
+    right: -170,
+    backgroundImage: 'radial-gradient(closest-side, rgba(47,91,255,0.42), rgba(47,91,255,0.16) 55%, rgba(47,91,255,0) 100%)',
+  } as any,
   glowCyan: {
-    width: 260,
-    height: 260,
-    bottom: -150,
-    left: -60,
-    backgroundColor: DK.glowCyan,
-    opacity: 0.35,
-    ...Platform.select({ web: { filter: 'blur(70px)' } as any, default: { opacity: 0.16 } }),
-  },
+    width: 320,
+    height: 320,
+    bottom: -190,
+    left: -90,
+    backgroundImage: 'radial-gradient(closest-side, rgba(25,198,240,0.28), rgba(25,198,240,0) 100%)',
+  } as any,
   heroRing: { position: 'absolute' },
+  statusBand: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: DK.night[0] },
   heroContent: { paddingHorizontal: DK_SPACE.lg, width: '100%', maxWidth: 560, alignSelf: 'center' },
   heroButton: {
     width: 48,
@@ -561,6 +619,16 @@ const styles = StyleSheet.create({
   heroBar: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
   heroBarSlot: { minWidth: 48, alignItems: 'flex-start' },
   heroTitle: {},
+  nightBar: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: DK_SPACE.md,
+    paddingBottom: 12,
+    backgroundColor: DK.night[0],
+    zIndex: 2,
+  },
+  nightBarText: { flex: 1, gap: 1 },
   heroSubtitle: { marginTop: 6 },
 
   page: { flex: 1, backgroundColor: DK.canvas },

@@ -12,6 +12,10 @@ import { useCompany } from '../lib/CompanyContext';
 import { RootStackParamList } from '../navigation/types';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import { BrandLogo } from '../components/ui/Brand';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DriverMenuMobile } from './driver/DriverMenuMobile';
+import { countUnreadNotifications } from '../lib/adminApi';
+import { listSignatureRequests } from '../lib/docuseal';
 
 /**
  * Full-screen menu reached from the home screen's menu button — replaces
@@ -56,8 +60,26 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export default function MenuScreen({ navigation }: Props) {
-  const { profile } = useCompany();
+  const { profile, company } = useCompany();
   const isDesktop = useIsDesktop();
+  const insets = useSafeAreaInsets();
+  const isDriver = profile?.role === 'driver';
+  const [counts, setCounts] = React.useState({ unread: 0, signatures: 0 });
+
+  // Live counts beside the driver's menu items; the menu works without them.
+  React.useEffect(() => {
+    if (!isDriver || isDesktop) return;
+    let alive = true;
+    Promise.all([
+      company?.id ? countUnreadNotifications(company.id).catch(() => 0) : Promise.resolve(0),
+      listSignatureRequests()
+        .then((rows) => rows.filter((r) => r.status === 'pending' && !!r.docuseal_submitter_slug).length)
+        .catch(() => 0),
+    ]).then(([unread, signatures]) => alive && setCounts({ unread, signatures }));
+    return () => {
+      alive = false;
+    };
+  }, [company?.id, isDesktop, isDriver]);
 
   // The desktop sidebar already exposes every item this menu offers, so
   // this screen (reached via the mobile hamburger button, which doesn't
@@ -126,6 +148,27 @@ export default function MenuScreen({ navigation }: Props) {
 
   const initials = (profile?.full_name || '?').trim().charAt(0);
   const subtitle = profile?.job_title || (profile?.role ? ROLE_LABEL[profile.role] : '');
+
+  if (isDriver) {
+    return (
+      <DriverMenuMobile
+        insetTop={insets.top}
+        insetBottom={insets.bottom}
+        name={profile?.full_name || ''}
+        subtitle={subtitle}
+        companyName={company?.name || ''}
+        unreadNotifications={counts.unread}
+        pendingSignatures={counts.signatures}
+        onBack={() => navigation.goBack()}
+        onProfile={() => navigation.navigate('DriverProfile')}
+        onDocuments={() => navigation.navigate('DriverDocuments')}
+        onSigning={() => navigation.navigate('DriverSigningDocuments')}
+        onNotifications={() => navigation.navigate('Notifications')}
+        onNotificationSettings={() => navigation.navigate('NotificationPreferences')}
+        onLogout={logout}
+      />
+    );
+  }
 
   return (
     <Screen style={styles.adminScreen}>

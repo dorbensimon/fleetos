@@ -16,6 +16,8 @@ import { AdminGradientBackground } from '../components/admin/AdminGradientBackgr
 import { RootStackParamList } from '../navigation/types';
 import { DC_COLORS, DC_SPACING, DC_TYPO } from '../components/driverCard/driverCardTheme';
 import { useIsDesktop } from '../lib/useDesktopLayout';
+import { useCompany } from '../lib/CompanyContext';
+import { DriverNotificationPrefsMobile } from './driver/DriverNotificationPrefsMobile';
 import { LEAD_DAYS_DESCRIPTION, LEAD_DAYS_LABEL, useNotificationPreferences } from '../lib/useNotificationPreferences';
 
 /**
@@ -29,6 +31,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'NotificationPreferences
 export default function NotificationPreferencesScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
+  const { profile } = useCompany();
   const {
     loading,
     error,
@@ -53,6 +56,23 @@ export default function NotificationPreferencesScreen({ navigation }: Props) {
   }, [isDesktop, navigation]);
 
   if (isDesktop) return null;
+
+  if (profile?.role === 'driver') {
+    return (
+      <DriverNotificationPrefsMobile
+        insetTop={insets.top}
+        insetBottom={insets.bottom}
+        loading={loading}
+        error={error}
+        types={visibleTypes}
+        prefs={prefs}
+        savingType={savingType}
+        onToggle={(type, value) => toggle(type, value)}
+        onBack={() => navigation.goBack()}
+        onRetry={load}
+      />
+    );
+  }
 
   return (
     <View style={styles.screen}>

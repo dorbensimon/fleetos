@@ -9,6 +9,7 @@ import {
   Gauge,
   HeroButton,
   NightHero,
+  StatusBand,
   Plate,
   Pressy,
   Reveal,
@@ -50,17 +51,19 @@ type Props = {
 };
 
 type Summary =
-  | { kind: 'expired'; count: number; first: string }
+  | { kind: 'attention'; expired: number; first: string | null; signatures: number }
   | { kind: 'next'; days: number; label: string; status: Status }
   | { kind: 'clear' }
   | { kind: 'none' };
 
 /** The one line that matters most: what expires next, or what already has. */
-function summarize(items: { label: string; date: string | null }[]): Summary {
+function summarize(items: { label: string; date: string | null }[], signatures: number): Summary {
   const dated = items.filter((i) => !!i.date).map((i) => ({ ...i, days: daysUntilExpiry(i.date) as number }));
-  if (dated.length === 0) return items.length ? { kind: 'clear' } : { kind: 'none' };
   const expired = dated.filter((i) => i.days < 0).sort((a, b) => a.days - b.days);
-  if (expired.length) return { kind: 'expired', count: expired.length, first: expired[0].label };
+  // Anything waiting on the driver — an expired item or a form to sign —
+  // outranks what is merely coming up.
+  if (expired.length || signatures) return { kind: 'attention', expired: expired.length, first: expired[0]?.label ?? null, signatures };
+  if (dated.length === 0) return items.length ? { kind: 'clear' } : { kind: 'none' };
   const next = dated.sort((a, b) => a.days - b.days)[0];
   return { kind: 'next', days: next.days, label: next.label, status: statusOfDate(next.date) };
 }
@@ -78,8 +81,8 @@ export function DriverHomeMobile(p: Props) {
       summarize([
         ...p.items.map((i) => ({ label: i.title, date: i.target })),
         { label: 'רישיון נהיגה', date: p.licenseExpiry },
-      ]),
-    [p.items, p.licenseExpiry]
+      ], p.pendingSignatures),
+    [p.items, p.licenseExpiry, p.pendingSignatures]
   );
   const licenseStatus = statusOfDate(p.licenseExpiry);
 
@@ -141,7 +144,10 @@ export function DriverHomeMobile(p: Props) {
           </Reveal>
 
           <Reveal index={1}>
-            <SummaryPanel summary={summary} />
+            <SummaryPanel
+              summary={summary}
+              onPress={summary.kind === 'attention' && !summary.expired ? p.onSigning : p.vehicle ? p.onVehicle : undefined}
+            />
           </Reveal>
         </NightHero>
 
@@ -260,21 +266,31 @@ export function DriverHomeMobile(p: Props) {
           </Reveal>
         </View>
       </ScrollView>
+      <StatusBand insetTop={p.insetTop} />
     </View>
   );
 }
 
-function SummaryPanel({ summary }: { summary: Summary }) {
+function attentionLine(expired: number, first: string | null, signatures: number) {
+  const docs = signatures === 1 ? 'מסמך אחד מחכה לחתימה שלך' : `${signatures} מסמכים מחכים לחתימה שלך`;
+  if (!expired) return docs;
+  const lapsed = expired === 1 ? `${first} פג תוקף` : `${expired} פריטים פגי תוקף`;
+  if (!signatures) return expired === 1 ? `${lapsed} — כדאי לטפל עכשיו` : `${lapsed}, החל מ${first}`;
+  return `${lapsed}, ו${signatures === 1 ? 'מסמך אחד לחתימה' : `־${signatures} מסמכים לחתימה`}`;
+}
+
+function SummaryPanel({ summary, onPress }: { summary: Summary; onPress?: () => void }) {
   if (summary.kind === 'none') return null;
-  const tone: Status = summary.kind === 'expired' ? 'expired' : summary.kind === 'clear' ? 'ok' : summary.status;
+  const tone: Status = summary.kind === 'attention' ? (summary.expired ? 'expired' : 'soon') : summary.kind === 'clear' ? 'ok' : summary.status;
   const s = STATUS[tone];
   let big = '';
   let unit = '';
   let line = '';
-  if (summary.kind === 'expired') {
-    big = String(summary.count);
-    unit = summary.count === 1 ? 'פריט' : 'פריטים';
-    line = summary.count === 1 ? `${summary.first} פג תוקף — כדאי לטפל עכשיו` : `פג תוקפם, החל מ${summary.first}`;
+  if (summary.kind === 'attention') {
+    const total = summary.expired + summary.signatures;
+    big = String(total);
+    unit = summary.expired ? (total === 1 ? 'פריט' : 'פריטים') : total === 1 ? 'מסמך' : 'מסמכים';
+    line = attentionLine(summary.expired, summary.first, summary.signatures);
   } else if (summary.kind === 'next') {
     big = summary.days === 0 ? 'היום' : summary.days.toLocaleString('he-IL');
     unit = summary.days === 0 ? '' : summary.days === 1 ? 'יום' : 'ימים';
@@ -282,12 +298,9 @@ function SummaryPanel({ summary }: { summary: Summary }) {
   } else {
     line = 'הכול בתוקף';
   }
-  return (
-    <View
-      style={styles.summary}
-      accessible
-      accessibilityLabel={summary.kind === 'clear' ? 'הכול בתוקף' : `${big} ${unit} ${line}`}
-    >
+  const label = summary.kind === 'clear' ? 'הכול בתוקף' : `${summary.kind === 'attention' ? 'דורש טיפול, ' : ''}${big} ${unit}, ${line}`;
+  const body = (
+    <View style={styles.summary}>
       <View style={[styles.summaryDot, { backgroundColor: s.fill }]} />
       {summary.kind === 'clear' ? (
         <View style={styles.summaryText}>
@@ -302,7 +315,7 @@ function SummaryPanel({ summary }: { summary: Summary }) {
         <View style={styles.summaryRow}>
           <View style={styles.summaryText}>
             <DKText variant="micro" color={s.fill}>
-              {summary.kind === 'expired' ? 'דורש טיפול' : tone === 'soon' ? 'מתקרב' : 'התוקף הבא'}
+              {summary.kind === 'attention' ? 'דורש טיפול' : tone === 'soon' ? 'מתקרב' : 'התוקף הבא'}
             </DKText>
             <DKText variant="label" color={DK.onNight} numberOfLines={2}>
               {line}
@@ -318,9 +331,22 @@ function SummaryPanel({ summary }: { summary: Summary }) {
               </DKText>
             )}
           </View>
+          {!!onPress && <Ionicons name="chevron-back" size={18} color={DK.onNightFaint} />}
         </View>
       )}
     </View>
+  );
+  if (!onPress || summary.kind === 'clear') {
+    return (
+      <View accessible accessibilityLabel={label}>
+        {body}
+      </View>
+    );
+  }
+  return (
+    <Pressy onPress={onPress} accessibilityLabel={label} pressScale={0.98}>
+      {body}
+    </Pressy>
   );
 }
 

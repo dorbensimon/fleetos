@@ -10,13 +10,14 @@ import { COLORS, SPACING, CARD_SHADOW, BRAND } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listNotifications, markNotificationRead, markAllNotificationsRead, Notification, resolveNotificationVehicleId } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
-import { DC_COLORS, DC_SPACING, DC_TYPO, type DriverCardTint } from '../../components/driverCard/driverCardTheme';
+import { type DriverCardTint } from '../../components/driverCard/driverCardTheme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { isVehicleFolderNotification } from '../../lib/vehicleFolderAlerts';
 import { navigateToNotificationTarget, notificationTarget } from '../../lib/notificationTargets';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { NotificationsHubDesktopView } from '../../components/desktop/NotificationsHubDesktopView';
 import { useNotificationPreferences } from '../../lib/useNotificationPreferences';
+import { DriverNotificationsMobile } from '../driver/DriverNotificationsMobile';
 
 /**
  * Logs every driver self-edit (name/phone/ID/license/department) so
@@ -139,52 +140,6 @@ export default function NotificationsScreen({ navigation }: Props) {
     return null;
   };
 
-  const driverListEmpty = loading ? (
-    <LoadingState />
-  ) : error ? (
-    <View style={styles.driverState}>
-      <ErrorState message={error} onRetry={load} />
-    </View>
-  ) : (
-    <View style={styles.driverState}>
-      <EmptyState icon="notifications-outline" title="אין עדיין התראות" hint="עדכונים מהמנהל שלך יופיעו כאן" />
-    </View>
-  );
-
-  const renderDriverItem = ({ item: n, index }: { item: Notification; index: number }) => {
-    const appearance = driverNotificationAppearance(n.notification_type);
-    const action = actionLabel(n);
-    const isUnread = unreadIds.has(n.id);
-    return (
-      <TouchableOpacity
-        activeOpacity={0.65}
-        onPress={() => openNotification(n)}
-        accessibilityRole="button"
-        accessibilityLabel={n.message}
-        style={[
-          styles.driverRow,
-          index === 0 && styles.driverRowFirst,
-          index === items.length - 1 && styles.driverRowLast,
-        ]}
-      >
-        <View style={[styles.driverIcon, { backgroundColor: DC_COLORS[appearance.tint] }]}>
-          <Ionicons name={appearance.icon} size={18} color={DC_COLORS.surface} />
-        </View>
-        <View style={styles.driverTextWrap}>
-          <AppText style={[DC_TYPO.rowLabel, styles.driverMessage]} numberOfLines={2}>
-            {n.message}
-          </AppText>
-          <View style={styles.driverMeta}>
-            <AppText style={styles.driverTime}>{timeAgo(n.created_at)}</AppText>
-            {!!action && <AppText style={styles.driverAction}>{action}</AppText>}
-          </View>
-        </View>
-        {isUnread && <View style={styles.driverUnreadDot} />}
-        <Ionicons name="chevron-back" size={19} color={DC_COLORS.chevron} />
-      </TouchableOpacity>
-    );
-  };
-
   if (isDesktop) {
     return (
       <DesktopShell active="Notifications" breadcrumbs={['התראות']}>
@@ -207,39 +162,21 @@ export default function NotificationsScreen({ navigation }: Props) {
 
   if (profile?.role === 'driver') {
     return (
-      <View style={styles.driverScreen}>
-        <AdminGradientBackground />
-        <FlatList
-          style={styles.driverScroll}
-          data={items}
-          keyExtractor={(n) => n.id}
-          renderItem={renderDriverItem}
-          ListHeaderComponent={
-            <>
-              <View style={styles.driverTitleRow}>
-                <AppText style={[DC_TYPO.largeTitle, styles.driverTitle]}>התראות</AppText>
-                {unreadIds.size > 0 && (
-                  <TouchableOpacity onPress={markAllRead} activeOpacity={0.65} accessibilityRole="button">
-                    <AppText style={styles.markAllText}>קרא הכל</AppText>
-                  </TouchableOpacity>
-                )}
-              </View>
-              {items.length > 0 && (
-                <AppText style={[DC_TYPO.groupTitle, styles.driverSectionTitle]}>עדכונים אחרונים</AppText>
-              )}
-            </>
-          }
-          ListEmptyComponent={driverListEmpty}
-          contentContainerStyle={[
-            styles.driverContent,
-            { paddingTop: insets.top + 76, paddingBottom: DC_SPACING.listBottomPadding + insets.bottom },
-          ]}
-          showsVerticalScrollIndicator={false}
-        />
-        <View style={[styles.driverBackButton, { top: insets.top + 12 }]}>
-          <BackButton onPress={() => navigation.goBack()} />
-        </View>
-      </View>
+      <DriverNotificationsMobile
+        insetTop={insets.top}
+        insetBottom={insets.bottom}
+        items={items}
+        unreadIds={unreadIds}
+        loading={loading}
+        error={error}
+        timeAgo={timeAgo}
+        actionLabel={actionLabel}
+        onOpen={(n) => void openNotification(n)}
+        onMarkAllRead={() => void markAllRead()}
+        onSettings={() => navigation.navigate('NotificationPreferences')}
+        onBack={() => navigation.goBack()}
+        onRetry={load}
+      />
     );
   }
 
@@ -314,65 +251,6 @@ export default function NotificationsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  driverScreen: { flex: 1, backgroundColor: DC_COLORS.bg },
-  driverScroll: { flex: 1 },
-  driverContent: { paddingHorizontal: DC_SPACING.screenPaddingH },
-  driverTitleRow: {
-    minHeight: 39,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 26,
-  },
-  driverTitle: { color: DC_COLORS.label, textAlign: 'right', writingDirection: 'rtl' },
-  markAllText: {
-    ...DC_TYPO.navTitle,
-    color: DC_COLORS.blue,
-    textAlign: 'left',
-    writingDirection: 'rtl',
-  },
-  driverSectionTitle: {
-    color: DC_COLORS.labelTertiary,
-    textAlign: 'right',
-    writingDirection: 'rtl',
-    marginBottom: 8,
-    marginRight: 2,
-  },
-  driverRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: DC_SPACING.iconTextGap,
-    minHeight: 68,
-    paddingHorizontal: DC_SPACING.rowPaddingH,
-    paddingVertical: 9,
-    borderBottomWidth: 1,
-    borderBottomColor: DC_COLORS.separator,
-    backgroundColor: DC_COLORS.surface,
-  },
-  // FlatList renders each row separately (no shared wrapping card, for
-  // virtualization), so the "grouped rows" look comes from rounding the
-  // first/last row's own corners instead of clipping a parent container.
-  driverRowFirst: { borderTopLeftRadius: DC_SPACING.groupRadius, borderTopRightRadius: DC_SPACING.groupRadius },
-  driverRowLast: {
-    borderBottomWidth: 0,
-    borderBottomLeftRadius: DC_SPACING.groupRadius,
-    borderBottomRightRadius: DC_SPACING.groupRadius,
-  },
-  driverIcon: {
-    width: DC_SPACING.iconSquare,
-    height: DC_SPACING.iconSquare,
-    borderRadius: DC_SPACING.iconRadius,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  driverTextWrap: { flex: 1, gap: 4 },
-  driverMessage: { color: DC_COLORS.label, textAlign: 'right', writingDirection: 'rtl' },
-  driverMeta: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  driverTime: { color: DC_COLORS.labelSecondary, fontSize: 12, writingDirection: 'rtl' },
-  driverAction: { color: DC_COLORS.blue, fontSize: 12, writingDirection: 'rtl' },
-  driverUnreadDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: DC_COLORS.red },
-  driverState: { paddingTop: 36 },
-  driverBackButton: { position: 'absolute', right: 16 },
   screen: { backgroundColor: BRAND.screenBg },
   topBar: {
     paddingHorizontal: SPACING.lg,
