@@ -102,7 +102,7 @@ export function AdminProfileDesktopView({
           <Group title="אבטחה" icon="shield-checkmark-outline">
             <View style={styles.securityState}>
               <View style={styles.securityIcon}><Ionicons name="shield-checkmark-outline" size={20} color={DESKTOP_TONES.ok.fg} /></View>
-              <View style={styles.securityCopy}><DText weight="bold" style={styles.securityTitle}>החשבון שלך מאובטח</DText><DText style={styles.securityDescription}>שמרו על סיסמה עדכנית וייחודית.</DText></View>
+              <View style={styles.securityCopy}><DText weight="bold" style={styles.securityTitle}>אבטחת החשבון</DText><DText style={styles.securityDescription}>שמרו על סיסמה עדכנית וייחודית.</DText></View>
             </View>
             <HoverPressable style={styles.actionRow} hoverStyle={styles.rowHover} pressMotionStyle={styles.pressDown} onPress={onChangePassword}>
               <Ionicons name="key-outline" size={17} color={DESKTOP_COLORS.brand} />

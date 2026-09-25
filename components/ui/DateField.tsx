@@ -4,6 +4,8 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './Text';
 import { COLORS, RADIUS, formatDate, parseDateValue } from '../../lib/theme';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DK, DK_FONT } from '../driverKit/theme';
 
 /**
  * Date input that stays usable on every target.
@@ -125,7 +127,11 @@ export function DateField({
   hasError?: boolean;
   disabled?: boolean;
 }) {
+  const phone = !useIsDesktop();
   const [showPicker, setShowPicker] = useState(false);
+  const boxStyle = [styles.box, phone && kit.box, hasError && (phone ? kit.boxError : styles.boxError), disabled && styles.boxDisabled];
+  const valueStyle = [styles.value, phone && kit.value, !value && (phone ? kit.placeholder : styles.placeholder)];
+  const iconColor = phone ? DK.muted : COLORS.textFaint;
 
   const openPicker = () => {
     if (disabled) return;
@@ -144,11 +150,11 @@ export function DateField({
   };
 
   if (Platform.OS === 'web') return <>
-    <TouchableOpacity activeOpacity={disabled ? 1 : 0.8} onPress={openPicker} style={[styles.box, hasError && styles.boxError, disabled && styles.boxDisabled]}>
-      <Ionicons name="calendar-outline" size={17} color={COLORS.textFaint} />
-      <AppText style={[styles.value, !value && styles.placeholder]}>{value ? formatDate(value) : placeholder}</AppText>
-      {!disabled && !!value && <TouchableOpacity onPress={(event) => { event.stopPropagation(); onChange(null); }} hitSlop={8}><Ionicons name="close-circle" size={17} color={COLORS.textFaint} /></TouchableOpacity>}
-      {disabled && <Ionicons name="lock-closed-outline" size={15} color={COLORS.textFaint} />}
+    <TouchableOpacity activeOpacity={disabled ? 1 : 0.8} onPress={openPicker} style={boxStyle} accessibilityRole="button" accessibilityLabel={value ? formatDate(value) : placeholder} accessibilityHint="פתיחת בחירת תאריך">
+      <Ionicons name="calendar-outline" size={17} color={iconColor} />
+      <AppText style={valueStyle}>{value ? formatDate(value) : placeholder}</AppText>
+      {!disabled && !!value && <TouchableOpacity onPress={(event) => { event.stopPropagation(); onChange(null); }} hitSlop={8} accessibilityRole="button" accessibilityLabel="ניקוי התאריך"><Ionicons name="close-circle" size={17} color={iconColor} /></TouchableOpacity>}
+      {disabled && <Ionicons name="lock-closed-outline" size={15} color={iconColor} />}
     </TouchableOpacity>
     {showPicker && <WebDatePicker value={value} onClose={() => setShowPicker(false)} onConfirm={(iso) => { onChange(iso); setShowPicker(false); }} />}
   </>;
@@ -158,10 +164,13 @@ export function DateField({
       <TouchableOpacity
         activeOpacity={disabled ? 1 : 0.8}
         onPress={openPicker}
-        style={[styles.box, hasError && styles.boxError, disabled && styles.boxDisabled]}
+        style={boxStyle}
+        accessibilityRole="button"
+        accessibilityLabel={value ? formatDate(value) : placeholder}
+        accessibilityHint="פתיחת בחירת תאריך"
       >
-        <Ionicons name="calendar-outline" size={17} color={COLORS.textFaint} />
-        <AppText style={[styles.value, !value && styles.placeholder]}>
+        <Ionicons name="calendar-outline" size={17} color={iconColor} />
+        <AppText style={valueStyle}>
           {value ? formatDate(value) : placeholder}
         </AppText>
         {!disabled && !!value && (
@@ -171,11 +180,13 @@ export function DateField({
               onChange(null);
             }}
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="ניקוי התאריך"
           >
-            <Ionicons name="close-circle" size={17} color={COLORS.textFaint} />
+            <Ionicons name="close-circle" size={17} color={iconColor} />
           </TouchableOpacity>
         )}
-        {disabled && <Ionicons name="lock-closed-outline" size={15} color={COLORS.textFaint} />}
+        {disabled && <Ionicons name="lock-closed-outline" size={15} color={iconColor} />}
       </TouchableOpacity>
 
       {showPicker && Platform.OS === 'ios' && (
@@ -267,4 +278,11 @@ const styles = StyleSheet.create({
   yearOptionActive: { backgroundColor: COLORS.accentSoft },
   yearOptionText: { color: COLORS.textMuted, fontSize: 15 },
   yearOptionTextActive: { color: COLORS.accent },
+});
+
+const kit = StyleSheet.create({
+  box: { height: undefined, minHeight: 52, borderRadius: 16, backgroundColor: DK.surfaceSunk, borderColor: 'transparent' },
+  boxError: { borderColor: '#FF4D5E' },
+  value: { fontFamily: DK_FONT.medium, fontSize: 16, color: DK.ink },
+  placeholder: { color: DK.faint },
 });

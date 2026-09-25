@@ -1,16 +1,16 @@
 import { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getDriver } from '../../lib/adminApi';
 import { listDriverSigningRequests, listSigningTemplates } from '../../lib/docuseal';
 import { useCompany } from '../../lib/CompanyContext';
 import { buildSigningFolders, signingFolderStatus, type SigningFolder } from '../../lib/signingFolders';
-import { DC_COLORS, DC_SPACING, DC_TYPO } from './driverCardTheme';
+import { DK, DKText, KitSection, ListRow, STATUS } from '../driverKit';
 import { DText, HoverPressable, StatusPill } from '../desktop/primitives';
 import { DESKTOP_COLORS, webOnly } from '../desktop/desktopTheme';
 
-export function SigningFolders({ driverId, onOpen, desktop = false }: { driverId: string; onOpen: (folder: SigningFolder) => void; desktop?: boolean }) {
+export function SigningFolders({ driverId, onOpen, desktop = false, title = 'טפסים ומסמכים לחתימה' }: { driverId: string; onOpen: (folder: SigningFolder) => void; desktop?: boolean; /** Phone section heading; none when the list opens a page. */ title?: string | null }) {
   const [folders, setFolders] = useState<SigningFolder[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -61,34 +61,45 @@ export function SigningFolders({ driverId, onOpen, desktop = false }: { driverId
     </View>;
   }
 
-  return <View style={s.wrap}>
-    <Text style={[DC_TYPO.groupTitle, s.title]}>טפסים ומסמכים</Text>
-    <View style={s.card}>
-      {loading ? <Text style={s.message}>טוען תיקיות…</Text> : error ? <Text style={s.message}>{error}</Text> : folders.map((folder, index) => {
-        const status = signingFolderStatus(folder);
-        const color = status === 'pending' ? DC_COLORS.blue : status === 'completed' ? DC_COLORS.green : status === 'failed' ? DC_COLORS.red : DC_COLORS.gray;
-        const label = status === 'pending' ? 'ממתין לחתימה' : status === 'completed' ? 'נחתם' : status === 'failed' ? 'דורש טיפול' : 'ריק';
-        return <TouchableOpacity key={folder.id} accessibilityRole="button" accessibilityLabel={`${folder.title}, ${label}`} style={[s.row, index > 0 && s.divider]} onPress={() => onOpen(folder)}>
-          <View style={s.folder}><Ionicons name="folder-outline" size={23} color={DC_COLORS.gray} /></View>
-          <Text style={[DC_TYPO.rowLabel, s.label]}>{folder.title}</Text>
-          <Ionicons name={status === 'pending' ? 'time-outline' : status === 'completed' ? 'checkmark-circle' : status === 'failed' ? 'alert-circle-outline' : 'ellipse-outline'} size={18} color={color} />
-          <Text style={[DC_TYPO.badge, { color }]}>{label}</Text>
-          <Ionicons name="chevron-back" size={16} color={DC_COLORS.chevron} />
-        </TouchableOpacity>;
-      })}
-      {!loading && !error && !folders.length && <Text style={s.message}>{driverView ? 'עדיין לא נשלחו אליך מסמכים' : 'אין עדיין תבניות זמינות'}</Text>}
-    </View>
-  </View>;
+  const meta = (folder: SigningFolder) => {
+    const status = signingFolderStatus(folder);
+    return status === 'pending'
+      ? { label: driverView ? 'מחכה לחתימה שלך' : 'ממתין לחתימת הנהג', tone: 'soon' as const, icon: 'time' as const }
+      : status === 'completed'
+        ? { label: 'נחתם', tone: 'ok' as const, icon: 'checkmark-done' as const }
+        : status === 'failed'
+          ? { label: 'השליחה לא הושלמה', tone: 'expired' as const, icon: 'alert-circle' as const }
+          : { label: driverView ? 'ריק' : 'לא נשלח — אפשר לשלוח', tone: 'missing' as const, icon: 'folder-outline' as const };
+  };
+  return (
+    <KitSection title={title ?? undefined}>
+      {loading ? (
+        <DKText variant="caption" color={DK.muted} style={s.message}>טוען תיקיות…</DKText>
+      ) : error ? (
+        <DKText variant="caption" color={STATUS.expired.fg} style={s.message}>{error}</DKText>
+      ) : !folders.length ? (
+        <DKText variant="caption" color={DK.muted} style={s.message}>{driverView ? 'עדיין לא נשלחו אליך מסמכים' : 'אין עדיין תבניות זמינות'}</DKText>
+      ) : (
+        folders.map((folder, index) => {
+          const m = meta(folder);
+          return (
+            <ListRow
+              key={folder.id}
+              first={index === 0}
+              icon={m.icon}
+              tint={m.tone === 'missing' ? DK.accent : STATUS[m.tone].fg}
+              title={folder.title}
+              subtitle={m.label}
+              onPress={() => onOpen(folder)}
+            />
+          );
+        })
+      )}
+    </KitSection>
+  );
 }
 const s = StyleSheet.create({
-  wrap: { marginBottom: DC_SPACING.groupGap },
-  title: { color: DC_COLORS.labelTertiary, textAlign: 'right', marginBottom: 8, marginRight: DC_SPACING.screenPaddingH + 2 },
-  card: { marginHorizontal: DC_SPACING.screenPaddingH, backgroundColor: DC_COLORS.surface, borderRadius: DC_SPACING.groupRadius, overflow: 'hidden' },
-  row: { minHeight: DC_SPACING.rowMinHeight, flexDirection: 'row-reverse', alignItems: 'center', padding: DC_SPACING.rowPaddingH, gap: 8 },
-  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: DC_COLORS.separator },
-  folder: { backgroundColor: DC_COLORS.fill, borderRadius: DC_SPACING.iconRadius, padding: 5 },
-  label: { flex: 1, textAlign: 'right', color: DC_COLORS.label },
-  message: { ...DC_TYPO.footer, textAlign: 'center', color: DC_COLORS.labelSecondary, padding: 16 },
+  message: { textAlign: 'center', padding: 20 },
 });
 
 const desktopStyles = StyleSheet.create({

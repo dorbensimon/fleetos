@@ -5,6 +5,8 @@ import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from './Text';
 import { COLORS, CONTENT_MAX_WIDTH, RADIUS, SPACING, CARD_SHADOW } from '../../lib/theme';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DK, DK_FONT, DK_SHADOW } from '../driverKit/theme';
 
 const ENTER_MS = 340;
 const EXIT_MS = 220;
@@ -34,6 +36,7 @@ export function Select<T extends string>({
   hasError?: boolean;
   allowClear?: boolean;
 }) {
+  const phone = !useIsDesktop();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const insets = useSafeAreaInsets();
@@ -69,10 +72,13 @@ export function Select<T extends string>({
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={() => setOpen(true)}
-        style={[styles.box, hasError && styles.boxError]}
+        style={[styles.box, phone && kit.box, hasError && (phone ? kit.boxError : styles.boxError)]}
+        accessibilityRole="button"
+        accessibilityLabel={selected?.label ?? placeholder}
+        accessibilityHint="פתיחת רשימת האפשרויות"
       >
-        <Ionicons name="chevron-down" size={16} color={COLORS.textFaint} />
-        <AppText style={[styles.value, !selected && styles.placeholder]} numberOfLines={1}>
+        <Ionicons name="chevron-down" size={phone ? 18 : 16} color={phone ? DK.muted : COLORS.textFaint} />
+        <AppText style={[styles.value, phone && kit.value, !selected && (phone ? kit.placeholder : styles.placeholder)]} numberOfLines={1}>
           {selected?.label ?? placeholder}
         </AppText>
       </TouchableOpacity>
@@ -88,6 +94,7 @@ export function Select<T extends string>({
         <Animated.View
           style={[
             styles.sheet,
+            phone && kit.sheet,
             { bottom: 8 + insets.bottom, transform: [{ translateY: translate }] },
           ]}
         >
@@ -96,13 +103,13 @@ export function Select<T extends string>({
             <ScrollView bounces={false}>
               {allowClear && (
                 <TouchableOpacity
-                  style={styles.option}
+                  style={[styles.option, phone && kit.option]}
                   onPress={() => {
                     onChange(null);
                     close();
                   }}
                 >
-                  <AppText style={styles.clearText}>ללא</AppText>
+                  <AppText style={[styles.clearText, phone && kit.optionText, phone && { color: DK.muted }]}>ללא</AppText>
                 </TouchableOpacity>
               )}
               {options.map((opt) => {
@@ -110,16 +117,19 @@ export function Select<T extends string>({
                 return (
                   <TouchableOpacity
                     key={opt.value}
-                    style={styles.option}
+                    style={[styles.option, phone && kit.option, phone && active && kit.optionActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    aria-selected={active}
                     onPress={() => {
                       onChange(opt.value);
                       close();
                     }}
                   >
-                    {active && <Ionicons name="checkmark" size={17} color={COLORS.accent} />}
+                    {active && <Ionicons name={phone ? 'checkmark-circle' : 'checkmark'} size={phone ? 20 : 17} color={phone ? DK.accent : COLORS.accent} />}
                     <AppText
                       weight={active ? 'bold' : 'regular'}
-                      style={[styles.optionText, active && { color: COLORS.accent }]}
+                      style={[styles.optionText, phone && kit.optionText, active && { color: phone ? DK.accent : COLORS.accent }]}
                     >
                       {opt.label}
                     </AppText>
@@ -181,4 +191,15 @@ const styles = StyleSheet.create({
   },
   optionText: { flex: 1, fontSize: 15 },
   clearText: { flex: 1, fontSize: 15, color: COLORS.textFaint },
+});
+
+const kit = StyleSheet.create({
+  box: { height: undefined, minHeight: 52, borderRadius: 16, backgroundColor: DK.surfaceSunk, borderColor: 'transparent' },
+  boxError: { borderColor: '#FF4D5E' },
+  value: { fontFamily: DK_FONT.medium, fontSize: 16, color: DK.ink },
+  placeholder: { color: DK.faint },
+  sheet: { borderRadius: 28, paddingTop: 10, paddingBottom: 10, ...DK_SHADOW },
+  option: { minHeight: 52, marginHorizontal: 8, paddingHorizontal: 14, borderRadius: 14 },
+  optionActive: { backgroundColor: DK.accentSoft },
+  optionText: { fontFamily: DK_FONT.medium, fontSize: 16, color: DK.ink },
 });

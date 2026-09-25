@@ -34,9 +34,9 @@ export const FLEET_COLORS = {
   // severity — fill (progress) / text (numbers, badges) / tint (badge bg).
   // This is the app-wide canonical severity palette — reuse these instead
   // of redeclaring the same hex values locally.
-  success: { fill: '#34c759', text: '#1e8e3e', tint: 'rgba(52,199,89,.14)' },
-  warning: { fill: '#ff9f0a', text: '#b26200', tint: 'rgba(255,159,10,.16)' },
-  danger: { fill: '#ff3b30', text: '#d70015', tint: 'rgba(255,59,48,.14)' },
+  success: { fill: '#34c759', text: '#18793a', tint: 'rgba(52,199,89,.14)' },
+  warning: { fill: '#ff9f0a', text: '#955200', tint: 'rgba(255,159,10,.16)' },
+  danger: { fill: '#ff3b30', text: '#c20013', tint: 'rgba(255,59,48,.14)' },
   none: { fill: 'rgba(11,12,16,.25)', text: 'rgba(11,12,16,.6)', tint: 'rgba(11,12,16,.08)' },
   info: { text: '#0060df', tint: 'rgba(10,132,255,.14)' },
 

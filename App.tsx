@@ -42,6 +42,9 @@ import AttentionScreen from './screens/admin/AttentionScreen';
 import ReportsScreen from './screens/admin/ReportsScreen';
 import AdminProfileScreen from './screens/admin/AdminProfileScreen';
 import CompanySettingsScreen from './screens/admin/CompanySettingsScreen';
+import LegalScreen from './screens/LegalScreen';
+import { LegalConsentGate } from './components/legal/LegalConsentGate';
+import { LEGAL_DOCUMENTS, isLegalDocId } from './lib/legal/documents';
 import SignedDocumentsScreen from './screens/admin/SignedDocumentsScreen';
 import NotificationsScreen from './screens/admin/NotificationsScreen';
 import AdminDocumentSigningScreen from './screens/admin/AdminDocumentSigningScreen';
@@ -61,7 +64,7 @@ import { RootStackParamList } from './navigation/types';
 import { refreshBackFallback } from './lib/refreshSafeBack';
 import { supabase } from './lib/supabase';
 import { resolveRouteForUser } from './lib/session';
-import { CompanyProvider } from './lib/CompanyContext';
+import { CompanyProvider, useCompany } from './lib/CompanyContext';
 import { ToastProvider } from './components/ui';
 import { flushPendingAssignmentOperations } from './lib/adminApi';
 import {
@@ -97,6 +100,7 @@ const linking: LinkingOptions<RootStackParamList> = {
   config: {
     screens: {
       Login: 'login',
+      Legal: 'legal/:doc',
       SetPassword: 'set-password',
       OwnerHome: 'owner',
       AdminHome: 'fleet',
@@ -127,15 +131,24 @@ const linking: LinkingOptions<RootStackParamList> = {
       DriverSigningDocuments: 'my-documents/signing',
       DriverProfile: 'my-profile',
       DriverOdometer: 'my-vehicle/odometer/:vehicleId',
-      DriverAttention: 'attention',
+      DriverAttention: 'my-attention',
       Menu: 'menu',
     },
   },
 };
 
+function legalPageTitle(route: { name: string; params?: object } | undefined): string | null {
+  if (route?.name !== 'Legal') return null;
+  const doc = (route.params as { doc?: unknown } | undefined)?.doc;
+  return isLegalDocId(doc) ? `${LEGAL_DOCUMENTS[doc].title} · icar` : null;
+}
+
 export default function App() {
   const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList | null>(null);
   const [webInitialNavigationState] = useState(getWebInitialNavigationState);
+  // The navigation is rebuilt after the first-use consent screen; the stack
+  // saved before it (often the login screen) must not come back then.
+  const [resumeSavedState, setResumeSavedState] = useState(true);
 
   const [fontsLoaded] = useFonts({
     Assistant_400Regular,
@@ -224,13 +237,22 @@ export default function App() {
     <SafeAreaProvider>
       <ToastProvider>
         <CompanyProvider>
+          <FirstProfileGate signedIn={initialRoute !== 'Login'}>
+          <LegalConsentGate
+            onAccepted={async (userId) => {
+              const result = await resolveRouteForUser(userId);
+              setResumeSavedState(false);
+              setInitialRoute(result.ok ? result.route : 'Login');
+            }}
+          >
           <NavigationContainer
             ref={navigationRef}
             linking={linking}
             // Route names are internal English ids ("Login", "AdminHome"), so
-            // the browser tab always shows the brand instead.
-            documentTitle={{ formatter: () => 'icar' }}
-            initialState={initialRoute === 'Login' ? undefined : webInitialNavigationState}
+            // the browser tab shows the brand instead; a legal page adds its
+            // own name, so a bookmarked or shared link says what it is.
+            documentTitle={{ formatter: (_options, route) => legalPageTitle(route) ?? 'icar' }}
+            initialState={initialRoute === 'Login' || !resumeSavedState ? undefined : webInitialNavigationState}
             onReady={syncWebThemeColor}
             onStateChange={(state) => {
               syncWebThemeColor();
@@ -252,6 +274,7 @@ export default function App() {
             <Stack.Navigator key={initialRoute} screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
+              <Stack.Screen name="Legal" component={LegalScreen} />
               <Stack.Screen name="OwnerHome" component={OwnerHomeScreen} />
               <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
               <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />
@@ -294,8 +317,48 @@ export default function App() {
               <Stack.Screen name="DriverAttention" component={DriverAttentionScreen} />
             </Stack.Navigator>
           </NavigationContainer>
+          </LegalConsentGate>
+          </FirstProfileGate>
         </CompanyProvider>
       </ToastProvider>
     </SafeAreaProvider>
   );
+}
+
+/**
+ * A refresh restores the page the user was on, and every screen reads the
+ * signed-in profile and company. Until they have loaded once, keep the boot
+ * loader up instead of letting a screen conclude there is no company. After
+ * the first load the gate stays open, so later reloads (switching account,
+ * refresh()) never tear the navigation down.
+ */
+function FirstProfileGate({ signedIn, children }: { signedIn: boolean; children: React.ReactNode }) {
+  const { loading, profile, error } = useCompany();
+  // Signed in: the first "not loading" can come before the stored session is
+  // restored, so wait for the profile itself (or a load error).
+  const settled = !loading && (!signedIn || !!profile || !!error);
+  const [ready, setReady] = useState(settled);
+  useEffect(() => {
+    if (settled) setReady(true);
+  }, [settled]);
+  // A session that is gone (expired, signed out elsewhere) has no profile to
+  // wait for; and never hold the app longer than a few seconds regardless.
+  useEffect(() => {
+    if (!signedIn) return;
+    let alive = true;
+    void supabase.auth.getSession().then(({ data }) => alive && !data.session && setReady(true));
+    const t = setTimeout(() => alive && setReady(true), 8000);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [signedIn]);
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F5F7' }}>
+        <BrandLoader size={83} />
+      </View>
+    );
+  }
+  return <>{children}</>;
 }

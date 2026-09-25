@@ -1,5 +1,7 @@
 export type RootStackParamList = {
   Login: undefined;
+  /** A legal page (terms, privacy, cookies, accessibility), open to everyone, signed in or not. */
+  Legal: { doc: 'privacy' | 'terms' | 'cookies' | 'accessibility' };
   /**
    * voluntary: true — reached from a profile screen's "שינוי סיסמה" by an
    * already-activated user choosing to change their password, not the

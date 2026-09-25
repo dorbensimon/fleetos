@@ -71,6 +71,7 @@ export function LiquidGlassSwitch({
       onPressOut={pressOut}
       accessibilityRole="switch"
       accessibilityState={{ disabled: !!disabled, checked: value }}
+      aria-disabled={!!disabled} aria-checked={value}
       accessibilityLabel={accessibilityLabel}
       hitSlop={8}
       style={disabled ? styles.disabled : undefined}

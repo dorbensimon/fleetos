@@ -46,7 +46,7 @@ export interface NotificationTypeInfo {
 const vehicleFolderTypes = (description: string): NotificationTypeInfo[] =>
   VEHICLE_FOLDER_ALERTS.map((folder) => ({
     type: folder.notificationType as NotificationType,
-    label: `תוקף ${folder.label}`,
+    label: folder.label.startsWith('תוקף') ? folder.label : `תוקף ${folder.label}`,
     description,
   }));
 

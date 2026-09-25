@@ -1,6 +1,8 @@
 import { Modal, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { AppText, PrimaryButton } from '../ui';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { EditField, FieldMessage, KitSheet, PrimaryAction, SheetActions } from '../driverKit';
 
 export function ResetDriverPasswordModal({
   visible,
@@ -25,6 +27,33 @@ export function ResetDriverPasswordModal({
   onClose: () => void;
   onSubmit: () => void;
 }) {
+  const desktop = useIsDesktop();
+  if (!desktop) {
+    return (
+      <KitSheet
+        visible={visible}
+        onClose={onClose}
+        dismissable={!loading}
+        icon="key"
+        title="איפוס סיסמה"
+        subtitle={`סיסמה זמנית חדשה עבור ${driverName ?? 'הנהג'}. בכניסה הבאה הוא יתבקש לקבוע סיסמה קבועה משלו.`}
+        footer={
+          <SheetActions>
+            <PrimaryAction label="ביטול" tone="ghost" onPress={onClose} disabled={loading} style={kit.cancel} />
+            <PrimaryAction label="איפוס הסיסמה" icon="key" onPress={onSubmit} loading={loading} style={kit.confirm} />
+          </SheetActions>
+        }
+      >
+        <View style={kit.fields}>
+          <EditField first label="סיסמה חדשה" value={password} onChangeText={onPasswordChange} keyboardType="number-pad" ltr secureTextEntry hint="לפחות 4 ספרות" placeholder="••••" />
+          <EditField label="אימות הסיסמה" value={confirmPassword} onChangeText={onConfirmPasswordChange} keyboardType="number-pad" ltr secureTextEntry placeholder="••••" />
+          <View style={{ paddingHorizontal: 16 }}>
+            <FieldMessage error={error || undefined} />
+          </View>
+        </View>
+      </KitSheet>
+    );
+  }
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
@@ -117,4 +146,10 @@ const styles = StyleSheet.create({
   },
   cancelText: { fontSize: 14, color: COLORS.text },
   confirmBtn: { flex: 1.4 },
+});
+
+const kit = StyleSheet.create({
+  fields: { marginHorizontal: -16 },
+  cancel: { flex: 1 },
+  confirm: { flex: 1.6 },
 });

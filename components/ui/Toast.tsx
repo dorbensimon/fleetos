@@ -2,7 +2,10 @@ import React, { createContext, useCallback, useContext, useRef, useState } from 
 import { Animated, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from './Text';
+import { Ionicons } from '@expo/vector-icons';
 import { RADIUS, SPACING } from '../../lib/theme';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DK, DK_FONT } from '../driverKit/theme';
 
 interface ToastContextValue {
   showToast: (message: string) => void;
@@ -20,6 +23,7 @@ const ANIM_MS = 220;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
+  const phone = !useIsDesktop();
   const [message, setMessage] = useState<string | null>(null);
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(12)).current;
@@ -54,9 +58,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <Animated.View
             pointerEvents="none"
             style={[styles.wrap, { bottom: insets.bottom + 24, opacity, transform: [{ translateY }] }]}
+            accessibilityLiveRegion="polite"
           >
-            <View style={styles.toast}>
-              <AppText weight="bold" style={styles.text}>
+            <View style={[styles.toast, phone && kit.toast]}>
+              {phone && <Ionicons name="checkmark-circle" size={20} color={DK.mint} />}
+              <AppText weight="bold" style={[styles.text, phone && kit.text]}>
                 {message}
               </AppText>
             </View>
@@ -82,4 +88,21 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   text: { color: '#FFFFFF', fontSize: 14 },
+});
+
+const kit = StyleSheet.create({
+  toast: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+    maxWidth: '88%',
+    minHeight: 50,
+    paddingHorizontal: 18,
+    backgroundColor: DK.nightInk,
+    shadowColor: DK.nightInk,
+    shadowOpacity: 0.3,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  text: { fontFamily: DK_FONT.semibold, fontSize: 15, flexShrink: 1 },
 });

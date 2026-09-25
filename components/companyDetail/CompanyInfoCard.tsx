@@ -67,7 +67,7 @@ export function CompanyInfoCard({
           ) : fields.logoUrl ? (
             <>
               <View style={s.logoPreviewWrap}>
-                <Image source={{ uri: fields.logoUrl }} style={s.logoPreview} resizeMode="cover" />
+                <Image source={{ uri: fields.logoUrl }} accessibilityLabel="לוגו החברה" style={s.logoPreview} resizeMode="cover" />
                 <View style={s.logoUploadedBadge}>
                   <Ionicons name="checkmark" size={11} color={COLORS.white} />
                 </View>

@@ -2,8 +2,9 @@ import { Platform, type ViewStyle } from 'react-native';
 import { daysUntilExpiry, expiryState, type ExpiryState } from '../../lib/theme';
 
 /**
- * The driver app's design tokens — the icar brand carried into every screen
- * a driver sees (and only those: the manager's screens keep their own look).
+ * The icar phone kit's design tokens — the brand carried into every screen
+ * on the phone, the driver's and the manager's alike (the desktop keeps its
+ * own look in components/desktop).
  *
  * Night hero on top (the brand ink with blue/cyan light), a calm, cool-grey
  * canvas below, white surfaces, and colour reserved for meaning: blue for

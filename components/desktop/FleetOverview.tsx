@@ -403,6 +403,7 @@ export function AttentionMenu({
         onPress={() => setOpen((v) => !v)}
         accessibilityLabel={`דורש טיפול, ${total}`}
         accessibilityState={{ expanded: open }}
+        aria-expanded={open}
       >
         <Ionicons name="alert-circle" size={15} color={DESKTOP_TONES.bad.fg} />
         <DText weight="semiBold" style={[styles.attentionPillText, TABULAR]}>

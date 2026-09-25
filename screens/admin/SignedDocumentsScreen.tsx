@@ -1,13 +1,12 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DriverPage, EmptyPanel, HeroTitle } from '../../components/driverKit';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCompany } from '../../lib/CompanyContext';
 import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { SignedDocumentsDesktopView } from '../../components/desktop/signing/SignedDocumentsDesktopView';
-import { DText } from '../../components/desktop/primitives';
-import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
 
 /**
  * The company's own signing documents, desktop only (reached from the sidebar):
@@ -15,15 +14,21 @@ import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'SignedDocuments'>;
 
-export default function SignedDocumentsScreen(_props: Props) {
+export default function SignedDocumentsScreen({ navigation }: Props) {
   const { company } = useCompany();
   const isDesktop = useIsDesktop();
+  const insets = useSafeAreaInsets();
 
+  // Building a form (placing signature fields on a page) needs a big screen.
   if (!isDesktop) {
     return (
-      <View style={styles.mobileOnly}>
-        <DText weight="semiBold" style={styles.mobileOnlyText}>מסמכים חתומים זמינים במחשב בלבד</DText>
-      </View>
+      <DriverPage insetTop={insets.top} insetBottom={insets.bottom} hero={<HeroTitle title="תבניות לחתימה" subtitle="יצירה ועריכה של טפסים" onBack={() => navigation.goBack()} />}>
+        <EmptyPanel
+          icon="desktop-outline"
+          title="עורכים את זה במחשב"
+          body="יצירת טופס ומיקום שדות החתימה דורשים מסך גדול. היכנסו ל־icar-app.com מהמחשב. שליחת טופס לנהג אפשרית גם מכאן — מתוך תיק הנהג."
+        />
+      </DriverPage>
     );
   }
 
@@ -33,8 +38,3 @@ export default function SignedDocumentsScreen(_props: Props) {
     </DesktopShell>
   );
 }
-
-const styles = StyleSheet.create({
-  mobileOnly: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: DESKTOP_COLORS.canvas },
-  mobileOnlyText: { fontSize: 15, textAlign: 'center' },
-});

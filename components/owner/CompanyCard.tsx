@@ -24,7 +24,7 @@ export function CompanyCard({
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
       {item.logo_url ? (
-        <Image source={{ uri: item.logo_url }} style={styles.avatar} resizeMode="cover" />
+        <Image source={{ uri: item.logo_url }} accessibilityLabel={`לוגו ${item.name}`} style={styles.avatar} resizeMode="cover" />
       ) : (
         <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
           <Text style={[styles.avatarText, { color: avatarTextColor }]}>{item.name.trim().charAt(0)}</Text>

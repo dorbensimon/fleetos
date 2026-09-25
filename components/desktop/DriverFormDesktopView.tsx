@@ -6,20 +6,9 @@ import { formatDate } from '../../lib/theme';
 import { getRequiredDriverFields, type DriverFormField } from '../../lib/driverFormValidation';
 import { DesktopDateField, DesktopInput, DesktopSelect, DesktopSelectOption, DLtrText, DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, webOnly } from './desktopTheme';
-import {
-  ChoiceTiles,
-  CreateDock,
-  FormCell,
-  FormPanel,
-  FormSection,
-  FormToggleRow,
-  GhostBar,
-  LiveCard,
-  RecordFormPage,
-  RecordHero,
-  useSectionJump,
-  type FormStep,
-} from './form/RecordFormKit';
+import { ChoiceTiles, CreateDock, FormCell, FormPanel, FormSection, GhostBar, LiveCard, RecordFormPage, RecordHero, useSectionJump, type FormStep } from './form/RecordFormKit';
+import { ConsentCheck } from '../legal/ConsentCheck';
+import { DRIVER_DATA_NOTICE } from '../../lib/legal/documents';
 
 interface FormState {
   full_name: string;
@@ -32,7 +21,7 @@ interface FormState {
   license_classes_2: string;
   license_expiry: string;
   department_id: string | null;
-  smsInvite: boolean;
+  dataNotice: boolean;
   showPassword: boolean;
 }
 
@@ -100,6 +89,7 @@ export function DriverFormDesktopView({
   const missing = required
     .filter((f) => !isFilled(f))
     .map((f) => ({ label: FIELD_META[f].label, onPress: () => jump(FIELD_META[f].step) }));
+  if (!isEdit && !form.dataNotice) missing.push({ label: 'אישור יידוע הנהג', onPress: () => jump('access') });
 
   const secondOptions = licenseOptions.filter((o) => o.value !== form.license_classes);
 
@@ -300,12 +290,7 @@ export function DriverFormDesktopView({
                   </HoverPressable>
                 </View>
               </FormCell>
-              <FormToggleRow
-                title="שליחת הזמנה ב-SMS"
-                caption={form.smsInvite ? 'הנהג יקבל הודעה עם קישור להורדת האפליקציה' : 'לא תישלח הודעה לנהג'}
-                value={form.smsInvite}
-                onValueChange={(v) => set('smsInvite', v)}
-              />
+              <ConsentCheck value={form.dataNotice} onChange={(v) => set('dataNotice', v)} label={DRIVER_DATA_NOTICE} />
             </>
           )}
         </FormPanel>
@@ -439,7 +424,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: DESKTOP_COLORS.brand,
     ...webOnly({
-      backgroundImage: 'linear-gradient(160deg, #5FC1F0 0%, #0088CC 60%, #0070A8 100%)',
+      backgroundImage: 'linear-gradient(160deg, #5FC1F0 0%, #0075B3 60%, #0070A8 100%)',
       boxShadow: '0 6px 14px -6px rgba(0,136,204,0.6)',
     }),
   },

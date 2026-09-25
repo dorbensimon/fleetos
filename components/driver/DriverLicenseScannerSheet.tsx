@@ -182,8 +182,8 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
         <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollPadding}>
           <AppText weight="bold" style={styles.sectionTitle}>תמונות שנסרקו</AppText>
           <View style={styles.photosRow}>
-            {frontPhoto && <Image source={{ uri: frontPhoto }} style={styles.photo} />}
-            {backPhoto && <Image source={{ uri: backPhoto }} style={styles.photo} />}
+            {frontPhoto && <Image source={{ uri: frontPhoto }} accessibilityLabel="צילום הצד הקדמי של הרישיון" style={styles.photo} />}
+            {backPhoto && <Image source={{ uri: backPhoto }} accessibilityLabel="צילום הצד האחורי של הרישיון" style={styles.photo} />}
           </View>
 
           {frontScan && (

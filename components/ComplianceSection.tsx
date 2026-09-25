@@ -35,6 +35,7 @@ import { DesktopDateField } from './desktop/primitives';
 import { FolderTile } from './desktop/record/RecordKit';
 import { FolderDocumentsModal, FolderListRow, FolderUploadBar } from './desktop/record/FolderDocuments';
 import { DESKTOP_COLORS } from './desktop/desktopTheme';
+import { DK, DK_FONT } from './driverKit/theme';
 
 /** compliance_items only tracks driver/vehicle expiries — not company-level documents. */
 type ComplianceOwnerType = 'driver' | 'vehicle';
@@ -547,12 +548,15 @@ export function ComplianceSection({
                     style={[styles.folderRow, index === 0 && styles.folderFirstItem]}
                     onPress={() => setExpanded(isOpen ? null : def.itemType)}
                   >
-                    <View style={[styles.folderIcon, { backgroundColor: complianceFolderColor(def.itemType) }]}>
-                      <Ionicons name={complianceFolderIcon(def.itemType)} size={18} color="#FFF" />
+                    <View style={[styles.folderIcon, { backgroundColor: `${complianceFolderColor(def.itemType)}1F` }]}>
+                      <Ionicons name={complianceFolderIcon(def.itemType)} size={19} color={complianceFolderColor(def.itemType)} />
                     </View>
-                    <AppText weight="bold" style={styles.folderItemLabel}>{def.label}</AppText>
-                    {latestDoc ? <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : 'חסר תוקף'} /> : <AppText style={styles.itemDocCount}>אין מסמכים</AppText>}
-                    <Ionicons name={isOpen ? 'chevron-down' : 'chevron-back'} size={18} color="rgba(60,60,67,.28)" />
+                    <View style={styles.itemLabelWrap}>
+                      <AppText weight="bold" style={styles.folderItemLabel}>{def.label}</AppText>
+                      <AppText style={styles.itemDocCount}>{itemDocs.length ? `${itemDocs.length} ${itemDocs.length === 1 ? 'מסמך' : 'מסמכים'}` : 'אין מסמכים'}</AppText>
+                    </View>
+                    {!!latestDoc && <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : 'חסר תוקף'} />}
+                    <Ionicons name={isOpen ? 'chevron-down' : 'chevron-back'} size={18} color={DK.faint} />
                   </TouchableOpacity>
                 );
               })}
@@ -717,7 +721,7 @@ function GeneralDocuments({
 
 const styles = StyleSheet.create({
   card: { gap: 2 },
-  cardSpacious: { marginHorizontal: 20, marginBottom: SPACING.sm, paddingVertical: SPACING.sm },
+  cardSpacious: { marginBottom: SPACING.sm, paddingVertical: SPACING.sm },
   folderCard: { padding: 0, gap: 0, overflow: 'hidden' },
   groupHead: {
     flexDirection: 'row-reverse',
@@ -737,24 +741,24 @@ const styles = StyleSheet.create({
   },
   itemHeadSpacious: { paddingVertical: SPACING.md },
   folderItemHead: { minHeight: 57, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 11 },
-  folderRow: { borderTopWidth: 1, borderTopColor: COLORS.divider, minHeight: 57, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 11 },
-  folderIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  folderItemLabel: { flex: 1, fontSize: 16.5, color: COLORS.text },
+  folderRow: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline, minHeight: 64, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
+  folderIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  folderItemLabel: { fontFamily: DK_FONT.semibold, fontSize: 15, lineHeight: 20, color: DK.ink },
   folderItemBody: { paddingHorizontal: SPACING.lg },
   itemLabelWrap: { flex: 1, gap: 1 },
   itemLabel: { fontSize: 13.5 },
-  itemDocCount: { fontSize: 11, color: COLORS.textFaint },
+  itemDocCount: { fontFamily: DK_FONT.medium, fontSize: 13, color: DK.muted },
   itemStatusNote: { fontSize: 11.5 },
 
   folderGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 12, padding: 14 },
-  folderDetailPanel: { borderTopWidth: 1, borderTopColor: COLORS.divider, paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm },
+  folderDetailPanel: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline, backgroundColor: DK.surfaceSunk, paddingHorizontal: SPACING.lg, paddingTop: SPACING.md },
 
   itemBody: { paddingBottom: SPACING.md, gap: SPACING.sm },
   itemBodySpacious: { paddingBottom: SPACING.lg, gap: SPACING.md },
   dateRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.md },
-  dateLabel: { fontSize: 12.5, color: COLORS.textMuted, width: 88 },
+  dateLabel: { fontFamily: DK_FONT.medium, fontSize: 13.5, color: DK.inkSoft, width: 92 },
   dateInput: { flex: 1 },
-  autoDateValue: { fontSize: 12.5, color: COLORS.textMuted, flex: 1 },
+  autoDateValue: { fontFamily: DK_FONT.medium, fontSize: 14, color: DK.muted, flex: 1 },
   confirmBtn: { marginTop: 2 },
 
   uploadBtn: {
@@ -762,14 +766,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    height: 42,
-    borderRadius: RADIUS.md,
+    minHeight: 50,
+    borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: COLORS.accentSoft,
-    backgroundColor: COLORS.accentSoft,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(47,91,255,0.35)',
+    backgroundColor: DK.accentSoft,
     marginTop: 4,
   },
-  uploadText: { fontSize: 13, color: COLORS.accent },
+  uploadText: { fontFamily: DK_FONT.semibold, fontSize: 15, color: DK.accent },
 
   emptyDocs: { fontSize: 12.5, color: COLORS.textFaint, paddingVertical: SPACING.md },
 

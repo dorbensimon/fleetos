@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useToast } from '../../components/ui';
+import { CompanySettingsMobile } from './mobile/CompanySettingsMobile';
 import * as ImagePicker from 'expo-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCompany } from '../../lib/CompanyContext';
@@ -13,17 +15,10 @@ import { functionErrorMessage } from '../../lib/functionError';
 import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
-import {
-  CompanySettingsDesktopView,
-  CompanySettingsForm,
-  CompanyContactForm,
-  SafetyOfficerForm,
-} from '../../components/desktop/CompanySettingsDesktopView';
-import { DText } from '../../components/desktop/primitives';
-import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
+import { CompanySettingsDesktopView, CompanySettingsForm, CompanyContactForm, SafetyOfficerForm } from '../../components/desktop/CompanySettingsDesktopView';
 
 /**
- * Company-wide settings, desktop only (reached from the sidebar).
+ * Company-wide settings (the desktop sidebar; the phone's menu).
  * Saved in one go through the update-company-settings Edge Function, since
  * admins can't write `companies` directly. New logo/stamp images are uploaded
  * to the company's storage folder first, then saved as URLs.
@@ -91,9 +86,11 @@ function validate(form: CompanySettingsForm): Record<string, string> {
   return e;
 }
 
-export default function CompanySettingsScreen(_props: Props) {
+export default function CompanySettingsScreen({ navigation }: Props) {
   const { company, refresh } = useCompany();
   const isDesktop = useIsDesktop();
+  const insets = useSafeAreaInsets();
+  const { showToast } = useToast();
 
   // Keyed on the company id only: the post-save refresh() must not reset a
   // form the admin may already be editing again. After a save the baseline
@@ -181,6 +178,7 @@ export default function CompanySettingsScreen(_props: Props) {
       setBaseline(saved);
       setForm(saved);
       setSavedNonce((n) => n + 1);
+      if (!isDesktop) showToast('הגדרות החברה נשמרו');
       void refresh();
     } catch (err) {
       showAlert('שמירה נכשלה', err instanceof Error && err.message ? err.message : 'שמירת הגדרות החברה נכשלה');
@@ -191,9 +189,26 @@ export default function CompanySettingsScreen(_props: Props) {
 
   if (!isDesktop) {
     return (
-      <View style={styles.mobileOnly}>
-        <DText weight="semiBold" style={styles.mobileOnlyText}>הגדרות החברה זמינות במחשב בלבד</DText>
-      </View>
+      <CompanySettingsMobile
+        insetTop={insets.top}
+        insetBottom={insets.bottom}
+        form={form}
+        errors={errors}
+        dirty={dirty}
+        saving={saving}
+        onBack={() => navigation.goBack()}
+        onChange={onChange}
+        onChangeContact={onChangeContact}
+        onChangeOfficer={onChangeOfficer}
+        onFieldBlur={onFieldBlur}
+        onPickImage={(kind) => void onPickImage(kind)}
+        onClearImage={onClearImage}
+        onSave={() => void onSave()}
+        onDiscard={() => {
+          setForm(baseline);
+          setErrors({});
+        }}
+      />
     );
   }
 
@@ -221,8 +236,3 @@ export default function CompanySettingsScreen(_props: Props) {
     </DesktopShell>
   );
 }
-
-const styles = StyleSheet.create({
-  mobileOnly: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: DESKTOP_COLORS.canvas },
-  mobileOnlyText: { fontSize: 15, textAlign: 'center' },
-});

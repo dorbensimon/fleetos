@@ -92,7 +92,7 @@ export function AddCompanySheet({
           ) : form.logoUrl ? (
             <>
               <View style={styles.logoPreviewWrap}>
-                <Image source={{ uri: form.logoUrl }} style={styles.logoPreview} resizeMode="cover" />
+                <Image source={{ uri: form.logoUrl }} accessibilityLabel="לוגו החברה" style={styles.logoPreview} resizeMode="cover" />
                 <View style={styles.logoUploadedBadge}>
                   <Ionicons name="checkmark" size={11} color={COLORS.white} />
                 </View>

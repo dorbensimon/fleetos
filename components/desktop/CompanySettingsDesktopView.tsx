@@ -852,7 +852,7 @@ function CompanyOverview({ form, onJump }: { form: CompanySettingsForm; onJump: 
           <View style={styles.heroTop}>
             <View style={[styles.heroMark, !!form.logoUri && styles.heroMarkLogo]}>
               {form.logoUri ? (
-                <Image source={{ uri: form.logoUri }} style={styles.heroLogo} resizeMode="contain" />
+                <Image source={{ uri: form.logoUri }} accessibilityLabel="לוגו החברה" style={styles.heroLogo} resizeMode="contain" />
               ) : (
                 <DText weight="extraBold" style={styles.heroInitial}>{initial}</DText>
               )}
@@ -999,7 +999,7 @@ function LetterheadPreview({ form }: { form: CompanySettingsForm }) {
         <View style={styles.paperHead}>
           <View style={styles.paperLogo}>
             {form.logoUri ? (
-              <Image source={{ uri: form.logoUri }} style={styles.paperLogoImage} resizeMode="contain" />
+              <Image source={{ uri: form.logoUri }} accessibilityLabel="לוגו החברה" style={styles.paperLogoImage} resizeMode="contain" />
             ) : (
               <DText style={styles.paperPlaceholder}>לוגו</DText>
             )}
@@ -1017,7 +1017,7 @@ function LetterheadPreview({ form }: { form: CompanySettingsForm }) {
           <View style={styles.paperSignLine} />
           <DText style={styles.paperSignLabel}>חתימה</DText>
           {form.stampUri ? (
-            <Image source={{ uri: form.stampUri }} style={styles.paperStamp} resizeMode="contain" />
+            <Image source={{ uri: form.stampUri }} accessibilityLabel="חותמת החברה" style={styles.paperStamp} resizeMode="contain" />
           ) : (
             <View style={styles.paperStampEmpty}>
               <DText style={styles.paperPlaceholder}>חותמת</DText>

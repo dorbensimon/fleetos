@@ -16,9 +16,9 @@ export const DESKTOP_COLORS = {
   borderInput: '#D8DEE3',
   ink: '#16222E',
   inkMuted: '#5C6773',
-  inkFaint: '#8B98A4',
-  brand: '#0088CC',
-  brandHover: '#0079B5',
+  inkFaint: '#65717D', // 4.6:1 on the canvas; was #8B98A4 (2.7:1)
+  brand: '#0075B3', // 5.0:1 on white (WCAG AA); was #0088CC (3.9:1)
+  brandHover: '#00649A',
   brandFocusRing: 'rgba(0,136,204,0.14)',
   rowHover: '#F7F9FA',
   overlay: 'rgba(16,34,50,0.32)',
@@ -28,21 +28,21 @@ export const DESKTOP_COLORS = {
   sidebarTitle: '#FFFFFF',
   sidebarText: '#9AA5B0',
   sidebarTextStrong: '#EDF1F4',
-  sidebarSection: '#5C6773',
+  sidebarSection: '#7C8896',
   sidebarMeta: '#7C8896',
   sidebarActiveBg: 'rgba(0,136,204,0.18)',
   sidebarActiveText: '#5FC1F0',
   sidebarHoverBg: 'rgba(255,255,255,0.05)',
 
-  danger: '#FF453A',
+  danger: '#D92D20', // error text and badges: 4.8:1; was #FF453A (3.4:1)
 } as const;
 
 export type DesktopTone = 'ok' | 'warn' | 'bad' | 'neutral';
 
 export const DESKTOP_TONES: Record<DesktopTone, { bg: string; fg: string }> = {
-  ok: { bg: 'rgba(52,199,89,0.13)', fg: '#1E9E4C' },
-  warn: { bg: 'rgba(255,149,0,0.14)', fg: '#B96A00' },
-  bad: { bg: 'rgba(255,69,58,0.13)', fg: '#D5251C' },
+  ok: { bg: 'rgba(52,199,89,0.13)', fg: '#187F3E' },
+  warn: { bg: 'rgba(255,149,0,0.14)', fg: '#985700' },
+  bad: { bg: 'rgba(255,69,58,0.13)', fg: '#C4201A' },
   neutral: { bg: 'rgba(142,142,147,0.16)', fg: '#5C6773' },
 };
 

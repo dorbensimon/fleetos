@@ -12,6 +12,8 @@ import { COLORS, CONTENT_MAX_WIDTH, RADIUS, SPACING, SUBTLE_SHADOW, formatDate }
 import { formatPhone, isValidIsraeliPhone } from '../../lib/phone';
 import { captureImage, pickImage, type PickedFile } from '../../lib/documents';
 import { Procedure6FormValues } from '../../lib/procedure6Report';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DK, HeroButton, NightBar, PrimaryAction } from '../driverKit';
 
 type Props = {
   visible: boolean;
@@ -21,6 +23,7 @@ type Props = {
 
 export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
   const insets = useSafeAreaInsets();
+  const desktop = useIsDesktop();
   const [eventDateIso, setEventDateIso] = useState<string | null>(null);
   const [eventTime, setEventTime] = useState<string | null>(null);
   const [details, setDetails] = useState('');
@@ -96,9 +99,18 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
-      <View style={styles.container}>
-        <AdminGradientBackground />
+      <View style={[styles.container, !desktop && styles.containerKit]}>
+        {desktop && <AdminGradientBackground />}
 
+        {!desktop ? (
+          <NightBar
+            insetTop={insets.top}
+            title="דיווח נוהל 6"
+            subtitle="המסמך נוצר כ־PDF ונשמר בתיק הנהג"
+            onBack={close}
+            right={saving ? undefined : <HeroButton icon="checkmark" label="שמירת הדיווח" onPress={() => void submit()} />}
+          />
+        ) : (
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <TouchableOpacity onPress={close} disabled={saving} hitSlop={10}>
             <AppText weight="bold" style={styles.cancelText}>ביטול</AppText>
@@ -109,6 +121,7 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
             {saving && <BrandLoader size="small" color={COLORS.accent} style={StyleSheet.absoluteFill} />}
           </TouchableOpacity>
         </View>
+        )}
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Card style={styles.formCard}>
@@ -168,7 +181,7 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
             <Field label="העלאת תיעוד / תמונה" optional>
               {photo ? (
                 <View style={styles.photoPreviewWrap}>
-                  <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
+                  <Image source={{ uri: photo.uri }} accessibilityLabel="התמונה שצורפה לדיווח" style={styles.photoPreview} />
                   <TouchableOpacity
                     style={styles.photoRemove}
                     onPress={() => setPhoto(null)}
@@ -186,6 +199,7 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
               )}
             </Field>
           </Card>
+          {!desktop && <PrimaryAction label="שמירת הדיווח" icon="document-text-outline" onPress={() => void submit()} loading={saving} style={styles.kitSave} />}
         </ScrollView>
       </View>
     </Modal>
@@ -194,6 +208,8 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.screen },
+  containerKit: { backgroundColor: DK.canvas },
+  kitSave: { marginTop: SPACING.lg },
   header: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

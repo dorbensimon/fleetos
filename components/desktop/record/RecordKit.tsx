@@ -149,6 +149,7 @@ export function StatusPicker<T extends string>({
                   hoverStyle={styles.rowHover}
                   onPress={() => void choose(option.value)}
                   accessibilityState={{ selected }}
+                  aria-selected={selected}
                 >
                   <View style={[styles.statusOptionDot, { backgroundColor: DESKTOP_TONES[option.tone].fg }]} />
                   <DText weight="semiBold" style={[styles.actionText, styles.menuItemText, styles.statusOptionLabel]}>

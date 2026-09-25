@@ -9,7 +9,6 @@ import {
   TextInputProps,
   StyleProp,
   ViewStyle,
-  ScrollView,
   Switch,
 } from 'react-native';
 import { BrandLoader } from './BrandLoader';
@@ -27,17 +26,19 @@ import {
   CONTENT_MAX_WIDTH,
 } from '../../lib/theme';
 import { DOSSIER_BLUE } from '../../lib/dossierColors';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DK, DK_FONT, DK_SHADOW, STATUS } from '../driverKit/theme';
+
+/**
+ * On the phone these primitives take the icar kit's look (the same one the
+ * driver screens are built from); the desktop keeps its own.
+ */
+function usePhone() {
+  return !useIsDesktop();
+}
 
 export { AppText } from './Text';
-export { AdminBottomBar } from './AdminBottomBar';
-export { AdminGlassHeader } from './AdminGlassHeader';
-export { AdminMenuButton } from './AdminMenuButton';
-export { NotificationBellButton } from './NotificationBellButton';
-export { AutocompleteInput } from './AutocompleteInput';
 export { ToastProvider, useToast } from './Toast';
-export { DriverMenuButton } from './DriverMenuButton';
-export { default as DriversVehiclesToggle } from './DriversVehiclesToggle';
-export type { ToggleValue } from './DriversVehiclesToggle';
 
 /** The single compact back affordance used in app navigation headers. */
 export function BackButton({
@@ -49,16 +50,17 @@ export function BackButton({
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 }) {
+  const phone = usePhone();
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={[styles.appBackButton, style]}
+      style={[styles.appBackButton, phone && kit.backButton, style]}
       hitSlop={10}
       activeOpacity={0.75}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
     >
-      <Ionicons name="chevron-forward" size={20} color={COLORS.accent} />
+      <Ionicons name="chevron-forward" size={20} color={phone ? DK.ink : COLORS.accent} />
     </TouchableOpacity>
   );
 }
@@ -80,11 +82,8 @@ export function Screen({ style, contentStyle, children, ...rest }: ViewProps & {
 /* ------------------------------------------------------------------ */
 
 export function Card({ style, ...rest }: ViewProps) {
-  return <View {...rest} style={[styles.card, style]} />;
-}
-
-export function PressableCard({ style, ...rest }: TouchableOpacityProps) {
-  return <TouchableOpacity activeOpacity={0.85} {...rest} style={[styles.card, style]} />;
+  const phone = usePhone();
+  return <View {...rest} style={[styles.card, phone && kit.card, style]} />;
 }
 
 /* ------------------------------------------------------------------ */
@@ -133,9 +132,10 @@ export function Badge({
   bg: string;
   fg: string;
 }) {
+  const phone = usePhone();
   return (
-    <View style={[styles.badge, { backgroundColor: bg }]}>
-      <AppText weight="bold" style={[styles.badgeText, { color: fg }]}>
+    <View style={[styles.badge, phone && kit.badge, { backgroundColor: bg }]}>
+      <AppText weight="bold" style={[styles.badgeText, phone && kit.badgeText, { color: fg }]}>
         {label}
       </AppText>
     </View>
@@ -174,21 +174,26 @@ export function PrimaryButton({
    */
   disabledStyle?: TouchableOpacityProps['style'];
 }) {
+  const phone = usePhone();
   const isDisabled = !!(rest.disabled || loading);
   const textIconColor = contentColor ?? COLORS.textInverse;
   return (
     <TouchableOpacity
       activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: isDisabled, busy: !!loading }}
+      aria-disabled={isDisabled} aria-busy={!!loading}
       {...rest}
       disabled={isDisabled}
-      style={[styles.primaryBtn, isDisabled && (disabledStyle ?? styles.btnDisabled), style]}
+      style={[styles.primaryBtn, phone && kit.primaryBtn, isDisabled && (disabledStyle ?? styles.btnDisabled), style]}
     >
       {loading ? (
         <BrandLoader color={textIconColor} />
       ) : (
         <>
-          {!!icon && <Ionicons name={icon} size={17} color={textIconColor} />}
-          <AppText weight="bold" style={[styles.primaryBtnText, contentColor && { color: contentColor }]}>
+          {!!icon && <Ionicons name={icon} size={phone ? 19 : 17} color={textIconColor} />}
+          <AppText weight="bold" style={[styles.primaryBtnText, phone && kit.primaryBtnText, contentColor && { color: contentColor }]}>
             {label}
           </AppText>
         </>
@@ -204,16 +209,18 @@ export function SecondaryButton({
   style,
   ...rest
 }: TouchableOpacityProps & { label: string; icon?: any; danger?: boolean }) {
+  const phone = usePhone();
+  const fg = phone ? (danger ? STATUS.expired.fg : DK.accent) : danger ? COLORS.dangerText : COLORS.text;
   return (
     <TouchableOpacity
       activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       {...rest}
-      style={[styles.secondaryBtn, danger && styles.dangerBtn, style]}
+      style={[styles.secondaryBtn, danger && styles.dangerBtn, phone && kit.secondaryBtn, phone && danger && kit.dangerBtn, style]}
     >
-      {!!icon && (
-        <Ionicons name={icon} size={16} color={danger ? COLORS.dangerText : COLORS.text} />
-      )}
-      <AppText weight="bold" style={[styles.secondaryBtnText, danger && { color: COLORS.dangerText }]}>
+      {!!icon && <Ionicons name={icon} size={phone ? 18 : 16} color={fg} />}
+      <AppText weight="bold" style={[styles.secondaryBtnText, phone && kit.secondaryBtnText, { color: fg }]}>
         {label}
       </AppText>
     </TouchableOpacity>
@@ -235,140 +242,89 @@ export function Field({
   optional?: boolean;
   children: React.ReactNode;
 }) {
+  const phone = usePhone();
   return (
-    <View style={styles.field}>
-      <AppText weight="bold" style={styles.fieldLabel}>
+    <View style={[styles.field, phone && kit.field]}>
+      <AppText weight="bold" style={[styles.fieldLabel, phone && kit.fieldLabel, phone && !!error && { color: STATUS.expired.fg }]}>
         {label}
-        {optional && <AppText style={styles.fieldOptional}> (אופציונלי)</AppText>}
+        {optional && <AppText style={[styles.fieldOptional, phone && kit.fieldOptional]}> (אופציונלי)</AppText>}
       </AppText>
       {children}
-      {!!error && <AppText style={styles.fieldError}>{error}</AppText>}
+      {!!error &&
+        (phone ? (
+          <View style={kit.errorRow} accessibilityLiveRegion="polite">
+            <Ionicons name="alert-circle" size={14} color={STATUS.expired.fg} />
+            <AppText style={kit.fieldError}>{error}</AppText>
+          </View>
+        ) : (
+          <AppText style={styles.fieldError}>{error}</AppText>
+        ))}
     </View>
   );
 }
 
+/** Focus ring for the phone's inputs (white with a blue edge while typing). */
+function useFocusRing(rest: TextInputProps) {
+  const [focused, setFocused] = useState(false);
+  return {
+    focused,
+    onFocus: (e: any) => {
+      setFocused(true);
+      rest.onFocus?.(e);
+    },
+    onBlur: (e: any) => {
+      setFocused(false);
+      rest.onBlur?.(e);
+    },
+  };
+}
+
 export function Input({ style, hasError, ...rest }: TextInputProps & { hasError?: boolean }) {
+  const phone = usePhone();
+  const ring = useFocusRing(rest);
   return (
     <TextInput
-      placeholderTextColor={COLORS.textFaint}
+      placeholderTextColor={phone ? DK.faint : COLORS.textFaint}
       textAlign="right"
       {...rest}
-      style={[styles.input, hasError && styles.inputError, style]}
+      onFocus={ring.onFocus}
+      onBlur={ring.onBlur}
+      style={[
+        styles.input,
+        phone && kit.input,
+        phone && ring.focused && kit.inputFocused,
+        phone && rest.multiline && kit.inputMultiline,
+        hasError && (phone ? kit.inputError : styles.inputError),
+        phone && rest.editable === false && kit.inputLocked,
+        style,
+      ]}
     />
   );
 }
 
 /** LTR input for emails, phone numbers and plate numbers. */
 export function InputLtr({ style, hasError, ...rest }: TextInputProps & { hasError?: boolean }) {
+  const phone = usePhone();
+  const ring = useFocusRing(rest);
   return (
     <TextInput
-      placeholderTextColor={COLORS.textFaint}
+      placeholderTextColor={phone ? DK.faint : COLORS.textFaint}
       textAlign="left"
       autoCapitalize="none"
       {...rest}
-      style={[styles.input, styles.inputLtr, hasError && styles.inputError, style]}
+      onFocus={ring.onFocus}
+      onBlur={ring.onBlur}
+      style={[
+        styles.input,
+        styles.inputLtr,
+        phone && kit.input,
+        phone && kit.inputLtr,
+        phone && ring.focused && kit.inputFocused,
+        hasError && (phone ? kit.inputError : styles.inputError),
+        phone && rest.editable === false && kit.inputLocked,
+        style,
+      ]}
     />
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Search + filter chips                                               */
-/* ------------------------------------------------------------------ */
-
-export function SearchBar({ style, ...rest }: TextInputProps) {
-  return (
-    <View style={styles.searchBar}>
-      <Ionicons name="search" size={16} color={COLORS.textFaint} />
-      <TextInput
-        placeholderTextColor={COLORS.textFaint}
-        textAlign="right"
-        {...rest}
-        style={[styles.searchInput, style]}
-      />
-    </View>
-  );
-}
-
-export function FilterChips<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: {
-    value: T;
-    label: string;
-    count?: number;
-    badgeColor?: string;
-    icon?: React.ComponentProps<typeof Ionicons>['name'];
-  }[];
-  value: T;
-  onChange: (v: T) => void;
-}) {
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.chipRow}
-      style={styles.chipScrollFlip}
-    >
-      <View style={styles.chipRowFlip}>
-        {options.map((opt) => {
-          const active = opt.value === value;
-          const empty = opt.count === 0 && !active;
-          const dotColor = opt.badgeColor ?? COLORS.textFaint;
-
-          const content = (
-            <View style={styles.chip}>
-              {opt.icon ? (
-                <Ionicons name={opt.icon} size={15} color={dotColor} />
-              ) : (
-                <View style={[styles.chipDotHalo, { backgroundColor: `${dotColor}22` }]}>
-                  <View style={[styles.chipDot, { backgroundColor: dotColor }]} />
-                </View>
-              )}
-              <AppText
-                weight="bold"
-                numberOfLines={1}
-                style={[
-                  styles.chipText,
-                  active && styles.chipTextActive,
-                  empty && styles.chipTextEmpty,
-                ]}
-              >
-                {opt.label}
-              </AppText>
-              {opt.count !== undefined && (
-                <View style={styles.chipBadge}>
-                  <AppText
-                    weight="bold"
-                    style={[styles.chipBadgeText, empty && styles.chipTextEmpty]}
-                  >
-                    {opt.count}
-                  </AppText>
-                </View>
-              )}
-            </View>
-          );
-
-          return (
-            <TouchableOpacity key={opt.value} activeOpacity={0.8} onPress={() => onChange(opt.value)}>
-              {active ? (
-                // Pressed-in look: a clipped ring throws its shadow inward,
-                // which reads as an inset shadow — RN has no real inset shadow.
-                <View style={styles.chipPressedClip}>
-                  <View style={[styles.chipRing, styles.chipRingDark]} pointerEvents="none" />
-                  <View style={[styles.chipRing, styles.chipRingLight]} pointerEvents="none" />
-                  {content}
-                </View>
-              ) : (
-                // Flat, no shadow — depth only ever appears on the active pill.
-                <View style={styles.chipInactive}>{content}</View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </ScrollView>
   );
 }
 
@@ -402,13 +358,20 @@ export function EmptyState({
   title: string;
   hint?: string;
 }) {
+  const phone = usePhone();
   return (
     <View style={styles.centered}>
-      <Ionicons name={icon} size={38} color={COLORS.textFaint} />
-      <AppText weight="bold" style={styles.emptyTitle}>
+      {phone ? (
+        <View style={kit.stateIcon}>
+          <Ionicons name={icon} size={28} color={DK.accent} />
+        </View>
+      ) : (
+        <Ionicons name={icon} size={38} color={COLORS.textFaint} />
+      )}
+      <AppText weight="bold" style={[styles.emptyTitle, phone && kit.stateTitle]}>
         {title}
       </AppText>
-      {!!hint && <AppText style={styles.emptyHint}>{hint}</AppText>}
+      {!!hint && <AppText style={[styles.emptyHint, phone && kit.stateHint]}>{hint}</AppText>}
     </View>
   );
 }
@@ -427,26 +390,33 @@ export function ErrorState({
   hint?: string;
   onRetry?: () => void;
 }) {
+  const phone = usePhone();
   return (
     <View style={styles.centered}>
-      <Ionicons name="alert-circle-outline" size={38} color={COLORS.dangerText} />
+      {phone ? (
+        <View style={[kit.stateIcon, { backgroundColor: STATUS.expired.soft }]}>
+          <Ionicons name="cloud-offline-outline" size={28} color={STATUS.expired.fg} />
+        </View>
+      ) : (
+        <Ionicons name="alert-circle-outline" size={38} color={COLORS.dangerText} />
+      )}
       <AppText
         weight="bold"
-        style={styles.errorTitle}
+        style={[styles.errorTitle, phone && kit.stateTitle]}
         accessibilityRole="alert"
       >
         {message}
       </AppText>
-      {!!hint && <AppText style={styles.emptyHint}>{hint}</AppText>}
+      {!!hint && <AppText style={[styles.emptyHint, phone && kit.stateHint]}>{hint}</AppText>}
       {!!onRetry && (
         <TouchableOpacity
           onPress={onRetry}
-          style={styles.retryBtn}
+          style={[styles.retryBtn, phone && kit.retryBtn]}
           accessibilityRole="button"
           accessibilityLabel="נסה שוב"
         >
-          <Ionicons name="refresh" size={16} color={COLORS.accent} />
-          <AppText weight="bold" style={styles.retryText}>
+          <Ionicons name="refresh" size={16} color={phone ? DK.accent : COLORS.accent} />
+          <AppText weight="bold" style={[styles.retryText, phone && kit.retryText]}>
             נסה שוב
           </AppText>
         </TouchableOpacity>
@@ -473,19 +443,20 @@ export function ToggleRow({
   onValueChange: (next: boolean) => void;
   disabled?: boolean;
 }) {
+  const phone = usePhone();
   return (
-    <View style={styles.toggleRow}>
+    <View style={[styles.toggleRow, phone && kit.toggleRow]}>
       <View style={styles.toggleTextWrap}>
-        <AppText weight="bold" style={styles.toggleLabel}>
+        <AppText weight="bold" style={[styles.toggleLabel, phone && kit.toggleLabel]}>
           {label}
         </AppText>
-        {!!description && <AppText style={styles.toggleDescription}>{description}</AppText>}
+        {!!description && <AppText style={[styles.toggleDescription, phone && kit.toggleDescription]}>{description}</AppText>}
       </View>
       <Switch
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ false: COLORS.fieldBorder, true: COLORS.accent }}
+        trackColor={{ false: COLORS.fieldBorder, true: phone ? DK.accent : COLORS.accent }}
         thumbColor={COLORS.card}
         ios_backgroundColor={COLORS.fieldBorder}
         accessibilityRole="switch"
@@ -506,11 +477,12 @@ export function InfoRow({
   value?: string | null;
   right?: React.ReactNode;
 }) {
+  const phone = usePhone();
   return (
-    <View style={styles.infoRow}>
-      <AppText style={styles.infoLabel}>{label}</AppText>
+    <View style={[styles.infoRow, phone && kit.infoRow]}>
+      <AppText style={[styles.infoLabel, phone && kit.infoLabel]}>{label}</AppText>
       {right ?? (
-        <AppText weight="bold" style={styles.infoValue}>
+        <AppText weight="bold" style={[styles.infoValue, phone && kit.infoValue]}>
           {value || '—'}
         </AppText>
       )}
@@ -612,81 +584,10 @@ const styles = StyleSheet.create({
   inputLtr: { textAlign: 'left' },
   inputError: { borderColor: COLORS.dangerText },
 
-  searchBar: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    height: 44,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.card,
-    paddingHorizontal: SPACING.md,
-    ...SUBTLE_SHADOW,
-  },
-  searchInput: { flex: 1, fontSize: 14, fontFamily: FONT.regular, color: COLORS.text },
 
-  chipScrollFlip: { transform: [{ scaleX: -1 }] },
-  chipRowFlip: { transform: [{ scaleX: -1 }], flexDirection: 'row-reverse', gap: 11 },
-  chipRow: { paddingVertical: 2, paddingHorizontal: 1 },
-  chip: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 7,
-    height: 40,
-    paddingRight: 14,
-    paddingLeft: 11,
-  },
   // Flat, no shadow at all — the unselected state carries no depth.
-  chipInactive: { backgroundColor: '#F7F7F6', borderRadius: RADIUS.pill },
   // Pressed-in (active) pill: overflow:hidden clips the rings' shadow to an
   // inward-reading edge, which is what fakes an inset shadow on iOS.
-  chipPressedClip: {
-    borderRadius: RADIUS.pill,
-    backgroundColor: '#E4E2E0',
-    overflow: 'hidden',
-  },
-  chipRing: {
-    position: 'absolute',
-    top: -8,
-    left: -8,
-    right: -8,
-    bottom: -8,
-    borderRadius: RADIUS.pill,
-    borderWidth: 8,
-    borderColor: '#E4E2E0',
-  },
-  chipRingDark: {
-    shadowColor: '#000',
-    shadowOpacity: 0.16,
-    shadowOffset: { width: 3, height: 3 },
-    shadowRadius: 6,
-  },
-  chipRingLight: {
-    shadowColor: '#FFFFFF',
-    shadowOpacity: 0.95,
-    shadowOffset: { width: -3, height: -3 },
-    shadowRadius: 6,
-  },
-  chipDotHalo: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipDot: { width: 7, height: 7, borderRadius: 3.5 },
-  chipText: { fontSize: 13.5, color: '#3A3A3A' },
-  chipTextActive: { color: '#111111' },
-  chipTextEmpty: { color: '#B4B4B4' },
-  chipBadge: {
-    minWidth: 20,
-    height: 20,
-    paddingHorizontal: 5,
-    borderRadius: RADIUS.pill,
-    backgroundColor: '#EDEDEC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipBadgeText: { fontSize: 11, color: COLORS.textMuted },
 
   centered: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48, gap: 8 },
   loadingCentered: { flex: 1, minHeight: 220, alignItems: 'center', justifyContent: 'center' },
@@ -728,4 +629,75 @@ const styles = StyleSheet.create({
   },
   infoLabel: { fontSize: 13, color: COLORS.textMuted },
   infoValue: { fontSize: 13.5, flexShrink: 1, textAlign: 'left' },
+});
+
+/* The phone's look — the icar kit (components/driverKit). */
+const kit = StyleSheet.create({
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: DK.hairline,
+    ...DK_SHADOW,
+  },
+  card: { borderRadius: 24, padding: 16, ...DK_SHADOW },
+  badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  badgeText: { fontFamily: DK_FONT.semibold, fontSize: 12 },
+
+  primaryBtn: {
+    height: undefined,
+    minHeight: 54,
+    borderRadius: 18,
+    gap: 8,
+    paddingHorizontal: 18,
+    backgroundColor: DK.accent,
+    shadowColor: DK.accent,
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
+  },
+  primaryBtnText: { fontFamily: DK_FONT.semibold, fontSize: 16 },
+  secondaryBtn: { height: undefined, minHeight: 50, borderRadius: 16, gap: 8, backgroundColor: DK.accentSoft },
+  dangerBtn: { backgroundColor: STATUS.expired.soft },
+  secondaryBtnText: { fontFamily: DK_FONT.semibold, fontSize: 15.5 },
+
+  field: { gap: 8 },
+  fieldLabel: { fontFamily: DK_FONT.medium, fontSize: 13.5, lineHeight: 19, color: DK.inkSoft },
+  fieldOptional: { color: DK.faint, fontFamily: DK_FONT.regular },
+  errorRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
+  fieldError: { flex: 1, fontFamily: DK_FONT.medium, fontSize: 13.5, lineHeight: 19, color: STATUS.expired.fg },
+
+  input: {
+    height: undefined,
+    minHeight: 52,
+    borderRadius: 16,
+    backgroundColor: DK.surfaceSunk,
+    borderColor: 'transparent',
+    fontFamily: DK_FONT.medium,
+    fontSize: 16,
+    color: DK.ink,
+    outlineStyle: 'none',
+  } as any,
+  inputLtr: { writingDirection: 'ltr' },
+  inputMultiline: { paddingTop: 14, paddingBottom: 14, minHeight: 104, textAlignVertical: 'top' },
+  inputFocused: { borderColor: DK.accent, backgroundColor: '#FFFFFF' },
+  inputError: { borderColor: STATUS.expired.fill },
+  inputLocked: { color: DK.muted },
+
+
+  stateIcon: { width: 64, height: 64, borderRadius: 22, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  stateTitle: { fontFamily: DK_FONT.bold, fontSize: 17, lineHeight: 23, color: DK.ink, textAlign: 'center' },
+  stateHint: { fontFamily: DK_FONT.regular, fontSize: 15, lineHeight: 21, color: DK.muted },
+  retryBtn: { minHeight: 46, borderRadius: 999, paddingHorizontal: 18, backgroundColor: DK.accentSoft, marginTop: 10 },
+  retryText: { fontFamily: DK_FONT.semibold, fontSize: 15, color: DK.accent },
+
+  toggleRow: { minHeight: 64, paddingVertical: 12 },
+  toggleLabel: { fontFamily: DK_FONT.semibold, fontSize: 15, color: DK.ink },
+  toggleDescription: { fontFamily: DK_FONT.medium, fontSize: 13.5, lineHeight: 19, color: DK.muted },
+
+  infoRow: { minHeight: 48, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },
+  infoLabel: { fontFamily: DK_FONT.medium, fontSize: 14, color: DK.muted },
+  infoValue: { fontFamily: DK_FONT.semibold, fontSize: 15, color: DK.ink },
 });

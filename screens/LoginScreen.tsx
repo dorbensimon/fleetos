@@ -67,6 +67,13 @@ const IDLE_REVS = 0.09;
  * display; below this width the phone stack is used (also on iPads in portrait).
  */
 const WIDE_MIN_WIDTH = 1000;
+
+const LOGIN_LEGAL_LINKS = [
+  { doc: 'terms', label: 'תנאי שימוש' },
+  { doc: 'privacy', label: 'מדיניות פרטיות' },
+  { doc: 'cookies', label: 'עוגיות' },
+  { doc: 'accessibility', label: 'הצהרת נגישות' },
+] as const;
 /** Smallest gauge (px) the phone layout will shrink to so the login fits the screen. */
 const GAUGE_MIN = 124;
 const DISPLAY_WIDTH = 392;
@@ -358,6 +365,7 @@ function StartButton({ onPress, loading, ready, size }: { onPress: () => void; l
       accessibilityRole="button"
       accessibilityLabel="התחברות"
       accessibilityState={{ busy: loading, disabled: loading }}
+      aria-busy={loading} aria-disabled={loading}
       style={webOnly({ outlineStyle: 'none', cursor: loading ? 'progress' : 'pointer' })}
     >
       <Animated.View style={[styles.startOuter, { width: size, height: size, borderRadius: size / 2, transform: [{ scale: press }] }]}>
@@ -690,6 +698,16 @@ export default function LoginScreen({ navigation }: Props) {
           trytolvex@gmail.com
         </Text>
       </Text>
+      <View style={styles.legalRow} accessibilityRole="none">
+        {LOGIN_LEGAL_LINKS.map(({ doc, label }, i) => (
+          <React.Fragment key={doc}>
+            {i > 0 && <Text style={styles.legalDot} importantForAccessibility="no" aria-hidden>·</Text>}
+            <Text style={[styles.legalLink, short && styles.legalLinkShort]} accessibilityRole="link" onPress={() => navigation.navigate('Legal', { doc })}>
+              {label}
+            </Text>
+          </React.Fragment>
+        ))}
+      </View>
     </View>
   );
 
@@ -1013,4 +1031,8 @@ const styles = StyleSheet.create({
   footerTextShort: { fontSize: 12, lineHeight: 17 },
   contactText: { textAlign: 'center', color: CLUSTER.inkMuted, fontFamily: FONT.regular, fontSize: 13 },
   contactEmail: { color: CLUSTER.backlight, fontFamily: FONT.semiBold },
+  legalRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', columnGap: 6 },
+  legalLink: { color: CLUSTER.inkMuted, fontFamily: FONT.medium, fontSize: 12.5, textDecorationLine: 'underline', paddingVertical: 4 },
+  legalDot: { color: CLUSTER.inkMuted, fontSize: 12.5 },
+  legalLinkShort: { paddingVertical: 0 },
 });

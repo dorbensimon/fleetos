@@ -1,12 +1,8 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Screen, AppText, Card, LoadingState, EmptyState, ErrorState, SecondaryButton, BackButton } from '../../components/ui';
-import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
-import { COLORS, SPACING, CARD_SHADOW, BRAND } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listNotifications, markNotificationRead, markAllNotificationsRead, Notification, resolveNotificationVehicleId } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
@@ -17,7 +13,7 @@ import { navigateToNotificationTarget, notificationTarget } from '../../lib/noti
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { NotificationsHubDesktopView } from '../../components/desktop/NotificationsHubDesktopView';
 import { useNotificationPreferences } from '../../lib/useNotificationPreferences';
-import { DriverNotificationsMobile } from '../driver/DriverNotificationsMobile';
+import { NotificationsMobile } from '../NotificationsMobile';
 
 /**
  * Logs every driver self-edit (name/phone/ID/license/department) so
@@ -160,135 +156,26 @@ export default function NotificationsScreen({ navigation }: Props) {
     );
   }
 
-  if (profile?.role === 'driver') {
-    return (
-      <DriverNotificationsMobile
-        insetTop={insets.top}
-        insetBottom={insets.bottom}
-        items={items}
-        unreadIds={unreadIds}
-        loading={loading}
-        error={error}
-        timeAgo={timeAgo}
-        actionLabel={actionLabel}
-        onOpen={(n) => void openNotification(n)}
-        onMarkAllRead={() => void markAllRead()}
-        onSettings={() => navigation.navigate('NotificationPreferences')}
-        onBack={() => navigation.goBack()}
-        onRetry={load}
-      />
-    );
-  }
-
   return (
-    <Screen style={styles.screen}>
-      <AdminGradientBackground />
-      <View style={[styles.topBar, { paddingTop: insets.top + 20 }]}>
-        <View style={styles.topBarInner}>
-          <View style={styles.topTitleOverlay} pointerEvents="none">
-            <AppText weight="bold" style={styles.topTitle} numberOfLines={1}>
-              התראות
-            </AppText>
-          </View>
-          {unreadIds.size > 0 ? (
-            <SecondaryButton label="קרא הכל" icon="checkmark-done-outline" onPress={markAllRead} />
-          ) : (
-            <View />
-          )}
-          <BackButton onPress={() => navigation.goBack()} />
-        </View>
-      </View>
-
-      {loading ? (
-        <LoadingState />
-      ) : error ? (
-        <ErrorState message={error} onRetry={load} />
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(n) => n.id}
-          contentContainerStyle={styles.content}
-          ListEmptyComponent={
-            <EmptyState
-              icon="notifications-outline"
-              title="אין עדיין התראות"
-              hint="עדכונים הקשורים לחברה יופיעו כאן"
-            />
-          }
-          renderItem={({ item: n }) => (
-            <TouchableOpacity activeOpacity={0.7} onPress={() => openNotification(n)}>
-              <Card style={[styles.row, unreadIds.has(n.id) && styles.rowUnread]}>
-                <View style={styles.icon}>
-                  <Ionicons
-                    name={
-                      n.notification_type === 'signature_request_assigned'
-                        ? 'create-outline'
-                        : n.notification_type === 'vehicle_assignment'
-                        ? 'car-outline'
-                        : n.notification_type === 'vehicle_inspection_last_date_expiry' || isVehicleFolderNotification(n.notification_type)
-                        ? 'warning-outline'
-                        : 'person-circle-outline'
-                    }
-                    size={20}
-                    color={COLORS.accent}
-                  />
-                </View>
-                <View style={styles.textWrap}>
-                  <AppText weight="bold" style={styles.message}>
-                    {n.message}
-                  </AppText>
-                  <AppText style={styles.time}>{timeAgo(n.created_at)}</AppText>
-                  {!!actionLabel(n) && <AppText weight="bold" style={styles.actionLabel}>{actionLabel(n)}</AppText>}
-                </View>
-                {unreadIds.has(n.id) && <View style={styles.unreadDot} />}
-              </Card>
-            </TouchableOpacity>
-          )}
-        />
-      )}
-    </Screen>
+    <NotificationsMobile
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
+      items={items}
+      unreadIds={unreadIds}
+      loading={loading}
+      error={error}
+      timeAgo={timeAgo}
+      actionLabel={actionLabel}
+      onOpen={(n) => void openNotification(n)}
+      onMarkAllRead={() => void markAllRead()}
+      onSettings={() => navigation.navigate('NotificationPreferences')}
+      onBack={() => navigation.goBack()}
+      onRetry={load}
+      emptyHint={
+        profile?.role === 'driver'
+          ? 'כשמנהל הצי ישלח מסמך, ישייך רכב או כשתוקף יתקרב — העדכון יופיע כאן.'
+          : 'כשנהג יעדכן פרטים, יעלה מסמך או כשתוקף ברכב יתקרב — העדכון יופיע כאן.'
+      }
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { backgroundColor: BRAND.screenBg },
-  topBar: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.md,
-  },
-  topBarInner: {
-    position: 'relative',
-    minHeight: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  topTitleOverlay: {
-    ...StyleSheet.absoluteFill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topTitle: { fontSize: 18, color: COLORS.text },
-  content: { padding: SPACING.lg, gap: SPACING.sm },
-  row: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: SPACING.md,
-    padding: SPACING.md,
-  },
-  rowUnread: { backgroundColor: COLORS.accentSoft },
-  icon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...CARD_SHADOW,
-  },
-  textWrap: { flex: 1, gap: 2 },
-  message: { fontSize: 13.5, textAlign: 'right' },
-  time: { fontSize: 11.5, color: COLORS.textFaint },
-  actionLabel: { marginTop: 4, fontSize: 12, color: COLORS.accent, textAlign: 'right' },
-  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.dangerText },
-});

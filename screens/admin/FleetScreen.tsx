@@ -1,22 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, RefreshControl, Linking, Animated, StatusBar, Easing } from 'react-native';
+import { Linking } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Screen, EmptyState, ErrorState, LoadingState } from '../../components/ui';
-import { ToggleValue } from '../../components/ui/DriversVehiclesToggle';
-import { DriverCard } from '../../components/fleet/DriverCard';
-import { VehicleCard } from '../../components/fleet/VehicleCard';
-import { FleetHero, FleetStat, heroNavHeight, HERO_CONTENT_HEIGHT, HERO_TRAVEL } from '../../components/fleet/FleetHero';
-import { FleetDock, FLEET_DOCK_CLEARANCE } from '../../components/fleet/FleetDock';
-import { FleetAddButton } from '../../components/fleet/FleetAddButton';
-import { FleetFilterChips } from '../../components/fleet/FleetFilterChips';
-import { FLEET_COLORS, FLEET_SHADOWS } from '../../lib/colors';
-import { SPACING, expiryState } from '../../lib/theme';
+import { expiryState } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
+  countUnreadNotifications,
+  getAttentionSummary,
+  type AttentionSummary,
   listDrivers,
   listArchivedDrivers,
   DriverRow,
@@ -37,55 +30,22 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { FleetDesktopView } from '../../components/desktop/FleetDesktopView';
 import { AttentionMenu } from '../../components/desktop/FleetOverview';
+import { FleetMobile, type DriverFilter, type VehicleFilter } from './mobile/FleetMobile';
 
 /**
- * A2/A4 — the fleet screen. "Drivers" and "Vehicles" are the same screen:
- * a shared blue-gradient hero (glanceable status cubes + search + export)
- * with two list bodies stacked underneath it. Switching modes never
- * pushes a new screen — both lists stay mounted and crossfade, so
- * there's no back button, no swipe-back gesture, and no slide.
- *
- * Each list is its own rounded white "sheet" that rests below the hero
- * and rises to meet it as you scroll (tied 1:1 to that list's own
- * `scrollY`, clamped once it reaches `HERO_TRAVEL`) while the hero's stat
- * cubes fade away over the same range — the search field and export
- * button settle just under the nav row once collapsed. The section
- * title scrolls away normally; the filter chips right below it are
- * pinned via `stickyHeaderIndices` so they stay reachable while cards
- * scroll beneath them.
- *
- * The per-row cards (DriverCard/VehicleCard), their shared stat-bar cell
- * (StatCell) and tone/formatting math (lib/fleetCardHelpers) live in their
- * own files — this screen only owns data loading, filtering, and the
- * crossfade between the two lists.
+ * The fleet workspace: drivers and vehicles, one switch apart. This screen
+ * owns loading, search and filters; the phone layout lives in
+ * `mobile/FleetMobile`, the desktop one in `FleetDesktopView`.
  */
 
-type LicenseFilter = 'all' | 'valid' | 'soon' | 'expired' | 'no_vehicle';
-type StatusFilter = 'all' | 'active' | 'maintenance' | 'disabled' | 'archived';
-
-const CROSSFADE_MS = 140;
-const DOCK_SCROLL_THRESHOLD = 6;
-const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
-// Lets the final "add" action rise to the middle of the visible sheet, while
-// remaining a fixed, modest amount instead of creating a full empty page.
-const FLEET_ACTION_CENTERING_PADDING = 220;
-
-type DriverSheetItem =
-  | { kind: 'chips' }
-  | { kind: 'empty' }
-  | { kind: 'card'; item: DriverRow }
-  | { kind: 'action' };
-
-type VehicleSheetItem =
-  | { kind: 'chips' }
-  | { kind: 'empty' }
-  | { kind: 'card'; item: Vehicle }
-  | { kind: 'action' };
+type LicenseFilter = DriverFilter;
+type StatusFilter = VehicleFilter;
+type ToggleValue = 'drivers' | 'vehicles';
 
 export default function FleetScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'AdminHome'>>();
-  const { companyId, company } = useCompany();
+  const { companyId, company, profile } = useCompany();
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
 
@@ -112,7 +72,6 @@ export default function FleetScreen() {
 
   const [drivers, setDrivers] = useState<DriverRow[]>([]);
   const [driversLoading, setDriversLoading] = useState(true);
-  const [driversRefreshing, setDriversRefreshing] = useState(false);
   const [driversError, setDriversError] = useState<string | null>(null);
   const [driverSearch, setDriverSearch] = useState('');
   const [pendingSigning, setPendingSigning] = useState<Map<string, number>>(new Map());
@@ -212,6 +171,7 @@ export default function FleetScreen() {
     const byState = (s: string) => drivers.filter((d) => expiryState(d.license_expiry) === s).length;
     return {
       all: drivers.length,
+      valid: byState('ok'),
       soon: byState('soon'),
       expired: byState('expired'),
       noVehicle: drivers.filter((d) => !d.vehicle_plate).length,
@@ -246,7 +206,6 @@ export default function FleetScreen() {
   const [vehicleDrivers, setVehicleDrivers] = useState<Map<string, VehicleDriverWithProfile[]>>(new Map());
   const [departmentNames, setDepartmentNames] = useState<Map<string, string>>(new Map());
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
-  const [vehiclesRefreshing, setVehiclesRefreshing] = useState(false);
   const [vehiclesError, setVehiclesError] = useState<string | null>(null);
   const [restoringVehicleId, setRestoringVehicleId] = useState<string | null>(null);
   const [vehicleSearch, setVehicleSearch] = useState('');
@@ -297,8 +256,19 @@ export default function FleetScreen() {
 
   const filteredVehicles = useMemo(() => {
     const q = vehicleSearch.trim().toLowerCase();
+    const insuranceBad = (v: Vehicle) => {
+      const state = expiryState(compliance.get(v.id)?.find((c) => c.item_type === 'insurance_mandatory')?.expiry_date);
+      return state === 'missing' || state === 'expired';
+    };
     return vehicles.filter((v) => {
-      const matchesStatus = status === 'all' ? v.status !== 'archived' : v.status === status;
+      const matchesStatus =
+        status === 'all'
+          ? v.status !== 'archived'
+          : status === 'insurance'
+            ? v.status !== 'archived' && insuranceBad(v)
+            : status === 'no_driver'
+              ? v.status !== 'archived' && !vehicleDrivers.get(v.id)?.length
+              : v.status === status;
       if (!matchesStatus) return false;
       if (!q) return true;
       const driverNamesForVehicle = (vehicleDrivers.get(v.id) ?? [])
@@ -313,7 +283,7 @@ export default function FleetScreen() {
         driverNamesForVehicle.includes(q)
       );
     });
-  }, [vehicles, vehicleSearch, status, vehicleDrivers]);
+  }, [vehicles, vehicleSearch, status, vehicleDrivers, compliance]);
 
   const vehicleCounts = useMemo(
     () => ({
@@ -322,8 +292,14 @@ export default function FleetScreen() {
       maintenance: vehicles.filter((v) => v.status === 'maintenance').length,
       disabled: vehicles.filter((v) => v.status === 'disabled').length,
       archived: vehicles.filter((v) => v.status === 'archived').length,
+      insurance: vehicles.filter((v) => {
+        if (v.status === 'archived') return false;
+        const state = expiryState(compliance.get(v.id)?.find((c) => c.item_type === 'insurance_mandatory')?.expiry_date);
+        return state === 'missing' || state === 'expired';
+      }).length,
+      noDriver: vehicles.filter((v) => v.status !== 'archived' && !vehicleDrivers.get(v.id)?.length).length,
     }),
-    [vehicles]
+    [vehicles, compliance, vehicleDrivers]
   );
 
   const restoreVehicle = async (vehicleId: string) => {
@@ -345,6 +321,25 @@ export default function FleetScreen() {
   /* ---------------------------------------------------------------- */
   /* Shared load + crossfade                                          */
   /* ---------------------------------------------------------------- */
+
+  // The phone's hero shows the unread count and what needs attention.
+  // Both are extras: the fleet works without them.
+  const [unread, setUnread] = useState(0);
+  const [attention, setAttention] = useState<AttentionSummary | null>(null);
+  const loadExtras = useCallback(async () => {
+    if (!companyId || isDesktop) return;
+    const [count, summary] = await Promise.all([
+      countUnreadNotifications(companyId).catch(() => 0),
+      getAttentionSummary(companyId).catch(() => null),
+    ]);
+    setUnread(count);
+    setAttention(summary);
+  }, [companyId, isDesktop]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadExtras();
+    }, [loadExtras])
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -375,23 +370,14 @@ export default function FleetScreen() {
     }, [loadDrivers, loadVehicles])
   );
 
-  const onRefreshDrivers = async () => {
-    setDriversRefreshing(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
     try {
-      const refreshed = await loadDrivers();
-      if (!refreshed) showAlert('רענון הנהגים נכשל', 'בדוק את החיבור ונסה שוב.');
+      const [driversOk, vehiclesOk] = await Promise.all([loadDrivers(), loadVehicles(), loadExtras()]);
+      if (!driversOk || !vehiclesOk) showAlert('הרענון נכשל', 'בדוק את החיבור ונסה שוב.');
     } finally {
-      setDriversRefreshing(false);
-    }
-  };
-
-  const onRefreshVehicles = async () => {
-    setVehiclesRefreshing(true);
-    try {
-      const refreshed = await loadVehicles();
-      if (!refreshed) showAlert('רענון הרכבים נכשל', 'בדוק את החיבור ונסה שוב.');
-    } finally {
-      setVehiclesRefreshing(false);
+      setRefreshing(false);
     }
   };
 
@@ -412,153 +398,6 @@ export default function FleetScreen() {
       setVehiclesLoading(false);
     }
   };
-
-  const [driversOpacity] = useState(() => new Animated.Value(1));
-  const [vehiclesOpacity] = useState(() => new Animated.Value(0));
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(driversOpacity, {
-        toValue: mode === 'drivers' ? 1 : 0,
-        duration: CROSSFADE_MS,
-        easing: EASE_OUT,
-        useNativeDriver: true,
-      }),
-      Animated.timing(vehiclesOpacity, {
-        toValue: mode === 'vehicles' ? 1 : 0,
-        duration: CROSSFADE_MS,
-        easing: EASE_OUT,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [mode, driversOpacity, vehiclesOpacity]);
-
-  /* ---------------------------------------------------------------- */
-  /* Hero + sheet scroll choreography                                  */
-  /* ---------------------------------------------------------------- */
-
-  const navHeight = heroNavHeight(insets.top);
-  const sheetRestTop = navHeight + HERO_CONTENT_HEIGHT + SPACING.xl;
-
-  const [driversScrollY] = useState(() => new Animated.Value(0));
-  const [vehiclesScrollY] = useState(() => new Animated.Value(0));
-  const [dockVisibility] = useState(() => new Animated.Value(1));
-  const dockVisible = useRef(true);
-  const lastScrollOffset = useRef<Record<ToggleValue, number>>({ drivers: 0, vehicles: 0 });
-  const scrollDistance = useRef<Record<ToggleValue, number>>({ drivers: 0, vehicles: 0 });
-
-  const [driversHeroAnim] = useState(() => new Animated.Value(0));
-  const [vehiclesHeroAnim] = useState(() => new Animated.Value(0));
-  const activeHeroAnim = mode === 'drivers' ? driversHeroAnim : vehiclesHeroAnim;
-  const heroCollapsed = useRef<Record<ToggleValue, boolean>>({ drivers: false, vehicles: false });
-
-  const setHeroCollapsed = useCallback(
-    (listMode: ToggleValue, collapsed: boolean) => {
-      if (heroCollapsed.current[listMode] === collapsed) return;
-      heroCollapsed.current[listMode] = collapsed;
-      const anim = listMode === 'drivers' ? driversHeroAnim : vehiclesHeroAnim;
-      Animated.spring(anim, {
-        toValue: collapsed ? HERO_TRAVEL : 0,
-        useNativeDriver: true,
-        stiffness: 220,
-        damping: 30,
-        mass: 1,
-        overshootClamping: true,
-      }).start();
-    },
-    [driversHeroAnim, vehiclesHeroAnim]
-  );
-
-  const setDockVisible = useCallback((visible: boolean) => {
-    if (dockVisible.current === visible) return;
-    dockVisible.current = visible;
-    Animated.spring(dockVisibility, {
-      toValue: visible ? 1 : 0,
-      useNativeDriver: true,
-      stiffness: 260,
-      damping: 30,
-      mass: 1,
-      overshootClamping: true,
-    }).start();
-  }, [dockVisibility]);
-
-  const handleListScroll = useCallback((listMode: ToggleValue, offset: number) => {
-    const previousOffset = lastScrollOffset.current[listMode];
-    lastScrollOffset.current[listMode] = offset;
-
-    const wasCollapsed = heroCollapsed.current[listMode];
-    const threshold = wasCollapsed ? 8 : 28;
-    setHeroCollapsed(listMode, offset > threshold);
-
-    if (offset <= DOCK_SCROLL_THRESHOLD) {
-      scrollDistance.current[listMode] = 0;
-      setDockVisible(true);
-      return;
-    }
-
-    const delta = offset - previousOffset;
-    const accumulated = scrollDistance.current[listMode];
-    scrollDistance.current[listMode] = accumulated !== 0 && Math.sign(accumulated) !== Math.sign(delta)
-      ? delta
-      : accumulated + delta;
-
-    if (Math.abs(scrollDistance.current[listMode]) < DOCK_SCROLL_THRESHOLD) return;
-    setDockVisible(scrollDistance.current[listMode] < 0);
-    scrollDistance.current[listMode] = 0;
-  }, [setDockVisible, setHeroCollapsed]);
-
-  // Animated.event intentionally invokes the listener after render; the refs it
-  // reaches are scroll bookkeeping and never affect rendered output directly.
-  // eslint-disable-next-line react-hooks/refs
-  const onDriversScroll = Animated.event([{ nativeEvent: { contentOffset: { y: driversScrollY } } }], {
-    useNativeDriver: true,
-    listener: (event: { nativeEvent: { contentOffset: { y: number } } }) =>
-      handleListScroll('drivers', event.nativeEvent.contentOffset.y),
-  });
-  // eslint-disable-next-line react-hooks/refs
-  const onVehiclesScroll = Animated.event([{ nativeEvent: { contentOffset: { y: vehiclesScrollY } } }], {
-    useNativeDriver: true,
-    listener: (event: { nativeEvent: { contentOffset: { y: number } } }) =>
-      handleListScroll('vehicles', event.nativeEvent.contentOffset.y),
-  });
-
-  useEffect(() => {
-    setDockVisible(true);
-  }, [mode, setDockVisible]);
-
-  const sheetTranslateY = (heroAnim: Animated.Value) =>
-    heroAnim.interpolate({ inputRange: [0, HERO_TRAVEL], outputRange: [0, -HERO_TRAVEL], extrapolate: 'clamp' });
-
-  // A hair of scale alongside the translate — the sheet reads as a material
-  // settling into place rather than a flat layer sliding on rails.
-  const sheetScale = (heroAnim: Animated.Value) =>
-    heroAnim.interpolate({ inputRange: [0, HERO_TRAVEL], outputRange: [1, 0.996], extrapolate: 'clamp' });
-
-  // On the blue hero glass, cube numbers use the bright "fill" tones (not
-  // the muted "text" tones, which are sized for reading on the white
-  // sheet) — same idea as the spec's bright status-dot variants reserved
-  // for use "on blue background only".
-  const driverStats: [FleetStat, FleetStat, FleetStat] = [
-    { label: 'סה״כ נהגים', value: driverCounts.all, tint: '#fff' },
-    { label: 'רישיון קרוב לפוג', value: driverCounts.soon, tint: FLEET_COLORS.warning.fill },
-    { label: 'רישיון פג', value: driverCounts.expired, tint: FLEET_COLORS.statusDisabledDot },
-  ];
-  const vehicleStats: [FleetStat, FleetStat, FleetStat] = [
-    { label: 'סה״כ רכבים', value: vehicleCounts.all, tint: '#fff' },
-    { label: 'פעילים', value: vehicleCounts.active, tint: FLEET_COLORS.statusActiveDot },
-    { label: 'מושבתים', value: vehicleCounts.disabled + vehicleCounts.maintenance, tint: FLEET_COLORS.statusDisabledDot },
-  ];
-
-  const driverSheetData: DriverSheetItem[] = [
-    { kind: 'chips' },
-    ...(filteredDrivers.length === 0 ? [{ kind: 'empty' as const }] : filteredDrivers.map((item) => ({ kind: 'card' as const, item }))),
-    { kind: 'action' },
-  ];
-  const vehicleSheetData: VehicleSheetItem[] = [
-    { kind: 'chips' },
-    ...(filteredVehicles.length === 0 ? [{ kind: 'empty' as const }] : filteredVehicles.map((item) => ({ kind: 'card' as const, item }))),
-    { kind: 'action' },
-  ];
 
   // Desktop web gets its own layout (sidebar + tables) over the exact same
   // data, filters and navigation; phone and narrow web keep the layout below.
@@ -637,231 +476,53 @@ export default function FleetScreen() {
   }
 
   return (
-    <Screen contentStyle={styles.fleetContent}>
-      <StatusBar barStyle="light-content" />
-
-      <FleetHero
-        scrollY={activeHeroAnim}
-        stats={mode === 'drivers' ? driverStats : vehicleStats}
-        query={mode === 'drivers' ? driverSearch : vehicleSearch}
-        onChangeQuery={mode === 'drivers' ? setDriverSearch : setVehicleSearch}
-        searchPlaceholder={mode === 'drivers' ? 'חפש לפי שם, ת.ז או מספר עובד' : 'חיפוש לפי מספר רישוי'}
-        onAttentionPress={() => navigation.navigate('Attention')}
-      />
-
-      <Animated.View
-        style={[
-          styles.sheet,
-          {
-            top: sheetRestTop,
-            opacity: driversOpacity,
-            transform: [{ translateY: sheetTranslateY(driversHeroAnim) }, { scale: sheetScale(driversHeroAnim) }],
-          },
-        ]}
-        pointerEvents={mode === 'drivers' ? 'auto' : 'none'}
-      >
-       <View style={sheetStyles.sheetInner}>
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: FLEET_COLORS.sheetTo }]} />
-        {driversLoading ? (
-          <LoadingState />
-        ) : driversError && drivers.length === 0 ? (
-          <ErrorState message="לא ניתן לטעון את הנהגים" hint={driversError} onRetry={() => void retryDrivers()} />
-        ) : (
-          <Animated.FlatList
-            style={sheetStyles.flatList}
-            data={driverSheetData}
-            keyExtractor={(entry, i) => (entry.kind === 'card' ? entry.item.id : `${entry.kind}-${i}`)}
-            stickyHeaderIndices={[0]}
-            onScroll={onDriversScroll}
-            scrollEventThrottle={16}
-            contentContainerStyle={[
-              sheetStyles.list,
-              { paddingBottom: FLEET_DOCK_CLEARANCE + FLEET_ACTION_CENTERING_PADDING + insets.bottom },
-            ]}
-            refreshControl={<RefreshControl refreshing={driversRefreshing} onRefresh={onRefreshDrivers} />}
-            renderItem={({ item: entry }) => {
-              if (entry.kind === 'chips') {
-                return (
-                  <View style={sheetStyles.chipsBar}>
-                    <FleetFilterChips<LicenseFilter>
-                      value={licenseFilter}
-                      onChange={setLicenseFilter}
-                      options={[
-                        { value: 'all', label: 'הכל', count: driverCounts.all, icon: 'people-outline' },
-                        { value: 'soon', label: 'רישיון קרוב לפוג', count: driverCounts.soon, icon: 'hourglass-outline' },
-                        { value: 'expired', label: 'רישיון פג', count: driverCounts.expired, icon: 'warning' },
-                        { value: 'no_vehicle', label: 'ללא רכב', count: driverCounts.noVehicle, icon: 'ban-outline' },
-                      ]}
-                      action={{
-                        label: 'ארכיון נהגים',
-                        count: archivedCount,
-                        icon: 'archive-outline',
-                        onPress: () => navigation.navigate('DriverArchive'),
-                      }}
-                    />
-                    <LinearGradient colors={[FLEET_COLORS.chipsBarBg, 'rgba(242,245,249,0)']} style={sheetStyles.chipsBarFade} pointerEvents="none" />
-                  </View>
-                );
-              }
-              if (entry.kind === 'empty') {
-                return (
-                  <EmptyState
-                    icon="people-outline"
-                    title={drivers.length === 0 ? 'עדיין אין נהגים' : 'לא נמצאו נהגים'}
-                    hint={drivers.length === 0 ? 'הוסף את הנהג הראשון של החברה' : undefined}
-                  />
-                );
-              }
-              if (entry.kind === 'action') {
-                return <FleetAddButton label="נהג חדש" onPress={() => navigation.navigate('DriverForm', {})} />;
-              }
-              return (
-                <DriverCard
-                  item={entry.item}
-                  pendingSigningCount={pendingSigning.get(entry.item.id) ?? 0}
-                  onPress={() => navigation.navigate('DriverDetail', { driverId: entry.item.id })}
-                  onPressVehicle={() => navigation.navigate('VehicleDetail', { vehicleId: entry.item.vehicle_id! })}
-                  onCall={() => void call(entry.item.phone)}
-                />
-              );
-            }}
-          />
-        )}
-       </View>
-      </Animated.View>
-
-      <Animated.View
-        style={[
-          styles.sheet,
-          {
-            top: sheetRestTop,
-            opacity: vehiclesOpacity,
-            transform: [{ translateY: sheetTranslateY(vehiclesHeroAnim) }, { scale: sheetScale(vehiclesHeroAnim) }],
-          },
-        ]}
-        pointerEvents={mode === 'vehicles' ? 'auto' : 'none'}
-      >
-       <View style={sheetStyles.sheetInner}>
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: FLEET_COLORS.sheetTo }]} />
-        {vehiclesLoading ? (
-          <LoadingState />
-        ) : vehiclesError && vehicles.length === 0 ? (
-          <ErrorState message="לא ניתן לטעון את הרכבים" hint={vehiclesError} onRetry={() => void retryVehicles()} />
-        ) : (
-          <Animated.FlatList
-            style={sheetStyles.flatList}
-            data={vehicleSheetData}
-            keyExtractor={(entry, i) => (entry.kind === 'card' ? entry.item.id : `${entry.kind}-${i}`)}
-            stickyHeaderIndices={[0]}
-            onScroll={onVehiclesScroll}
-            scrollEventThrottle={16}
-            contentContainerStyle={[
-              sheetStyles.list,
-              { paddingBottom: FLEET_DOCK_CLEARANCE + FLEET_ACTION_CENTERING_PADDING + insets.bottom },
-            ]}
-            refreshControl={<RefreshControl refreshing={vehiclesRefreshing} onRefresh={onRefreshVehicles} />}
-            renderItem={({ item: entry }) => {
-              if (entry.kind === 'chips') {
-                return (
-                  <View style={sheetStyles.chipsBar}>
-                    <FleetFilterChips<StatusFilter>
-                      value={status}
-                      onChange={setStatus}
-                      options={[
-                        { value: 'all', label: 'הכל', count: vehicleCounts.all },
-                        { value: 'active', label: 'פעיל', count: vehicleCounts.active },
-                        { value: 'maintenance', label: 'בטיפול', count: vehicleCounts.maintenance },
-                        { value: 'disabled', label: 'מושבת', count: vehicleCounts.disabled },
-                        { value: 'archived', label: 'בארכיון', count: vehicleCounts.archived },
-                      ]}
-                    />
-                    <LinearGradient colors={[FLEET_COLORS.chipsBarBg, 'rgba(242,245,249,0)']} style={sheetStyles.chipsBarFade} pointerEvents="none" />
-                  </View>
-                );
-              }
-              if (entry.kind === 'empty') {
-                return (
-                  <EmptyState
-                    icon="car-outline"
-                    title={vehicles.length === 0 ? 'עדיין אין רכבים' : 'לא נמצאו רכבים'}
-                    hint={vehicles.length === 0 ? 'הוסף את הרכב הראשון של החברה' : undefined}
-                  />
-                );
-              }
-              if (entry.kind === 'action') {
-                return <FleetAddButton label="רכב חדש" onPress={() => navigation.navigate('VehicleForm', {})} />;
-              }
-              return (
-                <VehicleCard
-                  item={entry.item}
-                  compliance={compliance}
-                  vehicleDrivers={vehicleDrivers}
-                  departmentNames={departmentNames}
-                  onPress={() => navigation.navigate('VehicleDetail', { vehicleId: entry.item.id })}
-                  onRestore={() => restoreVehicle(entry.item.id)}
-                  restoring={restoringVehicleId === entry.item.id}
-                />
-              );
-            }}
-          />
-        )}
-       </View>
-      </Animated.View>
-
-      <FleetDock mode={mode} onModeChange={changeMode} visibility={dockVisibility} />
-
-    </Screen>
+    <FleetMobile
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
+      firstName={profile?.full_name?.trim().split(/\s+/)[0] ?? ''}
+      companyName={company?.name ?? ''}
+      unread={unread}
+      attention={attention}
+      mode={mode}
+      onModeChange={changeMode}
+      refreshing={refreshing}
+      onRefresh={() => void onRefresh()}
+      drivers={filteredDrivers}
+      driverTotal={drivers.length}
+      driverCounts={driverCounts}
+      driverFilter={licenseFilter}
+      onDriverFilter={setLicenseFilter}
+      driverSearch={driverSearch}
+      onDriverSearch={setDriverSearch}
+      driversLoading={driversLoading}
+      driversError={driversError}
+      onRetryDrivers={() => void retryDrivers()}
+      archivedCount={archivedCount}
+      pendingSigning={pendingSigning}
+      vehicles={filteredVehicles}
+      vehicleTotal={vehicleCounts.all}
+      vehicleCounts={vehicleCounts}
+      vehicleFilter={status}
+      onVehicleFilter={setStatus}
+      vehicleSearch={vehicleSearch}
+      onVehicleSearch={setVehicleSearch}
+      vehiclesLoading={vehiclesLoading}
+      vehiclesError={vehiclesError}
+      onRetryVehicles={() => void retryVehicles()}
+      compliance={compliance}
+      vehicleDrivers={vehicleDrivers}
+      departmentNames={departmentNames}
+      restoringVehicleId={restoringVehicleId}
+      onMenu={() => navigation.navigate('Menu')}
+      onNotifications={() => navigation.navigate('Notifications')}
+      onAttention={() => navigation.navigate('Attention')}
+      onArchive={() => navigation.navigate('DriverArchive')}
+      onOpenDriver={(driverId) => navigation.navigate('DriverDetail', { driverId })}
+      onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId })}
+      onCallDriver={(phone) => void call(phone)}
+      onRestoreVehicle={(vehicleId) => void restoreVehicle(vehicleId)}
+      onAddDriver={() => navigation.navigate('DriverForm', {})}
+      onAddVehicle={() => navigation.navigate('VehicleForm', {})}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  // This screen is a dashboard, not a narrow form. It can use the available
-  // desktop canvas while retaining the phone layout at small widths.
-  fleetContent: { maxWidth: 1280 },
-  // Shadow lives on this outer view (no overflow:hidden, or RN clips the
-  // shadow along with the corners) — `sheetInner` below does the actual
-  // rounded clipping + gradient fill.
-  sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    // The entire sheet moves up by HERO_TRAVEL as the hero collapses.
-    // Extend it by the same amount below the viewport so that movement never
-    // exposes the Screen background when the floating dock slides away.
-    bottom: -HERO_TRAVEL,
-    ...FLEET_SHADOWS.sheet,
-  },
-});
-
-const sheetStyles = StyleSheet.create({
-  sheetInner: {
-    flex: 1,
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    overflow: 'hidden',
-  },
-  // Without an explicit flex here the list (a ScrollView under the hood)
-  // sizes itself to its content instead of stretching to sheetInner's
-  // actual height, breaking scrolling for short lists.
-  flatList: { flex: 1 },
-  list: { gap: SPACING.md },
-
-  chipsBar: {
-    backgroundColor: FLEET_COLORS.chipsBarBg,
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.md,
-    // No box-shadow here on purpose — Android's `elevation` shadow ignores
-    // the sheet's `overflow:hidden` clip (sheetInner), so it used to bleed
-    // past the rounded corners as a square patch. A hairline top highlight
-    // plus the fade below is enough separation without it.
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,.9)',
-  },
-  chipsBarFade: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: -20,
-    height: 20,
-  },
-});

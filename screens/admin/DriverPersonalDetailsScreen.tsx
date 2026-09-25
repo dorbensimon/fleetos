@@ -1,38 +1,14 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import {
-  Screen,
-  AppText,
-  Card,
-  InfoRow,
-  LoadingState,
-  ErrorState,
-  SecondaryButton,
-  useToast,
-} from '../../components/ui';
-import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
-import { DriverDossierHero } from '../../components/driverCard/DriverDossierHero';
+import { LoadingState, ErrorState, useToast } from '../../components/ui';
+import { DK, DKText, DriverPage, ErrorPanel, HeroButton, HeroTitle, InfoLine, KitSection, LoadingPanel, Reveal } from '../../components/driverKit';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, SPACING, formatDate } from '../../lib/theme';
+import { formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import {
-  getDriver,
-  listVehicles,
-  listDepartments,
-  listActiveDriverVehicles,
-  listActiveVehicleDrivers,
-  assignDriverToVehicle,
-  unassignVehicleDriver,
-  isPendingAssignmentSyncError,
-  getUserEmail,
-  DriverRow,
-  Vehicle,
-  Department,
-  DriverVehicleAssignment,
-} from '../../lib/adminApi';
+import { getDriver, listVehicles, listDepartments, listActiveDriverVehicles, listActiveVehicleDrivers, assignDriverToVehicle, unassignVehicleDriver, isPendingAssignmentSyncError, getUserEmail, DriverRow, Vehicle, Department, DriverVehicleAssignment } from '../../lib/adminApi';
 import { formatPhone } from '../../lib/phone';
 import { RootStackParamList } from '../../navigation/types';
 import { DriverVehicleAssignmentsCard, confirmVehicleRemoval } from '../../components/driver/DriverVehicleAssignmentsCard';
@@ -224,68 +200,77 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
     );
   }
 
+  const retry = () => {
+    setLoading(true);
+    setLoadError(null);
+    load()
+      .catch((err: any) => setLoadError(err?.message ?? 'טעינת פרטי הנהג נכשלה'))
+      .finally(() => setLoading(false));
+  };
   return (
-    <Screen>
-      <AdminGradientBackground />
-      <DriverDossierHero title="פרטי נהג" subtitle={driver?.full_name ?? undefined} icon="person-outline" insetTop={insets.top} onBack={() => navigation.goBack()} />
-      <View style={styles.editAction}>
-        <SecondaryButton label="עריכה" icon="pencil-outline" onPress={() => navigation.navigate('DriverForm', { driverId })} />
-      </View>
-
-      {loading ? (
-        <LoadingState />
-      ) : loadError ? (
-        <ErrorState
-          message={loadError}
-          onRetry={() => {
-            setLoading(true);
-            setLoadError(null);
-            load()
-              .catch((err: any) => setLoadError(err?.message ?? 'טעינת פרטי הנהג נכשלה'))
-              .finally(() => setLoading(false));
-          }}
+    <DriverPage
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
+      hero={
+        <HeroTitle
+          title="פרטי נהג"
+          subtitle={driver?.full_name ?? ' '}
+          onBack={() => navigation.goBack()}
+          right={<HeroButton icon="create-outline" label="עריכת פרטי הנהג" onPress={() => navigation.navigate('DriverForm', { driverId })} />}
         />
+      }
+    >
+      {loading ? (
+        <LoadingPanel />
+      ) : loadError ? (
+        <ErrorPanel message="טעינת פרטי הנהג נכשלה" hint={loadError} onRetry={retry} />
       ) : (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Card style={styles.card}>
-            <InfoRow label="שם מלא" value={driver?.full_name} />
-            <InfoRow label="חברה" value={company?.name} />
-            <InfoRow label="מייל להתחברות" value={email} />
-            <InfoRow label="טלפון" value={driver?.phone ? formatPhone(driver.phone) : null} />
-            <InfoRow label="תעודת זהות" value={driver?.national_id} />
-            <InfoRow label="מספר עובד" value={driver?.employee_number} />
-            <InfoRow label="מחלקה" value={departmentName} />
-            <InfoRow label="דרגת רישיון" value={driver?.license_classes} />
-            <InfoRow label="תוקף רישיון" value={driver?.license_expiry} />
-
-            <DriverVehicleAssignmentsCard
-              driverVehicles={driverVehicles}
-              availableVehicles={availableVehicles}
-              addingVehicleId={addingVehicleId}
-              busyId={busyId}
-              onSelectVehicle={setAddingVehicleId}
-              onAddVehicle={addVehicle}
-              onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, returnTo: 'driver', fromDriverId: driverId })}
-              onRemoveVehicle={confirmRemoveVehicle}
-            />
-
-            <InfoRow label="תאריך הצטרפות לאפליקציה" value={driver?.created_at ? formatDate(driver.created_at) : null} />
-          </Card>
-        </ScrollView>
+        <>
+          <Reveal index={0}>
+            <KitSection>
+              <InfoLine first icon="person" label="שם מלא" value={driver?.full_name} />
+              <InfoLine icon="mail" label="מייל להתחברות" value={email} ltr />
+              <InfoLine icon="call" label="טלפון" value={driver?.phone ? formatPhone(driver.phone) : null} ltr />
+              <InfoLine icon="card" label="תעודת זהות" value={driver?.national_id} ltr />
+            </KitSection>
+          </Reveal>
+          <Reveal index={1}>
+            <KitSection title="עבודה ורישיון">
+              <InfoLine first icon="business" label="חברה" value={company?.name} />
+              <InfoLine icon="briefcase" label="מספר עובד" value={driver?.employee_number} />
+              <InfoLine icon="people" label="מחלקה" value={departmentName} />
+              <InfoLine icon="ribbon" label="דרגת רישיון" value={driver?.license_classes} />
+              <InfoLine icon="calendar" label="תוקף רישיון" value={driver?.license_expiry ? formatDate(driver.license_expiry) : null} />
+            </KitSection>
+          </Reveal>
+          <Reveal index={2}>
+            <KitSection title="רכבים משויכים" surfaceStyle={styles.pad}>
+              <DriverVehicleAssignmentsCard
+                driverVehicles={driverVehicles}
+                availableVehicles={availableVehicles}
+                addingVehicleId={addingVehicleId}
+                busyId={busyId}
+                onSelectVehicle={setAddingVehicleId}
+                onAddVehicle={addVehicle}
+                onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, returnTo: 'driver', fromDriverId: driverId })}
+                onRemoveVehicle={confirmRemoveVehicle}
+              />
+            </KitSection>
+          </Reveal>
+          {!!driver?.created_at && (
+            <DKText variant="caption" color={DK.faint} style={styles.footer}>
+              {`הצטרף לאפליקציה ב־${formatDate(driver.created_at)}`}
+            </DKText>
+          )}
+        </>
       )}
-    </Screen>
+    </DriverPage>
   );
 }
 
 const styles = StyleSheet.create({
-  // Without an explicit flex here, ScrollView (a plain div under react-native-web)
-  // sizes to its own content instead of stretching into the remaining flex
-  // space under ScreenHeader, so on web the whole page scrolls instead of
-  // just this area.
-  scroll: { flex: 1 },
-  editAction: { alignItems: 'flex-start', paddingHorizontal: SPACING.lg, marginTop: -SPACING.sm, marginBottom: SPACING.sm },
-  content: { paddingBottom: 40 },
-  card: { margin: SPACING.lg, gap: 4 },
+  pad: { padding: 16 },
+  footer: { textAlign: 'center' },
 });
 
 const desktopStyles = StyleSheet.create({

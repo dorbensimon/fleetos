@@ -4,6 +4,8 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './Text';
 import { COLORS, RADIUS, FONT } from '../../lib/theme';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DK } from '../driverKit/theme';
 
 /**
  * Time input, mirroring DateField's per-platform behaviour: a native
@@ -47,6 +49,7 @@ export function TimeField({
   hasError?: boolean;
   disabled?: boolean;
 }) {
+  const desktop = useIsDesktop();
   const [showPicker, setShowPicker] = useState(false);
   const [webText, setWebText] = useState(value ?? '');
 
@@ -69,7 +72,7 @@ export function TimeField({
 
   if (Platform.OS === 'web') {
     return (
-      <View style={[styles.box, hasError && styles.boxError, disabled && styles.boxDisabled]}>
+      <View style={[styles.box, !desktop && kitBox, hasError && styles.boxError, disabled && styles.boxDisabled]}>
         <Ionicons name="time-outline" size={17} color={COLORS.textFaint} />
         <TextInput
           value={webText}
@@ -109,7 +112,7 @@ export function TimeField({
       <TouchableOpacity
         activeOpacity={disabled ? 1 : 0.8}
         onPress={openPicker}
-        style={[styles.box, hasError && styles.boxError, disabled && styles.boxDisabled]}
+        style={[styles.box, !desktop && kitBox, hasError && styles.boxError, disabled && styles.boxDisabled]}
       >
         <Ionicons name="time-outline" size={17} color={COLORS.textFaint} />
         <AppText style={[styles.value, !value && styles.placeholder]}>{value || placeholder}</AppText>
@@ -192,3 +195,5 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
 });
+
+const kitBox = { height: undefined, minHeight: 52, borderRadius: 16, backgroundColor: DK.surfaceSunk, borderColor: 'transparent' } as const;

@@ -1,39 +1,27 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { ScrollView, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, View, TextInput, Switch, Animated } from 'react-native';
-import { BrandLoader } from '../../components/ui/BrandLoader';
+import React, { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
-import { LinearGradient } from 'expo-linear-gradient';
-import { ADMIN_BACKGROUND_COLORS, ADMIN_BACKGROUND_LOCATIONS } from '../../components/admin/AdminGradientBackground';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { AppText, BackButton, LoadingState, useToast } from '../../components/ui';
-import { formScreenStyles } from '../../components/admin/formScreenStyles';
-import { FormFieldRow } from '../../components/ui/FormFieldRow';
+import { LoadingState, useToast } from '../../components/ui';
+import { DK, DKText, DriverPage, EditField, HeroTitle, InfoLine, KitInput, KitSection, LoadingPanel, PrimaryAction, Pressy, Reveal, STATUS } from '../../components/driverKit';
+import { DateField } from '../../components/ui/DateField';
 import { Select } from '../../components/ui/Select';
-import { COLORS, CONTENT_MAX_WIDTH, SPACING, ACCENT_SHADOW, FONT, FONT_SIZE, BRAND } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
 import { getDriver, updateDriver, createDriverAccount, listDepartments, getUserEmail, type Department } from '../../lib/adminApi';
 import { formatPhone } from '../../lib/phone';
 import { RootStackParamList } from '../../navigation/types';
 import { departmentOptions, driverEditableFieldsFromRow, isStaleDepartmentError, LICENSE_CLASS_OPTIONS } from '../../lib/driverFields';
-import {
-  countFilledRequiredDriverFields,
-  dateOnlyIsoFromLocalDate,
-  formatDateDots,
-  getRequiredDriverFields,
-  validateDriverForm,
-} from '../../lib/driverFormValidation';
+import { countFilledRequiredDriverFields, getRequiredDriverFields, validateDriverForm } from '../../lib/driverFormValidation';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DriverFormDesktopView } from '../../components/desktop/DriverFormDesktopView';
-import { BrandSymbol } from '../../components/ui/Brand';
+import { ConsentCheck } from '../../components/legal/ConsentCheck';
+import { DRIVER_DATA_NOTICE } from '../../lib/legal/documents';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverForm'>;
-type FieldKey = keyof FormState;
 
 const NEW_DRIVER_LICENSE_OPTIONS = [
   { value: 'B', label: 'B', description: 'רכב פרטי' },
@@ -44,8 +32,6 @@ const NEW_DRIVER_LICENSE_OPTIONS = [
   { value: 'A', label: 'A', description: 'דו-גלגלי' },
   { value: '1', label: '1', description: 'טרקטור' },
 ] as const;
-
-const CREATE_HEADER_HEIGHT = 128;
 
 interface FormState {
   full_name: string;
@@ -58,7 +44,8 @@ interface FormState {
   license_classes_2: string;
   license_expiry: string;
   department_id: string | null;
-  smsInvite: boolean;
+  /** New driver only: the manager confirms the driver knows their details are kept in icar. */
+  dataNotice: boolean;
   showPassword: boolean;
 }
 
@@ -73,7 +60,7 @@ const EMPTY: FormState = {
   license_classes_2: '',
   license_expiry: '',
   department_id: null,
-  smsInvite: true,
+  dataNotice: false,
   showPassword: false,
 };
 
@@ -90,12 +77,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [draftLicenseExpiry, setDraftLicenseExpiry] = useState<Date | null>(null);
-  const [focusedField, setFocusedField] = useState<FieldKey | null>(null);
 
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollY = useRef(new Animated.Value(0)).current;
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -135,7 +117,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           license_classes_2: editable.license_classes_2,
           license_expiry: editable.license_expiry,
           department_id: editable.department_id,
-          smsInvite: true,
+                  dataNotice: false,
           showPassword: false,
         });
       }
@@ -239,32 +221,6 @@ export default function DriverFormScreen({ route, navigation }: Props) {
     }
   };
 
-  const openDatePicker = () => {
-    setDraftLicenseExpiry(form.license_expiry ? new Date(form.license_expiry) : new Date());
-    setShowDatePicker(true);
-  };
-
-  const handleDateChange = (_: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-      if (selectedDate) {
-        const iso = dateOnlyIsoFromLocalDate(selectedDate);
-        set('license_expiry', iso);
-      }
-      return;
-    }
-
-    if (selectedDate) {
-      setDraftLicenseExpiry(selectedDate);
-    }
-  };
-
-  const confirmDatePicker = () => {
-    const selectedDate = draftLicenseExpiry ?? new Date();
-    set('license_expiry', dateOnlyIsoFromLocalDate(selectedDate));
-    setShowDatePicker(false);
-  };
-
   if (loading) {
     if (isDesktop) {
       return (
@@ -274,9 +230,9 @@ export default function DriverFormScreen({ route, navigation }: Props) {
       );
     }
     return (
-      <LinearGradient colors={ADMIN_BACKGROUND_COLORS} locations={ADMIN_BACKGROUND_LOCATIONS} style={styles.screen}>
-        <LoadingState />
-      </LinearGradient>
+      <DriverPage insetTop={insets.top} insetBottom={insets.bottom} hero={<HeroTitle title={isEdit ? 'עריכת נהג' : 'נהג חדש'} onBack={() => navigation.goBack()} />}>
+        <LoadingPanel />
+      </DriverPage>
     );
   }
 
@@ -285,13 +241,12 @@ export default function DriverFormScreen({ route, navigation }: Props) {
   const progress = filledCount / requiredFields.length;
   const remainingCount = requiredFields.length - filledCount;
 
-  const canSubmit = filledCount === requiredFields.length;
+  const fieldsDone = filledCount === requiredFields.length;
+  const canSubmit = fieldsDone && (isEdit || form.dataNotice);
   const liveErrors = validateDriverForm(form, isEdit);
   const screenTitle = isEdit ? 'עריכת נהג' : 'נהג חדש';
   const isDriverSelfEdit = isEdit && profile?.role === 'driver';
   const displayTitle = isDriverSelfEdit ? 'הפרטים שלי' : screenTitle;
-  // An existing driver's page must never be presented as a new-driver flow.
-  const backLabel = isEdit || isDriverSelfEdit ? 'חזור' : 'נהגים';
   const ctaLabel = isEdit ? 'שמור שינויים' : 'צור נהג';
   const selectedLicense =
     NEW_DRIVER_LICENSE_OPTIONS.find((option) => option.value === form.license_classes) ??
@@ -308,7 +263,9 @@ export default function DriverFormScreen({ route, navigation }: Props) {
 
   const remainingText = canSubmit
     ? (isEdit ? 'השינויים יישמרו בפרטי הנהג' : 'הנהג יתווסף לצי ויקבל הרשאות מיד')
-    : remainingCount === 1
+    : fieldsDone
+      ? 'נותר לאשר שהנהג יודע על שמירת הפרטים'
+      : remainingCount === 1
       ? 'נותר שדה חובה אחד'
       : `נותרו ${remainingCount} שדות חובה`;
 
@@ -334,532 +291,148 @@ export default function DriverFormScreen({ route, navigation }: Props) {
     );
   }
 
+  const licenseSelectOptions = licenseOptions.map((option) => ({ value: option.value, label: `${option.label}${option.description ? ` — ${option.description}` : ''}` }));
   return (
-    <View style={styles.screen}>
-      <LinearGradient colors={ADMIN_BACKGROUND_COLORS} locations={ADMIN_BACKGROUND_LOCATIONS} style={styles.halo} />
-      {/* Header דביק */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFill} />
-        <View style={styles.headerTop}>
-          <BackButton
-            onPress={() => navigation.goBack()}
-            accessibilityLabel={backLabel === 'חזור' ? 'חזור' : 'חזרה לנהגים'}
+    <DriverPage
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
+      hero={
+        <View>
+          <HeroTitle title={displayTitle} subtitle={form.full_name.trim() || (isEdit ? 'עדכון פרטי הנהג' : 'שלושה צעדים והנהג בצי')} onBack={() => navigation.goBack()} />
+          <View style={styles.progress} accessible accessibilityLabel={`${filledCount} מתוך ${requiredFields.length} שדות חובה מולאו`}>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${Math.max(4, progress * 100)}%` }]} />
+            </View>
+            <DKText variant="micro" color={DK.onNightMuted} ltr>
+              {`${filledCount}/${requiredFields.length}`}
+            </DKText>
+          </View>
+        </View>
+      }
+      footer={
+        <View style={styles.footer}>
+          <PrimaryAction label={canSubmit ? ctaLabel : fieldsDone ? 'נותר לסמן את האישור' : 'השלמת שדות החובה'} icon={isEdit ? 'checkmark' : 'person-add'} onPress={() => void save()} loading={saving} disabled={!canSubmit} />
+          <DKText variant="caption" color={canSubmit ? STATUS.ok.fg : DK.muted} style={styles.center}>
+            {remainingText}
+          </DKText>
+        </View>
+      }
+    >
+      <Reveal index={0}>
+        <KitSection>
+          <EditField first label="שם מלא" required value={form.full_name} onChangeText={(v) => set('full_name', v)} error={errors.full_name} placeholder="לדוגמה: דני לוי" />
+          <EditField label="טלפון" required value={formatPhone(form.phone)} onChangeText={(v) => set('phone', v.replace(/\D/g, ''))} error={errors.phone} placeholder="052-7898655" keyboardType="phone-pad" ltr />
+          <EditField label="תעודת זהות" required value={form.national_id} onChangeText={(v) => set('national_id', v.replace(/\D/g, '').slice(0, 9))} error={errors.national_id} placeholder="9 ספרות" keyboardType="number-pad" maxLength={9} ltr />
+          <EditField label="מספר עובד" value={form.employee_number} onChangeText={(v) => set('employee_number', v)} placeholder="לא חובה" ltr />
+          <EditField
+            label="מחלקה"
+            editor={<Select value={form.department_id} onChange={(v) => set('department_id', v)} options={departments} placeholder={departments.length ? 'בחירת מחלקה' : 'לא הוגדרו מחלקות'} allowClear />}
           />
-          <AppText weight="bold" style={styles.headerTitle}>{displayTitle}</AppText>
-          {/* Balances the back action so the title stays visually centered. */}
-          <View style={styles.headerSideSpacer}>
-            <BrandSymbol size={22} />
-          </View>
-        </View>
+        </KitSection>
+      </Reveal>
 
-        {/* Progress bar */}
-        <View style={styles.progressRow}>
-          <AppText style={styles.progressCounter}>{filledCount}/{requiredFields.length}</AppText>
-          <View style={styles.progressTrack}>
-            <LinearGradient
-              colors={BRAND.heroGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[styles.progressFill, { width: `${progress * 100}%` }]}
-            />
-          </View>
-        </View>
-      </View>
-
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={[
-            styles.content,
-            { paddingTop: CREATE_HEADER_HEIGHT + SPACING.lg, paddingBottom: insets.bottom + SPACING.xl },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-          scrollEventThrottle={16}
-        >
-          {/* כרטיס זהות */}
-          <View style={styles.heroCard}>
-            <View style={styles.avatar}>
-              <LinearGradient colors={BRAND.heroGradient} style={styles.avatarGradient}>
-                <Ionicons name="person" size={38} color="#FFFFFF" />
-              </LinearGradient>
-              <View style={styles.avatarBadge}>
-                <Ionicons name="add" size={16} color={COLORS.accent} />
-              </View>
-            </View>
-            <View style={styles.heroText}>
-              <AppText weight="bold" style={styles.heroName}>
-                {form.full_name || 'נהג ללא שם'}
-              </AppText>
-              <View style={styles.heroBadges}>
-                <View style={styles.glassBadge}>
-                  <AppText weight="bold" style={styles.glassBadgeText}>
-                    {selectedLicense
-                      ? `דרגה ${selectedLicense.label}`
-                      : isEdit
-                        ? 'נהג קיים'
-                        : 'נהג חדש'}
-                  </AppText>
-                </View>
-                <AppText style={styles.heroCaption}>הוסף תמונה</AppText>
-              </View>
-            </View>
-          </View>
-
-          {/* פרטים אישיים */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionDot} />
-              <AppText weight="bold" style={styles.sectionTitle}>פרטים אישיים</AppText>
-            </View>
-            <View style={styles.card}>
-              <FormRow
-                fieldKey="full_name"
-                focusedField={focusedField}
-                setFocusedField={setFocusedField}
-                label="שם מלא *"
-                value={form.full_name}
-                onChangeText={(v) => set('full_name', v)}
-                error={errors.full_name}
-                valid={!!form.full_name.trim() && !liveErrors.full_name}
-                placeholder="לדוגמה: דני לוי"
-                accessibilityLabel="שם מלא"
-              />
-              <FormRow
-                fieldKey="phone"
-                focusedField={focusedField}
-                setFocusedField={setFocusedField}
-                label="טלפון *"
-                value={formatPhone(form.phone)}
-                onChangeText={(v) => set('phone', v.replace(/\D/g, ''))}
-                error={errors.phone}
-                valid={!!form.phone.trim() && !liveErrors.phone}
-                placeholder="052-7898655"
-                keyboardType="phone-pad"
-                ltr
-                accessibilityLabel="טלפון"
-              />
-              <FormRow
-                fieldKey="national_id"
-                focusedField={focusedField}
-                setFocusedField={setFocusedField}
-                label="תעודת זהות *"
-                value={form.national_id}
-                onChangeText={(v) => set('national_id', v.replace(/\D/g, '').slice(0, 9))}
-                error={errors.national_id}
-                valid={!!form.national_id.trim() && !liveErrors.national_id}
-                placeholder="9 ספרות"
-                keyboardType="number-pad"
-                maxLength={9}
-                ltr
-                accessibilityLabel="תעודת זהות"
-              />
-              <FormRow
-                fieldKey="employee_number"
-                focusedField={focusedField}
-                setFocusedField={setFocusedField}
-                label="מספר עובד"
-                value={form.employee_number}
-                onChangeText={(v) => set('employee_number', v)}
-                valid={!!form.employee_number.trim()}
-                placeholder="אופציונלי"
-                ltr
-                accessibilityLabel="מספר עובד"
-              />
-              <View style={[styles.row, styles.rowLast]}>
-                <View style={styles.focusRail} />
-                <AppText style={styles.label}>מחלקה</AppText>
-                <View style={styles.rowValue}>
-                  <View style={{ flex: 1 }}>
-                    <Select
-                      value={form.department_id}
-                      onChange={(v) => set('department_id', v)}
-                      options={departments}
-                      placeholder={departments.length ? 'בחר מחלקה' : 'לא הוגדרו מחלקות'}
-                      allowClear
-                    />
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* רישיון נהיגה */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionDot} />
-              <AppText weight="bold" style={styles.sectionTitle}>רישיון נהיגה</AppText>
-            </View>
-            <View style={styles.licenseCardOuter}>
-              <View style={styles.licenseHeader}>
-                <AppText weight="bold" style={styles.rowLabel}>דרגת רישיון *</AppText>
-                <AppText weight="bold" style={styles.licenseHeaderDesc}>
-                  {selectedLicense?.description || 'בחר דרגה'}
-                </AppText>
-              </View>
-
+      <Reveal index={1}>
+        <KitSection title="רישיון נהיגה">
+          <EditField
+            first
+            label="דרגת רישיון"
+            required
+            error={errors.license_classes}
+            editor={
               <Select
                 value={form.license_classes || null}
                 onChange={(value) => {
                   set('license_classes', value ?? '');
                   if (!value || value === form.license_classes_2) set('license_classes_2', '');
                 }}
-                options={licenseOptions.map((option) => ({ value: option.value, label: `${option.label}${option.description ? ` — ${option.description}` : ''}` }))}
-                placeholder="בחר דרגת רישיון"
+                options={licenseSelectOptions}
+                placeholder="בחירת דרגה"
                 hasError={!!errors.license_classes}
               />
-              {errors.license_classes && <AppText style={styles.error}>{errors.license_classes}</AppText>}
-
-              {form.license_classes && (
-                <>
-                  <AppText weight="bold" style={[styles.rowLabel, { marginTop: 18, marginBottom: 8 }]}>דרגת רישיון נוספת <AppText style={styles.optionalText}>(אופציונלי)</AppText></AppText>
-                  <Select
-                    value={form.license_classes_2 || null}
-                    onChange={(value) => set('license_classes_2', value ?? '')}
-                    options={licenseOptions
-                      .filter((option) => option.value !== form.license_classes)
-                      .map((option) => ({ value: option.value, label: `${option.label}${option.description ? ` — ${option.description}` : ''}` }))}
-                    placeholder="בחר דרגה נוספת (אם יש)"
-                    allowClear
-                  />
-                </>
-              )}
-
-              <View style={styles.divider} />
-
-              <TouchableOpacity
-                style={styles.row}
-                onPress={openDatePicker}
-                accessibilityRole="button"
-                accessibilityLabel="בחירת תוקף רישיון"
-              >
-                <View style={styles.focusRail} />
-                <AppText style={styles.label}>תוקף רישיון *</AppText>
-                <View style={styles.rowValue}>
-                  <AppText style={[styles.value, !form.license_expiry && { color: COLORS.textFaint }]}>
-                    {formatDateDots(form.license_expiry) || 'לא נבחר תאריך'}
-                  </AppText>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={openDatePicker}
-                    accessibilityRole="button"
-                    accessibilityLabel="בחר תאריך"
-                  >
-                    <AppText style={styles.dateButtonText}>בחר תאריך</AppText>
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-              {errors.license_expiry && <AppText style={styles.error}>{errors.license_expiry}</AppText>}
-
-              {form.license_expiry && (
-                <View style={styles.warningBox}>
-                  <Ionicons name="alert-circle-outline" size={14} color={COLORS.warnText} />
-                  <AppText style={styles.warningText}>
-                    נשלח תזכורת אוטומטית 30 יום לפני פקיעת התוקף.
-                  </AppText>
-                </View>
-              )}
-            </View>
-          </View>
-
-          {isEdit && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionDot} />
-                <AppText weight="bold" style={styles.sectionTitle}>גישה לאפליקציה</AppText>
-              </View>
-              <View style={styles.card}>
-                <View style={[styles.row, styles.rowLast]}>
-                  <View style={styles.focusRail} />
-                  <AppText style={styles.label}>מייל</AppText>
-                  <AppText style={[styles.value, styles.readOnlyEmail]} numberOfLines={1}>
-                    {form.email || 'לא נמצא מייל'}
-                  </AppText>
-                  <Ionicons name="lock-closed-outline" size={15} color={COLORS.textFaint} />
-                </View>
-                <AppText style={styles.readOnlyHint}>המייל משמש להתחברות ולא ניתן לשינוי ממסך זה.</AppText>
-              </View>
-            </View>
-          )}
-
-          {!isEdit && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionDot} />
-                <AppText weight="bold" style={styles.sectionTitle}>גישה לאפליקציה</AppText>
-              </View>
-              <View style={styles.card}>
-                <FormRow
-                  fieldKey="email"
-                  focusedField={focusedField}
-                  setFocusedField={setFocusedField}
-                  label="מייל *"
-                  value={form.email}
-                  onChangeText={(v) => set('email', v)}
-                  error={errors.email}
-                  valid={!!form.email.trim() && !liveErrors.email}
-                  placeholder="name@company.com"
-                  keyboardType="email-address"
-                  ltr
-                  accessibilityLabel="מייל"
+            }
+          />
+          {!!form.license_classes && (
+            <EditField
+              label="דרגה נוספת"
+              editor={
+                <Select
+                  value={form.license_classes_2 || null}
+                  onChange={(value) => set('license_classes_2', value ?? '')}
+                  options={licenseSelectOptions.filter((option) => option.value !== form.license_classes)}
+                  placeholder="אם יש"
+                  allowClear
                 />
-                <View style={[styles.row, styles.rowLast, focusedField === 'password' && styles.rowFocused]}>
-                  <View style={[styles.focusRail, focusedField === 'password' && styles.focusRailActive]} />
-                  <AppText style={styles.label}>סיסמה *</AppText>
-                  <View style={styles.rowValue}>
-                    <TextInput
+              }
+            />
+          )}
+          <EditField
+            label="תוקף רישיון"
+            required
+            error={errors.license_expiry}
+            hint={form.license_expiry ? 'תקבל התראה לפני שהתוקף פג.' : undefined}
+            editor={<DateField value={form.license_expiry || null} onChange={(v) => set('license_expiry', v ?? '')} placeholder="בחירת תאריך" hasError={!!errors.license_expiry} />}
+          />
+        </KitSection>
+      </Reveal>
+
+      <Reveal index={2}>
+        <KitSection title="גישה לאפליקציה">
+          {isEdit ? (
+            <InfoLine first icon="mail" label="מייל להתחברות" value={form.email || null} ltr locked />
+          ) : (
+            <>
+              <EditField first label="מייל" required value={form.email} onChangeText={(v) => set('email', v)} error={errors.email} placeholder="name@company.com" keyboardType="email-address" ltr autoComplete="off" />
+              <EditField
+                label="סיסמה זמנית"
+                required
+                error={errors.password}
+                hint="לפחות 4 ספרות. בכניסה הראשונה הנהג יקבע סיסמה משלו."
+                editor={
+                  <View style={styles.password}>
+                    <KitInput
                       value={form.password}
                       onChangeText={(v) => set('password', v)}
-                      onFocus={() => setFocusedField('password')}
-                      onBlur={() => setFocusedField(null)}
                       secureTextEntry={!form.showPassword}
-                      placeholder="לפחות 4 ספרות"
+                      placeholder="••••"
                       keyboardType="number-pad"
-                      placeholderTextColor={COLORS.textFaint}
-                      style={[styles.input, styles.ltrInput, { color: COLORS.text }]}
-                      accessibilityLabel="סיסמה"
+                      ltr
+                      hasError={!!errors.password}
+                      accessibilityLabel="סיסמה זמנית"
+                      style={styles.flex}
                     />
-                    <TouchableOpacity
-                      onPress={() => set('showPassword', !form.showPassword)}
-                      hitSlop={8}
-                      style={styles.passwordToggle}
-                      accessibilityRole="button"
-                      accessibilityLabel={form.showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
-                    >
-                      <AppText weight="bold" style={styles.passwordToggleText}>
-                        {form.showPassword ? 'הסתר' : 'הצג'}
-                      </AppText>
-                    </TouchableOpacity>
+                    <Pressy onPress={() => set('showPassword', !form.showPassword)} accessibilityLabel={form.showPassword ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'} style={styles.eye} pressScale={0.92}>
+                      <Ionicons name={form.showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={DK.accent} />
+                    </Pressy>
                   </View>
-                </View>
-                {errors.password && <AppText style={styles.error}>{errors.password}</AppText>}
-              </View>
-
-              <View style={[styles.card, styles.smsCard]}>
-                <View style={styles.smsHeader}>
-                  <View>
-                    <AppText weight="bold" style={styles.smsTitle}>שלח הזמנה ב־SMS</AppText>
-                    <AppText style={styles.smsCaption}>הנהג יקבל קישור להורדת האפליקציה</AppText>
-                  </View>
-                  <Switch
-                    value={form.smsInvite}
-                    onValueChange={(v) => set('smsInvite', v)}
-                    trackColor={{ false: COLORS.fieldBorder, true: COLORS.okText }}
-                    thumbColor={COLORS.card}
-                    ios_backgroundColor={COLORS.fieldBorder}
-                    accessibilityRole="switch"
-                    accessibilityLabel="שלח הזמנה ב-SMS"
-                    accessibilityState={{ checked: form.smsInvite }}
-                  />
-                </View>
-              </View>
-            </View>
-          )}
-          <View style={styles.footer}>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={save}
-              disabled={!canSubmit || saving}
-              style={[styles.cta, !canSubmit && styles.ctaDisabled, canSubmit && ACCENT_SHADOW]}
-              accessibilityRole="button"
-              accessibilityLabel={canSubmit ? ctaLabel : 'השלם את שדות החובה'}
-            >
-              {saving ? (
-                <BrandLoader color="#FFFFFF" accessibilityLabel="שומר" />
-              ) : (
-                <>
-                  <Ionicons name={isEdit ? 'checkmark-circle' : 'add-circle'} size={18} color={canSubmit ? '#FFFFFF' : 'rgba(14,30,43,.35)'} />
-                  <AppText weight="bold" style={[styles.ctaText, !canSubmit && styles.ctaTextDisabled]}>
-                    {canSubmit ? ctaLabel : 'השלם את שדות החובה'}
-                  </AppText>
-                </>
-              )}
-            </TouchableOpacity>
-            <AppText style={styles.remainingText}>
-              {canSubmit
-                ? (isEdit ? 'השינויים יישמרו בפרטי הנהג' : 'הנהג יתווסף לצי ויקבל הרשאות מיד')
-                : remainingCount === 1
-                  ? 'נותר שדה חובה אחד'
-                  : `נותרו ${remainingCount} שדות חובה`}
-            </AppText>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      {/* Date picker */}
-      {showDatePicker && (
-        Platform.OS === 'ios' ? (
-          <View style={styles.dateSheetLayer}>
-            <TouchableOpacity
-              activeOpacity={1}
-              style={StyleSheet.absoluteFill}
-              onPress={() => setShowDatePicker(false)}
-              accessibilityRole="button"
-              accessibilityLabel="סגור בחירת תאריך"
-            >
-              <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
-              <View style={styles.dateSheetScrim} />
-            </TouchableOpacity>
-            <View style={[styles.dateSheet, { marginBottom: insets.bottom + 106 }]}>
-              <View style={styles.dateSheetHeader}>
-                <TouchableOpacity onPress={() => setShowDatePicker(false)} hitSlop={8}>
-                  <AppText weight="bold" style={styles.dateSheetCancel}>ביטול</AppText>
-                </TouchableOpacity>
-                <AppText weight="bold" style={styles.dateSheetTitle}>תוקף רישיון</AppText>
-                <TouchableOpacity onPress={confirmDatePicker} hitSlop={8}>
-                  <AppText weight="bold" style={styles.dateSheetConfirm}>אישור</AppText>
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={draftLicenseExpiry ?? new Date()}
-                mode="date"
-                display="spinner"
-                onChange={handleDateChange}
-                style={styles.iosDatePicker}
+                }
               />
-            </View>
-          </View>
-        ) : (
-          <DateTimePicker
-            value={form.license_expiry ? new Date(form.license_expiry) : new Date()}
-            mode="date"
-            display="default"
-            onChange={handleDateChange}
-          />
-        )
+              <View style={styles.noticeRule} />
+              <ConsentCheck value={form.dataNotice} onChange={(v) => set('dataNotice', v)} label={DRIVER_DATA_NOTICE} />
+              <DKText variant="caption" color={DK.accent} accessibilityRole="link" onPress={() => navigation.navigate('Legal', { doc: 'privacy' })} style={styles.noticeLink}>
+                מדיניות הפרטיות
+              </DKText>
+            </>
+          )}
+        </KitSection>
+      </Reveal>
+      {isEdit && (
+        <DKText variant="caption" color={DK.muted} style={styles.center}>
+          המייל משמש להתחברות. לשינוי — מתוך תיק הנהג.
+        </DKText>
       )}
-    </View>
+    </DriverPage>
   );
 }
 
-interface FormRowProps {
-  label: string;
-  value: string;
-  onChangeText: (v: string) => void;
-  error?: string;
-  valid?: boolean;
-  placeholder?: string;
-  keyboardType?: any;
-  ltr?: boolean;
-  last?: boolean;
-  maxLength?: number;
-  fieldKey: FieldKey;
-  focusedField: FieldKey | null;
-  setFocusedField: (field: FieldKey | null) => void;
-  accessibilityLabel?: string;
-}
-
-function FormRow(props: FormRowProps) {
-  return <FormFieldRow {...props} errorStyle={styles.error} />;
-}
-
 const styles = StyleSheet.create({
-  ...formScreenStyles,
-  heroCaption: { fontSize: FONT_SIZE.sm, color: BRAND.inkSecondary },
-  row: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    paddingRight: 6,
-    paddingLeft: 16,
-    minHeight: 56,
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(14,30,43,.07)',
-    gap: 10,
-  },
-  label: { width: 88, fontSize: FONT_SIZE.lg, fontFamily: FONT.semibold, color: BRAND.ink },
-  optionalText: { fontSize: FONT_SIZE.sm, fontFamily: FONT.medium, color: BRAND.inkSecondary },
-  rowValue: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'flex-end' },
-  value: { fontSize: FONT_SIZE.xl, fontFamily: FONT.bold, color: BRAND.ink, flex: 1, textAlign: 'right' },
-  input: { flex: 1, fontSize: FONT_SIZE.xl, fontFamily: FONT.medium, padding: 0, color: BRAND.ink, textAlign: 'right' },
-  error: { fontSize: FONT_SIZE.sm, color: COLORS.dangerText, marginHorizontal: 20, marginTop: -4, marginBottom: 8 },
-  dateButton: {
-    height: 42,
-    paddingHorizontal: 14,
-    backgroundColor: 'rgba(0,136,204,.10)',
-    borderRadius: 15,
-    borderWidth: 0.5,
-    borderColor: 'rgba(0,136,204,.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dateButtonText: { fontSize: FONT_SIZE.lg, color: COLORS.accent, fontFamily: FONT.bold },
-  divider: { height: 0.5, backgroundColor: 'rgba(14,30,43,.07)', marginTop: 16 },
-  licenseCardOuter: {
-    backgroundColor: 'rgba(255,255,255,.92)',
-    borderRadius: 24,
-    paddingTop: 14,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    borderWidth: 0.5,
-    borderColor: 'rgba(16,31,44,.045)',
-    shadowColor: BRAND.ink,
-    shadowOpacity: 0.55,
-    shadowRadius: 32,
-    shadowOffset: { width: 0, height: 16 },
-    elevation: 5,
-    overflow: 'hidden',
-  },
-  licenseHeader: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 12,
-  },
-  licenseHeaderDesc: { flex: 1, textAlign: 'left', fontSize: FONT_SIZE.sm, color: 'rgba(16,31,44,.3)' },
-  carouselContent: { flexDirection: 'row-reverse', gap: 7, flexGrow: 1 },
-  licenseCard: {
-    flex: 1,
-    minWidth: 38,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(118,118,128,.09)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  licenseCardSelected: {
-    backgroundColor: COLORS.accent,
-    shadowColor: COLORS.accent,
-    shadowOpacity: 0.85,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
-  },
-  licenseCode: { fontSize: FONT_SIZE.lg, color: BRAND.ink },
-  warningBox: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    backgroundColor: 'rgba(240,166,30,.12)',
-    borderRadius: 14,
-  },
-  warningText: { fontSize: FONT_SIZE.sm, color: '#8A5A00', flex: 1 },
-  rowLabel: { fontSize: FONT_SIZE.md, color: BRAND.inkSecondary },
-  readOnlyEmail: { color: BRAND.ink, fontSize: FONT_SIZE.lg, writingDirection: 'ltr', textAlign: 'left' },
-  readOnlyHint: { fontSize: FONT_SIZE.sm, color: BRAND.inkSecondary, paddingHorizontal: 20, paddingBottom: 12, textAlign: 'right' },
-  passwordToggle: {
-    minWidth: 52,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(118,118,128,.09)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-  },
-  passwordToggleText: { fontSize: FONT_SIZE.sm, color: COLORS.accent },
-  smsCard: { marginBottom: SPACING.lg },
-  smsHeader: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 16,
-  },
-  smsTitle: { fontSize: FONT_SIZE.lg, color: BRAND.ink, marginBottom: 3 },
-  smsCaption: { fontSize: FONT_SIZE.sm, color: BRAND.inkSecondary },
-  ctaTextDisabled: { color: 'rgba(14,30,43,.35)' },
+  flex: { flex: 1 },
+  center: { textAlign: 'center' },
+  progress: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, marginTop: 16 },
+  progressTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.14)', overflow: 'hidden', flexDirection: 'row-reverse' },
+  progressFill: { height: '100%', borderRadius: 3, backgroundColor: DK.mint },
+  footer: { gap: 6 },
+  noticeRule: { height: StyleSheet.hairlineWidth, backgroundColor: DK.hairline, marginHorizontal: 16 },
+  noticeLink: { paddingHorizontal: 16, paddingBottom: 14, marginTop: -6, textDecorationLine: 'underline' },
+  password: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  eye: { width: 52, height: 52, borderRadius: 16, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
 });

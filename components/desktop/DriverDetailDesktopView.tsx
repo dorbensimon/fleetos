@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     padding: 3,
     backgroundColor: DESKTOP_COLORS.brand,
-    ...webOnly({ backgroundImage: 'conic-gradient(from 210deg, #0088CC, #5CC3F0, #0088CC)' }),
+    ...webOnly({ backgroundImage: 'conic-gradient(from 210deg, #0075B3, #5CC3F0, #0075B3)' }),
   },
   portraitMuted: { backgroundColor: '#C9D2DA', ...webOnly({ backgroundImage: 'none' }) },
   portraitInner: {

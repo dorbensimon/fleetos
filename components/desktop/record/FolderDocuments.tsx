@@ -393,6 +393,7 @@ export function FolderDocumentsModal({
                   hoverStyle={styles.rowHover}
                   onPress={() => setOlderOpen((v) => !v)}
                   accessibilityState={{ expanded: olderOpen }}
+                  aria-expanded={olderOpen}
                 >
                   <DText weight="semiBold" style={styles.olderLabel}>מסמכים קודמים</DText>
                   <View style={styles.countPill}><DText weight="semiBold" style={styles.countPillText}>{sorted.length - 1}</DText></View>

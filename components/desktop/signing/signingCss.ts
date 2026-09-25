@@ -10,7 +10,7 @@
 export const SIGNING_CSS = `
 .sd-root {
   /* The app's desktop palette (components/desktop/desktopTheme.ts). */
-  --sd-tint: #0088CC;
+  --sd-tint: #0075B3;
   --sd-tint-deep: #0079B5;
   --sd-tint-soft: rgba(0,136,204,0.10);
   --sd-ink: #16222E;

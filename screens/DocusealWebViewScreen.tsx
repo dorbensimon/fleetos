@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../components/ui/BrandLoader';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
-import { Ionicons } from '@expo/vector-icons';
-import { AppText, PrimaryButton, Screen, ScreenHeader } from '../components/ui';
+import { AppText, PrimaryButton, Screen } from '../components/ui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DK, HeroButton, NightBar } from '../components/driverKit';
 import { useCompany } from '../lib/CompanyContext';
 import { downloadSignedRequest, finalizeSigningTemplate, syncSigningRequest } from '../lib/docuseal';
 import { COLORS, SPACING } from '../lib/theme';
@@ -109,6 +110,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
 
 export default function DocusealWebViewScreen({ navigation, route }: Props) {
   const { companyId } = useCompany();
+  const insets = useSafeAreaInsets();
   const params = route.params;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -116,11 +118,12 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
 
   if (params.mode === 'image') {
     return (
-      <Screen>
-        <ScreenHeader title={params.title} onBack={() => navigation.goBack()} />
+      <Screen style={styles.kitScreen}>
+        <NightBar insetTop={insets.top} title={params.title} subtitle="צפייה בתמונה" onBack={() => navigation.goBack()} />
         <View style={styles.imageWrap}>
           <Image
             source={{ uri: params.src }}
+            accessibilityLabel={params.title}
             resizeMode="contain"
             style={styles.image}
             onLoadStart={() => setLoading(true)}
@@ -188,15 +191,13 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
   };
 
   return (
-    <Screen>
-      <ScreenHeader
+    <Screen style={styles.kitScreen}>
+      <NightBar
+        insetTop={insets.top}
         title={params.title}
+        subtitle={params.mode === 'builder' ? 'מקמו את שדות החתימה ושמרו' : params.mode === 'document' ? 'צפייה במסמך' : 'מלא את השדות וחתום'}
         onBack={() => navigation.goBack()}
-        right={params.allowDownload && params.mode === 'document' ? (
-          <TouchableOpacity style={styles.downloadButton} onPress={() => void download()} accessibilityRole="button" accessibilityLabel="הורדת המסמך החתום">
-            <Ionicons name="download-outline" size={20} color={COLORS.accent} />
-          </TouchableOpacity>
-        ) : undefined}
+        right={params.allowDownload && params.mode === 'document' ? <HeroButton icon="download-outline" label="הורדת המסמך החתום" onPress={() => void download()} /> : undefined}
       />
       <View style={styles.webWrap}>
         <WebView
@@ -238,6 +239,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  kitScreen: { backgroundColor: DK.canvas },
   imageWrap: { flex: 1, backgroundColor: COLORS.screen },
   image: { width: '100%', height: '100%' },
   webWrap: { flex: 1, width: '100%', overflow: 'hidden', backgroundColor: COLORS.screen },

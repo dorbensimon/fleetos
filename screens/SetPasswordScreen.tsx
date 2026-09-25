@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { BrandLoader } from '../components/ui/BrandLoader';
+import { View, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Banner, DK, DKText, DriverPage, EditField, HeroButton, KitInput, KitSection, PrimaryAction, Pressy, Reveal, STATUS } from '../components/driverKit';
 import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -9,7 +10,6 @@ import { supabase } from '../lib/supabase';
 import { resolveRouteForUser } from '../lib/session';
 import { MIN_PASSWORD_LENGTH } from '../lib/validation';
 import { functionErrorMessage } from '../lib/functionError';
-import { CONTENT_MAX_WIDTH } from '../lib/theme';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import { SetPasswordDesktopView } from '../components/desktop/SetPasswordDesktopView';
 import { BrandLogo } from '../components/ui/Brand';
@@ -21,22 +21,11 @@ import { BrandLogo } from '../components/ui/Brand';
  * is the gate — see resolveRouteForUser).
  */
 
-const COLORS = {
-  black: '#1D1D1F',
-  gray: '#6E6E73',
-  grayLight: '#AEAEB2',
-  bg: '#F5F5F7',
-  blue: '#0071E3',
-  white: '#FFFFFF',
-  fieldBg: '#FAFAFA',
-  fieldBorder: '#E2E2E2',
-  red: '#D70015',
-};
-
 type Props = NativeStackScreenProps<RootStackParamList, 'SetPassword'>;
 
 export default function SetPasswordScreen({ navigation, route }: Props) {
   const isDesktop = useIsDesktop();
+  const insets = useSafeAreaInsets();
   const voluntary = route.params?.voluntary ?? false;
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -126,144 +115,110 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
         onCancel={voluntary ? () => navigation.goBack() : signOut}
       />
     ) : (
-    <View style={styles.container}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.content}>
-          {voluntary ? (
-            <Ionicons name="lock-closed-outline" size={40} color={COLORS.blue} style={styles.icon} />
-          ) : (
-            // First sign-in: this is the user's first real screen in icar.
-            <BrandLogo height={34} style={styles.welcomeLogo} />
-          )}
-          <Text style={styles.title}>{voluntary ? 'שינוי סיסמה' : 'קביעת סיסמה קבועה'}</Text>
-          <Text style={styles.subtitle}>
-            {voluntary
-              ? 'קבע סיסמה חדשה לחשבון שלך.'
-              : 'ברוכים הבאים ל-icar. זו הכניסה הראשונה שלך — קבע סיסמה קבועה משלך כדי להמשיך.'}
-          </Text>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>סיסמה חדשה</Text>
-            <View style={[styles.inputRow, !!errors.password && styles.inputError]}>
-              <TextInput
-                style={styles.inputInRow}
-                placeholder="לפחות 8 תווים"
-                placeholderTextColor={COLORS.grayLight}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                textAlign="right"
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons
-                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                  size={19}
-                  color={COLORS.grayLight}
-                />
-              </TouchableOpacity>
+      <DriverPage
+        insetTop={insets.top}
+        insetBottom={insets.bottom}
+        hero={
+          <View>
+            <View style={styles.bar}>
+              {voluntary ? <HeroButton icon="chevron-forward" label="חזרה" onPress={() => navigation.goBack()} /> : <View />}
+              <BrandLogo height={22} onDark />
             </View>
-            {!!errors.password && <Text style={styles.fieldError}>{errors.password}</Text>}
+            <DKText variant="display" color={DK.onNight} accessibilityRole="header">
+              {voluntary ? 'שינוי סיסמה' : 'ברוכים הבאים'}
+            </DKText>
+            <DKText variant="body" color={DK.onNightMuted} style={styles.subtitle}>
+              {voluntary ? 'בחרו סיסמה חדשה לחשבון.' : 'זו הכניסה הראשונה שלך. בחר סיסמה קבועה משלך — היא תחליף את הסיסמה הזמנית.'}
+            </DKText>
           </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>אימות סיסמה</Text>
-            <TextInput
-              style={[styles.input, !!errors.confirmPassword && styles.inputError]}
-              placeholder="הזן שוב את הסיסמה"
-              placeholderTextColor={COLORS.grayLight}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              textAlign="right"
+        }
+        footer={
+          <View style={styles.footer}>
+            <PrimaryAction label={voluntary ? 'שמירת הסיסמה' : 'המשך'} icon={voluntary ? 'checkmark' : 'arrow-back'} onPress={() => void submit()} loading={saving} />
+            <Pressy onPress={voluntary ? () => navigation.goBack() : signOut} accessibilityLabel={voluntary ? 'ביטול' : 'זה לא אני, התנתקות'} style={styles.secondary}>
+              <DKText variant="label" color={DK.muted}>
+                {voluntary ? 'ביטול' : 'זה לא אני · התנתקות'}
+              </DKText>
+            </Pressy>
+          </View>
+        }
+      >
+        <Reveal index={0}>
+          <KitSection>
+            <EditField
+              first
+              label="סיסמה חדשה"
+              error={errors.password}
+              editor={
+                <View style={styles.row}>
+                  <KitInput
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    placeholder="לפחות 8 תווים"
+                    autoCapitalize="none"
+                    autoComplete="new-password"
+                    ltr
+                    hasError={!!errors.password}
+                    accessibilityLabel="סיסמה חדשה"
+                    style={styles.flex}
+                  />
+                  <Pressy onPress={() => setShowPassword((v) => !v)} accessibilityLabel={showPassword ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'} style={styles.eye} pressScale={0.92}>
+                    <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={DK.accent} />
+                  </Pressy>
+                </View>
+              }
             />
-            {!!errors.confirmPassword && <Text style={styles.fieldError}>{errors.confirmPassword}</Text>}
+            <EditField
+              label="אימות הסיסמה"
+              error={errors.confirmPassword}
+              editor={
+                <KitInput
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showPassword}
+                  placeholder="הקלד שוב את הסיסמה"
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  ltr
+                  hasError={!!errors.confirmPassword}
+                  accessibilityLabel="אימות הסיסמה"
+                />
+              }
+            />
+          </KitSection>
+        </Reveal>
+        <Reveal index={1}>
+          <View style={styles.checks} accessibilityLiveRegion="polite">
+            <Check ok={password.length >= MIN_PASSWORD_LENGTH} label={`לפחות ${MIN_PASSWORD_LENGTH} תווים`} />
+            <Check ok={!!confirmPassword && confirmPassword === password} label="שתי הסיסמאות זהות" />
           </View>
-
-          {!!generalError && <Text style={styles.generalError}>{generalError}</Text>}
-
-          <TouchableOpacity
-            style={[styles.button, saving && styles.buttonDisabled]}
-            onPress={submit}
-            disabled={saving}
-            activeOpacity={0.85}
-          >
-            {saving ? (
-              <BrandLoader color={COLORS.white} />
-            ) : (
-              <Text style={styles.buttonText}>המשך</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={voluntary ? () => navigation.goBack() : signOut}
-            activeOpacity={0.7}
-            style={styles.signOutLink}
-          >
-            <Text style={styles.signOutLinkText}>{voluntary ? 'ביטול' : 'זה לא אני / התנתק'}</Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </View>
+        </Reveal>
+        {!!generalError && <Banner tone="expired">{generalError}</Banner>}
+      </DriverPage>
     )
   );
 }
 
+function Check({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <View style={styles.check}>
+      <Ionicons name={ok ? 'checkmark-circle' : 'ellipse-outline'} size={18} color={ok ? STATUS.ok.fg : DK.faint} />
+      <DKText variant="caption" color={ok ? STATUS.ok.fg : DK.muted}>
+        {label}
+      </DKText>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg },
-  content: { flex: 1, justifyContent: 'center', paddingHorizontal: 28, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
-  icon: { alignSelf: 'center', marginBottom: 14 },
-  welcomeLogo: { alignSelf: 'center', marginBottom: 22 },
-  title: { fontSize: 22, fontWeight: '700', color: COLORS.black, textAlign: 'center', marginBottom: 8 },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.gray,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 32,
-  },
-  field: { marginBottom: 18 },
-  label: { fontSize: 13, fontWeight: '600', color: COLORS.black, textAlign: 'right', marginBottom: 8 },
-  input: {
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: COLORS.fieldBg,
-    borderWidth: 1.5,
-    borderColor: COLORS.fieldBorder,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: COLORS.black,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 50,
-    borderRadius: 12,
-    backgroundColor: COLORS.fieldBg,
-    borderWidth: 1.5,
-    borderColor: COLORS.fieldBorder,
-    paddingHorizontal: 14,
-    gap: 10,
-  },
-  inputInRow: {
-    flex: 1,
-    fontSize: 15,
-    color: COLORS.black,
-  },
-  inputError: { borderColor: COLORS.red },
-  fieldError: { fontSize: 11.5, color: COLORS.red, textAlign: 'right', marginTop: 6 },
-  generalError: { fontSize: 13, color: COLORS.red, textAlign: 'center', marginBottom: 16 },
-  button: {
-    height: 52,
-    borderRadius: 12,
-    backgroundColor: COLORS.blue,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: { opacity: 0.7 },
-  buttonText: { color: COLORS.white, fontSize: 16, fontWeight: '600' },
-  signOutLink: { marginTop: 20, alignItems: 'center' },
-  signOutLinkText: { color: COLORS.gray, fontSize: 13, fontWeight: '500' },
+  flex: { flex: 1 },
+  bar: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, marginBottom: 20 },
+  subtitle: { marginTop: 8 },
+  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  eye: { width: 52, height: 52, borderRadius: 16, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  checks: { gap: 8, paddingHorizontal: 6 },
+  check: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  footer: { gap: 4 },
+  secondary: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
 });

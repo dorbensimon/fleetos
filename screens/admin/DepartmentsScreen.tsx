@@ -1,13 +1,12 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, FlatList, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, LoadingState, EmptyState, ErrorState, useToast, BackButton } from '../../components/ui';
-import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
-import { COLORS, CONTENT_MAX_WIDTH, SPACING, ACCENT_SHADOW, FONT, FONT_SIZE, BRAND } from '../../lib/theme';
+import { ErrorState, useToast } from '../../components/ui';
+import { DK, DK_SPACE, DKText, DriverPage, EmptyPanel, ErrorPanel, HeroTitle, KitInput, KitSection, LoadingPanel, Pressy, Reveal, STATUS, Surface } from '../../components/driverKit';
 import { useCompany } from '../../lib/CompanyContext';
 import { listDepartments, createDepartment, updateDepartment, deleteDepartment, countDepartmentUsage, Department } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
@@ -161,188 +160,111 @@ export default function DepartmentsScreen({ navigation }: Props) {
     );
   }
 
+  const canAdd = !!newName.trim() && !adding;
   return (
-    <View style={styles.screen}>
-      <AdminGradientBackground />
-
-      <View style={[styles.topBar, { paddingTop: insets.top + 20 }]}>
-        <View style={{ width: 42 }} />
-        <AppText weight="bold" style={styles.topTitle} numberOfLines={1}>
-          מחלקות
-        </AppText>
-        <BackButton onPress={() => navigation.goBack()} />
-      </View>
-
-      <KeyboardAvoidingView style={styles.content} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {loading ? (
-          <LoadingState />
-        ) : error ? (
-          <ErrorState message={error} onRetry={load} />
-        ) : (
-          <FlatList
-            style={styles.list}
-            data={departments}
-            keyExtractor={(d) => d.id}
-            contentContainerStyle={[styles.listContent, { paddingBottom: 40 + insets.bottom }]}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            ListHeaderComponent={
-              <>
-                <View style={styles.sectionHeader}>
-                  <View style={styles.sectionDot} />
-                  <AppText weight="bold" style={styles.sectionTitle}>מחלקה חדשה</AppText>
-                </View>
-                <View style={styles.card}>
-                  <View style={[styles.row, styles.rowLast]}>
-                    <TextInput
-                      value={newName}
-                      onChangeText={setNewName}
-                      placeholder="למשל: תפעול"
-                      placeholderTextColor={COLORS.textFaint}
-                      textAlign="right"
-                      onSubmitEditing={addDepartment}
-                      returnKeyType="done"
-                      style={styles.input}
-                    />
-                    <TouchableOpacity
-                      onPress={addDepartment}
-                      disabled={!newName.trim() || adding}
-                      activeOpacity={0.85}
-                      style={[
-                        styles.addButton,
-                        (!newName.trim() || adding) ? styles.addButtonDisabled : ACCENT_SHADOW,
-                      ]}
-                    >
-                      <Ionicons name="add" size={20} color={COLORS.textInverse} />
-                    </TouchableOpacity>
+    <DriverPage
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
+      hero={
+        <HeroTitle
+          title="מחלקות"
+          subtitle={loading ? 'טוען…' : departments.length ? `${departments.length} מחלקות בחברה` : 'חלוקת הנהגים והרכבים לפי יחידות'}
+          onBack={() => navigation.goBack()}
+        />
+      }
+    >
+      {loading ? (
+        <LoadingPanel />
+      ) : error ? (
+        <ErrorPanel message={error} onRetry={load} />
+      ) : (
+        <>
+          <Reveal index={0}>
+            <Surface style={styles.add}>
+              <KitInput
+                value={newName}
+                onChangeText={setNewName}
+                placeholder="שם מחלקה חדשה, למשל: תפעול"
+                onSubmitEditing={() => void addDepartment()}
+                returnKeyType="done"
+                accessibilityLabel="שם מחלקה חדשה"
+                style={styles.flex}
+              />
+              <Pressy onPress={() => void addDepartment()} disabled={!canAdd} haptic accessibilityLabel="הוספת מחלקה" style={[styles.addBtn, !canAdd && styles.addBtnIdle]} pressScale={0.92}>
+                <Ionicons name="add" size={24} color={canAdd ? '#FFFFFF' : DK.faint} />
+              </Pressy>
+            </Surface>
+          </Reveal>
+          {departments.length === 0 ? (
+            <Reveal index={1}>
+              <EmptyPanel icon="business" title="עדיין אין מחלקות" body="מחלקות עוזרות לסנן ולארגן נהגים ורכבים. הוסף את הראשונה למעלה." />
+            </Reveal>
+          ) : (
+            <Reveal index={1}>
+              <KitSection title="רשימת מחלקות">
+                {departments.map((item, index) => (
+                  <View key={item.id} style={[styles.row, index > 0 && styles.divider]}>
+                    <View style={styles.icon}>
+                      <Ionicons name="business" size={18} color={DK.accent} />
+                    </View>
+                    {editingId === item.id ? (
+                      <KitInput
+                        value={editingName}
+                        onChangeText={setEditingName}
+                        autoFocus
+                        onSubmitEditing={() => void saveRename(item.id)}
+                        onBlur={() => void saveRename(item.id)}
+                        returnKeyType="done"
+                        accessibilityLabel={`שם חדש למחלקה ${item.name}`}
+                        style={styles.flex}
+                      />
+                    ) : (
+                      <DKText variant="label" style={styles.flex} numberOfLines={2}>
+                        {item.name}
+                      </DKText>
+                    )}
+                    {editingId === item.id ? (
+                      <Pressy onPress={() => void saveRename(item.id)} accessibilityLabel="שמירת השם" style={[styles.iconBtn, styles.iconBtnAccent]} pressScale={0.9}>
+                        <Ionicons name="checkmark" size={19} color="#FFFFFF" />
+                      </Pressy>
+                    ) : (
+                      <>
+                        <Pressy
+                          onPress={() => {
+                            setEditingId(item.id);
+                            setEditingName(item.name);
+                          }}
+                          accessibilityLabel={`שינוי שם ${item.name}`}
+                          style={styles.iconBtn}
+                          pressScale={0.9}
+                        >
+                          <Ionicons name="pencil" size={17} color={DK.accent} />
+                        </Pressy>
+                        <Pressy onPress={() => void confirmDelete(item)} accessibilityLabel={`מחיקת ${item.name}`} style={[styles.iconBtn, styles.iconBtnDanger]} pressScale={0.9}>
+                          <Ionicons name="trash-outline" size={17} color={STATUS.expired.fg} />
+                        </Pressy>
+                      </>
+                    )}
                   </View>
-                </View>
-
-                <View style={[styles.sectionHeader, { marginTop: SPACING.xl }]}>
-                  <View style={styles.sectionDot} />
-                  <AppText weight="bold" style={styles.sectionTitle}>רשימת מחלקות</AppText>
-                </View>
-              </>
-            }
-            ListEmptyComponent={
-              <EmptyState icon="business-outline" title="עדיין אין מחלקות" hint="הוסף מחלקה ראשונה למעלה" />
-            }
-            renderItem={({ item }) => (
-              <View style={styles.card}>
-                <View style={[styles.row, styles.rowLast]}>
-                  {editingId === item.id ? (
-                    <TextInput
-                      style={styles.input}
-                      value={editingName}
-                      onChangeText={setEditingName}
-                      textAlign="right"
-                      autoFocus
-                      onSubmitEditing={() => saveRename(item.id)}
-                      onBlur={() => saveRename(item.id)}
-                      returnKeyType="done"
-                    />
-                  ) : (
-                    <AppText weight="bold" style={styles.rowValue}>
-                      {item.name}
-                    </AppText>
-                  )}
-
-                  <View style={styles.rowActions}>
-                    <TouchableOpacity
-                      style={styles.iconButton}
-                      onPress={() => {
-                        setEditingId(item.id);
-                        setEditingName(item.name);
-                      }}
-                      hitSlop={8}
-                    >
-                      <Ionicons name="pencil-outline" size={15} color={COLORS.accent} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.iconButton, styles.iconButtonDanger]}
-                      onPress={() => confirmDelete(item)}
-                      hitSlop={8}
-                    >
-                      <Ionicons name="trash-outline" size={15} color={COLORS.dangerText} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            )}
-          />
-        )}
-      </KeyboardAvoidingView>
-    </View>
+                ))}
+              </KitSection>
+            </Reveal>
+          )}
+        </>
+      )}
+    </DriverPage>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: BRAND.screenBg },
-
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingBottom: SPACING.md,
-    width: '100%',
-    maxWidth: CONTENT_MAX_WIDTH,
-    alignSelf: 'center',
-  },
-  topTitle: { flex: 1, fontSize: FONT_SIZE.xl, color: BRAND.ink, textAlign: 'center', marginHorizontal: 8 },
-
-  content: { flex: 1, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
-
-  sectionHeader: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginBottom: 9 },
-  sectionDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: COLORS.accent },
-  sectionTitle: { fontSize: FONT_SIZE.sm, letterSpacing: 0.8, color: BRAND.inkSecondary },
-
-  card: {
-    backgroundColor: 'rgba(255,255,255,.92)',
-    borderRadius: 24,
-    borderWidth: 0.5,
-    borderColor: 'rgba(16,31,44,.045)',
-    // Soft card shadow; no overflow:hidden (it drops the shadow on iOS).
-    shadowColor: BRAND.ink,
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  },
-  row: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    paddingRight: 16,
-    paddingLeft: 10,
-    minHeight: 56,
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(14,30,43,.07)',
-    gap: 10,
-  },
-  rowLast: { borderBottomWidth: 0 },
-  input: { flex: 1, fontSize: FONT_SIZE.xl, fontFamily: FONT.medium, padding: 0, color: BRAND.ink, textAlign: 'right' },
-  rowValue: { flex: 1, fontSize: FONT_SIZE.xl, fontFamily: FONT.bold, color: BRAND.ink, textAlign: 'right' },
-
-  addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addButtonDisabled: { backgroundColor: 'rgba(118,118,128,.18)' },
-
-  list: { flex: 1 },
-  listContent: { flexGrow: 1, paddingHorizontal: 18, paddingTop: SPACING.lg, paddingBottom: 40, gap: SPACING.sm },
-  rowActions: { flexDirection: 'row-reverse', gap: 8 },
-  iconButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,136,204,.10)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconButtonDanger: { backgroundColor: 'rgba(197,53,53,.10)' },
+  flex: { flex: 1 },
+  add: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12 },
+  addBtn: { width: 52, height: 52, borderRadius: 16, backgroundColor: DK.accent, alignItems: 'center', justifyContent: 'center' },
+  addBtnIdle: { backgroundColor: DK.surfaceSunk },
+  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, minHeight: 64, paddingHorizontal: DK_SPACE.md, paddingVertical: 8 },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },
+  icon: { width: 38, height: 38, borderRadius: 12, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  iconBtnAccent: { backgroundColor: DK.accent },
+  iconBtnDanger: { backgroundColor: STATUS.expired.soft },
 });

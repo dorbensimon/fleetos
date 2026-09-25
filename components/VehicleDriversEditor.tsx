@@ -6,6 +6,7 @@ import { AppText, useToast } from './ui';
 import { Select } from './ui/Select';
 import { DesktopSelect } from './desktop/primitives';
 import { COLORS, RADIUS, SPACING } from '../lib/theme';
+import { Avatar, DK, DK_FONT, STATUS } from './driverKit';
 import { formatPhone } from '../lib/phone';
 import {
   VehicleDriverWithProfile,
@@ -109,10 +110,10 @@ export function VehicleDriversEditor({
   return (
     <View style={[styles.wrap, desktop && styles.desktopWrap]}>
       {assignments.length === 0 ? (
-        <AppText style={styles.empty}>לא משויכים נהגים לרכב זה</AppText>
+        <AppText style={[styles.empty, !desktop && kit.empty]}>לא משויכים נהגים לרכב זה</AppText>
       ) : (
         assignments.map((a) => (
-          <View key={a.id} style={styles.row}>
+          <View key={a.id} style={[styles.row, !desktop && kit.row]}>
             <TouchableOpacity
               style={styles.rowMain}
               activeOpacity={onOpenDriver ? 0.7 : 1}
@@ -120,9 +121,11 @@ export function VehicleDriversEditor({
               onPress={() => onOpenDriver?.(a.driver_id)}
               accessibilityLabel={`פתח את פרטי הנהג ${a.full_name ?? ''}`}
             >
+              <View style={!desktop && kit.rowMain}>
+              {!desktop && <Avatar name={a.full_name} size={42} tone={a.is_primary ? 'soft' : 'muted'} />}
               <View style={styles.rowText}>
                 <View style={styles.nameRow}>
-                  <AppText weight="bold" style={styles.name} numberOfLines={1}>
+                  <AppText weight="bold" style={[styles.name, !desktop && kit.name]} numberOfLines={1}>
                     {a.full_name ?? 'ללא שם'}
                   </AppText>
                   <View style={[styles.badge, a.is_primary ? styles.badgePrimary : styles.badgeSecondary]}>
@@ -131,7 +134,8 @@ export function VehicleDriversEditor({
                     </AppText>
                   </View>
                 </View>
-                <AppText style={styles.meta}>{a.phone ? formatPhone(a.phone) : '—'}</AppText>
+                <AppText style={[styles.meta, !desktop && kit.meta]}>{a.phone ? formatPhone(a.phone) : '—'}</AppText>
+              </View>
               </View>
             </TouchableOpacity>
 
@@ -141,20 +145,22 @@ export function VehicleDriversEditor({
                   onPress={() => makePrimary(a)}
                   disabled={busyId === a.id}
                   hitSlop={8}
-                  style={styles.actionBtn}
+                  style={[styles.actionBtn, !desktop && kit.actionBtn]}
+                  accessibilityRole="button"
                   accessibilityLabel="קבע כנהג ראשי"
                 >
-                  <Ionicons name="star-outline" size={18} color={COLORS.accent} />
+                  <Ionicons name="star-outline" size={18} color={desktop ? COLORS.accent : DK.accent} />
                 </TouchableOpacity>
               )}
               <TouchableOpacity
                 onPress={() => confirmRemove(a)}
                 disabled={busyId === a.id}
                 hitSlop={8}
-                style={styles.actionBtn}
+                style={[styles.actionBtn, !desktop && kit.actionBtn, !desktop && kit.actionDanger]}
+                accessibilityRole="button"
                 accessibilityLabel="הסר שיוך נהג"
               >
-                <Ionicons name="trash-outline" size={18} color={COLORS.dangerText} />
+                <Ionicons name="trash-outline" size={18} color={desktop ? COLORS.dangerText : STATUS.expired.fg} />
               </TouchableOpacity>
             </View>
           </View>
@@ -183,7 +189,7 @@ export function VehicleDriversEditor({
         </View>
         {!!addingDriverId && (
           <TouchableOpacity
-            style={styles.addBtn}
+            style={[styles.addBtn, !desktop && kit.addBtn]}
             onPress={addDriver}
             disabled={busyId === '__new__'}
             accessibilityLabel="אשר הוספת נהג"
@@ -236,4 +242,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+});
+
+const kit = StyleSheet.create({
+  row: { minHeight: 64, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: DK.hairline },
+  rowMain: { flexDirection: 'row-reverse', alignItems: 'center' },
+  name: { fontFamily: DK_FONT.semibold, fontSize: 15.5, color: DK.ink },
+  meta: { fontFamily: DK_FONT.medium, fontSize: 13.5, color: DK.muted },
+  actionBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: DK.accentSoft },
+  actionDanger: { backgroundColor: STATUS.expired.soft },
+  addBtn: { width: 52, height: 52, borderRadius: 16, backgroundColor: DK.accent },
+  empty: { fontFamily: DK_FONT.medium, fontSize: 14.5, color: DK.muted },
 });

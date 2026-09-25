@@ -1,9 +1,9 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { DK, DK_SPACE, DKText, DriverPage, HeroTitle, ListRow, Pressy, Reveal, STATUS, Surface } from '../../components/driverKit';
-import { ErrorState, LoadingState } from '../../components/ui';
-import type { Notification } from '../../lib/adminApi';
+import { DK, DK_SPACE, DKText, DriverPage, HeroTitle, ListRow, Pressy, Reveal, STATUS, Surface } from '../components/driverKit';
+import { ErrorState, LoadingState } from '../components/ui';
+import type { Notification } from '../lib/adminApi';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -21,6 +21,10 @@ type Props = {
   onSettings: () => void;
   onBack: () => void;
   onRetry: () => void;
+  /** What will show up here, in the reader's terms. */
+  emptyHint: string;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 };
 
 /** What each kind of update looks like: the icon and the colour of its meaning. */
@@ -29,6 +33,8 @@ function look(type: string | null): { icon: IconName; tint: string } {
   if (type === 'vehicle_assignment') return { icon: 'car-sport', tint: DK.accent };
   if (type?.startsWith('vehicle_')) return { icon: 'warning', tint: STATUS.expired.fg };
   if (type === 'license_update_reviewed') return { icon: 'id-card', tint: STATUS.ok.fg };
+  if (type === 'license_update_requested') return { icon: 'id-card', tint: STATUS.soon.fg };
+  if (type === 'driver_odometer_update') return { icon: 'speedometer', tint: DK.accent };
   if (type?.startsWith('driver_document_')) return { icon: 'document-text', tint: DK.accent };
   return { icon: 'person', tint: DK.accent };
 }
@@ -45,10 +51,10 @@ function dayGroup(iso: string): string {
 }
 
 /**
- * Updates from the fleet manager, newest first and grouped by day. Unread
+ * Updates for whoever is signed in, newest first and grouped by day. Unread
  * ones carry a blue edge and a dot, and say in words what tapping does.
  */
-export function DriverNotificationsMobile(p: Props) {
+export function NotificationsMobile(p: Props) {
   const unread = p.items.filter((n) => p.unreadIds.has(n.id)).length;
   const groups: { title: string; rows: Notification[] }[] = [];
   for (const n of p.items) {
@@ -62,6 +68,8 @@ export function DriverNotificationsMobile(p: Props) {
     <DriverPage
       insetTop={p.insetTop}
       insetBottom={p.insetBottom}
+      refreshing={p.refreshing}
+      onRefresh={p.onRefresh}
       hero={
         <HeroTitle
           title="התראות"
@@ -88,7 +96,7 @@ export function DriverNotificationsMobile(p: Props) {
               אין עדיין התראות
             </DKText>
             <DKText variant="body" color={DK.muted} style={styles.center}>
-              כשמנהל הצי ישלח מסמך, ישייך רכב או כשתוקף יתקרב — העדכון יופיע כאן.
+              {p.emptyHint}
             </DKText>
           </Surface>
           <Surface style={styles.gapTop}>

@@ -18,6 +18,7 @@ import {
   SectionHeader,
   StatusChip,
   Surface,
+  Tile,
   relativeDays,
   statusOfDate,
   validityProgress,
@@ -353,52 +354,6 @@ function SummaryPanel({ summary, onPress }: { summary: Summary; onPress?: () => 
   );
 }
 
-function Tile({
-  icon,
-  tint,
-  value,
-  title,
-  caption,
-  chip,
-  highlight = false,
-  onPress,
-}: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  tint: string;
-  value?: string;
-  title: string;
-  caption: string;
-  chip?: React.ReactNode;
-  highlight?: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressy onPress={onPress} accessibilityLabel={[title, value, caption].filter(Boolean).join(', ')} style={styles.tileWrap} pressScale={0.965}>
-      <Surface style={[styles.tile, highlight && styles.tileHighlight]}>
-        <View style={styles.tileTop}>
-          <View style={[styles.tileIcon, { backgroundColor: `${tint}16` }]}>
-            <Ionicons name={icon} size={21} color={tint} />
-          </View>
-          {chip}
-        </View>
-        <View style={styles.tileText}>
-          {!!value && (
-            <DKText variant="title" numberOfLines={1} adjustsFontSizeToFit style={styles.tileValue}>
-              {value}
-            </DKText>
-          )}
-          <DKText variant="label" numberOfLines={1}>
-            {title}
-          </DKText>
-          <DKText variant="caption" color={DK.muted} numberOfLines={2}>
-            {caption}
-          </DKText>
-        </View>
-      </Surface>
-    </Pressy>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: DK.canvas },
   scroll: { flex: 1 },
@@ -444,13 +399,6 @@ const styles = StyleSheet.create({
   emptyBlock: { alignItems: 'center', gap: 6, paddingVertical: 26, paddingHorizontal: 24 },
 
   tiles: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 12 },
-  tileWrap: { width: '48%', flexGrow: 1 },
-  tile: { minHeight: 162, padding: 16, justifyContent: 'space-between', borderRadius: 24 },
-  tileHighlight: { borderWidth: 1.5, borderColor: 'rgba(224,122,0,0.35)' },
-  tileTop: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
-  tileIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  tileText: { gap: 2, marginTop: 14 },
-  tileValue: { fontVariant: ['tabular-nums'] },
 
   manager: { padding: 16, gap: 14 },
   managerHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },

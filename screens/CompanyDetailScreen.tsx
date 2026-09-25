@@ -484,7 +484,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
           <View style={ds.wrap}>
             <View style={ds.headRow}>
               <View style={ds.headMain}>
-                {!!company.logo_url && <Image source={{ uri: company.logo_url }} style={ds.logo} resizeMode="cover" />}
+                {!!company.logo_url && <Image source={{ uri: company.logo_url }} accessibilityLabel={`לוגו ${company.name}`} style={ds.logo} resizeMode="cover" />}
                 <DText weight="bold" style={ds.heading} numberOfLines={1}>{company.name}</DText>
                 <StatusPill tone={active ? 'ok' : 'neutral'} label={active ? 'פעיל' : 'מושבת'} />
               </View>
@@ -562,7 +562,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         >
           <Ionicons name="chevron-forward" size={20} color={COLORS.black} />
         </TouchableOpacity>
-        {!!company.logo_url && <Image source={{ uri: company.logo_url }} style={styles.headerLogo} resizeMode="cover" />}
+        {!!company.logo_url && <Image source={{ uri: company.logo_url }} accessibilityLabel={`לוגו ${company.name}`} style={styles.headerLogo} resizeMode="cover" />}
         <Text style={styles.headerTitle} numberOfLines={1}>
           {company.name}
         </Text>

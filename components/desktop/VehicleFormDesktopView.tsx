@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: DESKTOP_COLORS.brand,
     ...webOnly({
-      backgroundImage: 'linear-gradient(160deg, #5FC1F0 0%, #0088CC 60%, #0070A8 100%)',
+      backgroundImage: 'linear-gradient(160deg, #5FC1F0 0%, #0075B3 60%, #0070A8 100%)',
       boxShadow: '0 6px 14px -6px rgba(0,136,204,0.6)',
     }),
   },

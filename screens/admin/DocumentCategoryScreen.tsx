@@ -1,33 +1,22 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { BrandLoader } from '../../components/ui/BrandLoader';
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Screen, AppText, LoadingState, EmptyState, ErrorState } from '../../components/ui';
+import { LoadingState, EmptyState, ErrorState } from '../../components/ui';
 import { DateField } from '../../components/ui/DateField';
-import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { DocumentFileRow } from '../../components/documents/DocumentFileRow';
 import { Procedure6FormModal } from '../../components/documents/Procedure6FormModal';
-import { COLORS, RADIUS, SPACING, FONT_SIZE, BRAND } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { DocumentRow } from '../../lib/adminApi';
 import { listDocuments, readPickedFileBase64, uploadDocument, type PickedFile } from '../../lib/documents';
 import { createProcedure6Report, Procedure6FormValues } from '../../lib/procedure6Report';
-import {
-  chooseDocumentSource,
-  confirmDeleteDocument,
-  documentDisplayName,
-  documentViewerMode,
-  downloadDocumentWithAlert,
-  getDocumentViewUrl,
-  pickDocumentSource,
-  type DocumentSource,
-} from '../../lib/documentActions';
+import { chooseDocumentSource, confirmDeleteDocument, documentDisplayName, documentViewerMode, downloadDocumentWithAlert, getDocumentViewUrl, pickDocumentSource, type DocumentSource } from '../../lib/documentActions';
 import { RootStackParamList } from '../../navigation/types';
-import { DriverDossierHero } from '../../components/driverCard/DriverDossierHero';
+import { DK, DriverPage, EditField, EmptyPanel, ErrorPanel, HeroTitle, KitSection, LoadingPanel, PrimaryAction, Reveal } from '../../components/driverKit';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable } from '../../components/desktop/primitives';
@@ -66,25 +55,6 @@ const CATEGORY_HERO_ICONS: Record<string, HeroIcon> = {
   winter_inspection: 'snow-outline',
   child_detection: 'eye-outline',
 };
-
-function CategoryHero({
-  title,
-  category,
-  itemCount,
-  onBack,
-  insetTop,
-}: {
-  title: string;
-  category: string;
-  itemCount: number;
-  onBack: () => void;
-  insetTop: number;
-}) {
-  const icon = CATEGORY_HERO_ICONS[category] ?? 'document-text-outline';
-  const countLabel = `${itemCount} ${itemCount === 1 ? 'פריט' : 'פריטים'}`;
-
-  return <DriverDossierHero title={title} subtitle={countLabel} icon={icon} insetTop={insetTop} onBack={onBack} />;
-}
 
 export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const { ownerType, ownerId, category, title, allowDelete = true, requiresExpiry = false } = route.params;
@@ -256,37 +226,58 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
     );
   }
 
+  const canAdd = !isProcedure6 || canCreateProcedure6;
+  const icon = CATEGORY_HERO_ICONS[category] ?? 'document-text-outline';
   return (
-    <Screen style={styles.screen}>
-      <AdminGradientBackground />
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + SPACING.xl }]}
-        showsVerticalScrollIndicator={false}
-      >
-        <CategoryHero title={title} category={category} itemCount={docs.length} insetTop={insets.top} onBack={() => navigation.goBack()} />
-
-        {loading ? (
-          <LoadingState />
-        ) : error ? (
-          <ErrorState message={error} onRetry={load} />
-        ) : (
-          <View style={styles.content}>
-            {docs.length === 0 ? (
-              <EmptyState
-                icon="document-text-outline"
+    <DriverPage
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
+      hero={
+        <HeroTitle
+          title={title}
+          subtitle={loading ? 'טוען מסמכים…' : docs.length ? `${docs.length} ${docs.length === 1 ? 'מסמך' : 'מסמכים'} בתיקייה` : 'התיקייה ריקה'}
+          onBack={() => navigation.goBack()}
+          right={<View style={styles.heroIcon}><Ionicons name={icon} size={22} color={DK.onNight} /></View>}
+        />
+      }
+      footer={
+        canAdd && !loading && !error ? (
+          <PrimaryAction
+            label={isProcedure6 ? 'דיווח נוהל 6 חדש' : 'הוספת מסמך'}
+            icon={isProcedure6 ? 'add-circle-outline' : 'cloud-upload-outline'}
+            loading={uploading}
+            onPress={() => (isProcedure6 ? setShowProcedure6Form(true) : void addDocument())}
+          />
+        ) : undefined
+      }
+      overlay={
+        isProcedure6 ? <Procedure6FormModal visible={showProcedure6Form} onClose={() => setShowProcedure6Form(false)} onSubmit={createProcedure6} /> : undefined
+      }
+    >
+      {loading ? (
+        <LoadingPanel />
+      ) : error ? (
+        <ErrorPanel message="טעינת המסמכים נכשלה" hint={error} onRetry={load} />
+      ) : (
+        <>
+          {docs.length === 0 ? (
+            <Reveal>
+              <EmptyPanel
+                icon={icon}
                 title={isProcedure6 ? 'אין עדיין דיווחי נוהל 6' : 'אין עדיין מסמכים'}
-                hint={
+                body={
                   isProcedure6
                     ? canCreateProcedure6
-                      ? 'הוסף דיווח כדי ליצור את המסמך הראשון'
-                      : 'המנהל עדיין לא הוסיף דיווח בקטגוריה זו'
-                    : 'הנהג עדיין לא צילם או העלה מסמכים בקטגוריה זו'
+                      ? 'דיווח חדש יוצר מסמך PDF מסודר ושומר אותו כאן.'
+                      : 'המנהל עדיין לא הוסיף דיווח בתיקייה הזו.'
+                    : 'צלם או העלה את המסמך הראשון — הוא יישמר כאן ויהיה זמין גם במחשב.'
                 }
               />
-            ) : (
-              docs.map((doc) => (
+            </Reveal>
+          ) : (
+            docs.map((doc, index) => (
+              <Reveal key={doc.id} index={Math.min(index, 8)}>
                 <DocumentFileRow
-                  key={doc.id}
                   doc={doc}
                   variant="card"
                   showDate
@@ -295,68 +286,24 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
                   onDownload={downloadDocumentWithAlert}
                   onDelete={allowDelete ? (item) => confirmDeleteDocument(item, load) : undefined}
                 />
-              ))
-            )}
-
-            {(!isProcedure6 || canCreateProcedure6) && (
-              <>
-                {requiresExpiry && (
-                  <View style={styles.expiryField}>
-                    <AppText weight="bold" style={styles.expiryLabel}>תוקף המסמך</AppText>
-                    <DateField value={expiryDate} onChange={setExpiryDate} placeholder="בחר תאריך תוקף" />
-                  </View>
-                )}
-                <TouchableOpacity
-                  style={styles.uploadBtn}
-                  activeOpacity={0.85}
-                  onPress={() => (isProcedure6 ? setShowProcedure6Form(true) : addDocument())}
-                  disabled={uploading}
-                >
-                  {uploading ? (
-                    <BrandLoader color={COLORS.textInverse} />
-                  ) : (
-                    <>
-                      <Ionicons name={isProcedure6 ? 'add-circle-outline' : 'cloud-upload-outline'} size={17} color={COLORS.textInverse} />
-                      <AppText weight="bold" style={styles.uploadText}>
-                        {isProcedure6 ? 'הוסף דיווח נוהל 6' : 'העלה מסמך'}
-                      </AppText>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        )}
-      </ScrollView>
-
-      {isProcedure6 && (
-        <Procedure6FormModal
-          visible={showProcedure6Form}
-          onClose={() => setShowProcedure6Form(false)}
-          onSubmit={createProcedure6}
-        />
+              </Reveal>
+            ))
+          )}
+          {canAdd && requiresExpiry && (
+            <Reveal index={Math.min(docs.length, 8) + 1}>
+              <KitSection title="המסמך הבא">
+                <EditField first label="תוקף המסמך" required editor={<DateField value={expiryDate} onChange={setExpiryDate} placeholder="בחר תאריך תוקף" />} hint="חובה לבחור תוקף לפני ההעלאה" />
+              </KitSection>
+            </Reveal>
+          )}
+        </>
       )}
-    </Screen>
+    </DriverPage>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: BRAND.screenBg },
-  scrollContent: { flexGrow: 1 },
-  content: { paddingHorizontal: SPACING.lg, paddingTop: 0, gap: SPACING.sm },
-  expiryField: { gap: SPACING.xs, marginTop: SPACING.sm },
-  expiryLabel: { color: COLORS.text, fontSize: 14, textAlign: 'right' },
-  uploadBtn: {
-    marginTop: SPACING.sm,
-    height: 48,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.text,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  uploadText: { fontSize: FONT_SIZE.md, color: COLORS.textInverse },
+  heroIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: DK.glass, borderWidth: 1, borderColor: DK.glassBorder, alignItems: 'center', justifyContent: 'center' },
 });
 
 const desktopStyles = StyleSheet.create({

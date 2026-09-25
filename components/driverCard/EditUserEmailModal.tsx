@@ -1,6 +1,8 @@
 import { Modal, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { AppText, PrimaryButton } from '../ui';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { EditField, KitSheet, PrimaryAction, SheetActions } from '../driverKit';
 
 export function EditUserEmailModal({
   visible,
@@ -21,6 +23,29 @@ export function EditUserEmailModal({
   onClose: () => void;
   onSubmit: () => void;
 }) {
+  const desktop = useIsDesktop();
+  if (!desktop) {
+    return (
+      <KitSheet
+        visible={visible}
+        onClose={onClose}
+        dismissable={!loading}
+        icon="mail"
+        title="עדכון כתובת מייל"
+        subtitle={`כתובת המייל של ${driverName ?? 'הנהג'} משמשת להתחברות לאפליקציה. עדכון כאן משנה אותה מיידית.`}
+        footer={
+          <SheetActions>
+            <PrimaryAction label="ביטול" tone="ghost" onPress={onClose} disabled={loading} style={kit.cancel} />
+            <PrimaryAction label="עדכון המייל" icon="checkmark" onPress={onSubmit} loading={loading} style={kit.confirm} />
+          </SheetActions>
+        }
+      >
+        <View style={kit.fields}>
+          <EditField first label="כתובת מייל" value={email} onChangeText={onEmailChange} keyboardType="email-address" ltr error={error || undefined} placeholder="name@example.com" autoComplete="email" />
+        </View>
+      </KitSheet>
+    );
+  }
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
@@ -101,4 +126,10 @@ const styles = StyleSheet.create({
   },
   cancelText: { fontSize: 14, color: COLORS.text },
   confirmBtn: { flex: 1.4 },
+});
+
+const kit = StyleSheet.create({
+  fields: { marginHorizontal: -16 },
+  cancel: { flex: 1 },
+  confirm: { flex: 1.6 },
 });

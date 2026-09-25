@@ -4,29 +4,18 @@ import { BrandLoader } from '../../components/ui/BrandLoader';
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BlurView } from 'expo-blur';
-import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LoadingState, ErrorState } from '../../components/ui';
+import { LoadingState, ErrorState, useToast } from '../../components/ui';
 import { DateField } from '../../components/ui/DateField';
-import { DC_COLORS, DC_FONT, DC_SPACING, DC_TYPO } from '../../components/driverCard/driverCardTheme';
+import { DC_COLORS, DC_FONT, DC_TYPO } from '../../components/driverCard/driverCardTheme';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, updateDriver, DriverRow, DocumentRow } from '../../lib/adminApi';
-import {
-  listDocuments,
-  uploadDocument,
-  deleteDocument,
-  getDocumentUrl,
-  downloadDocument,
-  pickImage,
-  captureImage,
-  pickFile,
-} from '../../lib/documents';
+import { listDocuments, uploadDocument, deleteDocument, getDocumentUrl, downloadDocument, pickImage, captureImage, pickFile } from '../../lib/documents';
 import { scanLicenseImage } from '../../lib/documentScanner';
-import { CONTENT_MAX_WIDTH, BRAND } from '../../lib/theme';
+import { CONTENT_MAX_WIDTH } from '../../lib/theme';
 import { RootStackParamList } from '../../navigation/types';
-import { DriverDossierHero } from '../../components/driverCard/DriverDossierHero';
+import { ActionRow, DK, DK_FONT, DKText, DriverPage, EditField, ErrorPanel, HeroButton, HeroTitle, InfoLine, KitSection, KitSheet, LoadingPanel, PrimaryAction, Reveal, STATUS, StatusChip, Surface, statusOfDate } from '../../components/driverKit';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable } from '../../components/desktop/primitives';
@@ -75,23 +64,13 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadRequest = useRef(0);
 
-  // The save bar slides in/out with edit mode instead of popping — matches
-  // the material language already used for the toast above, which this bar
-  // previously didn't share.
-  const saveBarAnim = useRef(new Animated.Value(0)).current;
-  const [saveBarMounted, setSaveBarMounted] = useState(false);
-  React.useEffect(() => {
-    if (editMode) {
-      setSaveBarMounted(true);
-      Animated.spring(saveBarAnim, { toValue: 1, useNativeDriver: true, stiffness: 260, damping: 30, mass: 1, overshootClamping: true }).start();
-    } else {
-      Animated.spring(saveBarAnim, { toValue: 0, useNativeDriver: true, stiffness: 260, damping: 30, mass: 1, overshootClamping: true }).start(
-        ({ finished }) => finished && setSaveBarMounted(false)
-      );
-    }
-  }, [editMode, saveBarAnim]);
 
+  const { showToast: showAppToast } = useToast();
   const showToast = useCallback((message: string, duration: number) => {
+    if (!isDesktop) {
+      showAppToast(message);
+      return;
+    }
     setToast(message);
     toastAnim.setValue(0);
     Animated.timing(toastAnim, { toValue: 1, duration: 220, easing: EASE_OUT, useNativeDriver: true }).start();
@@ -99,7 +78,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
     toastTimer.current = setTimeout(() => {
       Animated.timing(toastAnim, { toValue: 0, duration: 160, easing: EASE_OUT, useNativeDriver: true }).start(() => setToast(null));
     }, duration);
-  }, [toastAnim]);
+  }, [isDesktop, showAppToast, toastAnim]);
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
@@ -295,7 +274,23 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
         </Animated.View>
       )}
 
-      <Modal visible={!!sheetFor} transparent animationType="none" onRequestClose={closeSheet}>
+      {!isDesktop && (
+        <KitSheet
+          visible={!!sheetFor}
+          onClose={() => setSheetFor(null)}
+          icon="camera"
+          title={sheetFor ? `צילום ה${SIDE_TITLE[sheetFor]}` : 'צילום'}
+          subtitle="בסריקה ננסה לזהות את תאריך התוקף ולמלא אותו. כדאי לוודא אותו לפני השמירה."
+        >
+          <Surface style={styles.kitSheetList}>
+            <ActionRow icon="scan" label="סריקה עם זיהוי תוקף" hint="מומלץ — צילום ומילוי התוקף אוטומטית" onPress={() => pickAndUpload('scan')} />
+            <ActionRow first={false} icon="camera-outline" label="צילום" onPress={() => pickAndUpload('camera')} />
+            <ActionRow first={false} icon="images-outline" label="בחירה מהתמונות" onPress={() => pickAndUpload('gallery')} />
+            <ActionRow first={false} icon="document-outline" label="בחירה מהקבצים" onPress={() => pickAndUpload('file')} />
+          </Surface>
+        </KitSheet>
+      )}
+      <Modal visible={isDesktop && !!sheetFor} transparent animationType="none" onRequestClose={closeSheet}>
         <Pressable style={styles.sheetOverlay} onPress={closeSheet}>
           <Animated.View
             style={[
@@ -341,7 +336,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
             </Text>
           </View>
           {viewerSide && imageUrl[viewerSide] ? (
-            <Image source={{ uri: imageUrl[viewerSide]! }} style={styles.viewerImage} resizeMode="contain" />
+            <Image source={{ uri: imageUrl[viewerSide]! }} accessibilityLabel={`רישיון נהיגה, ${SIDE_TITLE[viewerSide]}`} style={styles.viewerImage} resizeMode="contain" />
           ) : null}
           <View style={styles.viewerActions}>
             <Pressable
@@ -369,8 +364,8 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
 
       <Modal visible={!!processingSide} transparent animationType="fade">
         <View style={styles.processingOverlay}>
-          <View style={styles.processingCard}>
-            <BrandLoader size="large" color={DC_COLORS.blueLight} />
+          <View style={[styles.processingCard, !isDesktop && styles.processingCardKit]}>
+            <BrandLoader size="large" color={isDesktop ? DC_COLORS.blueLight : DK.accent} />
             <Text style={styles.processingTitle}>מעבד את התמונה…</Text>
             <Text style={styles.processingSubtitle}>אנא המתן, אין צורך לבחור שוב</Text>
           </View>
@@ -378,6 +373,28 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       </Modal>
     </>
   );
+
+  const expiryStatus = statusOfDate(driver?.license_expiry);
+  function phonePage(body: React.ReactNode) {
+    return (
+      <DriverPage
+        insetTop={insets.top}
+        insetBottom={insets.bottom}
+        hero={
+          <HeroTitle
+            title="רישיון נהיגה"
+            subtitle={[isDriverSelf ? null : driver?.full_name, loading ? null : isVerified ? 'מאומת' : 'ממתין להשלמה'].filter(Boolean).join(' · ') || ' '}
+            onBack={() => (editMode ? setEditMode(false) : navigation.goBack())}
+            right={!loading && !loadError ? <HeroButton icon={editMode ? 'close' : 'create-outline'} label={editMode ? 'ביטול עריכה' : 'עריכה'} onPress={toggleEdit} /> : undefined}
+          />
+        }
+        footer={editMode ? <PrimaryAction label="שמירת השינויים" icon="checkmark" onPress={save} loading={saving} /> : undefined}
+        overlay={overlays}
+      >
+        {body}
+      </DriverPage>
+    );
+  }
 
   if (loading) {
     if (isDesktop) {
@@ -387,12 +404,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
         </DesktopShell>
       );
     }
-    return (
-      <View style={[styles.screen, styles.centerFill]}>
-        <AdminGradientBackground />
-        <LoadingState />
-      </View>
-    );
+    return phonePage(<LoadingPanel />);
   }
 
   if (loadError) {
@@ -403,12 +415,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
         </DesktopShell>
       );
     }
-    return (
-      <View style={styles.screen}>
-        <AdminGradientBackground />
-        <ErrorState message={loadError} onRetry={load} />
-      </View>
-    );
+    return phonePage(<ErrorPanel message="טעינת מסמכי הרישיון נכשלה" hint={loadError} onRetry={load} />);
   }
 
   const desktopTileGrid = (
@@ -480,95 +487,58 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
     );
   }
 
-  return (
-    <View style={styles.screen}>
-      <AdminGradientBackground />
-      <DriverDossierHero title="מסמכי רישיון נהיגה" subtitle={isVerified ? 'המסמכים מאומתים' : 'ממתין להשלמה'} icon="card-outline" insetTop={insets.top} onBack={() => navigation.goBack()} />
-      <View style={styles.editAction}>
-        <Pressable onPress={toggleEdit} style={styles.navEdit} hitSlop={8}>
-          <Text style={[DC_TYPO.navBackLink, { color: DC_COLORS.blueLight }]}>{editMode ? 'סיום עריכה' : 'עריכה'}</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.body}>
-        <View style={styles.grid}>
-          <SideTile
-            label="צד קדמי"
-            fileName={docs.front?.file_name ?? null}
-            url={imageUrl.front}
-            editMode={editMode}
-            uploading={uploadingSide === 'front'}
-            failed={failedSide === 'front'}
-            onPress={() => handleTilePress('front')}
-            onRemove={() => removeSide('front')}
+  const tile = (side: Side) => (
+    <SideTile
+      phone
+      label={SIDE_TITLE[side]}
+      fileName={docs[side]?.file_name ?? null}
+      url={imageUrl[side]}
+      editMode={editMode}
+      uploading={uploadingSide === side}
+      failed={failedSide === side}
+      onPress={() => handleTilePress(side)}
+      onRemove={() => removeSide(side)}
+    />
+  );
+  return phonePage(
+    <>
+      <Reveal index={0}>
+        <Surface style={styles.kitTiles}>
+          {tile('front')}
+          {tile('back')}
+        </Surface>
+      </Reveal>
+      <Reveal index={1}>
+        <KitSection title="פרטי הרישיון">
+          {editMode ? (
+            <EditField first label="תוקף הרישיון" editor={<DateField value={expiryDraft} onChange={setExpiryDraft} placeholder="לא הוזן" />} />
+          ) : (
+            <InfoLine
+              first
+              icon="calendar"
+              tint={expiryStatus === 'missing' ? DK.accent : STATUS[expiryStatus].fg}
+              label="תוקף הרישיון"
+              value={driver?.license_expiry ? formatDdMmYyyy(driver.license_expiry) : null}
+              trailing={driver?.license_expiry ? <StatusChip status={expiryStatus} /> : undefined}
+            />
+          )}
+          <InfoLine
+            icon={isVerified ? 'shield-checkmark' : 'hourglass'}
+            tint={isVerified ? STATUS.ok.fg : STATUS.soon.fg}
+            label="סטטוס"
+            value={isVerified ? 'מאומת — שני הצדדים ותוקף' : `ממתין ל${[!docs.front && 'צד קדמי', !docs.back && 'צד אחורי', !driver?.license_expiry && 'תוקף'].filter(Boolean).join(', ')}`}
           />
-          <SideTile
-            label="צד אחורי"
-            fileName={docs.back?.file_name ?? null}
-            url={imageUrl.back}
-            editMode={editMode}
-            uploading={uploadingSide === 'back'}
-            failed={failedSide === 'back'}
-            onPress={() => handleTilePress('back')}
-            onRemove={() => removeSide('back')}
-          />
-        </View>
-
-        <View style={styles.detailsCard}>
-          <View style={styles.detailsRow}>
-            <Text style={[DC_TYPO.rowLabel, styles.detailsLabel]}>תוקף הרישיון</Text>
-            {editMode ? (
-              <DateField value={expiryDraft} onChange={setExpiryDraft} placeholder="לא הוזן" />
-            ) : (
-              <Text style={[DC_TYPO.rowValue, styles.detailsValue]}>
-                {driver?.license_expiry ? formatDdMmYyyy(driver.license_expiry) : 'לא הוזן'}
-              </Text>
-            )}
-          </View>
-          <View style={styles.detailsSeparator} />
-          <View style={styles.detailsRow}>
-            <Text style={[DC_TYPO.rowLabel, styles.detailsLabel]}>סטטוס</Text>
-            <Text style={[DC_TYPO.badgeWarn, { color: isVerified ? DC_COLORS.green : DC_COLORS.orange }]}>
-              {status}
-            </Text>
-          </View>
-        </View>
-
-        <Text style={[DC_TYPO.footer, styles.footer]}>{footerText}</Text>
-      </View>
-
-      {saveBarMounted && (
-        <Animated.View
-          style={[
-            styles.saveBar,
-            { paddingBottom: insets.bottom + 12 },
-            {
-              opacity: saveBarAnim,
-              transform: [{ translateY: saveBarAnim.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }],
-            },
-          ]}
-        >
-          <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
-          <Pressable
-            style={({ pressed }) => [styles.saveButton, pressed && styles.saveButtonPressed]}
-            onPress={save}
-            disabled={saving}
-          >
-            {saving ? (
-              <BrandLoader color="#FFFFFF" />
-            ) : (
-              <Text style={styles.saveButtonText}>שמירת שינויים</Text>
-            )}
-          </Pressable>
-        </Animated.View>
-      )}
-
-      {overlays}
-    </View>
+        </KitSection>
+      </Reveal>
+      <DKText variant="caption" color={DK.muted} style={styles.kitFooter}>
+        {footerText}
+      </DKText>
+    </>
   );
 }
 
 function SideTile({
+  phone = false,
   label,
   fileName,
   url,
@@ -578,6 +548,7 @@ function SideTile({
   onPress,
   onRemove,
 }: {
+  phone?: boolean;
   label: string;
   fileName: string | null;
   url: string | null;
@@ -594,7 +565,9 @@ function SideTile({
       <Pressable
         onPress={onPress}
         disabled={uploading}
-        style={({ pressed }) => [styles.tile, !filled && styles.tileEmpty, pressed && styles.tilePressed]}
+        style={({ pressed }) => [styles.tile, !filled && styles.tileEmpty, phone && styles.tileKit, phone && !filled && styles.tileEmptyKit, pressed && styles.tilePressed]}
+        accessibilityRole="button"
+        accessibilityLabel={filled ? `${label}, ${editMode ? 'החלפת הצילום' : 'הצגת הצילום'}` : `${label}, העלאת צילום`}
       >
         {filled ? (
           <>
@@ -622,8 +595,8 @@ function SideTile({
           <BrandLoader color={DC_COLORS.blueLight} />
         ) : (
           <>
-            <Feather name="camera" size={27} color={DC_COLORS.labelTertiary} />
-            <Text style={styles.tileEmptyText}>{failed ? 'ההעלאה נכשלה, נסה שוב' : 'העלאת צילום'}</Text>
+            <Feather name="camera" size={27} color={phone ? DK.accent : DC_COLORS.labelTertiary} />
+            <Text style={[styles.tileEmptyText, phone && styles.tileEmptyTextKit]}>{failed ? 'ההעלאה נכשלה, נסה שוב' : 'העלאת צילום'}</Text>
           </>
         )}
         {uploading && (
@@ -633,8 +606,8 @@ function SideTile({
         )}
       </Pressable>
       <View style={styles.tileCaption}>
-        <Text style={[DC_TYPO.badge, styles.tileCaptionLabel]}>{label}</Text>
-        <Text style={[DC_TYPO.badge, styles.tileCaptionValue]} numberOfLines={1}>
+        <Text style={[DC_TYPO.badge, styles.tileCaptionLabel, phone && styles.tileCaptionKit]}>{label}</Text>
+        <Text style={[DC_TYPO.badge, styles.tileCaptionValue, phone && styles.tileCaptionValueKit]} numberOfLines={1}>
           {fileName ?? 'לא הועלה'}
         </Text>
       </View>
@@ -660,8 +633,15 @@ function formatDdMmYyyy(iso: string): string {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: BRAND.screenBg },
-  centerFill: { alignItems: 'center', justifyContent: 'center' },
+  kitTiles: { flexDirection: 'row-reverse', gap: 12, padding: 14 },
+  kitFooter: { textAlign: 'center', paddingHorizontal: 12 },
+  kitSheetList: { overflow: 'hidden' },
+  tileKit: { borderRadius: 20, backgroundColor: DK.surfaceSunk, shadowOpacity: 0, elevation: 0 },
+  tileEmptyKit: { backgroundColor: DK.accentSoft, borderColor: 'rgba(47,91,255,0.35)' },
+  tileEmptyTextKit: { color: DK.accent, fontFamily: DK_FONT.semibold, fontSize: 14 },
+  tileCaptionKit: { color: DK.inkSoft, fontFamily: DK_FONT.semibold, fontSize: 13 },
+  tileCaptionValueKit: { color: DK.muted, fontFamily: DK_FONT.medium, fontSize: 12 },
+  processingCardKit: { borderRadius: 28 },
   processingOverlay: {
     flex: 1,
     alignItems: 'center',
@@ -679,28 +659,7 @@ const styles = StyleSheet.create({
   },
   processingTitle: { color: DC_COLORS.label, fontSize: 16, fontFamily: DC_FONT.bold },
   processingSubtitle: { color: DC_COLORS.labelTertiary, fontSize: 12 },
-  navBar: { width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
-  editAction: { alignItems: 'flex-start', paddingHorizontal: 20, marginTop: -8, marginBottom: 8 },
-  navBorder: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(60,60,67,0.2)',
-  },
-  navContent: {
-    flex: 1,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-  },
-  navBack: { flexDirection: 'row-reverse', alignItems: 'center', minWidth: 70 },
-  navTitle: { flex: 1, textAlign: 'center', color: DC_COLORS.label },
-  navEdit: { minWidth: 50, alignItems: 'flex-start' },
 
-  body: { flex: 1, padding: DC_SPACING.screenPaddingH, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
-  grid: { flexDirection: 'row-reverse', gap: 12 },
   tileWrap: { flex: 1, gap: 6 },
   tile: {
     aspectRatio: 1,
@@ -754,43 +713,8 @@ const styles = StyleSheet.create({
   tileCaptionLabel: { color: DC_COLORS.labelSecondary },
   tileCaptionValue: { color: DC_COLORS.labelTertiary, flexShrink: 1, textAlign: 'left' },
 
-  detailsCard: {
-    marginTop: 16,
-    backgroundColor: DC_COLORS.surface,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-  },
-  detailsRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 48,
-  },
-  detailsLabel: { color: DC_COLORS.label },
-  detailsValue: { color: DC_COLORS.labelSecondary },
-  detailsSeparator: { height: StyleSheet.hairlineWidth, backgroundColor: DC_COLORS.separator },
 
-  footer: { color: DC_COLORS.labelTertiary, textAlign: 'right', lineHeight: 18, marginTop: 16 },
 
-  saveBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    maxWidth: CONTENT_MAX_WIDTH,
-    marginHorizontal: 'auto',
-    paddingTop: 12,
-    paddingHorizontal: DC_SPACING.screenPaddingH,
-  },
-  saveButton: {
-    height: 50,
-    borderRadius: 14,
-    backgroundColor: DC_COLORS.blueLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveButtonPressed: { opacity: 0.85 },
-  saveButtonText: { color: '#FFFFFF', fontFamily: DC_TYPO.rowValue.fontFamily, fontSize: 16 },
 
   toast: {
     position: 'absolute',

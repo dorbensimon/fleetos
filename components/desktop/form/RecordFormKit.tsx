@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
     borderColor: DESKTOP_COLORS.brand,
     backgroundColor: DESKTOP_COLORS.brand,
     ...webOnly({
-      backgroundImage: 'linear-gradient(160deg, #1AA0E0 0%, #0088CC 55%, #0075B0 100%)',
+      backgroundImage: 'linear-gradient(160deg, #1AA0E0 0%, #0075B3 55%, #0075B0 100%)',
       boxShadow: '0 1px 2px rgba(0,136,204,0.25), 0 8px 20px -6px rgba(0,136,204,0.55)',
     }),
   },
@@ -872,7 +872,7 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 3,
     backgroundColor: DESKTOP_COLORS.brand,
-    ...webOnly({ backgroundImage: 'linear-gradient(90deg, #0088CC, #5FC1F0)' }),
+    ...webOnly({ backgroundImage: 'linear-gradient(90deg, #0075B3, #5FC1F0)' }),
   },
   dockFillReady: { backgroundColor: '#34C759', ...webOnly({ backgroundImage: 'linear-gradient(90deg, #1E9E4C, #34C759)' }) },
   dockCta: {
@@ -883,7 +883,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...webOnly({
-      backgroundImage: 'linear-gradient(160deg, #1AA0E0 0%, #0088CC 55%, #0075B0 100%)',
+      backgroundImage: 'linear-gradient(160deg, #1AA0E0 0%, #0075B3 55%, #0075B0 100%)',
       boxShadow: '0 1px 2px rgba(0,136,204,0.3), 0 8px 18px -8px rgba(0,136,204,0.65)',
       transition: 'filter 150ms ease-out, transform 100ms ease-out, background-color 150ms ease-out',
     }),

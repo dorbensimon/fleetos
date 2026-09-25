@@ -1,36 +1,23 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, Linking } from 'react-native';
+import { Linking } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, BackButton, LoadingState, ErrorState, PrimaryButton, useToast } from '../../components/ui';
-import { COLORS, CONTENT_MAX_WIDTH, RADIUS, SPACING, formatDate, BRAND } from '../../lib/theme';
-import { FLEET_COLORS } from '../../lib/colors';
-import { DOSSIER_BLUE } from '../../lib/dossierColors';
+import { LoadingState, ErrorState, useToast } from '../../components/ui';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, archiveDriver, restoreDriver, resetDriverPassword, getUserEmail, updateUserEmail, updateDriver, listDepartments, DriverRow, type Department } from '../../lib/adminApi';
 import { listDocuments } from '../../lib/documents';
 import { listSignatureRequests } from '../../lib/docuseal';
 import { exportDriverSnapshotReport } from '../../lib/driverSnapshotReport';
 import { RootStackParamList } from '../../navigation/types';
-import { DriverHero } from '../../components/driverCard/DriverHero';
-import { QuickActionCard } from '../../components/driverCard/QuickActionCard';
-import { ListGroup } from '../../components/driverCard/ListGroup';
-import { SigningFolders } from '../../components/driverCard/SigningFolders';
-import { DC_COLORS, DC_SPACING, DC_TYPO } from '../../components/driverCard/driverCardTheme';
-import {
-  DRIVER_CARD_GROUPS,
-  DRIVER_CARD_QUICK_ACTIONS,
-  DriverCardRow,
-} from '../../components/driverCard/driverCardSections';
+import { DriverCardRow } from '../../components/driverCard/driverCardSections';
+import { DriverDetailMobile } from './mobile/DriverDetailMobile';
 import { dialPhone } from '../../lib/phone';
 import { ResetDriverPasswordModal } from '../../components/driverCard/ResetDriverPasswordModal';
 import { EditUserEmailModal } from '../../components/driverCard/EditUserEmailModal';
 import { ConfirmActionModal } from '../../components/driverCard/ConfirmActionModal';
 import { buildDriverDetailGroups } from '../../components/driverCard/buildDriverDetailGroups';
-import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
 import { isValidTemporaryPassword } from '../../lib/validation';
 import {
   getPendingLicenseUpdateForDriver,
@@ -396,7 +383,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
           (assignedVehicleCount > 0
             ? ` שיוך ${assignedVehicleCount === 1 ? 'הרכב' : `${assignedVehicleCount} הרכבים`} שלו יבוטל.`
             : '') +
-          ' תמיד אפשר לשחזר אותו ממסך הארכיון.'
+          ' אפשר לשחזר אותו ממסך הארכיון.'
         }
         confirmLabel="העבר לארכיון"
         loading={archiving}
@@ -452,234 +439,35 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     );
   }
 
-  if (loading) {
-    return (
-      <View style={styles.screen}>
-        <AdminGradientBackground />
-        <LoadingState />
-      </View>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <View style={styles.screen}>
-        <AdminGradientBackground />
-        <ErrorState message={loadError} onRetry={load} />
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.screen}>
-      <AdminGradientBackground />
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingBottom: DC_SPACING.listBottomPadding + insets.bottom }]}
-      >
-        <TouchableOpacity
-          onPress={() => navigation.navigate('DriverForm', { driverId })}
-          style={styles.editDriverButton}
-          accessibilityRole="button"
-          accessibilityLabel="עריכת פרטי נהג"
-        >
-          <Feather name="edit-3" size={18} color={COLORS.accent} />
-        </TouchableOpacity>
-        <DriverHero
-          name={driver?.full_name ?? 'ללא שם'}
-          avatarLetter={(driver?.full_name ?? '?').trim().charAt(0)}
-          statusColor={isArchived ? DC_COLORS.gray : pendingActivation ? DC_COLORS.orange : DC_COLORS.green}
-          subtitleParts={[isArchived ? 'לא פעיל' : pendingActivation ? 'ממתין להפעלה' : 'פעיל']}
-        />
-
-        {isArchived && (
-          <View style={styles.archivedBanner}>
-            <Feather name="archive" size={16} color="#9A3412" />
-            <AppText style={styles.archivedBannerText}>
-              נהג זה נמצא בארכיון ואין לו גישה לאפליקציה. מחיקה לצמיתות מתבצעת ממסך הארכיון.
-            </AppText>
-          </View>
-        )}
-
-        {pendingActivation && (
-          <View style={styles.archivedBanner}>
-            <Feather name="clock" size={16} color="#9A3412" />
-            <AppText style={styles.archivedBannerText}>
-              הנהג עדיין משתמש בסיסמה זמנית ויידרש לקבוע סיסמה קבועה משלו בכניסה הבאה
-              {pendingActivationDays === null
-                ? '.'
-                : pendingActivationDays === 0
-                ? ' (מהיום).'
-                : ` (לפני ${pendingActivationDays} ${pendingActivationDays === 1 ? 'יום' : 'ימים'}).`}
-            </AppText>
-          </View>
-        )}
-
-        <View style={styles.quickActions}>
-          {DRIVER_CARD_QUICK_ACTIONS.map((action) => (
-            <QuickActionCard
-              key={action.key}
-              label={action.label}
-              icon={action.icon}
-              tint={action.tint}
-              disabled={
-                (action.key === 'assigned-vehicle' && !driver?.vehicle_id) ||
-                ((action.key === 'call' || action.key === 'message') && !driver?.phone)
-              }
-              onPress={() => {
-                if (action.label === 'התקשר' && driver?.phone) dialPhone(driver.phone);
-                else if (action.label === 'הודעה' && driver?.phone) Linking.openURL(`sms:${driver.phone}`);
-                else if (action.label === 'רכב משויך' && driver?.vehicle_id) {
-                  navigation.navigate('VehicleDetail', { vehicleId: driver.vehicle_id, returnTo: 'driver', fromDriverId: driverId });
-                }
-              }}
-            />
-          ))}
-        </View>
-
-        <SigningFolders driverId={driverId} onOpen={folder => navigation.navigate('DriverSigningDocuments', { driverId, folderId: folder.id })} />
-        {groups.map((group) => (
-          <ListGroup key={group.title} group={group} onRowPress={handleRowPress} />
-        ))}
-
-        {pendingLicenseRequest && (
-          <View style={styles.licenseRequestCard}>
-            <AppText style={[DC_TYPO.destructiveBold, styles.licenseRequestTitle]}>
-              בקשת עדכון רישיון ממתינה
-            </AppText>
-            <AppText style={styles.licenseRequestLine}>
-              מספר: {pendingLicenseRequest.requested_license_number} · דרגות: {pendingLicenseRequest.requested_license_classes}
-            </AppText>
-            <AppText style={styles.licenseRequestLine}>
-              תוקף עד: {formatDate(pendingLicenseRequest.requested_license_expiry)}
-            </AppText>
-            <View style={styles.licenseRequestActions}>
-              <TouchableOpacity
-                style={[styles.licenseRequestBtn, styles.licenseRequestApprove]}
-                onPress={() => reviewLicense(true)}
-                disabled={reviewingLicense}
-                activeOpacity={0.7}
-              >
-                <AppText weight="bold" style={styles.licenseRequestApproveText}>אשר</AppText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.licenseRequestBtn, styles.licenseRequestReject]}
-                onPress={() => reviewLicense(false)}
-                disabled={reviewingLicense}
-                activeOpacity={0.7}
-              >
-                <AppText weight="bold" style={styles.licenseRequestRejectText}>דחה</AppText>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Permanent deletion deliberately does not live here: it is only
-            reachable from the driver archive, so an irreversible action
-            always passes through a reversible step first. */}
-        <View style={styles.destructiveGroup}>
-          {isArchived ? (
-            <TouchableOpacity
-              style={styles.destructiveRow}
-              onPress={runRestore}
-              disabled={restoring}
-              activeOpacity={0.7}
-            >
-              <AppText style={[DC_TYPO.destructiveBold, styles.restoreText]}>
-                {restoring ? 'משחזר…' : 'שחזור מהארכיון'}
-              </AppText>
-              <Feather name="rotate-ccw" size={16} color={COLORS.accent} style={styles.trashIcon} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.destructiveRow}
-              onPress={() => setArchiveConfirmOpen(true)}
-              disabled={archiving}
-              activeOpacity={0.7}
-            >
-              <AppText style={[DC_TYPO.destructiveBold, styles.archiveText]}>העברה לארכיון</AppText>
-              <Feather name="archive" size={16} color={DC_COLORS.gray} style={styles.trashIcon} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {!!driver?.created_at && (
-          <AppText style={[DC_TYPO.footer, styles.footer]}>
-            הצטרף לאפליקציה בתאריך {new Date(driver.created_at).toLocaleDateString('he-IL')}
-            {driver?.updated_at
-              ? `\nעדכון אחרון: ${new Date(driver.updated_at).toLocaleDateString('he-IL')}`
-          : ''}
-          </AppText>
-        )}
-      </ScrollView>
-
-      <View style={[styles.floatingNavigation, { top: insets.top + 12 }]}>
-        <BackButton onPress={() => navigation.goBack()} />
-      </View>
-
-      {modals}
-    </View>
+    <DriverDetailMobile
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
+      loading={loading}
+      error={loadError}
+      driverId={driverId}
+      driver={driver}
+      groups={groups}
+      archived={isArchived}
+      pendingActivation={pendingActivation}
+      pendingActivationDays={pendingActivationDays}
+      licenseRequest={pendingLicenseRequest}
+      reviewingLicense={reviewingLicense}
+      archiving={archiving}
+      restoring={restoring}
+      exportingReport={exportingReport}
+      modals={modals}
+      onBack={() => navigation.goBack()}
+      onRetry={load}
+      onEdit={() => navigation.navigate('DriverForm', { driverId })}
+      onCall={() => driver?.phone && dialPhone(driver.phone)}
+      onMessage={() => driver?.phone && Linking.openURL(`sms:${driver.phone}`)}
+      onVehicle={() => driver?.vehicle_id && navigation.navigate('VehicleDetail', { vehicleId: driver.vehicle_id, returnTo: 'driver', fromDriverId: driverId })}
+      onRow={handleRowPress}
+      onOpenSigning={(folder) => navigation.navigate('DriverSigningDocuments', { driverId, folderId: folder.id })}
+      onReviewLicense={(approve) => void reviewLicense(approve)}
+      onArchive={() => setArchiveConfirmOpen(true)}
+      onRestore={() => void runRestore()}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  floatingNavigation: { position: 'absolute', zIndex: 100, elevation: 100, right: DC_SPACING.screenPaddingH },
-  editDriverButton: { position: 'absolute', top: 18, left: DC_SPACING.screenPaddingH, zIndex: 2, width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(10,127,208,0.20)', alignItems: 'center', justifyContent: 'center', shadowColor: DOSSIER_BLUE, shadowOpacity: 0.14, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
-  licenseRequestCard: { marginTop: 16, padding: 16, borderRadius: 12, backgroundColor: COLORS.warnBg, borderWidth: 1, borderColor: FLEET_COLORS.warning.fill },
-  licenseRequestTitle: { fontSize: 14.5, marginBottom: 6, color: COLORS.warnText },
-  licenseRequestLine: { fontSize: 13, color: COLORS.warnText, marginBottom: 2 },
-  licenseRequestActions: { flexDirection: 'row-reverse', gap: 8, marginTop: 10 },
-  licenseRequestBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-  licenseRequestApprove: { backgroundColor: FLEET_COLORS.success.fill },
-  licenseRequestApproveText: { color: '#FFFFFF', fontSize: 13.5 },
-  licenseRequestReject: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: FLEET_COLORS.danger.fill },
-  licenseRequestRejectText: { color: FLEET_COLORS.danger.text, fontSize: 13.5 },
-  screen: { flex: 1, backgroundColor: BRAND.screenBg },
-  // flex: 1 is required so the ScrollView stretches to fill `screen` instead
-  // of sizing to its own content on web (React Native Web) — without it the
-  scroll: { flex: 1, backgroundColor: 'transparent' },
-  content: { paddingBottom: DC_SPACING.listBottomPadding, paddingTop: 12, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
-  quickActions: {
-    flexDirection: 'row-reverse',
-    gap: 10,
-    paddingHorizontal: DC_SPACING.screenPaddingH,
-    paddingBottom: DC_SPACING.groupGap,
-  },
-  destructiveGroup: {
-    marginHorizontal: DC_SPACING.screenPaddingH,
-    backgroundColor: DC_COLORS.surface,
-    borderRadius: DC_SPACING.groupRadius,
-    overflow: 'hidden',
-    marginBottom: DC_SPACING.groupGap,
-  },
-  destructiveRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 52,
-  },
-  archiveText: { color: DC_COLORS.gray },
-  restoreText: { color: '#0088CC' },
-  archivedBanner: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 9,
-    marginHorizontal: DC_SPACING.screenPaddingH,
-    marginBottom: DC_SPACING.groupGap,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: DC_SPACING.groupRadius,
-    backgroundColor: 'rgba(234,88,12,.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(234,88,12,.24)',
-  },
-  archivedBannerText: { flex: 1, fontSize: 13, color: '#9A3412', textAlign: 'right', lineHeight: 19 },
-  trashIcon: { marginRight: 7 },
-  footer: {
-    color: DC_COLORS.labelTertiary,
-    textAlign: 'center',
-    lineHeight: 21,
-    paddingTop: 12,
-    paddingHorizontal: DC_SPACING.screenPaddingH,
-  },
-});

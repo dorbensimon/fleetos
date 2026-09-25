@@ -267,7 +267,7 @@ const VIEWER_CSS = `
 .dv-root {
   --dv-ease: cubic-bezier(0.23, 1, 0.32, 1);
   --dv-drawer: cubic-bezier(0.32, 0.72, 0, 1);
-  --dv-tint: #0088CC;
+  --dv-tint: #0075B3;
   position: fixed; inset: 0; z-index: 10000;
   direction: rtl; color: #fff;
   font-family: 'Heebo_400Regular', system-ui, sans-serif;

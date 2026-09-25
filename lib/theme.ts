@@ -6,7 +6,7 @@
  * whole app stays visually consistent.
  *
  * Rules from the spec:
- *   - #0088CC is the ONLY accent colour.
+ *   - #0075B3 is the ONLY accent colour (darkened from #0088CC for text contrast).
  *   - Cards are white on a #E4E4E4 background, separated by a soft
  *     shadow (never a border).
  *   - No emoji in the UI — vector icons (Ionicons) only.
@@ -18,7 +18,7 @@ export const COLORS = {
   // text
   text: '#1A1A1A',
   textMuted: '#666666',
-  textFaint: '#979797',
+  textFaint: '#6B6B6B', // 4.7:1 on the screen background (WCAG AA); was #979797 (2.6:1)
   textInverse: '#FFFFFF',
 
   // surfaces
@@ -27,7 +27,7 @@ export const COLORS = {
   field: '#FAFAFA',
 
   // the single accent
-  accent: '#0088CC',
+  accent: '#0075B3', // 5.0:1 on white (WCAG AA); was #0088CC (3.9:1)
   accentSoft: 'rgba(0, 136, 204, 0.10)',
 
   // hairlines (used sparingly — cards use shadow, not border)

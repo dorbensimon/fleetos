@@ -112,7 +112,7 @@ export function SendToDriversSheet({ companyId, template, onClosed }: { companyI
         ) : (
           <>
             <span className="sd-foot-note">
-              <Ionicons name="phone-portrait" size={20} color="#0088CC" />
+              <Ionicons name="phone-portrait" size={20} color="#0075B3" />
               הנהגים יקבלו את המסמך באפליקציה ויחתמו בה
             </span>
             <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={() => void send()} disabled={!count || sending} style={{ minWidth: 220 }}>
@@ -158,7 +158,7 @@ export function SendToDriversSheet({ companyId, template, onClosed }: { companyI
           </div>
         ) : drivers.length === 0 ? (
           <div className="sd-busy">
-            <Ionicons name="people" size={46} color="#0088CC" />
+            <Ionicons name="people" size={46} color="#0075B3" />
             <h3 className="sd-b">אין עדיין נהגים פעילים בחברה</h3>
           </div>
         ) : (

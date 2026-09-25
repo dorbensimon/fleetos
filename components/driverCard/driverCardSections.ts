@@ -122,9 +122,3 @@ export const DRIVER_CARD_GROUPS: DriverCardGroup[] = [
     ],
   },
 ];
-
-export const DRIVER_CARD_QUICK_ACTIONS: { key: 'call' | 'message' | 'assigned-vehicle'; label: string; icon: DriverCardIconKey; tint: DriverCardTint }[] = [
-  { key: 'call', label: 'התקשר', icon: 'phone', tint: 'green' },
-  { key: 'message', label: 'הודעה', icon: 'message', tint: 'blue' },
-  { key: 'assigned-vehicle', label: 'רכב משויך', icon: 'car', tint: 'indigo' },
-];

@@ -1,52 +1,28 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { BrandLoader } from '../../components/ui/BrandLoader';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
-import { ADMIN_BACKGROUND_COLORS, ADMIN_BACKGROUND_LOCATIONS } from '../../components/admin/AdminGradientBackground';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { AppText, BackButton, LoadingState, useToast } from '../../components/ui';
-import { formScreenStyles } from '../../components/admin/formScreenStyles';
+import { LoadingState, useToast } from '../../components/ui';
+import { ActionRow, Banner, DK, DKText, DriverPage, EditField, HeroTitle, KitSection, LoadingPanel, Plate, PrimaryAction, Pressy, Reveal, STATUS, Segmented } from '../../components/driverKit';
 import { DateField } from '../../components/ui/DateField';
-import { FormFieldRow } from '../../components/ui/FormFieldRow';
 import { Select } from '../../components/ui/Select';
 import { VehicleDriversEditor } from '../../components/VehicleDriversEditor';
-import { COLORS, CONTENT_MAX_WIDTH, SPACING, ACCENT_SHADOW, FONT, parseDateValue, FONT_SIZE, BRAND } from '../../lib/theme';
+import { COLORS, parseDateValue } from '../../lib/theme';
 import { isStaleDepartmentError } from '../../lib/driverFields';
 import { useCompany } from '../../lib/CompanyContext';
-import {
-  getVehicle,
-  createVehicle,
-  updateVehicle,
-  listVehicles,
-  listDepartments,
-  listDrivers,
-  listActiveVehicleDrivers,
-  listCompliance,
-  upsertCompliance,
-  Vehicle,
-  VehicleStatus,
-  VehicleType,
-  AcquisitionType,
-  VehicleDriverWithProfile,
-} from '../../lib/adminApi';
-import { VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS, ACQUISITION_TYPE_LABELS } from '../../lib/compliance';
+import { getVehicle, createVehicle, updateVehicle, listVehicles, listDepartments, listDrivers, listActiveVehicleDrivers, listCompliance, upsertCompliance, Vehicle, VehicleStatus, VehicleType, AcquisitionType, VehicleDriverWithProfile } from '../../lib/adminApi';
+import { VEHICLE_STATUS_LABELS, ACQUISITION_TYPE_LABELS } from '../../lib/compliance';
 import { formatPlate } from '../../lib/plate';
 import { RootStackParamList } from '../../navigation/types';
-import { dateOnlyIsoFromLocalDate, formatDateDots } from '../../lib/driverFormValidation';
 import { lookupVehicleRegistry, VehicleRegistryDetails } from '../../lib/vehicleRegistry';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { VehicleFormDesktopView } from '../../components/desktop/VehicleFormDesktopView';
-import { BrandSymbol } from '../../components/ui/Brand';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleForm'>;
 type FormVehicleType = VehicleType | '';
-type FieldKey = keyof FormState;
 
 interface FormState {
   plate_number: string;
@@ -86,7 +62,6 @@ const EMPTY: FormState = {
   department_id: null,
 };
 
-const VEHICLE_HEADER_HEIGHT = 126;
 const REQUIRED_FIELDS = ['plate_number', 'vehicle_type', 'status'] as const;
 
 const VEHICLE_TYPE_OPTIONS = [
@@ -194,16 +169,9 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [focusedField, setFocusedField] = useState<FieldKey | null>(null);
-  const [showRoadDatePicker, setShowRoadDatePicker] = useState(false);
-  const [draftRoadDate, setDraftRoadDate] = useState<Date | null>(null);
-  const [showLicenseExpiryPicker, setShowLicenseExpiryPicker] = useState(false);
-  const [draftLicenseExpiry, setDraftLicenseExpiry] = useState<Date | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupMessage, setLookupMessage] = useState<string | null>(null);
 
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollY = useRef(new Animated.Value(0)).current;
 
   const years = useMemo(() => yearOptions(), []);
 
@@ -270,46 +238,6 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
       }
     })();
   }, [load]);
-
-  const openRoadDatePicker = () => {
-    setDraftRoadDate(form.road_registration_date ? parseDateValue(form.road_registration_date) : new Date());
-    setShowRoadDatePicker(true);
-  };
-
-  const handleRoadDateChange = (_: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowRoadDatePicker(false);
-      if (selectedDate) set('road_registration_date', dateOnlyIsoFromLocalDate(selectedDate));
-      return;
-    }
-    if (selectedDate) setDraftRoadDate(selectedDate);
-  };
-
-  const confirmRoadDatePicker = () => {
-    const selectedDate = draftRoadDate ?? new Date();
-    set('road_registration_date', dateOnlyIsoFromLocalDate(selectedDate));
-    setShowRoadDatePicker(false);
-  };
-
-  const openLicenseExpiryPicker = () => {
-    setDraftLicenseExpiry(form.vehicle_license_expiry ? parseDateValue(form.vehicle_license_expiry) : new Date());
-    setShowLicenseExpiryPicker(true);
-  };
-
-  const handleLicenseExpiryChange = (_: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowLicenseExpiryPicker(false);
-      if (selectedDate) set('vehicle_license_expiry', dateOnlyIsoFromLocalDate(selectedDate));
-      return;
-    }
-    if (selectedDate) setDraftLicenseExpiry(selectedDate);
-  };
-
-  const confirmLicenseExpiryPicker = () => {
-    const selectedDate = draftLicenseExpiry ?? new Date();
-    set('vehicle_license_expiry', dateOnlyIsoFromLocalDate(selectedDate));
-    setShowLicenseExpiryPicker(false);
-  };
 
   const applyRegistryDetails = (details: VehicleRegistryDetails) => {
     setForm((current) => ({
@@ -452,10 +380,9 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
       );
     }
     return (
-      <View style={styles.screen}>
-        <LinearGradient colors={ADMIN_BACKGROUND_COLORS} locations={ADMIN_BACKGROUND_LOCATIONS} style={styles.halo} />
-        <LoadingState />
-      </View>
+      <DriverPage insetTop={insets.top} insetBottom={insets.bottom} hero={<HeroTitle title={isEdit ? 'עריכת רכב' : 'רכב חדש'} onBack={() => navigation.goBack()} />}>
+        <LoadingPanel />
+      </DriverPage>
     );
   }
 
@@ -508,819 +435,184 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     );
   }
 
+  const statusTone = form.status === 'active' ? STATUS.ok.fill : form.status === 'maintenance' ? STATUS.soon.fill : DK.onNightFaint;
   return (
-    <View style={styles.screen}>
-      <LinearGradient colors={ADMIN_BACKGROUND_COLORS} locations={ADMIN_BACKGROUND_LOCATIONS} style={styles.halo} />
-
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFill} />
-        <View style={styles.headerTop}>
-          <BackButton onPress={() => navigation.goBack()} accessibilityLabel="חזור" />
-          <AppText weight="bold" style={styles.headerTitle}>{screenTitle}</AppText>
-          <View style={styles.headerSideSpacer}>
-            <BrandSymbol size={22} />
+    <DriverPage
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
+      hero={
+        <View>
+          <HeroTitle title={screenTitle} subtitle={heroTitle} onBack={() => navigation.goBack()} />
+          <View style={styles.preview}>
+            <Plate number={form.plate_number ? formatPlate(form.plate_number) : '00-000-00'} />
+            <View style={styles.glassChip}>
+              <DKText variant="micro" color={DK.onNight}>
+                {selectedType?.label ?? 'סוג לא נבחר'}
+              </DKText>
+            </View>
+            <View style={styles.glassChip}>
+              <View style={[styles.dot, { backgroundColor: statusTone }]} />
+              <DKText variant="micro" color={DK.onNight}>
+                {selectedStatus.label}
+              </DKText>
+            </View>
+          </View>
+          <View style={styles.progress} accessible accessibilityLabel={`${filledCount} מתוך ${REQUIRED_FIELDS.length} שדות חובה מולאו`}>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${Math.max(4, progress * 100)}%` }]} />
+            </View>
+            <DKText variant="micro" color={DK.onNightMuted} ltr>
+              {`${filledCount}/${REQUIRED_FIELDS.length}`}
+            </DKText>
           </View>
         </View>
-        <View style={styles.progressRow}>
-          <AppText style={styles.progressCounter}>{filledCount}/{REQUIRED_FIELDS.length}</AppText>
-          <View style={styles.progressTrack}>
-            <LinearGradient
-              colors={BRAND.heroGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[styles.progressFill, { width: `${progress * 100}%` }]}
-            />
-          </View>
+      }
+      footer={
+        <View style={styles.footer}>
+          <PrimaryAction label={canSubmit ? ctaLabel : 'השלמת שדות החובה'} icon={isEdit ? 'checkmark' : 'add'} onPress={() => void save()} loading={saving} disabled={!canSubmit} />
+          <DKText variant="caption" color={canSubmit ? STATUS.ok.fg : DK.muted} style={styles.center}>
+            {remainingText}
+          </DKText>
         </View>
-      </View>
-
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={[
-            styles.content,
-            { paddingTop: VEHICLE_HEADER_HEIGHT + SPACING.lg, paddingBottom: insets.bottom + SPACING.xl },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-          scrollEventThrottle={16}
-        >
-          <View style={styles.heroCard}>
-            <View style={styles.avatar}>
-              <LinearGradient colors={BRAND.heroGradient} style={styles.avatarGradient}>
-                <Ionicons name="car-sport-outline" size={38} color="#FFFFFF" />
-              </LinearGradient>
-              <View style={styles.avatarBadge}>
-                <Ionicons name="camera-outline" size={15} color={COLORS.accent} />
-              </View>
-            </View>
-            <View style={styles.heroText}>
-              <AppText weight="bold" style={[styles.heroName, !form.plate_number && !heroTitle.trim() && styles.placeholderText]} numberOfLines={1}>
-                {heroTitle}
-              </AppText>
-              <View style={styles.heroBadges}>
-                <View style={styles.glassBadge}>
-                  <AppText weight="bold" style={styles.glassBadgeText}>
-                    {selectedType?.label ?? 'סוג לא נבחר'}
-                  </AppText>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: selectedStatus.bg }]}>
-                  <View style={[styles.statusDot, { backgroundColor: selectedStatus.color }]} />
-                  <AppText weight="bold" style={[styles.statusBadgeText, { color: selectedStatus.color }]}>
-                    {selectedStatus.label}
-                  </AppText>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          <Section title="זיהוי הרכב">
-            <View style={styles.identityCard}>
-              <View style={styles.plateRow}>
-                <View style={styles.plateTextWrap}>
-                  <AppText weight="bold" style={styles.fieldTitle}>מספר רישוי *</AppText>
-                  <TextInput
-                    value={formatPlate(form.plate_number)}
-                    onChangeText={(value) => set('plate_number', value.replace(/\D/g, '').slice(0, 8))}
-                    placeholder="12-345-67"
-                    placeholderTextColor="rgba(16,31,44,.3)"
-                    keyboardType="number-pad"
-                    maxLength={11}
-                    style={[styles.plateInput, errors.plate_number && styles.inputWithError]}
-                    accessibilityLabel="מספר רישוי"
-                  />
-                </View>
-                <LinearGradient colors={['#FFDD3C', '#F4C81E']} style={styles.plateBadge}>
-                  <AppText weight="bold" style={styles.plateBadgeText}>
-                    {form.plate_number ? formatPlate(form.plate_number) : 'IL'}
-                  </AppText>
-                </LinearGradient>
-              </View>
-              {!!errors.plate_number && <AppText style={styles.error}>{errors.plate_number}</AppText>}
-
-              <TouchableOpacity
-                style={[styles.lookupButton, lookupLoading && styles.lookupButtonDisabled]}
-                activeOpacity={0.8}
-                onPress={lookupVehicle}
-                disabled={lookupLoading}
-                accessibilityRole="button"
-                accessibilityLabel="חפש פרטי רכב לפי מספר הרישוי"
-              >
-                {lookupLoading ? (
-                  <BrandLoader size="small" color="#FFFFFF" />
-                ) : (
-                  <Ionicons name="search-outline" size={18} color="#FFFFFF" />
-                )}
-                <AppText weight="bold" style={styles.lookupButtonText}>
-                  {lookupLoading ? 'מחפש פרטי רכב…' : 'חפש פרטי רכב'}
-                </AppText>
-              </TouchableOpacity>
-              <AppText style={styles.lookupHint}>הזן מספר רישוי כדי למלא אוטומטית את פרטי הרכב.</AppText>
-              {!!lookupMessage && <AppText style={styles.lookupMessage}>{lookupMessage}</AppText>}
-
-              <View style={styles.fullDivider} />
-
-              <View style={styles.choiceHeader}>
-                <AppText weight="bold" style={styles.fieldTitle}>סוג רכב *</AppText>
-                <AppText weight="bold" style={styles.choiceDesc}>
-                  {selectedType?.description ?? 'בחר סוג'}
-                </AppText>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeChips}>
-                {VEHICLE_TYPE_OPTIONS.map((option) => {
-                  const active = form.vehicle_type === option.value;
-                  return (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[styles.typeChip, active && styles.typeChipActive]}
-                      onPress={() => set('vehicle_type', option.value)}
-                      accessibilityRole="radio"
-                      accessibilityLabel={`${option.label} - ${option.description}`}
-                      accessibilityState={{ selected: active }}
-                    >
-                      <AppText weight="bold" style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                        {option.label}
-                      </AppText>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-              {!!errors.vehicle_type && <AppText style={styles.error}>{errors.vehicle_type}</AppText>}
-
-              <View style={styles.fullDivider} />
-
-              <VehicleFormRow
-                fieldKey="manufacturer"
-                label="יצרן"
-                value={form.manufacturer}
-                onChangeText={(value) => set('manufacturer', value)}
-                placeholder="אופציונלי"
-                focusedField={focusedField}
-                setFocusedField={setFocusedField}
-              />
-              <VehicleFormRow
-                fieldKey="model"
-                label="דגם"
-                value={form.model}
-                onChangeText={(value) => set('model', value)}
-                placeholder="אופציונלי"
-                focusedField={focusedField}
-                setFocusedField={setFocusedField}
-              />
-              <VehicleFormRow
-                fieldKey="color"
-                label="צבע"
-                value={form.color}
-                onChangeText={(value) => set('color', value)}
-                placeholder="אופציונלי"
-                focusedField={focusedField}
-                setFocusedField={setFocusedField}
-              />
-              <VehicleFormRow
-                fieldKey="internal_code"
-                label="קוד פנימי"
-                value={form.internal_code}
-                onChangeText={(value) => set('internal_code', value)}
-                placeholder="אופציונלי"
-                focusedField={focusedField}
-                setFocusedField={setFocusedField}
-                ltr
-              />
-              <VehicleFormRow
-                fieldKey="vin"
-                label="שילדה (VIN)"
-                value={form.vin}
-                onChangeText={(value) => set('vin', value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17))}
-                placeholder="אופציונלי"
-                focusedField={focusedField}
-                setFocusedField={setFocusedField}
-                error={errors.vin}
-                ltr
-              />
-              <VehicleFormRow
-                fieldKey="odometer"
-                label="קילומטראז' נוכחי"
-                value={formatKm(form.odometer)}
-                onChangeText={(value) => set('odometer', value.replace(/\D/g, ''))}
-                placeholder="אופציונלי"
-                focusedField={focusedField}
-                setFocusedField={setFocusedField}
-                keyboardType="number-pad"
-                ltr
-              />
-
-              <View style={styles.selectRow}>
-                <View style={styles.focusRail} />
-                <AppText style={styles.labelWide}>שנת ייצור</AppText>
-                <View style={styles.monthYearWrap}>
-                  <View style={styles.selectHalf}>
-                    <Select
-                      value={form.production_month || null}
-                      onChange={(value) => set('production_month', value ?? '')}
-                      options={MONTH_OPTIONS}
-                      placeholder="חודש"
-                      allowClear
-                      hasError={!!errors.production_month}
-                    />
-                  </View>
-                  <View style={styles.selectHalf}>
-                    <Select
-                      value={form.production_year || null}
-                      onChange={(value) => set('production_year', value ?? '')}
-                      options={years}
-                      placeholder="שנה"
-                      allowClear
-                      hasError={!!errors.production_year}
-                    />
-                  </View>
-                </View>
-              </View>
-              {!!(errors.production_year || errors.production_month) && (
-                <AppText style={styles.error}>{errors.production_year || errors.production_month}</AppText>
-              )}
-
-              {Platform.OS === 'web' ? (
-                <View style={styles.dateRow}>
-                  <View style={styles.focusRail} />
-                  <AppText style={styles.labelWide}>עליה לכביש</AppText>
-                  <View style={styles.dateFieldWrap}>
-                    <DateField
-                      value={form.road_registration_date || null}
-                      onChange={(value) => set('road_registration_date', value ?? '')}
-                      placeholder="בחר תאריך"
-                      hasError={!!errors.road_registration_date}
-                    />
-                  </View>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.dateRow}
-                  onPress={openRoadDatePicker}
-                  accessibilityRole="button"
-                  accessibilityLabel="בחירת תאריך עליה לכביש"
-                >
-                  <View style={styles.focusRail} />
-                  <AppText style={styles.labelWide}>עליה לכביש</AppText>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={openRoadDatePicker}
-                    accessibilityRole="button"
-                    accessibilityLabel="בחר תאריך עליה לכביש"
-                  >
-                    <AppText weight="bold" style={styles.dateButtonText}>בחר תאריך</AppText>
-                  </TouchableOpacity>
-                  <View style={styles.dateTextWrap}>
-                    <AppText weight="bold" style={[styles.dateValue, !form.road_registration_date && styles.placeholderText]}>
-                      {formatDateDots(form.road_registration_date) || 'לא נבחר תאריך'}
-                    </AppText>
-                  </View>
-                </TouchableOpacity>
-              )}
-              {!!errors.road_registration_date && <AppText style={styles.error}>{errors.road_registration_date}</AppText>}
-
-              {Platform.OS === 'web' ? (
-                <View style={[styles.dateRow, styles.rowLast]}>
-                  <View style={styles.focusRail} />
-                  <AppText style={styles.labelWide}>תוקף רישיון רכב</AppText>
-                  <View style={styles.dateFieldWrap}>
-                    <DateField
-                      value={form.vehicle_license_expiry || null}
-                      onChange={(value) => set('vehicle_license_expiry', value ?? '')}
-                      placeholder="בחר תאריך"
-                    />
-                  </View>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.dateRow, styles.rowLast]}
-                  onPress={openLicenseExpiryPicker}
-                  accessibilityRole="button"
-                  accessibilityLabel="בחירת תוקף רישיון רכב"
-                >
-                  <View style={styles.focusRail} />
-                  <AppText style={styles.labelWide}>תוקף רישיון רכב</AppText>
-                  <TouchableOpacity
-                    style={styles.dateButton}
-                    onPress={openLicenseExpiryPicker}
-                    accessibilityRole="button"
-                    accessibilityLabel="בחר תוקף רישיון רכב"
-                  >
-                    <AppText weight="bold" style={styles.dateButtonText}>בחר תאריך</AppText>
-                  </TouchableOpacity>
-                  <View style={styles.dateTextWrap}>
-                    <AppText weight="bold" style={[styles.dateValue, !form.vehicle_license_expiry && styles.placeholderText]}>
-                      {formatDateDots(form.vehicle_license_expiry) || 'לא נבחר תאריך'}
-                    </AppText>
-                  </View>
-                </TouchableOpacity>
-              )}
-            </View>
-          </Section>
-
-          <Section title="שיוך וסטטוס">
-            <View style={styles.card}>
-              <View style={styles.statusControl} accessibilityRole="radiogroup">
-                {STATUS_OPTIONS.map((option) => {
-                  const active = form.status === option.value;
-                  return (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[styles.statusOption, active && { backgroundColor: option.color }]}
-                      onPress={() => set('status', option.value)}
-                      accessibilityRole="radio"
-                      accessibilityLabel={`סטטוס ${option.label}`}
-                      accessibilityState={{ selected: active }}
-                    >
-                      <View style={[styles.statusOptionDot, { backgroundColor: active ? '#FFFFFF' : option.color }]} />
-                      <AppText weight="bold" style={[styles.statusOptionText, active && styles.statusOptionTextActive]}>
-                        {option.label}
-                      </AppText>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              {!!errors.status && <AppText style={styles.error}>{errors.status}</AppText>}
-
-              <View style={styles.selectRow}>
-                <View style={styles.focusRail} />
-                <AppText style={styles.labelWide}>מחלקה</AppText>
-                <View style={styles.selectFill}>
-                  <Select
-                    value={form.department_id}
-                    onChange={(value) => set('department_id', value)}
-                    options={departments}
-                    placeholder={departments.length ? 'בחר מחלקה' : 'לא הוגדרו מחלקות'}
-                    allowClear
-                  />
-                </View>
-              </View>
-
-              <VehicleFormRow
-                fieldKey="usage_type"
-                label="שימוש הרכב"
-                value={form.usage_type}
-                onChangeText={(value) => set('usage_type', value)}
-                placeholder="אופציונלי"
-                focusedField={focusedField}
-                setFocusedField={setFocusedField}
-              />
-
-              <View style={[styles.selectRow, styles.rowLast]}>
-                <View style={styles.focusRail} />
-                <AppText style={styles.labelWide}>סוג עסקה</AppText>
-                <View style={styles.selectFill}>
-                  <Select<AcquisitionType>
-                    value={form.acquisition_type}
-                    onChange={(value) => set('acquisition_type', value)}
-                    options={DEAL_TYPE_OPTIONS}
-                    placeholder="בחר סוג עסקה"
-                    allowClear
-                  />
-                </View>
-              </View>
-            </View>
-          </Section>
-
-          <Section title="נהגים משויכים">
-            {isEdit ? (
-              <View style={[styles.card, styles.driverAssignmentsCard]}>
-                <VehicleDriversEditor
-                  vehicleId={vehicleId!}
-                  assignments={vehicleDrivers}
-                  driverOptions={drivers}
-                  onChanged={reloadVehicleDrivers}
-                />
-              </View>
-            ) : (
-              <View style={styles.infoCard}>
-                <View style={styles.infoIcon}>
-                  <Ionicons name="people-outline" size={22} color={COLORS.accent} />
-                </View>
-                <AppText style={styles.infoText}>
-                  ניתן לשייך נהגים לרכב לאחר יצירתו — שמור את הרכב תחילה, ואז פתח את תיק הרכב כדי להוסיף נהגים.
-                </AppText>
-              </View>
-            )}
-          </Section>
-
-          <SaveFooter
-            canSubmit={canSubmit}
-            saving={saving}
-            isEdit={isEdit}
-            ctaLabel={ctaLabel}
-            remainingCount={remainingCount}
-            onSave={save}
-          />
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      {showRoadDatePicker && (
-        Platform.OS === 'ios' ? (
-          <View style={styles.dateSheetLayer}>
-            <TouchableOpacity
-              activeOpacity={1}
-              style={StyleSheet.absoluteFill}
-              onPress={() => setShowRoadDatePicker(false)}
-              accessibilityRole="button"
-              accessibilityLabel="סגור בחירת תאריך"
-            >
-              <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
-              <View style={styles.dateSheetScrim} />
-            </TouchableOpacity>
-            <View style={[styles.dateSheet, { marginBottom: insets.bottom + 106 }]}>
-              <View style={styles.dateSheetHeader}>
-                <TouchableOpacity onPress={() => setShowRoadDatePicker(false)} hitSlop={8}>
-                  <AppText weight="bold" style={styles.dateSheetCancel}>ביטול</AppText>
-                </TouchableOpacity>
-                <AppText weight="bold" style={styles.dateSheetTitle}>עליה לכביש</AppText>
-                <TouchableOpacity onPress={confirmRoadDatePicker} hitSlop={8}>
-                  <AppText weight="bold" style={styles.dateSheetConfirm}>אישור</AppText>
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={draftRoadDate ?? new Date()}
-                mode="date"
-                display="spinner"
-                onChange={handleRoadDateChange}
-                style={styles.iosDatePicker}
-              />
-            </View>
-          </View>
-        ) : (
-          <DateTimePicker
-            value={form.road_registration_date ? parseDateValue(form.road_registration_date) : new Date()}
-            mode="date"
-            display="default"
-            onChange={handleRoadDateChange}
-          />
-        )
-      )}
-
-      {showLicenseExpiryPicker && (
-        Platform.OS === 'ios' ? (
-          <View style={styles.dateSheetLayer}>
-            <TouchableOpacity
-              activeOpacity={1}
-              style={StyleSheet.absoluteFill}
-              onPress={() => setShowLicenseExpiryPicker(false)}
-              accessibilityRole="button"
-              accessibilityLabel="סגור בחירת תוקף רישיון רכב"
-            >
-              <BlurView intensity={10} tint="light" style={StyleSheet.absoluteFill} />
-              <View style={styles.dateSheetScrim} />
-            </TouchableOpacity>
-            <View style={[styles.dateSheet, { marginBottom: insets.bottom + 106 }]}>
-              <View style={styles.dateSheetHeader}>
-                <TouchableOpacity onPress={() => setShowLicenseExpiryPicker(false)} hitSlop={8}>
-                  <AppText weight="bold" style={styles.dateSheetCancel}>ביטול</AppText>
-                </TouchableOpacity>
-                <AppText weight="bold" style={styles.dateSheetTitle}>תוקף רישיון רכב</AppText>
-                <TouchableOpacity onPress={confirmLicenseExpiryPicker} hitSlop={8}>
-                  <AppText weight="bold" style={styles.dateSheetConfirm}>אישור</AppText>
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={draftLicenseExpiry ?? new Date()}
-                mode="date"
-                display="spinner"
-                onChange={handleLicenseExpiryChange}
-                style={styles.iosDatePicker}
-              />
-            </View>
-          </View>
-        ) : (
-          <DateTimePicker
-            value={form.vehicle_license_expiry ? parseDateValue(form.vehicle_license_expiry) : new Date()}
-            mode="date"
-            display="default"
-            onChange={handleLicenseExpiryChange}
-          />
-        )
-      )}
-    </View>
-  );
-}
-
-function SaveFooter({
-  canSubmit,
-  saving,
-  isEdit,
-  ctaLabel,
-  remainingCount,
-  onSave,
-}: {
-  canSubmit: boolean;
-  saving: boolean;
-  isEdit: boolean;
-  ctaLabel: string;
-  remainingCount: number;
-  onSave: () => void;
-}) {
-  return <View style={styles.footer}>
-    <TouchableOpacity
-      activeOpacity={0.85}
-      onPress={onSave}
-      disabled={!canSubmit || saving}
-      style={[styles.cta, !canSubmit && styles.ctaDisabled, canSubmit && ACCENT_SHADOW]}
-      accessibilityRole="button"
-      accessibilityLabel={canSubmit ? ctaLabel : 'השלם את שדות החובה'}
+      }
     >
-      {saving ? (
-        <BrandLoader color="#FFFFFF" accessibilityLabel="שומר" />
-      ) : (
-        <>
-          <Ionicons name={isEdit ? 'checkmark-circle' : 'add-circle'} size={18} color={canSubmit ? '#FFFFFF' : 'rgba(16,31,44,.33)'} />
-          <AppText weight="bold" style={[styles.ctaText, !canSubmit && styles.ctaTextDisabled]}>{canSubmit ? ctaLabel : 'השלם את שדות החובה'}</AppText>
-        </>
-      )}
-    </TouchableOpacity>
-    <AppText style={styles.remainingText}>
-      {canSubmit
-        ? (isEdit ? 'השינויים יישמרו בתיק הרכב' : 'אחרי היצירה תוכל לשייך נהגים ומסמכים')
-        : remainingCount === 1 ? 'נותר שדה חובה אחד' : `נותרו ${remainingCount} שדות חובה`}
-    </AppText>
-  </View>;
-}
+      <Reveal index={0}>
+        <KitSection>
+          <EditField
+            first
+            label="מספר רישוי"
+            required
+            value={formatPlate(form.plate_number)}
+            onChangeText={(value) => set('plate_number', value.replace(/\D/g, '').slice(0, 8))}
+            error={errors.plate_number}
+            placeholder="12-345-67"
+            keyboardType="number-pad"
+            maxLength={11}
+            ltr
+          />
+          <ActionRow
+            first={false}
+            icon="cloud-download-outline"
+            label={lookupLoading ? 'מחפש במאגר…' : 'מילוי אוטומטי לפי מספר הרישוי'}
+            hint="יצרן, דגם, שנה, צבע ותוקף הרישוי ממאגר משרד התחבורה"
+            onPress={() => void lookupVehicle()}
+            disabled={lookupLoading}
+          />
+        </KitSection>
+      </Reveal>
+      {!!lookupMessage && <Banner tone="info">{lookupMessage}</Banner>}
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionDot} />
-        <AppText weight="bold" style={styles.sectionTitle}>{title}</AppText>
-      </View>
-      {children}
-    </View>
+      <Reveal index={1}>
+        <KitSection title="סוג הרכב">
+          <View style={styles.types} accessibilityRole="radiogroup">
+            {VEHICLE_TYPE_OPTIONS.map((option) => {
+              const active = form.vehicle_type === option.value;
+              return (
+                <Pressy
+                  key={option.value}
+                  onPress={() => set('vehicle_type', option.value)}
+                  accessibilityLabel={`${option.label}, ${option.description}`}
+                  style={[styles.type, active && styles.typeActive]}
+                  pressScale={0.96}
+                >
+                  <Ionicons name={TYPE_ICONS[option.value]} size={22} color={active ? '#FFFFFF' : DK.accent} />
+                  <DKText variant="label" color={active ? '#FFFFFF' : DK.ink}>
+                    {option.label}
+                  </DKText>
+                  <DKText variant="micro" color={active ? 'rgba(255,255,255,0.8)' : DK.muted}>
+                    {option.description}
+                  </DKText>
+                </Pressy>
+              );
+            })}
+          </View>
+          {!!errors.vehicle_type && <DKText variant="caption" color={STATUS.expired.fg} style={styles.typeError}>{errors.vehicle_type}</DKText>}
+        </KitSection>
+      </Reveal>
+
+      <Reveal index={2}>
+        <KitSection title="פרטי הרכב">
+          <EditField first label="יצרן" value={form.manufacturer} onChangeText={(value) => set('manufacturer', value)} placeholder="לא חובה" />
+          <EditField label="דגם" value={form.model} onChangeText={(value) => set('model', value)} placeholder="לא חובה" />
+          <EditField label="צבע" value={form.color} onChangeText={(value) => set('color', value)} placeholder="לא חובה" />
+          <EditField
+            label="שנת ייצור"
+            error={errors.production_year || errors.production_month}
+            editor={
+              <View style={styles.pair}>
+                <View style={styles.flex}>
+                  <Select value={form.production_month || null} onChange={(value) => set('production_month', value ?? '')} options={MONTH_OPTIONS} placeholder="חודש" allowClear hasError={!!errors.production_month} />
+                </View>
+                <View style={styles.flex}>
+                  <Select value={form.production_year || null} onChange={(value) => set('production_year', value ?? '')} options={years} placeholder="שנה" allowClear hasError={!!errors.production_year} />
+                </View>
+              </View>
+            }
+          />
+          <EditField label="עלייה לכביש" error={errors.road_registration_date} editor={<DateField value={form.road_registration_date || null} onChange={(value) => set('road_registration_date', value ?? '')} placeholder="בחירת תאריך" hasError={!!errors.road_registration_date} />} />
+          <EditField label="תוקף רישיון הרכב" editor={<DateField value={form.vehicle_license_expiry || null} onChange={(value) => set('vehicle_license_expiry', value ?? '')} placeholder="בחירת תאריך" />} hint="תזכורת תישלח לפני שהתוקף פג" />
+          <EditField label="קילומטראז׳ נוכחי" value={formatKm(form.odometer)} onChangeText={(value) => set('odometer', value.replace(/\D/g, ''))} placeholder="לא חובה" keyboardType="number-pad" ltr />
+        </KitSection>
+      </Reveal>
+
+      <Reveal index={3}>
+        <KitSection title="זיהוי וארגון">
+          <EditField first label="מספר שלדה (VIN)" value={form.vin} onChangeText={(value) => set('vin', value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17))} error={errors.vin} placeholder="17 תווים" ltr />
+          <EditField label="קוד פנימי" value={form.internal_code} onChangeText={(value) => set('internal_code', value)} placeholder="לא חובה" ltr />
+          <EditField
+            label="סטטוס"
+            required
+            error={errors.status}
+            editor={
+              <Segmented<VehicleStatus>
+                value={STATUS_OPTIONS.some((o) => o.value === form.status) ? form.status : 'active'}
+                onChange={(value) => set('status', value)}
+                options={STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+              />
+            }
+          />
+          <EditField label="מחלקה" editor={<Select value={form.department_id} onChange={(value) => set('department_id', value)} options={departments} placeholder={departments.length ? 'בחירת מחלקה' : 'לא הוגדרו מחלקות'} allowClear />} />
+          <EditField label="שימוש ברכב" value={form.usage_type} onChangeText={(value) => set('usage_type', value)} placeholder="לא חובה" />
+          <EditField label="סוג עסקה" editor={<Select<AcquisitionType> value={form.acquisition_type} onChange={(value) => set('acquisition_type', value)} options={DEAL_TYPE_OPTIONS} placeholder="בחירת סוג עסקה" allowClear />} />
+        </KitSection>
+      </Reveal>
+
+      <Reveal index={4}>
+        {isEdit ? (
+          <KitSection title="נהגים משויכים" surfaceStyle={styles.pad}>
+            <VehicleDriversEditor vehicleId={vehicleId!} assignments={vehicleDrivers} driverOptions={drivers} onChanged={reloadVehicleDrivers} />
+          </KitSection>
+        ) : (
+          <Banner tone="info" icon="people" title="נהגים משויכים">
+            אחרי שמירת הרכב אפשר לשייך אליו נהגים מתוך תיק הרכב.
+          </Banner>
+        )}
+      </Reveal>
+    </DriverPage>
   );
 }
 
-function VehicleFormRow({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  focusedField,
-  setFocusedField,
-  fieldKey,
-  error,
-  ltr,
-  keyboardType,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (value: string) => void;
-  placeholder?: string;
-  focusedField: FieldKey | null;
-  setFocusedField: (field: FieldKey | null) => void;
-  fieldKey: FieldKey;
-  error?: string;
-  ltr?: boolean;
-  keyboardType?: 'default' | 'number-pad';
-}) {
-  return (
-    <FormFieldRow
-      label={label}
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder}
-      placeholderTextColor="rgba(16,31,44,.3)"
-      focusedField={focusedField}
-      setFocusedField={setFocusedField}
-      fieldKey={fieldKey}
-      error={error}
-      ltr={ltr}
-      keyboardType={keyboardType}
-      valid={!!value}
-      accessibilityLabel={label}
-      labelWidth={112}
-      rowStyle={styles.formRowOffset}
-      labelStyle={styles.rtlText}
-      inputStyle={styles.rtlText}
-      errorStyle={styles.error}
-    />
-  );
-}
+const TYPE_ICONS: Record<VehicleType, React.ComponentProps<typeof Ionicons>['name']> = {
+  car: 'car-sport',
+  minibus: 'bus-outline',
+  truck: 'cube',
+  bus: 'bus',
+};
 
 const styles = StyleSheet.create({
-  ...formScreenStyles,
-  formRowOffset: { marginHorizontal: -16 },
-  rtlText: { textAlign: 'right', writingDirection: 'rtl' },
-  statusBadge: {
-    minHeight: 24,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusBadgeText: { fontSize: FONT_SIZE.sm },
-  driverAssignmentsCard: {
-    // Keep the add-driver picker comfortably inside this card rather than
-    // visually touching its lower edge.
-    paddingTop: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.lg,
-  },
-  identityCard: {
-    backgroundColor: 'rgba(255,255,255,.92)',
-    borderRadius: 24,
-    paddingTop: 16,
-    paddingHorizontal: 16,
-    paddingBottom: 6,
-    borderWidth: 0.5,
-    borderColor: 'rgba(16,31,44,.045)',
-    shadowColor: BRAND.ink,
-    shadowOpacity: 0.55,
-    shadowRadius: 32,
-    shadowOffset: { width: 0, height: 16 },
-    elevation: 5,
-    overflow: 'hidden',
-  },
-  plateRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 14,
-    paddingBottom: 14,
-  },
-  plateTextWrap: { flex: 1, gap: 5 },
-  fieldTitle: { fontSize: FONT_SIZE.sm, color: BRAND.inkSecondary },
-  plateInput: {
-    fontSize: 25,
-    fontFamily: FONT.bold,
-    letterSpacing: 0.5,
-    color: BRAND.ink,
-    padding: 0,
-    textAlign: 'left',
-    writingDirection: 'ltr',
-  },
-  inputWithError: { color: COLORS.dangerText },
-  plateBadge: {
-    width: 64,
-    height: 44,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: 'rgba(16,31,44,.14)',
-    shadowColor: BRAND.ink,
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 4,
-  },
-  plateBadgeText: { fontSize: FONT_SIZE.sm, color: '#1A1A0E', textAlign: 'center' },
-  lookupButton: {
-    minHeight: 44,
-    borderRadius: 14,
-    backgroundColor: COLORS.accent,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 7,
-  },
-  lookupButtonDisabled: { opacity: 0.7 },
-  lookupButtonText: { fontSize: FONT_SIZE.md, color: '#FFFFFF' },
-  lookupHint: { fontSize: FONT_SIZE.sm, color: BRAND.inkSecondary, textAlign: 'right', marginBottom: 12 },
-  lookupMessage: {
-    fontSize: FONT_SIZE.sm,
-    lineHeight: 18,
-    color: '#216B44',
-    backgroundColor: 'rgba(48,164,108,.10)',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginBottom: 12,
-    textAlign: 'right',
-  },
-  fullDivider: {
-    height: 0.5,
-    backgroundColor: 'rgba(16,31,44,.06)',
-    marginHorizontal: -16,
-    marginBottom: 14,
-  },
-  choiceHeader: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 12,
-  },
-  choiceDesc: { flex: 1, textAlign: 'left', fontSize: FONT_SIZE.sm, color: 'rgba(16,31,44,.3)' },
-  typeChips: { flexDirection: 'row-reverse', gap: 7, flexGrow: 1, paddingBottom: 14 },
-  typeChip: {
-    flex: 1,
-    minWidth: 58,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(118,118,128,.09)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-  },
-  typeChipActive: {
-    backgroundColor: COLORS.accent,
-    shadowColor: COLORS.accent,
-    shadowOpacity: 0.85,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
-  },
-  typeChipText: { fontSize: FONT_SIZE.md, color: BRAND.ink },
-  typeChipTextActive: { color: '#FFFFFF' },
-  formRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    minHeight: 56,
-    marginHorizontal: -16,
-    paddingRight: 6,
-    paddingLeft: 16,
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(14,30,43,.07)',
-    gap: 10,
-  },
-  selectRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    minHeight: 58,
-    paddingRight: 6,
-    paddingLeft: 16,
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(14,30,43,.07)',
-    gap: 10,
-  },
-  dateRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    minHeight: 64,
-    marginHorizontal: -16,
-    paddingRight: 6,
-    paddingLeft: 16,
-    gap: 10,
-  },
-  labelWide: { width: 112, fontSize: FONT_SIZE.lg, fontFamily: FONT.semibold, color: BRAND.ink, textAlign: 'right', writingDirection: 'rtl' },
-  input: { flex: 1, fontSize: FONT_SIZE.xl, fontFamily: FONT.medium, padding: 0, color: BRAND.ink, textAlign: 'right', writingDirection: 'rtl' },
-  selectFill: { flex: 1 },
-  monthYearWrap: { flex: 1, flexDirection: 'row-reverse', gap: 8 },
-  selectHalf: { flex: 1 },
-  dateTextWrap: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
-  dateFieldWrap: { flex: 1 },
-  dateValue: { fontSize: FONT_SIZE.lg, color: BRAND.ink, textAlign: 'left', writingDirection: 'ltr' },
-  placeholderText: { color: 'rgba(16,31,44,.3)' },
-  dateButton: {
-    height: 42,
-    paddingHorizontal: 14,
-    backgroundColor: 'rgba(0,136,204,.09)',
-    borderRadius: 15,
-    borderWidth: 0.5,
-    borderColor: 'rgba(0,136,204,.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  dateButtonText: { fontSize: FONT_SIZE.lg, color: COLORS.accent },
-  error: { fontSize: FONT_SIZE.sm, color: COLORS.dangerText, marginBottom: 10, textAlign: 'right' },
-  statusControl: {
-    flexDirection: 'row-reverse',
-    gap: 4,
-    margin: 16,
-    padding: 3,
-    borderRadius: 14,
-    backgroundColor: 'rgba(118,118,128,.09)',
-  },
-  statusOption: {
-    flex: 1,
-    height: 38,
-    borderRadius: 11,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  statusOptionDot: { width: 7, height: 7, borderRadius: 3.5 },
-  statusOptionText: { fontSize: FONT_SIZE.md, color: 'rgba(16,31,44,.55)' },
-  statusOptionTextActive: { color: '#FFFFFF' },
-  infoCard: {
-    minHeight: 86,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,.92)',
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 13,
-    padding: 16,
-    borderWidth: 0.5,
-    borderColor: 'rgba(16,31,44,.045)',
-  },
-  infoIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 15,
-    backgroundColor: 'rgba(0,136,204,.09)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoText: { flex: 1, fontSize: FONT_SIZE.md, lineHeight: 19, color: 'rgba(16,31,44,.5)' },
-  ctaTextDisabled: { color: 'rgba(16,31,44,.33)' },
+  flex: { flex: 1 },
+  center: { textAlign: 'center' },
+  pad: { padding: 16 },
+  preview: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 18 },
+  glassChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: DK.glass, borderWidth: 1, borderColor: DK.glassBorder },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  progress: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, marginTop: 16 },
+  progressTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.14)', overflow: 'hidden', flexDirection: 'row-reverse' },
+  progressFill: { height: '100%', borderRadius: 3, backgroundColor: DK.mint },
+  footer: { gap: 6 },
+  types: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10, padding: 14 },
+  type: { width: '47%', flexGrow: 1, minHeight: 96, borderRadius: 18, padding: 12, gap: 2, justifyContent: 'center', backgroundColor: DK.surfaceSunk },
+  typeActive: { backgroundColor: DK.accent },
+  typeError: { paddingHorizontal: 16, paddingBottom: 12 },
+  pair: { flexDirection: 'row-reverse', gap: 10 },
 });

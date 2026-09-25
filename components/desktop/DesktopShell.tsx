@@ -50,6 +50,13 @@ const ROLE_LABEL: Record<string, string> = {
 
 const NOTIFICATION_PREVIEW_COUNT = 5;
 
+const SHELL_LEGAL_LINKS = [
+  { doc: 'terms', label: 'תנאי שימוש' },
+  { doc: 'privacy', label: 'פרטיות' },
+  { doc: 'cookies', label: 'עוגיות' },
+  { doc: 'accessibility', label: 'נגישות' },
+] as const;
+
 export function DesktopShell({
   active,
   breadcrumbs,
@@ -271,6 +278,18 @@ export function DesktopShell({
           <Ionicons name="log-out-outline" size={15} color={DESKTOP_COLORS.sidebarText} />
           <DText weight="medium" style={styles.navLabel}>התנתקות</DText>
         </HoverPressable>
+        <View style={styles.legalLinks}>
+          {SHELL_LEGAL_LINKS.map(({ doc, label }) => (
+            <DText
+              key={doc}
+              style={styles.legalLink}
+              accessibilityRole="link"
+              onPress={() => navigation.navigate('Legal', { doc })}
+            >
+              {label}
+            </DText>
+          ))}
+        </View>
       </View>
 
       <View style={styles.main}>
@@ -391,6 +410,7 @@ function SidebarItem({ item, active, onPress }: { item: NavItem; active: boolean
       hoverStyle={active ? undefined : styles.navItemHover}
       onPress={onPress}
       accessibilityState={{ selected: active }}
+      aria-selected={active}
     >
       <Ionicons name={item.icon} size={15} color={color} />
       <DText weight={active ? 'semiBold' : 'medium'} style={[styles.navLabel, { color }]} numberOfLines={1}>
@@ -460,6 +480,15 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: DESKTOP_COLORS.sidebarDivider,
   },
+  legalLinks: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    columnGap: 10,
+    rowGap: 2,
+    paddingHorizontal: 18,
+    paddingBottom: 12,
+  },
+  legalLink: { color: DESKTOP_COLORS.sidebarMeta, fontSize: 11, textDecorationLine: 'underline', paddingVertical: 2 },
   logout: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

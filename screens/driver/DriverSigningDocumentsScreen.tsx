@@ -1,17 +1,15 @@
 import { useCallback, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { AppText, Card, EmptyState, ErrorState, LoadingState, Screen } from '../../components/ui';
-import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
-import { DriverDossierHero } from '../../components/driverCard/DriverDossierHero';
+import { EmptyState, ErrorState, LoadingState } from '../../components/ui';
+import { Banner, DK, DKText, DriverPage, EmptyPanel, ErrorPanel, HeroTitle, LoadingPanel, PrimaryAction, Pressy, Reveal, STATUS, Surface } from '../../components/driverKit';
 import { SigningFolders } from '../../components/driverCard/SigningFolders';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { assignSigningTemplate, getSigningSession, listDriverSigningRequests, listSigningTemplates, syncSigningRequest, type SignatureRequest } from '../../lib/docuseal';
 import { buildSigningFolders, type SigningFolder } from '../../lib/signingFolders';
 import { getDriver, type DriverRow } from '../../lib/adminApi';
-import { COLORS, SPACING, CONTENT_MAX_WIDTH } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import type { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
@@ -104,7 +102,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
           <View style={ds.wrap}>
             {!!error && <DText style={ds.error}>{error}</DText>}
             {!folderId ? (
-              <SigningFolders driverId={driver.id} onOpen={item => navigation.push('DriverSigningDocuments', { driverId: driver.id, folderId: item.id })} />
+              <SigningFolders desktop driverId={driver.id} onOpen={item => navigation.push('DriverSigningDocuments', { driverId: driver.id, folderId: item.id })} />
             ) : !folder ? (
               <EmptyState title="התיקייה אינה זמינה" />
             ) : (
@@ -182,45 +180,78 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
     );
   }
 
-  return <Screen style={styles.screen}>
-    <AdminGradientBackground />
-    <DriverDossierHero title={folder?.title || 'טפסים ומסמכים'} subtitle={driver?.full_name || ''} icon="folder-outline" insetTop={insets.top} onBack={() => navigation.goBack()} />
-    {loading ? <LoadingState /> : !driver ? <ErrorState message={error || 'הנהג לא נמצא'} onRetry={load} /> : <ScrollView contentContainerStyle={styles.content}>
-      {!!error && <AppText style={styles.error}>{error}</AppText>}
-      {!folderId ? <SigningFolders driverId={driver.id} onOpen={item => navigation.push('DriverSigningDocuments', { driverId: driver.id, folderId: item.id })} /> : !folder ? <EmptyState title="התיקייה אינה זמינה" /> : <>
-        {canSend && folder.template && <TouchableOpacity accessibilityRole="button" disabled={sending} onPress={() => completed && !pending ? open(completed) : send()} style={[styles.send, sending && styles.disabled]}>
-          <Ionicons name={completed && !pending ? 'document-text-outline' : 'send-outline'} size={18} color={COLORS.accent} />
-          <AppText weight="bold" style={styles.sendText}>{sending ? 'שולח…' : pending ? `שלח מחדש את ${folder.title}` : completed ? 'צפייה במסמך' : `שלח ${folder.title} לחתימה`}</AppText>
-        </TouchableOpacity>}
-        {folder.requests.map(item => {
-          const ready = item.status === 'pending' && !!item.docuseal_submitter_slug;
-          const openable = item.status === 'completed' || (ready && profile?.role === 'driver');
-          return <TouchableOpacity key={item.id} accessibilityRole="button" disabled={opening === item.id || !openable} onPress={() => open(item)}>
-            <Card style={styles.card}>
-              <Ionicons name={item.status === 'completed' ? 'checkmark-circle' : ready ? 'time-outline' : 'alert-circle-outline'} size={24} color={item.status === 'completed' ? COLORS.okText : ready ? COLORS.accent : COLORS.dangerText} />
-              <View style={styles.text}>
-                <AppText weight="bold">{item.template_title || folder.title}</AppText>
-                <AppText style={styles.meta}>{item.status === 'completed' ? `נחתם ${time(item.completed_at || item.created_at)}` : ready ? `נשלח ${time(item.sent_at || item.created_at)}` : item.status === 'declined' ? 'החתימה נדחתה' : 'השליחה לא אושרה — ניתן לנסות שוב'}</AppText>
-                {openable && <AppText style={styles.link}>{item.status === 'completed' ? 'צפייה במסמך' : 'חתימה על המסמך'}</AppText>}
-              </View>
-              {openable && <Ionicons name="chevron-back" size={18} color={COLORS.textFaint} />}
-            </Card>
-          </TouchableOpacity>;
-        })}
-        {!folder.requests.length && <EmptyState icon="folder-outline" title="התיקייה ריקה" />}
-      </>}
-    </ScrollView>}
-  </Screen>;
+  // The manager's view: every folder (empty ones are where sending starts),
+  // and inside one, what was sent and its state, with send / resend on top.
+  const sendLabel = sending ? 'שולח…' : pending ? 'שליחה מחדש לחתימה' : completed ? 'צפייה במסמך החתום' : 'שליחה לחתימה';
+  return (
+    <DriverPage
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
+      hero={<HeroTitle title={folder?.title || 'טפסים ומסמכים'} subtitle={driver?.full_name || ' '} onBack={() => navigation.goBack()} />}
+      footer={
+        folderId && folder && canSend && folder.template ? (
+          <PrimaryAction
+            label={sendLabel}
+            icon={completed && !pending ? 'eye-outline' : 'send'}
+            tone={completed && !pending ? 'ghost' : 'accent'}
+            loading={sending || (!!completed && !pending && opening === completed.id)}
+            onPress={() => (completed && !pending ? void open(completed) : void send())}
+          />
+        ) : undefined
+      }
+    >
+      {loading ? (
+        <LoadingPanel />
+      ) : !driver ? (
+        <ErrorPanel message={error || 'הנהג לא נמצא'} onRetry={load} />
+      ) : (
+        <>
+          {!!error && <Banner tone="soon">{error}</Banner>}
+          {!folderId ? (
+            <SigningFolders title={null} driverId={driver.id} onOpen={(item) => navigation.push('DriverSigningDocuments', { driverId: driver.id, folderId: item.id })} />
+          ) : !folder ? (
+            <EmptyPanel icon="folder-outline" tone="muted" title="התיקייה אינה זמינה" body="ייתכן שהתבנית הוסרה." />
+          ) : !folder.requests.length ? (
+            <Reveal>
+              <EmptyPanel icon="paper-plane-outline" title="עוד לא נשלח לנהג" body={`שלח את ${folder.title} ל${driver.full_name ?? 'נהג'} — הוא יקבל התראה ויוכל לחתום מהטלפון.`} />
+            </Reveal>
+          ) : (
+            folder.requests.map((item, index) => {
+              const ready = item.status === 'pending' && !!item.docuseal_submitter_slug;
+              const done = item.status === 'completed';
+              const tone = done ? STATUS.ok : ready ? STATUS.soon : STATUS.expired;
+              return (
+                <Reveal key={item.id} index={index}>
+                  <Surface style={styles.request}>
+                    <View style={[styles.requestIcon, { backgroundColor: tone.soft }]}>
+                      <Ionicons name={done ? 'checkmark-done' : ready ? 'time' : 'alert'} size={22} color={tone.fg} />
+                    </View>
+                    <View style={styles.flex}>
+                      <DKText variant="label" numberOfLines={2}>{item.template_title || folder.title}</DKText>
+                      <DKText variant="caption" color={done ? DK.muted : tone.fg}>
+                        {done ? `נחתם ${time(item.completed_at || item.created_at)}` : ready ? `ממתין לחתימה · נשלח ${time(item.sent_at || item.created_at)}` : item.status === 'declined' ? 'הנהג דחה את החתימה' : 'השליחה לא הושלמה — אפשר לשלוח שוב'}
+                      </DKText>
+                    </View>
+                    {done && (
+                      <Pressy onPress={() => void open(item)} disabled={opening === item.id} accessibilityLabel="צפייה במסמך החתום" style={styles.view} pressScale={0.92}>
+                        <Ionicons name="eye-outline" size={19} color={DK.accent} />
+                      </Pressy>
+                    )}
+                  </Surface>
+                </Reveal>
+              );
+            })
+          )}
+        </>
+      )}
+    </DriverPage>
+  );
 }
 const styles = StyleSheet.create({
-  screen: { backgroundColor: COLORS.screen },
-  content: { padding: SPACING.lg, gap: SPACING.md, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
-  card: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.md, padding: SPACING.md },
-  text: { flex: 1, alignItems: 'flex-end' },
-  meta: { fontSize: 12.5, color: COLORS.textMuted, marginTop: 3, textAlign: 'right' },
-  link: { color: COLORS.accent, marginTop: 8 }, error: { color: COLORS.dangerText, textAlign: 'center' },
-  send: { padding: SPACING.md, backgroundColor: COLORS.accentSoft, borderRadius: 12, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  sendText: { color: COLORS.accent }, disabled: { opacity: 0.55 },
+  flex: { flex: 1, gap: 2 },
+  request: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, padding: 14 },
+  requestIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  view: { width: 44, height: 44, borderRadius: 14, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
 });
 
 const ds = StyleSheet.create({

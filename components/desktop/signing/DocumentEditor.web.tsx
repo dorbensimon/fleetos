@@ -81,7 +81,7 @@ const BODY_COLOR = '#111111';
 const SIZE_SET = new Set<number>(EDITOR_TEXT_SIZES.map((s) => s.px));
 const COLOR_SET = new Set<string>(EDITOR_TEXT_COLORS.map((c) => c.hex));
 
-/** "rgb(0, 136, 204)" or "#0088cc" as "#0088CC"; null for transparent or unknown. */
+/** "rgb(0, 136, 204)" or "#0075B3" as "#0075B3"; null for transparent or unknown. */
 function toHex(value: string): string | null {
   const v = value.trim();
   if (/^#[0-9a-f]{6}$/i.test(v)) return v.toUpperCase();
@@ -761,7 +761,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
         <p className="sd-panel-sub">לחצו על שדה והוא יופיע מתחת לטקסט שכתבתם, או גררו אותו ישר למקום הרצוי. אפשר להזיז כל שדה בגרירה.</p>
 
         <button type="button" className="sd-area-btn" onMouseDown={keepSelection} onClick={insertSigningArea}>
-          <span className="sd-tool-icon" style={{ background: 'linear-gradient(160deg,#35B8F0,#0088CC)' }}>
+          <span className="sd-tool-icon" style={{ background: 'linear-gradient(160deg,#35B8F0,#0075B3)' }}>
             <Ionicons name="sparkles" size={18} color="#fff" />
           </span>
           <span className="sd-tool-text">

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { AppText, PrimaryButton } from '../ui';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { EditField, KitSheet, PrimaryAction, SheetActions } from '../driverKit';
 
 /**
  * Generic "are you sure?" confirmation modal — cancel + confirm side by side.
@@ -43,6 +45,40 @@ export function ConfirmActionModal({
 
   const expected = requireTypedText?.trim() ?? '';
   const matches = !expected || typed.trim() === expected;
+  const desktop = useIsDesktop();
+
+  if (!desktop) {
+    return (
+      <KitSheet
+        visible={visible}
+        onClose={onClose}
+        dismissable={!loading}
+        title={title}
+        subtitle={message}
+        icon={destructive ? 'warning' : 'help-circle'}
+        tone={destructive ? 'danger' : 'accent'}
+        footer={
+          <SheetActions>
+            <PrimaryAction label="ביטול" tone="ghost" onPress={onClose} disabled={loading} style={styles.kitCancel} />
+            <PrimaryAction
+              label={confirmLabel}
+              tone={destructive ? 'destructive' : 'accent'}
+              onPress={onConfirm}
+              loading={loading}
+              disabled={!matches}
+              style={styles.kitConfirm}
+            />
+          </SheetActions>
+        }
+      >
+        {!!expected && (
+          <View style={styles.kitTyped}>
+            <EditField first label={typedTextHint ?? `לאישור, הקלד: ${expected}`} value={typed} onChangeText={setTyped} placeholder={expected} editable={!loading} />
+          </View>
+        )}
+      </KitSheet>
+    );
+  }
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -130,4 +166,7 @@ const styles = StyleSheet.create({
   },
   confirmBtn: { flex: 1.4 },
   destructiveBtn: { backgroundColor: COLORS.dangerText },
+  kitCancel: { flex: 1 },
+  kitConfirm: { flex: 1.6 },
+  kitTyped: { marginHorizontal: -16 },
 });

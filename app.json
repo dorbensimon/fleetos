@@ -27,6 +27,7 @@
       ]
     },
     "web": {
+      "lang": "he",
       "name": "icar",
       "shortName": "icar",
       "favicon": "./assets/favicon.png"

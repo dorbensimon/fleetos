@@ -167,7 +167,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
                 <Ionicons name="create-outline" size={14} color={DC_COLORS.blue} />
               </HoverPressable>
             </View>
-            {!!profileId && <SigningFolders driverId={profileId} onOpen={folder => navigation.navigate('DriverSigningDocuments', { folderId: folder.id })} />}
+            {!!profileId && <SigningFolders desktop driverId={profileId} onOpen={folder => navigation.navigate('DriverSigningDocuments', { folderId: folder.id })} />}
             {groups.map((group) => (
               <ListGroup key={group.title} group={group} onRowPress={handleRowPress} />
             ))}

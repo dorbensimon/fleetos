@@ -1,18 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, ErrorState, LoadingState, BackButton } from '../../components/ui';
-import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
-import { ExportReportSheet } from '../../components/fleet/ExportReportSheet';
+import { ErrorState } from '../../components/ui';
+import { BrandLoader } from '../../components/ui/BrandLoader';
+import { DK, DKText, DriverPage, ErrorPanel, HeroTitle, ListRow, LoadingPanel, Reveal, STATUS, Segmented, Surface } from '../../components/driverKit';
 import { useCompany } from '../../lib/CompanyContext';
 import { listDrivers, listVehicles, listComplianceForOwners, listActiveVehicleDriversForVehicles, type DriverRow, type Vehicle, type ComplianceItem, type VehicleDriverWithProfile } from '../../lib/adminApi';
 import { REPORT_CATEGORIES, exportDriversReport, type ReportCategory } from '../../lib/driverReport';
 import { VEHICLE_REPORT_CATEGORIES, exportVehiclesReport, type VehicleReportCategory } from '../../lib/vehicleReport';
 import { RootStackParamList } from '../../navigation/types';
-import { CONTENT_MAX_WIDTH, COLORS, FONT_SIZE, BRAND } from '../../lib/theme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { ReportsDesktopView } from '../../components/desktop/ReportsDesktopView';
@@ -26,8 +25,8 @@ export default function ReportsScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [kind, setKind] = useState<'drivers' | 'vehicles' | null>(null); const [exporting, setExporting] = useState<string | null>(null);
   const load = useCallback(async () => { if (!companyId) { setError('לא נמצאה חברה משויכת'); setLoading(false); return; } setLoading(true); setError(null); try { const [d, v] = await Promise.all([listDrivers(companyId), listVehicles(companyId, true)]); const [c, a] = await Promise.all([listComplianceForOwners('vehicle', v.map((x) => x.id)), listActiveVehicleDriversForVehicles(v.map((x) => x.id))]); setDrivers(d); setVehicles(v); setCompliance(c); setAssignments(a); } catch (e: any) { setError(e?.message ?? 'טעינת נתוני הדוחות נכשלה'); } finally { setLoading(false); } }, [companyId]);
   useEffect(() => { load(); }, [load]);
-  const exportDrivers = async (category: ReportCategory) => { if (!company) return; setExporting(category); try { await exportDriversReport(company, drivers, category); setKind(null); } catch (e: any) { showAlert('ייצוא הדוח נכשל', String(e?.message ?? 'נסה שוב')); } finally { setExporting(null); } };
-  const exportVehicles = async (category: VehicleReportCategory) => { if (!company) return; setExporting(category); try { await exportVehiclesReport(company, vehicles, compliance, assignments, category); setKind(null); } catch (e: any) { showAlert('ייצוא הדוח נכשל', String(e?.message ?? 'נסה שוב')); } finally { setExporting(null); } };
+  const exportDrivers = async (category: ReportCategory) => { if (!company) return; setExporting(category); try { await exportDriversReport(company, drivers, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert('ייצוא הדוח נכשל', String(e?.message ?? 'נסה שוב')); } finally { setExporting(null); } };
+  const exportVehicles = async (category: VehicleReportCategory) => { if (!company) return; setExporting(category); try { await exportVehiclesReport(company, vehicles, compliance, assignments, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert('ייצוא הדוח נכשל', String(e?.message ?? 'נסה שוב')); } finally { setExporting(null); } };
 
   if (isDesktop) {
     return (
@@ -49,6 +48,70 @@ export default function ReportsScreen({ navigation }: Props) {
     );
   }
 
-  return <View style={s.screen}><AdminGradientBackground /><View style={[s.header,{paddingTop:insets.top+18}]}><BackButton onPress={() => navigation.goBack()} /><AppText weight="bold" style={s.title}>ייצוא דוחות</AppText><View style={s.spacer}/></View>{loading?<LoadingState/>:error?<ErrorState message={error} onRetry={load}/>:<View style={s.content}><AppText style={s.hint}>בחר את סוג הדוח שברצונך להפיק</AppText><TouchableOpacity style={s.card} onPress={()=>setKind('drivers')} accessibilityRole="button" accessibilityLabel="דוחות נהגים, רישיונות, תוקפים ונהגים ללא רכב"><View style={s.icon}><Ionicons name="people-outline" size={25} color={COLORS.accent}/></View><View style={s.copy}><AppText weight="bold" style={s.cardTitle}>דוחות נהגים</AppText><AppText style={s.cardSub}>רישיונות, תוקפים ונהגים ללא רכב</AppText></View><Ionicons name="chevron-back" size={19} color="rgba(16,42,66,.45)"/></TouchableOpacity><TouchableOpacity style={s.card} onPress={()=>setKind('vehicles')} accessibilityRole="button" accessibilityLabel="דוחות רכבים, ביטוח, טסט, טיפולים וחריגות"><View style={s.icon}><Ionicons name="car-outline" size={25} color={COLORS.accent}/></View><View style={s.copy}><AppText weight="bold" style={s.cardTitle}>דוחות רכבים</AppText><AppText style={s.cardSub}>ביטוח, טסט, טיפולים וחריגות</AppText></View><Ionicons name="chevron-back" size={19} color="rgba(16,42,66,.45)"/></TouchableOpacity></View>}<ExportReportSheet visible={kind==='drivers'} title="ייצוא דוח נהגים" subtitle="בחר את קבוצת הנהגים לדוח" categories={REPORT_CATEGORIES} exportingCategory={kind==='drivers'?exporting as ReportCategory:null} onClose={()=>setKind(null)} onSelect={exportDrivers}/><ExportReportSheet visible={kind==='vehicles'} title="ייצוא דוח רכבים" subtitle="בחר את קבוצת הרכבים לדוח" categories={VEHICLE_REPORT_CATEGORIES} exportingCategory={kind==='vehicles'?exporting as VehicleReportCategory:null} onClose={()=>setKind(null)} onSelect={exportVehicles}/></View>;
+  const mode = kind ?? 'drivers';
+  const categories = mode === 'drivers' ? REPORT_CATEGORIES : VEHICLE_REPORT_CATEGORIES;
+  return (
+    <DriverPage
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
+      hero={
+        <View>
+          <HeroTitle title="ייצוא דוחות" subtitle="קובץ אקסל מוכן לשליחה או להדפסה" onBack={() => navigation.goBack()} />
+          <View style={s.segment}>
+            <Segmented<'drivers' | 'vehicles'>
+              onNight
+              value={mode}
+              onChange={setKind}
+              options={[
+                { value: 'drivers', label: 'נהגים', icon: 'people', count: loading ? undefined : drivers.length },
+                { value: 'vehicles', label: 'רכבים', icon: 'car-sport', count: loading ? undefined : vehicles.filter((v) => v.status !== 'archived').length },
+              ]}
+            />
+          </View>
+        </View>
+      }
+    >
+      {loading ? (
+        <LoadingPanel />
+      ) : error ? (
+        <ErrorPanel message="טעינת נתוני הדוחות נכשלה" hint={error} onRetry={load} />
+      ) : (
+        <Reveal key={mode}>
+          <Surface>
+            {categories.map((category, index) => {
+              const busy = exporting === category.value;
+              return (
+                <ListRow
+                  key={category.value}
+                  first={index === 0}
+                  icon={category.icon as React.ComponentProps<typeof Ionicons>['name']}
+                  tint={category.value === 'expired' || category.value === 'issues' ? STATUS.expired.fg : DK.accent}
+                  title={category.label}
+                  subtitle={busy ? 'מכין את הקובץ…' : 'ייצוא לאקסל'}
+                  trailing={
+                    busy ? (
+                      <BrandLoader size={22} />
+                    ) : (
+                      <View style={s.download}>
+                        <Ionicons name="download-outline" size={18} color={DK.accent} />
+                      </View>
+                    )
+                  }
+                  onPress={exporting ? undefined : () => void (mode === 'drivers' ? exportDrivers(category.value as ReportCategory) : exportVehicles(category.value as VehicleReportCategory))}
+                />
+              );
+            })}
+          </Surface>
+          <DKText variant="caption" color={DK.muted} style={s.note}>
+            הדוח כולל את כל הנתונים העדכניים ברגע הייצוא.
+          </DKText>
+        </Reveal>
+      )}
+    </DriverPage>
+  );
 }
-const s=StyleSheet.create({screen:{flex:1,backgroundColor:BRAND.screenBg},header:{paddingHorizontal:18,paddingBottom:18,flexDirection:'row-reverse',alignItems:'center',justifyContent:'space-between',width:'100%',maxWidth:CONTENT_MAX_WIDTH,alignSelf:'center'},back:{width:42,height:42,borderRadius:21,backgroundColor:'rgba(255,255,255,.55)',alignItems:'center',justifyContent:'center'},spacer:{width:42},title:{fontSize: FONT_SIZE.xxl,color:BRAND.ink},content:{padding:18,gap:12,width:'100%',maxWidth:CONTENT_MAX_WIDTH,alignSelf:'center'},hint:{fontSize: FONT_SIZE.md,color:'rgba(16,42,66,.65)',textAlign:'right',marginBottom:4},card:{backgroundColor:'rgba(255,255,255,.9)',borderRadius:22,padding:18,flexDirection:'row-reverse',alignItems:'center',gap:14},icon:{width:52,height:52,borderRadius:26,backgroundColor:'rgba(0,136,204,.1)',alignItems:'center',justifyContent:'center'},copy:{flex:1,alignItems:'flex-end'},cardTitle:{fontSize: FONT_SIZE.xl,color:BRAND.ink},cardSub:{fontSize: FONT_SIZE.sm,color:'rgba(16,42,66,.6)',marginTop:3,textAlign:'right'}});
+const s = StyleSheet.create({
+  segment: { marginTop: 18 },
+  download: { width: 36, height: 36, borderRadius: 12, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  note: { textAlign: 'center', marginTop: 12 },
+});

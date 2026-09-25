@@ -5,6 +5,7 @@ import {
   Easing,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleProp,
@@ -113,6 +114,8 @@ export function Pressy({
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: !!disabled }}
+      // react-native-web reads the aria-* props, not accessibilityState.
+      aria-disabled={!!disabled}
       style={(state) => [outer, (state as { focused?: boolean }).focused && styles.focusRing]}
     >
       <Animated.View style={[inner, { transform: [{ scale }] }, disabled && styles.disabled]}>{children}</Animated.View>
@@ -335,6 +338,11 @@ export function DriverPage({
   hero,
   children,
   footer,
+  overlay,
+  refreshing,
+  onRefresh,
+  scrollRef,
+  bottomSpace = 36,
 }: {
   insetTop: number;
   insetBottom: number;
@@ -342,16 +350,28 @@ export function DriverPage({
   children: ReactNode;
   /** Pinned under the scroll (e.g. a save button), above the home indicator. */
   footer?: ReactNode;
+  /** Floats over the page (a floating action, a sheet). */
+  overlay?: ReactNode;
+  /** Pull to refresh, drawn in white on the night. */
+  refreshing?: boolean;
+  onRefresh?: () => void;
+  scrollRef?: React.Ref<ScrollView>;
+  /** Extra room under the content (e.g. to clear a floating action). */
+  bottomSpace?: number;
 }) {
   return (
     <View style={styles.page}>
       <StatusBar barStyle="light-content" />
       <NightUnderlay />
       <ScrollView
+        ref={scrollRef}
         style={styles.pageScroll}
-        contentContainerStyle={[styles.pageContent, { paddingBottom: footer ? 24 : insetBottom + 36 }]}
+        contentContainerStyle={[styles.pageContent, { paddingBottom: footer ? 24 : insetBottom + bottomSpace }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" colors={[DK.accent]} /> : undefined
+        }
       >
         <NightHero insetTop={insetTop} compact>
           {hero}
@@ -360,9 +380,13 @@ export function DriverPage({
       </ScrollView>
       <StatusBand insetTop={insetTop} />
       {!!footer && <View style={[styles.pageFooter, { paddingBottom: insetBottom + 12 }]}>{footer}</View>}
+      {overlay}
     </View>
   );
 }
+
+/** The same frame, named for what it is now: every phone screen, driver's and manager's. */
+export const KitPage = DriverPage;
 
 /**
  * Pulling a page down past its top shows what is behind the scroll view.
@@ -468,17 +492,18 @@ export function Gauge({
 }
 
 /** Israeli plate: yellow field, blue IL strip, number in reading order. */
-export function Plate({ number, size = 'md' }: { number: string; size?: 'md' | 'lg' }) {
+export function Plate({ number, size = 'md' }: { number: string; size?: 'sm' | 'md' | 'lg' }) {
   const lg = size === 'lg';
+  const sm = size === 'sm';
   return (
     <View style={styles.plate} accessibilityLabel={`לוחית רישוי ${number}`} accessible>
-      <View style={[styles.plateIl, lg && styles.plateIlLg]}>
+      <View style={[styles.plateIl, lg && styles.plateIlLg, sm && styles.plateIlSm]}>
         <DKText variant="micro" color="#FFFFFF" ltr style={styles.plateIlText}>
           IL
         </DKText>
       </View>
-      <View style={[styles.plateField, lg && styles.plateFieldLg]}>
-        <DKText ltr style={[styles.plateText, lg && styles.plateTextLg]}>
+      <View style={[styles.plateField, lg && styles.plateFieldLg, sm && styles.plateFieldSm]}>
+        <DKText ltr style={[styles.plateText, lg && styles.plateTextLg, sm && styles.plateTextSm]}>
           {number}
         </DKText>
       </View>
@@ -554,18 +579,19 @@ export function PrimaryAction({
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
-  tone?: 'accent' | 'ghost' | 'danger';
+  /** `danger` is the soft red for a secondary destructive choice; `destructive` the solid one that confirms it. */
+  tone?: 'accent' | 'ghost' | 'danger' | 'destructive';
   style?: StyleProp<ViewStyle>;
 }) {
-  const ghost = tone !== 'accent';
-  const fg = tone === 'accent' ? '#FFFFFF' : tone === 'danger' ? STATUS.expired.fg : DK.accent;
+  const ghost = tone === 'ghost' || tone === 'danger';
+  const fg = !ghost ? '#FFFFFF' : tone === 'danger' ? STATUS.expired.fg : DK.accent;
   return (
     <Pressy
       onPress={onPress}
       disabled={disabled || loading}
       haptic
       accessibilityLabel={label}
-      style={[styles.action, ghost ? (tone === 'danger' ? styles.actionDanger : styles.actionGhost) : styles.actionAccent, style]}
+      style={[styles.action, ghost ? (tone === 'danger' ? styles.actionDanger : styles.actionGhost) : tone === 'destructive' ? styles.actionDestructive : styles.actionAccent, style]}
     >
       {loading ? (
         <BrandLoader size={22} color={ghost ? undefined : '#FFFFFF'} />
@@ -592,7 +618,9 @@ const styles = StyleSheet.create({
     backgroundColor: DK.night[0],
     // Safari drops a rounded clip while a child is animating (the corners
     // flash square); a mask keeps the clip on the GPU layer.
-    ...Platform.select({ web: { WebkitMaskImage: '-webkit-radial-gradient(white, black)', isolation: 'isolate' } as any, default: {} }),
+    // `clip` (not `hidden`) on the web: a hidden box can still be scrolled
+    // by focus or scrollIntoView, which slid the hero's content out of place.
+    ...Platform.select({ web: { WebkitMaskImage: '-webkit-radial-gradient(white, black)', isolation: 'isolate', overflow: 'clip' } as any, default: {} }),
   },
   // Soft light from the logo's blue and cyan. Radial gradients fade to
   // nothing inside their own box, so no edge can ever show (a CSS blur
@@ -714,6 +742,9 @@ const styles = StyleSheet.create({
   plateFieldLg: { paddingHorizontal: 16, paddingVertical: 9 },
   plateText: { fontFamily: DK_FONT.display, fontSize: 19, letterSpacing: 1, color: '#111318', fontVariant: ['tabular-nums'] },
   plateTextLg: { fontSize: 25, letterSpacing: 1.4 },
+  plateIlSm: { width: 20, paddingBottom: 3 },
+  plateFieldSm: { paddingHorizontal: 9, paddingVertical: 4 },
+  plateTextSm: { fontSize: 15, lineHeight: 19, letterSpacing: 0.6 },
 
   row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 64, paddingHorizontal: DK_SPACE.md, paddingVertical: 10 },
   rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },
@@ -739,6 +770,9 @@ const styles = StyleSheet.create({
   },
   actionGhost: { backgroundColor: DK.accentSoft },
   actionDanger: { backgroundColor: STATUS.expired.soft },
+  actionDestructive: { backgroundColor: STATUS.expired.fg },
 });
 
 export { DK_SHADOW as SURFACE_SHADOW };
+
+export * from './parts';

@@ -301,7 +301,7 @@ export function CreateDocumentSheet({
                 selected={mode === 'upload'}
                 onPress={() => setMode('upload')}
                 icon="cloud-upload"
-                gradient="linear-gradient(160deg,#35B8F0,#0088CC)"
+                gradient="linear-gradient(160deg,#35B8F0,#0075B3)"
                 title="להעלות קובץ קיים"
                 text="בוחרים קובץ PDF, וורד או תמונה מהמחשב, ומסמנים עליו איפה הנהג חותם."
               />
@@ -405,7 +405,7 @@ export function CreateDocumentSheet({
             <h2 className="sd-xb">המסמך נשמר</h2>
             <p>״{created?.title ?? title.trim()}״ מוכן. כדי לשלוח אותו לנהג, היכנסו לתיק הנהג ושם לחלק של הטפסים לחתימה.</p>
             <div className="sd-success-path sd-sb">
-              <Ionicons name="person" size={18} color="#0088CC" />
+              <Ionicons name="person" size={18} color="#0075B3" />
               תיק הנהג
               <Ionicons name="chevron-back" size={16} color="#8B98A4" />
               טפסים לחתימה

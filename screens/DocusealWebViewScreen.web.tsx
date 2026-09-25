@@ -229,13 +229,15 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
     return <DocumentViewer src={documentUrl} title={params.title} requestId={params.requestId} signedAt={params.signedAt} onClose={() => navigation.goBack()} />;
   }
   const downloadAction = params.allowDownload && params.mode === 'document';
+  // Every phone screen wears the night bar; the desktop keeps its header.
+  const kit = isDriver || !isDesktop;
   return (
-    <Screen style={isDriver ? styles.driverScreen : undefined}>
-      {isDriver ? (
+    <Screen style={kit ? styles.driverScreen : undefined}>
+      {kit ? (
         <NightBar
           insetTop={insets.top}
           title={params.title}
-          subtitle={isSigningForm ? 'מלא את השדות וחתום' : params.mode === 'document' ? 'צפייה במסמך' : undefined}
+          subtitle={params.mode === 'builder' ? 'מקמו את שדות החתימה ושמרו' : isSigningForm ? (isDriver ? 'מלא את השדות וחתום' : 'תצוגה מקדימה') : params.mode === 'document' ? 'צפייה במסמך' : undefined}
           onBack={() => navigation.goBack()}
           right={downloadAction ? <HeroButton icon="download-outline" label="הורדת המסמך החתום" onPress={() => void download()} /> : undefined}
         />
@@ -261,7 +263,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
           'data-send-copy-email': 'false',
           'data-with-send-copy-button': 'false',
           'data-allow-to-resubmit': 'false',
-          'data-custom-css': isDriver ? DRIVER_FORM_CSS : undefined,
+          'data-custom-css': kit ? DRIVER_FORM_CSS : undefined,
           style: directFormStyle,
         }) : html ? (
           <iframe title={params.title} srcDoc={html} style={iframeStyle} onLoad={() => setLoading(false)} allow="clipboard-read; clipboard-write" />

@@ -338,7 +338,7 @@ export function SignedDocumentsDesktopView({ companyId }: { companyId: string })
             </div>
           ) : own.length === 0 ? (
             <div className="sd-empty">
-              <Ionicons name="documents" size={52} color="#0088CC" />
+              <Ionicons name="documents" size={52} color="#0075B3" />
               <h3 className="sd-b">עדיין אין מסמכים של החברה</h3>
               <p>צרו את המסמך הראשון. זה לוקח כמה דקות, וכל שלב מוסבר על המסך.</p>
               <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={() => setCreating(true)}>
@@ -350,7 +350,7 @@ export function SignedDocumentsDesktopView({ companyId }: { companyId: string })
             <div className="sd-grid">
               <button type="button" className="sd-card sd-card-new" onClick={() => setCreating(true)}>
                 <span className="sd-card-new-icon">
-                  <Ionicons name="add" size={32} color="#0088CC" />
+                  <Ionicons name="add" size={32} color="#0075B3" />
                 </span>
                 <span className="sd-b">מסמך חדש</span>
               </button>

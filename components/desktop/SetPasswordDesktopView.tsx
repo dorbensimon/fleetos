@@ -57,8 +57,8 @@ export function SetPasswordDesktopView({
             </DText>
           </View>
           <View style={styles.assuranceList}>
-            <Assurance icon="shield-checkmark-outline" title="גישה מוגנת" detail="העדכון נשמר בצורה מאובטחת" />
-            <Assurance icon="eye-off-outline" title="פרטיות מלאה" detail="הסיסמה אינה מוצגת לאף גורם" />
+            <Assurance icon="shield-checkmark-outline" title="חיבור מוצפן" detail="הסיסמה נשלחת בחיבור מוצפן" />
+            <Assurance icon="eye-off-outline" title="רק שלך" detail="הסיסמה החדשה לא מוצגת למנהל הצי" />
             <Assurance icon="key-outline" title="בשליטה שלך" detail="אפשר לעדכן את הסיסמה בכל עת" />
           </View>
           <DText style={styles.helpText}>טיפ: בחרו סיסמה שלא משמשת אתכם בשירותים אחרים.</DText>
