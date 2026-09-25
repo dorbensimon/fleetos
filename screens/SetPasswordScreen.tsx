@@ -11,6 +11,7 @@ import { functionErrorMessage } from '../lib/functionError';
 import { CONTENT_MAX_WIDTH } from '../lib/theme';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import { SetPasswordDesktopView } from '../components/desktop/SetPasswordDesktopView';
+import { BrandLogo } from '../components/ui/Brand';
 
 /**
  * Shown once, right after a first login with an owner/admin-assigned
@@ -127,12 +128,17 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
     <View style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.content}>
-          <Ionicons name="lock-closed-outline" size={40} color={COLORS.blue} style={styles.icon} />
+          {voluntary ? (
+            <Ionicons name="lock-closed-outline" size={40} color={COLORS.blue} style={styles.icon} />
+          ) : (
+            // First sign-in: this is the user's first real screen in icar.
+            <BrandLogo height={34} style={styles.welcomeLogo} />
+          )}
           <Text style={styles.title}>{voluntary ? 'שינוי סיסמה' : 'קביעת סיסמה קבועה'}</Text>
           <Text style={styles.subtitle}>
             {voluntary
               ? 'קבע סיסמה חדשה לחשבון שלך.'
-              : 'זו הכניסה הראשונה שלך למערכת. קבע סיסמה קבועה משלך כדי להמשיך.'}
+              : 'ברוכים הבאים ל-icar. זו הכניסה הראשונה שלך — קבע סיסמה קבועה משלך כדי להמשיך.'}
           </Text>
 
           <View style={styles.field}>
@@ -207,6 +213,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: 28, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
   icon: { alignSelf: 'center', marginBottom: 14 },
+  welcomeLogo: { alignSelf: 'center', marginBottom: 22 },
   title: { fontSize: 22, fontWeight: '700', color: COLORS.black, textAlign: 'center', marginBottom: 8 },
   subtitle: {
     fontSize: 14,

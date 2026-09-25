@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
+import { BrandLogo } from '../ui/Brand';
 
 type Props = {
   voluntary: boolean;
@@ -44,6 +45,7 @@ export function SetPasswordDesktopView({
     <View style={styles.page}>
       <View style={styles.workspace}>
         <View style={styles.securityPanel}>
+          <BrandLogo onDark height={26} style={styles.brand} />
           <View style={styles.lockTile}>
             <Ionicons name="lock-closed-outline" size={31} color={DESKTOP_COLORS.brand} />
           </View>
@@ -65,7 +67,7 @@ export function SetPasswordDesktopView({
           <View style={styles.formHeading}>
             <DText weight="bold" style={styles.title}>{voluntary ? 'שינוי סיסמה' : 'קביעת סיסמה קבועה'}</DText>
             <DText style={styles.subtitle}>
-              {voluntary ? 'בחרו סיסמה חדשה לחשבון שלכם.' : 'זו הכניסה הראשונה שלכם למערכת. בחרו סיסמה קבועה כדי להמשיך.'}
+              {voluntary ? 'בחרו סיסמה חדשה לחשבון שלכם.' : 'ברוכים הבאים ל-icar. זו הכניסה הראשונה שלכם — בחרו סיסמה קבועה כדי להמשיך.'}
             </DText>
           </View>
 
@@ -138,6 +140,8 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: DESKTOP_COLORS.canvas, justifyContent: 'center', padding: 40 },
   workspace: { width: '100%', maxWidth: 1160, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'stretch', gap: 24 },
   securityPanel: { flex: 1, minHeight: 530, borderRadius: 16, backgroundColor: DESKTOP_COLORS.ink, padding: 38, justifyContent: 'center', ...webOnly({ boxShadow: '0 18px 42px rgba(22,34,46,0.16)' }) },
+  // Pinned to the panel's top corner so the centred security copy doesn't move.
+  brand: { position: 'absolute', top: 34, right: 38 },
   lockTile: { width: 68, height: 68, borderRadius: 20, backgroundColor: 'rgba(95,193,240,0.14)', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   securityCopy: { maxWidth: 430 },
   securityTitle: { fontSize: 28, color: '#fff', letterSpacing: -0.45 },

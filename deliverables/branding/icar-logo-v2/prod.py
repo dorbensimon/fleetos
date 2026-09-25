@@ -42,3 +42,12 @@ files={
  'splash-symbol.svg':svg((0,0,100,100),centered(r=31,gap=110,w0=5,w1=21,dr=10.5)),
 }
 for k,v in files.items(): open(f'{OUT}/{k}','w').write(v)
+
+# --- v2 touchpoints ---
+extra={
+ # square, symbol centred, tight margin: small in-app mark
+ 'symbol-square.svg':svg((11.5,11.5,77,77),centered()),
+ # Android status-bar notification icon: white silhouette on transparent
+ 'notification-icon.svg':svg((0,0,100,100),centered(fill='#FFFFFF',dot='#FFFFFF',r=27,gap=118,w0=10,w1=22,dr=12)),
+}
+for k,v in extra.items(): open(f'{OUT}/{k}','w').write(v)

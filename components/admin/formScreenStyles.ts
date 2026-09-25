@@ -40,7 +40,8 @@ export const formScreenStyles = StyleSheet.create({
     height: 52,
   },
   headerTitle: { fontSize: FONT_SIZE.xl, lineHeight: 22, color: BRAND.ink },
-  headerSideSpacer: { width: 42 },
+  // Balances the back button; holds the small icar mark.
+  headerSideSpacer: { width: 42, alignItems: 'center', justifyContent: 'center' },
   progressRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

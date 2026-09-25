@@ -29,6 +29,7 @@ import {
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DriverFormDesktopView } from '../../components/desktop/DriverFormDesktopView';
+import { BrandSymbol } from '../../components/ui/Brand';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverForm'>;
 type FieldKey = keyof FormState;
@@ -345,7 +346,9 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           />
           <AppText weight="bold" style={styles.headerTitle}>{displayTitle}</AppText>
           {/* Balances the back action so the title stays visually centered. */}
-          <View style={styles.headerSideSpacer} />
+          <View style={styles.headerSideSpacer}>
+            <BrandSymbol size={22} />
+          </View>
         </View>
 
         {/* Progress bar */}

@@ -11,6 +11,7 @@ import { showAlert } from '../lib/platformAlert';
 import { useCompany } from '../lib/CompanyContext';
 import { RootStackParamList } from '../navigation/types';
 import { useIsDesktop } from '../lib/useDesktopLayout';
+import { BrandLogo } from '../components/ui/Brand';
 
 /**
  * Full-screen menu reached from the home screen's menu button — replaces
@@ -132,7 +133,7 @@ export default function MenuScreen({ navigation }: Props) {
       <SafeAreaView style={styles.safe}>
         <View style={styles.topBar}>
           <BackButton onPress={() => navigation.goBack()} />
-          <AppText style={MENU_TYPO.version}>גרסה 1.0.0</AppText>
+          <BrandLogo height={22} />
         </View>
 
         <TouchableOpacity
@@ -195,6 +196,8 @@ export default function MenuScreen({ navigation }: Props) {
             <Ionicons name="log-out-outline" size={22} color={MENU_COLORS.dangerText} />
           </TouchableOpacity>
         </View>
+
+        <AppText style={[MENU_TYPO.version, styles.version]}>icar · גרסה 1.0.0</AppText>
       </SafeAreaView>
     </Screen>
   );
@@ -204,6 +207,7 @@ const styles = StyleSheet.create({
   screen: { backgroundColor: MENU_COLORS.background },
   adminScreen: { backgroundColor: BRAND.screenBg },
   safe: { flex: 1 },
+  version: { textAlign: 'center', marginTop: SPACING.lg },
   topBar: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

@@ -40,7 +40,13 @@
         }
       ],
       "expo-font",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2F5BFF"
+        }
+      ],
       "expo-sharing",
       [
         "expo-splash-screen",

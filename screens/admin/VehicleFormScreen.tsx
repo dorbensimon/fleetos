@@ -41,6 +41,7 @@ import { lookupVehicleRegistry, VehicleRegistryDetails } from '../../lib/vehicle
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { VehicleFormDesktopView } from '../../components/desktop/VehicleFormDesktopView';
+import { BrandSymbol } from '../../components/ui/Brand';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleForm'>;
 type FormVehicleType = VehicleType | '';
@@ -515,7 +516,9 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         <View style={styles.headerTop}>
           <BackButton onPress={() => navigation.goBack()} accessibilityLabel="חזור" />
           <AppText weight="bold" style={styles.headerTitle}>{screenTitle}</AppText>
-          <View style={styles.headerSideSpacer} />
+          <View style={styles.headerSideSpacer}>
+            <BrandSymbol size={22} />
+          </View>
         </View>
         <View style={styles.progressRow}>
           <AppText style={styles.progressCounter}>{filledCount}/{REQUIRED_FIELDS.length}</AppText>

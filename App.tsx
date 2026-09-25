@@ -23,6 +23,7 @@ import {
 } from '@expo-google-fonts/heebo';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { syncWebThemeColor } from './lib/webThemeColor';
+import { BrandSymbol } from './components/ui/Brand';
 import LoginScreen from './screens/LoginScreen';
 import SetPasswordScreen from './screens/SetPasswordScreen';
 import OwnerHomeScreen from './screens/OwnerHomeScreen';
@@ -207,8 +208,11 @@ export default function App() {
   if (!initialRoute || !fontsLoaded) {
     return (
       <SafeAreaProvider>
+        {/* Boot screen — matches the pre-JS splash in public/index.html so
+            the web load is one continuous branded frame. */}
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F5F7' }}>
-          <ActivityIndicator color="#0071E3" />
+          <BrandSymbol size={64} />
+          <ActivityIndicator color="#2F5BFF" style={{ marginTop: 28 }} />
         </View>
       </SafeAreaProvider>
     );

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Image, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,6 +18,7 @@ import { formatDateTime } from '../../lib/theme';
 import { RootStackParamList } from '../../navigation/types';
 import { navigateToNotificationTarget, notificationTarget } from '../../lib/notificationTargets';
 import { DText, HoverPressable } from './primitives';
+import { BrandLogo } from '../ui/Brand';
 import {
   DESKTOP_COLORS,
   DESKTOP_HEADER_HEIGHT,
@@ -235,12 +236,7 @@ export function DesktopShell({
     <View style={styles.root}>
       <View style={styles.sidebar}>
         <View style={styles.brandRow}>
-          <Image
-            source={require('../../images/icar-logo-on-dark.png')}
-            style={styles.brandLogo}
-            resizeMode="contain"
-            accessibilityLabel="icar"
-          />
+          <BrandLogo onDark height={24} />
         </View>
         <View style={styles.companyBlock}>
           <DText weight="semiBold" style={styles.companyName} numberOfLines={1}>
@@ -423,8 +419,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: DESKTOP_COLORS.sidebarDivider,
   },
-  // icar lockup artwork is 311.9 × 87.5 (see images/icar-logo-on-dark.png).
-  brandLogo: { height: 24, aspectRatio: 311.9 / 87.5 },
   companyBlock: {
     paddingHorizontal: 16,
     paddingVertical: 12,
