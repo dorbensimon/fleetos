@@ -245,9 +245,12 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
 }
 
 const iframeStyle = { border: 0, width: '100%', height: '100%', display: 'block' } as const;
-const directFormStyle = { display: 'block', width: '100%', minWidth: 0, height: '100%', minHeight: '100dvh' } as const;
+// Pinned to the box under the header. DocuSeal docks its signature pad and
+// submit button at the bottom of this element, so it must end exactly where
+// the screen does — a 100dvh minimum pushed that button below the fold.
+const directFormStyle = { display: 'block', position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, minWidth: 0, overflowY: 'auto' } as const;
 const styles = StyleSheet.create({
-  webWrap: { flex: 1, width: '100%', overflow: 'hidden' },
+  webWrap: { flex: 1, width: '100%', minHeight: 0, overflow: 'hidden' },
   signingSurface: { backgroundColor: COLORS.screen },
   documentSurface: { backgroundColor: '#CDD3DB' },
   loading: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.screen },

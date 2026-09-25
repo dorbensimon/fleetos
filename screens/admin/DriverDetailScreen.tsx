@@ -409,7 +409,9 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   if (isDesktop) {
     return (
       <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', driver?.full_name?.trim() || 'נהג']}>
-        {loading ? null : loadError ? (
+        {loading ? (
+          <LoadingState />
+        ) : loadError ? (
           <ErrorState message={loadError} onRetry={load} />
         ) : (
           <DriverDetailDesktopView

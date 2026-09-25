@@ -5,11 +5,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Screen, EmptyState, ErrorState } from '../../components/ui';
+import { Screen, EmptyState, ErrorState, LoadingState } from '../../components/ui';
 import { ToggleValue } from '../../components/ui/DriversVehiclesToggle';
 import { DriverCard } from '../../components/fleet/DriverCard';
 import { VehicleCard } from '../../components/fleet/VehicleCard';
-import { DriverListSkeleton, VehicleListSkeleton } from '../../components/fleet/FleetListSkeleton';
 import { FleetHero, FleetStat, heroNavHeight, HERO_CONTENT_HEIGHT, HERO_TRAVEL } from '../../components/fleet/FleetHero';
 import { FleetDock, FLEET_DOCK_CLEARANCE } from '../../components/fleet/FleetDock';
 import { FleetAddButton } from '../../components/fleet/FleetAddButton';
@@ -664,7 +663,7 @@ export default function FleetScreen() {
        <View style={sheetStyles.sheetInner}>
         <View style={[StyleSheet.absoluteFill, { backgroundColor: FLEET_COLORS.sheetTo }]} />
         {driversLoading ? (
-          <DriverListSkeleton />
+          <LoadingState />
         ) : driversError && drivers.length === 0 ? (
           <ErrorState message="לא ניתן לטעון את הנהגים" hint={driversError} onRetry={() => void retryDrivers()} />
         ) : (
@@ -745,7 +744,7 @@ export default function FleetScreen() {
        <View style={sheetStyles.sheetInner}>
         <View style={[StyleSheet.absoluteFill, { backgroundColor: FLEET_COLORS.sheetTo }]} />
         {vehiclesLoading ? (
-          <VehicleListSkeleton />
+          <LoadingState />
         ) : vehiclesError && vehicles.length === 0 ? (
           <ErrorState message="לא ניתן לטעון את הרכבים" hint={vehiclesError} onRetry={() => void retryVehicles()} />
         ) : (

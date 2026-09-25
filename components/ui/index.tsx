@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   ViewProps,
@@ -376,10 +376,19 @@ export function FilterChips<T extends string>({
 /* States                                                              */
 /* ------------------------------------------------------------------ */
 
-export function LoadingState() {
+/**
+ * Full-area loading: the icar loader, centred. It appears only after a short
+ * beat, so data that arrives quickly never flashes a loader on screen.
+ */
+export function LoadingState({ size = 48 }: { size?: number }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShown(true), 150);
+    return () => clearTimeout(t);
+  }, []);
   return (
-    <View style={styles.loadingCentered}>
-      <BrandLoader color={COLORS.accent} />
+    <View style={styles.loadingCentered} accessibilityRole="progressbar" accessibilityLabel="טוען">
+      {shown && <BrandLoader size={size} />}
     </View>
   );
 }
@@ -680,7 +689,7 @@ const styles = StyleSheet.create({
   chipBadgeText: { fontSize: 11, color: COLORS.textMuted },
 
   centered: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48, gap: 8 },
-  loadingCentered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  loadingCentered: { flex: 1, minHeight: 220, alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { fontSize: 14.5, color: COLORS.textMuted, marginTop: 4 },
   emptyHint: { fontSize: 12.5, color: COLORS.textFaint, textAlign: 'center', paddingHorizontal: SPACING.xl },
   errorTitle: { fontSize: 14.5, color: COLORS.text, marginTop: 4, textAlign: 'center' },

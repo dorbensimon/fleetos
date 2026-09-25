@@ -9,6 +9,7 @@ import { formatPlate } from '../../lib/plate';
 import { nextServiceKmOf } from '../../lib/serviceSchedule';
 import { daysUntilExpiry, formatDate } from '../../lib/theme';
 import { DLtrText, DText, HoverPressable, StatusPill } from './primitives';
+import { LoadingState } from '../ui';
 import { DESKTOP_AVATAR_COLORS, DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { enter, enterRow, FilterCard, FilterCards, FleetHeader, FleetMode, ModeSwitch } from './FleetOverview';
 
@@ -304,17 +305,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
           <TableHeader columns={isDrivers ? DRIVER_COLUMNS : VEHICLE_COLUMNS} />
 
           {loading ? (
-            <View style={styles.rows}>
-              {Array.from({ length: 6 }, (_, i) => (
-                <View key={i} style={[styles.row, i % 2 === 1 && styles.rowAlt]}>
-                  <View style={styles.skeletonAvatar} />
-                  <View style={[styles.skeletonBar, { flex: 2, maxWidth: 170 }]} />
-                  <View style={[styles.skeletonBar, { flex: 1, maxWidth: 100 }]} />
-                  <View style={[styles.skeletonBar, { flex: 1, maxWidth: 100 }]} />
-                  <View style={[styles.skeletonBar, { flex: 1, maxWidth: 80 }]} />
-                </View>
-              ))}
-            </View>
+            <LoadingState />
           ) : error ? (
             <View style={styles.state}>
               <DText weight="semiBold" style={styles.stateTitle}>
@@ -826,8 +817,6 @@ const styles = StyleSheet.create({
   toneDot: { width: 7, height: 7, borderRadius: 4 },
   nameCell: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minWidth: 0 },
   avatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  skeletonAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: DESKTOP_COLORS.borderSoft, marginLeft: 12 },
-  skeletonBar: { height: 12, borderRadius: 6, backgroundColor: DESKTOP_COLORS.borderSoft, marginLeft: 14 },
   avatarText: { color: '#fff', fontSize: 15, textAlign: 'center' },
   vehicleIcon: { backgroundColor: DESKTOP_COLORS.brandFocusRing },
 });
