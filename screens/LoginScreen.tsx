@@ -67,6 +67,8 @@ const IDLE_REVS = 0.09;
  * display; below this width the phone stack is used (also on iPads in portrait).
  */
 const WIDE_MIN_WIDTH = 1000;
+/** Smallest gauge (px) the phone layout will shrink to so the login fits the screen. */
+const GAUGE_MIN = 124;
 const DISPLAY_WIDTH = 392;
 
 /** The browser parts React Native cannot style: selection, caret, autofill, scrollbars. */
@@ -248,6 +250,8 @@ interface ClusterFieldProps {
   onSubmitEditing?: () => void;
   inputRef?: React.RefObject<TextInput | null>;
   hasError?: boolean;
+  /** Shorter field for phones where the login must fit the screen. */
+  short?: boolean;
 }
 
 function ClusterField({
@@ -264,6 +268,7 @@ function ClusterField({
   onSubmitEditing,
   inputRef,
   hasError,
+  short,
 }: ClusterFieldProps) {
   const [focused, setFocused] = useState(false);
   const accent = hasError ? CLUSTER.amber : CLUSTER.backlight;
@@ -271,10 +276,10 @@ function ClusterField({
   return (
     <Pressable
       onPress={() => inputRef?.current?.focus()}
-      style={[styles.field, focused && styles.fieldFocused, (focused || hasError) && { borderColor: `${accent}88` }]}
+      style={[styles.field, short && styles.fieldShort, focused && styles.fieldFocused, (focused || hasError) && { borderColor: `${accent}88` }]}
     >
       <Ionicons name={icon} size={18} color={focused ? CLUSTER.backlight : CLUSTER.inkMuted} />
-      <View style={styles.fieldBody}>
+      <View style={[styles.fieldBody, short && styles.fieldBodyShort]}>
         <Text style={[styles.fieldLabel, focused && { color: CLUSTER.backlight }]}>{label}</Text>
         <TextInput
           ref={inputRef}
@@ -381,6 +386,25 @@ export default function LoginScreen({ navigation }: Props) {
   const wide = width >= WIDE_MIN_WIDTH;
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
+  const [fitHeight, setFitHeight] = useState(0);
+  const [gaugeShrink, setGaugeShrink] = useState(0);
+  const fitWidth = useRef(width);
+  const contentHeight = useRef(0);
+  // Phone gauge size before fitting, and how far fitting may take it down.
+  const compactGauge = Math.min(172, Math.floor((Math.min(width - 40, 520) - 36 - 14) / 2));
+  const maxShrink = Math.max(0, compactGauge - GAUGE_MIN);
+  // Gauge row height is the gauge size, so shrinking the gauges by the
+  // overflow makes the content fit exactly (settles in one pass).
+  const refit = () => {
+    if (wide || !fitHeight || !contentHeight.current) return;
+    const overflow = contentHeight.current - fitHeight;
+    setGaugeShrink((prev) => {
+      const next = Math.min(Math.max(prev + overflow, 0), maxShrink);
+      return Math.abs(next - prev) < 1 ? prev : Math.ceil(next);
+    });
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(refit, [fitHeight]);
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -537,12 +561,15 @@ export default function LoginScreen({ navigation }: Props) {
     }
   };
 
-  const compactWidth = Math.min(width - 40, 520);
+  // Phones: the whole cluster fits the visible screen, with no scrolling.
+  // `short` tightens the vertical rhythm; whatever still overflows comes out
+  // of the gauges, measured (see `refit`).
+  const short = !wide && fitHeight > 0 && fitHeight < 860;
   // Wide: the binnacle (≤1080, 44px sides) holds two gauges and the display with ≥24px between them.
   const gaugeSize = wide
     ? Math.min(262, Math.floor((Math.min(width - 64, 1080) - 88 - DISPLAY_WIDTH - 48) / 2))
-    : Math.min(172, Math.floor((compactWidth - 36 - 14) / 2));
-  const startSize = wide ? 112 : 100;
+    : compactGauge - Math.min(gaugeShrink, maxShrink);
+  const startSize = wide ? 112 : short ? 88 : 100;
   const displayWidth = wide ? DISPLAY_WIDTH : undefined;
 
   const revsGauge = (
@@ -570,16 +597,16 @@ export default function LoginScreen({ navigation }: Props) {
   );
 
   const display = (
-    <Animated.View style={[styles.display, displayWidth ? { width: displayWidth } : null, { opacity: displayPower }]}>
+    <Animated.View style={[styles.display, short && styles.displayShort, displayWidth ? { width: displayWidth } : null, { opacity: displayPower }]}>
       <Image
         source={require('../images/icar-logo-on-dark.png')}
-        style={[styles.logo, !wide && styles.logoCompact]}
+        style={[styles.logo, !wide && styles.logoCompact, short && styles.logoShort]}
         resizeMode="contain"
         accessibilityLabel="icar"
       />
       <Text style={styles.subtitle}>התחברו כדי להמשיך</Text>
 
-      <View style={styles.fields}>
+      <View style={[styles.fields, short && styles.fieldsShort]}>
         <ClusterField
           label="מייל"
           value={identifier}
@@ -594,6 +621,7 @@ export default function LoginScreen({ navigation }: Props) {
           returnKeyType="next"
           onSubmitEditing={() => passwordRef.current?.focus()}
           hasError={!!errorMessage && !identifier.trim()}
+          short={short}
         />
         <ClusterField
           label="סיסמה"
@@ -611,10 +639,11 @@ export default function LoginScreen({ navigation }: Props) {
           onSubmitEditing={() => void handleLogin()}
           inputRef={passwordRef}
           hasError={!!errorMessage && !password}
+          short={short}
         />
       </View>
 
-      <View style={styles.messageSlot} accessibilityLiveRegion="polite">
+      <View style={[styles.messageSlot, short && styles.messageSlotShort]} accessibilityLiveRegion="polite">
         {!!errorMessage && (
           <View style={styles.messageRow}>
             <Ionicons name="warning" size={15} color={CLUSTER.amber} />
@@ -629,7 +658,7 @@ export default function LoginScreen({ navigation }: Props) {
         )}
       </View>
 
-      <View style={styles.lampRow}>
+      <View style={[styles.lampRow, short && styles.lampRowShort]}>
         <TellTale icon="mail" label="מייל הוזן" lit={selfTest || !!identifier.trim()} tone={CLUSTER.backlight} />
         <TellTale icon="lock-closed" label="סיסמה הוזנה" lit={selfTest || !!password} tone={CLUSTER.backlight} />
         <TellTale icon="checkmark-circle" label="מוכן להתחברות" lit={selfTest || ready || !!successMessage} tone={CLUSTER.green} />
@@ -646,8 +675,8 @@ export default function LoginScreen({ navigation }: Props) {
   );
 
   const footer = (
-    <View style={styles.footer}>
-      <Text style={styles.footerText}>
+    <View style={[styles.footer, short && styles.footerShort]}>
+      <Text style={[styles.footerText, short && styles.footerTextShort]}>
         הגישה למערכת מנוהלת על ידי מנהל הצי.{'\n'}
         לפתיחת חשבון פנה למנהל המערכת שלך.
       </Text>
@@ -675,8 +704,8 @@ export default function LoginScreen({ navigation }: Props) {
     </View>
   ) : (
     <View style={[styles.clusterWrap, styles.clusterWrapCompact]}>
-      <View style={[styles.binnacleCompact, { paddingBottom: startSize / 2 + 22 }]}>
-        <View style={styles.gaugeRow}>
+      <View style={[styles.binnacleCompact, short && styles.binnacleShort, { paddingBottom: startSize / 2 + (short ? 14 : 22) }]}>
+        <View style={[styles.gaugeRow, short && styles.gaugeRowShort]}>
           {readinessGauge}
           {revsGauge}
         </View>
@@ -686,18 +715,41 @@ export default function LoginScreen({ navigation }: Props) {
     </View>
   );
 
+  const padTop = short ? Math.max(insets.top + 8, 14) : Math.max(insets.top + 12, wide ? 40 : 28);
+  const padBottom = short ? Math.max(insets.bottom + 8, 14) : Math.max(insets.bottom + 16, wide ? 40 : 28);
+
   const content = (
     <ScrollView
       contentContainerStyle={[
         styles.scrollContent,
         wide && styles.scrollContentWide,
         // Clear the status bar / Dynamic Island and the home indicator on phones.
-        { paddingTop: Math.max(insets.top + 12, wide ? 40 : 28), paddingBottom: Math.max(insets.bottom + 16, wide ? 40 : 28) },
+        { paddingTop: padTop, paddingBottom: padBottom },
       ]}
       keyboardShouldPersistTaps="handled"
+      onLayout={(e) => {
+        const h = e.nativeEvent.layout.height;
+        // The tallest height seen at this width: an open keyboard shrinks the
+        // view, and the cluster should scroll above it — not re-fit.
+        if (fitWidth.current !== width) {
+          fitWidth.current = width;
+          setFitHeight(h);
+          setGaugeShrink(0);
+        } else if (h > fitHeight) setFitHeight(h);
+      }}
     >
-      {cluster}
-      {footer}
+      {/* Measured on its own: the scroll content stretches to the screen, so
+          only this wrapper reports the cluster's natural height. */}
+      <View
+        style={styles.fitBox}
+        onLayout={(e) => {
+          contentHeight.current = e.nativeEvent.layout.height + padTop + padBottom;
+          refit();
+        }}
+      >
+        {cluster}
+        {footer}
+      </View>
     </ScrollView>
   );
 
@@ -724,6 +776,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 28,
   },
+  fitBox: { width: '100%', alignItems: 'center' },
   scrollContentWide: { paddingHorizontal: 32, paddingVertical: 40 },
 
   binnacleWide: {
@@ -763,10 +816,12 @@ const styles = StyleSheet.create({
     shadowRadius: 40,
     elevation: 14,
   },
+  binnacleShort: { paddingTop: 14 },
   clusterWrap: { width: '100%', maxWidth: 1080, alignItems: 'center' },
   clusterWrapCompact: { maxWidth: 520 },
   startDock: { alignItems: 'center' },
   gaugeRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 16 },
+  gaugeRowShort: { marginBottom: 10 },
 
   gauge: {
     backgroundColor: '#0F161E',
@@ -846,6 +901,8 @@ const styles = StyleSheet.create({
   },
   logo: { alignSelf: 'center', width: 200, height: 61 },
   logoCompact: { width: 172, height: 53 },
+  logoShort: { width: 150, height: 46 },
+  displayShort: { paddingTop: 16, paddingBottom: 12 },
   subtitle: {
     textAlign: 'center',
     color: CLUSTER.inkMuted,
@@ -854,6 +911,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   fields: { gap: 12, marginTop: 20 },
+  fieldsShort: { gap: 10, marginTop: 14 },
   field: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -865,6 +923,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: CLUSTER.hairline,
   },
+  fieldShort: { minHeight: 52 },
+  fieldBodyShort: { paddingVertical: 3 },
   fieldFocused: { backgroundColor: CLUSTER.fieldFocus },
   fieldBody: { flex: 1, paddingVertical: 8 },
   fieldLabel: {
@@ -882,6 +942,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   messageSlot: { minHeight: 34, justifyContent: 'center' },
+  messageSlotShort: { minHeight: 24 },
   messageRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6 },
   messageText: { fontFamily: FONT.semiBold, fontSize: 13.5, textAlign: 'center' },
   lampRow: {
@@ -892,6 +953,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: CLUSTER.hairline,
   },
+  lampRowShort: { paddingTop: 10 },
   lamp: {
     width: 34,
     height: 34,
@@ -940,6 +1002,7 @@ const styles = StyleSheet.create({
   startLabel: { color: CLUSTER.ink, fontFamily: FONT.bold, fontSize: 13.5 },
 
   footer: { marginTop: 28, alignItems: 'center', gap: 10, maxWidth: 440 },
+  footerShort: { marginTop: 12, gap: 4 },
   footerText: {
     textAlign: 'center',
     color: CLUSTER.inkMuted,
@@ -947,6 +1010,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
   },
+  footerTextShort: { fontSize: 12, lineHeight: 17 },
   contactText: { textAlign: 'center', color: CLUSTER.inkMuted, fontFamily: FONT.regular, fontSize: 13 },
   contactEmail: { color: CLUSTER.backlight, fontFamily: FONT.semiBold },
 });

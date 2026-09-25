@@ -86,13 +86,13 @@ const TIMELINE = Array.from({ length: SAMPLES + 1 }, (_, i) => i / SAMPLES);
 const FRAMES = TIMELINE.map(frame);
 const r4 = (n: number) => Math.round(n * 1e4) / 1e4;
 
-// ── Web: CSS keyframes, injected once ─────────────────────────────────────
+// ── Web: CSS keyframes ────────────────────────────────────────────────────
 // Translations are percentages of the element's own box, so one set of
 // keyframes serves every loader size.
-let cssInjected = false;
-function injectCss() {
-  if (cssInjected || typeof document === 'undefined') return;
-  cssInjected = true;
+
+/** The loader's stylesheet. public/index.html embeds the same text for the
+ *  pre-JS splash (kept equal by __tests__/brandLoaderSplash.test.ts). */
+export function loaderCss(): string {
   const pct = (i: number) => `${r4((i / SAMPLES) * 100)}%`;
   const ring = FRAMES.map(
     (f, i) =>
@@ -101,17 +101,42 @@ function injectCss() {
   const dot = FRAMES.map(
     (f, i) => `${pct(i)}{transform:translateY(${r4((f.hop / (2 * DOT_R)) * 100)}%) scale(${r4(f.dotS)})}`,
   ).join('');
-  const el = document.createElement('style');
-  el.setAttribute('data-icar-loader-css', '');
-  el.textContent =
+  return (
     `@keyframes icar-loader-ring{${ring}}@keyframes icar-loader-dot{${dot}}` +
     `@keyframes icar-loader-soft{0%,100%{opacity:1}50%{opacity:.45}}` +
     `[data-icar-loader="ring"]{animation:icar-loader-ring ${CYCLE_MS}ms linear infinite;will-change:transform}` +
     `[data-icar-loader="dot"]{animation:icar-loader-dot ${CYCLE_MS}ms linear infinite;will-change:transform}` +
     `@media (prefers-reduced-motion:reduce){[data-icar-loader="ring"]{animation:none}` +
-    `[data-icar-loader="dot"]{animation:icar-loader-soft 1400ms ease-in-out infinite}}`;
+    `[data-icar-loader="dot"]{animation:icar-loader-soft 1400ms ease-in-out infinite}}`
+  );
+}
+
+/** Static markup of a loader, for the pre-JS splash in public/index.html. */
+export function loaderSplashHtml(px: number, ringSrc: string): string {
+  const r = DOT_R * px;
+  const n = (v: number) => r4(v);
+  return (
+    `<div role="progressbar" aria-label="טוען" style="position:relative;width:${px}px;height:${px}px">` +
+    `<div data-icar-loader="ring" style="position:absolute;left:0;top:0;width:${px}px;height:${px}px">` +
+    `<img src="${ringSrc}" width="${px}" height="${px}" alt="" style="display:block"></div>` +
+    `<div data-icar-loader="dot" style="position:absolute;left:${n(DOT_X * px - r)}px;top:${n(DOT_Y * px - r)}px;` +
+    `width:${n(2 * r)}px;height:${n(2 * r)}px;border-radius:50%;background:${MINT}"></div></div>`
+  );
+}
+
+function injectCss() {
+  if (typeof document === 'undefined' || document.querySelector('style[data-icar-loader-css]')) return;
+  const el = document.createElement('style');
+  el.setAttribute('data-icar-loader-css', '');
+  el.textContent = loaderCss();
   document.head.appendChild(el);
 }
+
+/** Every web loader runs on one clock that starts with the page, so loaders
+ *  on screen move together and the pre-JS splash hands over to the app's
+ *  boot screen mid-motion without a jump. */
+const webPhaseDelay = () =>
+  typeof performance === 'undefined' ? '0ms' : `${-Math.round(performance.now() % CYCLE_MS)}ms`;
 
 // ── Native: the same samples through the native driver ────────────────────
 function useReduceMotion(enabled: boolean) {
@@ -180,6 +205,7 @@ export function BrandLoader({
   const mono = isLight(color);
   const reduce = useReduceMotion(!IS_WEB);
   const t = useRef(new Animated.Value(0)).current;
+  const phase = useRef(IS_WEB ? webPhaseDelay() : '0ms').current;
 
   if (IS_WEB) injectCss();
 
@@ -220,8 +246,9 @@ export function BrandLoader({
   if (IS_WEB) {
     // react-native-web renders dataSet as data-* attributes for the CSS above.
     const web = (kind: string) => ({ dataSet: { icarLoader: animating ? kind : 'still' } }) as object;
-    ring = <View {...web('ring')} style={ringBox}>{ringImage}</View>;
-    dot = <View {...web('dot')} style={dotBox} />;
+    const sync = { animationDelay: phase } as ViewStyle;
+    ring = <View {...web('ring')} style={[ringBox, sync]}>{ringImage}</View>;
+    dot = <View {...web('dot')} style={[dotBox, sync]} />;
   } else if (reduce) {
     ring = <View style={ringBox}>{ringImage}</View>;
     dot = (

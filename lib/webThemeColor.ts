@@ -10,6 +10,10 @@ import { Platform } from 'react-native';
  * and Android Chrome tint their own bars with it too. Screens differ (dark
  * login, blue gradient heroes, light lists), so the colour is read from the
  * rendered page after every navigation instead of being hard-coded per route.
+ *
+ * Safari 26 on iPhone no longer reads theme-color in the browser: it tints
+ * the status-bar and toolbar areas with the page's own background. So the
+ * same colour is also painted on <html> and <body>, which only show there.
  */
 
 const FALLBACK = '#eef2f7';
@@ -27,20 +31,41 @@ function parseColor(value: string): Rgba | null {
 const toHex = ({ r, g, b }: Rgba) =>
   '#' + [r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
 
-/** First opaque colour painted at (x, 1), walking up from the topmost element. */
+/** An opaque colour an element paints itself, or null. */
+function paintedColor(el: Element): string | null {
+  const style = getComputedStyle(el);
+  // Gradient heroes (expo-linear-gradient renders a CSS gradient): the
+  // first colour stop is the one at the top edge.
+  if (style.backgroundImage && style.backgroundImage !== 'none') {
+    const first = parseColor(style.backgroundImage);
+    if (first && first.a >= 0.9) return toHex(first);
+  }
+  const bg = parseColor(style.backgroundColor);
+  return bg && bg.a >= 0.9 ? toHex(bg) : null;
+}
+
+/**
+ * First opaque colour painted at (x, 1), topmost layer first.
+ *
+ * Decorative layers — hero gradients, glows — are `pointerEvents="none"`,
+ * and hit-testing skips those, so a plain elementFromPoint walk misses the
+ * very gradient that is on screen and lands on the pale page behind it.
+ * Hit-testing is switched on for everything just for this one lookup.
+ */
 function colorAtTop(x: number): string | null {
-  let el: Element | null = document.elementFromPoint(x, 1);
-  while (el && el !== document.documentElement) {
-    const style = getComputedStyle(el);
-    // Gradient heroes (expo-linear-gradient renders a CSS gradient): the
-    // first colour stop is the one at the top edge.
-    if (style.backgroundImage && style.backgroundImage !== 'none') {
-      const first = parseColor(style.backgroundImage);
-      if (first && first.a >= 0.9) return toHex(first);
-    }
-    const bg = parseColor(style.backgroundColor);
-    if (bg && bg.a >= 0.9) return toHex(bg);
-    el = el.parentElement;
+  const probe = document.createElement('style');
+  probe.textContent = '*{pointer-events:auto!important}';
+  document.head.appendChild(probe);
+  let stack: Element[];
+  try {
+    stack = document.elementsFromPoint(x, 1);
+  } finally {
+    probe.remove();
+  }
+  for (const el of stack) {
+    if (el === document.documentElement || el === document.body) break;
+    const color = paintedColor(el);
+    if (color) return color;
   }
   const body = parseColor(getComputedStyle(document.body).backgroundColor);
   return body && body.a >= 0.9 ? toHex(body) : null;
@@ -52,6 +77,8 @@ function apply() {
   // Sample the middle of the top edge (edges may hold rounded corners/buttons).
   const color = colorAtTop(Math.round(window.innerWidth / 2)) ?? FALLBACK;
   if (meta.content.toLowerCase() !== color) meta.content = color;
+  document.documentElement.style.backgroundColor = color;
+  document.body.style.backgroundColor = color;
 }
 
 /**
