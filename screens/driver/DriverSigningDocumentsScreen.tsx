@@ -18,6 +18,7 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
+import { DriverSigningMobile } from './DriverSigningMobile';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverSigningDocuments'>;
 const time = (date: string) => new Date(date).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
@@ -28,6 +29,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
   const folderId = route.params?.folderId;
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [folder, setFolder] = useState<SigningFolder | null>(null);
+  const [folders, setFolders] = useState<SigningFolder[]>([]);
   const [error, setError] = useState('');
   const [opening, setOpening] = useState('');
   const [sending, setSending] = useState(false);
@@ -49,7 +51,10 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
       const requests = toSync.length ? await listDriverSigningRequests(driverId) : initial;
       if (generation !== loadRequest.current) return;
       setDriver(target);
-      setFolder(buildSigningFolders(templates, requests).find(item => item.id === folderId) || null);
+      const built = buildSigningFolders(templates, requests);
+      setFolder(built.find(item => item.id === folderId) || null);
+      // The driver's own list shows only folders with something sent to them.
+      setFolders(built.filter(item => item.requests.length > 0));
       setError(results.some(result => result.status === 'rejected') ? 'לא ניתן לעדכן כרגע את כל מצבי החתימה. מוצג המידע האחרון שנשמר.' : '');
     } catch (err: any) { if (generation === loadRequest.current) setError(err?.message || 'טעינת המסמכים נכשלה'); }
     finally { if (generation === loadRequest.current) setLoading(false); }
@@ -152,6 +157,26 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
           </View>
         )}
       </DesktopShell>
+    );
+  }
+
+  if (profile?.role === 'driver') {
+    return (
+      <DriverSigningMobile
+        insetTop={insets.top}
+        insetBottom={insets.bottom}
+        loading={loading}
+        error={error}
+        fatal={!driver}
+        folder={folder}
+        folderMode={!!folderId}
+        folders={folders}
+        opening={opening}
+        onBack={() => navigation.goBack()}
+        onRetry={() => { setLoading(true); load(); }}
+        onOpenFolder={item => navigation.push('DriverSigningDocuments', { driverId: driver?.id, folderId: item.id })}
+        onOpenRequest={item => void open(item)}
+      />
     );
   }
 

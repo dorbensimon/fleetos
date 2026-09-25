@@ -1,16 +1,15 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../../components/ui/BrandLoader';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BlurView } from 'expo-blur';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppText, BackButton, ErrorState, LoadingState, useToast } from '../../components/ui';
+import { ErrorState, LoadingState, useToast } from '../../components/ui';
+import { DK, DKText, DriverPage, HeroButton, HeroTitle, PrimaryAction, Reveal, StatusChip, Surface, statusOfDate } from '../../components/driverKit';
+import { EditField, InfoLine, ProfileSection } from './DriverProfileParts';
 import { DateField } from '../../components/ui/DateField';
 import { Select } from '../../components/ui/Select';
-import { AdminGradientBackground } from '../../components/admin/AdminGradientBackground';
-import { COLORS, CONTENT_MAX_WIDTH, FONT, formatDate } from '../../lib/theme';
+import { formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
 import { getDriver, listDepartments, updateDriver, type Department, type DriverRow } from '../../lib/adminApi';
@@ -27,7 +26,6 @@ import {
   splitLicenseClasses,
 } from '../../lib/driverFields';
 import { showAlert } from '../../lib/platformAlert';
-import { GlassPill, GLASS_SHADOW_COLOR } from '../../components/ui/GlassPill';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DesktopFieldRow, DesktopInput, DesktopSelect, DText, HoverPressable } from '../../components/desktop/primitives';
@@ -352,115 +350,139 @@ export default function DriverProfileScreen({ navigation }: Props) {
     );
   }
 
+  const initial = (driver?.full_name || profile?.full_name || '?').trim().charAt(0);
+  const cancelEdit = () => {
+    setEditMode(false);
+    setFieldErrors({});
+    setDraft(draftFromDriver(driver));
+  };
+
   return (
-    <View style={styles.screen}>
-      <AdminGradientBackground />
-      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-        <TouchableOpacity onPress={signOut} activeOpacity={0.8}>
-          <GlassPill size={40} blur={14} bg="rgba(255,255,255,.4)"><Ionicons name="log-out-outline" size={20} color={COLORS.text} /></GlassPill>
-        </TouchableOpacity>
-        <AppText weight="bold" style={styles.headerCompany} numberOfLines={1}>{company?.name ?? ''}</AppText>
-        <BackButton onPress={() => navigation.goBack()} />
-      </View>
-
-      {loading ? <LoadingState /> : error ? <ErrorState message={error} onRetry={load} /> : (
-        <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.profileBlock}>
-            <View style={styles.avatarWrap}>
-              <View style={styles.avatar}><Ionicons name="person" size={40} color="rgba(0,0,0,.28)" /></View>
-              <TouchableOpacity onPress={toggleEdit} activeOpacity={0.8} style={styles.editBadgeWrap} disabled={saving}>
-                <GlassPill size={28} blur={10} bg="rgba(255,255,255,.55)">
-                  <Ionicons name={editMode ? 'checkmark' : 'pencil'} size={13} color={COLORS.text} />
-                </GlassPill>
-              </TouchableOpacity>
-            </View>
-            <AppText weight="bold" style={styles.name}>{editMode ? draft.full_name || driver?.full_name : driver?.full_name || '—'}</AppText>
-            <AppText style={styles.role}>נהג</AppText>
+    <DriverPage
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
+      hero={
+        <HeroTitle
+          title={editMode ? 'עריכת הפרטים' : 'הפרטים שלי'}
+          subtitle={company?.name ? `נהג · ${company.name}` : 'נהג'}
+          onBack={() => (editMode ? cancelEdit() : navigation.goBack())}
+          right={!loading && !error && !editMode ? <HeroButton icon="create-outline" label="עריכת הפרטים" onPress={toggleEdit} /> : undefined}
+        />
+      }
+      footer={
+        editMode ? (
+          <View style={styles.footerRow}>
+            <PrimaryAction label="ביטול" tone="ghost" onPress={cancelEdit} style={styles.footerCancel} />
+            <PrimaryAction label="שמירת השינויים" icon="checkmark" onPress={() => void saveEdit()} loading={saving} style={styles.footerSave} />
           </View>
-
-          <SectionLabel text="פרטים אישיים" />
-          <GlassCard>
-            <Row icon="mail-outline" label="אימייל" value={email} first readOnly />
-            <Row icon="call-outline" label="טלפון" value={driver?.phone ? formatPhone(driver.phone) : null} editing={editMode} align="left" error={fieldErrors.phone} inputValue={draft.phone} onChangeText={(v) => set('phone', v)} keyboardType="phone-pad" />
-            <Row icon="person-outline" label="שם מלא" value={driver?.full_name} editing={editMode} error={fieldErrors.full_name} inputValue={draft.full_name} onChangeText={(v) => set('full_name', v)} />
-            <Row icon="star-outline" label="תפקיד" value="נהג" readOnly />
-            <Row icon="gift-outline" label="תאריך לידה" value={driver?.birth_date ? formatDate(driver.birth_date) : null} editing={editMode}
-              editor={<DateField value={draft.birth_date} onChange={(v) => set('birth_date', v)} placeholder="לא הוזן" />} />
-            <Row icon="home-outline" label="כתובת" value={driver?.address} editing={editMode} inputValue={draft.address} onChangeText={(v) => set('address', v)} />
-            <Row icon="call-outline" label="טלפון בבית" value={driver?.home_phone ? formatPhone(driver.home_phone) : null} editing={editMode} align="left" error={fieldErrors.home_phone} inputValue={draft.home_phone} onChangeText={(v) => set('home_phone', v)} keyboardType="phone-pad" />
-            <Row icon="heart-outline" label="מצב משפחתי" value={driver?.marital_status} editing={editMode}
-              editor={<Select value={draft.marital_status || null} options={maritalOptions} onChange={(v) => set('marital_status', v ?? '')} allowClear placeholder="לא נבחר" />} />
-            <Row icon="school-outline" label="השכלה" value={driver?.education} editing={editMode}
-              editor={<Select value={draft.education || null} options={educationOptions} onChange={(v) => set('education', v ?? '')} allowClear placeholder="לא נבחרה" />} />
-          </GlassCard>
-
-          <SectionLabel text="פרטי עבודה" />
-          <GlassCard>
-            <Row icon="business-outline" label="חברה" value={company?.name} first readOnly />
-            <Row icon="briefcase-outline" label="מספר עובד" value={driver?.employee_number} readOnly />
-            <Row icon="people-outline" label="מחלקה" value={departmentName} readOnly />
-          </GlassCard>
-
-          <SectionLabel text="רישיון נהיגה" />
-          <GlassCard>
-            <Row icon="card-outline" label="תעודת זהות" value={driver?.national_id} first editing={editMode} align="left" error={fieldErrors.national_id} inputValue={draft.national_id} onChangeText={(v) => set('national_id', onlyDigits(v, 9))} keyboardType="number-pad" />
-            <Row icon="document-text-outline" label="מספר רישיון" value={driver?.license_number} editing={editMode} align="left" inputValue={draft.license_number} onChangeText={(v) => set('license_number', v)} />
-            <Row icon="ribbon-outline" label="דרגת רישיון" value={driver?.license_classes} editing={editMode}
-              editor={<Select value={draft.license_primary || null} options={LICENSE_CLASS_SELECT} onChange={setLicensePrimary} allowClear placeholder="לא נבחרה" />} />
-            {editMode && !!draft.license_primary && (
-              <Row icon="ribbon-outline" label="דרגה נוספת" editing
-                editor={<Select value={draft.license_secondary || null} options={LICENSE_CLASS_SELECT.filter((option) => option.value !== draft.license_primary)} onChange={(v) => set('license_secondary', v ?? '')} allowClear placeholder="ללא" />} />
-            )}
-            <Row icon="calendar-outline" label="תאריך הנפקה" value={driver?.license_issue_date ? formatDate(driver.license_issue_date) : null} editing={editMode}
-              editor={<DateField value={draft.license_issue_date} onChange={(v) => set('license_issue_date', v)} placeholder="לא הוזן" />} />
-            <Row icon="calendar-outline" label="תוקף רישיון" value={driver?.license_expiry ? formatDate(driver.license_expiry) : null} editing={editMode}
-              editor={<DateField value={draft.license_expiry} onChange={(v) => set('license_expiry', v)} placeholder="לא הוזן" />} />
-            <Row icon="time-outline" label="תאריך הצטרפות לאפליקציה" value={driver?.created_at ? formatDate(driver.created_at) : null} readOnly />
-          </GlassCard>
-        </ScrollView>
+        ) : undefined
+      }
+    >
+      {loading ? (
+        <Surface><LoadingState /></Surface>
+      ) : error ? (
+        <Surface><ErrorState message={error} onRetry={load} /></Surface>
+      ) : editMode ? (
+        <>
+          <Surface style={styles.editNote}>
+            <DKText variant="caption" color={DK.inkSoft}>
+              עדכן את מה שצריך ולחץ על ״שמירת השינויים״. חברה, מספר עובד ומחלקה מנוהלים על ידי מנהל הצי.
+            </DKText>
+          </Surface>
+          <Reveal index={0}>
+            <ProfileSection title="פרטים אישיים">
+              <EditField first label="שם מלא" value={draft.full_name} onChangeText={(v) => set('full_name', v)} error={fieldErrors.full_name} />
+              <EditField label="טלפון" value={draft.phone} onChangeText={(v) => set('phone', v)} keyboardType="phone-pad" ltr error={fieldErrors.phone} />
+              <EditField label="תאריך לידה" editor={<DateField value={draft.birth_date} onChange={(v) => set('birth_date', v)} placeholder="לא הוזן" />} />
+              <EditField label="כתובת" value={draft.address} onChangeText={(v) => set('address', v)} />
+              <EditField label="טלפון בבית" value={draft.home_phone} onChangeText={(v) => set('home_phone', v)} keyboardType="phone-pad" ltr error={fieldErrors.home_phone} />
+              <EditField label="מצב משפחתי" editor={<Select value={draft.marital_status || null} options={maritalOptions} onChange={(v) => set('marital_status', v ?? '')} allowClear placeholder="לא נבחר" />} />
+              <EditField label="השכלה" editor={<Select value={draft.education || null} options={educationOptions} onChange={(v) => set('education', v ?? '')} allowClear placeholder="לא נבחרה" />} />
+            </ProfileSection>
+          </Reveal>
+          <Reveal index={1}>
+            <ProfileSection title="רישיון נהיגה">
+              <EditField first label="תעודת זהות" value={draft.national_id} onChangeText={(v) => set('national_id', onlyDigits(v, 9))} keyboardType="number-pad" ltr error={fieldErrors.national_id} hint="9 ספרות" />
+              <EditField label="מספר רישיון" value={draft.license_number} onChangeText={(v) => set('license_number', v)} ltr />
+              <EditField label="דרגת רישיון" editor={<Select value={draft.license_primary || null} options={LICENSE_CLASS_SELECT} onChange={setLicensePrimary} allowClear placeholder="לא נבחרה" />} />
+              {!!draft.license_primary && (
+                <EditField
+                  label="דרגה נוספת"
+                  editor={<Select value={draft.license_secondary || null} options={LICENSE_CLASS_SELECT.filter((option) => option.value !== draft.license_primary)} onChange={(v) => set('license_secondary', v ?? '')} allowClear placeholder="ללא" />}
+                />
+              )}
+              <EditField label="תאריך הנפקה" editor={<DateField value={draft.license_issue_date} onChange={(v) => set('license_issue_date', v)} placeholder="לא הוזן" />} />
+              <EditField label="תוקף רישיון" editor={<DateField value={draft.license_expiry} onChange={(v) => set('license_expiry', v)} placeholder="לא הוזן" />} />
+            </ProfileSection>
+          </Reveal>
+        </>
+      ) : (
+        <>
+          <Reveal index={0}>
+            <Surface style={styles.identity}>
+              <View style={styles.avatar}>
+                <DKText variant="display" color={DK.accent} style={styles.center}>{initial}</DKText>
+              </View>
+              <View style={styles.identityText}>
+                <DKText variant="title" numberOfLines={2}>{driver?.full_name || '—'}</DKText>
+                <DKText variant="caption" color={DK.muted} ltr style={styles.alignRight} numberOfLines={1}>{email || ''}</DKText>
+                <View style={styles.licenseRow}>
+                  <StatusChip status={statusOfDate(driver?.license_expiry)} label={driver?.license_expiry ? `רישיון עד ${formatDate(driver.license_expiry)}` : 'תוקף רישיון חסר'} />
+                </View>
+              </View>
+            </Surface>
+          </Reveal>
+          <Reveal index={1}>
+            <ProfileSection title="פרטים אישיים">
+              <InfoLine first icon="person" label="שם מלא" value={driver?.full_name} />
+              <InfoLine icon="call" label="טלפון" value={driver?.phone ? formatPhone(driver.phone) : null} ltr />
+              <InfoLine icon="mail" label="אימייל" value={email} ltr locked />
+              <InfoLine icon="gift" label="תאריך לידה" value={driver?.birth_date ? formatDate(driver.birth_date) : null} />
+              <InfoLine icon="home" label="כתובת" value={driver?.address} />
+              <InfoLine icon="call-outline" label="טלפון בבית" value={driver?.home_phone ? formatPhone(driver.home_phone) : null} ltr />
+              <InfoLine icon="heart" label="מצב משפחתי" value={driver?.marital_status} />
+              <InfoLine icon="school" label="השכלה" value={driver?.education} />
+            </ProfileSection>
+          </Reveal>
+          <Reveal index={2}>
+            <ProfileSection title="רישיון נהיגה">
+              <InfoLine first icon="card" label="תעודת זהות" value={driver?.national_id} ltr />
+              <InfoLine icon="document-text" label="מספר רישיון" value={driver?.license_number} ltr />
+              <InfoLine icon="ribbon" label="דרגת רישיון" value={driver?.license_classes} />
+              <InfoLine icon="calendar" label="תאריך הנפקה" value={driver?.license_issue_date ? formatDate(driver.license_issue_date) : null} />
+              <InfoLine icon="calendar-clear" label="תוקף רישיון" value={driver?.license_expiry ? formatDate(driver.license_expiry) : null} />
+            </ProfileSection>
+          </Reveal>
+          <Reveal index={3}>
+            <ProfileSection title="פרטי עבודה">
+              <InfoLine first icon="business" label="חברה" value={company?.name} locked />
+              <InfoLine icon="star" label="תפקיד" value="נהג" locked />
+              <InfoLine icon="briefcase" label="מספר עובד" value={driver?.employee_number} locked />
+              <InfoLine icon="people" label="מחלקה" value={departmentName} locked />
+              <InfoLine icon="time" label="הצטרפות לאפליקציה" value={driver?.created_at ? formatDate(driver.created_at) : null} locked />
+            </ProfileSection>
+          </Reveal>
+          <Reveal index={4}>
+            <PrimaryAction label="התנתקות מהחשבון" icon="log-out-outline" tone="danger" onPress={signOut} />
+          </Reveal>
+        </>
       )}
-    </View>
+    </DriverPage>
   );
 }
 
-function GlassCard({ children }: { children: React.ReactNode }) {
-  return <View style={cardStyles.wrap}><BlurView intensity={22} tint="light" style={StyleSheet.absoluteFill} /><View style={cardStyles.tint} /><View>{children}</View></View>;
-}
-
-function SectionLabel({ text }: { text: string }) { return <AppText weight="bold" style={styles.sectionLabel}>{text}</AppText>; }
-
-function Row({
-  icon, label, value, first, readOnly, editing, align = 'right', error, inputValue, onChangeText, keyboardType, editor,
-}: {
-  icon: React.ComponentProps<typeof Ionicons>['name']; label: string; value?: string | null; first?: boolean; readOnly?: boolean;
-  editing?: boolean; align?: 'left' | 'right'; error?: string; inputValue?: string; onChangeText?: (value: string) => void;
-  keyboardType?: TextInput['props']['keyboardType'];
-  /** A picker (date, select) shown instead of the text input while editing. */
-  editor?: React.ReactNode;
-}) {
-  const canEdit = !readOnly && (!!onChangeText || !!editor);
-  const showInput = canEdit && editing;
-  return <View style={[rowStyles.row, !first && rowStyles.divider]}>
-    <Ionicons name={icon} size={19} color="rgba(0,0,0,.45)" style={rowStyles.icon} />
-    <AppText style={rowStyles.label}>{label}</AppText>
-    <View style={{ flex: 1 }} />
-    {showInput ? (
-      <View style={[rowStyles.inputWrap, !!editor && rowStyles.editorWrap]}>
-        {editor ?? <TextInput value={inputValue} onChangeText={onChangeText} textAlign={align} keyboardType={keyboardType} placeholderTextColor="rgba(0,0,0,.3)" style={[rowStyles.input, error && rowStyles.inputErrorBorder]} />}
-        {!!error && <AppText style={rowStyles.errorText}>{error}</AppText>}
-      </View>
-    ) : <AppText style={rowStyles.value} numberOfLines={1}>{value || '—'}</AppText>}
-  </View>;
-}
-const cardStyles = StyleSheet.create({ wrap: { overflow: 'hidden', borderRadius: 22, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.6)', ...Platform.select({ ios: { shadowColor: GLASS_SHADOW_COLOR, shadowOpacity: 0.12, shadowOffset: { width: 0, height: 8 }, shadowRadius: 24 }, android: { elevation: 4 } }) }, tint: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.42)' } });
-const rowStyles = StyleSheet.create({ row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 }, divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,.08)' }, icon: { flexShrink: 0 }, label: { fontSize: 14.5, color: COLORS.text, flexShrink: 0 }, value: { fontSize: 14.5, color: 'rgba(0,0,0,.5)', flexShrink: 1, textAlign: 'left' }, inputWrap: { maxWidth: 170, alignItems: 'flex-end' }, editorWrap: { flex: 1, maxWidth: 190, alignItems: 'stretch' },input: { fontSize: 14.5, color: COLORS.text, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,.15)', paddingVertical: 2, minWidth: 90, fontFamily: FONT.regular }, inputErrorBorder: { borderBottomColor: COLORS.dangerText }, errorText: { fontSize: 11, color: COLORS.dangerText, marginTop: 2 } });
-const styles = StyleSheet.create({ screen: { flex: 1, backgroundColor: '#F2F2F7' }, header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' }, headerCompany: { flex: 1, fontSize: 16, color: COLORS.text, textAlign: 'center', marginHorizontal: 8 },
-  // Without an explicit flex here, ScrollView (a plain div under react-native-web)
-  // sizes to its own content instead of stretching into the remaining flex
-  // space under `header`/`editBar`, so on web the whole page scrolls instead
-  // of just this area.
-  scroll: { flex: 1 },
-  content: { padding: 20, paddingTop: 18, paddingBottom: 40, gap: 4, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' }, profileBlock: { alignItems: 'center', paddingVertical: 18 }, avatarWrap: { width: 84, height: 84 }, avatar: { width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(0,0,0,.06)', alignItems: 'center', justifyContent: 'center' }, editBadgeWrap: { position: 'absolute', bottom: -2, left: -2 }, name: { fontSize: 17, color: COLORS.text, marginTop: 12 }, role: { fontSize: 13, color: 'rgba(20,20,30,.6)', marginTop: 2 }, sectionLabel: { fontSize: 12, color: 'rgba(20,20,30,.55)', paddingBottom: 8, paddingTop: 12 } });
+const styles = StyleSheet.create({
+  center: { textAlign: 'center' },
+  alignRight: { textAlign: 'right' },
+  identity: { flexDirection: 'row-reverse', alignItems: 'center', gap: 16, padding: 18 },
+  avatar: { width: 72, height: 72, borderRadius: 24, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  identityText: { flex: 1, gap: 3 },
+  licenseRow: { flexDirection: 'row-reverse', marginTop: 6 },
+  footerRow: { flexDirection: 'row-reverse', gap: 10 },
+  editNote: { padding: 16 },
+  footerSave: { flex: 2 },
+  footerCancel: { flex: 1 },
+});
 
 const ds = StyleSheet.create({
   wrap: { padding: 24, maxWidth: 520, alignSelf: 'center', width: '100%', gap: 6 },

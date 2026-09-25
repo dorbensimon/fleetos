@@ -14,13 +14,15 @@
       only take effect once the user adds the page to the Home Screen (Share
       → "הוסף למסך הבית") and opens it from that icon: then iOS runs it
       "standalone" with none of Safari's chrome.
-      Status bar "default": iOS paints the clock/battery strip with the
-      theme-color below and picks dark or light symbols to contrast with it.
-      lib/webThemeColor.ts keeps theme-color equal to the colour at the top
-      of the current screen, so the strip always matches the screen.
+      Status bar "black-translucent": the app draws under a transparent
+      status bar with white symbols, so each screen's own top (the blue
+      heroes) runs to the very top edge. With "default" (dark symbols),
+      iOS 26 lays a white Liquid Glass fade over the top of the app to keep
+      them readable. Screens whose top is light get a blue strip behind the
+      symbols from lib/webThemeColor.ts, so they stay readable there too.
     -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="icar" />
     <meta name="mobile-web-app-capable" content="yes" />
     <!-- Starting value only: lib/webThemeColor.ts updates it after every

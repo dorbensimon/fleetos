@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../../components/ui/BrandLoader';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { AppText, Card, Field, InputLtr, PrimaryButton, Screen, ScreenHeader } from '../../components/ui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DriverOdometerMobile } from './DriverOdometerMobile';
 import { updateOwnVehicleOdometer } from '../../lib/driverActions';
 import { showAlert } from '../../lib/platformAlert';
-import { COLORS, SPACING } from '../../lib/theme';
 import type { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
@@ -15,6 +15,7 @@ import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverOdometer'>;
 export default function DriverOdometerScreen({ navigation, route }: Props) {
   const isDesktop = useIsDesktop();
+  const insets = useSafeAreaInsets();
   const [value, setValue] = useState(String(route.params.currentOdometer));
   const [saving, setSaving] = useState(false);
   const next = Number(value);
@@ -44,9 +45,19 @@ export default function DriverOdometerScreen({ navigation, route }: Props) {
     );
   }
 
-  return <Screen><ScreenHeader title="עדכון קילומטראז׳" onBack={() => navigation.goBack()} /><View style={styles.content}><Card style={styles.card}><AppText style={styles.explain}>המספר הקיים הוא {route.params.currentOdometer.toLocaleString('he-IL')} ק״מ. אפשר להעלות אותו, אך לא להוריד.</AppText><Field label="הקילומטראז׳ עכשיו"><InputLtr keyboardType="number-pad" value={value} onChangeText={(text) => setValue(text.replace(/\D/g, ''))} placeholder="0" /></Field><PrimaryButton label="שמור קילומטראז׳" icon="speedometer-outline" loading={saving} onPress={save} /></Card></View></Screen>;
+  return (
+    <DriverOdometerMobile
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
+      current={route.params.currentOdometer}
+      value={value}
+      onChange={setValue}
+      saving={saving}
+      onSave={save}
+      onBack={() => navigation.goBack()}
+    />
+  );
 }
-const styles = StyleSheet.create({ content: { padding: SPACING.lg }, card: { gap: SPACING.md }, explain: { color: COLORS.textMuted, textAlign: 'right', lineHeight: 21 } });
 
 const ds = StyleSheet.create({
   wrap: { padding: 24, maxWidth: 380, alignSelf: 'center', width: '100%' },

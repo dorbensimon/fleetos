@@ -63,12 +63,45 @@ function colorAtTop(x: number): string | null {
     probe.remove();
   }
   for (const el of stack) {
+    if (el.id === STRIP_ID) continue;
     if (el === document.documentElement || el === document.body) break;
     const color = paintedColor(el);
     if (color) return color;
   }
   const body = parseColor(getComputedStyle(document.body).backgroundColor);
   return body && body.a >= 0.9 ? toHex(body) : null;
+}
+
+// ── Home Screen app status strip ──────────────────────────────────────────
+// Opened from the iPhone Home Screen the app runs under a transparent status
+// bar with white symbols (public/index.html). On screens whose top is light,
+// those symbols would vanish, so a brand-blue strip sits behind them there.
+const STRIP_ID = 'icar-status-strip';
+const STRIP_COLOR = '#2f5bff';
+
+const isStandalone = () =>
+  (navigator as Navigator & { standalone?: boolean }).standalone === true ||
+  window.matchMedia?.('(display-mode: standalone)').matches === true;
+
+function isLight(hex: string) {
+  const n = parseInt(hex.slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.6;
+}
+
+function syncStatusStrip(topColor: string) {
+  if (!isStandalone()) return;
+  let strip = document.getElementById(STRIP_ID);
+  if (!strip) {
+    strip = document.createElement('div');
+    strip.id = STRIP_ID;
+    strip.setAttribute('aria-hidden', 'true');
+    strip.style.cssText =
+      'position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);' +
+      'pointer-events:none;z-index:2147483647;transition:background-color 200ms ease';
+    document.body.appendChild(strip);
+  }
+  strip.style.backgroundColor = isLight(topColor) ? STRIP_COLOR : 'transparent';
 }
 
 function apply() {
@@ -79,6 +112,7 @@ function apply() {
   if (meta.content.toLowerCase() !== color) meta.content = color;
   document.documentElement.style.backgroundColor = color;
   document.body.style.backgroundColor = color;
+  syncStatusStrip(color);
 }
 
 /**

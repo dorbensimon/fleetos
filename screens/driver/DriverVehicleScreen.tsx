@@ -2,8 +2,10 @@ import React, { useCallback, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Screen, ScreenHeader, AppText, Card, LoadingState, EmptyState, ErrorState, ExpiryBadge, SecondaryButton } from '../../components/ui';
-import { COLORS, SPACING, expiryState, formatDate } from '../../lib/theme';
+import { LoadingState, EmptyState, ErrorState } from '../../components/ui';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DriverVehicleMobile } from './DriverVehicleMobile';
+import { expiryState, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listActiveDriverVehicles, listComplianceForOwners, DriverVehicleAssignment, ComplianceItem } from '../../lib/adminApi';
 import { VEHICLE_TYPE_LABELS, complianceBadgeLabel, complianceBadgeState, findComplianceDef } from '../../lib/compliance';
@@ -27,6 +29,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DriverVehicle'>;
 export default function DriverVehicleScreen({ navigation }: Props) {
   const { profile } = useCompany();
   const isDesktop = useIsDesktop();
+  const insets = useSafeAreaInsets();
   const [assignments, setAssignments] = useState<DriverVehicleAssignment[]>([]);
   const [compliance, setCompliance] = useState<Map<string, ComplianceItem[]>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -94,96 +97,17 @@ export default function DriverVehicleScreen({ navigation }: Props) {
   }
 
   return (
-    <Screen>
-      <ScreenHeader title="הרכב שלי" onBack={() => navigation.goBack()} />
-
-      {loading ? (
-        <LoadingState />
-      ) : error ? (
-        <ErrorState message={error} onRetry={load} />
-      ) : assignments.length === 0 ? (
-        <EmptyState icon="car-outline" title="אין רכב משויך" hint="פנה למנהל הצי שלך לשיוך רכב" />
-      ) : (
-        <View style={styles.content}>
-          {assignments.map((a) => (
-            <VehicleCard
-              key={a.id}
-              vehicle={a.vehicle}
-              isPrimary={a.is_primary}
-              showPrimaryBadge={assignments.length > 1}
-              compliance={compliance.get(a.vehicle.id) ?? []}
-              onOdometer={() => navigation.navigate('DriverOdometer', { vehicleId: a.vehicle.id, currentOdometer: a.vehicle.odometer })}
-            />
-          ))}
-        </View>
-      )}
-    </Screen>
-  );
-}
-
-function VehicleCard({
-  vehicle,
-  isPrimary,
-  showPrimaryBadge,
-  compliance,
-  onOdometer,
-}: {
-  vehicle: DriverVehicleAssignment['vehicle'];
-  isPrimary: boolean;
-  showPrimaryBadge: boolean;
-  compliance: ComplianceItem[];
-  onOdometer: () => void;
-}) {
-  const expiryOf = (itemType: string) =>
-    compliance.find((c) => c.item_type === itemType)?.expiry_date ?? null;
-
-  const insurance = expiryOf('insurance_mandatory');
-  const testItem = compliance.find((c) => c.item_type === 'annual_test') ?? null;
-  const testDef = findComplianceDef('vehicle', 'annual_test');
-
-  return (
-    <>
-      <Card style={styles.plateCard}>
-        <View style={styles.plate}>
-          <View style={styles.plateFlag}>
-            <AppText weight="bold" style={styles.plateFlagText}>
-              IL
-            </AppText>
-          </View>
-          <AppText weight="bold" style={styles.plateText}>
-            {vehicle.plate_number}
-          </AppText>
-        </View>
-        <AppText weight="bold" style={styles.vehicleTitle}>
-          {[vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || 'ללא דגם'}
-        </AppText>
-        <AppText style={styles.vehicleSub}>
-          {VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type}
-          {showPrimaryBadge ? (isPrimary ? ' · הרכב הראשי שלי' : ' · רכב משני') : ''}
-        </AppText>
-      </Card>
-
-      <Card style={styles.card}>
-        <View style={styles.metaRow}>
-          <AppText style={styles.metaLabel}>ביטוח חובה</AppText>
-          <ExpiryBadge state={expiryState(insurance)} label={insurance ? formatDate(insurance) : 'חסר'} />
-        </View>
-        <View style={styles.metaRow}>
-          <AppText style={styles.metaLabel}>טסט שנתי</AppText>
-          <ExpiryBadge
-            state={testDef ? complianceBadgeState(testDef, testItem) : expiryState(testItem?.expiry_date)}
-            label={testDef ? complianceBadgeLabel(testDef, testItem) : testItem?.expiry_date ? formatDate(testItem.expiry_date) : 'חסר'}
-          />
-        </View>
-        <View style={styles.metaRow}>
-          <AppText style={styles.metaLabel}>קילומטראז׳</AppText>
-          <AppText weight="bold" style={styles.metaValue}>{vehicle.odometer.toLocaleString('he-IL')} ק״מ</AppText>
-        </View>
-        <View style={styles.actions}>
-          <SecondaryButton label="עדכון קילומטרים" icon="speedometer-outline" onPress={onOdometer} style={styles.action} />
-        </View>
-      </Card>
-    </>
+    <DriverVehicleMobile
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
+      loading={loading}
+      error={error}
+      assignments={assignments}
+      compliance={compliance}
+      onBack={() => navigation.goBack()}
+      onRetry={load}
+      onOdometer={(a) => navigation.navigate('DriverOdometer', { vehicleId: a.vehicle.id, currentOdometer: a.vehicle.odometer })}
+    />
   );
 }
 
@@ -258,37 +182,3 @@ const ds = StyleSheet.create({
   odometerButtonText: { fontSize: 12.5, color: '#FFFFFF' },
 });
 
-const styles = StyleSheet.create({
-  content: { padding: SPACING.lg, gap: SPACING.md },
-  plateCard: { alignItems: 'center', gap: 6, paddingVertical: SPACING.lg },
-  plate: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    backgroundColor: '#F5C518',
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginBottom: 6,
-  },
-  plateFlag: {
-    backgroundColor: '#1B4CA1',
-    paddingHorizontal: 6,
-    paddingVertical: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  plateFlagText: { color: '#FFFFFF', fontSize: 10 },
-  plateText: { fontSize: 16, color: COLORS.text, paddingHorizontal: 10, paddingVertical: 6 },
-  vehicleTitle: { fontSize: 17 },
-  vehicleSub: { fontSize: 13, color: COLORS.textMuted },
-  card: { gap: SPACING.sm },
-  metaRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-  },
-  metaLabel: { fontSize: 14, color: COLORS.textMuted },
-  metaValue: { fontSize: 14 },
-  actions: { flexDirection: 'row-reverse', gap: 8, marginTop: 8 },
-  action: { flex: 1 },
-});
