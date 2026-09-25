@@ -1,49 +1,27 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { assignSigningTemplate, listSignatureRequests, type SigningTemplate } from '../../../lib/docuseal';
-import { listDrivers } from '../../../lib/adminApi/drivers';
+import type { SigningTemplate } from '../../../lib/docuseal';
+import { driversCount, loadSendRecipients, recipientNote, sendToRecipients, type SendOutcome, type SendRecipient } from '../../../lib/signingSend';
 import { Sheet, useSheetClose } from './Sheet.web';
 
 /**
  * Sends one document to any number of the company's drivers, straight from
- * "מסמכים חתומים". Each driver is sent through the same path as the driver's
- * own file (one request per driver, in-app only, no email), one after the
- * other, so a failure for one driver never stops the rest.
+ * "מסמכים חתומים" (see lib/signingSend.ts; the phone has the same flow).
  */
-
-type Driver = { id: string; name: string; state: 'none' | 'pending' | 'signed' };
-type Outcome = { sent: number; failed: { name: string; reason: string }[] };
-
-const STATE_LABEL: Record<Driver['state'], string> = { none: '', pending: 'ממתין לחתימה', signed: 'כבר חתם' };
 
 export function SendToDriversSheet({ companyId, template, onClosed }: { companyId: string; template: SigningTemplate; onClosed: () => void }) {
   const { closing, close } = useSheetClose(onClosed);
-  const [drivers, setDrivers] = useState<Driver[] | null>(null);
+  const [drivers, setDrivers] = useState<SendRecipient[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [outcome, setOutcome] = useState<SendOutcome | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([listDrivers(companyId), listSignatureRequests(companyId).catch(() => [])])
-      .then(([rows, requests]) => {
-        if (cancelled) return;
-        const forThis = requests.filter((r) => r.template_id === template.id);
-        const stateOf = (id: string): Driver['state'] =>
-          forThis.some((r) => r.driver_id === id && r.status === 'completed')
-            ? 'signed'
-            : forThis.some((r) => r.driver_id === id && r.status === 'pending')
-              ? 'pending'
-              : 'none';
-        setDrivers(
-          rows
-            .filter((d) => d.status === 'active')
-            .map((d) => ({ id: d.id, name: d.full_name?.trim() || 'נהג ללא שם', state: stateOf(d.id) }))
-            .sort((a, b) => a.name.localeCompare(b.name, 'he')),
-        );
-      })
+    loadSendRecipients(companyId, template.id)
+      .then((rows) => !cancelled && setDrivers(rows))
       .catch(() => !cancelled && setLoadError(true));
     return () => {
       cancelled = true;
@@ -68,19 +46,8 @@ export function SendToDriversSheet({ companyId, template, onClosed }: { companyI
   const send = async () => {
     const targets = (drivers ?? []).filter((d) => picked.has(d.id));
     if (!targets.length) return;
-    const result: Outcome = { sent: 0, failed: [] };
     setProgress({ done: 0, total: targets.length });
-    for (const [i, driver] of targets.entries()) {
-      try {
-        const response = await assignSigningTemplate(companyId, template.id, [driver.id]);
-        if (response.success && response.created === 1) result.sent += 1;
-        else result.failed.push({ name: driver.name, reason: response.message || 'השליחה לא אושרה' });
-      } catch (error) {
-        result.failed.push({ name: driver.name, reason: (error as Error)?.message || 'השליחה נכשלה' });
-      }
-      setProgress({ done: i + 1, total: targets.length });
-    }
-    setOutcome(result);
+    setOutcome(await sendToRecipients(companyId, template.id, targets, (done, total) => setProgress({ done, total })));
   };
 
   const count = picked.size;
@@ -117,7 +84,7 @@ export function SendToDriversSheet({ companyId, template, onClosed }: { companyI
             </span>
             <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={() => void send()} disabled={!count || sending} style={{ minWidth: 220 }}>
               <Ionicons name="paper-plane" size={20} color="#fff" />
-              {sending ? `שולח… ${progress!.done} מתוך ${progress!.total}` : count ? `שליחה ל-${count === 1 ? 'נהג אחד' : `${count} נהגים`}` : 'בחרו נהגים'}
+              {sending ? `שולח… ${progress!.done} מתוך ${progress!.total}` : count ? `שליחה ל-${driversCount(count)}` : 'בחרו נהגים'}
             </button>
           </>
         )
@@ -130,7 +97,7 @@ export function SendToDriversSheet({ companyId, template, onClosed }: { companyI
               <Ionicons name={outcome.sent ? 'checkmark' : 'alert'} size={34} color="#fff" />
             </span>
             <h3 className="sd-b">
-              {outcome.sent ? `המסמך נשלח ל-${outcome.sent === 1 ? 'נהג אחד' : `${outcome.sent} נהגים`}` : 'המסמך לא נשלח'}
+              {outcome.sent ? `המסמך נשלח ל-${driversCount(outcome.sent)}` : 'המסמך לא נשלח'}
             </h3>
             {outcome.sent ? <p>הנהגים יראו אותו באפליקציה, ואחרי החתימה הוא יישמר בתיק של כל נהג.</p> : null}
             {outcome.failed.length ? (
@@ -190,10 +157,7 @@ export function SendToDriversSheet({ companyId, template, onClosed }: { companyI
                   <input type="checkbox" checked={picked.has(d.id)} disabled={sending} onChange={() => toggle(d.id)} />
                   <span className="sd-drv-name sd-sb">{d.name}</span>
                   {d.state !== 'none' ? (
-                    <span className={`sd-drv-state sd-${d.state}`}>
-                      {STATE_LABEL[d.state]}
-                      {picked.has(d.id) ? (d.state === 'pending' ? ' · יוחלף במסמך חדש' : ' · יישלח שוב') : ''}
-                    </span>
+                    <span className={`sd-drv-state sd-${d.state}`}>{recipientNote(d, picked.has(d.id))}</span>
                   ) : null}
                 </label>
               ))}

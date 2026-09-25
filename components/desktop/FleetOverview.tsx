@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, LayoutChangeEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, LayoutChangeEvent, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ComplianceItem, Vehicle, VehicleDriverWithProfile } from '../../lib/adminApi';
 import { useCompany } from '../../lib/CompanyContext';
-import { formatPlate } from '../../lib/plate';
-import { expiryState } from '../../lib/theme';
+import { vehicleAttentionGroups, vehicleAttentionTotals, type VehicleAttentionGroup, type VehicleAttentionItem } from '../../lib/vehicleAttention';
 import { DLtrText, DText, HoverPressable, prefersReducedMotion } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { DepartmentsQuickAction, ReportsQuickAction } from './DashboardWidgets';
+import { HeaderMenuBackdrop, headerMenuEnter, headerMenuStyles, useHeaderMenu } from './headerMenu';
 
 /**
  * Building blocks of the desktop dashboard, one control per job:
@@ -321,45 +321,11 @@ function CountUp({ value, style }: { value: number | null; style: React.Componen
 /* Needs attention                                                     */
 /* ------------------------------------------------------------------ */
 
-export type AttentionGroup = {
-  id: string;
-  icon: IconName;
-  title: string;
-  tone: DesktopTone;
-  vehicles: { id: string; plate: string }[];
-};
-
-/**
- * Vehicle problems that no card filters for, grouped by problem: missing or
- * expired mandatory insurance, and vehicles nobody is assigned to. License
- * expiry has its own cards, so it is not repeated here.
- */
-export function useAttentionGroups(
-  vehicles: Vehicle[],
-  compliance: Map<string, ComplianceItem[]>,
-  vehicleDrivers: Map<string, VehicleDriverWithProfile[]>,
-): AttentionGroup[] {
-  return useMemo(() => {
-    const live = vehicles.filter((v) => v.status !== 'archived');
-    const uninsured = live.filter((v) => {
-      const insurance = compliance.get(v.id)?.find((c) => c.item_type === 'insurance_mandatory');
-      const state = expiryState(insurance?.expiry_date);
-      return state === 'missing' || state === 'expired';
-    });
-    const unassigned = live.filter((v) => !vehicleDrivers.get(v.id)?.length);
-    const plates = (list: Vehicle[]) => list.map((v) => ({ id: v.id, plate: formatPlate(v.plate_number) }));
-    const groups: AttentionGroup[] = [
-      { id: 'insurance', icon: 'shield-outline', title: 'ללא ביטוח חובה בתוקף', tone: 'bad', vehicles: plates(uninsured) },
-      { id: 'unassigned', icon: 'person-add-outline', title: 'רכבים ללא נהג', tone: 'warn', vehicles: plates(unassigned) },
-    ];
-    return groups.filter((g) => g.vehicles.length > 0);
-  }, [vehicles, compliance, vehicleDrivers]);
-}
-
 /**
  * "Needs attention" lives in the top bar next to the notifications bell: a
- * red pill with the total that drops down the full grouped list (it scrolls,
- * however long it gets). Hidden entirely when nothing needs attention.
+ * red pill with the number of vehicles that drops down every problem,
+ * grouped (lib/vehicleAttention.ts). Each row says exactly what is wrong and
+ * opens the vehicle right where it gets fixed. Hidden when nothing is wrong.
  */
 export function AttentionMenu({
   vehicles,
@@ -372,60 +338,61 @@ export function AttentionMenu({
   compliance: Map<string, ComplianceItem[]>;
   vehicleDrivers: Map<string, VehicleDriverWithProfile[]>;
   loading?: boolean;
-  onOpenVehicle: (vehicleId: string) => void;
+  onOpenVehicle: (vehicleId: string, target: VehicleAttentionItem['target']) => void;
 }) {
-  const groups = useAttentionGroups(vehicles, compliance, vehicleDrivers);
-  const [open, setOpen] = useState(false);
-  const total = groups.reduce((sum, g) => sum + g.vehicles.length, 0);
+  const groups = useMemo(() => vehicleAttentionGroups(vehicles, compliance, vehicleDrivers), [vehicles, compliance, vehicleDrivers]);
+  const totals = vehicleAttentionTotals(groups);
+  const menu = useHeaderMenu('attention');
 
-  // Escape closes the menu, like any native dropdown.
-  useEffect(() => {
-    if (!open || typeof document === 'undefined') return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open]);
+  if (loading || totals.vehicles === 0) return null;
 
-  if (loading || total === 0) return null;
-
-  const openVehicle = (vehicleId: string) => {
-    setOpen(false);
-    onOpenVehicle(vehicleId);
+  const pillLabel = totals.vehicles === 1 ? 'רכב אחד דורש טיפול' : `${totals.vehicles} רכבים דורשים טיפול`;
+  const issuesLabel = totals.issues === 1 ? 'בעיה אחת פתוחה' : `${totals.issues} בעיות פתוחות`;
+  const open = (item: VehicleAttentionItem) => {
+    menu.close();
+    onOpenVehicle(item.vehicleId, item.target);
   };
 
   return (
-    <View style={styles.menuWrap}>
-      {open && <Pressable style={styles.menuBackdrop} onPress={() => setOpen(false)} accessibilityLabel="סגירה" />}
+    <View style={[headerMenuStyles.wrap, menu.open && headerMenuStyles.wrapOpen]}>
+      {menu.open && <HeaderMenuBackdrop onClose={menu.close} />}
       <HoverPressable
-        style={[styles.attentionPill, open && styles.attentionPillOpen]}
+        style={[styles.attentionPill, menu.open && styles.attentionPillOpen]}
         hoverStyle={styles.attentionPillHover}
         pressMotionStyle={styles.chipPress}
-        onPress={() => setOpen((v) => !v)}
-        accessibilityLabel={`דורש טיפול, ${total}`}
-        accessibilityState={{ expanded: open }}
-        aria-expanded={open}
+        onPress={menu.toggle}
+        accessibilityLabel={`${pillLabel}, ${issuesLabel}`}
+        accessibilityState={{ expanded: menu.open }}
+        aria-expanded={menu.open}
+        aria-haspopup="dialog"
       >
         <Ionicons name="alert-circle" size={15} color={DESKTOP_TONES.bad.fg} />
         <DText weight="semiBold" style={[styles.attentionPillText, TABULAR]}>
-          {total === 1 ? 'רכב אחד דורש טיפול' : `${total} רכבים דורשים טיפול`}
+          {pillLabel}
         </DText>
         <Ionicons
           name="chevron-down"
           size={13}
           color={DESKTOP_TONES.bad.fg}
-          style={[styles.menuChevron, open && styles.menuChevronOpen]}
+          style={[styles.menuChevron, menu.open && styles.menuChevronOpen]}
         />
       </HoverPressable>
-      {open && (
-        <View style={[styles.menu, menuEnter()]}>
-          <View style={styles.menuHead}>
-            <DText weight="bold" style={styles.attentionTitle}>
-              דורש טיפול
-            </DText>
-            <DText style={styles.attentionHint}>לחיצה על מספר רישוי פותחת את הרכב</DText>
+      {menu.open && (
+        <View style={[headerMenuStyles.menu, headerMenuEnter()]} role="dialog" aria-label="דורש טיפול">
+          <View style={headerMenuStyles.head}>
+            <View style={headerMenuStyles.headText}>
+              <DText weight="bold" style={headerMenuStyles.title}>
+                דורש טיפול
+              </DText>
+              <DText style={[headerMenuStyles.hint, TABULAR]}>
+                {totals.issues > totals.vehicles ? `${issuesLabel} ב-${totals.vehicles} רכבים` : issuesLabel} · לחיצה פותחת את מה שצריך לתקן
+              </DText>
+            </View>
           </View>
-          <ScrollView style={styles.menuScroll} contentContainerStyle={styles.menuBody}>
-            <AttentionGroups groups={groups} onOpenVehicle={openVehicle} />
+          <ScrollView style={headerMenuStyles.scroll} contentContainerStyle={styles.menuBody}>
+            {groups.map((group, index) => (
+              <AttentionGroupSection key={group.kind} group={group} first={index === 0} onOpen={open} />
+            ))}
           </ScrollView>
         </View>
       )}
@@ -433,51 +400,73 @@ export function AttentionMenu({
   );
 }
 
-function AttentionGroups({ groups, onOpenVehicle }: { groups: AttentionGroup[]; onOpenVehicle: (vehicleId: string) => void }) {
+function AttentionGroupSection({
+  group,
+  first,
+  onOpen,
+}: {
+  group: VehicleAttentionGroup;
+  first: boolean;
+  onOpen: (item: VehicleAttentionItem) => void;
+}) {
+  const tone = DESKTOP_TONES[group.tone];
   return (
-    <>
-      {groups.map((group, index) => {
-        const tone = DESKTOP_TONES[group.tone];
-        return (
-          <View key={group.id} style={[styles.group, index > 0 && styles.groupDivider]}>
-            <View style={styles.groupHead}>
-              <View style={[styles.groupIcon, { backgroundColor: tone.bg }]}>
-                <Ionicons name={group.icon} size={15} color={tone.fg} />
-              </View>
-              <DText weight="semiBold" style={styles.groupTitle} numberOfLines={1}>
-                {group.title}
+    <View style={[styles.group, !first && styles.groupDivider]}>
+      <View style={styles.groupHead}>
+        <View style={[styles.groupIcon, { backgroundColor: tone.bg }]}>
+          <Ionicons name={GROUP_ICON[group.kind]} size={15} color={tone.fg} />
+        </View>
+        <DText weight="semiBold" style={styles.groupTitle} numberOfLines={1}>
+          {group.title}
+        </DText>
+        <View style={[styles.groupCount, { backgroundColor: tone.bg }]}>
+          <DText weight="bold" style={[styles.groupCountText, TABULAR, { color: tone.fg }]}>
+            {group.items.length}
+          </DText>
+        </View>
+      </View>
+      <View style={styles.issueList}>
+        {group.items.map((item) => (
+          <HoverPressable
+            key={item.vehicleId}
+            style={styles.issue}
+            hoverStyle={headerMenuStyles.rowHover}
+            pressMotionStyle={styles.rowPress}
+            onPress={() => onOpen(item)}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.plate}, ${item.name}: ${item.detail}. ${group.action}`}
+          >
+            <View style={styles.plate}>
+              <DLtrText weight="semiBold" style={[styles.plateText, TABULAR]}>
+                {item.plate}
+              </DLtrText>
+            </View>
+            <View style={styles.issueText}>
+              <DText weight="semiBold" style={styles.issueName} numberOfLines={1}>
+                {item.name}
               </DText>
-              <DText weight="bold" style={[styles.groupCount, TABULAR, { color: tone.fg }]}>
-                {group.vehicles.length}
+              <DText style={[styles.issueDetail, TABULAR, { color: tone.fg }]} numberOfLines={1}>
+                {item.detail}
               </DText>
             </View>
-            <View style={styles.chips}>
-              {group.vehicles.map((v) => (
-                <PlateChip key={v.id} plate={v.plate} onPress={() => onOpenVehicle(v.id)} />
-              ))}
+            <View style={styles.issueAction}>
+              <DText weight="semiBold" style={styles.issueActionText}>
+                {group.action}
+              </DText>
+              <Ionicons name="chevron-back" size={13} color={DESKTOP_COLORS.brand} />
             </View>
-          </View>
-        );
-      })}
-    </>
+          </HoverPressable>
+        ))}
+      </View>
+    </View>
   );
 }
 
-function PlateChip({ plate, onPress }: { plate: string; onPress: () => void }) {
-  return (
-    <HoverPressable
-      style={styles.chip}
-      hoverStyle={styles.chipHover}
-      pressMotionStyle={styles.chipPress}
-      onPress={onPress}
-      accessibilityLabel={`פתח רכב ${plate}`}
-    >
-      <DLtrText weight="semiBold" style={[styles.chipText, TABULAR]}>
-        {plate}
-      </DLtrText>
-    </HoverPressable>
-  );
-}
+const GROUP_ICON: Record<VehicleAttentionGroup['kind'], IconName> = {
+  insurance: 'shield-outline',
+  registration: 'document-text-outline',
+  unassigned: 'person-add-outline',
+};
 
 /* ------------------------------------------------------------------ */
 /* Motion: CSS keyframes on web, transform + opacity only              */
@@ -510,22 +499,6 @@ function enterCard(index: number) {
     animationTimingFunction: EASE_OUT,
     animationDelay: reduced ? '0ms' : `${index * 40}ms`,
     animationFillMode: 'backwards',
-  });
-}
-
-/** Dropdown drops from its trigger: short fade + slight scale, opacity only when motion is reduced. */
-function menuEnter() {
-  const reduced = prefersReducedMotion();
-  return webOnly({
-    animationKeyframes: reduced
-      ? { from: { opacity: 0 }, to: { opacity: 1 } }
-      : {
-          from: { opacity: 0, transform: [{ translateY: -4 }, { scale: 0.97 }] },
-          to: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }] },
-        },
-    animationDuration: reduced ? '120ms' : '200ms',
-    animationTimingFunction: EASE_OUT,
-    transformOrigin: 'top left',
   });
 }
 
@@ -614,15 +587,43 @@ const styles = StyleSheet.create({
   quiet: { opacity: 0.45 },
   onWhiteSoft: { color: 'rgba(255,255,255,0.85)' },
 
-  attentionTitle: { fontSize: 17, color: DESKTOP_COLORS.ink, letterSpacing: -0.2 },
-  attentionHint: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint, marginTop: 3 },
   group: { paddingVertical: 12 },
   groupDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DESKTOP_COLORS.border },
-  groupHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  groupHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 18 },
   groupIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   groupTitle: { flex: 1, fontSize: 14, color: DESKTOP_COLORS.ink },
-  groupCount: { fontSize: 15 },
-  chips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginTop: 10, marginRight: 40 },
+  groupCount: { minWidth: 24, height: 22, paddingHorizontal: 7, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  groupCountText: { fontSize: 12.5, textAlign: 'center' },
+  issueList: { marginTop: 6 },
+  issue: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 52,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    ...webOnly({ transition: 'background-color 150ms ease-out, transform 120ms ease-out' }),
+  },
+  rowPress: { transform: [{ scale: 0.985 }] },
+  plate: {
+    height: 28,
+    paddingHorizontal: 8,
+    borderRadius: 7,
+    justifyContent: 'center',
+    backgroundColor: DESKTOP_COLORS.surfaceMuted,
+    borderWidth: 1,
+    borderColor: DESKTOP_COLORS.borderSoft,
+  },
+  plateText: {
+    fontSize: 12.5,
+    color: DESKTOP_COLORS.ink,
+    ...webOnly({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }),
+  },
+  issueText: { flex: 1, minWidth: 0, gap: 1 },
+  issueName: { fontSize: 13, color: DESKTOP_COLORS.ink },
+  issueDetail: { fontSize: 12 },
+  issueAction: { flexDirection: 'row-reverse', alignItems: 'center', gap: 2 },
+  issueActionText: { fontSize: 12.5, color: DESKTOP_COLORS.brand },
   attentionPill: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -635,47 +636,9 @@ const styles = StyleSheet.create({
   },
   attentionPillHover: { backgroundColor: 'rgba(255,69,58,0.2)' },
   attentionPillOpen: { backgroundColor: 'rgba(255,69,58,0.2)' },
-  menuWrap: { position: 'relative', zIndex: 31 },
-  menuBackdrop: { ...webOnly({ position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, cursor: 'default' }) },
   menuChevron: { ...webOnly({ transition: `transform 200ms ${EASE_OUT}` }) },
   menuChevronOpen: { transform: [{ rotate: '180deg' }] },
-  menu: {
-    position: 'absolute',
-    top: 40,
-    left: 0,
-    width: 360,
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: DESKTOP_COLORS.border,
-    overflow: 'hidden',
-    ...webOnly({ boxShadow: '0 12px 32px rgba(16,34,50,0.18), 0 2px 6px rgba(16,34,50,0.06)' }),
-  },
-  menuHead: {
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: DESKTOP_COLORS.border,
-  },
-  menuScroll: { ...webOnly({ maxHeight: 'calc(100vh - 150px)' }) },
-  menuBody: { paddingHorizontal: 18, paddingVertical: 4 },
+  menuBody: { paddingVertical: 4 },
   attentionPillText: { fontSize: 13, color: DESKTOP_TONES.bad.fg },
-  chip: {
-    height: 30,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    justifyContent: 'center',
-    backgroundColor: DESKTOP_COLORS.surfaceMuted,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.borderSoft,
-    ...webOnly({ transition: 'background-color 150ms ease-out, border-color 150ms ease-out, transform 120ms ease-out' }),
-  },
-  chipHover: { backgroundColor: DESKTOP_COLORS.brandFocusRing, borderColor: 'rgba(0,136,204,0.28)' },
   chipPress: { transform: [{ scale: 0.95 }] },
-  chipText: {
-    fontSize: 12.5,
-    color: DESKTOP_COLORS.ink,
-    ...webOnly({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }),
-  },
 });

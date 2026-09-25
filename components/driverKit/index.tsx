@@ -511,9 +511,10 @@ export function Plate({ number, size = 'md' }: { number: string; size?: 'sm' | '
   );
 }
 
-/** A tappable list row with an icon tile. 60pt tall for comfortable thumbs. */
+/** A tappable list row with an icon tile (or its own `leading` art). 60pt tall for comfortable thumbs. */
 export function ListRow({
   icon,
+  leading,
   tint = DK.accent,
   title,
   subtitle,
@@ -523,7 +524,9 @@ export function ListRow({
   first = false,
   ltrValue = false,
 }: {
-  icon: IconName;
+  icon?: IconName;
+  /** Replaces the icon tile, e.g. a document's first page. */
+  leading?: ReactNode;
   tint?: string;
   title: string;
   subtitle?: string | null;
@@ -535,9 +538,11 @@ export function ListRow({
 }) {
   const content = (
     <View style={[styles.row, !first && styles.rowDivider]}>
-      <View style={[styles.rowIcon, { backgroundColor: `${tint}14` }]}>
-        <Ionicons name={icon} size={19} color={tint} />
-      </View>
+      {leading ?? (
+        <View style={[styles.rowIcon, { backgroundColor: `${tint}14` }]}>
+          <Ionicons name={icon} size={19} color={tint} />
+        </View>
+      )}
       <View style={styles.rowText}>
         <DKText variant="label" numberOfLines={1}>
           {title}

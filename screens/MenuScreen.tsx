@@ -141,6 +141,7 @@ export default function MenuScreen({ navigation }: Props) {
               title: 'החברה',
               rows: [
                 { key: 'companyDocs', icon: 'folder-open', title: 'מסמכי חברה', subtitle: 'רישיון מוביל, ביטוחים ונהלים', onPress: () => navigation.navigate('CompanyDocuments') },
+                { key: 'signedDocs', icon: 'create', title: 'מסמכים חתומים', subtitle: 'צפייה, שליחה לנהגים ומחיקה', onPress: () => navigation.navigate('SignedDocuments') },
                 { key: 'settings', icon: 'settings', title: 'הגדרות החברה', subtitle: 'פרטים, אנשי קשר, לוגו וחותמת', onPress: () => navigation.navigate('CompanySettings') },
               ],
             },

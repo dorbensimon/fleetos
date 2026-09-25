@@ -5,10 +5,11 @@ import { Ionicons } from '@expo/vector-icons';
 import type { Notification } from '../../lib/adminApi';
 import type { NotificationType, NotificationTypeInfo } from '../../lib/notificationPreferencesApi';
 import { isVehicleFolderNotification } from '../../lib/vehicleFolderAlerts';
+import { notificationTone } from '../../lib/notificationLook';
 import { LEAD_DAYS_DESCRIPTION, LEAD_DAYS_LABEL, type NotificationPreferencesState } from '../../lib/useNotificationPreferences';
 import { LiquidGlassSwitch } from '../ui/LiquidGlassSwitch';
 import { DesktopInput, DText, HoverPressable, prefersReducedMotion } from './primitives';
-import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
 
 /**
  * Desktop "התראות" page: the notification list and the notification
@@ -35,18 +36,6 @@ function categoryOf(type: string | null): Filter | null {
   if (type.startsWith('driver_') || type.startsWith('license_update')) return 'drivers';
   if (type.startsWith('signature_')) return 'signing';
   return null;
-}
-
-/**
- * Row urgency. Folder expiry messages are written by the daily scan
- * (supabase/sql/90_vehicle_folder_expiry_notifications.sql): an expired
- * folder's message reads "... פג ב-<date>", an upcoming one "... יפוג בעוד".
- */
-function toneOf(n: Notification): DesktopTone | 'brand' {
-  const type = n.notification_type;
-  if (isVehicleFolderNotification(type)) return n.message.includes(' פג ב-') ? 'bad' : 'warn';
-  if (type === 'vehicle_service_due' || type === 'license_update_requested') return 'warn';
-  return 'brand';
 }
 
 const DAY_MS = 86_400_000;
@@ -140,7 +129,7 @@ export function NotificationsHubDesktopView({
     let critical = 0;
     let warning = 0;
     for (const item of items) {
-      const tone = toneOf(item);
+      const tone = notificationTone(item);
       if (tone === 'bad') critical += 1;
       if (tone === 'warn') warning += 1;
     }
@@ -395,7 +384,7 @@ export function NotificationsHubDesktopView({
                     {group.items.map((n, index) => {
                       const unread = unreadIds.has(n.id);
                       const action = actionLabel(n);
-                      const tone = toneOf(n);
+                      const tone = notificationTone(n);
                       const toneColors = tone === 'brand' ? { bg: DESKTOP_COLORS.brandFocusRing, fg: DESKTOP_COLORS.brand } : DESKTOP_TONES[tone];
                       const type = n.notification_type as NotificationType | null;
                       const category = categoryOf(n.notification_type);

@@ -162,6 +162,8 @@ export function VehicleDetailDesktopView({
   onSaveField,
   openFolder,
   onFolderOpened,
+  openDrivers,
+  onDriversOpened,
 }: {
   vehicle: Vehicle;
   department: string | null;
@@ -187,6 +189,9 @@ export function VehicleDetailDesktopView({
   /** A folder key (lib/vehicleFolderAlerts.ts) to open once, e.g. when arriving from an expiry notification. */
   openFolder?: string | null;
   onFolderOpened?: () => void;
+  /** Open the assigned-drivers dialog once, e.g. when arriving from "needs attention". */
+  openDrivers?: boolean;
+  onDriversOpened?: () => void;
 }) {
   const name = [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || formatPlate(vehicle.plate_number);
   const isArchived = vehicle.status === 'archived';
@@ -243,6 +248,12 @@ export function VehicleDetailDesktopView({
   // Editing
   const [editor, setEditor] = useState<FieldEditor | null>(null);
   const [driversModalOpen, setDriversModalOpen] = useState(false);
+  useEffect(() => {
+    if (!openDrivers) return;
+    setDriversModalOpen(true);
+    onDriversOpened?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openDrivers]);
 
   const manufacturerOptions: DesktopSelectOption<string>[] = React.useMemo(() => {
     const names = ISRAEL_COMMON_MANUFACTURERS.map((m) => m.he);

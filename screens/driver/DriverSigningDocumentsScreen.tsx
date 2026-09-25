@@ -4,10 +4,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui';
-import { Banner, DK, DKText, DriverPage, EmptyPanel, ErrorPanel, HeroTitle, LoadingPanel, PrimaryAction, Pressy, Reveal, STATUS, Surface } from '../../components/driverKit';
+import { Banner, DK, DKText, DriverPage, EmptyPanel, ErrorPanel, HeroTitle, KitSheet, LoadingPanel, PrimaryAction, Pressy, Reveal, STATUS, SheetActions, Surface } from '../../components/driverKit';
 import { SigningFolders } from '../../components/driverCard/SigningFolders';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { assignSigningTemplate, getSigningSession, listDriverSigningRequests, listSigningTemplates, syncSigningRequest, type SignatureRequest } from '../../lib/docuseal';
+import { assignSigningTemplate, downloadSignedRequest, getSigningSession, getSigningTemplatePreviewSession, listDriverSigningRequests, listSigningTemplates, syncSigningRequest, type SignatureRequest } from '../../lib/docuseal';
+import { cancelSigningRequest } from '../../lib/signingSend';
 import { buildSigningFolders, type SigningFolder } from '../../lib/signingFolders';
 import { getDriver, type DriverRow } from '../../lib/adminApi';
 import { useCompany } from '../../lib/CompanyContext';
@@ -32,6 +33,10 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
   const [opening, setOpening] = useState('');
   const [sending, setSending] = useState(false);
   const sendingLock = useRef(false);
+  // A request the manager is withdrawing; kept while the sheet closes so its text stays.
+  const [cancelTarget, setCancelTarget] = useState<SignatureRequest | null>(null);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [loading, setLoading] = useState(true);
   const loadRequest = useRef(0);
   const insets = useSafeAreaInsets();
@@ -73,7 +78,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
         title: item.template_title || folder?.title || 'מסמך',
         requestId: item.id,
         returnToDriverDocuments: profile?.role === 'driver',
-        allowDownload: profile?.role === 'driver' && item.status === 'completed',
+        allowDownload: item.status === 'completed',
       });
     } catch (err: any) { setError(err?.message || 'פתיחת המסמך נכשלה'); }
     finally { setOpening(''); }
@@ -87,6 +92,32 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
       if (!result.success || result.created !== 1) setError(result.message || 'השליחה לא אושרה. נסה שוב.');
     } catch (err: any) { setError(err?.message || 'השליחה נכשלה. נסה שוב.'); }
     finally { sendingLock.current = false; setSending(false); }
+  };
+  // The blank form as the driver will get it, so the manager can check it before sending.
+  const preview = async () => {
+    if (!folder?.template || opening) return;
+    setOpening('preview'); setError('');
+    try {
+      const session = await getSigningTemplatePreviewSession(folder.template.id);
+      navigation.navigate('DocusealWebView', { ...session, title: folder.title });
+    } catch (err: any) { setError(err?.message || 'פתיחת המסמך נכשלה. נסה שוב.'); }
+    finally { setOpening(''); }
+  };
+  const download = async (item: SignatureRequest) => {
+    setOpening(`download:${item.id}`); setError('');
+    try { await downloadSignedRequest(item); }
+    catch (err: any) { setError(err?.message || 'הורדת המסמך נכשלה'); }
+    finally { setOpening(''); }
+  };
+  const cancel = async () => {
+    if (!cancelTarget || !driver?.company_id) return;
+    setCancelling(true); setError('');
+    try {
+      await cancelSigningRequest(driver.company_id, cancelTarget.id);
+      setCancelOpen(false);
+      await load();
+    } catch (err: any) { setCancelOpen(false); setError(err?.message || 'ביטול הבקשה נכשל. נסה שוב.'); }
+    finally { setCancelling(false); }
   };
   const pending = folder?.requests.find(item => item.status === 'pending' && !!item.docuseal_submitter_slug);
   const completed = folder?.requests.find(item => item.status === 'completed');
@@ -190,14 +221,38 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
       hero={<HeroTitle title={folder?.title || 'טפסים ומסמכים'} subtitle={driver?.full_name || ' '} onBack={() => navigation.goBack()} />}
       footer={
         folderId && folder && canSend && folder.template ? (
-          <PrimaryAction
-            label={sendLabel}
-            icon={completed && !pending ? 'eye-outline' : 'send'}
-            tone={completed && !pending ? 'ghost' : 'accent'}
-            loading={sending || (!!completed && !pending && opening === completed.id)}
-            onPress={() => (completed && !pending ? void open(completed) : void send())}
-          />
+          <View style={styles.footer}>
+            {!(completed && !pending) && (
+              <PrimaryAction label="צפייה" icon="eye-outline" tone="ghost" loading={opening === 'preview'} disabled={sending} onPress={() => void preview()} style={styles.grow} />
+            )}
+            <PrimaryAction
+              label={sendLabel}
+              icon={completed && !pending ? 'eye-outline' : 'send'}
+              tone={completed && !pending ? 'ghost' : 'accent'}
+              loading={sending || (!!completed && !pending && opening === completed.id)}
+              disabled={opening === 'preview'}
+              onPress={() => (completed && !pending ? void open(completed) : void send())}
+              style={styles.flex2}
+            />
+          </View>
         ) : undefined
+      }
+      overlay={
+        <KitSheet
+          visible={cancelOpen}
+          onClose={() => setCancelOpen(false)}
+          dismissable={!cancelling}
+          icon="close-circle"
+          tone="danger"
+          title="לבטל את הבקשה?"
+          subtitle={`${driver?.full_name || 'הנהג'} לא יוכל לחתום על ${cancelTarget?.template_title || folder?.title || 'המסמך'}. אפשר לשלוח אותו שוב בכל רגע.`}
+          footer={
+            <SheetActions>
+              <PrimaryAction label="השארה" tone="ghost" onPress={() => setCancelOpen(false)} disabled={cancelling} style={styles.grow} />
+              <PrimaryAction label="ביטול הבקשה" tone="destructive" onPress={() => void cancel()} loading={cancelling} style={styles.grow} />
+            </SheetActions>
+          }
+        />
       }
     >
       {loading ? (
@@ -233,8 +288,25 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                       </DKText>
                     </View>
                     {done && (
-                      <Pressy onPress={() => void open(item)} disabled={opening === item.id} accessibilityLabel="צפייה במסמך החתום" style={styles.view} pressScale={0.92}>
-                        <Ionicons name="eye-outline" size={19} color={DK.accent} />
+                      <>
+                        <Pressy onPress={() => void download(item)} disabled={!!opening} accessibilityLabel="הורדת המסמך החתום" style={styles.view} pressScale={0.92}>
+                          <Ionicons name={opening === `download:${item.id}` ? 'hourglass-outline' : 'download-outline'} size={19} color={DK.accent} />
+                        </Pressy>
+                        <Pressy onPress={() => void open(item)} disabled={!!opening} accessibilityLabel="צפייה במסמך החתום" style={styles.view} pressScale={0.92}>
+                          <Ionicons name="eye-outline" size={19} color={DK.accent} />
+                        </Pressy>
+                      </>
+                    )}
+                    {item.status === 'pending' && canSend && (
+                      <Pressy
+                        onPress={() => { setCancelTarget(item); setCancelOpen(true); }}
+                        disabled={sending || cancelling}
+                        accessibilityLabel="ביטול הבקשה"
+                        accessibilityHint="הנהג לא יוכל לחתום עליה"
+                        style={[styles.view, styles.cancel]}
+                        pressScale={0.92}
+                      >
+                        <Ionicons name="close" size={20} color={STATUS.expired.fg} />
                       </Pressy>
                     )}
                   </Surface>
@@ -249,6 +321,10 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
 }
 const styles = StyleSheet.create({
   flex: { flex: 1, gap: 2 },
+  grow: { flex: 1 },
+  flex2: { flex: 2 },
+  footer: { flexDirection: 'row-reverse', gap: 10 },
+  cancel: { backgroundColor: STATUS.expired.soft },
   request: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, padding: 14 },
   requestIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   view: { width: 44, height: 44, borderRadius: 14, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },

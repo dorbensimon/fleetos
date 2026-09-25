@@ -1,30 +1,17 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCompany } from '../../lib/CompanyContext';
-import {
-  countUnreadNotifications,
-  listNotifications,
-  markNotificationRead,
-  markAllNotificationsRead,
-  Notification,
-  resolveNotificationVehicleId,
-} from '../../lib/adminApi';
 import { supabase } from '../../lib/supabase';
 import { showAlert } from '../../lib/platformAlert';
-import { formatDateTime } from '../../lib/theme';
 import { RootStackParamList } from '../../navigation/types';
-import { navigateToNotificationTarget, notificationTarget } from '../../lib/notificationTargets';
 import { DText, HoverPressable } from './primitives';
 import { BrandLogo } from '../ui/Brand';
-import {
-  DESKTOP_COLORS,
-  DESKTOP_HEADER_HEIGHT,
-  DESKTOP_SIDEBAR_WIDTH,
-  webOnly,
-} from './desktopTheme';
+import { HeaderMenuProvider } from './headerMenu';
+import { NotificationsBell } from './NotificationsBell';
+import { DESKTOP_COLORS, DESKTOP_HEADER_HEIGHT, DESKTOP_SIDEBAR_WIDTH } from './desktopTheme';
 
 /**
  * Desktop web frame for signed-in screens: a dark sidebar on the right
@@ -47,8 +34,6 @@ const ROLE_LABEL: Record<string, string> = {
   admin: 'מנהל מערכת',
   driver: 'נהג',
 };
-
-const NOTIFICATION_PREVIEW_COUNT = 5;
 
 const SHELL_LEGAL_LINKS = [
   { doc: 'terms', label: 'תנאי שימוש' },
@@ -74,65 +59,6 @@ export function DesktopShell({
   const isAdmin = profile?.role === 'admin';
   const isOwner = profile?.role === 'owner';
   const isDriver = profile?.role === 'driver';
-
-  const [unread, setUnread] = useState(0);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [notifOpen, setNotifOpen] = useState(false);
-
-  const refreshCounts = useCallback(() => {
-    if (!companyId || !isAdmin) return () => undefined;
-    let cancelled = false;
-    // Badge counts are decoration — a failure must never break the page.
-    countUnreadNotifications(companyId)
-      .then((count) => { if (!cancelled) setUnread(count); })
-      .catch(() => undefined);
-    return () => { cancelled = true; };
-  }, [companyId, isAdmin]);
-
-  useFocusEffect(refreshCounts);
-
-  const toggleNotifications = async () => {
-    const next = !notifOpen;
-    setNotifOpen(next);
-    if (!next || !companyId) return;
-    try {
-      const rows = await listNotifications(companyId);
-      setNotifications(rows.slice(0, NOTIFICATION_PREVIEW_COUNT));
-    } catch {
-      setNotifications([]);
-    }
-  };
-
-  const readAll = async () => {
-    if (!companyId) return;
-    try {
-      await markAllNotificationsRead(companyId);
-      setUnread(0);
-      setNotifications((rows) => rows.map((row) => ({ ...row, read_at: row.read_at ?? new Date().toISOString() })));
-    } catch {
-      showAlert('הפעולה נכשלה', 'לא הצלחנו לסמן את ההתראות כנקראו.');
-    }
-  };
-
-  const openPreviewNotification = async (notification: Notification) => {
-    if (!notification.read_at) {
-      try {
-        await markNotificationRead(notification.id);
-        setUnread((current) => Math.max(0, current - 1));
-        setNotifications((rows) => rows.map((row) => (
-          row.id === notification.id ? { ...row, read_at: new Date().toISOString() } : row
-        )));
-      } catch {
-        showAlert('הפעולה נכשלה', 'לא הצלחנו לסמן את ההתראה כנקראה.');
-      }
-    }
-
-    setNotifOpen(false);
-
-    const target = await notificationTarget(profile?.role, notification, resolveNotificationVehicleId);
-    if (target) navigateToNotificationTarget(navigation, target);
-    else navigation.navigate('Notifications');
-  };
 
   const logout = () => {
     showAlert('התנתקות', 'האם אתה בטוח שברצונך להתנתק מהחשבון?', [
@@ -320,79 +246,26 @@ export function DesktopShell({
             })}
           </View>
 
-          <View style={styles.headerActions}>
-            {headerAccessory}
-            {isAdmin && (
-              <View style={styles.bellWrap}>
-                <HoverPressable
-                  style={styles.bell}
-                  hoverStyle={styles.bellHover}
-                  onPress={() => void toggleNotifications()}
-                  accessibilityLabel={unread > 0 ? `התראות, ${unread} שלא נקראו` : 'התראות'}
-                >
-                  <Ionicons name="notifications" size={15} color={DESKTOP_COLORS.ink} />
-                  {unread > 0 && <View style={styles.bellDot} />}
-                </HoverPressable>
-                {notifOpen && (
-                  <View style={styles.popover}>
-                    <View style={styles.popoverHeader}>
-                      <DText weight="bold" style={styles.popoverTitle}>התראות</DText>
-                      {unread > 0 && (
-                        <HoverPressable onPress={() => void readAll()}>
-                          <DText weight="semiBold" style={styles.link}>קרא הכל</DText>
-                        </HoverPressable>
-                      )}
-                    </View>
-                    {notifications.length === 0 ? (
-                      <DText style={styles.popoverEmpty}>אין התראות חדשות</DText>
-                    ) : (
-                      notifications.map((n) => (
-                        <HoverPressable
-                          key={n.id}
-                          style={styles.popoverRow}
-                          hoverStyle={styles.rowHover}
-                          onPress={() => void openPreviewNotification(n)}
-                          accessibilityLabel={n.message}
-                        >
-                          <View style={[styles.popoverDot, !n.read_at && styles.popoverDotUnread]} />
-                          <View style={styles.popoverCopy}>
-                            <DText weight="semiBold" style={styles.popoverMessage} numberOfLines={2}>
-                              {n.message}
-                            </DText>
-                            <DText style={styles.popoverTime}>{formatDateTime(n.created_at)}</DText>
-                          </View>
-                        </HoverPressable>
-                      ))
-                    )}
-                    <HoverPressable
-                      style={styles.popoverFooter}
-                      hoverStyle={styles.rowHover}
-                      onPress={() => {
-                        setNotifOpen(false);
-                        navigation.navigate('Notifications');
-                      }}
-                    >
-                      <DText weight="semiBold" style={[styles.link, styles.centered]}>לכל ההתראות</DText>
-                    </HoverPressable>
-                  </View>
-                )}
-              </View>
-            )}
-            <View style={styles.headerDivider} />
-            <HoverPressable
-              style={styles.user}
-              onPress={() => isAdmin && go('AdminProfile')}
-              accessibilityLabel="הפרטים שלי"
-            >
-              <View style={styles.userAvatar}>
-                <DText weight="bold" style={styles.userAvatarText}>{initials}</DText>
-              </View>
-              <View>
-                <DText weight="semiBold" style={styles.userName}>{fullName}</DText>
-                <DText style={styles.userRole}>{roleLabel}</DText>
-              </View>
-            </HoverPressable>
-          </View>
+          <HeaderMenuProvider>
+            <View style={styles.headerActions}>
+              {headerAccessory}
+              {isAdmin && !!companyId && <NotificationsBell companyId={companyId} role={profile?.role} />}
+              <View style={styles.headerDivider} />
+              <HoverPressable
+                style={styles.user}
+                onPress={() => go(isDriver ? 'DriverProfile' : 'AdminProfile')}
+                accessibilityLabel="הפרטים שלי"
+              >
+                <View style={styles.userAvatar}>
+                  <DText weight="bold" style={styles.userAvatarText}>{initials}</DText>
+                </View>
+                <View>
+                  <DText weight="semiBold" style={styles.userName}>{fullName}</DText>
+                  <DText style={styles.userRole}>{roleLabel}</DText>
+                </View>
+              </HoverPressable>
+            </View>
+          </HeaderMenuProvider>
         </View>
 
         <View style={styles.body}>{children}</View>
@@ -519,69 +392,6 @@ const styles = StyleSheet.create({
   crumbInteractiveHover: { opacity: 0.78 },
   crumbCurrent: { color: DESKTOP_COLORS.ink },
   headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  bellWrap: { position: 'relative', zIndex: 30 },
-  bell: {
-    width: 30,
-    height: 30,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
-    backgroundColor: DESKTOP_COLORS.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bellHover: { backgroundColor: DESKTOP_COLORS.canvas },
-  bellDot: {
-    position: 'absolute',
-    top: 4,
-    right: 5,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: DESKTOP_COLORS.danger,
-    borderWidth: 1,
-    borderColor: '#fff',
-  },
-  popover: {
-    position: 'absolute',
-    top: 36,
-    left: 0,
-    width: 300,
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
-    overflow: 'hidden',
-    ...webOnly({ boxShadow: '0 8px 20px rgba(16,34,50,0.16)' }),
-  },
-  popoverHeader: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: DESKTOP_COLORS.borderSoft,
-  },
-  popoverTitle: { fontSize: 12.5 },
-  popoverEmpty: { fontSize: 12, color: DESKTOP_COLORS.inkFaint, padding: 14, textAlign: 'center' },
-  popoverRow: {
-    flexDirection: 'row-reverse',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F2F4F6',
-  },
-  popoverDot: { width: 6, height: 6, borderRadius: 3, marginTop: 5, backgroundColor: DESKTOP_COLORS.borderInput },
-  popoverDotUnread: { backgroundColor: DESKTOP_COLORS.brand },
-  popoverCopy: { flex: 1, gap: 1 },
-  popoverMessage: { fontSize: 12 },
-  popoverTime: { fontSize: 11, color: DESKTOP_COLORS.inkFaint },
-  popoverFooter: { paddingVertical: 9 },
-  link: { fontSize: 11.5, color: DESKTOP_COLORS.brand },
-  centered: { textAlign: 'center' },
-  rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
   headerDivider: { width: 1, height: 20, backgroundColor: DESKTOP_COLORS.border },
   user: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   userAvatar: {

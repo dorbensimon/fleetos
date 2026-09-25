@@ -89,6 +89,9 @@ const WEB_CSS = `
   -webkit-box-shadow: 0 0 0 1000px #111820 inset;
   transition: background-color 9999s ease-out 0s;
 }
+/* Lets a field notice the browser autofilling it (see ClusterField). */
+@keyframes cluster-autofill { from { opacity: 1; } to { opacity: 1; } }
+#cluster-login input:-webkit-autofill { animation: cluster-autofill 1ms; }
 #cluster-login { scrollbar-color: #1D2733 transparent; }
 #cluster-login ::-webkit-scrollbar { width: 10px; }
 #cluster-login ::-webkit-scrollbar-thumb { background: #1D2733; border-radius: 5px; }
@@ -252,7 +255,7 @@ interface ClusterFieldProps {
   onToggleSecure?: () => void;
   keyboardType?: 'default' | 'email-address';
   textContentType?: 'username' | 'password';
-  autoComplete?: 'email' | 'current-password';
+  autoComplete?: 'username' | 'current-password';
   returnKeyType?: 'next' | 'go';
   onSubmitEditing?: () => void;
   inputRef?: React.RefObject<TextInput | null>;
@@ -279,17 +282,53 @@ function ClusterField({
 }: ClusterFieldProps) {
   const [focused, setFocused] = useState(false);
   const accent = hasError ? CLUSTER.amber : CLUSTER.backlight;
+  const ownRef = useRef<TextInput>(null);
+  const ref = inputRef ?? ownRef;
+  const latest = useRef({ value, onChangeText });
+  latest.current = { value, onChangeText };
+
+  // Web: password managers and browser autofill write the <input> directly,
+  // which React's onChange can miss; the next render would then wipe the field.
+  // Read the DOM value back into state whenever that happens.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const node = ref.current as unknown as HTMLInputElement | null;
+    if (!node || typeof node.addEventListener !== 'function') return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Deferred so ordinary typing is handled by onChange first and not twice.
+    const sync = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (node.value !== latest.current.value) latest.current.onChangeText(node.value);
+      }, 0);
+    };
+    const onAnimation = (event: AnimationEvent) => {
+      if (event.animationName === 'cluster-autofill') sync();
+    };
+    node.addEventListener('input', sync);
+    node.addEventListener('change', sync);
+    node.addEventListener('animationstart', onAnimation);
+    return () => {
+      clearTimeout(timer);
+      node.removeEventListener('input', sync);
+      node.removeEventListener('change', sync);
+      node.removeEventListener('animationstart', onAnimation);
+    };
+  }, [ref]);
 
   return (
     <Pressable
-      onPress={() => inputRef?.current?.focus()}
+      onPress={() => ref.current?.focus()}
+      // Not a Tab stop of its own: Tab goes straight into the input.
+      tabIndex={-1}
+      accessible={false}
       style={[styles.field, short && styles.fieldShort, focused && styles.fieldFocused, (focused || hasError) && { borderColor: `${accent}88` }]}
     >
       <Ionicons name={icon} size={18} color={focused ? CLUSTER.backlight : CLUSTER.inkMuted} />
       <View style={[styles.fieldBody, short && styles.fieldBodyShort]}>
         <Text style={[styles.fieldLabel, focused && { color: CLUSTER.backlight }]}>{label}</Text>
         <TextInput
-          ref={inputRef}
+          ref={ref}
           style={[styles.fieldInput, webOnly({ outlineStyle: 'none' })]}
           value={value}
           onChangeText={onChangeText}
@@ -423,6 +462,7 @@ export default function LoginScreen({ navigation }: Props) {
   const [selfTest, setSelfTest] = useState(true);
   const [clock, setClock] = useState(currentClock);
 
+  const identifierRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const revs = useRef(new Animated.Value(0)).current;
   const readiness = useRef(new Animated.Value(0)).current;
@@ -527,7 +567,15 @@ export default function LoginScreen({ navigation }: Props) {
     setErrorMessage('');
     setSuccessMessage('');
 
-    if (!identifier.trim() || !password) {
+    // Web: an autofill the browser has not reported yet is still in the inputs.
+    const domValue = (ref: React.RefObject<TextInput | null>) =>
+      Platform.OS === 'web' ? ((ref.current as unknown as HTMLInputElement | null)?.value ?? '') : '';
+    const email = identifier || domValue(identifierRef);
+    const pass = password || domValue(passwordRef);
+    if (email !== identifier) setIdentifier(email);
+    if (pass !== password) setPassword(pass);
+
+    if (!email.trim() || !pass) {
       setErrorMessage('נא למלא מייל וסיסמה');
       return;
     }
@@ -537,8 +585,8 @@ export default function LoginScreen({ navigation }: Props) {
     setLoading(true);
     try {
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: identifier.trim(),
-        password,
+        email: email.trim(),
+        password: pass,
       });
 
       if (authError || !authData.user) {
@@ -625,9 +673,10 @@ export default function LoginScreen({ navigation }: Props) {
           icon="mail-outline"
           keyboardType="email-address"
           textContentType="username"
-          autoComplete="email"
+          autoComplete="username"
           returnKeyType="next"
           onSubmitEditing={() => passwordRef.current?.focus()}
+          inputRef={identifierRef}
           hasError={!!errorMessage && !identifier.trim()}
           short={short}
         />

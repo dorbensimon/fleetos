@@ -412,7 +412,7 @@ export default function FleetScreen() {
             compliance={compliance}
             vehicleDrivers={vehicleDrivers}
             loading={vehiclesLoading}
-            onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId })}
+            onOpenVehicle={(vehicleId, target) => navigation.navigate('VehicleDetail', { vehicleId, ...target })}
           />
         }
       >

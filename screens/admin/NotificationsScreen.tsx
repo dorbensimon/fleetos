@@ -1,15 +1,14 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCompany } from '../../lib/CompanyContext';
 import { listNotifications, markNotificationRead, markAllNotificationsRead, Notification, resolveNotificationVehicleId } from '../../lib/adminApi';
 import { RootStackParamList } from '../../navigation/types';
-import { type DriverCardTint } from '../../components/driverCard/driverCardTheme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { isVehicleFolderNotification } from '../../lib/vehicleFolderAlerts';
 import { navigateToNotificationTarget, notificationTarget } from '../../lib/notificationTargets';
+import { notificationIcon, timeAgo } from '../../lib/notificationLook';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { NotificationsHubDesktopView } from '../../components/desktop/NotificationsHubDesktopView';
 import { useNotificationPreferences } from '../../lib/useNotificationPreferences';
@@ -23,28 +22,6 @@ import { NotificationsMobile } from '../NotificationsMobile';
  * does NOT mark anything read on its own.
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
-
-export function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'עכשיו';
-  if (mins < 60) return `לפני ${mins} דק׳`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `לפני ${hours} שע׳`;
-  const days = Math.floor(hours / 24);
-  return `לפני ${days} ימים`;
-}
-
-function driverNotificationAppearance(type: string | null): {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  tint: DriverCardTint;
-} {
-  if (type === 'signature_request_assigned') return { icon: 'create-outline', tint: 'orange' };
-  if (type === 'vehicle_assignment') return { icon: 'car-outline', tint: 'indigo' };
-  if (type?.startsWith('vehicle_')) return { icon: 'warning-outline', tint: 'orange' };
-  if (type === 'license_update_reviewed') return { icon: 'card-outline', tint: 'green' };
-  return { icon: 'person-outline', tint: 'blue' };
-}
 
 export default function NotificationsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
@@ -147,7 +124,7 @@ export default function NotificationsScreen({ navigation }: Props) {
           onRetry={load}
           onOpen={(n) => void openNotification(n)}
           onMarkAllRead={() => void markAllRead()}
-          iconFor={(type) => driverNotificationAppearance(type).icon}
+          iconFor={notificationIcon}
           timeAgo={timeAgo}
           actionLabel={actionLabel}
           prefs={preferences}

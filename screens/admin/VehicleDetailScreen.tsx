@@ -250,6 +250,8 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
           onLookupPlate={() => void lookupPlate()}
           openFolder={route.params.openFolder ?? null}
           onFolderOpened={() => navigation.setParams({ openFolder: undefined })}
+          openDrivers={!!route.params.openDrivers}
+          onDriversOpened={() => navigation.setParams({ openDrivers: undefined })}
         />
       </DesktopShell>
     );

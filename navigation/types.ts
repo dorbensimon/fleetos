@@ -20,7 +20,7 @@ export type RootStackParamList = {
   /** `returnTo: 'driver'` keeps the back affordance honest when a vehicle
    * is opened from inside a driver's dossier rather than from the fleet;
    * `fromDriverId` names that driver so a refreshed page still goes back to them. */
-  VehicleDetail: { vehicleId: string; returnTo?: 'driver'; fromDriverId?: string; tab?: 'general' | 'maintenance' | 'documents' | 'drivers' | 'licensing'; /** A folder key (lib/vehicleFolderAlerts.ts) to open on arrival, e.g. from an expiry notification. */ openFolder?: string };
+  VehicleDetail: { vehicleId: string; returnTo?: 'driver'; fromDriverId?: string; tab?: 'general' | 'maintenance' | 'documents' | 'drivers' | 'licensing'; /** A folder key (lib/vehicleFolderAlerts.ts) to open on arrival, e.g. from an expiry notification. */ openFolder?: string; /** Opens the assigned-drivers dialog on arrival, e.g. from "needs attention". */ openDrivers?: boolean };
   VehicleForm: { vehicleId?: string };
   DriverDetail: { driverId: string; /** Set when opened from a vehicle, so a refreshed page still goes back to it. */ fromVehicleId?: string; /** A document category to open on arrival, e.g. from a "driver uploaded a document" notification. */ openFolder?: string };
   DriverArchive: undefined;

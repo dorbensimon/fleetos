@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { deleteSigningRecord, getSigningTemplateSourceUrl, listSignatureRequests, listSigningTemplates, type SigningTemplate } from '../../../lib/docuseal';
+import { getSigningTemplateSourceUrl, listSigningTemplates, type SigningTemplate } from '../../../lib/docuseal';
+import { countWaitingSigners, deleteCompanyTemplate, deleteTemplateMessage } from '../../../lib/signingSend';
 import { formatDate } from '../../../lib/theme';
 import { SIGNING_CSS } from './signingCss';
 import { CreateDocumentSheet } from './CreateDocumentSheet.web';
@@ -135,14 +136,13 @@ function PreviewSheet({
 
   const askDelete = async () => {
     setDeleteError('');
-    const requests = await listSignatureRequests(companyId).catch(() => []);
-    setConfirm({ waiting: requests.filter((r) => r.template_id === template.id && r.status === 'pending').length });
+    setConfirm({ waiting: await countWaitingSigners(companyId, template.id) });
   };
   const doDelete = async () => {
     setConfirm(null);
     setDeleting(true);
     try {
-      await deleteSigningRecord(companyId, 'template', template.id, 'company-delete');
+      await deleteCompanyTemplate(companyId, template.id);
       pdfCache.delete(template.id);
       onDeleted();
       close();
@@ -199,7 +199,7 @@ function PreviewSheet({
       {confirm ? (
         <ConfirmAlert
           title="למחוק את המסמך?"
-          message={`המסמך יימחק לצמיתות, גם מ-DocuSeal.${confirm.waiting ? ` ${confirm.waiting === 1 ? 'נהג אחד עוד לא חתם עליו, והבקשה שלו תבוטל.' : `${confirm.waiting} נהגים עוד לא חתמו עליו, והבקשות שלהם יבוטלו.`}` : ''} מסמכים שנהגים כבר חתמו עליהם יישארו בתיק הנהג.`}
+          message={deleteTemplateMessage(confirm.waiting)}
           confirmLabel="מחיקה"
           cancelLabel="ביטול"
           onConfirm={() => void doDelete()}
