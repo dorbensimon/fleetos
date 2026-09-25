@@ -115,7 +115,7 @@ function changedFields(driver: DriverRow, draft: ProfileDraft): DriverPatch {
 const onlyDigits = (value: string, max: number) => value.replace(/\D/g, '').slice(0, max);
 
 export default function DriverProfileScreen({ navigation }: Props) {
-  const { profile, company, companyId } = useCompany();
+  const { profile, company, companyId, loading: profileLoading } = useCompany();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
@@ -149,6 +149,8 @@ export default function DriverProfileScreen({ navigation }: Props) {
     if (!hasLoadedOnce.current) setLoading(true);
     setError(null);
     if (!profile) {
+      // Right after a refresh the profile is still on its way: keep loading.
+      if (profileLoading) return;
       setError('פרופיל הנהג אינו זמין');
       setLoading(false);
       return;
@@ -169,7 +171,7 @@ export default function DriverProfileScreen({ navigation }: Props) {
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
-  }, [profile, companyId]);
+  }, [profile, companyId, profileLoading]);
 
   useFocusEffect(useCallback(() => {
     load();

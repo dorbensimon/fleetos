@@ -71,6 +71,7 @@ export type RootStackParamList = {
   DriverSigningDocuments: { driverId?: string; folderId?: string } | undefined;
   DriverProfile: undefined;
   DriverOdometer: { vehicleId: string; currentOdometer: number };
+  DriverAttention: undefined;
 
   // Shared
   Menu: undefined;

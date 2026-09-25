@@ -9,6 +9,7 @@ import {
   Gauge,
   HeroButton,
   NightHero,
+  NightUnderlay,
   StatusBand,
   Plate,
   Pressy,
@@ -44,6 +45,7 @@ type Props = {
   onNotifications: () => void;
   onVehicle: () => void;
   onSigning: () => void;
+  onAttention: () => void;
   onLicense: () => void;
   onDocuments: () => void;
   onOdometer: () => void;
@@ -89,9 +91,10 @@ export function DriverHomeMobile(p: Props) {
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="light-content" />
+      <NightUnderlay />
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={{ paddingBottom: p.insetBottom + 36 }}
+        contentContainerStyle={[styles.content, { paddingBottom: p.insetBottom + 36 }]}
         showsVerticalScrollIndicator={false}
       >
         <NightHero insetTop={p.insetTop}>
@@ -146,7 +149,7 @@ export function DriverHomeMobile(p: Props) {
           <Reveal index={1}>
             <SummaryPanel
               summary={summary}
-              onPress={summary.kind === 'attention' && !summary.expired ? p.onSigning : p.vehicle ? p.onVehicle : undefined}
+              onPress={summary.kind === 'attention' || summary.kind === 'next' ? p.onAttention : undefined}
             />
           </Reveal>
         </NightHero>
@@ -399,6 +402,7 @@ function Tile({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: DK.canvas },
   scroll: { flex: 1 },
+  content: { flexGrow: 1, backgroundColor: DK.canvas },
   center: { textAlign: 'center' },
 
   topBar: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 26 },

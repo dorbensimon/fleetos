@@ -55,6 +55,7 @@ import DriverDocumentsScreen from './screens/driver/DriverDocumentsScreen';
 import DriverSigningDocumentsScreen from './screens/driver/DriverSigningDocumentsScreen';
 import DriverProfileScreen from './screens/driver/DriverProfileScreen';
 import DriverOdometerScreen from './screens/driver/DriverOdometerScreen';
+import DriverAttentionScreen from './screens/driver/DriverAttentionScreen';
 import MenuScreen from './screens/MenuScreen';
 import { RootStackParamList } from './navigation/types';
 import { refreshBackFallback } from './lib/refreshSafeBack';
@@ -126,6 +127,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       DriverSigningDocuments: 'my-documents/signing',
       DriverProfile: 'my-profile',
       DriverOdometer: 'my-vehicle/odometer/:vehicleId',
+      DriverAttention: 'attention',
       Menu: 'menu',
     },
   },
@@ -289,6 +291,7 @@ export default function App() {
               <Stack.Screen name="DriverSigningDocuments" component={DriverSigningDocumentsScreen} />
               <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />
               <Stack.Screen name="DriverOdometer" component={DriverOdometerScreen} />
+              <Stack.Screen name="DriverAttention" component={DriverAttentionScreen} />
             </Stack.Navigator>
           </NavigationContainer>
         </CompanyProvider>

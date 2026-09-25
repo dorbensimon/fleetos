@@ -27,7 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverVehicle'>;
 
 export default function DriverVehicleScreen({ navigation }: Props) {
-  const { profile } = useCompany();
+  const { profile, loading: profileLoading } = useCompany();
   const isDesktop = useIsDesktop();
   const insets = useSafeAreaInsets();
   const [assignments, setAssignments] = useState<DriverVehicleAssignment[]>([]);
@@ -41,6 +41,8 @@ export default function DriverVehicleScreen({ navigation }: Props) {
     setLoading(true);
     setError(null);
     if (!profile) {
+      // Right after a refresh the profile is still on its way: keep loading.
+      if (profileLoading) return;
       if (requestId === loadRequest.current) {
         setError('פרופיל הנהג אינו זמין');
         setLoading(false);
@@ -58,7 +60,7 @@ export default function DriverVehicleScreen({ navigation }: Props) {
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
-  }, [profile]);
+  }, [profile, profileLoading]);
 
   useFocusEffect(
     useCallback(() => {

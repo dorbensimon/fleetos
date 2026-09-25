@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { BrandLoader } from '../ui/BrandLoader';
+import { syncWebThemeColor } from '../../lib/webThemeColor';
 import { DK, DK_FONT, DK_RADIUS, DK_SHADOW, DK_SPACE, STATUS, type Status } from './theme';
 
 export * from './theme';
@@ -193,6 +194,11 @@ export function NightHero({
   useEffect(() => {
     Animated.timing(ring, { toValue: 1, duration: 600, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER }).start();
   }, [ring]);
+  // The hero often appears after a loading state, well after navigation
+  // sampled the page top; sample again so Safari's bar turns night too.
+  useEffect(() => {
+    syncWebThemeColor();
+  }, []);
   const size = compact ? 230 : 330;
   return (
     <View style={[styles.hero, { paddingTop: insetTop + 10, paddingBottom: compact ? 44 : 56 }, style]}>
@@ -294,6 +300,9 @@ export function NightBar({
   onBack: () => void;
   right?: ReactNode;
 }) {
+  useEffect(() => {
+    syncWebThemeColor();
+  }, []);
   return (
     <View style={[styles.nightBar, { paddingTop: insetTop + 8 }]}>
       <StatusBar barStyle="light-content" />
@@ -337,9 +346,10 @@ export function DriverPage({
   return (
     <View style={styles.page}>
       <StatusBar barStyle="light-content" />
+      <NightUnderlay />
       <ScrollView
         style={styles.pageScroll}
-        contentContainerStyle={{ paddingBottom: (footer ? 24 : insetBottom + 36) }}
+        contentContainerStyle={[styles.pageContent, { paddingBottom: footer ? 24 : insetBottom + 36 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -352,6 +362,15 @@ export function DriverPage({
       {!!footer && <View style={[styles.pageFooter, { paddingBottom: insetBottom + 12 }]}>{footer}</View>}
     </View>
   );
+}
+
+/**
+ * Pulling a page down past its top shows what is behind the scroll view.
+ * Night fills the upper half there, so the hero seems to stretch instead of
+ * a pale gap opening above it; the content itself paints the canvas.
+ */
+export function NightUnderlay() {
+  return <View pointerEvents="none" style={styles.underlay} />;
 }
 
 // ── Surfaces ──────────────────────────────────────────────────────────────
@@ -633,6 +652,8 @@ const styles = StyleSheet.create({
 
   page: { flex: 1, backgroundColor: DK.canvas },
   pageScroll: { flex: 1 },
+  pageContent: { flexGrow: 1, backgroundColor: DK.canvas },
+  underlay: { position: 'absolute', top: 0, left: 0, right: 0, height: '50%', backgroundColor: DK.night[0] },
   pageBody: { marginTop: -24, paddingHorizontal: DK_SPACE.md, gap: 18, width: '100%', maxWidth: 560, alignSelf: 'center' },
   pageFooter: {
     paddingHorizontal: DK_SPACE.md,

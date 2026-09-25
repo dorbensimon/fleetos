@@ -24,7 +24,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DriverSigningDocuments'
 const time = (date: string) => new Date(date).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
 
 export default function DriverSigningDocumentsScreen({ navigation, route }: Props) {
-  const { profile } = useCompany();
+  const { profile, loading: profileLoading } = useCompany();
   const driverId = profile?.role === 'driver' ? profile.id : route.params?.driverId;
   const folderId = route.params?.folderId;
   const [driver, setDriver] = useState<DriverRow | null>(null);
@@ -41,6 +41,8 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
   const canSend = !!driver && (profile?.role === 'owner' || (profile?.role === 'admin' && profile.company_id === driver.company_id));
   const load = useCallback(async () => {
     const generation = ++loadRequest.current;
+    // Right after a refresh the profile is still on its way: keep loading.
+    if (!driverId && profileLoading) return;
     if (!driverId) { setError('יש לפתוח את המסמך מתוך פרופיל נהג'); setLoading(false); return; }
     try {
       const target = await getDriver(driverId);
@@ -58,7 +60,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
       setError(results.some(result => result.status === 'rejected') ? 'לא ניתן לעדכן כרגע את כל מצבי החתימה. מוצג המידע האחרון שנשמר.' : '');
     } catch (err: any) { if (generation === loadRequest.current) setError(err?.message || 'טעינת המסמכים נכשלה'); }
     finally { if (generation === loadRequest.current) setLoading(false); }
-  }, [driverId, folderId]);
+  }, [driverId, folderId, profileLoading]);
   useFocusEffect(useCallback(() => {
     setLoading(true); load();
     const interval = setInterval(load, 60_000);

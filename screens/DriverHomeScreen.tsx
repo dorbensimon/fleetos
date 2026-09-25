@@ -1,43 +1,28 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ErrorState, LoadingState } from '../components/ui';
+import { BrandLoader } from '../components/ui/BrandLoader';
 import { DK } from '../components/driverKit';
 import { DriverHomeMobile } from './driver/DriverHomeMobile';
-import { useCompany } from '../lib/CompanyContext';
-import { countUnreadNotifications, getDriver, listActiveDriverVehicles, listCompliance, type ComplianceItem, type DriverRow, type Vehicle } from '../lib/adminApi';
-import { VEHICLE_TYPE_LABELS, complianceTargetDate, findComplianceDef, isRetiredVehicleComplianceItem } from '../lib/compliance';
-import { listSignatureRequests } from '../lib/docuseal';
-import { expiryState, formatDate, type ExpiryState } from '../lib/theme';
+import { useDriverOverview } from '../lib/useDriverOverview';
+import { VEHICLE_TYPE_LABELS } from '../lib/compliance';
+import { expiryState, formatDate } from '../lib/theme';
 import type { RootStackParamList } from '../navigation/types';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import { DesktopShell } from '../components/desktop/DesktopShell';
 import { DText, HoverPressable, StatusPill } from '../components/desktop/primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES } from '../components/desktop/desktopTheme';
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverHome'>;
-type Severity = 'danger' | 'warning' | 'success';
-function severityFor(state: ExpiryState): Severity { return state === 'expired' ? 'danger' : state === 'soon' ? 'warning' : 'success'; }
 
 export default function DriverHomeScreen({ navigation }: Props) {
-  const insets = useSafeAreaInsets(); const { company, profile } = useCompany();
+  const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
-  const [driver, setDriver] = useState<DriverRow | null>(null); const [vehicle, setVehicle] = useState<Vehicle | null>(null); const [compliance, setCompliance] = useState<ComplianceItem[]>([]); const [pendingSignatures, setPendingSignatures] = useState(0); const [unreadNotifications, setUnreadNotifications] = useState(0); const [loading, setLoading] = useState(true); const [error, setError] = useState('');
-  const loadRequest = useRef(0);
-  const load = useCallback(async () => {
-    if (!profile) {
-      setError('פרופיל הנהג אינו זמין');
-      setLoading(false);
-      return;
-    }
-    const requestId = ++loadRequest.current;
-    try { setError(''); const [loadedDriver, assignments, signatures, unread] = await Promise.all([getDriver(profile.id), listActiveDriverVehicles(profile.id), listSignatureRequests(), company?.id ? countUnreadNotifications(company.id) : Promise.resolve(0)]); if (requestId !== loadRequest.current) return; const primary = assignments.find((a) => a.is_primary) ?? assignments[0] ?? null; const loadedCompliance = primary ? await listCompliance('vehicle', primary.vehicle.id) : []; if (requestId !== loadRequest.current) return; setDriver(loadedDriver); setVehicle(primary?.vehicle ?? null); setCompliance(loadedCompliance); setPendingSignatures(signatures.filter((item) => item.status === 'pending' && !!item.docuseal_submitter_slug).length); setUnreadNotifications(unread); } catch (err: any) { if (requestId === loadRequest.current) setError(err?.message || 'טעינת נתוני המסך נכשלה'); } finally { if (requestId === loadRequest.current) setLoading(false); }
-  }, [company, profile]);
-  useFocusEffect(useCallback(() => { setLoading(true); load(); return () => { loadRequest.current += 1; }; }, [load]));
+  const { company, profile, driver, vehicle, items: allItems, pendingRequests, unreadNotifications, loading, error, reload } = useDriverOverview();
+  const pendingSignatures = pendingRequests.length;
   const fullName = driver?.full_name?.trim() || profile?.full_name?.trim() || ''; const firstName = fullName.split(/\s+/)[0] || ''; const managerName = company?.safety_officer_name?.trim() || ''; const managerPhone = company?.safety_officer_phone || ''; const licenseState = expiryState(driver?.license_expiry);
-  const allItems = useMemo(() => { if (!vehicle) return []; return compliance.filter((item) => !isRetiredVehicleComplianceItem(item.item_type)).map((item) => { const def = findComplianceDef('vehicle', item.item_type); const target = def ? complianceTargetDate(def, item) : item.expiry_date; if (!def && !target) return null; const severity = severityFor(expiryState(target)); return { title: def?.label || item.item_type, detail: target ? formatDate(target) : 'תאריך חסר', severity, item, target: target ?? null }; }).filter(Boolean).sort((a: any, b: any) => ({ danger: 0, warning: 1, success: 2 } as Record<string, number>)[a.severity] - ({ danger: 0, warning: 1, success: 2 } as Record<string, number>)[b.severity]) as { title: string; detail: string; severity: Severity; item: ComplianceItem; target: string | null }[]; }, [compliance, vehicle]);
   const timelineItems = allItems.slice(0, 3);
   const openManager = (kind: 'tel' | 'sms') => { if (managerPhone) Linking.openURL(`${kind}:${managerPhone}`).catch(() => undefined); };
   if (isDesktop) {
@@ -46,7 +31,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
         {loading ? (
           <LoadingState />
         ) : error && !driver ? (
-          <ErrorState message={error} onRetry={() => { setLoading(true); load(); }} />
+          <ErrorState message={error} onRetry={reload} />
         ) : (
           <View style={ds.wrap}>
             <View style={ds.columns}>
@@ -130,8 +115,10 @@ export default function DriverHomeScreen({ navigation }: Props) {
     );
   }
 
-  if (loading) return <View style={styles.screen}><LoadingState /></View>;
-  if (error && !driver) return <View style={styles.screen}><ErrorState message={error} onRetry={() => { setLoading(true); load(); }} /></View>;
+  // Night from the first frame, so the top of the screen (and Safari's bar)
+  // doesn't flash pale before the hero arrives.
+  if (loading) return <View style={[styles.screen, styles.night]}><BrandLoader size={64} color="#FFFFFF" /></View>;
+  if (error && !driver) return <View style={styles.screen}><ErrorState message={error} onRetry={reload} /></View>;
   return (
     <DriverHomeMobile
       insetTop={insets.top}
@@ -149,6 +136,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
       onNotifications={() => navigation.navigate('Notifications')}
       onVehicle={() => navigation.navigate('DriverVehicle')}
       onSigning={() => navigation.navigate('DriverSigningDocuments')}
+      onAttention={() => navigation.navigate('DriverAttention')}
       onLicense={() => navigation.navigate('DriverProfile')}
       onDocuments={() => navigation.navigate('DriverDocuments')}
       onOdometer={() => vehicle && navigation.navigate('DriverOdometer', { vehicleId: vehicle.id, currentOdometer: vehicle.odometer })}
@@ -159,6 +147,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: DK.canvas },
+  night: { backgroundColor: DK.night[0], alignItems: 'center', justifyContent: 'center' },
 });
 
 const ds = StyleSheet.create({

@@ -46,7 +46,7 @@ function hasBothLicenseSides(docs: { title: string | null }[]): boolean {
 }
 
 export default function DriverDocumentsScreen({ navigation }: Props) {
-  const { companyId, profile } = useCompany();
+  const { companyId, profile, loading: profileLoading } = useCompany();
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
   const profileId = profile?.id;
@@ -62,6 +62,8 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
     setLoading(true);
     setError(null);
     if (!profileId) {
+      // Right after a refresh the profile is still on its way: keep loading.
+      if (profileLoading) return;
       setError('פרופיל הנהג אינו זמין');
       setLoading(false);
       return;
@@ -79,7 +81,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
-  }, [profileId]);
+  }, [profileId, profileLoading]);
 
   // After a photo changes in the license window, refresh only the license
   // status, so the page behind the window doesn't flash a loading state.
