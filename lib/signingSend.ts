@@ -1,5 +1,6 @@
 import { assignSigningTemplate, deleteSigningRecord, listSignatureRequests } from './docuseal';
 import { listDrivers } from './adminApi/drivers';
+import { formatDate } from './theme';
 
 /**
  * Sending a signing document to drivers and deleting a company's own
@@ -7,7 +8,13 @@ import { listDrivers } from './adminApi/drivers';
  * manager's phone screen, so both say and do exactly the same thing.
  */
 
-export type SendRecipient = { id: string; name: string; state: 'none' | 'pending' | 'signed' };
+export type SendRecipient = {
+  id: string;
+  name: string;
+  state: 'none' | 'pending' | 'signed';
+  /** When the driver last signed this document, if ever. */
+  lastSignedAt?: string | null;
+};
 export type SendOutcome = { sent: number; failed: { name: string; reason: string }[] };
 
 export const RECIPIENT_STATE_LABEL: Record<SendRecipient['state'], string> = { none: '', pending: 'ממתין לחתימה', signed: 'כבר חתם' };
@@ -17,17 +24,27 @@ export function driversCount(count: number): string {
   return count === 1 ? 'נהג אחד' : `${count} נהגים`;
 }
 
-/** What happens to a picked driver who already has this document. */
+/** Where a driver stands on this document, and what happens if picked: "חתם לאחרונה ב-23/09/2026 · יישלח שוב". */
 export function recipientNote(recipient: SendRecipient, picked: boolean): string {
-  const label = RECIPIENT_STATE_LABEL[recipient.state];
+  const label =
+    recipient.state === 'signed' && recipient.lastSignedAt
+      ? `חתם לאחרונה ב-${formatDate(recipient.lastSignedAt)}`
+      : RECIPIENT_STATE_LABEL[recipient.state];
   if (!label || !picked) return label;
   return `${label} · ${recipient.state === 'pending' ? 'יוחלף במסמך חדש' : 'יישלח שוב'}`;
 }
 
-/** The company's active drivers, by name, each with where they stand on this document. */
+/** The company's active drivers, by name, each with where they stand on this document and when they last signed it. */
 export async function loadSendRecipients(companyId: string, templateId: string): Promise<SendRecipient[]> {
   const [rows, requests] = await Promise.all([listDrivers(companyId), listSignatureRequests(companyId).catch(() => [])]);
   const forThis = requests.filter((r) => r.template_id === templateId);
+  const lastSignedAt = (id: string) =>
+    forThis
+      .filter((r) => r.driver_id === id && r.status === 'completed')
+      .map((r) => r.completed_at ?? r.created_at)
+      .filter(Boolean)
+      .sort()
+      .pop() ?? null;
   const stateOf = (id: string): SendRecipient['state'] =>
     forThis.some((r) => r.driver_id === id && r.status === 'completed')
       ? 'signed'
@@ -36,7 +53,7 @@ export async function loadSendRecipients(companyId: string, templateId: string):
         : 'none';
   return rows
     .filter((d) => d.status === 'active')
-    .map((d) => ({ id: d.id, name: d.full_name?.trim() || 'נהג ללא שם', state: stateOf(d.id) }))
+    .map((d) => ({ id: d.id, name: d.full_name?.trim() || 'נהג ללא שם', state: stateOf(d.id), lastSignedAt: lastSignedAt(d.id) }))
     .sort((a, b) => a.name.localeCompare(b.name, 'he'));
 }
 

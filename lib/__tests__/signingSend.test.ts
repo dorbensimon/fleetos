@@ -33,14 +33,15 @@ test('recipients are the active drivers, by name, with where they stand on this 
     { id: 'd4', full_name: 'גיל', status: 'inactive' },
   ]);
   requests.mockResolvedValue([
-    { template_id: 't1', driver_id: 'd1', status: 'completed' },
+    { template_id: 't1', driver_id: 'd1', status: 'completed', completed_at: '2026-03-02T10:00:00Z' },
+    { template_id: 't1', driver_id: 'd1', status: 'completed', completed_at: '2026-09-23T10:00:00Z' },
     { template_id: 't1', driver_id: 'd2', status: 'pending' },
-    { template_id: 'other', driver_id: 'd3', status: 'completed' },
+    { template_id: 'other', driver_id: 'd3', status: 'completed', completed_at: '2026-09-24T10:00:00Z' },
   ]);
   expect(await loadSendRecipients('c1', 't1')).toEqual([
-    { id: 'd2', name: 'אבי', state: 'pending' },
-    { id: 'd3', name: 'נהג ללא שם', state: 'none' },
-    { id: 'd1', name: 'תמר', state: 'signed' },
+    { id: 'd2', name: 'אבי', state: 'pending', lastSignedAt: null },
+    { id: 'd3', name: 'נהג ללא שם', state: 'none', lastSignedAt: null },
+    { id: 'd1', name: 'תמר', state: 'signed', lastSignedAt: '2026-09-23T10:00:00Z' },
   ]);
 });
 
@@ -88,4 +89,6 @@ test('wording', () => {
   expect(recipientNote({ id: 'x', name: 'x', state: 'signed' }, true)).toBe('כבר חתם · יישלח שוב');
   expect(recipientNote({ id: 'x', name: 'x', state: 'signed' }, false)).toBe('כבר חתם');
   expect(recipientNote({ id: 'x', name: 'x', state: 'none' }, true)).toBe('');
+  expect(recipientNote({ id: 'x', name: 'x', state: 'signed', lastSignedAt: '2026-09-23T10:00:00Z' }, false)).toBe('חתם לאחרונה ב-23/09/2026');
+  expect(recipientNote({ id: 'x', name: 'x', state: 'signed', lastSignedAt: '2026-09-23T10:00:00Z' }, true)).toBe('חתם לאחרונה ב-23/09/2026 · יישלח שוב');
 });
