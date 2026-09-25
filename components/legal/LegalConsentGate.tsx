@@ -17,8 +17,8 @@ type State = 'checking' | 'accepted' | 'required' | 'error';
  * Nobody signed in uses the app before accepting the terms of use and the
  * privacy policy — owner, manager or driver, on the phone and the desktop.
  * The screen appears once; a later version of the documents asks again.
- * Until accepted the app itself is not rendered, so no address or deep
- * link can get past it.
+ * Until accepted the app is hidden behind it, so no address or deep link
+ * can get past it.
  */
 export function LegalConsentGate({
   children,
@@ -47,25 +47,34 @@ export function LegalConsentGate({
     if (userId && userId !== checkedFor) void check(userId);
   }, [userId, checkedFor, check]);
 
-  if (!userId) return <>{children}</>;
   // Once accepted, a later profile reload (same user) never hides the app.
-  if (checkedFor === userId && state === 'accepted') return <>{children}</>;
-  if (checkedFor !== userId || state === 'checking') {
-    return (
-      <View style={styles.boot}>
-        <BrandLoader size={83} />
-      </View>
-    );
-  }
+  const blocked = !!userId && !(checkedFor === userId && state === 'accepted');
+  const checking = checkedFor !== userId || state === 'checking';
+
+  // The app stays mounted (hidden, so nothing in it can be reached) while the
+  // terms are checked: unmounting it would rebuild the navigation from its
+  // start, and right after signing in that is the login screen again.
   return (
-    <ConsentScreen
-      error={state === 'error'}
-      onRetry={() => void check(userId)}
-      onAccepted={async () => {
-        await onAccepted?.(userId).catch(() => undefined);
-        setState('accepted');
-      }}
-    />
+    <>
+      <View style={[styles.flex, blocked && styles.hidden]} aria-hidden={blocked}>
+        {children}
+      </View>
+      {blocked && userId &&
+        (checking ? (
+          <View style={styles.boot}>
+            <BrandLoader size={83} />
+          </View>
+        ) : (
+          <ConsentScreen
+            error={state === 'error'}
+            onRetry={() => void check(userId)}
+            onAccepted={async () => {
+              await onAccepted?.(userId).catch(() => undefined);
+              setState('accepted');
+            }}
+          />
+        ))}
+    </>
   );
 }
 
@@ -203,6 +212,7 @@ function ConsentScreen({ error, onRetry, onAccepted }: { error: boolean; onRetry
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  hidden: { display: 'none' },
   center: { textAlign: 'center' },
   boot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F5F7' },
   hero: { gap: 10, paddingTop: 8 },
