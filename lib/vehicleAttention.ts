@@ -30,7 +30,8 @@ export type VehicleAttentionGroup = {
   items: VehicleAttentionItem[];
 };
 
-function vehicleName(vehicle: Vehicle): string {
+/** "טויוטה קורולה", or "רכב ללא דגם" when neither is known. */
+export function vehicleName(vehicle: Vehicle): string {
   return [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || 'רכב ללא דגם';
 }
 

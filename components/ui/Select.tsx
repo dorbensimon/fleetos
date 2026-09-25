@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from './Text';
 import { COLORS, CONTENT_MAX_WIDTH, RADIUS, SPACING, CARD_SHADOW } from '../../lib/theme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { PICKER_FIELD_STYLES } from './pickerFieldStyles';
 import { DK, DK_FONT, DK_SHADOW } from '../driverKit/theme';
 
 const ENTER_MS = 340;
@@ -145,20 +146,10 @@ export function Select<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  box: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 8,
-    height: 48,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.field,
-    borderWidth: 1.5,
-    borderColor: COLORS.fieldBorder,
-    paddingHorizontal: 14,
-  },
-  boxError: { borderColor: COLORS.dangerText },
+  box: PICKER_FIELD_STYLES.box,
+  boxError: PICKER_FIELD_STYLES.boxError,
   value: { flex: 1, fontSize: 15 },
-  placeholder: { color: COLORS.textFaint },
+  placeholder: PICKER_FIELD_STYLES.placeholder,
 
   scrim: { backgroundColor: 'rgba(10, 24, 38, 0.38)' },
   sheet: {

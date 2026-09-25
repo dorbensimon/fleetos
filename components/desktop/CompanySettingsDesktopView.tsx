@@ -25,6 +25,7 @@ import {
   prefersReducedMotion,
 } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
+import { FORM_PAGE_STYLES, heroEnter, useReducedMotion } from './form/RecordFormKit';
 
 /**
  * Desktop body of the company settings page. Three zones fill the width:
@@ -457,16 +458,6 @@ const SECTION_OF_ERROR: [RegExp, SectionKey][] = [
 
 function sectionErrorCount(errors: Record<string, string>, key: SectionKey): number {
   return Object.keys(errors).filter((e) => SECTION_OF_ERROR.some(([re, s]) => s === key && re.test(e))).length;
-}
-
-function useReducedMotion(): boolean {
-  const [reduce, setReduce] = useState(prefersReducedMotion);
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then(setReduce)
-      .catch(() => {});
-  }, []);
-  return reduce;
 }
 
 /**
@@ -933,18 +924,6 @@ function CompanyOverview({ form, onJump }: { form: CompanySettingsForm; onJump: 
   );
 }
 
-function heroEnter() {
-  const reduce = prefersReducedMotion();
-  return webOnly({
-    animationKeyframes: reduce
-      ? { from: { opacity: 0 }, to: { opacity: 1 } }
-      : { from: { opacity: 0, transform: [{ translateY: 12 }, { scale: 0.985 }] }, to: { opacity: 1, transform: [{ translateY: 0 }, { scale: 1 }] } },
-    animationDuration: reduce ? '200ms' : '600ms',
-    animationTimingFunction: 'cubic-bezier(0.23, 1, 0.32, 1)',
-    animationFillMode: 'backwards',
-  });
-}
-
 function HeroChip({ icon, value, ltr, empty = 'לא הוזן' }: { icon: IconName; value: string; ltr?: boolean; empty?: string }) {
   const Text = ltr && value ? DLtrText : DText;
   return (
@@ -1278,6 +1257,7 @@ function ImageSlot({
 }
 
 const styles = StyleSheet.create({
+  ...FORM_PAGE_STYLES,
   root: { flex: 1, flexDirection: 'row-reverse', backgroundColor: GROUPED_BG },
   tabular: webOnly({ fontVariantNumeric: 'tabular-nums' }),
 
@@ -1347,7 +1327,6 @@ const styles = StyleSheet.create({
   navErrorTextActive: { color: DESKTOP_TONES.bad.fg },
 
   // Form column
-  scroll: { flex: 1 },
   page: {
     flexDirection: 'row-reverse',
     alignItems: 'flex-start',
@@ -1361,9 +1340,7 @@ const styles = StyleSheet.create({
   },
   navColumn: { width: 280, flexShrink: 0, ...webOnly({ position: 'sticky', top: 24 }) },
   main: { flex: 1, minWidth: 0 },
-  section: { marginBottom: 48 },
   sectionLast: { marginBottom: 0 },
-  sectionHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, marginBottom: 16, paddingHorizontal: 4 },
   sectionGlyph: {
     width: 46,
     height: 46,
@@ -1373,9 +1350,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...webOnly({ boxShadow: '0 1px 2px rgba(0,136,204,0.2), 0 4px 12px rgba(0,136,204,0.2)' }),
   },
-  sectionHeadText: { flex: 1, minWidth: 0, gap: 3 },
-  sectionTitle: { fontSize: 24, letterSpacing: -0.5, lineHeight: 30 },
-  sectionHint: { fontSize: 15, lineHeight: 22, color: DESKTOP_COLORS.inkMuted },
   footnote: {
     fontSize: 13.5,
     color: DESKTOP_COLORS.inkFaint,
@@ -1385,12 +1359,6 @@ const styles = StyleSheet.create({
 
   panelRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 16 },
   panelStack: { gap: 20 },
-  panel: {
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderRadius: 18,
-    overflow: 'hidden',
-    ...webOnly({ boxShadow: PANEL_SHADOW }),
-  },
   panelHalf: { flexGrow: 1, flexBasis: 300, minWidth: 0 },
   slotPanel: { padding: 20 },
   panelHead: {
@@ -1404,25 +1372,7 @@ const styles = StyleSheet.create({
     borderBottomColor: DESKTOP_COLORS.borderSoft,
   },
   panelTitle: { fontSize: 16.5 },
-  rows: { marginTop: -1 },
-  cell: {
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    columnGap: 24,
-    rowGap: 8,
-    minHeight: 76,
-    marginRight: 20,
-    paddingLeft: 20,
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: DESKTOP_COLORS.borderSoft,
-  },
-  cellLabel: { flexBasis: 170, flexShrink: 0, fontSize: 16, lineHeight: 22, color: DESKTOP_COLORS.ink },
   cellControl: { flexGrow: 1, flexBasis: 280, minWidth: 0, maxWidth: 520, gap: 6 },
-  required: { color: DESKTOP_COLORS.danger, fontSize: 16 },
-  cellError: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  cellErrorText: { fontSize: 14, color: DESKTOP_TONES.bad.fg },
 
   toggleRow: {
     flexDirection: 'row-reverse',
@@ -1440,11 +1390,6 @@ const styles = StyleSheet.create({
       transition: 'opacity 150ms ease-out',
     }),
   },
-  toggleRowHover: { opacity: 0.85 },
-  toggleText: { flex: 1, gap: 2 },
-  toggleTitle: { fontSize: 16 },
-  toggleCaption: { fontSize: 14.5, color: DESKTOP_COLORS.inkMuted },
-  toggleCaptionOn: { color: DESKTOP_TONES.ok.fg },
   switchTrack: {
     width: SWITCH_W,
     height: SWITCH_H,

@@ -25,7 +25,7 @@ import {
 
 type FormVehicleType = VehicleType | '';
 
-interface FormState {
+export interface FormState {
   plate_number: string;
   vehicle_type: FormVehicleType;
   manufacturer: string;

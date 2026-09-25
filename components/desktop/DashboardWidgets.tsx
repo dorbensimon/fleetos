@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { showAlert } from '../../lib/platformAlert';
+import { departmentDeleteMessage } from '../../lib/driverFields';
 import { useCompany } from '../../lib/CompanyContext';
 import {
   listDrivers,
@@ -90,14 +91,7 @@ export function DepartmentsQuickAction() {
     if (!companyId) return;
     let usage = { vehicles: 0, drivers: 0 };
     try { usage = await countDepartmentUsage(dept.id); } catch { /* keep the warning generic */ }
-    const parts = [
-      usage.vehicles === 1 ? 'רכב אחד' : usage.vehicles > 0 ? `${usage.vehicles} רכבים` : '',
-      usage.drivers === 1 ? 'נהג אחד' : usage.drivers > 0 ? `${usage.drivers} נהגים` : '',
-    ].filter(Boolean);
-    const isSingular = usage.vehicles + usage.drivers === 1;
-    const message = parts.length
-      ? `למחוק את "${dept.name}"? ${parts.join(' ו')} ${isSingular ? 'משויך' : 'משויכים'} אליה כרגע, ו${isSingular ? 'יישאר' : 'יישארו'} ללא מחלקה.`
-      : `למחוק את "${dept.name}"?`;
+    const message = departmentDeleteMessage(dept.name, usage);
     showAlert('מחיקת מחלקה', message, [
       { text: 'ביטול', style: 'cancel' },
       {

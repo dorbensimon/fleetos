@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './Text';
 import { COLORS, RADIUS, formatDate, parseDateValue } from '../../lib/theme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { PICKER_FIELD_STYLES } from './pickerFieldStyles';
 import { DK, DK_FONT } from '../driverKit/theme';
 
 /**
@@ -225,34 +226,7 @@ export function DateField({
 }
 
 const styles = StyleSheet.create({
-  box: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 8,
-    height: 48,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.field,
-    borderWidth: 1.5,
-    borderColor: COLORS.fieldBorder,
-    paddingHorizontal: 14,
-  },
-  boxError: { borderColor: COLORS.dangerText },
-  boxDisabled: { opacity: 0.55 },
-  value: { flex: 1, fontSize: 15, textAlign: 'left' },
-  placeholder: { color: COLORS.textFaint },
-  iosDone: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 24 },
-  iosDoneText: { color: COLORS.accent, fontSize: 15 },
-  modalBackdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  modalSheet: {
-    backgroundColor: COLORS.card,
-    borderTopLeftRadius: RADIUS.lg,
-    borderTopRightRadius: RADIUS.lg,
-    paddingBottom: 8,
-  },
+  ...PICKER_FIELD_STYLES,
   webSheet: {
     width: '100%',
     backgroundColor: COLORS.card,

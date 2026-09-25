@@ -17,7 +17,7 @@ import { departmentOptions, driverEditableFieldsFromRow, isStaleDepartmentError,
 import { countFilledRequiredDriverFields, getRequiredDriverFields, validateDriverForm } from '../../lib/driverFormValidation';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
-import { DriverFormDesktopView } from '../../components/desktop/DriverFormDesktopView';
+import { DriverFormDesktopView, type FormState } from '../../components/desktop/DriverFormDesktopView';
 import { ConsentCheck } from '../../components/legal/ConsentCheck';
 import { DRIVER_DATA_NOTICE } from '../../lib/legal/documents';
 
@@ -32,22 +32,6 @@ const NEW_DRIVER_LICENSE_OPTIONS = [
   { value: 'A', label: 'A', description: 'דו-גלגלי' },
   { value: '1', label: '1', description: 'טרקטור' },
 ] as const;
-
-interface FormState {
-  full_name: string;
-  phone: string;
-  email: string;
-  password: string;
-  national_id: string;
-  employee_number: string;
-  license_classes: string;
-  license_classes_2: string;
-  license_expiry: string;
-  department_id: string | null;
-  /** New driver only: the manager confirms the driver knows their details are kept in icar. */
-  dataNotice: boolean;
-  showPassword: boolean;
-}
 
 const EMPTY: FormState = {
   full_name: '',

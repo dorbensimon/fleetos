@@ -4,6 +4,7 @@ import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheet, styles as sheetStyles } from './OwnerModals';
 import { COLORS } from './ownerTheme';
+import { sharedStyles } from '../companyDetail/sharedStyles';
 import { formatPhone } from '../../lib/phone';
 
 export type OwnerCompanyForm = {
@@ -71,67 +72,67 @@ export function AddCompanySheet({
         </TouchableOpacity>
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>שם החברה</Text>
+      <View style={sharedStyles.fieldGroup}>
+        <Text style={sharedStyles.fieldLabel}>שם החברה</Text>
         <TextInput
-          style={[styles.fieldInput, !!fieldErrors.name && styles.fieldInputError]}
+          style={[styles.fieldInput, !!fieldErrors.name && sharedStyles.fieldInputError]}
           placeholder="לדוגמה: אלמוג הובלות"
           placeholderTextColor={COLORS.grayLight}
           value={form.name}
           onChangeText={(v) => onChangeForm((f) => ({ ...f, name: v }))}
           textAlign="right"
         />
-        {!!fieldErrors.name && <Text style={styles.fieldErrorText}>{fieldErrors.name}</Text>}
+        {!!fieldErrors.name && <Text style={sharedStyles.fieldErrorText}>{fieldErrors.name}</Text>}
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>לוגו החברה (אופציונלי)</Text>
+      <View style={sharedStyles.fieldGroup}>
+        <Text style={sharedStyles.fieldLabel}>לוגו החברה (אופציונלי)</Text>
         <TouchableOpacity style={styles.logoPicker} onPress={onPickLogo} disabled={uploadingLogo}>
           {uploadingLogo ? (
             <BrandLoader color={COLORS.blue} />
           ) : form.logoUrl ? (
             <>
-              <View style={styles.logoPreviewWrap}>
-                <Image source={{ uri: form.logoUrl }} accessibilityLabel="לוגו החברה" style={styles.logoPreview} resizeMode="cover" />
-                <View style={styles.logoUploadedBadge}>
+              <View style={sharedStyles.logoPreviewWrap}>
+                <Image source={{ uri: form.logoUrl }} accessibilityLabel="לוגו החברה" style={sharedStyles.logoPreview} resizeMode="cover" />
+                <View style={sharedStyles.logoUploadedBadge}>
                   <Ionicons name="checkmark" size={11} color={COLORS.white} />
                 </View>
               </View>
-              <Text style={styles.logoPickerChangeText}>שנה תמונה</Text>
+              <Text style={sharedStyles.logoPickerChangeText}>שנה תמונה</Text>
             </>
           ) : (
             <>
               <Ionicons name="cloud-upload-outline" size={22} color={COLORS.grayLight} />
-              <Text style={styles.logoPickerText}>העלאת לוגו</Text>
+              <Text style={sharedStyles.logoPickerText}>העלאת לוגו</Text>
               <Text style={styles.logoPickerHint}>PNG או JPG</Text>
             </>
           )}
         </TouchableOpacity>
-        {!!logoError && <Text style={styles.errorText}>{logoError}</Text>}
+        {!!logoError && <Text style={sharedStyles.errorText}>{logoError}</Text>}
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>סוג חברה (אופציונלי)</Text>
-        <View style={styles.companyTypeRow}>
+      <View style={sharedStyles.fieldGroup}>
+        <Text style={sharedStyles.fieldLabel}>סוג חברה (אופציונלי)</Text>
+        <View style={sharedStyles.companyTypeRow}>
           {(['בע״מ', 'עוסק מורשה'] as const).map((type) => {
             const active = form.companyType === type;
             return (
               <TouchableOpacity
                 key={type}
-                style={[styles.companyTypeChip, active && styles.companyTypeChipActive]}
+                style={[sharedStyles.companyTypeChip, active && sharedStyles.companyTypeChipActive]}
                 onPress={() => onChangeForm((f) => ({ ...f, companyType: active ? '' : type }))}
               >
-                <Text style={[styles.companyTypeChipText, active && styles.companyTypeChipTextActive]}>{type}</Text>
+                <Text style={[sharedStyles.companyTypeChipText, active && sharedStyles.companyTypeChipTextActive]}>{type}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>ח.פ / ע.מ (אופציונלי)</Text>
+      <View style={sharedStyles.fieldGroup}>
+        <Text style={sharedStyles.fieldLabel}>ח.פ / ע.מ (אופציונלי)</Text>
         <TextInput
-          style={[styles.fieldInput, styles.fieldInputLtr]}
+          style={[styles.fieldInput, sharedStyles.fieldInputLtr]}
           placeholder="512345678"
           placeholderTextColor={COLORS.grayLight}
           value={form.businessId}
@@ -141,36 +142,36 @@ export function AddCompanySheet({
         />
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>שם פרטי של האדמין</Text>
+      <View style={sharedStyles.fieldGroup}>
+        <Text style={sharedStyles.fieldLabel}>שם פרטי של האדמין</Text>
         <TextInput
-          style={[styles.fieldInput, !!fieldErrors.adminFirstName && styles.fieldInputError]}
+          style={[styles.fieldInput, !!fieldErrors.adminFirstName && sharedStyles.fieldInputError]}
           placeholder="לדוגמה: דוד"
           placeholderTextColor={COLORS.grayLight}
           value={form.adminFirstName}
           onChangeText={(v) => onChangeForm((f) => ({ ...f, adminFirstName: v }))}
           textAlign="right"
         />
-        {!!fieldErrors.adminFirstName && <Text style={styles.fieldErrorText}>{fieldErrors.adminFirstName}</Text>}
+        {!!fieldErrors.adminFirstName && <Text style={sharedStyles.fieldErrorText}>{fieldErrors.adminFirstName}</Text>}
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>שם משפחה של האדמין</Text>
+      <View style={sharedStyles.fieldGroup}>
+        <Text style={sharedStyles.fieldLabel}>שם משפחה של האדמין</Text>
         <TextInput
-          style={[styles.fieldInput, !!fieldErrors.adminLastName && styles.fieldInputError]}
+          style={[styles.fieldInput, !!fieldErrors.adminLastName && sharedStyles.fieldInputError]}
           placeholder="לדוגמה: כהן"
           placeholderTextColor={COLORS.grayLight}
           value={form.adminLastName}
           onChangeText={(v) => onChangeForm((f) => ({ ...f, adminLastName: v }))}
           textAlign="right"
         />
-        {!!fieldErrors.adminLastName && <Text style={styles.fieldErrorText}>{fieldErrors.adminLastName}</Text>}
+        {!!fieldErrors.adminLastName && <Text style={sharedStyles.fieldErrorText}>{fieldErrors.adminLastName}</Text>}
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>מייל אדמין</Text>
+      <View style={sharedStyles.fieldGroup}>
+        <Text style={sharedStyles.fieldLabel}>מייל אדמין</Text>
         <TextInput
-          style={[styles.fieldInput, styles.fieldInputLtr, !!fieldErrors.email && styles.fieldInputError]}
+          style={[styles.fieldInput, sharedStyles.fieldInputLtr, !!fieldErrors.email && sharedStyles.fieldInputError]}
           placeholder="admin@company.co.il"
           placeholderTextColor={COLORS.grayLight}
           value={form.email}
@@ -179,13 +180,13 @@ export function AddCompanySheet({
           keyboardType="email-address"
           textAlign="left"
         />
-        {!!fieldErrors.email && <Text style={styles.fieldErrorText}>{fieldErrors.email}</Text>}
+        {!!fieldErrors.email && <Text style={sharedStyles.fieldErrorText}>{fieldErrors.email}</Text>}
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>טלפון</Text>
+      <View style={sharedStyles.fieldGroup}>
+        <Text style={sharedStyles.fieldLabel}>טלפון</Text>
         <TextInput
-          style={[styles.fieldInput, styles.fieldInputLtr, !!fieldErrors.phone && styles.fieldInputError]}
+          style={[styles.fieldInput, sharedStyles.fieldInputLtr, !!fieldErrors.phone && sharedStyles.fieldInputError]}
           placeholder="050-0000000"
           placeholderTextColor={COLORS.grayLight}
           value={formatPhone(form.phone)}
@@ -193,14 +194,14 @@ export function AddCompanySheet({
           keyboardType="phone-pad"
           textAlign="left"
         />
-        {!!fieldErrors.phone && <Text style={styles.fieldErrorText}>{fieldErrors.phone}</Text>}
+        {!!fieldErrors.phone && <Text style={sharedStyles.fieldErrorText}>{fieldErrors.phone}</Text>}
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>סיסמה לאדמין</Text>
-        <View style={[styles.fieldInputWithIcon, !!fieldErrors.password && styles.fieldInputError]}>
+      <View style={sharedStyles.fieldGroup}>
+        <Text style={sharedStyles.fieldLabel}>סיסמה לאדמין</Text>
+        <View style={[styles.fieldInputWithIcon, !!fieldErrors.password && sharedStyles.fieldInputError]}>
           <TextInput
-            style={[styles.fieldInputInner, styles.fieldInputLtr]}
+            style={[sharedStyles.fieldInputInner, sharedStyles.fieldInputLtr]}
             placeholder="לפחות 4 ספרות"
             keyboardType="number-pad"
             placeholderTextColor={COLORS.grayLight}
@@ -214,13 +215,13 @@ export function AddCompanySheet({
             <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={18} color={COLORS.grayLight} />
           </TouchableOpacity>
         </View>
-        {!!fieldErrors.password && <Text style={styles.fieldErrorText}>{fieldErrors.password}</Text>}
+        {!!fieldErrors.password && <Text style={sharedStyles.fieldErrorText}>{fieldErrors.password}</Text>}
       </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>אימות סיסמה</Text>
+      <View style={sharedStyles.fieldGroup}>
+        <Text style={sharedStyles.fieldLabel}>אימות סיסמה</Text>
         <TextInput
-          style={[styles.fieldInput, styles.fieldInputLtr, !!fieldErrors.confirmPassword && styles.fieldInputError]}
+          style={[styles.fieldInput, sharedStyles.fieldInputLtr, !!fieldErrors.confirmPassword && sharedStyles.fieldInputError]}
           placeholder="הזן שוב את הסיסמה"
           keyboardType="number-pad"
           placeholderTextColor={COLORS.grayLight}
@@ -230,10 +231,10 @@ export function AddCompanySheet({
           autoCapitalize="none"
           textAlign="left"
         />
-        {!!fieldErrors.confirmPassword && <Text style={styles.fieldErrorText}>{fieldErrors.confirmPassword}</Text>}
+        {!!fieldErrors.confirmPassword && <Text style={sharedStyles.fieldErrorText}>{fieldErrors.confirmPassword}</Text>}
       </View>
 
-      {!!createError && <Text style={styles.errorText}>{createError}</Text>}
+      {!!createError && <Text style={sharedStyles.errorText}>{createError}</Text>}
 
       <TouchableOpacity
         style={[styles.createButton, creating && styles.createButtonDisabled]}
@@ -251,8 +252,6 @@ export function AddCompanySheet({
 }
 
 const styles = StyleSheet.create({
-  fieldGroup: { gap: 7 },
-  fieldLabel: { fontSize: 12.5, fontWeight: '600', color: COLORS.gray, textAlign: 'right' },
   fieldInput: {
     height: 48,
     borderRadius: 11,
@@ -263,23 +262,6 @@ const styles = StyleSheet.create({
     color: COLORS.black,
     paddingHorizontal: 14,
   },
-  fieldInputLtr: { textAlign: 'left' },
-  fieldInputError: { borderColor: COLORS.red },
-  fieldErrorText: { fontSize: 11.5, color: COLORS.red, textAlign: 'right' },
-  companyTypeRow: { flexDirection: 'row-reverse', gap: 9 },
-  companyTypeChip: {
-    flex: 1,
-    height: 44,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.fieldBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  companyTypeChipActive: { borderColor: COLORS.blue, backgroundColor: COLORS.blue },
-  companyTypeChipText: { fontSize: 13.5, fontWeight: '600', color: COLORS.gray },
-  companyTypeChipTextActive: { color: COLORS.white },
   fieldInputWithIcon: {
     height: 48,
     borderRadius: 11,
@@ -290,11 +272,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  fieldInputInner: {
-    flex: 1,
-    fontSize: 15,
-    color: COLORS.black,
   },
   logoPicker: {
     height: 100,
@@ -307,31 +284,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
   },
-  logoPickerText: { fontSize: 13, color: COLORS.gray },
   logoPickerHint: { fontSize: 11.5, color: COLORS.grayLight },
-  logoPreviewWrap: { width: 52, height: 52 },
-  logoPreview: {
-    width: 52,
-    height: 52,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  logoUploadedBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: COLORS.activeText,
-    borderWidth: 2,
-    borderColor: COLORS.fieldBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoPickerChangeText: { fontSize: 12, color: COLORS.blue, fontWeight: '600', marginTop: 6 },
-  errorText: { color: COLORS.red, fontSize: 13, textAlign: 'center' },
   createButton: {
     height: 50,
     borderRadius: 12,

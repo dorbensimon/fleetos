@@ -11,7 +11,7 @@ import { listDocuments } from '../../lib/documents';
 import { listSignatureRequests } from '../../lib/docuseal';
 import { exportDriverSnapshotReport } from '../../lib/driverSnapshotReport';
 import { RootStackParamList } from '../../navigation/types';
-import { DriverCardRow } from '../../components/driverCard/driverCardSections';
+import { DOCUMENT_CATEGORY_BY_ROW, DriverCardRow } from '../../components/driverCard/driverCardSections';
 import { DriverDetailMobile } from './mobile/DriverDetailMobile';
 import { dialPhone } from '../../lib/phone';
 import { ResetDriverPasswordModal } from '../../components/driverCard/ResetDriverPasswordModal';
@@ -40,19 +40,6 @@ const APP_STARTED_AT_MS = Date.now();
  * Every visible row is backed by live profile, vehicle, document or signing data.
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverDetail'>;
-
-const DOCUMENT_CATEGORY_BY_ROW: Partial<Record<DriverCardRow['key'], string>> = {
-  'general-documents': 'general',
-  'traffic-info-documents': 'transport_info',
-  'driver-file': 'driver_file',
-  'notes-comments': 'notes_feedback',
-  'traffic-reports': 'traffic_reports',
-  'companion-drivers': 'accompanying_drivers',
-  'procedure-6': 'procedure_6',
-  certifications: 'certifications',
-  hazmat: 'hazmat',
-  training: 'trainings',
-};
 
 export default function DriverDetailScreen({ route, navigation }: Props) {
   const { driverId } = route.params;

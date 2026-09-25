@@ -122,3 +122,17 @@ export const DRIVER_CARD_GROUPS: DriverCardGroup[] = [
     ],
   },
 ];
+
+/** The document folder each driver-card row opens — the same for the manager and the driver. */
+export const DOCUMENT_CATEGORY_BY_ROW: Partial<Record<DriverCardRow['key'], string>> = {
+  'general-documents': 'general',
+  'traffic-info-documents': 'transport_info',
+  'driver-file': 'driver_file',
+  'notes-comments': 'notes_feedback',
+  'traffic-reports': 'traffic_reports',
+  'companion-drivers': 'accompanying_drivers',
+  'procedure-6': 'procedure_6',
+  certifications: 'certifications',
+  hazmat: 'hazmat',
+  training: 'trainings',
+};

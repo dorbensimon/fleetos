@@ -7,7 +7,9 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TextStyle,
   View,
+  ViewStyle,
 } from 'react-native';
 import { BrandLoader } from '../../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
@@ -163,7 +165,8 @@ export function RecordHero<K extends string>({
   );
 }
 
-function heroEnter() {
+/** The hero rises in on first paint; reduced motion only fades it in. */
+export function heroEnter() {
   const reduce = prefersReducedMotion();
   return webOnly({
     animationKeyframes: reduce
@@ -560,10 +563,49 @@ export function CreateDock({
   );
 }
 
+/** Sections, grouped panels, rows and toggle rows — shared with the company settings page. */
+export const FORM_PAGE_STYLES = {
+  scroll: { flex: 1 },
+  section: { marginBottom: 48 },
+  sectionHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, marginBottom: 16, paddingHorizontal: 4 },
+  sectionHeadText: { flex: 1, minWidth: 0, gap: 3 },
+  sectionTitle: { fontSize: 24, letterSpacing: -0.5, lineHeight: 30 },
+  sectionHint: { fontSize: 15, lineHeight: 22, color: DESKTOP_COLORS.inkMuted },
+  panel: {
+    backgroundColor: DESKTOP_COLORS.surface,
+    borderRadius: 18,
+    overflow: 'hidden',
+    ...webOnly({ boxShadow: PANEL_SHADOW }),
+  },
+  rows: { marginTop: -1 },
+  cell: {
+    flexDirection: 'row-reverse',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 24,
+    rowGap: 8,
+    minHeight: 76,
+    marginRight: 20,
+    paddingLeft: 20,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: DESKTOP_COLORS.borderSoft,
+  },
+  cellLabel: { flexBasis: 170, flexShrink: 0, fontSize: 16, lineHeight: 22, color: DESKTOP_COLORS.ink },
+  required: { color: DESKTOP_COLORS.danger, fontSize: 16 },
+  cellError: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  cellErrorText: { fontSize: 14, color: DESKTOP_TONES.bad.fg },
+  toggleRowHover: { opacity: 0.85 },
+  toggleText: { flex: 1, gap: 2 },
+  toggleTitle: { fontSize: 16 },
+  toggleCaption: { fontSize: 14.5, color: DESKTOP_COLORS.inkMuted },
+  toggleCaptionOn: { color: DESKTOP_TONES.ok.fg },
+} satisfies Record<string, ViewStyle | TextStyle>;
+
 const styles = StyleSheet.create({
+  ...FORM_PAGE_STYLES,
   tabular: webOnly({ fontVariantNumeric: 'tabular-nums' }),
   root: { flex: 1, backgroundColor: DESKTOP_COLORS.canvas },
-  scroll: { flex: 1 },
   page: {
     paddingTop: 32,
     paddingHorizontal: 28,
@@ -694,8 +736,6 @@ const styles = StyleSheet.create({
   ghostBarDark: { backgroundColor: 'rgba(22,34,46,0.16)' },
 
   // Sections
-  section: { marginBottom: 48 },
-  sectionHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, marginBottom: 16, paddingHorizontal: 4 },
   sectionGlyph: {
     width: 46,
     height: 46,
@@ -713,35 +753,8 @@ const styles = StyleSheet.create({
     ...webOnly({ boxShadow: '0 1px 2px rgba(52,199,89,0.25), 0 4px 12px rgba(52,199,89,0.25)' }),
   },
   sectionNum: { fontSize: 21, color: '#FFFFFF' },
-  sectionHeadText: { flex: 1, minWidth: 0, gap: 3 },
-  sectionTitle: { fontSize: 24, letterSpacing: -0.5, lineHeight: 30 },
-  sectionHint: { fontSize: 15, lineHeight: 22, color: DESKTOP_COLORS.inkMuted },
 
-  panel: {
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderRadius: 18,
-    overflow: 'hidden',
-    ...webOnly({ boxShadow: PANEL_SHADOW }),
-  },
-  rows: { marginTop: -1 },
-  cell: {
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    columnGap: 24,
-    rowGap: 8,
-    minHeight: 76,
-    marginRight: 20,
-    paddingLeft: 20,
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: DESKTOP_COLORS.borderSoft,
-  },
-  cellLabel: { flexBasis: 170, flexShrink: 0, fontSize: 16, lineHeight: 22, color: DESKTOP_COLORS.ink },
   cellControl: { flexGrow: 1, flexBasis: 280, minWidth: 0, maxWidth: 560, gap: 6 },
-  required: { color: DESKTOP_COLORS.danger, fontSize: 16 },
-  cellError: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  cellErrorText: { fontSize: 14, color: DESKTOP_TONES.bad.fg },
   cellHint: { fontSize: 14, lineHeight: 20, color: DESKTOP_COLORS.inkFaint },
 
   // Choice tiles
@@ -806,11 +819,6 @@ const styles = StyleSheet.create({
     borderTopColor: DESKTOP_COLORS.borderSoft,
     ...webOnly({ cursor: 'pointer', userSelect: 'none', transition: 'opacity 150ms ease-out' }),
   },
-  toggleRowHover: { opacity: 0.85 },
-  toggleText: { flex: 1, gap: 2 },
-  toggleTitle: { fontSize: 16 },
-  toggleCaption: { fontSize: 14.5, color: DESKTOP_COLORS.inkMuted },
-  toggleCaptionOn: { color: DESKTOP_TONES.ok.fg },
   switchTrack: { width: SWITCH_W, height: SWITCH_H, borderRadius: SWITCH_H / 2 },
   switchKnob: {
     position: 'absolute',

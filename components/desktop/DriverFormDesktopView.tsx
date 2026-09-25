@@ -10,7 +10,7 @@ import { ChoiceTiles, CreateDock, FormCell, FormPanel, FormSection, GhostBar, Li
 import { ConsentCheck } from '../legal/ConsentCheck';
 import { DRIVER_DATA_NOTICE } from '../../lib/legal/documents';
 
-interface FormState {
+export interface FormState {
   full_name: string;
   phone: string;
   email: string;
@@ -21,6 +21,7 @@ interface FormState {
   license_classes_2: string;
   license_expiry: string;
   department_id: string | null;
+  /** New driver only: the manager confirms the driver knows their details are kept in icar. */
   dataNotice: boolean;
   showPassword: boolean;
 }

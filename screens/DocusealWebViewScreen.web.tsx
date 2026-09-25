@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppText, PrimaryButton, Screen, ScreenHeader } from '../components/ui';
 import { useCompany } from '../lib/CompanyContext';
 import { downloadSignedRequest, finalizeSigningTemplate, syncSigningRequest } from '../lib/docuseal';
+import { attr, docusealEmbedHtml } from '../lib/docusealEmbed';
 import { COLORS, SPACING } from '../lib/theme';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import { DocumentViewer } from '../components/desktop/signing/DocumentViewer.web';
@@ -16,13 +17,7 @@ import { DK, NightBar, HeroButton } from '../components/driverKit';
 type Props = NativeStackScreenProps<RootStackParamList, 'DocusealWebView'>;
 type IframeMessage = { type?: 'completed' | 'declined' | 'saved' | 'error' };
 
-function attr(value: string) {
-  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-}
-
 function buildHtml(params: RootStackParamList['DocusealWebView']) {
-  const host = params.host || 'cdn.docuseal.com';
-  const hostAttribute = host.includes('.eu') ? ` data-host="${host}"` : '';
   const bridge = `<script>
     const send = (type, detail) => window.parent.postMessage({ source: 'fleetos-docuseal', type, detail }, window.location.origin);
     window.addEventListener('error', (event) => send('error', event.message));
@@ -66,27 +61,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
     return `${base}<style>body{display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}</style></head><body><img src="${attr(params.src || '')}" alt="${attr(params.title)}" /></body></html>`;
   }
 
-  if (params.mode === 'builder') {
-    return `${base}<script src="https://${host}/js/builder.js"></script>${bridge}</head><body>
-      <docuseal-builder id="builder" data-token="${attr(params.token || '')}"${hostAttribute} data-language="he"
-        data-roles="Driver" data-field-types="signature,stamp" data-draw-field-type="signature"
-        data-with-send-button="false" data-with-upload-button="false" data-with-sign-yourself-button="false"
-        data-with-title="false" data-with-documents-list="false"></docuseal-builder>
-      <script>document.getElementById('builder').addEventListener('save', (e) => send('saved', e.detail));</script>
-    </body></html>`;
-  }
-
-  const source = params.token
-    ? `data-token="${attr(params.token)}" data-preview="true"`
-    : `data-src="${attr(params.src || '')}"`;
-  return `${base}<script src="https://${host}/js/form.js"></script>${bridge}</head><body>
-    <docuseal-form id="form" ${source}${hostAttribute} data-language="he" data-send-copy-email="false"
-      data-with-send-copy-button="false" data-allow-to-resubmit="false"></docuseal-form>
-    <script>
-      document.getElementById('form').addEventListener('completed', (e) => send('completed', e.detail));
-      document.getElementById('form').addEventListener('declined', (e) => send('declined', e.detail));
-    </script>
-  </body></html>`;
+  return docusealEmbedHtml(params, base, bridge);
 }
 
 export default function DocusealWebViewScreen({ navigation, route }: Props) {

@@ -9,7 +9,7 @@ import { ListGroup } from '../../components/driverCard/ListGroup';
 import { SigningFolders } from '../../components/driverCard/SigningFolders';
 import { buildDriverDetailGroups } from '../../components/driverCard/buildDriverDetailGroups';
 import { DC_COLORS } from '../../components/driverCard/driverCardTheme';
-import type { DriverCardRow } from '../../components/driverCard/driverCardSections';
+import { DOCUMENT_CATEGORY_BY_ROW, type DriverCardRow } from '../../components/driverCard/driverCardSections';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, updateDriver, type DriverRow } from '../../lib/adminApi';
 import { listDocuments } from '../../lib/documents';
@@ -27,19 +27,6 @@ import { dateOnlyIsoFromLocalDate } from '../../lib/driverFormValidation';
  * screens, while manager-only actions are omitted rather than merely hidden.
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverDocuments'>;
-
-const DOCUMENT_CATEGORY_BY_ROW: Partial<Record<DriverCardRow['key'], string>> = {
-  'general-documents': 'general',
-  'traffic-info-documents': 'transport_info',
-  'driver-file': 'driver_file',
-  'notes-comments': 'notes_feedback',
-  'traffic-reports': 'traffic_reports',
-  'companion-drivers': 'accompanying_drivers',
-  'procedure-6': 'procedure_6',
-  certifications: 'certifications',
-  hazmat: 'hazmat',
-  training: 'trainings',
-};
 
 function hasBothLicenseSides(docs: { title: string | null }[]): boolean {
   return docs.some((doc) => doc.title === LICENSE_SIDE_TITLE.front) && docs.some((doc) => doc.title === LICENSE_SIDE_TITLE.back);

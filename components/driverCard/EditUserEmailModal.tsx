@@ -1,7 +1,8 @@
-import { Modal, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, Pressable, TextInput, TouchableOpacity, View } from 'react-native';
 import { AppText, PrimaryButton } from '../ui';
-import { COLORS, RADIUS, SPACING } from '../../lib/theme';
+import { COLORS } from '../../lib/theme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { modalKit as kit, modalStyles as styles } from './driverModalStyles';
 import { EditField, KitSheet, PrimaryAction, SheetActions } from '../driverKit';
 
 export function EditUserEmailModal({
@@ -84,52 +85,3 @@ export function EditUserEmailModal({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: SPACING.xl,
-  },
-  modal: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    gap: SPACING.sm,
-  },
-  title: { fontSize: 16.5, color: COLORS.text, textAlign: 'right' },
-  subtitle: { fontSize: 12.5, color: COLORS.textMuted, textAlign: 'right', lineHeight: 18 },
-  input: {
-    height: 48,
-    borderRadius: RADIUS.md,
-    borderWidth: 1.5,
-    borderColor: COLORS.fieldBorder,
-    backgroundColor: COLORS.field,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: COLORS.text,
-  },
-  error: { fontSize: 12.5, color: COLORS.dangerText, textAlign: 'center' },
-  actions: { flexDirection: 'row-reverse', gap: SPACING.sm, marginTop: SPACING.xs },
-  cancel: {
-    flex: 1,
-    height: 48,
-    borderRadius: RADIUS.md,
-    borderWidth: 1.5,
-    borderColor: COLORS.fieldBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelText: { fontSize: 14, color: COLORS.text },
-  confirmBtn: { flex: 1.4 },
-});
-
-const kit = StyleSheet.create({
-  fields: { marginHorizontal: -16 },
-  cancel: { flex: 1 },
-  confirm: { flex: 1.6 },
-});

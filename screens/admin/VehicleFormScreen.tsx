@@ -19,30 +19,9 @@ import { RootStackParamList } from '../../navigation/types';
 import { lookupVehicleRegistry, VehicleRegistryDetails } from '../../lib/vehicleRegistry';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
-import { VehicleFormDesktopView } from '../../components/desktop/VehicleFormDesktopView';
+import { VehicleFormDesktopView, type FormState } from '../../components/desktop/VehicleFormDesktopView';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleForm'>;
-type FormVehicleType = VehicleType | '';
-
-interface FormState {
-  plate_number: string;
-  vehicle_type: FormVehicleType;
-  manufacturer: string;
-  model: string;
-  color: string;
-  internal_code: string;
-  vin: string;
-  odometer: string;
-  production_year: string;
-  production_month: string;
-  road_registration_date: string;
-  vehicle_license_expiry: string;
-  acquisition_type: AcquisitionType | null;
-  usage_type: string;
-  status: VehicleStatus;
-  department_id: string | null;
-}
-
 const EMPTY: FormState = {
   plate_number: '',
   vehicle_type: '',

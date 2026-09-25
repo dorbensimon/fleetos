@@ -72,6 +72,18 @@ export function departmentOptions(departments: Department[]): { value: string; l
 }
 
 /** True when a save failed because the selected department was deleted (by someone else) while the form was open. */
+/** The delete warning, naming what is still tagged with the department: it stays without one. */
+export function departmentDeleteMessage(name: string, usage: { vehicles: number; drivers: number }): string {
+  const parts = [
+    usage.vehicles === 1 ? 'רכב אחד' : usage.vehicles > 0 ? `${usage.vehicles} רכבים` : '',
+    usage.drivers === 1 ? 'נהג אחד' : usage.drivers > 0 ? `${usage.drivers} נהגים` : '',
+  ].filter(Boolean);
+  const isSingular = usage.vehicles + usage.drivers === 1;
+  return parts.length
+    ? `למחוק את "${name}"? ${parts.join(' ו')} ${isSingular ? 'משויך' : 'משויכים'} אליה כרגע, ו${isSingular ? 'יישאר' : 'יישארו'} ללא מחלקה.`
+    : `למחוק את "${name}"?`;
+}
+
 export function isStaleDepartmentError(message: string | null | undefined): boolean {
   return !!message && message.includes('department_id_fkey');
 }

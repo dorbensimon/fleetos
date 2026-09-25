@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
+import { departmentDeleteMessage } from '../../lib/driverFields';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -105,14 +106,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
     } catch {
       // If the count fails, still allow deleting — the warning just won't have numbers.
     }
-    const parts = [
-      usage.vehicles === 1 ? 'רכב אחד' : usage.vehicles > 0 ? `${usage.vehicles} רכבים` : '',
-      usage.drivers === 1 ? 'נהג אחד' : usage.drivers > 0 ? `${usage.drivers} נהגים` : '',
-    ].filter(Boolean);
-    const isSingular = usage.vehicles + usage.drivers === 1;
-    const message = parts.length
-      ? `למחוק את "${dept.name}"? ${parts.join(' ו')} ${isSingular ? 'משויך' : 'משויכים'} אליה כרגע, ו${isSingular ? 'יישאר' : 'יישארו'} ללא מחלקה.`
-      : `למחוק את "${dept.name}"?`;
+    const message = departmentDeleteMessage(dept.name, usage);
 
     showAlert(
       'מחיקת מחלקה',

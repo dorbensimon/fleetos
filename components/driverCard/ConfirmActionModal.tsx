@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from 
 import { AppText, PrimaryButton } from '../ui';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { DRIVER_MODAL_BASE, modalKit } from './driverModalStyles';
 import { EditField, KitSheet, PrimaryAction, SheetActions } from '../driverKit';
 
 /**
@@ -59,20 +60,20 @@ export function ConfirmActionModal({
         tone={destructive ? 'danger' : 'accent'}
         footer={
           <SheetActions>
-            <PrimaryAction label="ביטול" tone="ghost" onPress={onClose} disabled={loading} style={styles.kitCancel} />
+            <PrimaryAction label="ביטול" tone="ghost" onPress={onClose} disabled={loading} style={modalKit.cancel} />
             <PrimaryAction
               label={confirmLabel}
               tone={destructive ? 'destructive' : 'accent'}
               onPress={onConfirm}
               loading={loading}
               disabled={!matches}
-              style={styles.kitConfirm}
+              style={modalKit.confirm}
             />
           </SheetActions>
         }
       >
         {!!expected && (
-          <View style={styles.kitTyped}>
+          <View style={modalKit.fields}>
             <EditField first label={typedTextHint ?? `לאישור, הקלד: ${expected}`} value={typed} onChangeText={setTyped} placeholder={expected} editable={!loading} />
           </View>
         )}
@@ -127,34 +128,7 @@ export function ConfirmActionModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: SPACING.xl,
-  },
-  modal: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    gap: SPACING.sm,
-  },
-  title: { fontSize: 16.5, color: COLORS.text, textAlign: 'right' },
-  subtitle: { fontSize: 12.5, color: COLORS.textMuted, textAlign: 'right', lineHeight: 18 },
-  actions: { flexDirection: 'row-reverse', gap: SPACING.sm, marginTop: SPACING.xs },
-  cancel: {
-    flex: 1,
-    height: 48,
-    borderRadius: RADIUS.md,
-    borderWidth: 1.5,
-    borderColor: COLORS.fieldBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelText: { fontSize: 14, color: COLORS.text },
+  ...DRIVER_MODAL_BASE,
   input: {
     height: 46,
     borderRadius: RADIUS.md,
@@ -164,9 +138,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: COLORS.text,
   },
-  confirmBtn: { flex: 1.4 },
   destructiveBtn: { backgroundColor: COLORS.dangerText },
-  kitCancel: { flex: 1 },
-  kitConfirm: { flex: 1.6 },
-  kitTyped: { marginHorizontal: -16 },
 });

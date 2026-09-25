@@ -7,6 +7,7 @@ import { VEHICLE_STATUS_LABELS } from '../../lib/compliance';
 import { SERVICE_WARN_KM } from '../../lib/fleetCardHelpers';
 import { formatPlate } from '../../lib/plate';
 import { nextServiceKmOf } from '../../lib/serviceSchedule';
+import { vehicleName } from '../../lib/vehicleAttention';
 import { daysUntilExpiry, formatDate } from '../../lib/theme';
 import { DLtrText, DText, HoverPressable, StatusPill } from './primitives';
 import { LoadingState } from '../ui';
@@ -120,10 +121,6 @@ function serviceInfo(vehicle: Vehicle): { tone: DesktopTone; label: string } {
   const km = nextServiceKm - vehicle.odometer;
   if (km <= 0) return { tone: 'bad', label: `באיחור ${Math.abs(km).toLocaleString()} ק״מ` };
   return { tone: km <= SERVICE_WARN_KM ? 'warn' : 'neutral', label: `בעוד ${km.toLocaleString()} ק״מ` };
-}
-
-function vehicleName(vehicle: Vehicle): string {
-  return [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || 'רכב ללא דגם';
 }
 
 function initialOf(name: string | null | undefined): string {
