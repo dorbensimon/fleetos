@@ -45,6 +45,13 @@
       frame-ancestors 'self'; \
       upgrade-insecure-requests"""
 
+# Netlify doesn't know .webmanifest and would send it as octet-stream; with
+# nosniff above, browsers should get the real type for the install manifest.
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+
 # File names under these folders change whenever their content changes,
 # so browsers can keep them for a year and never re-download them.
 [[headers]]
