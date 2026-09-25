@@ -227,7 +227,7 @@ export interface ReportDocumentOptions {
 
 export function buildReportDocument(opts: ReportDocumentOptions): string {
   const generatedAt = opts.generatedAt ?? todayHe();
-  const footerNote = opts.footerNote ?? 'מסמך זה הופק אוטומטית על ידי מערכת Tolvex לניהול צי רכב';
+  const footerNote = opts.footerNote ?? 'מסמך זה הופק אוטומטית על ידי מערכת icar לניהול צי רכב';
 
   const metaColumns = opts.metaColumns ?? [];
   const companyLine = opts.company
@@ -242,7 +242,7 @@ export function buildReportDocument(opts: ReportDocumentOptions): string {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Tolvex - ${esc(opts.title)}</title>
+<title>icar - ${esc(opts.title)}</title>
 <style>${REPORT_STYLES}</style>
 </head>
 <body>

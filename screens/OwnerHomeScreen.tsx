@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, RefreshControl, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
@@ -361,7 +361,12 @@ export default function OwnerHomeScreen({ navigation }: Props) {
      <View style={styles.centeredColumn}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View>
-          <Text style={styles.headerTitle}>Tolvex</Text>
+          <Image
+            source={require('../images/icar-logo-on-light.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+            accessibilityLabel="icar"
+          />
           <Text style={styles.headerSubtitle}>
             {activeCount} חברות פעילות מתוך {companies.length}
           </Text>
@@ -470,7 +475,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
-  headerTitle: { fontSize: 23, fontWeight: '700', color: COLORS.black, textAlign: 'right' },
+  // icar lockup artwork is 311.9 × 87.5 (see images/icar-logo-on-light.png).
+  headerLogo: { height: 28, aspectRatio: 311.9 / 87.5, alignSelf: 'flex-end' },
   headerSubtitle: { fontSize: 13, color: COLORS.gray, marginTop: 3, textAlign: 'right' },
   addButton: {
     height: 38,

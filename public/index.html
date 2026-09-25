@@ -13,17 +13,30 @@
       background can never reach past them from inside a tab. These tags
       only take effect once the user adds the page to the Home Screen (Share
       → "הוסף למסך הבית") and opens it from that icon: then iOS runs it
-      "standalone" with none of Safari's chrome, so the background truly
-      fills the whole screen edge-to-edge.
+      "standalone" with none of Safari's chrome.
+      Status bar "default": iOS paints the clock/battery strip with the
+      theme-color below and picks dark or light symbols to contrast with it.
+      lib/webThemeColor.ts keeps theme-color equal to the colour at the top
+      of the current screen, so the strip always matches the screen.
     -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="%WEB_TITLE%" />
-    <!-- The app is light-only (see app.json's userInterfaceStyle), so one
-         theme-color matching the screen background is enough — it's what
-         colours the browser's own address bar / status bar area so it
-         reads as part of the app instead of stock Safari chrome. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="icar" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- Starting value only: lib/webThemeColor.ts updates it after every
+         navigation to the colour painted at the top of the screen. -->
     <meta name="theme-color" content="#eef2f7" />
+    <meta name="application-name" content="icar" />
+    <!-- Browser tab icon: the SVG stays sharp at every size; the .ico is the
+         fallback for browsers without SVG favicon support (older Safari). -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <!-- iPhone "Add to Home Screen" icon: opaque full-bleed square, iOS
+         rounds the corners itself. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Android / Chrome install: name, icons (incl. maskable) and
+         standalone display so it opens like an app. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
     <title>%WEB_TITLE%</title>
     <link rel="preconnect" href="https://lnflftptzrfuzfecmhho.supabase.co" crossorigin />
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->

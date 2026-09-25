@@ -572,10 +572,10 @@ export default function LoginScreen({ navigation }: Props) {
   const display = (
     <Animated.View style={[styles.display, displayWidth ? { width: displayWidth } : null, { opacity: displayPower }]}>
       <Image
-        source={require('../images/TOLVEX-LOGO-ON-DARK.png')}
+        source={require('../images/icar-logo-on-dark.png')}
         style={[styles.logo, !wide && styles.logoCompact]}
         resizeMode="contain"
-        accessibilityLabel="TOLVEX"
+        accessibilityLabel="icar"
       />
       <Text style={styles.subtitle}>התחברו כדי להמשיך</Text>
 

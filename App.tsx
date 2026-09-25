@@ -22,6 +22,7 @@ import {
   Heebo_800ExtraBold,
 } from '@expo-google-fonts/heebo';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { syncWebThemeColor } from './lib/webThemeColor';
 import LoginScreen from './screens/LoginScreen';
 import SetPasswordScreen from './screens/SetPasswordScreen';
 import OwnerHomeScreen from './screens/OwnerHomeScreen';
@@ -220,8 +221,13 @@ export default function App() {
           <NavigationContainer
             ref={navigationRef}
             linking={linking}
+            // Route names are internal English ids ("Login", "AdminHome"), so
+            // the browser tab always shows the brand instead.
+            documentTitle={{ formatter: () => 'icar' }}
             initialState={initialRoute === 'Login' ? undefined : webInitialNavigationState}
+            onReady={syncWebThemeColor}
             onStateChange={(state) => {
+              syncWebThemeColor();
               if (typeof window === 'undefined') return;
               try {
                 window.sessionStorage.setItem(WEB_NAVIGATION_STATE_KEY, JSON.stringify(state));

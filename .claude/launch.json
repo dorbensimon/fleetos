@@ -4,14 +4,35 @@
     {
       "name": "fleetos",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["expo", "start", "--web", "-c"],
+      "runtimeArgs": [
+        "expo",
+        "start",
+        "--web",
+        "-c"
+      ],
       "port": 8081
     },
     {
       "name": "design-preview",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["tmp/static_server.js", "tmp/ios_design/design_handoff_documents_for_signing", "8933"],
+      "runtimeArgs": [
+        "tmp/static_server.js",
+        "tmp/ios_design/design_handoff_documents_for_signing",
+        "8933"
+      ],
       "port": 8933
+    },
+    {
+      "name": "dist-preview",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8944",
+        "--directory",
+        "dist"
+      ],
+      "port": 8944
     }
   ]
 }

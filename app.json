@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "fleetos",
+    "name": "icar",
     "slug": "fleetos",
     "version": "1.0.0",
     "scheme": "fleetos",
@@ -11,14 +11,14 @@
       "bundleIdentifier": "com.tolvex.fleetos",
       "supportsTablet": true,
       "infoPlist": {
-        "CFBundleDisplayName": "fleetos",
+        "CFBundleDisplayName": "icar",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0A1626"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.tolvex.fleetos",
@@ -27,6 +27,8 @@
       ]
     },
     "web": {
+      "name": "icar",
+      "shortName": "icar",
       "favicon": "./assets/favicon.png"
     },
     "plugins": [

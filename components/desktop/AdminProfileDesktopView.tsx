@@ -59,7 +59,7 @@ export function AdminProfileDesktopView({
         </View>
         <View style={styles.identityText}>
           <DText weight="bold" style={styles.name}>{fullName || '—'}</DText>
-          <DText style={styles.role}>{role} · {company?.name || 'Tolvex Fleet'}</DText>
+          <DText style={styles.role}>{role} · {company?.name || 'icar'}</DText>
         </View>
         <View style={styles.identityMeta}>
           <DText style={styles.identityMetaLabel}>חשבון פעיל</DText>

@@ -35,4 +35,4 @@ if (fs.existsSync(from)) {
 
 const indexFile = path.join(dist, 'index.html');
 const html = fs.readFileSync(indexFile, 'utf8');
-fs.writeFileSync(indexFile, html.replace('%WEB_TITLE%', 'FleetOS'));
+fs.writeFileSync(indexFile, html.split('%WEB_TITLE%').join('icar'));

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -235,10 +235,12 @@ export function DesktopShell({
     <View style={styles.root}>
       <View style={styles.sidebar}>
         <View style={styles.brandRow}>
-          <View style={styles.brandMark}>
-            <DText weight="extraBold" style={styles.brandMarkText}>T</DText>
-          </View>
-          <DText weight="bold" style={styles.brandName}>Tolvex Fleet</DText>
+          <Image
+            source={require('../../images/icar-logo-on-dark.png')}
+            style={styles.brandLogo}
+            resizeMode="contain"
+            accessibilityLabel="icar"
+          />
         </View>
         <View style={styles.companyBlock}>
           <DText weight="semiBold" style={styles.companyName} numberOfLines={1}>
@@ -421,16 +423,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: DESKTOP_COLORS.sidebarDivider,
   },
-  brandMark: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
-    backgroundColor: DESKTOP_COLORS.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandMarkText: { color: '#fff', fontSize: 13, textAlign: 'center' },
-  brandName: { color: DESKTOP_COLORS.sidebarTitle, fontSize: 14.5 },
+  // icar lockup artwork is 311.9 × 87.5 (see images/icar-logo-on-dark.png).
+  brandLogo: { height: 24, aspectRatio: 311.9 / 87.5 },
   companyBlock: {
     paddingHorizontal: 16,
     paddingVertical: 12,

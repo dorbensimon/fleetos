@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     for (const batch of chunks(registeredTokens, BATCH_SIZE)) {
       const payload = batch.map((token) => ({
         to: token.expo_push_token,
-        title: 'FleetOS',
+        title: 'icar',
         body: row.message,
         sound: 'default',
         data: { notificationId: row.id, notificationType: row.notification_type, vehicleId: row.vehicle_id, folderKey: row.folder_key },
