@@ -299,21 +299,21 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
           visible={cancelOpen}
           onClose={() => setCancelOpen(false)}
           dismissable={!cancelling}
-          icon={cancelMeetingTarget?.status === 'draft' ? 'trash' : 'close-circle'}
+          icon={cancelMeetingTarget ? 'trash' : 'close-circle'}
           tone="danger"
-          title={cancelMeetingTarget ? (cancelMeetingTarget.status === 'draft' ? 'למחוק את הטיוטה?' : 'לבטל את המפגש?') : 'לבטל את הבקשה?'}
+          title={cancelMeetingTarget ? (cancelMeetingTarget.status === 'draft' ? 'למחוק את הטיוטה?' : 'למחוק את המפגש?') : 'לבטל את הבקשה?'}
           subtitle={
             cancelMeetingTarget
               ? cancelMeetingTarget.status === 'draft'
                 ? 'מה שסומן בטיוטה יימחק. אפשר להתחיל מפגש חדש בכל רגע.'
-                : 'המסמך יסומן ״בוטל״ ויישאר ברשומות, והנהג לא יחתום עליו. אפשר לקיים מפגש חדש בכל רגע.'
+                : 'המפגש והמסמך שלו יימחקו לגמרי, גם אצל הנהג. אי אפשר לשחזר אותם.'
               : `${driver?.full_name || 'הנהג'} לא יוכל לחתום על ${cancelTarget?.template_title || folder?.title || 'המסמך'}. אפשר לשלוח אותו שוב בכל רגע.`
           }
           footer={
             <SheetActions>
               <PrimaryAction label="השארה" tone="ghost" onPress={() => setCancelOpen(false)} disabled={cancelling} style={styles.grow} />
               <PrimaryAction
-                label={cancelMeetingTarget ? (cancelMeetingTarget.status === 'draft' ? 'מחיקת הטיוטה' : 'ביטול המפגש') : 'ביטול הבקשה'}
+                label={cancelMeetingTarget ? (cancelMeetingTarget.status === 'draft' ? 'מחיקת הטיוטה' : 'מחיקת המפגש') : 'ביטול הבקשה'}
                 tone="destructive"
                 onPress={() => void cancel()}
                 loading={cancelling}
@@ -413,16 +413,16 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                         </Pressy>
                       </>
                     )}
-                    {((item.status === 'pending' && !cancelled) || (done && meeting)) && canSend && (
+                    {((item.status === 'pending' && !cancelled) || (done && meeting) || (cancelled && meeting)) && canSend && (
                       <Pressy
                         onPress={() => { setCancelTarget(item); setCancelMeetingTarget(meeting ?? null); setCancelOpen(true); }}
                         disabled={sending || cancelling}
-                        accessibilityLabel={meeting ? 'ביטול המפגש' : 'ביטול הבקשה'}
-                        accessibilityHint={meeting ? 'המסמך יסומן כבוטל' : 'הנהג לא יוכל לחתום עליה'}
+                        accessibilityLabel={meeting ? 'מחיקת המפגש' : 'ביטול הבקשה'}
+                        accessibilityHint={meeting ? 'המפגש והמסמך שלו יימחקו' : 'הנהג לא יוכל לחתום עליה'}
                         style={[styles.view, styles.cancel]}
                         pressScale={0.92}
                       >
-                        <Ionicons name="close" size={20} color={STATUS.expired.fg} />
+                        <Ionicons name={meeting ? "trash-outline" : "close"} size={20} color={STATUS.expired.fg} />
                       </Pressy>
                     )}
                   </Surface>

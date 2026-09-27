@@ -215,12 +215,12 @@ function SigningFolderModal({
   const askCancel = (meeting: MeetingRow) => {
     const draft = meeting.status === 'draft';
     showAlert(
-      draft ? 'למחוק את הטיוטה?' : 'לבטל את המפגש?',
-      draft ? 'מה שסומן בטיוטה יימחק.' : 'המסמך יסומן ״בוטל״ ויישאר ברשומות, והנהג לא יחתום עליו.',
+      draft ? 'למחוק את הטיוטה?' : 'למחוק את המפגש?',
+      draft ? 'מה שסומן בטיוטה יימחק.' : 'המפגש והמסמך שלו יימחקו לגמרי, גם אצל הנהג. אי אפשר לשחזר אותם.',
       [
         { text: 'השארה', style: 'cancel' },
         {
-          text: draft ? 'מחיקת הטיוטה' : 'ביטול המפגש',
+          text: draft ? 'מחיקת הטיוטה' : 'מחיקת המפגש',
           style: 'destructive',
           onPress: () => {
             setOpening(`cancel:${meeting.id}`);
@@ -229,7 +229,7 @@ function SigningFolderModal({
                 await Promise.all([meetings.reload(), next.reload()]);
                 await onChanged();
               })
-              .catch((err: Error) => setMessage(err?.message || 'הביטול נכשל. נסו שוב.'))
+              .catch((err: Error) => setMessage(err?.message || 'המחיקה נכשלה. נסו שוב.'))
               .finally(() => setOpening(''));
           },
         },
@@ -417,9 +417,9 @@ function SigningFolderModal({
                         : 'השליחה לא אושרה — ניתן לנסות שוב'}
                     </DText>
                   </View>
-                  {meeting && !cancelled && canSend && (
-                    <HoverPressable onPress={() => askCancel(meeting)} disabled={!!opening} accessibilityLabel="ביטול המפגש" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
-                      <DText weight="semiBold" style={styles.rowDanger}>ביטול</DText>
+                  {meeting && canSend && (
+                    <HoverPressable onPress={() => askCancel(meeting)} disabled={!!opening} accessibilityLabel="מחיקת המפגש" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
+                      <DText weight="semiBold" style={styles.rowDanger}>מחיקה</DText>
                     </HoverPressable>
                   )}
                   {ready && meeting && canSend && (
