@@ -23,7 +23,7 @@ import { NotificationsMobile } from '../NotificationsMobile';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
 
-export default function NotificationsScreen({ navigation }: Props) {
+export default function NotificationsScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
   const { companyId, profile } = useCompany();
@@ -129,6 +129,7 @@ export default function NotificationsScreen({ navigation }: Props) {
           timeAgo={timeAgo}
           actionLabel={actionLabel}
           prefs={preferences}
+          initialSection={route.params?.section === 'settings' ? 'settings' : 'feed'}
         />
       </DesktopShell>
     );

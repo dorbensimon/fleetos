@@ -17,6 +17,7 @@ export type NotificationTarget =
   | { screen: 'DriverDetail'; params: { driverId: string; openFolder?: string; focus?: string } }
   | { screen: 'DriverPersonalDetails'; params: { driverId: string; focus?: string } }
   | { screen: 'AdminHome' }
+  | { screen: 'CompanySettings' }
   | { screen: 'DriverSigningDocuments'; params?: { driverId?: string; requestId?: string } }
   | { screen: 'DriverMeetingFolder'; params: { driverId: string; folderId: string } }
   | { screen: 'SignedDocuments'; params: { openMeeting: string } }
@@ -51,7 +52,10 @@ export function driverNotificationTarget(n: NotificationTargetFields): Notificat
     const focus = focusParam(fieldKeysFromMessage(n.message));
     return focus ? { screen: 'DriverProfile', params: { focus } } : { screen: 'DriverProfile' };
   }
-  if (type === 'license_update_reviewed') return { screen: 'DriverProfile', params: { focus: LICENSE_FOCUS } };
+  if (type === 'license_update_reviewed' || type === 'driver_license_expiry') {
+    return { screen: 'DriverProfile', params: { focus: LICENSE_FOCUS } };
+  }
+  if (type === 'vehicle_odometer_stale') return { screen: 'DriverVehicle', params: { focus: 'odometer' } };
   if (type === 'vehicle_service_due') return { screen: 'DriverVehicle', params: { focus: 'service' } };
   if (type === 'driver_odometer_update') return { screen: 'DriverVehicle', params: { focus: 'odometer' } };
   if (isVehicleNotificationType(type)) {
@@ -79,6 +83,13 @@ export async function adminNotificationTarget<N extends NotificationTargetFields
       : { screen: 'AdminHome' };
   }
 
+  // One stale vehicle opens its odometer; a summary of many opens the fleet.
+  if (type === 'vehicle_odometer_stale') {
+    return n.vehicle_id
+      ? { screen: 'VehicleDetail', params: { vehicleId: n.vehicle_id, tab: 'maintenance', focus: 'odometer' } }
+      : { screen: 'AdminHome' };
+  }
+
   if (isVehicleNotificationType(type)) {
     const vehicleId = await resolveVehicleId(n);
     return vehicleId
@@ -100,6 +111,21 @@ export async function adminNotificationTarget<N extends NotificationTargetFields
   if (type === 'driver_profile_update' && n.actor_id) {
     const focus = focusParam(fieldKeysFromMessage(n.message));
     return { screen: 'DriverDetail', params: focus ? { driverId: n.actor_id, focus } : { driverId: n.actor_id } };
+  }
+
+  if (type === 'driver_license_expiry' && n.actor_id) {
+    return { screen: 'DriverDetail', params: { driverId: n.actor_id, focus: LICENSE_FOCUS } };
+  }
+
+  if (type === 'company_carrier_license_expiry') return { screen: 'CompanySettings' };
+
+  if (type === 'signature_request_completed' && n.actor_id) {
+    return {
+      screen: 'DriverSigningDocuments',
+      params: n.signature_request_id
+        ? { driverId: n.actor_id, requestId: n.signature_request_id }
+        : { driverId: n.actor_id },
+    };
   }
 
   if (type === 'license_update_requested' && n.actor_id) {

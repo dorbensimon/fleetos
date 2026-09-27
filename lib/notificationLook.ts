@@ -20,6 +20,10 @@ export function timeAgo(iso: string): string {
 
 export function notificationIcon(type: string | null): keyof typeof Ionicons.glyphMap {
   if (type === 'signature_request_assigned') return 'create-outline';
+  if (type === 'signature_request_completed') return 'checkmark-done-outline';
+  if (type === 'driver_license_expiry') return 'id-card-outline';
+  if (type === 'company_carrier_license_expiry') return 'business-outline';
+  if (type === 'vehicle_odometer_stale') return 'speedometer-outline';
   if (type === 'driver_meeting_due') return 'people-outline';
   if (type === 'vehicle_assignment') return 'car-outline';
   if (type?.startsWith('vehicle_')) return 'warning-outline';
@@ -36,8 +40,10 @@ export function notificationIcon(type: string | null): keyof typeof Ionicons.gly
  */
 export function notificationTone(n: Pick<Notification, 'notification_type' | 'message'>): 'bad' | 'warn' | 'brand' {
   const type = n.notification_type;
-  if (isVehicleFolderNotification(type)) return n.message.includes(' פג ב-') ? 'bad' : 'warn';
-  if (type === 'vehicle_service_due' || type === 'license_update_requested') return 'warn';
+  if (isVehicleFolderNotification(type) || type === 'driver_license_expiry' || type === 'company_carrier_license_expiry') {
+    return n.message.includes(' פג ב-') ? 'bad' : 'warn';
+  }
+  if (type === 'vehicle_service_due' || type === 'license_update_requested' || type === 'vehicle_odometer_stale') return 'warn';
   // Meeting reminders (supabase/sql/97): a week ahead is a heads-up, due or late is urgent.
   if (type === 'driver_meeting_due') return n.message.includes('המועד בעוד') || n.message.includes('בשבוע הקרוב') ? 'warn' : 'bad';
   return 'brand';
