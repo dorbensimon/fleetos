@@ -225,6 +225,7 @@ export const SIGNING_CSS = `
 }
 .sd-foot-note { font-size: 15px; color: var(--sd-ink-2); display: flex; align-items: center; gap: 8px; }
 .sd-foot-note.sd-warn { color: #B96A00; }
+.sd-sheet-head, .sd-sheet-foot { zoom: 0.85; }
 .sd-stage { animation: sd-stage-in 480ms var(--sd-ease) both; }
 
 /* step 1 */

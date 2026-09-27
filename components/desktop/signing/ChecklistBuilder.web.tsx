@@ -20,6 +20,8 @@ import { Letterhead } from './DocumentEditor.web';
  */
 
 export const CHECKLIST_BUILDER_CSS = `
+.cl-work { zoom: 0.85; }
+.cl-work .sd-panel { max-height: calc((100vh - 150px) / 0.85); min-height: calc((100vh - 150px) / 0.85); }
 .cl-banner { width: 100%; max-width: 840px; display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 18px; background: linear-gradient(120deg, rgba(0,136,204,0.10), rgba(52,199,89,0.08)); }
 .cl-banner p { flex: 1; margin: 0; font-size: 15.5px; line-height: 1.5; color: var(--sd-ink); }
 .cl-banner-icon { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; background: linear-gradient(160deg, #35B8F0, #0075B3); }
@@ -191,7 +193,7 @@ export function ChecklistBuilder({
   const count = filledItems(form).length;
 
   return (
-    <div className="sd-work">
+    <div className="sd-work cl-work">
       <style>{CHECKLIST_BUILDER_CSS}</style>
       <aside className="sd-panel" aria-label="הגדרות רשימת הסעיפים">
         <h3 className="sd-b">הגדרות רשימת הסעיפים</h3>
