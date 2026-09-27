@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -20,12 +20,14 @@ import {
   StatusChip,
   statusOfDate,
 } from '../../../components/driverKit';
+import { ChoiceSheet } from '../../../components/ui/Select';
 import { SigningFolders } from '../../../components/driverCard/SigningFolders';
 import type { DriverCardGroup, DriverCardIconKey, DriverCardRow } from '../../../components/driverCard/driverCardSections';
 import type { DriverRow } from '../../../lib/adminApi';
 import type { LicenseUpdateRequest } from '../../../lib/licenseUpdate';
 import type { SigningFolder } from '../../../lib/signingFolders';
 import { formatDate } from '../../../lib/theme';
+import { formatPlate } from '../../../lib/plate';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -72,7 +74,8 @@ type Props = {
   onEdit: () => void;
   onCall: () => void;
   onMessage: () => void;
-  onVehicle: () => void;
+  /** Opens one vehicle; with more than one, the driver's page asks which first. */
+  onOpenVehicle: (vehicleId: string) => void;
   onRow: (row: DriverCardRow) => void;
   onOpenSigning: (folder: SigningFolder) => void;
   onReviewLicense: (approve: boolean) => void;
@@ -89,18 +92,37 @@ export function DriverDetailMobile(p: Props) {
   const d = p.driver;
   const license = statusOfDate(d?.license_expiry);
   const hasBanner = p.archived || p.pendingActivation || !!p.licenseRequest;
+  const vehicles = d?.vehicles.length ? d.vehicles : d?.vehicle_id ? [{ id: d.vehicle_id, plate_number: d.vehicle_plate ?? '', is_primary: true }] : [];
+  const [pickingVehicle, setPickingVehicle] = useState(false);
+  const openVehicle = () => {
+    if (vehicles.length > 1) setPickingVehicle(true);
+    else if (vehicles[0]) p.onOpenVehicle(vehicles[0].id);
+  };
   const state = p.archived ? 'בארכיון' : p.pendingActivation ? 'ממתין להפעלה' : 'פעיל';
   const quick: { key: string; icon: IconName; label: string; disabled: boolean; onPress: () => void }[] = [
     { key: 'call', icon: 'call', label: 'התקשר', disabled: !d?.phone, onPress: p.onCall },
     { key: 'message', icon: 'chatbubble', label: 'הודעה', disabled: !d?.phone, onPress: p.onMessage },
-    { key: 'vehicle', icon: 'car-sport', label: 'רכב', disabled: !d?.vehicle_id, onPress: p.onVehicle },
+    { key: 'vehicle', icon: 'car-sport', label: 'רכב', disabled: !vehicles.length, onPress: openVehicle },
   ];
 
   return (
     <DriverPage
       insetTop={p.insetTop}
       insetBottom={p.insetBottom}
-      overlay={p.modals}
+      overlay={
+        <>
+          {p.modals}
+          <ChoiceSheet
+            open={pickingVehicle}
+            onClose={() => setPickingVehicle(false)}
+            title="לאיזה רכב להיכנס?"
+            options={[...vehicles]
+              .sort((a, b) => Number(b.is_primary) - Number(a.is_primary))
+              .map((v) => ({ value: v.id, label: formatPlate(v.plate_number) || 'רכב ללא מספר', hint: v.is_primary ? 'רכב ראשי' : 'רכב נוסף', icon: 'car-sport' as const }))}
+            onPick={(id) => id && p.onOpenVehicle(id)}
+          />
+        </>
+      }
       hero={
         <View>
           <View style={styles.bar}>

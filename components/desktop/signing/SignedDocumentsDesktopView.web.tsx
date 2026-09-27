@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { getSigningTemplateSourceUrl, listSigningTemplates, type SigningTemplate } from '../../../lib/docuseal';
+import { requestErrorDetails, type RequestErrorDetails } from '../../../lib/requestError';
 import { countWaitingSigners, deleteCompanyTemplate, deleteTemplateMessage } from '../../../lib/signingSend';
 import { formatDate } from '../../../lib/theme';
 import { SIGNING_CSS } from './signingCss';
@@ -234,7 +235,7 @@ function PreviewSheet({
       {confirm ? (
         <ConfirmAlert
           title="למחוק את המסמך?"
-          message={deleteTemplateMessage(confirm.waiting)}
+          message={deleteTemplateMessage(confirm.waiting, isChecklistTemplate(template))}
           confirmLabel="מחיקה"
           cancelLabel="ביטול"
           onConfirm={() => void doDelete()}
@@ -308,7 +309,7 @@ export function SignedDocumentsDesktopView({
 }) {
   const [templates, setTemplates] = useState<SigningTemplate[] | null>(null);
   const [plan, setPlan] = useState<PlanRow[]>([]);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<RequestErrorDetails | null>(null);
   const [creating, setCreating] = useState(false);
   const [previewing, setPreviewing] = useState<SigningTemplate | null>(null);
   const [freshId, setFreshId] = useState<string | null>(null);
@@ -317,10 +318,10 @@ export function SignedDocumentsDesktopView({
 
   const load = useCallback(async () => {
     try {
-      setError(false);
+      setError(null);
       setTemplates(await listSigningTemplates(companyId));
-    } catch {
-      setError(true);
+    } catch (error) {
+      setError(requestErrorDetails(error, 'לא הצלחנו לטעון את המסמכים'));
     }
   }, [companyId]);
 
@@ -394,9 +395,9 @@ export function SignedDocumentsDesktopView({
           </div>
           {error ? (
             <div className="sd-empty">
-              <Ionicons name="cloud-offline" size={46} color="#FF9F0A" />
-              <h3 className="sd-b">לא הצלחנו לטעון את המסמכים</h3>
-              <p>בדקו את החיבור לאינטרנט ונסו שוב.</p>
+              <Ionicons name={error.icon} size={46} color="#FF9F0A" />
+              <h3 className="sd-b">{error.message}</h3>
+              {error.hint ? <p>{error.hint}</p> : null}
               <button type="button" className="sd-btn sd-btn-tinted sd-btn-lg" onClick={() => void load()}>
                 נסו שוב
               </button>
@@ -450,6 +451,7 @@ export function SignedDocumentsDesktopView({
       {creating ? (
         <CreateDocumentSheet
           companyId={companyId}
+          takenTitles={(templates ?? []).map((t) => t.title)}
           onClosed={() => setCreating(false)}
           onCreated={(template) => {
             setFreshId(template.id);

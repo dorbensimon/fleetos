@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
 
       const { data: existing, error: existingError } = await access.adminClient
         .from('signature_requests')
-        .select('id, docuseal_submission_id, docuseal_submitter_id, docuseal_submitter_slug, provisioning_locked_until')
+        .select('id, docuseal_submission_id, docuseal_submitter_id, docuseal_submitter_slug, provisioning_locked_until, sync_locked_until')
         .eq('template_id', templateId)
         .eq('driver_id', driver.id)
         .eq('status', 'pending')
@@ -138,6 +138,12 @@ Deno.serve(async (req) => {
         if (lockActive) {
           failed.push(driver.id);
           failureMessage ||= 'בקשת החתימה כבר נוצרת, נסה שוב בעוד כמה דקות';
+          continue;
+        }
+        // The driver is signing it on the app's pad right now.
+        if (requestRow.sync_locked_until && new Date(requestRow.sync_locked_until).getTime() > Date.now()) {
+          failed.push(driver.id);
+          failureMessage ||= 'הנהג חותם על המסמך ברגע זה. חכו רגע ונסו שוב.';
           continue;
         }
         const { data: claimed, error: claimError } = await access.adminClient
@@ -158,6 +164,26 @@ Deno.serve(async (req) => {
         // unsigned request. Cancel the remote submission before hiding the local
         // request, so an old email link cannot still be used to sign.
         if (requestRow.docuseal_submitter_id && requestRow.docuseal_submission_id && requestRow.docuseal_submitter_slug) {
+          // The driver may have just finished in DocuSeal before its webhook
+          // reached us. Deleting now would throw that signature away.
+          const releaseClaim = () => access.adminClient.from('signature_requests').update({ provisioning_locked_until: null })
+            .eq('id', requestRow!.id).eq('status', 'pending');
+          const remoteResponse = await docusealFetch(`/submitters/${requestRow.docuseal_submitter_id}`).catch(() => null);
+          if (!remoteResponse?.ok) {
+            await releaseClaim();
+            failed.push(driver.id);
+            failureMessage ||= 'לא ניתן לבדוק כרגע את המסמך הקודם. לא נשלח מסמך חדש. נסו שוב.';
+            continue;
+          }
+          const remote = await remoteResponse.json() as { status?: string };
+          if (remote.status === 'completed' || remote.status === 'declined') {
+            await releaseClaim();
+            failed.push(driver.id);
+            failureMessage ||= remote.status === 'completed'
+              ? 'הנהג כבר חתם על המסמך. רעננו את המסך כדי לראות אותו.'
+              : 'הנהג דחה את המסמך. רעננו את המסך ונסו לשלוח שוב.';
+            continue;
+          }
           const cancelResponse = await docusealFetch(`/submissions/${requestRow.docuseal_submission_id}`, { method: 'DELETE' });
           if (!cancelResponse.ok && cancelResponse.status !== 404) {
             await access.adminClient.from('signature_requests').update({ provisioning_locked_until: null })
@@ -199,7 +225,7 @@ Deno.serve(async (req) => {
             next_email_reminder_at: null,
             provisioning_locked_until: provisioningLockUntil,
           })
-          .select('id, docuseal_submission_id, docuseal_submitter_id, docuseal_submitter_slug, provisioning_locked_until')
+          .select('id, docuseal_submission_id, docuseal_submitter_id, docuseal_submitter_slug, provisioning_locked_until, sync_locked_until')
           .single();
         requestRow = inserted;
         if (requestError || !requestRow) {

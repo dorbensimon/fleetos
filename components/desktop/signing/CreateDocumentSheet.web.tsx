@@ -13,6 +13,7 @@ import {
   type SigningFieldKind,
 } from '../../../lib/companySigningTemplates';
 import { ConfirmAlert, Sheet, useSheetClose } from './Sheet.web';
+import { sameDocumentTitle, TAKEN_TITLE_MESSAGE } from '../../../lib/signingSend';
 import { DocumentEditor, EditorPagePreview, initialEditorDraft, type DocumentEditorHandle, type EditorDraft } from './DocumentEditor.web';
 import { BusyState, FieldPlacer, PdfPageView, UploadDropzone } from './FieldPlacer.web';
 import { loadPdf, type LoadedPdf } from './pdf.web';
@@ -52,10 +53,13 @@ function fieldSummary(kinds: SigningFieldKind[]) {
 
 export function CreateDocumentSheet({
   companyId,
+  takenTitles = [],
   onClosed,
   onCreated,
 }: {
   companyId: string;
+  /** Names already used by the company's documents; a new one must differ. */
+  takenTitles?: string[];
   onClosed: () => void;
   onCreated: (template: SigningTemplate) => void;
 }) {
@@ -124,9 +128,10 @@ export function CreateDocumentSheet({
     }
   };
 
+  const titleTaken = takenTitles.some((taken) => sameDocumentTitle(taken, title));
   const canContinue =
     step === 0
-      ? title.trim().length > 0 && !!mode
+      ? title.trim().length > 0 && !titleTaken && !!mode
       : step === 1
         ? mode === 'editor'
           ? editorHasSignature
@@ -239,6 +244,8 @@ export function CreateDocumentSheet({
         : mode === 'upload' && !pdf
           ? 'העלו את הקובץ כדי להמשיך'
           : 'כדי להמשיך, הוסיפו לפחות שדה חתימה אחד'
+      : step === 0 && titleTaken
+        ? TAKEN_TITLE_MESSAGE
       : step === 0 && !mode && title.trim()
         ? 'בחרו איך ליצור את המסמך'
         : null;
@@ -297,7 +304,8 @@ export function CreateDocumentSheet({
               maxLength={120}
               placeholder="לדוגמה: הצהרת בריאות"
               autoFocus
-              aria-invalid={nameError}
+              aria-invalid={nameError || titleTaken}
+              aria-describedby={titleTaken ? 'sd-doc-name-taken' : undefined}
               onChange={(e) => {
                 setTitle(e.target.value);
                 setNameError(false);
@@ -306,6 +314,12 @@ export function CreateDocumentSheet({
                 if (e.key === 'Enter' && canContinue) next();
               }}
             />
+            {titleTaken ? (
+              <div id="sd-doc-name-taken" className="sd-inline-error" role="alert">
+                <Ionicons name="alert-circle" size={20} color="currentColor" />
+                {TAKEN_TITLE_MESSAGE}
+              </div>
+            ) : null}
             <div className="sd-chips" aria-label="הצעות לשם">
               {NAME_IDEAS.map((idea) => (
                 <button key={idea} type="button" className="sd-chip" onClick={() => setTitle(idea)}>

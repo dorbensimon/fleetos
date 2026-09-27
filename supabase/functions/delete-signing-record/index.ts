@@ -13,6 +13,32 @@ function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
+type SignedRequest = { id: string; company_id: string; driver_id: string; docuseal_submitter_id: number | null; signed_file_path: string | null };
+
+/** Stores a signed request's PDF from DocuSeal; the stored path, or null when it is not ready. */
+// deno-lint-ignore no-explicit-any
+async function storeSignedPdf(db: any, request: SignedRequest): Promise<string | null> {
+  if (!request.docuseal_submitter_id) return null;
+  try {
+    const response = await docusealFetch(`/submitters/${request.docuseal_submitter_id}`);
+    if (!response.ok) return null;
+    const signer = await response.json() as { status?: string; documents?: Array<{ url?: string }> };
+    const url = signer.documents?.[0]?.url;
+    if (signer.status !== 'completed' || !url) return null;
+    const pdf = await fetch(url);
+    if (!pdf.ok) return null;
+    const path = `${request.company_id}/driver/${request.driver_id}/signed/${request.id}.pdf`;
+    const { error: uploadError } = await db.storage.from('documents')
+      .upload(path, new Uint8Array(await pdf.arrayBuffer()), { contentType: 'application/pdf', upsert: false });
+    if (uploadError && String(uploadError.statusCode) !== '409') return null;
+    const { error } = await db.from('signature_requests').update({ signed_file_path: path })
+      .eq('id', request.id).eq('status', 'completed').is('signed_file_path', null);
+    return error ? null : path;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);
@@ -187,7 +213,7 @@ Deno.serve(async (req) => {
         // and requests still waiting for a signature are cancelled with it.
         if (!template.archived_at && action !== 'company-delete') return json({ error: 'אפשר למחוק לצמיתות רק תבנית שנמצאת בארכיון' }, 409);
         let requestsQuery = adminClient.from('signature_requests')
-          .select('id, company_id, driver_id, status, docuseal_submission_id, signed_file_path')
+          .select('id, company_id, driver_id, status, docuseal_submission_id, docuseal_submitter_id, signed_file_path')
           .eq('template_id', id);
         if (!isGlobal) requestsQuery = requestsQuery.eq('company_id', template.company_id);
         const { data: allRequests, error: requestsError } = await requestsQuery;
@@ -199,6 +225,14 @@ Deno.serve(async (req) => {
         // all of them rather than one.
         const signedRequests = (allRequests ?? []).filter((request) => request.status === 'completed');
         const requests = (allRequests ?? []).filter((request) => request.status !== 'completed');
+        // A signed copy whose PDF never reached storage is fetched now (the same
+        // repair the driver's folder runs), so the manager is not sent to sync
+        // each driver by hand before the template can go.
+        for (const request of signedRequests) {
+          if (isSignedRequestPath(request.company_id, request.driver_id, request.id, request.signed_file_path)) continue;
+          const path = await storeSignedPdf(adminClient, request);
+          if (path) request.signed_file_path = path;
+        }
         // Deleting the DocuSeal template can take its submissions down with it, so a
         // signed document without a locally stored PDF has no evidence left to keep.
         if (signedRequests.some((request) => !isSignedRequestPath(
@@ -207,8 +241,20 @@ Deno.serve(async (req) => {
           request.id,
           request.signed_file_path,
         ))) {
-          return json({ error: 'לתבנית יש מסמך חתום שהקובץ שלו עדיין לא נשמר ב-FleetOS. יש לסנכרן אותו לפני מחיקת התבנית' }, 409);
+          return json({ error: 'לטופס יש מסמך חתום שהקובץ שלו עוד לא הגיע מ-DocuSeal. נסו למחוק שוב בעוד כמה דקות.' }, 409);
         }
+
+        // Meetings on this form ("מפגש שיחה") that are not signed evidence go
+        // with it: drafts, and meetings still waiting for the driver (their
+        // request is deleted below). Otherwise they lose their form and stay
+        // behind where no screen shows them. Signed meetings stay in the file.
+        const unsignedRequestIds = new Set(requests.map((request) => request.id));
+        const { data: formMeetings, error: meetingsError } = await adminClient.from('checklist_meetings')
+          .select('id, status, signature_request_id').eq('template_id', id);
+        if (meetingsError) return json({ error: 'טעינת המפגשים של הטופס נכשלה' }, 500);
+        const meetingIds = (formMeetings ?? [])
+          .filter((meeting) => meeting.status !== 'signed' || !meeting.signature_request_id || unsignedRequestIds.has(meeting.signature_request_id))
+          .map((meeting) => meeting.id);
 
         // The snapshot update, the non-completed requests delete and the template
         // delete run as one transaction, so a crash mid-way can no longer leave the
@@ -226,6 +272,13 @@ Deno.serve(async (req) => {
         // best-effort cleanup of external resources: a failure here leaves only an
         // orphaned DocuSeal template/submission or storage file, never a broken row.
         let cleanupPending = false;
+        if (meetingIds.length) {
+          const { error: meetingsDeleteError } = await adminClient.from('checklist_meetings').delete().in('id', meetingIds);
+          if (meetingsDeleteError) {
+            console.error('delete-signing-record: meeting cleanup failed', meetingsDeleteError.message);
+            cleanupPending = true;
+          }
+        }
         for (const request of requests) {
           if (!request.docuseal_submission_id) continue;
           const response = await docusealFetch(`/submissions/${request.docuseal_submission_id}`, { method: 'DELETE' });

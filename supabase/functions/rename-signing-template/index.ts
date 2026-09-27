@@ -16,6 +16,11 @@ Deno.serve(async req => {
     const { templateId, title } = await req.json();
     const name = typeof title === 'string' ? title.trim() : '';
     if (!name || name.length > 200) return json({ error: 'יש להזין שם באורך 1–200 תווים' }, 400);
+    const key = (value: string | null | undefined) => (value ?? '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('he');
+    const { data: named, error: namedError } = await user.adminClient.from('signing_templates')
+      .select('id, title').is('company_id', null).is('archived_at', null).neq('id', templateId);
+    if (namedError) throw namedError;
+    if ((named ?? []).some((row) => key(row.title) === key(name))) return json({ error: 'כבר יש תבנית בשם הזה. בחרו שם אחר.' }, 409);
     const now = new Date();
     const lock = new Date(now.getTime() + 60_000).toISOString();
     const { data: template, error } = await user.adminClient.from('signing_templates')
