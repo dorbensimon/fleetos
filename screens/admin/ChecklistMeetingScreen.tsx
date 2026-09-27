@@ -135,6 +135,9 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
             request = loadedMeeting.signature_request_id;
             const requestStatus = await getRequestStatus(request);
             if (requestStatus === 'cancelled') throw new Error('המפגש הזה בוטל');
+            if (requestStatus === 'declined') throw new Error('הנהג דחה את החתימה. אפשר לבטל את המפגש מתיק הנהג ולפתוח מפגש חדש.');
+            if (requestStatus === 'failed') throw new Error('בקשת החתימה לא הושלמה. אפשר לבטל את המפגש מתיק הנהג ולפתוח מפגש חדש.');
+            if (!requestStatus) throw new Error('בקשת החתימה של המפגש לא נמצאה');
             nextStep = requestStatus === 'completed' ? 'done' : 'choose';
           }
         } else if (templateId) {
@@ -152,6 +155,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
         setMeeting(loadedMeeting);
         setAnswers(loadedMeeting?.answers ?? {});
         setOfficerName(loadedMeeting?.officer_name ?? '');
+        setOfficerSig(loadedMeeting?.officer_signature ?? null);
         setRequestId(request);
         setStep(nextStep);
         setRecent(names);
