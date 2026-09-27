@@ -1,7 +1,7 @@
 import React from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { supabase } from '../lib/supabase';
+import { signOut } from '../lib/signOut';
 import { showAlert } from '../lib/platformAlert';
 import { useCompany } from '../lib/CompanyContext';
 import { RootStackParamList } from '../navigation/types';
@@ -56,7 +56,7 @@ export default function MenuScreen({ navigation }: Props) {
 
   const completeLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      await signOut();
       navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
     } catch {
       showAlert('ההתנתקות נכשלה', 'נסה שוב בעוד רגע.');

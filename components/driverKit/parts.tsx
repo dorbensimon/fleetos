@@ -24,6 +24,7 @@ import { DK, DK_FONT, DK_RADIUS, DK_SHADOW, DK_SPACE, STATUS, type Status } from
 // Components from the kit's core. Only used inside render functions, never
 // at module load, so the index <-> parts import cycle is safe.
 import { DKText, Pressy, Surface, useReducedMotion } from './index';
+import { useTabBarLift } from './tabBar';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -668,13 +669,17 @@ export function FilterPills<T extends string>({
 
 /** The one floating action on a list screen: a blue disc that sits above the home indicator. */
 export function Fab({ icon = 'add', label, onPress, bottom }: { icon?: IconName; label: string; onPress: () => void; bottom: number }) {
+  // Rides above the tab bar while it shows, and settles when it leaves.
+  const lift = useTabBarLift();
   return (
-    <Pressy onPress={onPress} haptic accessibilityLabel={label} style={[styles.fab, { bottom }]} pressScale={0.92}>
-      <Ionicons name={icon} size={24} color="#FFFFFF" />
-      <DKText variant="label" color="#FFFFFF">
-        {label}
-      </DKText>
-    </Pressy>
+    <Animated.View style={[styles.fabHost, { bottom, transform: [{ translateY: lift }] }]} pointerEvents="box-none">
+      <Pressy onPress={onPress} haptic accessibilityLabel={label} style={styles.fab} pressScale={0.92}>
+        <Ionicons name={icon} size={24} color="#FFFFFF" />
+        <DKText variant="label" color="#FFFFFF">
+          {label}
+        </DKText>
+      </Pressy>
+    </Animated.View>
   );
 }
 
@@ -904,9 +909,8 @@ const styles = StyleSheet.create({
   filterCount: { minWidth: 22, height: 22, paddingHorizontal: 6, borderRadius: 11, backgroundColor: DK.surfaceSunk, alignItems: 'center', justifyContent: 'center' },
   filterCountActive: { backgroundColor: 'rgba(255,255,255,0.18)' },
 
+  fabHost: { position: 'absolute', left: 20, zIndex: 20 },
   fab: {
-    position: 'absolute',
-    left: 20,
     height: 56,
     paddingHorizontal: 20,
     borderRadius: 28,

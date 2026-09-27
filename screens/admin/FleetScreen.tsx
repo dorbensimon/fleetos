@@ -513,7 +513,6 @@ export default function FleetScreen() {
       vehicleDrivers={vehicleDrivers}
       departmentNames={departmentNames}
       restoringVehicleId={restoringVehicleId}
-      onMenu={() => navigation.navigate('Menu')}
       onNotifications={() => navigation.navigate('Notifications')}
       onAttention={() => navigation.navigate('Attention')}
       onArchive={() => navigation.navigate('DriverArchive')}

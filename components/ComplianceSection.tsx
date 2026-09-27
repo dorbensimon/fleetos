@@ -36,6 +36,7 @@ import { FolderTile } from './desktop/record/RecordKit';
 import { FolderDocumentsModal, FolderListRow, FolderUploadBar } from './desktop/record/FolderDocuments';
 import { DESKTOP_COLORS } from './desktop/desktopTheme';
 import { DK, DK_FONT } from './driverKit/theme';
+import { FocusTarget } from './ui/FocusTarget';
 
 /** compliance_items only tracks driver/vehicle expiries — not company-level documents. */
 type ComplianceOwnerType = 'driver' | 'vehicle';
@@ -542,8 +543,9 @@ export function ComplianceSection({
                 const latestDoc = latestDocument(itemDocs);
                 const latestExpiry = latestDoc?.expiry_date ?? null;
                 return (
+                  // Lights up when a task or notification lands on this folder.
+                  <FocusTarget key={def.itemType} id={def.itemType} radius={16} tint={DK.accent}>
                   <TouchableOpacity
-                    key={def.itemType}
                     activeOpacity={0.66}
                     style={[styles.folderRow, index === 0 && styles.folderFirstItem]}
                     onPress={() => setExpanded(isOpen ? null : def.itemType)}
@@ -558,6 +560,7 @@ export function ComplianceSection({
                     {!!latestDoc && <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : 'חסר תוקף'} />}
                     <Ionicons name={isOpen ? 'chevron-down' : 'chevron-back'} size={18} color={DK.faint} />
                   </TouchableOpacity>
+                  </FocusTarget>
                 );
               })}
               {group.items.map((def) => expanded === def.itemType && (

@@ -22,6 +22,8 @@ import {
   relativeDays,
   statusOfDate,
   validityProgress,
+  useTabBarScroll,
+  useTabBarSpace,
   type Status,
 } from '../../components/driverKit';
 import { VEHICLE_TYPE_LABELS } from '../../lib/compliance';
@@ -42,7 +44,6 @@ type Props = {
   unreadNotifications: number;
   managerName: string;
   managerPhone: string;
-  onMenu: () => void;
   onNotifications: () => void;
   onVehicle: () => void;
   onSigning: () => void;
@@ -88,6 +89,8 @@ export function DriverHomeMobile(p: Props) {
     [p.items, p.licenseExpiry, p.pendingSignatures]
   );
   const licenseStatus = statusOfDate(p.licenseExpiry);
+  const tabBarScroll = useTabBarScroll();
+  const tabBarSpace = useTabBarSpace();
 
   return (
     <View style={styles.screen}>
@@ -95,12 +98,14 @@ export function DriverHomeMobile(p: Props) {
       <NightUnderlay />
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingBottom: p.insetBottom + 36 }]}
+        {...tabBarScroll}
+        contentContainerStyle={[styles.content, { paddingBottom: p.insetBottom + 36 + tabBarSpace }]}
         showsVerticalScrollIndicator={false}
       >
         <NightHero insetTop={p.insetTop}>
           <View style={styles.topBar}>
-            <HeroButton icon="menu" label="תפריט" onPress={p.onMenu} />
+            {/* Keeps the greeting centred; the menu lives in the bottom bar now. */}
+            <View style={styles.heroSlot} />
             <View style={styles.greeting}>
               <DKText variant="caption" color={DK.onNightMuted} style={styles.center}>
                 {timeGreeting()}
@@ -361,6 +366,7 @@ const styles = StyleSheet.create({
   center: { textAlign: 'center' },
 
   topBar: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 26 },
+  heroSlot: { width: 48, height: 48 },
   greeting: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
 
   vehicleName: { marginTop: 2 },

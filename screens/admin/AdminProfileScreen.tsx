@@ -27,6 +27,7 @@ import {
 import { formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
+import { signOut as signOutEverywhere } from '../../lib/signOut';
 import { updateCompanySettings } from '../../lib/companyApi';
 import { functionErrorMessage } from '../../lib/functionError';
 import { formatPhone, isValidIsraeliPhone } from '../../lib/phone';
@@ -133,7 +134,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
   const signOut = () => {
     showAlert('התנתקות', 'להתנתק מהחשבון?', [
       { text: 'ביטול', style: 'cancel' },
-      { text: 'התנתק', style: 'destructive', onPress: () => supabase.auth.signOut() },
+      { text: 'התנתק', style: 'destructive', onPress: () => void signOutEverywhere().catch(() => showAlert('ההתנתקות נכשלה', 'נסה שוב בעוד רגע.')) },
     ]);
   };
 

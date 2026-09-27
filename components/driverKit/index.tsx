@@ -22,6 +22,7 @@ import * as Haptics from 'expo-haptics';
 import { BrandLoader } from '../ui/BrandLoader';
 import { syncWebThemeColor } from '../../lib/webThemeColor';
 import { DK, DK_FONT, DK_RADIUS, DK_SHADOW, DK_SPACE, STATUS, type Status } from './theme';
+import { useTabBarHold, useTabBarScroll, useTabBarSpace } from './tabBar';
 
 export * from './theme';
 
@@ -362,6 +363,10 @@ export function DriverPage({
   /** Held still while a finger draws a signature on the page. */
   scrollEnabled?: boolean;
 }) {
+  // A pinned action owns the bottom of the screen; the tab bar steps aside.
+  useTabBarHold(!!footer);
+  const tabBarScroll = useTabBarScroll();
+  const tabBarSpace = useTabBarSpace();
   return (
     <View style={styles.page}>
       <StatusBar barStyle="light-content" />
@@ -369,8 +374,9 @@ export function DriverPage({
       <ScrollView
         ref={scrollRef}
         scrollEnabled={scrollEnabled}
+        {...tabBarScroll}
         style={styles.pageScroll}
-        contentContainerStyle={[styles.pageContent, { paddingBottom: footer ? 24 : insetBottom + bottomSpace }]}
+        contentContainerStyle={[styles.pageContent, { paddingBottom: footer ? 24 : insetBottom + bottomSpace + tabBarSpace }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -785,3 +791,4 @@ const styles = StyleSheet.create({
 export { DK_SHADOW as SURFACE_SHADOW };
 
 export * from './parts';
+export * from './tabBar';

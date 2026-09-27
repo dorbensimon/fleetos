@@ -81,8 +81,10 @@ export default function AttentionScreen({ navigation }: Props) {
         setRefreshing(false);
       }}
       onHome={() => navigation.navigate('AdminHome')}
-      onOpenDriver={(driverId) => navigation.navigate('DriverDetail', { driverId })}
-      onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId })}
+      // Each task opens on the exact field or folder it is about, lit up.
+      onOpenLicense={(driverId) => navigation.navigate('DriverDetail', { driverId, focus: 'license_expiry' })}
+      onOpenInsurance={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, openFolder: 'insurance_mandatory', focus: 'insurance_mandatory' })}
+      onAssignDriver={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, openDrivers: true, focus: 'drivers' })}
       onOpenLicenseDocs={(driverId) => navigation.navigate('DriverLicenseDocuments', { driverId })}
     />
   );

@@ -20,8 +20,10 @@ import {
   STATUS,
   Segmented,
   Surface,
+  DK_RADIUS,
 } from '../../../components/driverKit';
 import { ComplianceSection } from '../../../components/ComplianceSection';
+import { FocusTarget } from '../../../components/ui/FocusTarget';
 import { VehicleDriversEditor } from '../../../components/VehicleDriversEditor';
 import type { ComplianceItem, Vehicle, VehicleDriverWithProfile } from '../../../lib/adminApi';
 import { ACQUISITION_TYPE_LABELS, VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../../lib/compliance';
@@ -179,9 +181,11 @@ function renderTab(p: Props, v: Vehicle) {
   if (p.tab === 'drivers') {
     return (
       <>
-        <Surface style={styles.pad}>
-          <VehicleDriversEditor vehicleId={v.id} assignments={p.drivers} driverOptions={p.driverOptions} onChanged={p.onDriversChanged} onOpenDriver={p.onOpenDriver} />
-        </Surface>
+        <FocusTarget id="drivers" radius={DK_RADIUS.card} tint={DK.accent}>
+          <Surface style={styles.pad}>
+            <VehicleDriversEditor vehicleId={v.id} assignments={p.drivers} driverOptions={p.driverOptions} onChanged={p.onDriversChanged} onOpenDriver={p.onOpenDriver} />
+          </Surface>
+        </FocusTarget>
         <DKText variant="caption" color={DK.muted} style={styles.note}>
           הנהג הראשי רואה את הרכב במסך הבית שלו. אפשר לשייך עד שני נהגים.
         </DKText>

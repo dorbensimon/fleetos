@@ -132,7 +132,6 @@ export default function DriverHomeScreen({ navigation }: Props) {
       unreadNotifications={unreadNotifications}
       managerName={managerName}
       managerPhone={managerPhone}
-      onMenu={() => navigation.navigate('Menu')}
       onNotifications={() => navigation.navigate('Notifications')}
       onVehicle={() => navigation.navigate('DriverVehicle')}
       onSigning={() => navigation.navigate('DriverSigningDocuments')}

@@ -6,7 +6,8 @@ import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { supabase, Company } from '../lib/supabase';
+import { Company } from '../lib/supabase';
+import { signOut } from '../lib/signOut';
 import {
   listCompanies,
   listCompanyProfileRoles,
@@ -228,7 +229,12 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await signOut();
+    } catch {
+      showAlert('ההתנתקות נכשלה', 'נסה שוב בעוד רגע.');
+      return;
+    }
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 

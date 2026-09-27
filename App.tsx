@@ -68,6 +68,7 @@ import { supabase } from './lib/supabase';
 import { resolveRouteForUser } from './lib/session';
 import { CompanyProvider, useCompany } from './lib/CompanyContext';
 import { ToastProvider } from './components/ui';
+import { MobileTabBar, TabBarProvider } from './components/driverKit/tabBar';
 import { flushPendingAssignmentOperations } from './lib/adminApi';
 import {
   listenForPushNotificationResponses,
@@ -209,6 +210,12 @@ export default function App() {
         void unregisterPushNotifications().catch(() => undefined);
         if (typeof window !== 'undefined') window.sessionStorage.removeItem(WEB_NAVIGATION_STATE_KEY);
         setInitialRoute('Login');
+        // A user who signed in during this visit already has 'Login' as the
+        // initial route, so the line above changes nothing for them; take
+        // every signed-out screen back to the login page directly.
+        if (navigationRef.isReady() && navigationRef.getCurrentRoute()?.name !== 'Login') {
+          navigationRef.resetRoot({ index: 0, routes: [{ name: 'Login' }] });
+        }
       }
     });
     return () => subscription.unsubscribe();
@@ -249,6 +256,8 @@ export default function App() {
               setInitialRoute(result.ok ? result.route : 'Login');
             }}
           >
+          <TabBarProvider>
+          <View style={{ flex: 1 }}>
           <NavigationContainer
             ref={navigationRef}
             linking={linking}
@@ -323,6 +332,10 @@ export default function App() {
               <Stack.Screen name="DriverAttention" component={DriverAttentionScreen} />
             </Stack.Navigator>
           </NavigationContainer>
+          {/* Home and menu at the bottom of every signed-in phone screen. */}
+          <MobileTabBar navigationRef={navigationRef} />
+          </View>
+          </TabBarProvider>
           </LegalConsentGate>
           </FirstProfileGate>
         </CompanyProvider>
