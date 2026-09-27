@@ -466,7 +466,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       onEdit={() => navigation.navigate('DriverForm', { driverId })}
       onCall={() => driver?.phone && dialPhone(driver.phone)}
       onMessage={() => driver?.phone && Linking.openURL(`sms:${driver.phone}`)}
-      onVehicle={() => driver?.vehicle_id && navigation.navigate('VehicleDetail', { vehicleId: driver.vehicle_id, returnTo: 'driver', fromDriverId: driverId })}
+      onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, returnTo: 'driver', fromDriverId: driverId })}
       onRow={handleRowPress}
       onOpenSigning={(folder) => navigation.navigate('DriverSigningDocuments', { driverId, folderId: folder.id })}
       onReviewLicense={(approve) => void reviewLicense(approve)}

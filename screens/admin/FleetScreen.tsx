@@ -375,7 +375,7 @@ export default function FleetScreen() {
     setRefreshing(true);
     try {
       const [driversOk, vehiclesOk] = await Promise.all([loadDrivers(), loadVehicles(), loadExtras()]);
-      if (!driversOk || !vehiclesOk) showAlert('הרענון נכשל', 'בדוק את החיבור ונסה שוב.');
+      if (!driversOk || !vehiclesOk) showAlert('הרענון נכשל', 'לא הצלחנו לרענן את הרשימה. נסו שוב בעוד רגע.');
     } finally {
       setRefreshing(false);
     }

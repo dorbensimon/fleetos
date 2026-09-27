@@ -56,6 +56,11 @@ function json(body: Record<string, unknown>, status = 200) {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Names that differ only in spaces or letter case count as the same name. */
+function titleKey(value: string | null | undefined): string {
+  return (value ?? '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('he');
+}
+
 function draftFolder(companyId: string, draftId: string) {
   return `${companyId}/signing-templates/${draftId}`;
 }
@@ -449,6 +454,14 @@ Deno.serve(async (req) => {
 
     const title = typeof body.title === 'string' ? body.title.replace(/\s+/g, ' ').trim().slice(0, 120) : '';
     if (!title) return json({ error: 'חסר שם למסמך' }, 400);
+    // Each document the company can send has its own name, so a driver's
+    // folders and the manager's list never show two alike.
+    const { data: named, error: namedError } = await access.adminClient.from('signing_templates')
+      .select('title').or(`company_id.eq.${companyId},company_id.is.null`).eq('status', 'ready').is('archived_at', null);
+    if (namedError) return json({ error: 'שמירת המסמך נכשלה. נסו שוב.' }, 500);
+    if ((named ?? []).some((row) => titleKey(row.title) === titleKey(title))) {
+      return json({ error: 'כבר יש מסמך בשם הזה. בחרו שם אחר.' }, 409);
+    }
     const kind = body.kind;
     if (kind === 'checklist') {
       const form = parseForm(body.form);

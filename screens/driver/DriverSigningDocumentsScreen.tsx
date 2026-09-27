@@ -190,6 +190,30 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
       },
     ]);
   };
+  // The computer's version of the meeting delete (the phone uses the sheet below).
+  const askCancelMeeting = (meeting: MeetingRow) => {
+    if (!driver?.company_id) return;
+    const companyId = driver.company_id;
+    const draft = meeting.status === 'draft';
+    showAlert(
+      draft ? 'למחוק את הטיוטה?' : 'למחוק את המפגש?',
+      draft ? 'מה שסומן בטיוטה יימחק. אפשר להתחיל מפגש חדש בכל רגע.' : 'המפגש והמסמך שלו יימחקו לגמרי, גם אצל הנהג. אי אפשר לשחזר אותם.',
+      [
+        { text: 'השארה', style: 'cancel' },
+        {
+          text: draft ? 'מחיקת הטיוטה' : 'מחיקת המפגש',
+          style: 'destructive',
+          onPress: () => {
+            setOpening(`cancel:${meeting.id}`); setError('');
+            cancelMeeting(companyId, meeting.id)
+              .then(async () => { await Promise.all([reloadMeetings(), reloadNext()]); await load(); })
+              .catch((err: Error) => setError(err?.message || 'המחיקה נכשלה. נסו שוב.'))
+              .finally(() => setOpening(''));
+          },
+        },
+      ],
+    );
+  };
   const pending = folder?.requests.find(item => item.status === 'pending' && !!item.docuseal_submitter_slug);
   const completed = folder?.requests.find(item => item.status === 'completed');
 
@@ -231,6 +255,11 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                           <DText weight="semiBold" style={ds.rowTitle}>{draft.title}</DText>
                           <DText style={ds.rowMeta}>טיוטה, עוד לא נחתם · {formatIsoDay(draft.updated_at.slice(0, 10))}</DText>
                         </View>
+                        {canSend && (
+                          <HoverPressable onPress={() => askCancelMeeting(draft)} disabled={!!opening} accessibilityLabel="מחיקת הטיוטה" style={ds.rowAction} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}>
+                            <DText weight="semiBold" style={ds.rowDanger}>{opening === `cancel:${draft.id}` ? 'מוחק…' : 'מחיקה'}</DText>
+                          </HoverPressable>
+                        )}
                         <DText weight="semiBold" style={ds.sendText}>המשך</DText>
                       </HoverPressable>
                     ))}
@@ -278,6 +307,11 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                               {cancelled ? 'בוטל' : item.status === 'completed' ? `נחתם ${time(item.completed_at || item.created_at)}` : signNow ? 'ממתין לחתימת הנהג · לחצו כדי שיחתום עכשיו' : ready ? `נשלח ${time(item.sent_at || item.created_at)}` : item.status === 'declined' ? 'החתימה נדחתה' : 'השליחה לא אושרה — ניתן לנסות שוב'}
                             </DText>
                           </View>
+                          {canSend && meeting && (
+                            <HoverPressable onPress={() => askCancelMeeting(meeting)} disabled={!!opening} accessibilityLabel="מחיקת המפגש" style={ds.rowAction} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}>
+                              <DText weight="semiBold" style={ds.rowDanger}>{opening === `cancel:${meeting.id}` ? 'מוחק…' : 'מחיקה'}</DText>
+                            </HoverPressable>
+                          )}
                           {canSend && !meeting && (
                             <HoverPressable onPress={() => askErase(item)} disabled={!!opening} accessibilityLabel="מחיקת המסמך" style={ds.rowAction} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}>
                               <DText weight="semiBold" style={ds.rowDanger}>{opening === `erase:${item.id}` ? 'מוחק…' : 'מחיקה'}</DText>

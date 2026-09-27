@@ -17,6 +17,14 @@ export type SendRecipient = {
 };
 export type SendOutcome = { sent: number; failed: { name: string; reason: string }[] };
 
+/** Two document names count as the same when they differ only in spaces or letter case. */
+export function sameDocumentTitle(a: string | null | undefined, b: string | null | undefined): boolean {
+  const key = (value: string | null | undefined) => (value ?? '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('he');
+  return !!key(a) && key(a) === key(b);
+}
+
+export const TAKEN_TITLE_MESSAGE = 'כבר יש מסמך בשם הזה. בחרו שם אחר.';
+
 export const RECIPIENT_STATE_LABEL: Record<SendRecipient['state'], string> = { none: '', pending: 'ממתין לחתימה', signed: 'כבר חתם' };
 
 /** "נהג אחד" / "3 נהגים". */
@@ -87,7 +95,13 @@ export async function countWaitingSigners(companyId: string, templateId: string)
   return requests.filter((r) => r.template_id === templateId && r.status === 'pending').length;
 }
 
-export function deleteTemplateMessage(waiting: number): string {
+export function deleteTemplateMessage(waiting: number, checklist = false): string {
+  if (checklist) {
+    const pending = waiting
+      ? ` ${waiting === 1 ? 'מפגש אחד עוד מחכה לחתימת הנהג, והוא יימחק.' : `${waiting} מפגשים עוד מחכים לחתימת הנהג, והם יימחקו.`}`
+      : '';
+    return `הטופס יימחק לצמיתות.${pending} טיוטות של מפגשים שעוד לא נחתמו יימחקו איתו. מפגשים שכבר נחתמו יישארו בתיק הנהג.`;
+  }
   const pending = waiting
     ? ` ${waiting === 1 ? 'נהג אחד עוד לא חתם עליו, והבקשה שלו תבוטל.' : `${waiting} נהגים עוד לא חתמו עליו, והבקשות שלהם יבוטלו.`}`
     : '';

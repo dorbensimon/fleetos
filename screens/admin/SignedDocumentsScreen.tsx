@@ -9,6 +9,7 @@ import { SignedDocumentsDesktopView } from '../../components/desktop/signing/Sig
 import { getSigningTemplatePreviewSession, listSigningTemplates, type SigningTemplate } from '../../lib/docuseal';
 import { SignedDocumentsMobile } from './mobile/SignedDocumentsMobile';
 import { loadMeetingPlan, type PlanRow } from '../../lib/meetingPlan';
+import { requestErrorDetails } from '../../lib/requestError';
 import { useFocusEffect } from '@react-navigation/native';
 
 /**
@@ -59,8 +60,11 @@ function SignedDocumentsPhone({
       if (generation !== request.current) return;
       setTemplates(rows);
       setError('');
-    } catch (err: any) {
-      if (generation === request.current) setError(err?.message || 'לא הצלחנו לטעון את המסמכים');
+    } catch (err) {
+      if (generation === request.current) {
+        const details = requestErrorDetails(err, 'לא הצלחנו לטעון את המסמכים');
+        setError([details.message, details.hint].filter(Boolean).join(' '));
+      }
     }
   }, [companyId]);
 

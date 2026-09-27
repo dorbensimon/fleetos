@@ -39,11 +39,61 @@ export function Select<T extends string>({
 }) {
   const phone = !useIsDesktop();
   const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.value === value);
+
+  return (
+    <>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => setOpen(true)}
+        style={[styles.box, phone && kit.box, hasError && (phone ? kit.boxError : styles.boxError)]}
+        accessibilityRole="button"
+        accessibilityLabel={selected?.label ?? placeholder}
+        accessibilityHint="פתיחת רשימת האפשרויות"
+      >
+        <Ionicons name="chevron-down" size={phone ? 18 : 16} color={phone ? DK.muted : COLORS.textFaint} />
+        <AppText style={[styles.value, phone && kit.value, !selected && (phone ? kit.placeholder : styles.placeholder)]} numberOfLines={1}>
+          {selected?.label ?? placeholder}
+        </AppText>
+      </TouchableOpacity>
+
+      <ChoiceSheet open={open} onClose={() => setOpen(false)} value={value} options={options} onPick={onChange} allowClear={allowClear} />
+    </>
+  );
+}
+
+export interface ChoiceSheetOption<T extends string> extends SelectOption<T> {
+  /** A second, quieter line under the label. */
+  hint?: string;
+  icon?: React.ComponentProps<typeof Ionicons>['name'];
+}
+
+/**
+ * The sheet that rises from the bottom with a list to choose from — the
+ * one behind `Select`, usable on its own (e.g. "which vehicle to open").
+ */
+export function ChoiceSheet<T extends string>({
+  open,
+  onClose,
+  options,
+  onPick,
+  value = null,
+  title,
+  allowClear,
+}: {
+  open: boolean;
+  onClose: () => void;
+  options: ChoiceSheetOption<T>[];
+  onPick: (v: T | null) => void;
+  value?: T | null;
+  title?: string;
+  allowClear?: boolean;
+}) {
+  const phone = !useIsDesktop();
   const [mounted, setMounted] = useState(false);
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(1)).current;
   const scrimOpacity = useRef(new Animated.Value(0)).current;
-  const selected = options.find((o) => o.value === value);
 
   useEffect(() => {
     if (open) {
@@ -65,83 +115,79 @@ export function Select<T extends string>({
     }
   }, [mounted, open, scrimOpacity, translateY]);
 
-  const close = () => setOpen(false);
   const translate = translateY.interpolate({ inputRange: [0, 1], outputRange: [0, 440] });
+  const pick = (v: T | null) => {
+    onPick(v);
+    onClose();
+  };
 
   return (
-    <>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => setOpen(true)}
-        style={[styles.box, phone && kit.box, hasError && (phone ? kit.boxError : styles.boxError)]}
-        accessibilityRole="button"
-        accessibilityLabel={selected?.label ?? placeholder}
-        accessibilityHint="פתיחת רשימת האפשרויות"
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: scrimOpacity }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="סגירה">
+          <BlurView intensity={8} tint="dark" style={StyleSheet.absoluteFill} />
+          <View style={[StyleSheet.absoluteFill, styles.scrim]} />
+        </Pressable>
+      </Animated.View>
+
+      <Animated.View
+        style={[
+          styles.sheet,
+          phone && kit.sheet,
+          { bottom: 8 + insets.bottom, transform: [{ translateY: translate }] },
+        ]}
       >
-        <Ionicons name="chevron-down" size={phone ? 18 : 16} color={phone ? DK.muted : COLORS.textFaint} />
-        <AppText style={[styles.value, phone && kit.value, !selected && (phone ? kit.placeholder : styles.placeholder)]} numberOfLines={1}>
-          {selected?.label ?? placeholder}
-        </AppText>
-      </TouchableOpacity>
-
-      <Modal visible={mounted} transparent animationType="none" onRequestClose={close}>
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: scrimOpacity }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={close}>
-            <BlurView intensity={8} tint="dark" style={StyleSheet.absoluteFill} />
-            <View style={[StyleSheet.absoluteFill, styles.scrim]} />
-          </Pressable>
-        </Animated.View>
-
-        <Animated.View
-          style={[
-            styles.sheet,
-            phone && kit.sheet,
-            { bottom: 8 + insets.bottom, transform: [{ translateY: translate }] },
-          ]}
-        >
-          <View style={styles.grabHandle} />
-          <Pressable onPress={(e) => e.stopPropagation()}>
-            <ScrollView bounces={false}>
-              {allowClear && (
+        <View style={styles.grabHandle} />
+        {!!title && (
+          <AppText weight="bold" style={[styles.title, phone && kit.title]} accessibilityRole="header">
+            {title}
+          </AppText>
+        )}
+        <Pressable onPress={(e) => e.stopPropagation()}>
+          <ScrollView bounces={false}>
+            {allowClear && (
+              <TouchableOpacity style={[styles.option, phone && kit.option]} onPress={() => pick(null)}>
+                <AppText style={[styles.clearText, phone && kit.optionText, phone && { color: DK.muted }]}>ללא</AppText>
+              </TouchableOpacity>
+            )}
+            {options.map((opt) => {
+              const active = opt.value === value;
+              return (
                 <TouchableOpacity
-                  style={[styles.option, phone && kit.option]}
-                  onPress={() => {
-                    onChange(null);
-                    close();
-                  }}
+                  key={opt.value}
+                  style={[styles.option, phone && kit.option, phone && active && kit.optionActive]}
+                  accessibilityRole="button"
+                  accessibilityLabel={opt.hint ? `${opt.label}, ${opt.hint}` : opt.label}
+                  accessibilityState={{ selected: active }}
+                  aria-selected={active}
+                  onPress={() => pick(opt.value)}
                 >
-                  <AppText style={[styles.clearText, phone && kit.optionText, phone && { color: DK.muted }]}>ללא</AppText>
-                </TouchableOpacity>
-              )}
-              {options.map((opt) => {
-                const active = opt.value === value;
-                return (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[styles.option, phone && kit.option, phone && active && kit.optionActive]}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active }}
-                    aria-selected={active}
-                    onPress={() => {
-                      onChange(opt.value);
-                      close();
-                    }}
-                  >
-                    {active && <Ionicons name={phone ? 'checkmark-circle' : 'checkmark'} size={phone ? 20 : 17} color={phone ? DK.accent : COLORS.accent} />}
+                  {!!opt.icon && (
+                    <View style={kit.optionIcon}>
+                      <Ionicons name={opt.icon} size={20} color={DK.accent} />
+                    </View>
+                  )}
+                  <View style={styles.optionBody}>
                     <AppText
                       weight={active ? 'bold' : 'regular'}
                       style={[styles.optionText, phone && kit.optionText, active && { color: phone ? DK.accent : COLORS.accent }]}
                     >
                       {opt.label}
                     </AppText>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </Pressable>
-        </Animated.View>
-      </Modal>
-    </>
+                    {!!opt.hint && <AppText style={[styles.hint, phone && kit.hint]}>{opt.hint}</AppText>}
+                  </View>
+                  {active ? (
+                    <Ionicons name={phone ? 'checkmark-circle' : 'checkmark'} size={phone ? 20 : 17} color={phone ? DK.accent : COLORS.accent} />
+                  ) : opt.icon ? (
+                    <Ionicons name="chevron-back" size={18} color={phone ? DK.faint : COLORS.textFaint} />
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </Pressable>
+      </Animated.View>
+    </Modal>
   );
 }
 
@@ -180,7 +226,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: SPACING.lg,
   },
-  optionText: { flex: 1, fontSize: 15 },
+  optionBody: { flex: 1, gap: 2 },
+  optionText: { fontSize: 15 },
+  hint: { fontSize: 13, color: COLORS.textFaint },
+  title: { fontSize: 16, textAlign: 'right', paddingHorizontal: SPACING.lg, paddingTop: SPACING.xs, paddingBottom: SPACING.sm },
   clearText: { flex: 1, fontSize: 15, color: COLORS.textFaint },
 });
 
@@ -193,4 +242,7 @@ const kit = StyleSheet.create({
   option: { minHeight: 52, marginHorizontal: 8, paddingHorizontal: 14, borderRadius: 14 },
   optionActive: { backgroundColor: DK.accentSoft },
   optionText: { fontFamily: DK_FONT.medium, fontSize: 16, color: DK.ink },
+  optionIcon: { width: 40, height: 40, borderRadius: 13, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  hint: { fontFamily: DK_FONT.regular, fontSize: 14, color: DK.muted },
+  title: { fontFamily: DK_FONT.bold, fontSize: 18, color: DK.ink, paddingHorizontal: 22 },
 });

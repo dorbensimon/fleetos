@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { requestErrorDetails } from './requestError';
 import { functionErrorMessage } from './functionError';
 import type { SigningTemplate } from './docuseal';
 
@@ -121,7 +122,10 @@ export async function uploadSigningDraft(companyId: string, draftId: string, fil
     contentType: file.type || 'application/octet-stream',
     upsert: true,
   });
-  if (error) throw new Error('העלאת הקובץ נכשלה. בדקו את החיבור ונסו שוב.');
+  if (error) {
+    const details = requestErrorDetails(error, 'העלאת הקובץ נכשלה');
+    throw new Error([details.message, details.hint].filter(Boolean).join(' '));
+  }
   if (ext === 'pdf') return `${folder}/document.pdf`;
   const { pdfPath } = await invoke<{ pdfPath: string }>({ action: 'prepare', companyId, draftId, uploadName }, 'הכנת הקובץ נכשלה');
   return pdfPath;

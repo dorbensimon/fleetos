@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     if (!allowed) return json({ error: 'אין הרשאה למסמך זה' }, 403);
     // Archived and removed documents stay reachable for the company's managers,
     // who need them as evidence, but they no longer exist for the driver.
-    if ((request.archived_at || request.deleted_at) && request.status !== 'completed' && !isCompanyManager) {
+    if ((request.deleted_at || request.archived_at) && !isCompanyManager) {
       return json({ error: 'המסמך לא נמצא' }, 404);
     }
     if (request.status !== 'completed' && request.status !== 'pending') {

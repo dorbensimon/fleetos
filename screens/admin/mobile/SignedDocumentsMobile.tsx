@@ -166,7 +166,7 @@ export function SignedDocumentsMobile(p: Props) {
           title={mode === 'confirm' ? 'למחוק את המסמך?' : mode === 'send' ? 'שליחה לנהגים' : mode === 'meet' ? 'עם מי המפגש?' : template?.title ?? ''}
           subtitle={
             mode === 'confirm'
-              ? deleteTemplateMessage(waiting)
+              ? deleteTemplateMessage(waiting, checklist)
               : mode === 'meet'
                 ? templatePlan.size ? 'מי שהמפגש שלו קרוב מופיע ראשון. לוחצים על השם, והטופס נפתח.' : 'לוחצים על שם הנהג, והטופס נפתח למילוי.'
               : mode === 'send'
@@ -242,7 +242,7 @@ export function SignedDocumentsMobile(p: Props) {
       {p.loading ? (
         <LoadingPanel />
       ) : p.error && !p.templates ? (
-        <ErrorPanel message={p.error} hint={p.companyId ? 'בדקו את החיבור לאינטרנט ונסו שוב.' : undefined} onRetry={p.companyId ? p.onRetry : undefined} />
+        <ErrorPanel message={p.error} onRetry={p.companyId ? p.onRetry : undefined} />
       ) : (
         <>
           <Reveal index={0}>
