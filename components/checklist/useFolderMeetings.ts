@@ -9,11 +9,14 @@ import { isChecklistTemplate, listDriverMeetings, type MeetingRow } from '../../
  */
 export function useFolderMeetings(driverId: string | null | undefined, template: SigningTemplate | null | undefined, requests: SignatureRequest[] = []) {
   const checklist = isChecklistTemplate(template);
+  // A deleted form's signed meetings still need their meeting, so they can be
+  // deleted the meeting's way.
+  const hasRequests = requests.length > 0;
   const [meetings, setMeetings] = useState<MeetingRow[]>([]);
   const generation = useRef(0);
 
   const reload = useCallback(async () => {
-    if (!checklist || !driverId) {
+    if ((!checklist && !hasRequests) || !driverId) {
       setMeetings([]);
       return;
     }
@@ -24,7 +27,7 @@ export function useFolderMeetings(driverId: string | null | undefined, template:
     } catch {
       // The folder still shows its signed documents; only drafts are missing.
     }
-  }, [checklist, driverId]);
+  }, [checklist, hasRequests, driverId]);
 
   useEffect(() => {
     void reload();
