@@ -279,19 +279,14 @@ export function buildReportDocument(opts: ReportDocumentOptions): string {
 /**
  * Turns a full report HTML document into a PDF the user can share (native) or
  * print (web). expo-print's web shim ignores the `html` it's given and just
- * calls `window.print()` on whatever page is currently open — so on web we
- * open the report in its own window and print that instead, rather than
- * printing a screenshot of the screen the user pressed the button from.
+ * calls `window.print()` on whatever page is currently open — so on web the
+ * report opens in a full-screen reader inside the app, with a back button and
+ * a print / save-as-PDF button, instead of a bare new window that has no way
+ * back (and none at all in the Home Screen app).
  */
 export async function printOrShareReport(html: string, dialogTitle: string): Promise<void> {
   if (Platform.OS === 'web') {
-    const reportWindow = window.open('', '_blank');
-    if (!reportWindow) throw new Error('חסימת חלונות קופצים מנעה את פתיחת הדוח');
-    reportWindow.document.open();
-    reportWindow.document.write(html);
-    reportWindow.document.close();
-    reportWindow.focus();
-    reportWindow.print();
+    openWebReportViewer(html, dialogTitle);
     return;
   }
 
@@ -304,4 +299,80 @@ export async function printOrShareReport(html: string, dialogTitle: string): Pro
       UTI: 'com.adobe.pdf',
     });
   }
+}
+
+const VIEWER_ID = 'icar-report-viewer';
+
+const VIEWER_CSS = `
+  #${VIEWER_ID} { position: fixed; inset: 0; z-index: 2147483000; display: flex; flex-direction: column;
+    background: #f8fafc; direction: rtl; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Heebo', sans-serif;
+    animation: icar-rv-in 200ms cubic-bezier(0.23, 1, 0.32, 1); }
+  @keyframes icar-rv-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { #${VIEWER_ID} { animation: none; } }
+  #${VIEWER_ID} .rv-bar { flex: none; display: flex; align-items: center; gap: 12px;
+    padding: calc(env(safe-area-inset-top) + 10px) 16px 10px; background: #0A1626; color: #fff; }
+  #${VIEWER_ID} .rv-title { flex: 1; min-width: 0; margin: 0; font-size: 16px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+  #${VIEWER_ID} button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px;
+    border: 0; border-radius: 12px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: background-color 160ms ease, transform 100ms ease; }
+  #${VIEWER_ID} button:active { transform: scale(0.97); }
+  #${VIEWER_ID} button:focus-visible { outline: 2px solid #19C6F0; outline-offset: 2px; }
+  #${VIEWER_ID} .rv-back { background: rgba(255,255,255,0.12); color: #fff; }
+  #${VIEWER_ID} .rv-print { background: #0075B3; color: #fff; }
+  @media (hover: hover) and (pointer: fine) {
+    #${VIEWER_ID} .rv-back:hover { background: rgba(255,255,255,0.2); }
+    #${VIEWER_ID} .rv-print:hover { background: #00649A; }
+  }
+  #${VIEWER_ID} iframe { flex: 1; width: 100%; border: 0; background: #f8fafc; }
+  @media (max-width: 480px) { #${VIEWER_ID} .rv-label { display: none; } #${VIEWER_ID} button { padding: 0 12px; } }
+`;
+
+const BACK_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+const PRINT_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>';
+
+/** A full-screen, in-app reader for a report on web: back, title, print / save as PDF. */
+function openWebReportViewer(html: string, title: string): void {
+  document.getElementById(VIEWER_ID)?.remove();
+  const previousFocus = document.activeElement as HTMLElement | null;
+
+  const root = document.createElement('div');
+  root.id = VIEWER_ID;
+  root.setAttribute('role', 'dialog');
+  root.setAttribute('aria-modal', 'true');
+  root.setAttribute('aria-label', title);
+  root.innerHTML = `<style>${VIEWER_CSS}</style>
+    <div class="rv-bar">
+      <button type="button" class="rv-back" aria-label="חזרה">${BACK_ICON}<span class="rv-label">חזרה</span></button>
+      <h1 class="rv-title">${esc(title)}</h1>
+      <button type="button" class="rv-print" aria-label="הדפסה או שמירה כ־PDF">${PRINT_ICON}<span class="rv-label">הדפסה / PDF</span></button>
+    </div>`;
+
+  const frame = document.createElement('iframe');
+  frame.title = title;
+  frame.srcdoc = html;
+  root.appendChild(frame);
+
+  const bodyOverflow = document.body.style.overflow;
+  const close = () => {
+    document.removeEventListener('keydown', onKey);
+    document.body.style.overflow = bodyOverflow;
+    root.remove();
+    previousFocus?.focus?.();
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') close();
+  };
+
+  root.querySelector<HTMLButtonElement>('.rv-back')!.onclick = close;
+  root.querySelector<HTMLButtonElement>('.rv-print')!.onclick = () => {
+    const win = frame.contentWindow;
+    if (!win) return;
+    win.focus();
+    win.print();
+  };
+  document.addEventListener('keydown', onKey);
+  document.body.style.overflow = 'hidden';
+  document.body.appendChild(root);
+  root.querySelector<HTMLButtonElement>('.rv-back')!.focus();
 }
