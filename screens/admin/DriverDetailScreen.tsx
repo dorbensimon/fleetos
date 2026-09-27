@@ -6,7 +6,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LoadingState, ErrorState, useToast } from '../../components/ui';
 import { useCompany } from '../../lib/CompanyContext';
-import { getDriver, archiveDriver, restoreDriver, resetDriverPassword, getUserEmail, updateUserEmail, updateDriver, listDepartments, DriverRow, type Department } from '../../lib/adminApi';
+import { getDriver, archiveDriver, restoreDriver, resetDriverPassword, getUserEmail, updateUserEmail, updateDriver, listDepartments, markNotificationsReadWhere, DriverRow, type Department } from '../../lib/adminApi';
+import { FocusTargetProvider } from '../../components/ui/FocusTarget';
 import { listDocuments } from '../../lib/documents';
 import { listSignatureRequests } from '../../lib/docuseal';
 import { exportDriverSnapshotReport } from '../../lib/driverSnapshotReport';
@@ -256,6 +257,20 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     }
   }, [isDesktop, driver, openFolderParam, navigation, driverId]);
 
+  // Arriving from "the driver updated details": the phone shows those fields
+  // on the details screen, so the focus travels there.
+  const focusParam = route.params.focus;
+  useEffect(() => {
+    if (isDesktop || !driver || !focusParam) return;
+    navigation.setParams({ focus: undefined });
+    navigation.navigate('DriverPersonalDetails', { driverId, focus: focusParam });
+  }, [isDesktop, driver, focusParam, navigation, driverId]);
+
+  // Opening the driver is what "the driver updated details" asks for.
+  useFocusEffect(useCallback(() => {
+    markNotificationsReadWhere({ types: ['driver_profile_update'], actorId: driverId }).catch(() => undefined);
+  }, [driverId]));
+
   const exportReport = async () => {
     if (!driver || !company || exportingReport) return;
     setExportingReport(true);
@@ -388,6 +403,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
         ) : loadError ? (
           <ErrorState message={loadError} onRetry={load} />
         ) : (
+          <FocusTargetProvider focus={route.params.focus}>
           <DriverDetailDesktopView
             driverId={driverId}
             companyId={companyId ?? ''}
@@ -419,6 +435,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
             onArchive={() => setArchiveConfirmOpen(true)}
             onRestore={() => void runRestore()}
           />
+          </FocusTargetProvider>
         )}
 
         {modals}

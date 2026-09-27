@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { FocusTargetProvider } from '../../components/ui/FocusTarget';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
@@ -226,6 +227,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
 
   if (isDesktop) {
     return (
+      <FocusTargetProvider focus={route.params.focus}>
       <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'רכבים', formatPlate(vehicle.plate_number)]}>
         <VehicleDetailDesktopView
           vehicle={vehicle}
@@ -254,10 +256,15 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
           onDriversOpened={() => navigation.setParams({ openDrivers: undefined })}
         />
       </DesktopShell>
+      </FocusTargetProvider>
     );
   }
 
-  return <VehicleDetailMobile {...mobileBase} loading={false} error={null} vehicle={vehicle} department={department} />;
+  return (
+    <FocusTargetProvider focus={route.params.focus} scrollRef={scrollRef}>
+      <VehicleDetailMobile {...mobileBase} loading={false} error={null} vehicle={vehicle} department={department} />
+    </FocusTargetProvider>
+  );
 }
 
 const s = StyleSheet.create({ empty: { padding: SPACING.xl, alignItems: 'center' } });

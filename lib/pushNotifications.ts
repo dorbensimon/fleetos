@@ -4,7 +4,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { supabase, type UserRole } from './supabase';
-import { resolveNotificationVehicleId } from './adminApi/notifications';
+import { markNotificationRead, resolveNotificationVehicleId } from './adminApi/notifications';
 import type { Notification } from './adminApi/types';
 import { notificationTarget, type NotificationTarget } from './notificationTargets';
 
@@ -63,6 +63,8 @@ async function openNotification(
     .select('*')
     .eq('id', notificationId)
     .maybeSingle();
+  // Tapping the push is opening the notification, same as in the list.
+  if (row && !row.read_at) markNotificationRead(notificationId).catch(() => undefined);
   const target = row
     ? await notificationTarget(role, row as Notification, resolveNotificationVehicleId).catch(() => null)
     : null;

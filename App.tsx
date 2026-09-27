@@ -57,6 +57,7 @@ import DriverPersonalDetailsScreen from './screens/admin/DriverPersonalDetailsSc
 import DriverVehicleScreen from './screens/driver/DriverVehicleScreen';
 import DriverDocumentsScreen from './screens/driver/DriverDocumentsScreen';
 import DriverSigningDocumentsScreen from './screens/driver/DriverSigningDocumentsScreen';
+import DriverSignDocumentScreen from './screens/driver/DriverSignDocumentScreen';
 import DriverProfileScreen from './screens/driver/DriverProfileScreen';
 import DriverOdometerScreen from './screens/driver/DriverOdometerScreen';
 import DriverAttentionScreen from './screens/driver/DriverAttentionScreen';
@@ -131,6 +132,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       DriverVehicle: 'my-vehicle',
       DriverDocuments: 'my-documents',
       DriverSigningDocuments: 'my-documents/signing',
+      DriverSignDocument: 'my-documents/sign',
       DriverProfile: 'my-profile',
       DriverOdometer: 'my-vehicle/odometer/:vehicleId',
       DriverAttention: 'my-attention',
@@ -315,6 +317,7 @@ export default function App() {
               <Stack.Screen name="DriverVehicle" component={DriverVehicleScreen} />
               <Stack.Screen name="DriverDocuments" component={DriverDocumentsScreen} />
               <Stack.Screen name="DriverSigningDocuments" component={DriverSigningDocumentsScreen} />
+              <Stack.Screen name="DriverSignDocument" component={DriverSignDocumentScreen} />
               <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />
               <Stack.Screen name="DriverOdometer" component={DriverOdometerScreen} />
               <Stack.Screen name="DriverAttention" component={DriverAttentionScreen} />

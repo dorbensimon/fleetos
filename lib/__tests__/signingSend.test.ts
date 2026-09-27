@@ -13,6 +13,8 @@ import {
   deleteCompanyTemplate,
   deleteTemplateMessage,
   driversCount,
+  eraseSigningRequest,
+  eraseWarning,
   loadSendRecipients,
   recipientNote,
   sendToRecipients,
@@ -80,6 +82,14 @@ test('deleting a document and withdrawing a request use the server actions that 
   await cancelSigningRequest('c1', 'r1');
   expect(remove).toHaveBeenNthCalledWith(1, 'c1', 'template', 't1', 'company-delete');
   expect(remove).toHaveBeenNthCalledWith(2, 'c1', 'request', 'r1', 'archive');
+});
+
+test('deleting one driver document erases it in any state', async () => {
+  remove.mockResolvedValue({ success: true });
+  await eraseSigningRequest('c1', 'r1');
+  expect(remove).toHaveBeenCalledWith('c1', 'request', 'r1', 'erase');
+  expect(eraseWarning('completed', 'דני')).toBe('המסמך החתום יימחק לגמרי, גם אצל דני. אי אפשר לשחזר אותו.');
+  expect(eraseWarning('pending', null)).toBe('המסמך יימחק, והנהג לא יוכל לחתום עליו. אפשר לשלוח אותו שוב בכל רגע.');
 });
 
 test('wording', () => {

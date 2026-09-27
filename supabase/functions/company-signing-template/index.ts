@@ -46,7 +46,8 @@ type Inline = { text: string; bold?: boolean; italic?: boolean; underline?: bool
 const TEXT_SIZES = new Set([13, 20, 24]);
 const TEXT_COLORS = new Set(['#5C6773', '#0088CC', '#D92D20', '#12805C']);
 const HIGHLIGHT = '#FFF1A8';
-type EditorField = { kind: FieldKind; label?: string; x: number; y: number; w: number; h: number };
+/** `slot`: the field sits inside a line of text, where an inline `{ slot }` run names it. */
+type EditorField = { kind: FieldKind; label?: string; x: number; y: number; w: number; h: number; slot?: string };
 type Block = { type: 'h1' | 'h2' | 'p' | 'ul' | 'ol' | 'hr'; align?: 'right' | 'center' | 'left' | 'justify'; content: Inline[][] };
 
 function json(body: Record<string, unknown>, status = 200) {
@@ -134,6 +135,28 @@ function fieldIdentity(kind: FieldKind, label: unknown, counters: Record<string,
   return { name, type: kind === 'checkbox' ? 'checkbox' : 'text', title: base };
 }
 
+/**
+ * How DocuSeal writes a filled value: the size of the document's own text,
+ * right-aligned for Hebrew, and dates as 27/09/2026 (not DocuSeal's US
+ * default). Without these, values came out in another size and dates as
+ * 09/27/2026.
+ */
+const TEXT_LOOK = { font_size: 16, align: 'right', valign: 'center' } as const;
+const DATE_FORMAT = 'DD/MM/YYYY';
+
+function fieldLook(type: string): string {
+  if (type === 'text') return ` font-size="${TEXT_LOOK.font_size}" align="${TEXT_LOOK.align}" valign="${TEXT_LOOK.valign}"`;
+  if (type === 'date') return ` font-size="${TEXT_LOOK.font_size}" align="${TEXT_LOOK.align}" valign="${TEXT_LOOK.valign}" format="${DATE_FORMAT}"`;
+  return '';
+}
+
+/** The same look for fields placed on an uploaded PDF (sizes in PDF points). */
+function fieldPreferences(type: string): Record<string, unknown> | undefined {
+  if (type === 'text') return { font_size: 12, align: TEXT_LOOK.align, valign: TEXT_LOOK.valign };
+  if (type === 'date') return { font_size: 12, align: TEXT_LOOK.align, valign: TEXT_LOOK.valign, format: DATE_FORMAT };
+  return undefined;
+}
+
 function parseFields(raw: unknown): PlacedField[] | null {
   if (!Array.isArray(raw) || raw.length === 0 || raw.length > MAX_FIELDS) return null;
   const fields: PlacedField[] = [];
@@ -209,12 +232,13 @@ function parseEditorFields(raw: unknown): EditorField[] | null {
   const fields: EditorField[] = [];
   for (const f of raw) {
     if (!f || typeof f !== 'object') return null;
-    const { kind, label, x, y, w, h } = f as Record<string, unknown>;
+    const { kind, label, x, y, w, h, slot } = f as Record<string, unknown>;
     if (typeof kind !== 'string' || !FIELD_KINDS.has(kind)) return null;
     if (![x, y, w, h].every((v) => typeof v === 'number' && Number.isFinite(v) && v >= 0)) return null;
+    if (slot !== undefined && (typeof slot !== 'string' || !/^[a-z0-9]{1,40}$/i.test(slot))) return null;
     const box = { x: x as number, y: y as number, w: w as number, h: h as number };
     if (box.w < 4 || box.h < 4 || box.x + box.w > PAGE.width + 1 || box.y > PAGE.height * 200) return null;
-    fields.push({ kind: kind as FieldKind, label: typeof label === 'string' ? label : undefined, ...box });
+    fields.push({ kind: kind as FieldKind, label: typeof label === 'string' ? label : undefined, ...box, ...(slot ? { slot: slot as string } : {}) });
   }
   return fields;
 }
@@ -225,9 +249,25 @@ function renderEditorDocument(raw: unknown, fields: EditorField[], letterhead: L
   const used = new Set<string>();
   let textLength = 0;
 
+  // A field set into the text is drawn right there, in the line, the size it
+  // had in the editor; the others float at their spot (see `tags` below).
+  const inlined = new Set<EditorField>();
+  const fieldTag = (f: EditorField, style: string) => {
+    const id = fieldIdentity(f.kind, f.label, counters, used);
+    const tag = `${id.type}-field`;
+    return `<${tag} name="${escapeHtml(id.name)}" title="${escapeHtml(id.title)}" role="${SIGNER_ROLE}" required="${f.kind === 'checkbox' ? 'false' : 'true'}"${fieldLook(id.type)} style="${style}"></${tag}>`;
+  };
+
   const inline = (item: unknown): string | null => {
     if (!item || typeof item !== 'object') return null;
     const node = item as Record<string, unknown>;
+    if (typeof node.slot === 'string') {
+      const f = fields.find((field) => field.slot === node.slot && !inlined.has(field));
+      if (!f) return '';
+      inlined.add(f);
+      const w = Math.min(f.w, PAGE.width - PAGE.padX * 2);
+      return fieldTag(f, `display: inline-block; vertical-align: middle; width: ${w.toFixed(1)}px; height: ${f.h.toFixed(1)}px; margin: 0 4px;`);
+    }
     if (typeof node.text !== 'string') return null;
     textLength += node.text.length;
     let html = escapeHtml(node.text.replace(/\u200b/g, '')).replace(/\n/g, '<br>');
@@ -268,12 +308,12 @@ function renderEditorDocument(raw: unknown, fields: EditorField[], letterhead: L
   }
   if (textLength > MAX_TEXT) return null;
 
-  // Fields float over the text at the pixel spot the admin dropped them on.
-  const tags = fields.map((f) => {
-    const id = fieldIdentity(f.kind, f.label, counters, used);
-    const tag = `${id.type}-field`;
-    const style = `position: absolute; left: ${f.x.toFixed(1)}px; top: ${f.y.toFixed(1)}px; width: ${f.w.toFixed(1)}px; height: ${f.h.toFixed(1)}px;`;
-    return `<${tag} name="${escapeHtml(id.name)}" title="${escapeHtml(id.title)}" role="${SIGNER_ROLE}" required="${f.kind === 'checkbox' ? 'false' : 'true'}" style="${style}"></${tag}>`;
+  // Fields float over the text at the pixel spot the admin dropped them on,
+  // kept inside the page margins so a filled value never runs off the paper.
+  const tags = fields.filter((f) => !inlined.has(f)).map((f) => {
+    const w = Math.min(f.w, PAGE.width - PAGE.padX * 2);
+    const x = Math.min(Math.max(f.x, PAGE.padX), PAGE.width - PAGE.padX - w);
+    return fieldTag(f, `position: absolute; left: ${x.toFixed(1)}px; top: ${f.y.toFixed(1)}px; width: ${w.toFixed(1)}px; height: ${f.h.toFixed(1)}px;`);
   });
 
   return `<!doctype html>
@@ -327,7 +367,10 @@ async function createFromPdf(
       const area = { page: f.page, x: f.x * scaleX, y: f.y * scaleY, w: f.w * scaleX, h: f.h * scaleY };
       const existing = byName.get(id.name);
       if (existing) (existing.areas as unknown[]).push(area);
-      else byName.set(id.name, { name: id.name, title: id.title, type: id.type, role: SIGNER_ROLE, required: f.kind !== 'checkbox', areas: [area] });
+      else {
+        const preferences = fieldPreferences(id.type);
+        byName.set(id.name, { name: id.name, title: id.title, type: id.type, role: SIGNER_ROLE, required: f.kind !== 'checkbox', areas: [area], ...(preferences ? { preferences } : {}) });
+      }
     });
     const response = await docusealFetch('/templates/pdf', {
       method: 'POST',

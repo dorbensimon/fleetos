@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { Notification } from './types';
+import { plateFromOdometerMessage } from '../notificationFocus';
 
 const NOTIFICATION_TTL_DAYS = 7;
 
@@ -42,6 +43,28 @@ export async function markNotificationRead(notificationId: string) {
   if (error) throw error;
 }
 
+/**
+ * Notifications that only report something are done once the user has seen
+ * the place they talk about: opening a driver's card clears "the driver
+ * updated details", opening "הפרטים שלי" clears "the manager updated your
+ * file". Row-level security keeps this to the caller's own notifications.
+ */
+export async function markNotificationsReadWhere(filter: {
+  types: string[];
+  actorId?: string;
+  recipientId?: string;
+}) {
+  let query = supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .in('notification_type', filter.types)
+    .is('read_at', null);
+  if (filter.actorId) query = query.eq('actor_id', filter.actorId);
+  if (filter.recipientId) query = query.eq('recipient_id', filter.recipientId);
+  const { error } = await query;
+  if (error) throw error;
+}
+
 /** Marks every currently-unread notification as read — only via an explicit "קרא הכל" action. */
 export async function markAllNotificationsRead(companyId: string) {
   const { error } = await supabase
@@ -62,8 +85,11 @@ export async function markAllNotificationsRead(companyId: string) {
 export async function resolveNotificationVehicleId(notification: Notification): Promise<string | null> {
   if (notification.vehicle_id) return notification.vehicle_id;
 
-  const plateCandidates = Array.from(notification.message.matchAll(/\(([^()]+)\)/g))
-    .map((match) => match[1].trim())
+  const odometerPlate = plateFromOdometerMessage(notification.message);
+  const plateCandidates = [
+    ...Array.from(notification.message.matchAll(/\(([^()]+)\)/g)).map((match) => match[1].trim()),
+    ...(odometerPlate ? [odometerPlate] : []),
+  ]
     .flatMap((value) => [value, value.replace(/\D/g, '')])
     .filter((value, index, values) => value.length >= 5 && values.indexOf(value) === index);
 

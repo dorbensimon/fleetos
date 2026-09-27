@@ -100,14 +100,15 @@ export default function NotificationsScreen({ navigation }: Props) {
   };
 
   const actionLabel = (n: Notification) => {
-    if (n.notification_type === 'signature_request_assigned') return 'פתח מסמך לחתימה';
+    if (n.notification_type === 'signature_request_assigned') return profile?.role === 'driver' ? 'לחתימה על המסמך' : 'פתח את המסמך';
     if (n.notification_type === 'vehicle_assignment') return 'הצג רכב';
-    if (n.notification_type === 'driver_profile_updated_by_manager') return 'הצג את הפרטים שלי';
+    if (n.notification_type === 'driver_profile_updated_by_manager') return 'הצג מה השתנה';
     if (n.notification_type?.startsWith('driver_document_')) return 'פתח את המסמך';
-    if (n.notification_type === 'driver_profile_update') return 'פתח תיק נהג';
-    if (n.notification_type === 'driver_odometer_update') return profile?.role === 'driver' ? 'הצג רכב' : 'פתח תיק נהג';
+    if (n.notification_type === 'driver_profile_update') return 'הצג מה השתנה';
+    if (n.notification_type === 'driver_odometer_update') return 'הצג מד אוץ';
+    if (n.notification_type === 'vehicle_service_due') return 'הצג טיפולים';
     if (n.notification_type === 'license_update_requested') return 'לאישור הבקשה';
-    if (n.notification_type === 'license_update_reviewed') return 'הצג פרטים';
+    if (n.notification_type === 'license_update_reviewed') return 'הצג את הרישיון';
     if (isVehicleFolderNotification(n.notification_type)) return profile?.role === 'driver' ? 'הצג רכב' : n.vehicle_id ? 'פתח תיקייה' : 'פתח צי רכבים';
     if (n.notification_type?.startsWith('vehicle_')) return profile?.role === 'driver' ? 'בדוק מה נדרש' : 'פתח צי רכבים';
     return null;

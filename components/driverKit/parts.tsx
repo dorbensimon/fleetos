@@ -18,6 +18,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ErrorState, LoadingState } from '../ui';
+import { FocusTarget } from '../ui/FocusTarget';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DK, DK_FONT, DK_RADIUS, DK_SHADOW, DK_SPACE, STATUS, type Status } from './theme';
 // Components from the kit's core. Only used inside render functions, never
@@ -74,6 +75,7 @@ export function InfoLine({
   tint = DK.accent,
   onPress,
   trailing,
+  focusId,
 }: {
   icon: IconName;
   label: string;
@@ -84,6 +86,8 @@ export function InfoLine({
   tint?: string;
   onPress?: () => void;
   trailing?: ReactNode;
+  /** Lights up and scrolls into view when the screen is opened on this key (components/ui/FocusTarget). */
+  focusId?: string;
 }) {
   const body = (
     <View style={[styles.line, !first && styles.divider]} accessible={!onPress} accessibilityLabel={`${label}: ${value || 'לא הוזן'}`}>
@@ -103,12 +107,12 @@ export function InfoLine({
       {!!onPress && <Ionicons name="chevron-back" size={18} color={DK.faint} />}
     </View>
   );
-  if (!onPress) return body;
-  return (
+  const line = !onPress ? body : (
     <Pressy onPress={onPress} accessibilityLabel={`${label}: ${value || 'לא הוזן'}`} pressScale={0.985}>
       {body}
     </Pressy>
   );
+  return focusId ? <FocusTarget id={focusId} tint={DK.accent}>{line}</FocusTarget> : line;
 }
 
 /** A 52pt text input in the kit's look: sunk at rest, white with a blue ring while typing. */
@@ -150,6 +154,7 @@ export function EditField({
   maxLength,
   editable,
   onBlur,
+  focusId,
 }: {
   label: string;
   value?: string;
@@ -168,8 +173,10 @@ export function EditField({
   maxLength?: number;
   editable?: boolean;
   onBlur?: () => void;
+  /** Lights up and scrolls into view when the screen is opened on this key (components/ui/FocusTarget). */
+  focusId?: string;
 }) {
-  return (
+  const field = (
     <View style={[styles.field, !first && styles.divider]}>
       <DKText variant="caption" color={error ? STATUS.expired.fg : DK.inkSoft}>
         {label}
@@ -196,6 +203,7 @@ export function EditField({
       <FieldMessage error={error} hint={hint} />
     </View>
   );
+  return focusId ? <FocusTarget id={focusId} tint={DK.accent}>{field}</FocusTarget> : field;
 }
 
 export function FieldMessage({ error, hint }: { error?: string | null; hint?: string | null }) {

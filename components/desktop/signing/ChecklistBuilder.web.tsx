@@ -11,6 +11,7 @@ import {
   type ChecklistForm,
 } from '../../../lib/checklistForms';
 import { Letterhead } from './DocumentEditor.web';
+import { GUIDES_CSS, GuidesToggle, PageGrid, useGuidesToggle } from './snapGuides.web';
 
 /**
  * Building a "רשימת סעיפים" form on desktop: the sheet as it will print (the
@@ -39,7 +40,7 @@ export const CHECKLIST_BUILDER_CSS = `
 .cl-row { display: grid; grid-template-columns: 30px 28px minmax(0, 1fr) 40px; align-items: start; gap: 8px; padding: 10px 6px; border-radius: 12px; transition: background-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease; }
 .cl-row + .cl-row { box-shadow: 0 -1px 0 var(--sd-sep); }
 .cl-row:focus-within { background: rgba(0,136,204,0.04); }
-.cl-row.cl-drag-over { box-shadow: 0 -3px 0 var(--sd-tint); }
+.cl-row.cl-drag-over { box-shadow: 0 -2px 0 #E8318A; }
 .cl-row.cl-dragging { opacity: 0.45; }
 .cl-move { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .cl-move button { width: 30px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: var(--sd-ink-3); transition: background-color 150ms ease, color 150ms ease; }
@@ -150,6 +151,7 @@ export function ChecklistBuilder({
   const focusNext = useRef<string | null>(null);
   const [fresh, setFresh] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [showGrid, toggleGrid] = useGuidesToggle();
   const [overId, setOverId] = useState<string | null>(null);
 
   useLayoutEffect(() => {
@@ -194,7 +196,7 @@ export function ChecklistBuilder({
 
   return (
     <div className="sd-work cl-work">
-      <style>{CHECKLIST_BUILDER_CSS}</style>
+      <style>{CHECKLIST_BUILDER_CSS + GUIDES_CSS}</style>
       <aside className="sd-panel" aria-label="הגדרות רשימת הסעיפים">
         <h3 className="sd-b">הגדרות רשימת הסעיפים</h3>
         <p className="sd-panel-sub">כותבים את הסעיפים על הדף. כאן בוחרים מה מסמנים ליד כל סעיף.</p>
@@ -250,6 +252,7 @@ export function ChecklistBuilder({
           </div>
           <span className="cl-pnote">את הכותרות מעל החתימות אפשר לשנות על הדף.</span>
         </div>
+        <GuidesToggle on={showGrid} onToggle={toggleGrid} />
       </aside>
 
       <div className="sd-canvas">
@@ -274,6 +277,7 @@ export function ChecklistBuilder({
         </div>
 
         <div className="cl-sheet">
+          {showGrid ? <PageGrid margins={{ x: 64, y: 56 }} cell={{ x: 794 / 21, y: 794 / 21 }} unit="px" middleH={false} /> : null}
           <Letterhead />
           <h1 className="cl-title sd-b">{title || 'טופס ללא שם'}</h1>
           <GrowingText

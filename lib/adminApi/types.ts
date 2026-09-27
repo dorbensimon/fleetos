@@ -153,6 +153,8 @@ export interface Notification {
   /** Vehicle folder expiry alerts only (migration 90): the vehicle and folder to open on tap. */
   vehicle_id?: string | null;
   folder_key?: string | null;
+  /** Signing notifications (migration 82): the request to open on tap. */
+  signature_request_id?: string | null;
 }
 
 export interface VehicleDriverAssignment {

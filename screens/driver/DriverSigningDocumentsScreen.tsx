@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,12 +7,13 @@ import { EmptyState, ErrorState, LoadingState } from '../../components/ui';
 import { Banner, DK, DKText, DriverPage, EmptyPanel, ErrorPanel, HeroTitle, KitSheet, LoadingPanel, PrimaryAction, Pressy, Reveal, STATUS, SheetActions, Surface } from '../../components/driverKit';
 import { SigningFolders } from '../../components/driverCard/SigningFolders';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { assignSigningTemplate, downloadSignedRequest, getSigningSession, getSigningTemplatePreviewSession, listDriverSigningRequests, listSigningTemplates, syncSigningRequest, type SignatureRequest } from '../../lib/docuseal';
-import { cancelSigningRequest } from '../../lib/signingSend';
+import { assignSigningTemplate, downloadSignedRequest, getSigningSession, getSigningTemplatePreviewSession, inspectDriverSigning, listDriverSigningRequests, listSigningTemplates, syncSigningRequest, type SignatureRequest } from '../../lib/docuseal';
+import { eraseSigningRequest, eraseWarning } from '../../lib/signingSend';
 import { buildSigningFolders, type SigningFolder } from '../../lib/signingFolders';
 import { getDriver, type DriverRow } from '../../lib/adminApi';
 import { useCompany } from '../../lib/CompanyContext';
 import type { RootStackParamList } from '../../navigation/types';
+import { showAlert } from '../../lib/platformAlert';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable } from '../../components/desktop/primitives';
@@ -37,7 +38,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
   const [opening, setOpening] = useState('');
   const [sending, setSending] = useState(false);
   const sendingLock = useRef(false);
-  // A request the manager is withdrawing; kept while the sheet closes so its text stays.
+  // A document the manager is deleting; kept while the sheet closes so its text stays.
   const [cancelTarget, setCancelTarget] = useState<SignatureRequest | null>(null);
   // A meeting ("רשימת סעיפים") being cancelled: a draft, or one already signed.
   const [cancelMeetingTarget, setCancelMeetingTarget] = useState<MeetingRow | null>(null);
@@ -90,6 +91,20 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
   const open = async (item: SignatureRequest) => {
     setOpening(item.id);
     try {
+      // A document that only needs the driver's signature is signed on the
+      // app's own pad, the same one the manager uses. Anything else to fill
+      // in stays in DocuSeal's form.
+      if (profile?.role === 'driver' && item.status === 'pending') {
+        const check = await inspectDriverSigning(item.id).catch(() => null);
+        if (check?.status === 'pending' && check.signOnly) {
+          navigation.navigate('DriverSignDocument', {
+            requestId: item.id,
+            title: item.template_title || folder?.title || 'מסמך',
+            documentUrl: check.documentUrl ?? null,
+          });
+          return;
+        }
+      }
       const session = await getSigningSession(item.id);
       navigation.navigate('DocusealWebView', {
         ...session,
@@ -123,6 +138,22 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
     } catch (err: any) { setError(err?.message || 'פתיחת המסמך נכשלה. נסה שוב.'); }
     finally { setOpening(''); }
   };
+  // Opened from a notification or a task about one request: a driver goes
+  // straight to signing it; a manager lands in the folder that holds it.
+  const requestParam = route.params?.requestId;
+  useEffect(() => {
+    if (!requestParam || loading || !driver) return;
+    navigation.setParams({ requestId: undefined });
+    const host = folders.find(item => item.requests.some(request => request.id === requestParam));
+    const request = host?.requests.find(item => item.id === requestParam);
+    if (!host || !request) return;
+    if (profile?.role === 'driver' && request.status === 'pending') {
+      void open(request);
+      return;
+    }
+    if (host.id !== folderId) navigation.push('DriverSigningDocuments', { driverId: driver.id, folderId: host.id });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestParam, loading, driver, folders]);
   const download = async (item: SignatureRequest) => {
     setOpening(`download:${item.id}`); setError('');
     try { await downloadSignedRequest(item); }
@@ -134,12 +165,30 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
     setCancelling(true); setError('');
     try {
       if (cancelMeetingTarget) await cancelMeeting(driver.company_id, cancelMeetingTarget.id);
-      else await cancelSigningRequest(driver.company_id, cancelTarget!.id);
+      else await eraseSigningRequest(driver.company_id, cancelTarget!.id);
       await Promise.all([reloadMeetings(), reloadNext()]);
       setCancelOpen(false);
       await load();
-    } catch (err: any) { setCancelOpen(false); setError(err?.message || 'ביטול הבקשה נכשל. נסה שוב.'); }
+    } catch (err: any) { setCancelOpen(false); setError(err?.message || 'המחיקה נכשלה. נסו שוב.'); }
     finally { setCancelling(false); }
+  };
+  const askErase = (item: SignatureRequest) => {
+    if (!driver?.company_id) return;
+    const companyId = driver.company_id;
+    showAlert('למחוק את המסמך?', eraseWarning(item.status, driver.full_name), [
+      { text: 'השארה', style: 'cancel' },
+      {
+        text: 'מחיקת המסמך',
+        style: 'destructive',
+        onPress: () => {
+          setOpening(`erase:${item.id}`); setError('');
+          eraseSigningRequest(companyId, item.id)
+            .then(load)
+            .catch((err: Error) => setError(err?.message || 'המחיקה נכשלה. נסו שוב.'))
+            .finally(() => setOpening(''));
+        },
+      },
+    ]);
   };
   const pending = folder?.requests.find(item => item.status === 'pending' && !!item.docuseal_submitter_slug);
   const completed = folder?.requests.find(item => item.status === 'completed');
@@ -229,6 +278,11 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                               {cancelled ? 'בוטל' : item.status === 'completed' ? `נחתם ${time(item.completed_at || item.created_at)}` : signNow ? 'ממתין לחתימת הנהג · לחצו כדי שיחתום עכשיו' : ready ? `נשלח ${time(item.sent_at || item.created_at)}` : item.status === 'declined' ? 'החתימה נדחתה' : 'השליחה לא אושרה — ניתן לנסות שוב'}
                             </DText>
                           </View>
+                          {canSend && !meeting && (
+                            <HoverPressable onPress={() => askErase(item)} disabled={!!opening} accessibilityLabel="מחיקת המסמך" style={ds.rowAction} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}>
+                              <DText weight="semiBold" style={ds.rowDanger}>{opening === `erase:${item.id}` ? 'מוחק…' : 'מחיקה'}</DText>
+                            </HoverPressable>
+                          )}
                           {openable && <Ionicons name="chevron-back" size={14} color={DESKTOP_COLORS.inkFaint} />}
                         </HoverPressable>
                       );
@@ -299,21 +353,21 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
           visible={cancelOpen}
           onClose={() => setCancelOpen(false)}
           dismissable={!cancelling}
-          icon={cancelMeetingTarget ? 'trash' : 'close-circle'}
+          icon="trash"
           tone="danger"
-          title={cancelMeetingTarget ? (cancelMeetingTarget.status === 'draft' ? 'למחוק את הטיוטה?' : 'למחוק את המפגש?') : 'לבטל את הבקשה?'}
+          title={cancelMeetingTarget ? (cancelMeetingTarget.status === 'draft' ? 'למחוק את הטיוטה?' : 'למחוק את המפגש?') : 'למחוק את המסמך?'}
           subtitle={
             cancelMeetingTarget
               ? cancelMeetingTarget.status === 'draft'
                 ? 'מה שסומן בטיוטה יימחק. אפשר להתחיל מפגש חדש בכל רגע.'
                 : 'המפגש והמסמך שלו יימחקו לגמרי, גם אצל הנהג. אי אפשר לשחזר אותם.'
-              : `${driver?.full_name || 'הנהג'} לא יוכל לחתום על ${cancelTarget?.template_title || folder?.title || 'המסמך'}. אפשר לשלוח אותו שוב בכל רגע.`
+              : eraseWarning(cancelTarget?.status ?? 'pending', driver?.full_name)
           }
           footer={
             <SheetActions>
               <PrimaryAction label="השארה" tone="ghost" onPress={() => setCancelOpen(false)} disabled={cancelling} style={styles.grow} />
               <PrimaryAction
-                label={cancelMeetingTarget ? (cancelMeetingTarget.status === 'draft' ? 'מחיקת הטיוטה' : 'מחיקת המפגש') : 'ביטול הבקשה'}
+                label={cancelMeetingTarget ? (cancelMeetingTarget.status === 'draft' ? 'מחיקת הטיוטה' : 'מחיקת המפגש') : 'מחיקת המסמך'}
                 tone="destructive"
                 onPress={() => void cancel()}
                 loading={cancelling}
@@ -413,16 +467,16 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                         </Pressy>
                       </>
                     )}
-                    {((item.status === 'pending' && !cancelled) || (done && meeting) || (cancelled && meeting)) && canSend && (
+                    {canSend && (!!meeting || !cancelled) && (
                       <Pressy
                         onPress={() => { setCancelTarget(item); setCancelMeetingTarget(meeting ?? null); setCancelOpen(true); }}
                         disabled={sending || cancelling}
-                        accessibilityLabel={meeting ? 'מחיקת המפגש' : 'ביטול הבקשה'}
-                        accessibilityHint={meeting ? 'המפגש והמסמך שלו יימחקו' : 'הנהג לא יוכל לחתום עליה'}
+                        accessibilityLabel={meeting ? 'מחיקת המפגש' : 'מחיקת המסמך'}
+                        accessibilityHint={meeting ? 'המפגש והמסמך שלו יימחקו' : 'המסמך יימחק לגמרי'}
                         style={[styles.view, styles.cancel]}
                         pressScale={0.92}
                       >
-                        <Ionicons name={meeting ? "trash-outline" : "close"} size={20} color={STATUS.expired.fg} />
+                        <Ionicons name="trash-outline" size={20} color={STATUS.expired.fg} />
                       </Pressy>
                     )}
                   </Surface>
@@ -468,4 +522,6 @@ const ds = StyleSheet.create({
   rowLast: { borderBottomWidth: 0 },
   rowTitle: { fontSize: 13 },
   rowMeta: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint, marginTop: 2 },
+  rowAction: { paddingHorizontal: 8, minHeight: 30, borderRadius: 6, justifyContent: 'center' },
+  rowDanger: { fontSize: 12.5, color: DESKTOP_COLORS.danger },
 });

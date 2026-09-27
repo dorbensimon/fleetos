@@ -23,6 +23,7 @@ import { cancelMeeting, formatIsoDay, isChecklistTemplate, type MeetingRow } fro
 import { useNextMeeting } from '../../checklist/useNextMeeting';
 import { NextMeetingCard } from '../../checklist/NextMeetingCard';
 import { showAlert } from '../../../lib/platformAlert';
+import { eraseSigningRequest, eraseWarning } from '../../../lib/signingSend';
 
 type FolderStatus = ReturnType<typeof signingFolderStatus>;
 const STATUS_LABEL: Record<FolderStatus, string> = { pending: 'ממתין לחתימה', completed: 'נחתם', failed: 'דורש טיפול', empty: 'לא נשלח' };
@@ -237,6 +238,23 @@ function SigningFolderModal({
     );
   };
 
+  const askErase = (item: SignatureRequest) => {
+    showAlert('למחוק את המסמך?', eraseWarning(item.status, null), [
+      { text: 'השארה', style: 'cancel' },
+      {
+        text: 'מחיקת המסמך',
+        style: 'destructive',
+        onPress: () => {
+          setOpening(`erase:${item.id}`);
+          eraseSigningRequest(companyId, item.id)
+            .then(onChanged)
+            .catch((err: Error) => setMessage(err?.message || 'המחיקה נכשלה. נסו שוב.'))
+            .finally(() => setOpening(''));
+        },
+      },
+    ]);
+  };
+
   // Same refresh the full signing page runs: pull the live DocuSeal state of
   // requests that may have changed since they were stored.
   useEffect(() => {
@@ -420,6 +438,11 @@ function SigningFolderModal({
                   {meeting && canSend && (
                     <HoverPressable onPress={() => askCancel(meeting)} disabled={!!opening} accessibilityLabel="מחיקת המפגש" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
                       <DText weight="semiBold" style={styles.rowDanger}>מחיקה</DText>
+                    </HoverPressable>
+                  )}
+                  {!meeting && canSend && (
+                    <HoverPressable onPress={() => askErase(item)} disabled={!!opening} accessibilityLabel="מחיקת המסמך" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
+                      <DText weight="semiBold" style={styles.rowDanger}>{opening === `erase:${item.id}` ? 'מוחק…' : 'מחיקה'}</DText>
                     </HoverPressable>
                   )}
                   {ready && meeting && canSend && (

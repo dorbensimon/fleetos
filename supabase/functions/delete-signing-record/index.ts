@@ -19,8 +19,9 @@ Deno.serve(async (req) => {
 
   try {
     const { companyId, kind, id, action = 'archive' } = await req.json();
-    if (!['archive', 'restore', 'permanent-delete', 'company-delete'].includes(action)) return json({ error: 'פעולה אינה תקינה' }, 400);
+    if (!['archive', 'restore', 'permanent-delete', 'company-delete', 'erase'].includes(action)) return json({ error: 'פעולה אינה תקינה' }, 400);
     if (action === 'company-delete' && kind !== 'template') return json({ error: 'פעולה אינה תקינה' }, 400);
+    if (action === 'erase' && kind !== 'request') return json({ error: 'פעולה אינה תקינה' }, 400);
 
     if (kind === 'request') {
       const access = await verifyCompanyAccess(req.headers.get('Authorization'), companyId ?? null);
@@ -30,6 +31,43 @@ Deno.serve(async (req) => {
       const { data: item } = await access.adminClient.from('signature_requests').select('*')
         .eq('id', id).eq('company_id', companyId).single();
       if (!item) return json({ error: 'המסמך לא נמצא' }, 404);
+
+      // `erase`: the manager removes one document of one driver for good, in any
+      // state, signed ones included: the DocuSeal submission, the stored PDF and
+      // the row (its notifications go with it). No record of the deletion is kept.
+      if (action === 'erase') {
+        const { data: meeting } = await access.adminClient.from('checklist_meetings')
+          .select('id').eq('signature_request_id', id).maybeSingle();
+        // A meeting's document is deleted with its meeting (checklist-meeting "cancel").
+        if (meeting) return json({ error: 'זה מסמך של מפגש. מוחקים אותו מתוך המפגש.' }, 409);
+        if (item.status === 'pending') {
+          // Claim it first, so a signature being saved right now is never cut in half.
+          const now = new Date().toISOString();
+          const { data: claimed, error: claimError } = await access.adminClient.from('signature_requests').update({
+            status: 'cancelled', cancelled_at: now, cancelled_by: access.callerId,
+            next_email_reminder_at: null, email_reminder_locked_until: null,
+          }).eq('id', id).eq('status', 'pending')
+            .or(`sync_locked_until.is.null,sync_locked_until.lt.${now}`)
+            .select('id').maybeSingle();
+          if (claimError) return json({ error: 'מחיקת המסמך נכשלה' }, 500);
+          if (!claimed) {
+            const { data: current } = await access.adminClient.from('signature_requests').select('status').eq('id', id).maybeSingle();
+            if (current?.status === 'pending') return json({ error: 'הנהג חותם על המסמך ברגע זה. חכו רגע ונסו שוב.' }, 409);
+          }
+        }
+        if (item.docuseal_submission_id) {
+          const response = await docusealFetch(`/submissions/${item.docuseal_submission_id}`, { method: 'DELETE' });
+          if (!response.ok && response.status !== 404) return json({ error: 'לא ניתן למחוק את המסמך כרגע. נסו שוב.' }, 502);
+        }
+        if (isSignedRequestPath(item.company_id, item.driver_id, item.id, item.signed_file_path)) {
+          const { error: storageError } = await access.adminClient.storage.from('documents').remove([item.signed_file_path]);
+          if (storageError) return json({ error: 'מחיקת קובץ המסמך נכשלה' }, 500);
+        }
+        const { error: eraseError } = await access.adminClient.from('signature_requests').delete().eq('id', id).eq('company_id', companyId);
+        if (eraseError) return json({ error: 'מחיקת המסמך נכשלה' }, 500);
+        return json({ success: true });
+      }
+
       // A preserved signed document is out of the archive for good; it must not be
       // restored or re-archived back into the admin's list.
       if (item.deleted_at && action !== 'permanent-delete') return json({ error: 'המסמך כבר הוסר מהארכיון' }, 409);

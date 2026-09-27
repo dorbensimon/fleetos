@@ -31,7 +31,7 @@ export async function loadPdf(url: string): Promise<LoadedPdf> {
 export async function renderPage(doc: PDFDocumentProxy, pageNumber: number, canvas: HTMLCanvasElement, cssWidth: number) {
   const page = await doc.getPage(pageNumber);
   const base = page.getViewport({ scale: 1 });
-  const ratio = Math.min(window.devicePixelRatio || 1, 2);
+  const ratio = Math.min(window.devicePixelRatio || 1, 3);
   const viewport = page.getViewport({ scale: (cssWidth / base.width) * ratio });
   canvas.width = Math.floor(viewport.width);
   canvas.height = Math.floor(viewport.height);

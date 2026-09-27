@@ -103,3 +103,19 @@ export async function deleteCompanyTemplate(companyId: string, templateId: strin
 export async function cancelSigningRequest(companyId: string, requestId: string): Promise<void> {
   await deleteSigningRecord(companyId, 'request', requestId, 'archive');
 }
+
+/**
+ * Deletes one document of one driver for good: pending or signed, the file,
+ * the DocuSeal copy and its notifications. Nothing is kept.
+ */
+export async function eraseSigningRequest(companyId: string, requestId: string): Promise<void> {
+  await deleteSigningRecord(companyId, 'request', requestId, 'erase');
+}
+
+/** The warning shown before deleting, in plain words. */
+export function eraseWarning(status: string, driverName: string | null | undefined): string {
+  const who = driverName?.trim() || 'הנהג';
+  return status === 'completed'
+    ? `המסמך החתום יימחק לגמרי, גם אצל ${who}. אי אפשר לשחזר אותו.`
+    : `המסמך יימחק, ו${who} לא יוכל לחתום עליו. אפשר לשלוח אותו שוב בכל רגע.`;
+}

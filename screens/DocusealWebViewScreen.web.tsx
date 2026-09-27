@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppText, PrimaryButton, Screen, ScreenHeader } from '../components/ui';
 import { useCompany } from '../lib/CompanyContext';
 import { downloadSignedRequest, finalizeSigningTemplate, syncSigningRequest } from '../lib/docuseal';
-import { attr, docusealEmbedHtml } from '../lib/docusealEmbed';
+import { attr, docusealEmbedHtml, SIGNATURE_PAD_CSS } from '../lib/docusealEmbed';
 import { COLORS, SPACING } from '../lib/theme';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import { DocumentViewer } from '../components/desktop/signing/DocumentViewer.web';
@@ -44,9 +44,10 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
           const pdf=await pdfjsLib.getDocument({url:${JSON.stringify(params.src || '')},withCredentials:false}).promise;
           const root=document.getElementById('pages'); const fields=${JSON.stringify(params.previewFields || [])};
           const zeroIndexedPages=fields.some((field)=>field.areas.some((area)=>area.page===0));
+          // Pages are drawn at twice the screen density (within a memory budget) so text stays sharp when pinched to zoom.
           for(let pageNumber=1;pageNumber<=pdf.numPages;pageNumber+=1){
             const page=await pdf.getPage(pageNumber); const initial=page.getViewport({scale:1});
-            const cssScale=Math.max(.1,Math.min(1.25,(Math.min(window.innerWidth,760)-28)/initial.width)); const pixelRatio=Math.min(window.devicePixelRatio||1,2); const viewport=page.getViewport({scale:cssScale*pixelRatio});
+            const cssScale=Math.max(.1,Math.min(1.25,(Math.min(window.innerWidth,760)-28)/initial.width)); const pixelRatio=Math.min((window.devicePixelRatio||1)*2,4,Math.sqrt(8e6/(initial.width*initial.height*cssScale*cssScale))); const viewport=page.getViewport({scale:cssScale*pixelRatio});
             const pageWrap=document.createElement('section'); pageWrap.className='page'; pageWrap.style.width=(viewport.width/pixelRatio)+'px'; const canvas=document.createElement('canvas'); canvas.width=viewport.width; canvas.height=viewport.height; pageWrap.appendChild(canvas); root.appendChild(pageWrap); await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
             for(const field of fields) for(const area of field.areas){const fieldPage=zeroIndexedPages?area.page+1:area.page;if(fieldPage!==pageNumber)continue;const marker=document.createElement('div');marker.className='preview-field'+(field.type==='stamp'?' stamp':'');marker.style.left=(area.x*100)+'%';marker.style.top=(area.y*100)+'%';marker.style.width=(area.w*100)+'%';marker.style.height=(area.h*100)+'%';marker.textContent=field.type==='stamp'?'חותמת':'חתימה';pageWrap.appendChild(marker)}
           } send('document-ready',{pages:pdf.numPages});
@@ -238,7 +239,10 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
           'data-send-copy-email': 'false',
           'data-with-send-copy-button': 'false',
           'data-allow-to-resubmit': 'false',
-          'data-custom-css': kit ? DRIVER_FORM_CSS : undefined,
+          'data-allow-typed-signature': 'false',
+          'data-reuse-signature': 'true',
+          'data-remember-signature': 'false',
+          'data-custom-css': kit ? DRIVER_FORM_CSS + SIGNATURE_PAD_CSS : SIGNATURE_PAD_CSS,
           style: directFormStyle,
         }) : html ? (
           <iframe title={params.title} srcDoc={html} style={iframeStyle} onLoad={() => setLoading(false)} allow="clipboard-read; clipboard-write" />

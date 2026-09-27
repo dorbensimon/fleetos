@@ -6,6 +6,15 @@ export function attr(value: string) {
 }
 
 /**
+ * Documents with more than a signature to fill stay in DocuSeal's form; its
+ * signature box is drawn like the app's own pad (components/checklist/
+ * SignaturePad): white, a dashed blue frame, round corners. Together with
+ * `data-allow-typed-signature="false"` it is drawing only, as in the app.
+ */
+export const SIGNATURE_PAD_CSS =
+  'canvas{background:#fff!important;border:2px dashed rgba(47,91,255,.28)!important;border-radius:20px!important;min-height:190px;touch-action:none}';
+
+/**
  * The DocuSeal template builder or signing form page, inside the page head
  * (`base`) and the message bridge of the platform that shows it.
  */
@@ -28,7 +37,9 @@ export function docusealEmbedHtml(params: RootStackParamList['DocusealWebView'],
     : `data-src="${attr(params.src || '')}"`;
   return `${base}<script src="https://${host}/js/form.js"></script>${bridge}</head><body>
     <docuseal-form id="form" ${source}${hostAttribute} data-language="he" data-send-copy-email="false"
-      data-with-send-copy-button="false" data-allow-to-resubmit="false"></docuseal-form>
+      data-with-send-copy-button="false" data-allow-to-resubmit="false"
+      data-allow-typed-signature="false" data-reuse-signature="true" data-remember-signature="false"
+      data-custom-css="${attr(SIGNATURE_PAD_CSS)}"></docuseal-form>
     <script>
       document.getElementById('form').addEventListener('completed', (e) => send('completed', e.detail));
       document.getElementById('form').addEventListener('declined', (e) => send('declined', e.detail));

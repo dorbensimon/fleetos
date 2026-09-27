@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, Platform, StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../components/ui/BrandLoader';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
@@ -46,7 +46,9 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
               const page = await pdf.getPage(pageNumber);
               const initial = page.getViewport({ scale: 1 });
               const cssScale = Math.max(0.1, (window.innerWidth - 16) / initial.width);
-              const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+              // Drawn at twice the screen's density (within a memory budget),
+              // so text stays sharp when the page is pinched to zoom.
+              const pixelRatio = Math.min((window.devicePixelRatio || 1) * 2, 4, Math.sqrt(8e6 / (initial.width * initial.height * cssScale * cssScale)));
               const viewport = page.getViewport({ scale: cssScale * pixelRatio });
               const pageWrap = document.createElement('section');
               pageWrap.className = 'page';
@@ -165,6 +167,11 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
     }
   };
 
+  // iOS draws a PDF itself, as vector text that stays sharp at any zoom, so a
+  // plain document opens straight in it. Android's WebView cannot show a PDF,
+  // and field markers need the pdf.js page, so those keep the drawn pages.
+  const nativePdf = Platform.OS === 'ios' && params.mode === 'document' && !!params.src && !params.previewFields?.length;
+
   return (
     <Screen style={styles.kitScreen}>
       <NightBar
@@ -176,13 +183,13 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
       />
       <View style={styles.webWrap}>
         <WebView
-          source={{ html: buildHtml(params), baseUrl: `https://${params.host || 'cdn.docuseal.com'}` }}
+          source={nativePdf ? { uri: params.src! } : { html: buildHtml(params), baseUrl: `https://${params.host || 'cdn.docuseal.com'}` }}
           javaScriptEnabled
           domStorageEnabled
           thirdPartyCookiesEnabled
           sharedCookiesEnabled
           onMessage={onMessage}
-          onLoadEnd={() => params.mode !== 'document' && setLoading(false)}
+          onLoadEnd={() => (nativePdf || params.mode !== 'document') && setLoading(false)}
           onError={() => {
             setLoading(false);
             setError(params.mode === 'document' ? 'טעינת המסמך נכשלה' : 'טעינת התבנית נכשלה');

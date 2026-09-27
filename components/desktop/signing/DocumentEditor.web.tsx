@@ -4,13 +4,17 @@ import { EDITOR_HIGHLIGHT, EDITOR_PAGE, EDITOR_TEXT_COLORS, EDITOR_TEXT_SIZES, t
 import { useCompany } from '../../../lib/CompanyContext';
 import { AUTO_FIELDS, DRIVER_FIELDS, FIELD_META } from './fieldMeta';
 import { FIELD_DRAG_TYPE, FieldBox, FieldInspector, trackPointer } from './FieldBox.web';
+import { GUIDES_CSS, GuideLines, GuidesToggle, PageGrid, snapMove, snapResize, useGuidesToggle, type Guide, type SnapRect } from './snapGuides.web';
 
 /**
  * The "write it here" document editor: a Word-like A4 page (contentEditable)
  * with a labelled toolbar, and fields that float above the text. A field is
  * dragged from the side panel (or clicked in) and can then be dragged
  * anywhere on the page. Each field is pinned to the paragraph it sits on, so
- * typing above it carries it down with its text.
+ * typing above it carries it down with its text. A field clicked in while
+ * typing goes into the line itself, right after the words, and the caret
+ * moves on past it; such a field keeps a place in the text (a `slot`) and
+ * travels with it.
  *
  * The page's DOM is turned into a small block model on save; the server
  * builds the signing PDF from that model and the field positions, never from
@@ -29,6 +33,8 @@ export type EditorField = {
   h: number;
   /** Where the field last stood on the page, used if its paragraph is gone. */
   lastTop?: number;
+  /** Set into the line of text: a blank of its size (span[data-fid=id]) holds its place. */
+  slot?: boolean;
 };
 
 /** Everything needed to reopen the editor where the admin left it. */
@@ -44,6 +50,8 @@ const TOP_MIN = PAD_Y + HEADER_H + HEADER_GAP / 2;
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 /** An A4 page is 21cm wide, so this many page pixels make a centimetre. */
 const PX_PER_CM = PAGE_W / 21;
+/** How close, in page pixels, a dragged field has to come to a line to snap to it. */
+const SNAP_PX = 6;
 const cm = (px: number) => (Math.round((px / PX_PER_CM) * 10) / 10).toLocaleString('he-IL');
 type Rect = { l: number; t: number; r: number; b: number };
 
@@ -120,6 +128,10 @@ function inlines(node: Node, marks: Marks, out: EditorInline[]) {
     const tag = child.tagName;
     if (tag === 'BR') {
       out.push({ text: '\n', ...marks });
+      return;
+    }
+    if (child.dataset.fid) {
+      out.push({ slot: child.dataset.fid });
       return;
     }
     const weight = child.style.fontWeight;
@@ -364,6 +376,10 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
   // deleted stay known, so their fields stay where they were.
   const knownTops = useRef(new Map<string, number>());
   const [layout, setLayout] = useState({ tops: {} as Record<string, number>, textBottom: 0, text: [] as Rect[] });
+  // Fields set into the text follow their place in it; see syncSlots below.
+  const syncSlotsRef = useRef<() => void>(() => {});
+  const [guides, setGuides] = useState<Guide[]>([]);
+  const [showGrid, toggleGrid] = useGuidesToggle();
 
   /** Tags every top-level paragraph with an id and records where it starts. */
   const measure = useCallback(() => {
@@ -408,6 +424,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
         textKey(prev.text) === textKey(text);
       return same ? prev : { tops, textBottom, text };
     });
+    syncSlotsRef.current();
   }, []);
 
   const topOf = useCallback(
@@ -444,6 +461,46 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
     return { anchor, dy: y - top };
   }, []);
 
+  /**
+   * A field set into the text stands exactly over its blank in the line, so
+   * typing before it carries it along. Deleting the blank (Backspace over
+   * it) deletes the field.
+   */
+  const syncSlots = useCallback(() => {
+    const doc = docRef.current;
+    const origin = pageRef.current?.getBoundingClientRect();
+    if (!doc || !origin || !fieldsRef.current.some((f) => f.slot)) return;
+    let changed = false;
+    const next: EditorField[] = [];
+    for (const f of fieldsRef.current) {
+      if (!f.slot) {
+        next.push(f);
+        continue;
+      }
+      const blank = doc.querySelector<HTMLElement>(`[data-fid="${f.id}"]`);
+      if (!blank) {
+        changed = true;
+        continue;
+      }
+      const r = blank.getBoundingClientRect();
+      const x = r.left - origin.left;
+      const pin = anchorAt(r.top - origin.top, f.h);
+      if (Math.abs(x - f.x) < 0.5 && pin.anchor === f.anchor && Math.abs(pin.dy - f.dy) < 0.5) next.push(f);
+      else {
+        changed = true;
+        next.push({ ...f, x, ...pin });
+      }
+    }
+    if (changed) {
+      fieldsRef.current = next;
+      setFields(next);
+    }
+  }, [anchorAt]);
+  syncSlotsRef.current = syncSlots;
+
+  /** The blank that holds a field's place in the line. */
+  const slotBlank = (id: string) => docRef.current?.querySelector<HTMLElement>(`[data-fid="${id}"]`) ?? null;
+
   useImperativeHandle(ref, () => ({
     snapshot: () => {
       measure();
@@ -454,7 +511,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
         const lastTop = Math.max(0, el ? el.offsetTop + f.dy : known !== undefined ? known + f.dy : f.anchor ? f.lastTop ?? f.dy : f.dy);
         return { ...f, lastTop };
       });
-      const placed = saved.map((f) => ({ kind: f.kind, label: f.label?.trim() || undefined, x: Math.round(f.x), y: Math.round(f.lastTop), w: Math.round(f.w), h: Math.round(f.h) }));
+      const placed = saved.map((f) => ({ kind: f.kind, label: f.label?.trim() || undefined, x: Math.round(f.x), y: Math.round(f.lastTop), w: Math.round(f.w), h: Math.round(f.h), ...(f.slot ? { slot: f.id } : {}) }));
       return { draft: { html: doc?.innerHTML ?? '', fields: saved }, blocks: doc ? serializeEditor(doc) : [], placed };
     },
   }));
@@ -623,11 +680,56 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
     setSelectedId(field.id);
   };
 
-  /** Clicked in the side panel: lands right under the last written line, below any fields already there, and scrolls into view. */
+  /**
+   * Clicked in the side panel while writing: the field goes into the line,
+   * right after the words before the caret and lined up with them, and the
+   * caret moves on past it, so typing simply continues after the field.
+   */
+  const addInline = (kind: SigningFieldKind): boolean => {
+    const doc = docRef.current;
+    const page = pageRef.current;
+    const saved = savedRange.current;
+    if (!doc || !page || !saved || !doc.contains(saved.startContainer)) return false;
+    restore();
+    const selection = window.getSelection();
+    if (!selection?.rangeCount) return false;
+    const range = selection.getRangeAt(0);
+    if (!doc.contains(range.startContainer)) return false;
+    range.deleteContents();
+    const size = sizeOf(kind);
+    const id = newId('f');
+    const blank = document.createElement('span');
+    blank.className = 'sd-slot';
+    blank.dataset.fid = id;
+    blank.contentEditable = 'false';
+    Object.assign(blank.style, { display: 'inline-block', verticalAlign: 'middle', width: `${size.w}px`, height: `${size.h}px`, margin: '0 4px' });
+    // A zero-width character after the blank gives the caret a place to stand.
+    const after = document.createTextNode('\u200b');
+    range.insertNode(after);
+    range.insertNode(blank);
+    const caret = document.createRange();
+    caret.setStart(after, 1);
+    caret.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(caret);
+    savedRange.current = caret.cloneRange();
+
+    const origin = page.getBoundingClientRect();
+    const r = blank.getBoundingClientRect();
+    const field: EditorField = { id, kind, ...size, slot: true, x: r.left - origin.left, ...anchorAt(r.top - origin.top, size.h) };
+    commit([...fieldsRef.current, field]);
+    fieldsRef.current = [...fieldsRef.current, field];
+    measure();
+    refreshTools();
+    return true;
+  };
+
+  /** Clicked in the side panel: into the line at the caret; with no caret in the text, right under the last written line. */
   const addInView = (kind: SigningFieldKind) => {
     const doc = docRef.current;
     const page = pageRef.current;
     if (!doc || !page) return;
+    if (addInline(kind)) return;
     measure();
     const written = Array.from(doc.children).filter((el) => el.textContent?.replace(/[\s\u200b]/g, ''));
     const lastLine = written[written.length - 1] as HTMLElement | undefined;
@@ -687,29 +789,63 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
 
   const change = (field: EditorField) => setFields((list) => list.map((f) => (f.id === field.id ? field : f)));
   const remove = (id: string) => {
+    slotBlank(id)?.remove();
     commit(fieldsRef.current.filter((f) => f.id !== id));
     setSelectedId(null);
+    measure();
+  };
+
+  /** A field set into the text that is dragged or nudged away leaves the line and floats like any other. */
+  const lift = (field: EditorField): EditorField => {
+    if (!field.slot) return field;
+    slotBlank(field.id)?.remove();
+    return { ...field, slot: false };
+  };
+
+  /** What a dragged field can line up with: the page's middle and margins, the other fields and the lines of text. */
+  const snapTargets = (field: EditorField) => {
+    const others: SnapRect[] = fieldsRef.current.filter((f) => f.id !== field.id).map((f) => ({ x: f.x, y: topOf(f), w: f.w, h: f.h }));
+    const lines: SnapRect[] = layout.text.map((r) => ({ x: r.l, y: r.t, w: r.r - r.l, h: r.b - r.t }));
+    return { rects: [...others, ...lines], page: { v: [PAGE_W / 2, PAD_X, PAGE_W - PAD_X], h: [], width: PAGE_W, height: pages * PAGE_H } };
   };
 
   const gesture = (field: EditorField, mode: 'move' | 'resize') => (event: React.PointerEvent) => {
     const startTop = topOf(field);
+    const targets = snapTargets(field);
+    // Resizing keeps a field in its line (its blank grows with it); moving takes it out.
+    const inLine = mode === 'resize' && !!field.slot;
+    let base = field;
     let latest = field;
     trackPointer(
       event,
-      remember,
+      () => {
+        remember();
+        if (!inLine) base = lift(field);
+      },
       (dx, dy) => {
         if (mode === 'move') {
-          const x = clamp(field.x + dx, 0, PAGE_W - field.w);
+          const x = clamp(base.x + dx, 0, PAGE_W - base.w);
           const y = Math.max(TOP_MIN, startTop + dy);
-          latest = { ...field, x, dy: field.dy + (y - startTop) };
+          const snap = snapMove({ x, y, w: base.w, h: base.h }, targets.rects, targets.page, SNAP_PX);
+          setGuides(snap.guides);
+          const top = Math.max(TOP_MIN, snap.y);
+          latest = { ...base, x: clamp(snap.x, 0, PAGE_W - base.w), dy: base.dy + (top - startTop) };
         } else {
-          latest = { ...field, w: clamp(field.w + dx, 18, PAGE_W - field.x), h: clamp(field.h + dy, 18, 400) };
+          const w = clamp(base.w + dx, 18, PAGE_W - base.x);
+          const h = clamp(base.h + dy, 18, 400);
+          const snap = snapResize({ x: base.x, y: startTop, w, h }, targets.rects, targets.page, SNAP_PX);
+          setGuides(snap.guides);
+          latest = { ...base, w: clamp(snap.w, 18, PAGE_W - base.x), h: clamp(snap.h, 18, 400) };
+          const blank = inLine ? slotBlank(field.id) : null;
+          if (blank) Object.assign(blank.style, { width: `${latest.w}px`, height: `${latest.h}px` });
         }
         change(latest);
       },
       () => {
+        setGuides([]);
         // Re-pin to whichever paragraph the field now sits on.
         change({ ...latest, ...anchorAt(topOf(latest), latest.h) });
+        if (inLine) measure();
       },
     );
   };
@@ -717,9 +853,10 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
   const nudge = (field: EditorField) => (dx: number, dy: number, big: boolean) => {
     const step = big ? 20 : 4;
     remember();
-    const x = clamp(field.x + dx * step, 0, PAGE_W - field.w);
-    const y = Math.max(TOP_MIN, topOf(field) + dy * step);
-    change({ ...field, x, ...anchorAt(y, field.h) });
+    const free = lift(field);
+    const x = clamp(free.x + dx * step, 0, PAGE_W - free.w);
+    const y = Math.max(TOP_MIN, topOf(free) + dy * step);
+    change({ ...free, x, ...anchorAt(y, free.h) });
   };
 
   // Ctrl+Z outside the text undoes the last field change; inside the text it stays the browser's text undo.
@@ -756,9 +893,10 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
 
   return (
     <div className="sd-work">
+      <style>{GUIDES_CSS}</style>
       <aside className="sd-panel" aria-label="הוספת שדות">
         <h3 className="sd-b">הוספת שדה למסמך</h3>
-        <p className="sd-panel-sub">לחצו על שדה והוא יופיע מתחת לטקסט שכתבתם, או גררו אותו ישר למקום הרצוי. אפשר להזיז כל שדה בגרירה.</p>
+        <p className="sd-panel-sub">לחצו על שדה והוא ייכנס לשורה, מיד אחרי המילה האחרונה שכתבתם, ואפשר להמשיך לכתוב אחריו. אפשר גם לגרור שדה ישר למקום הרצוי.</p>
 
         <button type="button" className="sd-area-btn" onMouseDown={keepSelection} onClick={insertSigningArea}>
           <span className="sd-tool-icon" style={{ background: 'linear-gradient(160deg,#35B8F0,#0075B3)' }}>
@@ -783,6 +921,8 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
             <FieldTool key={kind} kind={kind} onMouseDown={keepSelection} draggable onDragStart={dragStart(kind)} onPress={() => addInView(kind)} />
           ))}
         </div>
+
+        <GuidesToggle on={showGrid} onToggle={toggleGrid} />
 
         {selected ? (
           <FieldInspector
@@ -925,6 +1065,8 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
             onMouseUp={refreshTools}
             onPaste={onPaste}
           />
+          {showGrid ? <PageGrid margins={{ x: PAD_X, y: PAD_Y }} cell={{ x: PX_PER_CM, y: PX_PER_CM }} unit="px" middleH={false} /> : null}
+          <GuideLines guides={guides} unit="px" />
           {Array.from({ length: pages - 1 }, (_, i) => (
             <div key={i} className="sd-page-break" style={{ top: (i + 1) * PAGE_H }} aria-hidden="true">
               <span>סוף עמוד {i + 1}</span>
