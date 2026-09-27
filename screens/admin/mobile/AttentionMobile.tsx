@@ -19,8 +19,9 @@ type Props = {
   onRetry: () => void;
   onRefresh: () => void;
   onHome: () => void;
-  onOpenDriver: (id: string) => void;
-  onOpenVehicle: (id: string) => void;
+  onOpenLicense: (driverId: string) => void;
+  onOpenInsurance: (vehicleId: string) => void;
+  onAssignDriver: (vehicleId: string) => void;
   onOpenLicenseDocs: (driverId: string) => void;
 };
 
@@ -51,7 +52,7 @@ export function AttentionMobile(p: Props) {
               title: x.full_name ?? 'ללא שם',
               detail: `${expired ? 'פג' : 'יפוג'} ${formatDate(x.license_expiry)} · ${relativeDays(x.license_expiry) ?? ''}`,
               status: expired ? 'expired' : 'soon',
-              onPress: () => p.onOpenDriver(x.id),
+              onPress: () => p.onOpenLicense(x.id),
             };
           }),
         },
@@ -66,7 +67,7 @@ export function AttentionMobile(p: Props) {
             title: `${formatPlate(vehicle.plate_number)}${vehicle.manufacturer || vehicle.model ? ` · ${[vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ')}` : ''}`,
             detail: expiry ? `פג ${formatDate(expiry)} · ${relativeDays(expiry) ?? ''}` : 'לא הוזן ביטוח',
             status: 'expired',
-            onPress: () => p.onOpenVehicle(vehicle.id),
+            onPress: () => p.onOpenInsurance(vehicle.id),
           })),
         },
         {
@@ -80,7 +81,7 @@ export function AttentionMobile(p: Props) {
             title: formatPlate(vehicle.plate_number),
             detail: [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || 'ללא דגם',
             status: 'soon',
-            onPress: () => p.onOpenVehicle(vehicle.id),
+            onPress: () => p.onAssignDriver(vehicle.id),
           })),
         },
         {

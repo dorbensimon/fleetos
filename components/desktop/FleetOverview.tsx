@@ -36,6 +36,8 @@ const TABULAR = webOnly({ fontVariantNumeric: 'tabular-nums' });
 const SPRING = { stiffness: 340, damping: 37, mass: 1, useNativeDriver: false } as const;
 const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
 
+const BRAND_SOFT = '#E6F2F9';
+
 /** Solid fills for a selected card — dark enough for white text. */
 const TONE_FILL: Record<DesktopTone | 'brand', string> = {
   brand: DESKTOP_COLORS.brand,
@@ -66,7 +68,7 @@ export function FleetHeader() {
   return (
     <View style={[styles.header, enter(0)]}>
       <View style={styles.headerText}>
-        <DText weight="bold" style={styles.greeting}>
+        <DText weight="extraBold" style={styles.greeting}>
           {greeting}
         </DText>
         <DText style={styles.dateLine}>{dateLine}</DText>
@@ -106,11 +108,14 @@ const MODES: { value: FleetMode; label: string; icon: IconName }[] = [
 export function ModeSwitch({
   mode,
   compact,
+  counts,
   onChange,
 }: {
   mode: FleetMode;
   /** Icon-only segments for narrow windows; the label stays as the accessible name. */
   compact?: boolean;
+  /** How many of each there are, shown as a small badge beside the label. */
+  counts?: Partial<Record<FleetMode, number>>;
   onChange: (mode: FleetMode) => void;
 }) {
   const reduce = prefersReducedMotion();
@@ -160,16 +165,23 @@ export function ModeSwitch({
             style={[styles.segment, compact && styles.segmentCompact]}
             pressMotionStyle={styles.segmentPress}
             onPress={() => onChange(item.value)}
-            accessibilityLabel={item.label}
+            accessibilityLabel={counts?.[item.value] != null ? `${item.label}, ${counts[item.value]}` : item.label}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             aria-selected={on}
           >
-            <Ionicons name={item.icon} size={16} color={on ? '#FFFFFF' : DESKTOP_COLORS.inkMuted} />
+            <Ionicons name={item.icon} size={18} color={on ? '#FFFFFF' : DESKTOP_COLORS.inkMuted} />
             {!compact && (
-              <DText weight="semiBold" style={[styles.segmentText, on && styles.segmentTextOn]}>
+              <DText weight="bold" style={[styles.segmentText, on && styles.segmentTextOn]}>
                 {item.label}
               </DText>
+            )}
+            {!compact && counts?.[item.value] != null && (
+              <View style={[styles.segmentCount, on && styles.segmentCountOn]}>
+                <DText weight="bold" style={[styles.segmentCountText, TABULAR, on && styles.segmentTextOn]}>
+                  {counts[item.value]}
+                </DText>
+              </View>
             )}
           </HoverPressable>
         );
@@ -187,102 +199,96 @@ type FilterCardsProps<T extends string> = {
   /** The list's current filter; a value with no card (e.g. archive) selects none. */
   selected: T;
   loading: boolean;
-  /** Changing it remounts the rail, so switching drivers/vehicles reads as a new set. */
+  /** Changing it remounts the row, so switching drivers/vehicles reads as a new set. */
   animKey: string;
   onSelect: (value: T) => void;
 };
 
+/** Below this row width the one-line explanations drop so the labels and numbers keep their room. */
+const TILE_HINT_MIN_ROW = 820;
+
 /**
- * Status rail: every status is both a number and a filter. One coloured pill
- * slides (spring) under the chosen status and takes on its tone, with a soft
- * glow in the same colour; numbers count up when they arrive or change.
+ * Filter tiles: every status is both a number and a filter. The chosen tile
+ * fills with its tone and gets a check mark, so the current view is never in
+ * doubt; numbers count up when they arrive or change.
  */
 export function FilterCards<T extends string>(props: FilterCardsProps<T>) {
-  return <StatusRail key={props.animKey} {...props} />;
+  return <TileRow key={props.animKey} {...props} />;
 }
 
-function StatusRail<T extends string>({ cards, selected, loading, onSelect }: FilterCardsProps<T>) {
-  const reduce = prefersReducedMotion();
-  const widths = useRef<Partial<Record<string, number>>>({});
-  const x = useRef(new Animated.Value(0)).current;
-  const width = useRef(new Animated.Value(0)).current;
-  const placed = useRef(false);
-  const current = cards.find((c) => c.value === selected);
-  const fill = TONE_FILL[current?.tone ?? 'brand'];
-
-  const moveTo = (value: T) => {
-    const frame = frameOf(
-      cards.map((c) => c.value),
-      widths.current,
-      value,
-    );
-    if (!frame) return;
-    if (!placed.current || reduce) {
-      x.setValue(frame.x);
-      width.setValue(frame.width);
-      placed.current = true;
-      return;
-    }
-    Animated.parallel([
-      Animated.spring(x, { toValue: frame.x, ...SPRING }),
-      Animated.spring(width, { toValue: frame.width, ...SPRING }),
-    ]).start();
-  };
-
-  useEffect(() => {
-    moveTo(selected);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected]);
-
+function TileRow<T extends string>({ cards, selected, loading, onSelect }: FilterCardsProps<T>) {
+  const [rowWidth, setRowWidth] = useState(0);
+  const showHints = rowWidth === 0 || rowWidth >= TILE_HINT_MIN_ROW;
   return (
-    <View style={styles.rail} accessibilityRole="tablist">
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.railPill,
-          { right: x, width, backgroundColor: fill, opacity: current ? 1 : 0 },
-          webOnly({ boxShadow: `0 8px 18px -8px ${fill}, inset 0 1px 0 rgba(255,255,255,0.28)` }),
-        ]}
-      />
-      {cards.map((card, index) => {
-        const on = card.value === selected;
-        const tone = card.tone ? DESKTOP_TONES[card.tone] : null;
-        // A warning status with nothing in it goes quiet instead of shouting "0" in red.
-        const quiet = !loading && card.count === 0 && !!card.tone && card.tone !== 'ok';
-        const countColor = on
-          ? '#FFFFFF'
-          : quiet
-            ? DESKTOP_COLORS.inkFaint
-            : tone && (card.tone === 'bad' || card.tone === 'warn')
-              ? tone.fg
-              : DESKTOP_COLORS.ink;
-        return (
-          <HoverPressable
-            key={card.value}
-            onLayout={(e: LayoutChangeEvent) => {
-              widths.current[card.value] = e.nativeEvent.layout.width;
-              moveTo(selected);
-            }}
-            style={[styles.stat, enterCard(index)]}
-            hoverStyle={on ? undefined : styles.statHover}
-            pressMotionStyle={styles.statPress}
-            onPress={() => onSelect(card.value)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
-            aria-selected={on}
-            accessibilityLabel={`${card.label}: ${card.count}. ${card.hint}`}
-          >
-            <View style={styles.statLabelRow}>
-              {!!tone && !on && <View style={[styles.statDot, { backgroundColor: tone.fg }, quiet && styles.quiet]} />}
-              <DText weight="medium" style={[styles.statLabel, on && styles.onWhiteSoft]} numberOfLines={1}>
-                {card.label}
-              </DText>
-            </View>
-            <CountUp value={loading ? null : card.count} style={[styles.statCount, TABULAR, { color: countColor }]} />
-          </HoverPressable>
-        );
-      })}
+    <View style={styles.tiles} accessibilityRole="tablist" aria-label="סינון לפי מצב" onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}>
+      {cards.map((card, index) => (
+        <FilterTile key={card.value} card={card} index={index} on={card.value === selected} loading={loading} showHint={showHints} onPress={() => onSelect(card.value)} />
+      ))}
     </View>
+  );
+}
+
+function FilterTile<T extends string>({
+  card,
+  index,
+  on,
+  loading,
+  showHint,
+  onPress,
+}: {
+  card: FilterCard<T>;
+  index: number;
+  on: boolean;
+  loading: boolean;
+  showHint: boolean;
+  onPress: () => void;
+}) {
+  const fill = TONE_FILL[card.tone ?? 'brand'];
+  const tone = card.tone ? DESKTOP_TONES[card.tone] : { bg: BRAND_SOFT, fg: DESKTOP_COLORS.brand };
+  // A warning status with nothing in it goes quiet instead of shouting "0" in red.
+  const quiet = !loading && card.count === 0 && !!card.tone && card.tone !== 'ok';
+  const countColor = on
+    ? '#FFFFFF'
+    : quiet
+      ? DESKTOP_COLORS.inkFaint
+      : card.tone === 'bad' || card.tone === 'warn'
+        ? tone.fg
+        : DESKTOP_COLORS.ink;
+  return (
+    <HoverPressable
+      style={[
+        styles.tile,
+        on && { backgroundColor: fill, borderColor: 'transparent' },
+        on && webOnly({ boxShadow: `0 12px 24px -14px ${fill}, inset 0 1px 0 rgba(255,255,255,0.22)` }),
+        enterCard(index),
+      ]}
+      hoverStyle={on ? undefined : styles.tileHover}
+      hoverMotionStyle={styles.tileLift}
+      pressMotionStyle={styles.tilePress}
+      onPress={onPress}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: on }}
+      aria-selected={on}
+      accessibilityLabel={`${card.label}: ${loading ? '' : card.count}. ${card.hint}`}
+    >
+      <View style={[styles.tileIcon, { backgroundColor: on ? 'rgba(255,255,255,0.2)' : tone.bg }]}>
+        <Ionicons name={card.icon} size={18} color={on ? '#FFFFFF' : tone.fg} />
+        <View style={[styles.tileCheck, on && styles.tileCheckOn]} pointerEvents="none">
+          <Ionicons name="checkmark" size={10} color={fill} />
+        </View>
+      </View>
+      <View style={styles.tileText}>
+        <DText weight="bold" style={[styles.tileLabel, on && styles.onWhite]} numberOfLines={1}>
+          {card.label}
+        </DText>
+        {showHint && !!card.hint && (
+          <DText style={[styles.tileHint, on && styles.onWhiteSoft]} numberOfLines={1}>
+            {card.hint}
+          </DText>
+        )}
+      </View>
+      <CountUp value={loading ? null : card.count} style={[styles.tileCount, TABULAR, { color: countColor }]} />
+    </HoverPressable>
   );
 }
 
@@ -311,7 +317,7 @@ function CountUp({ value, style }: { value: number | null; style: React.Componen
     return () => cancelAnimationFrame(raf);
   }, [value]);
   return (
-    <DText weight="bold" style={style}>
+    <DText weight="extraBold" style={style}>
       {value == null ? '–' : shown}
     </DText>
   );
@@ -366,7 +372,7 @@ export function AttentionMenu({
         aria-expanded={menu.open}
         aria-haspopup="dialog"
       >
-        <Ionicons name="alert-circle" size={15} color={DESKTOP_TONES.bad.fg} />
+        <Ionicons name="alert-circle" size={17} color={DESKTOP_TONES.bad.fg} />
         <DText weight="semiBold" style={[styles.attentionPillText, TABULAR]}>
           {pillLabel}
         </DText>
@@ -518,22 +524,23 @@ export function enterRow(index: number) {
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row-reverse', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 },
-  headerText: { gap: 2 },
-  greeting: { fontSize: 28, lineHeight: 34, color: DESKTOP_COLORS.ink, letterSpacing: -0.6 },
-  dateLine: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
-  headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  headerText: { gap: 4 },
+  greeting: { fontSize: 30, lineHeight: 36, color: DESKTOP_COLORS.ink, letterSpacing: -0.7 },
+  dateLine: { fontSize: 15, color: DESKTOP_COLORS.inkMuted },
+  headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
 
   segmented: {
     flexDirection: 'row-reverse',
-    padding: 3,
-    borderRadius: 14,
-    backgroundColor: 'rgba(118,118,128,0.10)',
+    padding: 4,
+    borderRadius: 16,
+    backgroundColor: '#E8ECF0',
+    ...webOnly({ boxShadow: 'inset 0 1px 2px rgba(16,34,50,0.06)' }),
   },
   segmentThumb: {
     position: 'absolute',
-    top: 3,
-    bottom: 3,
-    borderRadius: 11,
+    top: 4,
+    bottom: 4,
+    borderRadius: 12,
     backgroundColor: DESKTOP_COLORS.ink,
     ...webOnly({ boxShadow: '0 6px 14px -6px rgba(22,34,46,0.55), inset 0 1px 0 rgba(255,255,255,0.12)' }),
   },
@@ -541,51 +548,93 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
-    height: 42,
-    minWidth: 92,
-    paddingHorizontal: 14,
-    borderRadius: 11,
+    gap: 8,
+    height: 44,
+    minWidth: 104,
+    paddingHorizontal: 18,
+    borderRadius: 12,
   },
-  segmentCompact: { minWidth: 44, paddingHorizontal: 0 },
-  segmentPress: { transform: [{ scale: 0.95 }] },
-  segmentText: { fontSize: 14, color: DESKTOP_COLORS.inkMuted, ...webOnly({ transition: 'color 200ms ease' }) },
+  segmentCompact: { minWidth: 48, paddingHorizontal: 0 },
+  segmentPress: { transform: [{ scale: 0.96 }] },
+  segmentText: { fontSize: 15.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ transition: 'color 260ms ease' }) },
   segmentTextOn: { color: '#FFFFFF' },
-
-  rail: { flexDirection: 'row-reverse', flexGrow: 1, flexShrink: 1, minWidth: 0 },
-  railPill: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    borderRadius: 16,
+  segmentCount: {
+    minWidth: 24,
+    height: 21,
+    paddingHorizontal: 7,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(16,34,50,0.08)',
     ...webOnly({ transition: 'background-color 260ms ease' }),
   },
-  stat: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 'auto',
-    minWidth: 76,
-    height: 50,
-    justifyContent: 'center',
-    gap: 1,
+  segmentCountOn: { backgroundColor: 'rgba(255,255,255,0.16)' },
+  segmentCountText: { fontSize: 12, lineHeight: 15, color: DESKTOP_COLORS.inkMuted, textAlign: 'center' },
+
+  tiles: { flexDirection: 'row-reverse', gap: 12 },
+  tile: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 11,
+    minHeight: 60,
+    paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 16,
-    ...webOnly({ transition: 'background-color 160ms ease' }),
+    backgroundColor: DESKTOP_COLORS.surface,
+    borderWidth: 1,
+    borderColor: 'rgba(16,34,50,0.06)',
+    ...webOnly({
+      boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 6px 20px -8px rgba(16,34,50,0.10)',
+      transition: `background-color 280ms ${EASE_OUT}, box-shadow 280ms ${EASE_OUT}, transform 200ms ${EASE_OUT}, border-color 280ms ${EASE_OUT}`,
+    }),
   },
-  statHover: { backgroundColor: 'rgba(118,118,128,0.08)' },
-  statPress: { transform: [{ scale: 0.96 }] },
-  statLabelRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  statDot: { width: 6, height: 6, borderRadius: 3 },
-  statLabel: { fontSize: 12, color: DESKTOP_COLORS.inkMuted, flexShrink: 1, ...webOnly({ transition: 'color 200ms ease' }) },
-  statCount: {
-    fontSize: 21,
-    lineHeight: 25,
+  tileHover: { borderColor: 'rgba(16,34,50,0.12)' },
+  tileLift: {
+    transform: [{ translateY: -1 }],
+    ...webOnly({ boxShadow: '0 2px 4px rgba(16,24,40,0.05), 0 10px 20px -12px rgba(16,34,50,0.25)' }),
+  },
+  tilePress: { transform: [{ scale: 0.985 }] },
+  tileIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    ...webOnly({ transition: `background-color 280ms ${EASE_OUT}` }),
+  },
+  tileCheck: {
+    position: 'absolute',
+    top: -5,
+    left: -5,
+    width: 17,
+    height: 17,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    opacity: 0,
+    transform: [{ scale: 0.6 }],
+    ...webOnly({
+      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+      transition: `opacity 200ms ${EASE_OUT}, transform 280ms ${EASE_OUT}`,
+    }),
+  },
+  tileCheckOn: { opacity: 1, transform: [{ scale: 1 }] },
+  tileText: { flex: 1, minWidth: 0, gap: 1 },
+  tileLabel: { fontSize: 15, lineHeight: 20, color: DESKTOP_COLORS.ink, ...webOnly({ transition: 'color 280ms ease' }) },
+  tileHint: { fontSize: 12.5, lineHeight: 17, color: DESKTOP_COLORS.inkFaint, ...webOnly({ transition: 'color 280ms ease' }) },
+  tileCount: {
+    fontSize: 25,
+    lineHeight: 28,
     letterSpacing: -0.5,
-    textAlign: 'right',
-    ...webOnly({ transition: 'color 200ms ease' }),
+    flexShrink: 0,
+    ...webOnly({ transition: 'color 280ms ease' }),
   },
-  quiet: { opacity: 0.45 },
-  onWhiteSoft: { color: 'rgba(255,255,255,0.85)' },
+  onWhite: { color: '#FFFFFF' },
+  onWhiteSoft: { color: 'rgba(255,255,255,0.88)' },
 
   group: { paddingVertical: 12 },
   groupDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DESKTOP_COLORS.border },
@@ -627,10 +676,10 @@ const styles = StyleSheet.create({
   attentionPill: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 6,
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    gap: 7,
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 18,
     backgroundColor: DESKTOP_TONES.bad.bg,
     ...webOnly({ transition: 'background-color 150ms ease-out, transform 120ms ease-out' }),
   },
@@ -639,6 +688,6 @@ const styles = StyleSheet.create({
   menuChevron: { ...webOnly({ transition: `transform 200ms ${EASE_OUT}` }) },
   menuChevronOpen: { transform: [{ rotate: '180deg' }] },
   menuBody: { paddingVertical: 4 },
-  attentionPillText: { fontSize: 13, color: DESKTOP_TONES.bad.fg },
+  attentionPillText: { fontSize: 14, color: DESKTOP_TONES.bad.fg },
   chipPress: { transform: [{ scale: 0.95 }] },
 });

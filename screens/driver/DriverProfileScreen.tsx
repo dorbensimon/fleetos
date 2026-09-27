@@ -11,6 +11,7 @@ import { Select } from '../../components/ui/Select';
 import { formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
+import { signOut as signOutEverywhere } from '../../lib/signOut';
 import { getDriver, listDepartments, markNotificationsReadWhere, updateDriver, type Department, type DriverRow } from '../../lib/adminApi';
 import { FocusTargetProvider } from '../../components/ui/FocusTarget';
 import { formatPhone, isValidIsraeliPhone } from '../../lib/phone';
@@ -238,7 +239,7 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
 
   const signOut = () => showAlert('התנתקות', 'להתנתק מהחשבון?', [
     { text: 'ביטול', style: 'cancel' },
-    { text: 'התנתק', style: 'destructive', onPress: () => supabase.auth.signOut() },
+    { text: 'התנתק', style: 'destructive', onPress: () => void signOutEverywhere().catch(() => showAlert('ההתנתקות נכשלה', 'נסה שוב בעוד רגע.')) },
   ]);
   const departmentName = departmentNameById(departments, driver?.department_id);
   const maritalOptions = optionsWithCurrent(MARITAL_STATUS_OPTIONS, driver?.marital_status);

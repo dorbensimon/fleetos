@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCompany } from '../../lib/CompanyContext';
-import { supabase } from '../../lib/supabase';
+import { signOut } from '../../lib/signOut';
 import { showAlert } from '../../lib/platformAlert';
 import { RootStackParamList } from '../../navigation/types';
 import { DText, HoverPressable } from './primitives';
@@ -68,7 +68,7 @@ export function DesktopShell({
         style: 'destructive',
         onPress: async () => {
           try {
-            await supabase.auth.signOut();
+            await signOut();
             navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
           } catch {
             showAlert('ההתנתקות נכשלה', 'נסה שוב בעוד רגע.');

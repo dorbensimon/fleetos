@@ -19,6 +19,8 @@ import {
   Reveal,
   STATUS,
   Segmented,
+  useTabBarScroll,
+  useTabBarSpace,
   type Status,
 } from '../../../components/driverKit';
 import { BrandLogo } from '../../../components/ui/Brand';
@@ -70,7 +72,6 @@ type Props = {
   departmentNames: Map<string, string>;
   restoringVehicleId: string | null;
 
-  onMenu: () => void;
   onNotifications: () => void;
   onAttention: () => void;
   onArchive: () => void;
@@ -110,6 +111,8 @@ export function FleetMobile(p: Props) {
   ];
   const search = drivers ? p.driverSearch : p.vehicleSearch;
   const filtered = drivers ? p.driverFilter !== 'all' : p.vehicleFilter !== 'all';
+  const tabBarScroll = useTabBarScroll();
+  const tabBarSpace = useTabBarSpace();
 
   const clear = () => {
     if (drivers) {
@@ -248,10 +251,11 @@ export function FleetMobile(p: Props) {
           data={data}
           keyExtractor={(entry) => (entry.kind === 'driver' || entry.kind === 'vehicle' ? entry.item.id : entry.kind)}
           renderItem={renderItem}
+          {...tabBarScroll}
           ListHeaderComponent={<Hero {...p} />}
           stickyHeaderIndices={[1]}
           style={styles.flex}
-          contentContainerStyle={[styles.content, { paddingBottom: p.insetBottom + 104 }]}
+          contentContainerStyle={[styles.content, { paddingBottom: p.insetBottom + 104 + tabBarSpace }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
@@ -288,7 +292,8 @@ function Hero(p: Props) {
   return (
     <NightHero insetTop={0}>
       <View style={styles.topBar}>
-        <HeroButton icon="menu" label="תפריט" onPress={p.onMenu} />
+        {/* Keeps the logo centred; the menu lives in the bottom bar now. */}
+        <View style={styles.heroSlot} />
         <BrandLogo height={20} onDark />
         <HeroButton
           icon="notifications-outline"
@@ -383,6 +388,7 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, backgroundColor: DK.canvas },
 
   topBar: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 },
+  heroSlot: { width: 48, height: 48 },
   block: { marginTop: 16 },
   stats: { flexDirection: 'row-reverse', gap: 8, marginTop: 12 },
 

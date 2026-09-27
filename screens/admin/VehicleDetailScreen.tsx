@@ -105,6 +105,15 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     }
   }, [isDesktop, vehicle, openFolderParam, navigation, vehicleId]);
 
+  // "Needs attention" for a vehicle without a driver: the phone has no
+  // drivers dialog, so open the drivers tab (its card lights up via `focus`).
+  const openDriversParam = route.params.openDrivers;
+  useEffect(() => {
+    if (isDesktop || !vehicle || !openDriversParam) return;
+    navigation.setParams({ openDrivers: undefined });
+    setTab('drivers');
+  }, [isDesktop, vehicle, openDriversParam, navigation]);
+
   const openTab = (next: Tab, item?: string) => {
     setTab(next);
     navigation.setParams({ tab: next });
