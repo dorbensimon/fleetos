@@ -5,6 +5,7 @@ import { DK, DKText, KitInput, PrimaryAction, Pressy, STATUS, SheetActions } fro
 import { BrandLoader } from '../../../components/ui/BrandLoader';
 import type { SigningTemplate } from '../../../lib/docuseal';
 import { driversCount, loadSendRecipients, recipientNote, sendToRecipients, type SendOutcome, type SendRecipient } from '../../../lib/signingSend';
+import { requestErrorDetails, type RequestErrorDetails } from '../../../lib/requestError';
 
 /**
  * "שליחה לנהגים" on the phone: the desktop sheet's flow (lib/signingSend.ts)
@@ -13,7 +14,7 @@ import { driversCount, loadSendRecipients, recipientNote, sendToRecipients, type
  */
 export function useSendToDrivers(companyId: string, template: SigningTemplate | null) {
   const [drivers, setDrivers] = useState<SendRecipient[] | null>(null);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState<RequestErrorDetails | null>(null);
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -22,7 +23,7 @@ export function useSendToDrivers(companyId: string, template: SigningTemplate | 
 
   useEffect(() => {
     setDrivers(null);
-    setLoadError(false);
+    setLoadError(null);
     setQuery('');
     setPicked(new Set());
     setProgress(null);
@@ -31,7 +32,7 @@ export function useSendToDrivers(companyId: string, template: SigningTemplate | 
     let cancelled = false;
     loadSendRecipients(companyId, templateId)
       .then((rows) => !cancelled && setDrivers(rows))
-      .catch(() => !cancelled && setLoadError(true));
+      .catch((error) => !cancelled && setLoadError(requestErrorDetails(error, 'לא הצלחנו לטעון את רשימת הנהגים')));
     return () => {
       cancelled = true;
     };
@@ -110,7 +111,7 @@ export function SendBody({ s }: { s: SendState }) {
   if (s.loadError) {
     return (
       <DKText variant="body" color={STATUS.expired.fg} style={styles.center}>
-        לא הצלחנו לטעון את רשימת הנהגים. סגרו ונסו שוב בעוד רגע.
+        {s.loadError.message}{s.loadError.hint ? ` ${s.loadError.hint}` : ''}
       </DKText>
     );
   }

@@ -10,6 +10,7 @@ import { useCompany } from '../../lib/CompanyContext';
 import { supabase } from '../../lib/supabase';
 import { hasAcceptedCurrentTerms, recordTermsAcceptance } from '../../lib/legal/acceptance';
 import { LEGAL_DOCUMENTS, type LegalDocId } from '../../lib/legal/documents';
+import { requestErrorDetails, type RequestErrorDetails } from '../../lib/requestError';
 
 type State = 'checking' | 'accepted' | 'required' | 'error';
 
@@ -32,12 +33,15 @@ export function LegalConsentGate({
   const userId = profile?.id ?? null;
   const [state, setState] = useState<State>('checking');
   const [checkedFor, setCheckedFor] = useState<string | null>(null);
+  const [checkError, setCheckError] = useState<RequestErrorDetails | null>(null);
 
   const check = useCallback(async (id: string) => {
     setState('checking');
+    setCheckError(null);
     try {
       setState((await hasAcceptedCurrentTerms(id)) ? 'accepted' : 'required');
-    } catch {
+    } catch (error) {
+      setCheckError(requestErrorDetails(error, 'לא הצלחנו לבדוק את מצב האישור'));
       setState('error');
     }
     setCheckedFor(id);
@@ -66,7 +70,7 @@ export function LegalConsentGate({
           </View>
         ) : (
           <ConsentScreen
-            error={state === 'error'}
+            error={state === 'error' ? checkError : null}
             onRetry={() => void check(userId)}
             onAccepted={async () => {
               await onAccepted?.(userId).catch(() => undefined);
@@ -78,7 +82,7 @@ export function LegalConsentGate({
   );
 }
 
-function ConsentScreen({ error, onRetry, onAccepted }: { error: boolean; onRetry: () => void; onAccepted: () => Promise<void> }) {
+function ConsentScreen({ error, onRetry, onAccepted }: { error: RequestErrorDetails | null; onRetry: () => void; onAccepted: () => Promise<void> }) {
   const insets = useSafeAreaInsets();
   const [reading, setReading] = useState<LegalDocId | null>(null);
   const [terms, setTerms] = useState(false);
@@ -93,8 +97,9 @@ function ConsentScreen({ error, onRetry, onAccepted }: { error: boolean; onRetry
     setSaveError(null);
     try {
       await recordTermsAcceptance();
-    } catch {
-      setSaveError('האישור לא נשמר. בדוק את החיבור לאינטרנט ונסה שוב.');
+    } catch (error) {
+      const details = requestErrorDetails(error, 'האישור לא נשמר');
+      setSaveError([details.message, details.hint].filter(Boolean).join(' '));
       setSaving(false);
       return;
     }
@@ -152,7 +157,7 @@ function ConsentScreen({ error, onRetry, onAccepted }: { error: boolean; onRetry
       }
     >
       {error ? (
-        <ErrorPanel message="לא הצלחנו לבדוק את מצב האישור" hint="בדוק את החיבור לאינטרנט ונסה שוב." onRetry={onRetry} />
+        <ErrorPanel message={error.message} hint={error.hint} onRetry={onRetry} />
       ) : (
         <>
           <Reveal index={0}>

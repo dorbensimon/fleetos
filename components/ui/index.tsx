@@ -383,7 +383,7 @@ export function EmptyState({
  */
 export function ErrorState({
   message = 'משהו השתבש בטעינת הנתונים',
-  hint = 'בדוק את החיבור לאינטרנט ונסה שוב',
+  hint = 'נסה שוב בעוד רגע',
   onRetry,
 }: {
   message?: string;

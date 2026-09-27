@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { SigningTemplate } from '../../../lib/docuseal';
 import { driversCount, loadSendRecipients, recipientNote, sendToRecipients, type SendOutcome, type SendRecipient } from '../../../lib/signingSend';
+import { requestErrorDetails, type RequestErrorDetails } from '../../../lib/requestError';
 import { Sheet, useSheetClose } from './Sheet.web';
 
 /**
@@ -12,7 +13,7 @@ import { Sheet, useSheetClose } from './Sheet.web';
 export function SendToDriversSheet({ companyId, template, onClosed }: { companyId: string; template: SigningTemplate; onClosed: () => void }) {
   const { closing, close } = useSheetClose(onClosed);
   const [drivers, setDrivers] = useState<SendRecipient[] | null>(null);
-  const [loadError, setLoadError] = useState(false);
+  const [loadError, setLoadError] = useState<RequestErrorDetails | null>(null);
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -22,7 +23,7 @@ export function SendToDriversSheet({ companyId, template, onClosed }: { companyI
     let cancelled = false;
     loadSendRecipients(companyId, template.id)
       .then((rows) => !cancelled && setDrivers(rows))
-      .catch(() => !cancelled && setLoadError(true));
+      .catch((error) => !cancelled && setLoadError(requestErrorDetails(error, 'לא הצלחנו לטעון את רשימת הנהגים')));
     return () => {
       cancelled = true;
     };
@@ -115,9 +116,9 @@ export function SendToDriversSheet({ companyId, template, onClosed }: { companyI
           </div>
         ) : loadError ? (
           <div className="sd-busy">
-            <Ionicons name="cloud-offline" size={46} color="#FF9F0A" />
-            <h3 className="sd-b">לא הצלחנו לטעון את רשימת הנהגים</h3>
-            <p>סגרו ונסו שוב בעוד רגע.</p>
+            <Ionicons name={loadError.icon} size={46} color="#FF9F0A" />
+            <h3 className="sd-b">{loadError.message}</h3>
+            {loadError.hint ? <p>{loadError.hint}</p> : null}
           </div>
         ) : !drivers ? (
           <div className="sd-busy" role="status">
