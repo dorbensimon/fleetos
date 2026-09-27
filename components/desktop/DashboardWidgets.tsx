@@ -227,7 +227,7 @@ function HeaderAction({
 }) {
   return (
     <HoverPressable style={styles.headerAction} hoverStyle={styles.headerActionHover} pressStyle={styles.pressDown} onPress={onPress}>
-      <Ionicons name={icon} size={14} color={DESKTOP_COLORS.inkMuted} />
+      <Ionicons name={icon} size={18} color={DESKTOP_COLORS.inkMuted} />
       <DText weight="semiBold" style={styles.headerActionText}>{label}</DText>
     </HoverPressable>
   );
@@ -239,16 +239,19 @@ const styles = StyleSheet.create({
   headerAction: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 6,
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    gap: 8,
+    height: 44,
+    paddingHorizontal: 16,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.border,
     backgroundColor: DESKTOP_COLORS.surface,
-    ...webOnly({ transition: 'background-color 140ms ease, border-color 140ms ease, transform 100ms ease-out' }),
+    ...webOnly({
+      boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
+      transition: 'background-color 160ms ease, border-color 160ms ease, transform 120ms ease-out',
+    }),
   },
   headerActionHover: { backgroundColor: DESKTOP_COLORS.rowHover, borderColor: DESKTOP_COLORS.borderInput },
-  headerActionText: { fontSize: 12.5, color: DESKTOP_COLORS.ink },
+  headerActionText: { fontSize: 15, color: DESKTOP_COLORS.ink },
   pressDown: { transform: [{ scale: 0.97 }] },
 });

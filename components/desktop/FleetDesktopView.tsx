@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { HealthDeclarationInfo } from '../../lib/healthDeclaration';
 import { ComplianceItem, DriverRow, Vehicle, VehicleDriverWithProfile } from '../../lib/adminApi';
@@ -9,18 +9,20 @@ import { formatPlate } from '../../lib/plate';
 import { nextServiceKmOf } from '../../lib/serviceSchedule';
 import { vehicleName } from '../../lib/vehicleAttention';
 import { daysUntilExpiry, formatDate } from '../../lib/theme';
-import { DLtrText, DText, HoverPressable, StatusPill } from './primitives';
-import { LoadingState } from '../ui';
+import { DLtrText, DText, HoverPressable } from './primitives';
 import { DESKTOP_AVATAR_COLORS, DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { enter, enterRow, FilterCard, FilterCards, FleetHeader, FleetMode, ModeSwitch } from './FleetOverview';
 
 /**
  * Desktop body of the fleet screen, sized to the window (no page scroll).
  * Top to bottom it answers one question each: who is this for (greeting),
- * what am I looking at (drivers / vehicles + search + add), which of them
- * (filter cards that are also the numbers), then the list itself. Problems
- * no card covers live in the top-bar "needs attention" dropdown. Purely presentational — FleetScreen owns loading,
- * filtering and navigation, so phone and desktop show the same data.
+ * what am I looking at (drivers / vehicles + search + archive + add), which
+ * of them (filter tiles that are also the numbers), then the list itself.
+ * Sized for readability first: 15-16px text, 44-48px targets, and every
+ * status spelled out with an icon and words, never colour alone. Problems no
+ * tile covers live in the top-bar "needs attention" dropdown. Purely
+ * presentational — FleetScreen owns loading, filtering and navigation, so
+ * phone and desktop show the same data.
  */
 
 export type FleetChip<T extends string> = { value: T; label: string; count: number };
@@ -71,11 +73,11 @@ export interface FleetDesktopViewProps<LF extends string, SF extends string> {
 
 /** Below this window height the page tightens its padding so the list keeps its room. */
 const COMPACT_HEIGHT = 820;
-const TIGHT_DOCK_WIDTH = 1000;
+const TIGHT_DOCK_WIDTH = 900;
 
 const DRIVER_CARDS: Record<string, Omit<FilterCard<string>, 'value' | 'count'>> = {
   all: { label: 'כל הנהגים', hint: 'נהגים פעילים בחברה', icon: 'people' },
-  soon: { label: 'עומד לפוג', hint: 'פג בתוך 30 יום', icon: 'time', tone: 'warn' },
+  soon: { label: 'עומד לפוג', hint: 'רישיון פג בתוך 30 יום', icon: 'time', tone: 'warn' },
   expired: { label: 'פג תוקף', hint: 'צריך לחדש עכשיו', icon: 'alert-circle', tone: 'bad' },
   no_vehicle: { label: 'ללא רכב', hint: 'לא שויך להם רכב', icon: 'car-outline', tone: 'neutral' },
 };
@@ -131,6 +133,15 @@ function countWords(n: number, one: string, many: string): string {
   return n === 1 ? one : `${n} ${many}`;
 }
 
+
+/** Status words as an icon plus text, so colour is never the only signal. */
+const TONE_ICON: Record<DesktopTone, React.ComponentProps<typeof Ionicons>['name']> = {
+  ok: 'checkmark-circle',
+  warn: 'time',
+  bad: 'alert-circle',
+  neutral: 'remove-circle-outline',
+};
+
 export function FleetDesktopView<LF extends string, SF extends string>(props: FleetDesktopViewProps<LF, SF>) {
   const { mode } = props;
   const isDrivers = mode === 'drivers';
@@ -138,9 +149,9 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
   const compact = height < COMPACT_HEIGHT;
   const [searchFocused, setSearchFocused] = useState(false);
   const searchRef = useRef<TextInput>(null);
-  // Below this the dock drops the switch and "new" labels to icons so everything stays on one line.
-  const [dockWidth, setDockWidth] = useState(0);
-  const tight = dockWidth > 0 && dockWidth < TIGHT_DOCK_WIDTH;
+  // Below this the toolbar drops the switch, archive and "new" labels to icons so everything stays on one line.
+  const [toolbarWidth, setToolbarWidth] = useState(0);
+  const tight = toolbarWidth > 0 && toolbarWidth < TIGHT_DOCK_WIDTH;
 
   // "/" jumps to search from anywhere on the page, unless the user is already typing.
   useEffect(() => {
@@ -172,6 +183,10 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
   const vehicleArchive = props.vehicleChips.find((chip) => chip.value === 'archived');
   const showingArchive = !isDrivers && props.vehicleFilter === 'archived';
   const archiveCount = isDrivers ? props.archivedCount : (vehicleArchive?.count ?? 0);
+  const modeCounts = {
+    drivers: props.driversLoading ? undefined : props.driverKpis.total,
+    vehicles: props.vehiclesLoading ? undefined : (vehicleCards.find((c) => c.value === 'all')?.count ?? props.vehicles.length),
+  };
 
   const listTitle = isDrivers
     ? (driverCards.find((c) => c.value === props.driverFilter)?.label ?? 'נהגים')
@@ -180,6 +195,8 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
       : (vehicleCards.find((c) => c.value === props.vehicleFilter)?.label ?? 'רכבים');
   const listCount = isDrivers ? props.filteredDrivers.length : props.filteredVehicles.length;
   const search = isDrivers ? props.driverSearch : props.vehicleSearch;
+  const query = search.trim();
+  const setSearch = isDrivers ? props.onDriverSearch : props.onVehicleSearch;
 
   const assignedDrivers = (vehicle: Vehicle) => {
     const list = props.vehicleDrivers.get(vehicle.id) ?? [];
@@ -199,14 +216,105 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
   const hasAny = isDrivers ? props.drivers.length > 0 : props.vehicles.length > 0;
   // Rows replay their entrance whenever the list they belong to changes.
   const listKey = `${mode}-${isDrivers ? props.driverFilter : props.vehicleFilter}`;
+  const columns = isDrivers ? DRIVER_COLUMNS : VEHICLE_COLUMNS;
+  const onAdd = isDrivers ? props.onAddDriver : props.onAddVehicle;
 
   return (
     <View style={[styles.root, compact && styles.rootCompact]}>
       <FleetHeader />
 
-      {/* The command dock: one floating surface, right to left — which of them (status rail),
-          what am I looking at (drivers / vehicles), then find and add. */}
-      <View style={[styles.dock, enter(1)]} onLayout={(e) => setDockWidth(e.nativeEvent.layout.width)}>
+      {/* What am I looking at (drivers / vehicles), then find, archive and add. */}
+      <View
+        style={[styles.toolbar, enter(1)]}
+        onLayout={(e) => setToolbarWidth(e.nativeEvent.layout.width)}
+        accessibilityLabel="מה מוצג"
+      >
+        <ModeSwitch mode={mode} compact={tight} counts={modeCounts} onChange={props.onModeChange} />
+        <View style={styles.grow} />
+        <View style={[styles.searchWrap, tight && styles.searchWrapTight]}>
+          <Ionicons
+            name="search"
+            size={19}
+            color={searchFocused ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint}
+            style={styles.searchIcon}
+            pointerEvents="none"
+          />
+          <TextInput
+            ref={searchRef}
+            value={search}
+            onChangeText={setSearch}
+            placeholder={isDrivers ? 'חיפוש לפי שם, טלפון, ת.ז., רישיון או רכב' : 'חיפוש לפי מספר רכב, יצרן, דגם או נהג'}
+            placeholderTextColor={DESKTOP_COLORS.inkFaint}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            onKeyPress={(e) => {
+              if ((e.nativeEvent as { key?: string }).key === 'Escape' && search) setSearch('');
+            }}
+            style={[styles.search, searchFocused && styles.searchFocused]}
+            accessibilityLabel={isDrivers ? 'חיפוש נהג לפי שם, טלפון, תעודת זהות, מספר רישיון או מספר רכב' : 'חיפוש רכב לפי מספר רכב, יצרן, דגם, קוד פנימי או שם נהג'}
+          />
+          {search ? (
+            <HoverPressable
+              style={styles.clear}
+              hoverStyle={styles.clearHover}
+              onPress={() => {
+                setSearch('');
+                searchRef.current?.focus();
+              }}
+              accessibilityLabel="ניקוי החיפוש"
+            >
+              <Ionicons name="close" size={18} color={DESKTOP_COLORS.inkMuted} />
+            </HoverPressable>
+          ) : (
+            !searchFocused && (
+              <View style={styles.kbd} pointerEvents="none">
+                <DText weight="semiBold" style={styles.kbdText}>
+                  /
+                </DText>
+              </View>
+            )
+          )}
+        </View>
+        <HoverPressable
+          style={[styles.ghostButton, tight && styles.ghostButtonTight, showingArchive && styles.ghostButtonOn]}
+          hoverStyle={showingArchive ? undefined : styles.ghostButtonHover}
+          pressMotionStyle={styles.pressDown}
+          onPress={isDrivers ? props.onOpenArchive : () => props.onVehicleFilter((showingArchive ? 'all' : 'archived') as SF)}
+          accessibilityLabel={`${isDrivers ? 'ארכיון נהגים' : 'ארכיון רכבים'}, ${archiveCount}`}
+          accessibilityState={isDrivers ? undefined : { selected: showingArchive }}
+          aria-pressed={isDrivers ? undefined : showingArchive}
+        >
+          <Ionicons name="archive-outline" size={19} color={showingArchive ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkMuted} />
+          {!tight && (
+            <DText weight="semiBold" style={[styles.ghostButtonText, showingArchive && styles.ghostButtonTextOn]}>
+              ארכיון
+            </DText>
+          )}
+          {archiveCount > 0 && (
+            <View style={styles.countBadge}>
+              <DText weight="bold" style={styles.countBadgeText}>
+                {archiveCount}
+              </DText>
+            </View>
+          )}
+        </HoverPressable>
+        <HoverPressable
+          style={[styles.primaryButton, tight && styles.primaryButtonTight]}
+          hoverMotionStyle={styles.primaryButtonHover}
+          pressMotionStyle={styles.pressDown}
+          onPress={onAdd}
+          accessibilityLabel={isDrivers ? 'נהג חדש' : 'רכב חדש'}
+        >
+          <Ionicons name="add" size={22} color="#FFFFFF" />
+          {!tight && (
+            <DText weight="semiBold" style={styles.primaryButtonText}>
+              {isDrivers ? 'נהג חדש' : 'רכב חדש'}
+            </DText>
+          )}
+        </HoverPressable>
+      </View>
+
+      <View style={enter(2)}>
         {isDrivers ? (
           <FilterCards<LF>
             cards={driverCards}
@@ -224,297 +332,231 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
             onSelect={props.onVehicleFilter}
           />
         )}
-        <View style={styles.dockDivider} />
-        <ModeSwitch mode={mode} compact={tight} onChange={props.onModeChange} />
-        <View style={styles.dockDivider} />
-        <View style={styles.searchWrap}>
-          <Ionicons
-            name="search"
-            size={16}
-            color={searchFocused ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint}
-            style={styles.searchIcon}
-          />
-          <TextInput
-            ref={searchRef}
-            value={search}
-            onChangeText={isDrivers ? props.onDriverSearch : props.onVehicleSearch}
-            placeholder={isDrivers ? 'שם, טלפון, ת.ז., רישיון או רכב' : 'מספר רכב, יצרן, דגם או נהג'}
-            placeholderTextColor={DESKTOP_COLORS.inkFaint}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            style={[styles.search, searchFocused && styles.searchFocused]}
-            accessibilityLabel={isDrivers ? 'חיפוש נהג לפי שם, טלפון, תעודת זהות, מספר רישיון או מספר רכב' : 'חיפוש רכב לפי מספר רכב, יצרן, דגם, קוד פנימי או שם נהג'}
-          />
-          {!searchFocused && !search && (
-            <View style={styles.kbd} pointerEvents="none">
-              <DText weight="semiBold" style={styles.kbdText}>
-                /
-              </DText>
-            </View>
-          )}
-        </View>
-        <HoverPressable
-          style={[styles.iconButton, showingArchive && styles.iconButtonOn]}
-          hoverStyle={styles.iconButtonHover}
-          pressMotionStyle={styles.pressDown}
-          onPress={isDrivers ? props.onOpenArchive : () => props.onVehicleFilter((showingArchive ? 'all' : 'archived') as SF)}
-          accessibilityLabel={`${isDrivers ? 'ארכיון נהגים' : 'ארכיון רכבים'}, ${archiveCount}`}
-        >
-          <Ionicons name="archive-outline" size={18} color={showingArchive ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkMuted} />
-          {archiveCount > 0 && (
-            <View style={styles.badge}>
-              <DText weight="bold" style={styles.badgeText}>
-                {archiveCount}
-              </DText>
-            </View>
-          )}
-        </HoverPressable>
-        <HoverPressable
-          style={[styles.primaryButton, tight && styles.primaryButtonTight]}
-          hoverMotionStyle={styles.primaryButtonHover}
-          pressMotionStyle={styles.pressDown}
-          onPress={isDrivers ? props.onAddDriver : props.onAddVehicle}
-          accessibilityLabel={isDrivers ? 'נהג חדש' : 'רכב חדש'}
-        >
-          <Ionicons name="add" size={20} color="#FFFFFF" />
-          {!tight && (
-            <DText weight="semiBold" style={styles.primaryButtonText}>
-              {isDrivers ? 'נהג חדש' : 'רכב חדש'}
-            </DText>
-          )}
-        </HoverPressable>
       </View>
 
-      <View style={styles.body}>
-        <View style={[styles.listCard, enter(3)]}>
-          <View style={styles.listHead}>
-            <DText weight="bold" style={styles.listTitle} numberOfLines={1}>
-              {listTitle}
+      <View style={[styles.listCard, enter(3)]}>
+        <View style={styles.listHead}>
+          <DText weight="extraBold" style={styles.listTitle} numberOfLines={1}>
+            {listTitle}
+          </DText>
+          {!loading && !error && (
+            <DText style={styles.listCount}>
+              {isDrivers ? countWords(listCount, 'נהג אחד', 'נהגים') : countWords(listCount, 'רכב אחד', 'רכבים')}
             </DText>
-            {!loading && !error && (
-              <DText style={styles.listCount}>
-                {isDrivers ? countWords(listCount, 'נהג אחד', 'נהגים') : countWords(listCount, 'רכב אחד', 'רכבים')}
-                {search.trim() ? ' תואמים לחיפוש' : ''}
+          )}
+          {!!query && (
+            <View style={styles.searchChip}>
+              <DText weight="semiBold" style={styles.searchChipText} numberOfLines={1}>
+                תוצאות עבור „{query}”
               </DText>
-            )}
-          </View>
-
-          <TableHeader columns={isDrivers ? DRIVER_COLUMNS : VEHICLE_COLUMNS} />
-
-          {loading ? (
-            <LoadingState />
-          ) : error ? (
-            <View style={styles.state}>
-              <DText weight="semiBold" style={styles.stateTitle}>
-                {isDrivers ? 'לא ניתן לטעון את הנהגים' : 'לא ניתן לטעון את הרכבים'}
-              </DText>
-              <DText style={styles.stateHint}>{error}</DText>
               <HoverPressable
-                style={styles.secondaryButton}
-                hoverStyle={styles.secondaryButtonHover}
-                onPress={isDrivers ? props.onRetryDrivers : props.onRetryVehicles}
+                style={styles.searchChipClear}
+                hoverStyle={styles.searchChipClearHover}
+                onPress={() => setSearch('')}
+                accessibilityLabel="ניקוי החיפוש"
               >
-                <DText weight="semiBold" style={styles.secondaryButtonText}>
-                  נסה שוב
-                </DText>
+                <Ionicons name="close" size={14} color={DESKTOP_COLORS.brand} />
               </HoverPressable>
             </View>
-          ) : isEmpty ? (
-            <View style={styles.state}>
-              <View style={styles.stateIcon}>
-                <Ionicons
-                  name={
-                    hasAny ? (search.trim() ? 'search' : 'checkmark-circle') : isDrivers ? 'people-outline' : 'car-sport-outline'
-                  }
-                  size={22}
-                  color={hasAny && !search.trim() ? DESKTOP_TONES.ok.fg : DESKTOP_COLORS.inkFaint}
-                />
-              </View>
-              <DText weight="semiBold" style={styles.stateTitle}>
-                {!hasAny
-                  ? isDrivers
-                    ? 'עדיין אין נהגים'
-                    : 'עדיין אין רכבים'
-                  : search.trim()
-                    ? 'לא נמצאו תוצאות'
-                    : 'אין כאן אף אחד'}
-              </DText>
-              <DText style={styles.stateHint}>
-                {!hasAny
-                  ? isDrivers
-                    ? 'הוסף את הנהג הראשון של החברה'
-                    : 'הוסף את הרכב הראשון של החברה'
-                  : search.trim()
-                    ? 'נסה מילה אחרת או בחר כרטיס אחר'
-                    : 'אין פריטים שמתאימים לכרטיס הזה'}
-              </DText>
-            </View>
-          ) : (
-            <ScrollView key={listKey} style={styles.rows} contentContainerStyle={styles.rowsContent}>
-              {isDrivers
-                ? props.filteredDrivers.map((driver, index) => {
-                    const license = expiryWords(driver.license_expiry);
-                    const health = healthWords(props.healthDeclarations.get(driver.id));
-                    const pending = props.pendingSigning.get(driver.id) ?? 0;
-                    return (
-                      <HoverPressable
-                        key={driver.id}
-                        style={[styles.row, index % 2 === 1 && styles.rowAlt, enterRow(index) || null]}
-                        hoverStyle={styles.rowHover}
-                        pressMotionStyle={styles.rowPress}
-                        onPress={() => props.onOpenDriver(driver.id)}
-                        accessibilityLabel={driver.full_name ?? undefined}
-                      >
-                        <View style={[styles.cell, { flex: DRIVER_COLUMNS[0].flex }]}>
-                          <View style={styles.nameCell}>
-                            <View
-                              style={[
-                                styles.avatar,
-                                { backgroundColor: DESKTOP_AVATAR_COLORS[index % DESKTOP_AVATAR_COLORS.length] },
-                              ]}
-                            >
-                              <DText weight="bold" style={styles.avatarText}>
-                                {initialOf(driver.full_name)}
-                              </DText>
-                            </View>
-                            <TwoLine
-                              title={driver.full_name || 'נהג ללא שם'}
-                              subtitle={driver.job_title || ''}
-                            />
-                          </View>
-                        </View>
-                        <Cell
-                          flex={DRIVER_COLUMNS[1].flex}
-                          text={driver.phone || 'לא הוזן'}
-                          ltr={!!driver.phone}
-                          color={driver.phone ? DESKTOP_COLORS.ink : DESKTOP_COLORS.inkFaint}
-                        />
-                        <Cell
-                          flex={DRIVER_COLUMNS[2].flex}
-                          text={driver.national_id || 'לא הוזן'}
-                          ltr={!!driver.national_id}
-                          color={driver.national_id ? DESKTOP_COLORS.ink : DESKTOP_COLORS.inkFaint}
-                        />
-                        <View style={[styles.cell, { flex: DRIVER_COLUMNS[3].flex }]}>
-                          {driver.license_number ? (
-                            <DLtrText style={[styles.cellText, { color: DESKTOP_COLORS.ink }]} numberOfLines={1}>
-                              {driver.license_number}
-                            </DLtrText>
-                          ) : (
-                            <DText style={[styles.cellText, { color: DESKTOP_COLORS.inkFaint }]} numberOfLines={1}>
-                              לא הוזן
-                            </DText>
-                          )}
-                          {!!driver.license_classes && (
-                            <DText style={styles.subText} numberOfLines={1}>
-                              דרגה {driver.license_classes}
-                            </DText>
-                          )}
-                        </View>
-                        <View style={[styles.cell, { flex: DRIVER_COLUMNS[4].flex }]}>
-                          <ToneLine tone={license.tone} label={license.label} />
-                          {!!driver.license_expiry && (
-                            <DText style={styles.subText} numberOfLines={1}>
-                              עד {formatDate(driver.license_expiry)}
-                            </DText>
-                          )}
-                        </View>
-                        <View style={[styles.cell, { flex: DRIVER_COLUMNS[5].flex }]}>
-                          <ToneLine tone={health.tone} label={health.label} />
-                          {!!health.sub && (
-                            <DText style={styles.subText} numberOfLines={1}>
-                              {health.sub}
-                            </DText>
-                          )}
-                        </View>
-                        <View style={[styles.cell, { flex: DRIVER_COLUMNS[6].flex }]}>
-                          {driver.vehicles.length ? (
-                            driver.vehicles.map((vehicle) => (
-                              <DLtrText
-                                key={vehicle.id}
-                                style={[styles.cellText, styles.mono, vehicle.is_primary && { color: DESKTOP_COLORS.ink }]}
-                                numberOfLines={1}
-                              >
-                                {formatPlate(vehicle.plate_number)}
-                              </DLtrText>
-                            ))
-                          ) : (
-                            <DText style={[styles.cellText, { color: DESKTOP_COLORS.inkFaint }]} numberOfLines={1}>
-                              ללא רכב
-                            </DText>
-                          )}
-                        </View>
-                        <Cell
-                          flex={DRIVER_COLUMNS[7].flex}
-                          text={pending > 0 ? countWords(pending, 'מסמך אחד', 'מסמכים') : '—'}
-                          color={pending > 0 ? DESKTOP_TONES.warn.fg : DESKTOP_COLORS.inkFaint}
-                          weight={pending > 0 ? 'semiBold' : undefined}
-                        />
-                        <Ionicons name="chevron-back" size={14} color={DESKTOP_COLORS.inkFaint} style={styles.rowChevron} />
-                      </HoverPressable>
-                    );
-                  })
-                : props.filteredVehicles.map((vehicle, index) => {
-                    const insurance = (props.compliance.get(vehicle.id) ?? []).find((c) => c.item_type === 'insurance_mandatory');
-                    const words = expiryWords(insurance?.expiry_date);
-                    // Driving without mandatory insurance is never neutral.
-                    const insuranceInfo = words.tone === 'neutral' ? { tone: 'bad' as const, label: 'אין ביטוח' } : words;
-                    const { primary, extra } = assignedDrivers(vehicle);
-                    const service = serviceInfo(vehicle);
-                    return (
-                      <HoverPressable
-                        key={vehicle.id}
-                        style={[styles.row, index % 2 === 1 && styles.rowAlt, enterRow(index) || null]}
-                        hoverStyle={styles.rowHover}
-                        pressMotionStyle={styles.rowPress}
-                        onPress={() => props.onOpenVehicle(vehicle.id)}
-                        accessibilityLabel={`${vehicleName(vehicle)} ${formatPlate(vehicle.plate_number)}`}
-                      >
-                        <View style={[styles.cell, { flex: VEHICLE_COLUMNS[0].flex }]}>
-                          <View style={styles.nameCell}>
-                            <View style={[styles.avatar, styles.vehicleIcon]}>
-                              <Ionicons name="car-sport" size={16} color={DESKTOP_COLORS.brand} />
-                            </View>
-                            <TwoLine
-                              title={formatPlate(vehicle.plate_number)}
-                              titleLtr
-                              titleMono
-                              subtitle={vehicleName(vehicle)}
-                            />
-                          </View>
-                        </View>
-                        <Cell
-                          flex={VEHICLE_COLUMNS[1].flex}
-                          text={primary?.full_name ? `${primary.full_name}${extra > 0 ? ` +${extra}` : ''}` : 'ללא נהג'}
-                          color={primary?.full_name ? DESKTOP_COLORS.ink : DESKTOP_COLORS.inkFaint}
-                        />
-                        <View style={[styles.cell, { flex: VEHICLE_COLUMNS[2].flex }]}>
-                          <ToneLine tone={insuranceInfo.tone} label={insuranceInfo.label} />
-                          {!!insurance?.expiry_date && (
-                            <DLtrText style={styles.subText} numberOfLines={1}>
-                              {formatDate(insurance.expiry_date)}
-                            </DLtrText>
-                          )}
-                        </View>
-                        <Cell
-                          flex={VEHICLE_COLUMNS[3].flex}
-                          text={service.label}
-                          color={service.tone === 'neutral' ? undefined : DESKTOP_TONES[service.tone].fg}
-                          weight={service.tone === 'neutral' ? undefined : 'semiBold'}
-                        />
-                        <View style={[styles.cell, styles.statusCell]}>
-                          <StatusPill
-                            tone={VEHICLE_STATUS_TONE[vehicle.status] ?? 'neutral'}
-                            label={VEHICLE_STATUS_LABELS[vehicle.status] ?? vehicle.status}
-                          />
-                        </View>
-                        <Ionicons name="chevron-back" size={14} color={DESKTOP_COLORS.inkFaint} style={styles.rowChevron} />
-                      </HoverPressable>
-                    );
-                  })}
-            </ScrollView>
           )}
         </View>
+
+        {error ? (
+          <EmptyState
+            icon="cloud-offline-outline"
+            title={isDrivers ? 'לא ניתן לטעון את הנהגים' : 'לא ניתן לטעון את הרכבים'}
+            hint={error}
+            action={{ label: 'נסה שוב', icon: 'refresh', onPress: isDrivers ? props.onRetryDrivers : props.onRetryVehicles }}
+          />
+        ) : !loading && isEmpty ? (
+          !hasAny ? (
+            <EmptyState
+              icon={isDrivers ? 'people-outline' : 'car-sport-outline'}
+              title={isDrivers ? 'עדיין אין נהגים' : 'עדיין אין רכבים'}
+              hint={isDrivers ? 'הוסף את הנהג הראשון של החברה' : 'הוסף את הרכב הראשון של החברה'}
+              action={{ label: isDrivers ? 'נהג חדש' : 'רכב חדש', icon: 'add', onPress: onAdd, primary: true }}
+            />
+          ) : query ? (
+            <EmptyState
+              icon="search"
+              title="לא נמצאו תוצאות"
+              hint={`אין התאמה ל„${query}”. נסה מילה אחרת או בחר כרטיס אחר`}
+              action={{ label: 'ניקוי החיפוש', icon: 'close', onPress: () => setSearch('') }}
+            />
+          ) : (
+            <EmptyState
+              icon="checkmark-circle"
+              iconTone="ok"
+              title="אין כאן אף אחד"
+              hint="אין פריטים שמתאימים לכרטיס הזה"
+            />
+          )
+        ) : (
+          // Narrow windows scroll the table sideways instead of squeezing statuses into "...".
+          <View style={styles.tableScroll}>
+            <View style={[styles.table, { minWidth: tableMinWidth(columns) }]}>
+              <TableHeader columns={columns} />
+              {loading ? (
+                <SkeletonRows columns={columns} />
+              ) : (
+                <ScrollView key={listKey} style={styles.rows} contentContainerStyle={styles.rowsContent}>
+                  {isDrivers
+                    ? props.filteredDrivers.map((driver, index) => {
+                        const license = expiryWords(driver.license_expiry);
+                        const health = healthWords(props.healthDeclarations.get(driver.id));
+                        const pending = props.pendingSigning.get(driver.id) ?? 0;
+                        return (
+                          <TableRow
+                            key={driver.id}
+                            index={index}
+                            onPress={() => props.onOpenDriver(driver.id)}
+                            accessibilityLabel={driver.full_name ?? undefined}
+                          >
+                            <View style={[styles.cell, colStyle(DRIVER_COLUMNS[0])]}>
+                              <View style={styles.nameCell}>
+                                <View
+                                  style={[
+                                    styles.avatar,
+                                    { backgroundColor: DESKTOP_AVATAR_COLORS[index % DESKTOP_AVATAR_COLORS.length] },
+                                  ]}
+                                >
+                                  <DText weight="bold" style={styles.avatarText}>
+                                    {initialOf(driver.full_name)}
+                                  </DText>
+                                </View>
+                                <View style={styles.twoLine}>
+                                  <Highlight text={driver.full_name || 'נהג ללא שם'} query={query} weight="bold" style={styles.cellTitle} />
+                                  {!!driver.job_title && (
+                                    <DText style={styles.subText} numberOfLines={1}>
+                                      {driver.job_title}
+                                    </DText>
+                                  )}
+                                </View>
+                              </View>
+                            </View>
+                            <View style={[styles.cell, colStyle(DRIVER_COLUMNS[1])]}>
+                              <DataText value={driver.phone} query={query} />
+                            </View>
+                            <View style={[styles.cell, colStyle(DRIVER_COLUMNS[2])]}>
+                              <DataText value={driver.national_id} query={query} />
+                            </View>
+                            <View style={[styles.cell, colStyle(DRIVER_COLUMNS[3])]}>
+                              <DataText value={driver.license_number} query={query} />
+                              {!!driver.license_classes && (
+                                <DText style={styles.subText} numberOfLines={1}>
+                                  דרגה {driver.license_classes}
+                                </DText>
+                              )}
+                            </View>
+                            <View style={[styles.cell, colStyle(DRIVER_COLUMNS[4])]}>
+                              <Status tone={license.tone} label={license.label} />
+                              {!!driver.license_expiry && (
+                                <DText style={styles.subText} numberOfLines={1}>
+                                  עד {formatDate(driver.license_expiry)}
+                                </DText>
+                              )}
+                            </View>
+                            <View style={[styles.cell, colStyle(DRIVER_COLUMNS[5])]}>
+                              <Status tone={health.tone} label={health.label} />
+                              {!!health.sub && (
+                                <DText style={styles.subText} numberOfLines={1}>
+                                  {health.sub}
+                                </DText>
+                              )}
+                            </View>
+                            <View style={[styles.cell, colStyle(DRIVER_COLUMNS[6])]}>
+                              {driver.vehicles.length ? (
+                                <View style={styles.plates}>
+                                  {driver.vehicles.map((vehicle) => (
+                                    <Plate key={vehicle.id} plate={vehicle.plate_number} small />
+                                  ))}
+                                </View>
+                              ) : (
+                                <DText style={[styles.cellText, styles.faint]} numberOfLines={1}>
+                                  ללא רכב
+                                </DText>
+                              )}
+                            </View>
+                            <View style={[styles.cell, colStyle(DRIVER_COLUMNS[7])]}>
+                              {pending > 0 ? (
+                                <Pill tone="warn" label={countWords(pending, 'מסמך אחד', 'מסמכים')} />
+                              ) : (
+                                <DText style={[styles.cellText, styles.faint]}>—</DText>
+                              )}
+                            </View>
+                          </TableRow>
+                        );
+                      })
+                    : props.filteredVehicles.map((vehicle, index) => {
+                        const insurance = (props.compliance.get(vehicle.id) ?? []).find((c) => c.item_type === 'insurance_mandatory');
+                        const words = expiryWords(insurance?.expiry_date);
+                        // Driving without mandatory insurance is never neutral.
+                        const insuranceInfo = words.tone === 'neutral' ? { tone: 'bad' as const, label: 'אין ביטוח' } : words;
+                        const { primary, extra } = assignedDrivers(vehicle);
+                        const service = serviceInfo(vehicle);
+                        return (
+                          <TableRow
+                            key={vehicle.id}
+                            index={index}
+                            onPress={() => props.onOpenVehicle(vehicle.id)}
+                            accessibilityLabel={`${vehicleName(vehicle)} ${formatPlate(vehicle.plate_number)}`}
+                          >
+                            <View style={[styles.cell, colStyle(VEHICLE_COLUMNS[0])]}>
+                              <View style={styles.nameCell}>
+                                <View style={styles.vehicleIcon}>
+                                  <Ionicons name="car-sport" size={19} color={DESKTOP_COLORS.brand} />
+                                </View>
+                                <View style={styles.twoLine}>
+                                  <Plate plate={vehicle.plate_number} query={query} />
+                                  <Highlight text={vehicleName(vehicle)} query={query} style={styles.subText} />
+                                </View>
+                              </View>
+                            </View>
+                            <View style={[styles.cell, colStyle(VEHICLE_COLUMNS[1])]}>
+                              {primary?.full_name ? (
+                                <Highlight
+                                  text={`${primary.full_name}${extra > 0 ? ` +${extra}` : ''}`}
+                                  query={query}
+                                  weight="medium"
+                                  style={styles.cellValue}
+                                />
+                              ) : (
+                                <DText style={[styles.cellText, styles.faint]} numberOfLines={1}>
+                                  ללא נהג
+                                </DText>
+                              )}
+                            </View>
+                            <View style={[styles.cell, colStyle(VEHICLE_COLUMNS[2])]}>
+                              <Status tone={insuranceInfo.tone} label={insuranceInfo.label} />
+                              {!!insurance?.expiry_date && (
+                                <DText style={styles.subText} numberOfLines={1}>
+                                  עד {formatDate(insurance.expiry_date)}
+                                </DText>
+                              )}
+                            </View>
+                            <View style={[styles.cell, colStyle(VEHICLE_COLUMNS[3])]}>
+                              {service.tone === 'neutral' ? (
+                                <DText weight="medium" style={[styles.cellValue, service.label === '—' && styles.faint]} numberOfLines={1}>
+                                  {service.label}
+                                </DText>
+                              ) : (
+                                <Status tone={service.tone} label={service.label} />
+                              )}
+                            </View>
+                            <View style={[styles.cell, colStyle(VEHICLE_COLUMNS[4])]}>
+                              <Pill
+                                tone={VEHICLE_STATUS_TONE[vehicle.status] ?? 'neutral'}
+                                label={VEHICLE_STATUS_LABELS[vehicle.status] ?? vehicle.status}
+                              />
+                            </View>
+                          </TableRow>
+                        );
+                      })}
+                </ScrollView>
+              )}
+            </View>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -522,31 +564,45 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
 
 /* ------------------------------------------------------------------ */
 
-const DRIVER_COLUMNS = [
-  { label: 'נהג', flex: 1.7 },
-  { label: 'טלפון נייד', flex: 1.05 },
-  { label: 'תעודת זהות', flex: 0.95 },
-  { label: 'מספר רישיון', flex: 1 },
-  { label: 'תוקף רישיון', flex: 1 },
-  { label: 'הצהרת בריאות', flex: 1.05 },
-  { label: 'רכבים משויכים', flex: 1.1 },
-  { label: 'ממתין לחתימה', flex: 0.9 },
+type Column = { label: string; flex: number; min: number };
+
+const DRIVER_COLUMNS: Column[] = [
+  { label: 'נהג', flex: 1.7, min: 184 },
+  { label: 'טלפון נייד', flex: 1, min: 120 },
+  { label: 'תעודת זהות', flex: 0.9, min: 104 },
+  { label: 'מספר רישיון', flex: 0.9, min: 96 },
+  { label: 'תוקף רישיון', flex: 1.15, min: 146 },
+  { label: 'הצהרת בריאות', flex: 1.15, min: 150 },
+  { label: 'רכבים משויכים', flex: 1, min: 116 },
+  { label: 'ממתין לחתימה', flex: 0.9, min: 106 },
 ];
 
-const VEHICLE_COLUMNS = [
-  { label: 'רכב', flex: 1.8 },
-  { label: 'נהג ראשי', flex: 1.3 },
-  { label: 'ביטוח חובה', flex: 1.1 },
-  { label: 'טיפול הבא', flex: 1.1 },
-  { label: 'סטטוס', flex: 0 },
+const VEHICLE_COLUMNS: Column[] = [
+  { label: 'רכב', flex: 1.6, min: 210 },
+  { label: 'נהג ראשי', flex: 1.3, min: 140 },
+  { label: 'ביטוח חובה', flex: 1.2, min: 150 },
+  { label: 'טיפול הבא', flex: 1.2, min: 160 },
+  { label: 'סטטוס', flex: 0.7, min: 104 },
 ];
 
-function TableHeader({ columns }: { columns: { label: string; flex: number }[] }) {
+const ROW_INSET = 10;
+const ROW_PADDING = 14;
+const CHEVRON_WIDTH = 24;
+
+function colStyle(column: Column) {
+  return { flexGrow: column.flex, flexShrink: 0, flexBasis: 0, minWidth: column.min };
+}
+
+function tableMinWidth(columns: Column[]) {
+  return columns.reduce((sum, c) => sum + c.min, 0) + CHEVRON_WIDTH + 2 * (ROW_INSET + ROW_PADDING);
+}
+
+function TableHeader({ columns }: { columns: Column[] }) {
   return (
     <View style={[styles.row, styles.headerRow]}>
       {columns.map((column) => (
-        <View key={column.label} style={[styles.cell, column.flex ? { flex: column.flex } : styles.statusCell]}>
-          <DText weight="semiBold" style={styles.headerText} numberOfLines={1}>
+        <View key={column.label} style={[styles.cell, colStyle(column)]}>
+          <DText weight="bold" style={styles.headerText} numberOfLines={1}>
             {column.label}
           </DText>
         </View>
@@ -556,264 +612,473 @@ function TableHeader({ columns }: { columns: { label: string; flex: number }[] }
   );
 }
 
-function TwoLine({
-  title,
-  subtitle,
-  titleLtr,
-  titleMono,
-  subtitleLtr,
+/** One clickable line: zebra striped, lights up on hover and the arrow leans toward the details. */
+function TableRow({
+  index,
+  onPress,
+  accessibilityLabel,
+  children,
 }: {
-  title: string;
-  subtitle: string;
-  titleLtr?: boolean;
-  titleMono?: boolean;
-  subtitleLtr?: boolean;
+  index: number;
+  onPress: () => void;
+  accessibilityLabel?: string;
+  children: React.ReactNode;
 }) {
-  const Title = titleLtr ? DLtrText : DText;
-  const Subtitle = subtitleLtr ? DLtrText : DText;
   return (
-    <View style={styles.twoLine}>
-      <Title weight="semiBold" style={[styles.cellTitle, titleMono && styles.mono]} numberOfLines={1}>
-        {title}
-      </Title>
-      {!!subtitle && (
-        <Subtitle style={styles.subText} numberOfLines={1}>
-          {subtitle}
-        </Subtitle>
+    <HoverPressable
+      style={[styles.row, index % 2 === 1 && styles.rowAlt, enterRow(index) || null]}
+      hoverStyle={styles.rowHover}
+      pressStyle={styles.rowPressed}
+      onPress={onPress}
+      accessibilityLabel={accessibilityLabel}
+    >
+      {(state) => (
+        <>
+          {children}
+          <View style={styles.rowChevron}>
+            <Ionicons
+              name="chevron-back"
+              size={18}
+              color={(state as { hovered?: boolean }).hovered ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint}
+              style={[styles.chevronIcon, (state as { hovered?: boolean }).hovered && styles.chevronIconHover]}
+            />
+          </View>
+        </>
       )}
-    </View>
+    </HoverPressable>
   );
 }
 
-function ToneLine({ tone, label }: { tone: DesktopTone; label: string }) {
-  const color = tone === 'neutral' ? DESKTOP_COLORS.inkFaint : tone === 'ok' ? DESKTOP_COLORS.ink : DESKTOP_TONES[tone].fg;
+/** Marks where the search term appears, so it is obvious why a row matched. */
+function Highlight({
+  text,
+  query,
+  style,
+  weight,
+  ltr,
+}: {
+  text: string;
+  query: string;
+  style?: React.ComponentProps<typeof DText>['style'];
+  weight?: keyof typeof DESKTOP_FONT;
+  ltr?: boolean;
+}) {
+  const TextComponent = ltr ? DLtrText : DText;
+  const at = query ? text.toLocaleLowerCase().indexOf(query.toLocaleLowerCase()) : -1;
   return (
-    <View style={styles.toneLine}>
-      <View style={[styles.toneDot, { backgroundColor: tone === 'neutral' ? DESKTOP_COLORS.border : DESKTOP_TONES[tone].fg }]} />
-      <DText
-        weight={tone === 'ok' || tone === 'neutral' ? 'medium' : 'semiBold'}
-        style={[styles.cellText, { color }]}
-        numberOfLines={1}
-      >
+    <TextComponent weight={weight} style={style} numberOfLines={1}>
+      {at < 0 ? (
+        text
+      ) : (
+        <>
+          {text.slice(0, at)}
+          <Text style={styles.mark}>{text.slice(at, at + query.length)}</Text>
+          {text.slice(at + query.length)}
+        </>
+      )}
+    </TextComponent>
+  );
+}
+
+/** Latin data (phone, ID, licence number), or a quiet "not entered". */
+function DataText({ value, query }: { value: string | null | undefined; query: string }) {
+  if (!value) {
+    return (
+      <DText style={[styles.cellText, styles.faint]} numberOfLines={1}>
+        לא הוזן
+      </DText>
+    );
+  }
+  return <Highlight text={value} query={query} weight="medium" style={styles.cellValue} ltr />;
+}
+
+function Status({ tone, label }: { tone: DesktopTone; label: string }) {
+  const loud = tone === 'warn' || tone === 'bad';
+  const iconColor = tone === 'neutral' ? DESKTOP_COLORS.inkFaint : DESKTOP_TONES[tone].fg;
+  const textColor = loud ? DESKTOP_TONES[tone].fg : tone === 'ok' ? DESKTOP_COLORS.ink : DESKTOP_COLORS.inkFaint;
+  return (
+    <View style={[styles.status, loud && [styles.statusLoud, { backgroundColor: TONE_SOFT[tone] }]]}>
+      <Ionicons name={TONE_ICON[tone]} size={17} color={iconColor} />
+      <DText weight={loud ? 'semiBold' : 'medium'} style={[styles.statusText, { color: textColor }]} numberOfLines={1}>
         {label}
       </DText>
     </View>
   );
 }
 
-function Cell({
-  flex,
-  text,
-  ltr,
-  color,
-  weight,
-  mono,
-}: {
-  flex: number;
-  text: string;
-  ltr?: boolean;
-  color?: string;
-  weight?: keyof typeof DESKTOP_FONT;
-  mono?: boolean;
-}) {
-  const TextComponent = ltr ? DLtrText : DText;
+function Pill({ tone, label }: { tone: DesktopTone; label: string }) {
   return (
-    <View style={[styles.cell, { flex }]}>
-      <TextComponent weight={weight} style={[styles.cellText, mono && styles.mono, color ? { color } : null]} numberOfLines={1}>
-        {text}
-      </TextComponent>
+    <View style={[styles.pill, { backgroundColor: TONE_SOFT[tone] }]}>
+      <DText weight="semiBold" style={[styles.pillText, { color: DESKTOP_TONES[tone].fg }]} numberOfLines={1}>
+        {label}
+      </DText>
     </View>
   );
 }
 
+/** Israeli plate: yellow with the blue IL strip — reads as "a vehicle number" before the digits do. */
+function Plate({ plate, small, query = '' }: { plate: string; small?: boolean; query?: string }) {
+  const text = formatPlate(plate);
+  const matches = !!query && (text.includes(query) || plate.includes(query.replace(/\D/g, '') || '\u0000'));
+  return (
+    <View style={[styles.plate, small && styles.plateSmall, matches && styles.plateMatch]}>
+      <View style={styles.plateStrip}>
+        <DText weight="extraBold" style={styles.plateIL}>
+          IL
+        </DText>
+      </View>
+      <DLtrText weight="bold" style={[styles.plateText, small && styles.plateTextSmall]} numberOfLines={1}>
+        {text}
+      </DLtrText>
+    </View>
+  );
+}
+
+function SkeletonRows({ columns }: { columns: Column[] }) {
+  return (
+    <View style={styles.rowsContent} accessibilityLabel="טוען" aria-busy>
+      {Array.from({ length: 7 }, (_, i) => (
+        <View key={i} style={[styles.row, i % 2 === 1 && styles.rowAlt]}>
+          {columns.map((column, c) => (
+            <View key={column.label} style={[styles.cell, colStyle(column)]}>
+              {c === 0 ? (
+                <View style={styles.nameCell}>
+                  <View style={[styles.skeleton, styles.skeletonAvatar]} />
+                  <View style={[styles.skeleton, { width: '60%' }]} />
+                </View>
+              ) : (
+                <View style={[styles.skeleton, { width: `${55 + ((i * 7 + c * 13) % 35)}%` }]} />
+              )}
+            </View>
+          ))}
+          <View style={styles.rowChevron} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function EmptyState({
+  icon,
+  iconTone,
+  title,
+  hint,
+  action,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  iconTone?: DesktopTone;
+  title: string;
+  hint: string;
+  action?: { label: string; icon: React.ComponentProps<typeof Ionicons>['name']; onPress: () => void; primary?: boolean };
+}) {
+  return (
+    <View style={styles.state}>
+      <View style={[styles.stateIcon, iconTone && { backgroundColor: TONE_SOFT[iconTone] }]}>
+        <Ionicons name={icon} size={26} color={iconTone ? DESKTOP_TONES[iconTone].fg : DESKTOP_COLORS.inkMuted} />
+      </View>
+      <DText weight="bold" style={styles.stateTitle}>
+        {title}
+      </DText>
+      <DText style={styles.stateHint}>{hint}</DText>
+      {action && (
+        <HoverPressable
+          style={action.primary ? styles.primaryButton : styles.ghostButton}
+          hoverStyle={action.primary ? undefined : styles.ghostButtonHover}
+          hoverMotionStyle={action.primary ? styles.primaryButtonHover : undefined}
+          pressMotionStyle={styles.pressDown}
+          onPress={action.onPress}
+        >
+          <Ionicons name={action.icon} size={action.primary ? 22 : 18} color={action.primary ? '#FFFFFF' : DESKTOP_COLORS.inkMuted} />
+          <DText weight="semiBold" style={action.primary ? styles.primaryButtonText : styles.ghostButtonText}>
+            {action.label}
+          </DText>
+        </HoverPressable>
+      )}
+    </View>
+  );
+}
+
+/** Opaque soft tints behind status text (the theme's translucent ones turn muddy on the zebra rows). */
+const TONE_SOFT: Record<DesktopTone, string> = {
+  ok: '#E7F5EC',
+  warn: '#FFF1DC',
+  bad: '#FDE9E7',
+  neutral: '#EEF0F2',
+};
+
+const BRAND_SOFT = '#E6F2F9';
+const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
+
 const styles = StyleSheet.create({
   pressDown: { transform: [{ scale: 0.97 }] },
-  root: { flex: 1, paddingTop: 24, paddingHorizontal: 28, paddingBottom: 22, gap: 18 },
-  rootCompact: { paddingTop: 18, paddingBottom: 16, gap: 14 },
+  root: { flex: 1, paddingTop: 24, paddingHorizontal: 32, paddingBottom: 22, gap: 18 },
+  rootCompact: { paddingTop: 16, paddingBottom: 14, gap: 12 },
 
-  dock: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 8,
-    padding: 6,
-    borderRadius: 22,
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderWidth: 1,
-    borderColor: 'rgba(16,34,50,0.06)',
-    ...webOnly({
-      boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 18px 40px -22px rgba(16,34,50,0.28), inset 0 1px 0 rgba(255,255,255,0.9)',
-    }),
-  },
-  dockDivider: { width: 1, height: 28, backgroundColor: 'rgba(16,34,50,0.08)', marginHorizontal: 2 },
-  searchWrap: { flexGrow: 0.6, flexShrink: 1, flexBasis: 170, minWidth: 120, maxWidth: 280, justifyContent: 'center' },
-  searchIcon: { position: 'absolute', right: 14, zIndex: 1 },
+  toolbar: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, zIndex: 1 },
+  grow: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
+  searchWrap: { flexGrow: 0, flexShrink: 1, flexBasis: 400, minWidth: 240, justifyContent: 'center' },
+  searchWrapTight: { flexBasis: 280, minWidth: 180 },
+  searchIcon: { position: 'absolute', right: 15, zIndex: 1 },
   search: {
-    height: 44,
+    height: 48,
     borderRadius: 14,
-    backgroundColor: DESKTOP_COLORS.canvas,
-    paddingRight: 38,
-    paddingLeft: 36,
-    fontSize: 14,
+    backgroundColor: DESKTOP_COLORS.surface,
+    paddingRight: 44,
+    paddingLeft: 46,
+    fontSize: 15.5,
     fontFamily: DESKTOP_FONT.regular,
     color: DESKTOP_COLORS.ink,
     textAlign: 'right',
     writingDirection: 'rtl',
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: DESKTOP_COLORS.border,
     ...webOnly({
       outlineStyle: 'none',
-      transition: 'background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease',
+      boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
+      transition: `border-color 180ms ${EASE_OUT}, box-shadow 220ms ${EASE_OUT}`,
     }),
   },
   searchFocused: {
-    backgroundColor: DESKTOP_COLORS.surface,
     borderColor: DESKTOP_COLORS.brand,
-    ...webOnly({ boxShadow: `0 0 0 4px ${DESKTOP_COLORS.brandFocusRing}` }),
+    ...webOnly({ boxShadow: '0 0 0 4px rgba(0,117,179,0.18)' }),
   },
   kbd: {
     position: 'absolute',
-    left: 10,
-    minWidth: 22,
-    height: 22,
-    borderRadius: 6,
+    left: 12,
+    minWidth: 24,
+    height: 24,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: DESKTOP_COLORS.surface,
+    backgroundColor: DESKTOP_COLORS.surfaceMuted,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.border,
     ...webOnly({ boxShadow: '0 1px 0 rgba(16,34,50,0.08)' }),
   },
-  kbdText: { fontSize: 11, color: DESKTOP_COLORS.inkFaint },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...webOnly({ transition: 'background-color 150ms ease-out, transform 120ms ease-out' }),
-  },
-  iconButtonHover: { backgroundColor: 'rgba(118,118,128,0.10)' },
-  iconButtonOn: { backgroundColor: DESKTOP_COLORS.brandFocusRing },
-  badge: {
+  kbdText: { fontSize: 12, color: DESKTOP_COLORS.inkFaint },
+  clear: {
     position: 'absolute',
-    top: 5,
-    left: 4,
-    minWidth: 17,
-    height: 17,
-    paddingHorizontal: 4,
+    left: 8,
+    width: 32,
+    height: 32,
     borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: DESKTOP_COLORS.ink,
-    borderWidth: 2,
-    borderColor: DESKTOP_COLORS.surface,
+    ...webOnly({ transition: 'background-color 150ms ease' }),
   },
-  badgeText: { fontSize: 9.5, lineHeight: 11, color: '#FFFFFF', ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+  clearHover: { backgroundColor: TONE_SOFT.neutral },
+
+  ghostButton: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 48,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: DESKTOP_COLORS.border,
+    backgroundColor: DESKTOP_COLORS.surface,
+    ...webOnly({
+      boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
+      transition: `background-color 160ms ${EASE_OUT}, border-color 160ms ${EASE_OUT}, transform 160ms ${EASE_OUT}`,
+    }),
+  },
+  ghostButtonTight: { paddingHorizontal: 12 },
+  ghostButtonHover: { backgroundColor: DESKTOP_COLORS.surfaceMuted, borderColor: '#CFD7DE' },
+  ghostButtonOn: { backgroundColor: BRAND_SOFT, borderColor: 'rgba(0,117,179,0.35)' },
+  ghostButtonText: { fontSize: 15.5, color: DESKTOP_COLORS.ink },
+  ghostButtonTextOn: { color: DESKTOP_COLORS.brand },
+  countBadge: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: TONE_SOFT.neutral,
+  },
+  countBadgeText: { fontSize: 12, lineHeight: 15, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   primaryButton: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    height: 44,
-    paddingHorizontal: 18,
+    gap: 6,
+    height: 48,
+    paddingRight: 18,
+    paddingLeft: 22,
     borderRadius: 14,
     backgroundColor: DESKTOP_COLORS.brand,
     ...webOnly({
-      backgroundImage: 'linear-gradient(180deg, #1BA5EA 0%, #0082C6 100%)',
-      boxShadow: '0 10px 22px -10px rgba(0,136,204,0.9), inset 0 1px 0 rgba(255,255,255,0.25)',
-      transition: 'transform 180ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 180ms ease-out',
+      backgroundImage: 'linear-gradient(180deg, #1B9FE0 0%, #0078B8 100%)',
+      boxShadow: '0 10px 22px -12px rgba(0,117,179,0.9), inset 0 1px 0 rgba(255,255,255,0.25)',
+      transition: `transform 180ms ${EASE_OUT}, box-shadow 200ms ${EASE_OUT}`,
     }),
   },
-  primaryButtonTight: { width: 44, paddingHorizontal: 0 },
+  primaryButtonTight: { width: 48, paddingLeft: 0, paddingRight: 0 },
   primaryButtonHover: {
     transform: [{ translateY: -1 }],
-    ...webOnly({ boxShadow: '0 14px 28px -10px rgba(0,136,204,0.95), inset 0 1px 0 rgba(255,255,255,0.3)' }),
+    ...webOnly({ boxShadow: '0 14px 26px -12px rgba(0,117,179,0.95), inset 0 1px 0 rgba(255,255,255,0.3)' }),
   },
-  primaryButtonText: { color: '#fff', fontSize: 14.5 },
-  secondaryButton: {
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.borderInput,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  secondaryButtonHover: { backgroundColor: DESKTOP_COLORS.canvas },
-  secondaryButtonText: { color: DESKTOP_COLORS.ink, fontSize: 13, textAlign: 'center' },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 15.5 },
 
-  body: { flex: 1, minHeight: 0, flexDirection: 'row-reverse', gap: 16 },
   listCard: {
     flex: 1,
+    minHeight: 0,
     minWidth: 0,
     backgroundColor: DESKTOP_COLORS.surface,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(16,34,50,0.05)',
     overflow: 'hidden',
-    ...webOnly({ boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 4px 14px rgba(16,24,40,0.05)' }),
+    ...webOnly({ boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 6px 20px -8px rgba(16,34,50,0.10)' }),
   },
   listHead: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 22,
-    paddingTop: 18,
-    paddingBottom: 12,
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 14,
   },
-  listTitle: { fontSize: 18, color: DESKTOP_COLORS.ink, letterSpacing: -0.3, flexShrink: 1 },
-  listCount: { fontSize: 13.5, color: DESKTOP_COLORS.inkFaint, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+  listTitle: { fontSize: 20, lineHeight: 26, color: DESKTOP_COLORS.ink, letterSpacing: -0.3, flexShrink: 1 },
+  listCount: { fontSize: 15, color: DESKTOP_COLORS.inkFaint, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+  searchChip: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+    height: 32,
+    paddingRight: 12,
+    paddingLeft: 6,
+    borderRadius: 16,
+    backgroundColor: BRAND_SOFT,
+    maxWidth: 320,
+  },
+  searchChipText: { fontSize: 13.5, color: DESKTOP_COLORS.brand, flexShrink: 1 },
+  searchChipClear: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  searchChipClearHover: { backgroundColor: 'rgba(0,117,179,0.14)' },
 
-  state: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40, gap: 6 },
+  state: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 48, paddingHorizontal: 24, gap: 6 },
   stateIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(118,118,128,0.10)',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: TONE_SOFT.neutral,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  stateTitle: { fontSize: 16, color: DESKTOP_COLORS.ink, textAlign: 'center' },
-  stateHint: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted, textAlign: 'center', marginBottom: 6 },
+  stateTitle: { fontSize: 18, color: DESKTOP_COLORS.ink, textAlign: 'center' },
+  stateHint: { fontSize: 15, color: DESKTOP_COLORS.inkMuted, textAlign: 'center', marginBottom: 12 },
 
+  tableScroll: { flex: 1, minHeight: 0, ...webOnly({ overflowX: 'auto', overflowY: 'hidden' }) },
+  table: { flex: 1, minHeight: 0, width: '100%' },
   rows: { flex: 1 },
-  rowsContent: { paddingTop: 4, paddingBottom: 10 },
+  rowsContent: { paddingTop: 6, paddingBottom: 12 },
   row: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    minHeight: 60,
-    marginHorizontal: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    minHeight: 66,
+    marginHorizontal: ROW_INSET,
+    paddingHorizontal: ROW_PADDING,
+    paddingVertical: 10,
     borderRadius: 14,
-    ...webOnly({ transition: 'background-color 150ms ease-out, transform 120ms ease-out' }),
+    ...webOnly({ transition: `background-color 150ms ${EASE_OUT}` }),
   },
   // Zebra striping: every second row sits on a faint grey so the eye can follow a line across the columns.
-  rowAlt: { backgroundColor: '#F6F8FA' },
-  rowHover: { backgroundColor: '#ECF1F5' },
-  rowPress: { transform: [{ scale: 0.995 }] },
-  rowChevron: { marginLeft: 2, width: 16, flexShrink: 0 },
+  rowAlt: { backgroundColor: '#F8FAFB' },
+  rowHover: { backgroundColor: '#EDF3F8' },
+  rowPressed: { backgroundColor: '#E3ECF3' },
+  rowChevron: { width: CHEVRON_WIDTH, flexShrink: 0, alignItems: 'flex-start' },
+  chevronIcon: { ...webOnly({ transition: `transform 220ms ${EASE_OUT}` }) },
+  chevronIconHover: { transform: [{ translateX: -3 }] },
   headerRow: {
     minHeight: 0,
-    paddingVertical: 9,
+    paddingVertical: 11,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: DESKTOP_COLORS.borderSoft,
     borderRadius: 0,
     marginHorizontal: 0,
-    paddingHorizontal: 22,
+    paddingHorizontal: ROW_INSET + ROW_PADDING,
     backgroundColor: DESKTOP_COLORS.surfaceMuted,
   },
-  headerText: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
-  cell: { minWidth: 0, paddingLeft: 14, gap: 2 },
-  statusCell: { width: 92, flexShrink: 0, paddingLeft: 0 },
-  cellText: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
-  cellTitle: { fontSize: 14.5, color: DESKTOP_COLORS.ink },
-  subText: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
-  mono: { ...webOnly({ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontVariantNumeric: 'tabular-nums' }) },
-  twoLine: { flex: 1, minWidth: 0, gap: 2 },
-  toneLine: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
-  toneDot: { width: 7, height: 7, borderRadius: 4 },
-  nameCell: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minWidth: 0 },
-  avatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  avatarText: { color: '#fff', fontSize: 15, textAlign: 'center' },
-  vehicleIcon: { backgroundColor: DESKTOP_COLORS.brandFocusRing },
+  headerText: { fontSize: 13, color: '#4F5B67' },
+  cell: { paddingLeft: 14, gap: 3, alignItems: 'flex-end' },
+  cellText: { fontSize: 15, color: DESKTOP_COLORS.inkMuted, maxWidth: '100%' },
+  cellValue: { fontSize: 15, color: DESKTOP_COLORS.ink, maxWidth: '100%' },
+  cellTitle: { fontSize: 16, color: DESKTOP_COLORS.ink, maxWidth: '100%' },
+  faint: { color: DESKTOP_COLORS.inkFaint },
+  subText: { fontSize: 13, color: DESKTOP_COLORS.inkFaint, maxWidth: '100%' },
+  mark: { backgroundColor: '#FFE9A8', borderRadius: 3 },
+  twoLine: { flex: 1, minWidth: 0, gap: 3, alignItems: 'flex-end' },
+  nameCell: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minWidth: 0, alignSelf: 'stretch' },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    ...webOnly({ boxShadow: 'inset 0 -2px 0 rgba(0,0,0,0.08)' }),
+  },
+  avatarText: { color: '#FFFFFF', fontSize: 16, textAlign: 'center' },
+  vehicleIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    backgroundColor: BRAND_SOFT,
+  },
+
+  status: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, flexShrink: 0 },
+  statusLoud: { height: 28, paddingRight: 9, paddingLeft: 11, borderRadius: 14 },
+  statusText: { fontSize: 14.5 },
+  pill: { height: 28, paddingHorizontal: 11, borderRadius: 14, justifyContent: 'center', flexShrink: 0 },
+  pillText: { fontSize: 13.5 },
+
+  plates: { gap: 5, alignItems: 'flex-end' },
+  plate: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    height: 28,
+    borderRadius: 6,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#1A1A1A',
+    backgroundColor: '#FCD116',
+    ...webOnly({ boxShadow: '0 1px 0 rgba(0,0,0,0.12)' }),
+  },
+  plateSmall: { height: 24 },
+  plateMatch: { ...webOnly({ boxShadow: '0 0 0 3px #FFE9A8' }) },
+  plateStrip: { width: 14, backgroundColor: '#0B4FA3', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 2 },
+  plateIL: { fontSize: 7, lineHeight: 8, color: '#FFFFFF', textAlign: 'center' },
+  plateText: {
+    alignSelf: 'center',
+    paddingLeft: 7,
+    paddingRight: 8,
+    fontSize: 14.5,
+    letterSpacing: 0.6,
+    color: '#111111',
+    ...webOnly({ fontVariantNumeric: 'tabular-nums' }),
+  },
+  plateTextSmall: { fontSize: 13, paddingLeft: 6, paddingRight: 7 },
+
+  skeleton: {
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#EEF1F4',
+    ...webOnly({
+      backgroundImage: 'linear-gradient(90deg, #EEF1F4 0%, #F7F9FA 40%, #EEF1F4 80%)',
+      backgroundSize: '300% 100%',
+      animationKeyframes: { from: { backgroundPosition: '100% 0' }, to: { backgroundPosition: '-200% 0' } },
+      animationDuration: '1.3s',
+      animationTimingFunction: 'linear',
+      animationIterationCount: 'infinite',
+    }),
+  },
+  skeletonAvatar: { width: 40, height: 40, borderRadius: 20, flexShrink: 0 },
 });
