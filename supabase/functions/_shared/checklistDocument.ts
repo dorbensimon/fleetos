@@ -172,9 +172,11 @@ export function renderChecklistHtml({ title, form, letterhead, meeting }: Render
 <meta charset="utf-8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap">
 <style>
-  @page { size: A4; margin: 0; }
+  /* The page margin (not the sheet's padding) keeps every page's top and bottom
+     clear, so the signatures only move to a new page when they truly do not fit. */
+  @page { size: A4; margin: 36px 0; }
   html, body { margin: 0; padding: 0; }
-  .page { position: relative; box-sizing: border-box; width: 794px; padding: 56px 64px; font-family: 'Heebo', 'Arial Hebrew', 'DejaVu Sans', Arial, sans-serif; color: #111; direction: rtl; text-align: right; }
+  .page { position: relative; box-sizing: border-box; width: 794px; padding: 20px 64px 0; font-family: 'Heebo', 'Arial Hebrew', 'DejaVu Sans', Arial, sans-serif; color: #111; direction: rtl; text-align: right; }
   .lh { position: relative; height: 72px; margin-bottom: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 16px; border-bottom: 1px solid #E1E6EA; }
   .lh::after { content: ''; position: absolute; right: 0; bottom: -2px; width: 56px; height: 3px; border-radius: 2px; background: #0088CC; }
   .lh-brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
@@ -207,10 +209,10 @@ export function renderChecklistHtml({ title, form, letterhead, meeting }: Render
   .st-na { background: #EEF1F6; color: #56657A; }
   .st-empty { width: 66px; height: 18px; border: 1px dashed #C9D1D8; }
   .legend { font-size: 12px; color: #6B7885; margin: 8px 0 0; }
-  .sigs { display: flex; gap: 32px; margin-top: 36px; page-break-inside: avoid; break-inside: avoid; }
+  .sigs { display: flex; gap: 32px; margin-top: 24px; page-break-inside: avoid; break-inside: avoid; }
   .sig { flex: 1; }
   .sig-l { font-size: 13px; font-weight: 600; color: #3C4A57; margin-bottom: 6px; }
-  .sig-box { height: 84px; border-bottom: 1.5px solid #3C4A57; }
+  .sig-box { height: 72px; border-bottom: 1.5px solid #3C4A57; }
   .sig-n { font-size: 14px; font-weight: 600; margin-top: 6px; min-height: 20px; }
   .sig-d { font-size: 12px; color: #6B7885; }
 </style>
@@ -231,13 +233,13 @@ ${intro}
 <div class="sigs">
   <div class="sig">
     <div class="sig-l">${escapeHtml(form.labels.officer)}</div>
-    <div class="sig-box"><signature-field name="${OFFICER_FIELD}" title="${escapeHtml(form.labels.officer)}" role="${OFFICER_ROLE}" required="true" style="width: 240px; height: 80px; display: inline-block;"></signature-field></div>
+    <div class="sig-box"><signature-field name="${OFFICER_FIELD}" title="${escapeHtml(form.labels.officer)}" role="${OFFICER_ROLE}" required="true" style="width: 240px; height: 68px; display: inline-block;"></signature-field></div>
     <div class="sig-n">${officerName}</div>
     <div class="sig-d">${meeting ? `נחתם ב־${dateText}` : 'שם ותאריך'}</div>
   </div>
   <div class="sig">
     <div class="sig-l">${escapeHtml(form.labels.driver)}</div>
-    <div class="sig-box"><signature-field name="${DRIVER_FIELD}" title="${escapeHtml(form.labels.driver)}" role="${DRIVER_ROLE}" required="true" style="width: 240px; height: 80px; display: inline-block;"></signature-field></div>
+    <div class="sig-box"><signature-field name="${DRIVER_FIELD}" title="${escapeHtml(form.labels.driver)}" role="${DRIVER_ROLE}" required="true" style="width: 240px; height: 68px; display: inline-block;"></signature-field></div>
     <div class="sig-n">${driverName}</div>
     <div class="sig-d">${meeting ? 'בחתימה זו מאושר שהמפגש התקיים כמפורט' : 'שם ותאריך'}</div>
   </div>

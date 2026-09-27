@@ -115,6 +115,7 @@ alter table public.checklist_meetings enable row level security;
 
 revoke all on public.checklist_meetings from anon, authenticated;
 grant select on public.checklist_meetings to authenticated;
+grant select, insert, update, delete on public.checklist_meetings to service_role;
 
 drop policy if exists "managers read company meetings" on public.checklist_meetings;
 create policy "managers read company meetings" on public.checklist_meetings

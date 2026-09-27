@@ -48,6 +48,7 @@ create index if not exists checklist_schedule_updated_by_idx on public.checklist
 alter table public.checklist_schedule enable row level security;
 revoke all on public.checklist_schedule from anon, authenticated;
 grant select on public.checklist_schedule to authenticated;
+grant select, insert, update, delete on public.checklist_schedule to service_role;
 
 drop policy if exists "managers read company meeting schedule" on public.checklist_schedule;
 create policy "managers read company meeting schedule" on public.checklist_schedule
@@ -79,6 +80,7 @@ create index if not exists checklist_due_alerts_driver_idx on public.checklist_d
 
 alter table public.checklist_due_alerts enable row level security;
 revoke all on public.checklist_due_alerts from anon, authenticated;
+grant select, insert, update, delete on public.checklist_due_alerts to service_role;
 
 -- ------------------------------------------------------------
 -- 3. Notification type
