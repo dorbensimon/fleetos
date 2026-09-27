@@ -84,6 +84,8 @@ describe('the form on the app side', () => {
     expect(meetingState({ status: 'draft' })).toBe('draft');
     expect(meetingState({ status: 'signed' }, 'pending')).toBe('awaiting_driver');
     expect(meetingState({ status: 'signed' }, 'completed')).toBe('completed');
+    expect(meetingState({ status: 'signed' }, 'declined')).toBe('requires_attention');
+    expect(meetingState({ status: 'signed' }, 'failed')).toBe('requires_attention');
     expect(meetingState({ status: 'signed' }, 'cancelled')).toBe('cancelled');
     expect(meetingState({ status: 'cancelled' }, 'completed')).toBe('cancelled');
   });

@@ -192,6 +192,7 @@ export type MeetingRow = {
   answers: ChecklistAnswers;
   meeting_date: string;
   officer_name: string | null;
+  officer_signature: string | null;
   signature_request_id: string | null;
   signed_at: string | null;
   cancelled_at: string | null;
@@ -200,11 +201,12 @@ export type MeetingRow = {
 };
 
 /** Where a meeting stands, from its own row and its signature request. */
-export type MeetingState = 'draft' | 'awaiting_driver' | 'completed' | 'cancelled';
+export type MeetingState = 'draft' | 'awaiting_driver' | 'completed' | 'requires_attention' | 'cancelled';
 
 export function meetingState(meeting: Pick<MeetingRow, 'status'>, requestStatus?: string | null): MeetingState {
   if (meeting.status === 'cancelled' || requestStatus === 'cancelled') return 'cancelled';
   if (meeting.status === 'draft') return 'draft';
+  if (requestStatus === 'declined' || requestStatus === 'failed') return 'requires_attention';
   return requestStatus === 'completed' ? 'completed' : 'awaiting_driver';
 }
 
@@ -212,6 +214,7 @@ export const MEETING_STATE_LABEL: Record<MeetingState, string> = {
   draft: 'טיוטה, עוד לא נחתם',
   awaiting_driver: 'ממתין לחתימת הנהג',
   completed: 'נחתם',
+  requires_attention: 'דורש טיפול',
   cancelled: 'בוטל',
 };
 

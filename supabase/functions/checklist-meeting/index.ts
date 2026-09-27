@@ -253,10 +253,11 @@ Deno.serve(async (req) => {
         const payload = await response.json() as { submitters?: Submitter[] } | Submitter[];
         const submitters = Array.isArray(payload) ? payload : payload.submitters ?? [];
         driverSubmitter = submitters.find((s) => s.external_id === request.id) ?? submitters.find((s) => s.role === DRIVER_ROLE);
-        if (!driverSubmitter?.id || !driverSubmitter.slug) throw new Error('DocuSeal returned no driver link');
+        if (!driverSubmitter?.id || !driverSubmitter.slug || !driverSubmitter.submission_id) throw new Error('DocuSeal returned no driver link');
       } catch (error) {
         console.error('checklist-meeting sign failed', error instanceof Error ? error.message : 'unknown');
-        await db.from('signature_requests').delete().eq('id', request.id).eq('status', 'pending');
+        if (driverSubmitter?.submission_id) await cleanupProvisionedRequest(db, request.id, driverSubmitter);
+        else await db.from('signature_requests').delete().eq('id', request.id).eq('status', 'pending');
         await release();
         return json({ error: 'יצירת המסמך נכשלה. נסו שוב בעוד רגע.' }, 502);
       }
@@ -271,18 +272,27 @@ Deno.serve(async (req) => {
         provisioning_locked_until: null,
         failure_reason: null,
       }).eq('id', request.id);
+      if (linkError) {
+        console.error('checklist-meeting request linking failed', linkError.message);
+        await cleanupProvisionedRequest(db, request.id, driverSubmitter);
+        await release();
+        return json({ error: 'המסמך לא נשמר. נסו שוב בעוד רגע.' }, 500);
+      }
       const { data: signed, error: meetingError } = await db.from('checklist_meetings').update({
         status: 'signed',
         answers,
         officer_name: officerName,
+        officer_signature: officerSignature,
         meeting_date: meetingDate,
         signed_at: now,
         signature_request_id: request.id,
         signing_locked_until: null,
       }).eq('id', meeting.id).eq('status', 'draft').select('*').maybeSingle();
-      if (linkError || meetingError || !signed) {
-        console.error('checklist-meeting linking failed', linkError?.message ?? meetingError?.message ?? 'no row');
-        return json({ error: 'המסמך נוצר אך לא נשמר עד הסוף. רעננו את המסך.' }, 500);
+      if (meetingError || !signed) {
+        console.error('checklist-meeting meeting linking failed', meetingError?.message ?? 'no row');
+        await cleanupProvisionedRequest(db, request.id, driverSubmitter);
+        await release();
+        return json({ error: 'המסמך לא נשמר. נסו שוב בעוד רגע.' }, 500);
       }
 
       const nextDue = await scheduleNextMeeting(db, meeting, meetingDate, user.userId);
@@ -304,12 +314,35 @@ Deno.serve(async (req) => {
       if (request.status === 'completed') return json({ status: 'completed', filePending: !request.signed_file_path });
       if (request.status !== 'pending' || !request.docuseal_submitter_id) return json({ error: 'המסמך כבר לא ממתין לחתימה' }, 409);
 
-      const update = await docusealFetch(`/submitters/${request.docuseal_submitter_id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ completed: true, send_email: false, values: { [DRIVER_FIELD]: driverSignature } }),
-      });
+      const driverLockUntil = new Date(Date.now() + SIGN_LOCK_MINUTES * 60_000).toISOString();
+      const driverLockStartedAt = new Date().toISOString();
+      const { data: driverClaim, error: driverClaimError } = await db.from('signature_requests')
+        .update({ sync_locked_until: driverLockUntil })
+        .eq('id', request.id).eq('status', 'pending')
+        .or(`sync_locked_until.is.null,sync_locked_until.lt.${driverLockStartedAt}`)
+        .select('id').maybeSingle();
+      if (driverClaimError) return json({ error: 'שמירת החתימה של הנהג נכשלה. נסו שוב.' }, 500);
+      if (!driverClaim) {
+        const { data: current } = await db.from('signature_requests').select('status, signed_file_path').eq('id', request.id).maybeSingle();
+        if (current?.status === 'completed') return json({ status: 'completed', filePending: !current.signed_file_path });
+        return json({ error: 'המסמך נשמר כעת בפעולה אחרת. חכו רגע ונסו שוב.' }, 409);
+      }
+
+      let update: Response;
+      try {
+        update = await docusealFetch(`/submitters/${request.docuseal_submitter_id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ completed: true, send_email: false, values: { [DRIVER_FIELD]: driverSignature } }),
+        });
+      } catch {
+        await db.from('signature_requests').update({ sync_locked_until: null })
+          .eq('id', request.id).eq('status', 'pending').eq('sync_locked_until', driverLockUntil);
+        return json({ error: 'שמירת החתימה של הנהג נכשלה. נסו שוב.' }, 502);
+      }
       if (!update.ok) {
         console.error('checklist-meeting driver-sign rejected', update.status);
+        await db.from('signature_requests').update({ sync_locked_until: null })
+          .eq('id', request.id).eq('status', 'pending').eq('sync_locked_until', driverLockUntil);
         return json({ error: 'שמירת החתימה של הנהג נכשלה. נסו שוב.' }, 502);
       }
 
@@ -319,7 +352,12 @@ Deno.serve(async (req) => {
       let completedAt: string | null = null;
       for (let attempt = 0; attempt < 4 && !documentUrl; attempt += 1) {
         if (attempt) await sleep(1500);
-        const response = await docusealFetch(`/submitters/${request.docuseal_submitter_id}`);
+        let response: Response;
+        try {
+          response = await docusealFetch(`/submitters/${request.docuseal_submitter_id}`);
+        } catch {
+          continue;
+        }
         if (!response.ok) continue;
         const submitter = await response.json() as { status?: string; completed_at?: string; documents?: Array<{ url?: string }> };
         completedAt = submitter.completed_at ?? completedAt;
@@ -327,21 +365,30 @@ Deno.serve(async (req) => {
       }
       let signedFilePath: string | null = null;
       if (documentUrl) {
-        const pdf = await fetch(documentUrl);
-        if (pdf.ok) {
-          const path = `${request.company_id}/driver/${request.driver_id}/signed/${request.id}.pdf`;
-          const { error: uploadError } = await db.storage.from('documents').upload(path, new Uint8Array(await pdf.arrayBuffer()), { contentType: 'application/pdf', upsert: true });
-          if (!uploadError) signedFilePath = path;
+        try {
+          const pdf = await fetch(documentUrl);
+          if (pdf.ok) {
+            const path = `${request.company_id}/driver/${request.driver_id}/signed/${request.id}.pdf`;
+            const { error: uploadError } = await db.storage.from('documents').upload(path, new Uint8Array(await pdf.arrayBuffer()), { contentType: 'application/pdf', upsert: true });
+            if (!uploadError) signedFilePath = path;
+          }
+        } catch {
+          // The webhook or a later sync will store the generated PDF.
         }
       }
-      await db.from('signature_requests').update({
+      const { data: completed } = await db.from('signature_requests').update({
         status: 'completed',
         completed_at: completedAt || new Date().toISOString(),
         ...(signedFilePath ? { signed_file_path: signedFilePath } : {}),
         next_email_reminder_at: null,
         email_reminder_locked_until: null,
         sync_locked_until: null,
-      }).eq('id', request.id).eq('status', 'pending');
+      }).eq('id', request.id).eq('status', 'pending').eq('sync_locked_until', driverLockUntil).select('id').maybeSingle();
+      if (!completed) {
+        const { data: current } = await db.from('signature_requests').select('status, signed_file_path').eq('id', request.id).maybeSingle();
+        if (current?.status === 'completed') return json({ status: 'completed', filePending: !current.signed_file_path });
+        return json({ error: 'המסמך בוטל לפני שהחתימה נשמרה' }, 409);
+      }
       return json({ status: 'completed', filePending: !signedFilePath });
     }
 
@@ -360,7 +407,10 @@ Deno.serve(async (req) => {
     if (action === 'cancel') {
       const meeting = await loadMeeting();
       if (!meeting) return json({ error: 'המפגש לא נמצא' }, 404);
-      if (meeting.status === 'cancelled') return json({ success: true });
+      if (meeting.status === 'cancelled') {
+        const restored = await restoreScheduleAfterCancellation(db, meeting.id, user.userId, new Date().toISOString());
+        return restored ? json({ success: true }) : json({ error: 'שחזור מועד המפגש הבא נכשל' }, 500);
+      }
       if (meeting.status === 'draft') {
         const { error } = await db.from('checklist_meetings').delete().eq('id', meeting.id).eq('status', 'draft');
         if (error) return json({ error: 'מחיקת הטיוטה נכשלה' }, 500);
@@ -372,25 +422,63 @@ Deno.serve(async (req) => {
         const { data: request } = await db.from('signature_requests')
           .select('id, status, archived_at, docuseal_submission_id')
           .eq('id', meeting.signature_request_id).maybeSingle();
-        if (request?.status === 'pending' && request.docuseal_submission_id) {
-          const response = await docusealFetch(`/submissions/${request.docuseal_submission_id}`, { method: 'DELETE' });
-          if (!response.ok && response.status !== 404) return json({ error: 'לא ניתן לבטל את המסמך כרגע. נסו שוב.' }, 502);
+        let requestStatus = request?.status;
+        let claimedCancellation = false;
+        if (request?.status === 'pending') {
+          // Claim cancellation before touching DocuSeal. A driver-sign flow uses
+          // the same lock, so a signed submission can never be deleted mid-save.
+          const { data: cancelled, error: cancelRequestError } = await db.from('signature_requests').update({
+            status: 'cancelled',
+            cancelled_at: now,
+            cancelled_by: user.userId,
+            next_email_reminder_at: null,
+            email_reminder_locked_until: null,
+          }).eq('id', request.id).eq('status', 'pending')
+            .or(`sync_locked_until.is.null,sync_locked_until.lt.${now}`)
+            .select('id').maybeSingle();
+          if (cancelRequestError) return json({ error: 'ביטול המפגש נכשל' }, 500);
+          if (!cancelled) {
+            const { data: current } = await db.from('signature_requests').select('status').eq('id', request.id).maybeSingle();
+            if (current?.status !== 'completed') return json({ error: 'חתימת הנהג נשמרת כעת. חכו רגע ונסו לבטל שוב.' }, 409);
+            requestStatus = 'completed';
+          } else {
+            requestStatus = 'cancelled';
+            claimedCancellation = true;
+          }
+        }
+        // A previous attempt may have claimed cancellation and then lost the
+        // provider call. Retrying a non-archived cancelled request finishes it.
+        if (request && requestStatus === 'cancelled' && request.docuseal_submission_id) {
+          if (!await discardProvisionedSubmission(request.docuseal_submission_id)) {
+            if (claimedCancellation) {
+              await db.from('signature_requests').update({
+                status: 'pending', cancelled_at: null, cancelled_by: null,
+              }).eq('id', request.id).eq('status', 'cancelled').eq('cancelled_at', now);
+            }
+            return json({ error: 'לא ניתן לבטל את המסמך כרגע. נסו שוב.' }, 502);
+          }
         }
         if (request && !request.archived_at) {
           // A signed document is evidence: it stays, out of the active lists.
-          await db.from('signature_requests').update({
+          const { data: archived, error: archiveError } = await db.from('signature_requests').update({
             archived_at: now,
             archived_by: user.userId,
-            ...(request.status === 'pending' ? {
-              status: 'cancelled', cancelled_at: now, cancelled_by: user.userId, next_email_reminder_at: null, email_reminder_locked_until: null,
-            } : {}),
-          }).eq('id', request.id);
+          }).eq('id', request.id).eq('status', requestStatus).select('id').maybeSingle();
+          if (archiveError) return json({ error: 'ביטול המפגש נכשל' }, 500);
+          // A driver may have completed the document while cancellation was in
+          // flight. Archive that evidence, but never overwrite its completion.
+          if (!archived) {
+            const { error: raceArchiveError } = await db.from('signature_requests').update({ archived_at: now, archived_by: user.userId })
+              .eq('id', request.id).is('archived_at', null);
+            if (raceArchiveError) return json({ error: 'ביטול המפגש נכשל' }, 500);
+          }
         }
       }
       const { error } = await db.from('checklist_meetings').update({ status: 'cancelled', cancelled_at: now, cancelled_by: user.userId }).eq('id', meeting.id);
       if (error) return json({ error: 'ביטול המפגש נכשל' }, 500);
-      // The next date this meeting set goes with it; the one before it applies again.
-      await db.from('checklist_schedule').delete().eq('meeting_id', meeting.id);
+      if (!await restoreScheduleAfterCancellation(db, meeting.id, user.userId, now)) {
+        return json({ error: 'המפגש בוטל, אך שחזור מועד המפגש הבא נכשל' }, 500);
+      }
       return json({ success: true });
     }
 
@@ -411,7 +499,7 @@ Deno.serve(async (req) => {
       if (!details) return json({ error: 'הנהג לא נמצא' }, 404);
       const { error } = await db.from('checklist_schedule').upsert({
         template_id: templateId, driver_id: driverId, company_id: companyId,
-        next_due: nextDue, meeting_id: null, updated_by: user.userId, updated_at: new Date().toISOString(),
+        next_due: nextDue, manual_next_due: nextDue, meeting_id: null, updated_by: user.userId, updated_at: new Date().toISOString(),
       }, { onConflict: 'template_id,driver_id' });
       if (error) return json({ error: 'שמירת התאריך נכשלה' }, 500);
       return json({ success: true, nextDue });
@@ -460,15 +548,75 @@ async function scheduleNextMeeting(db: any, meeting: { id: string; company_id: s
     .eq('template_id', meeting.template_id).eq('driver_id', meeting.driver_id).eq('status', 'signed')
     .neq('id', meeting.id).gt('meeting_date', meetingDate).limit(1);
   if (newer?.length) return null;
+  const { data: existingSchedule, error: scheduleReadError } = await db.from('checklist_schedule').select('manual_next_due')
+    .eq('template_id', meeting.template_id).eq('driver_id', meeting.driver_id).maybeSingle();
+  if (scheduleReadError) {
+    console.error('checklist-meeting schedule read failed');
+    return null;
+  }
   const { error } = await db.from('checklist_schedule').upsert({
     template_id: meeting.template_id, driver_id: meeting.driver_id, company_id: meeting.company_id,
-    next_due: nextDue, meeting_id: meeting.id, updated_by: userId, updated_at: new Date().toISOString(),
+    next_due: nextDue, manual_next_due: existingSchedule?.manual_next_due ?? null,
+    meeting_id: meeting.id, updated_by: userId, updated_at: new Date().toISOString(),
   }, { onConflict: 'template_id,driver_id' });
   if (error) {
     console.error('checklist-meeting schedule failed');
     return null;
   }
   return nextDue;
+}
+
+async function discardProvisionedSubmission(submissionId: number): Promise<boolean> {
+  try {
+    const response = await docusealFetch(`/submissions/${submissionId}`, { method: 'DELETE' });
+    if (!response.ok && response.status !== 404) {
+      console.error('checklist-meeting submission cleanup failed', response.status);
+      return false;
+    }
+    return true;
+  } catch {
+    console.error('checklist-meeting submission cleanup failed');
+    return false;
+  }
+}
+
+// deno-lint-ignore no-explicit-any
+async function cleanupProvisionedRequest(db: any, requestId: string, submitter: Submitter) {
+  const submissionId = submitter.submission_id;
+  if (!submissionId) return;
+  if (await discardProvisionedSubmission(submissionId)) {
+    const { error } = await db.from('signature_requests').delete().eq('id', requestId).eq('status', 'pending');
+    if (!error) return;
+    console.error('checklist-meeting local cleanup failed');
+  }
+  // Keep enough remote identity to find and clean up the submission later. A
+  // failed cleanup must never turn a traceable orphan into an invisible one.
+  await db.from('signature_requests').update({
+    status: 'failed',
+    failure_reason: 'DocuSeal submission cleanup failed after checklist meeting provisioning',
+    docuseal_submission_id: submissionId,
+    docuseal_submitter_id: submitter.id,
+    docuseal_submitter_slug: submitter.slug,
+    provisioning_locked_until: null,
+  }).eq('id', requestId).eq('status', 'pending');
+}
+
+// deno-lint-ignore no-explicit-any
+async function restoreScheduleAfterCancellation(db: any, meetingId: string, userId: string, now: string): Promise<boolean> {
+  const { data: schedule, error: readError } = await db.from('checklist_schedule').select('manual_next_due')
+    .eq('meeting_id', meetingId).maybeSingle();
+  if (readError) return false;
+  if (schedule?.manual_next_due) {
+    const { error } = await db.from('checklist_schedule').update({
+      next_due: schedule.manual_next_due,
+      meeting_id: null,
+      updated_by: userId,
+      updated_at: now,
+    }).eq('meeting_id', meetingId);
+    return !error;
+  }
+  const { error } = await db.from('checklist_schedule').delete().eq('meeting_id', meetingId);
+  return !error;
 }
 
 // deno-lint-ignore no-explicit-any
