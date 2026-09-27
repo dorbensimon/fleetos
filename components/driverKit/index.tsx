@@ -343,6 +343,7 @@ export function DriverPage({
   onRefresh,
   scrollRef,
   bottomSpace = 36,
+  scrollEnabled = true,
 }: {
   insetTop: number;
   insetBottom: number;
@@ -358,6 +359,8 @@ export function DriverPage({
   scrollRef?: React.Ref<ScrollView>;
   /** Extra room under the content (e.g. to clear a floating action). */
   bottomSpace?: number;
+  /** Held still while a finger draws a signature on the page. */
+  scrollEnabled?: boolean;
 }) {
   return (
     <View style={styles.page}>
@@ -365,6 +368,7 @@ export function DriverPage({
       <NightUnderlay />
       <ScrollView
         ref={scrollRef}
+        scrollEnabled={scrollEnabled}
         style={styles.pageScroll}
         contentContainerStyle={[styles.pageContent, { paddingBottom: footer ? 24 : insetBottom + bottomSpace }]}
         keyboardShouldPersistTaps="handled"

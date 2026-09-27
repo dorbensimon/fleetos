@@ -17,6 +17,19 @@ import { DocumentEditor, EditorPagePreview, initialEditorDraft, type DocumentEdi
 import { BusyState, FieldPlacer, PdfPageView, UploadDropzone } from './FieldPlacer.web';
 import { loadPdf, type LoadedPdf } from './pdf.web';
 import { FIELD_META } from './fieldMeta';
+import { ChecklistBuilder, ChecklistPaperPreview } from './ChecklistBuilder.web';
+import {
+  DRIVER_MEETING_TITLE,
+  blankChecklistForm,
+  createChecklistTemplate,
+  driverMeetingForm,
+  filledItems,
+  formProblem,
+  repeatLabel,
+  statusOptions,
+  STATUS_META,
+  type ChecklistForm,
+} from '../../../lib/checklistForms';
 
 /**
  * "מסמך חדש": name it, choose to write or upload, place the fields, review and
@@ -24,10 +37,10 @@ import { FIELD_META } from './fieldMeta';
  * big button forward.
  */
 
-type Mode = 'editor' | 'upload';
+type Mode = 'editor' | 'upload' | 'checklist';
 type Step = 0 | 1 | 2 | 3;
 
-const NAME_IDEAS = ['הצהרת בריאות', 'נוהל בטיחות בנהיגה', 'טופס קבלת רכב', 'התחייבות לשמירה על הרכב'];
+const NAME_IDEAS = ['הצהרת בריאות', 'נוהל בטיחות בנהיגה', DRIVER_MEETING_TITLE, 'טופס קבלת רכב', 'התחייבות לשמירה על הרכב'];
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 const STEP_NAMES = ['שם ודרך יצירה', 'תוכן ושדות', 'בדיקה ושמירה'];
 
@@ -65,6 +78,10 @@ export function CreateDocumentSheet({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fields, setFields] = useState<PlacedSigningField[]>([]);
+
+  // checklist ("רשימת סעיפים")
+  const [checklist, setChecklist] = useState<ChecklistForm | null>(null);
+  const [fromTemplate, setFromTemplate] = useState(true);
 
   // save
   const [saving, setSaving] = useState(false);
@@ -113,7 +130,9 @@ export function CreateDocumentSheet({
       : step === 1
         ? mode === 'editor'
           ? editorHasSignature
-          : !!pdf && fields.some((f) => f.kind === 'signature')
+          : mode === 'checklist'
+            ? !!checklist && !formProblem(title, checklist)
+            : !!pdf && fields.some((f) => f.kind === 'signature')
         : true;
 
   const next = () => {
@@ -125,6 +144,7 @@ export function CreateDocumentSheet({
       }
       if (!mode) return;
       if (mode === 'editor' && editorDraft === null) setEditorDraft(initialEditorDraft(title.trim()));
+      if (mode === 'checklist' && checklist === null) setChecklist(driverMeetingForm());
       setStep(1);
     } else if (step === 1) {
       leaveEditor();
@@ -145,7 +165,9 @@ export function CreateDocumentSheet({
       const template =
         mode === 'editor'
           ? await createTemplateFromEditor(companyId, draftId, title.trim(), blocks, editorFields)
-          : await createTemplateFromFields(companyId, draftId, title.trim(), fields);
+          : mode === 'checklist'
+            ? await createChecklistTemplate(companyId, draftId, title.trim(), checklist!)
+            : await createTemplateFromFields(companyId, draftId, title.trim(), fields);
       setCreated(template);
       onCreated(template);
       setStep(3);
@@ -167,6 +189,8 @@ export function CreateDocumentSheet({
     setEditorFields([]);
     setPdf(null);
     setFields([]);
+    setChecklist(null);
+    setFromTemplate(true);
     setCreated(null);
     setSaveError(null);
     setUploadError(null);
@@ -210,9 +234,11 @@ export function CreateDocumentSheet({
 
   const stepNote =
     step === 1 && !canContinue
-      ? mode === 'upload' && !pdf
-        ? 'העלו את הקובץ כדי להמשיך'
-        : 'כדי להמשיך, הוסיפו לפחות שדה חתימה אחד'
+      ? mode === 'checklist'
+        ? checklist ? formProblem(title, checklist) : null
+        : mode === 'upload' && !pdf
+          ? 'העלו את הקובץ כדי להמשיך'
+          : 'כדי להמשיך, הוסיפו לפחות שדה חתימה אחד'
       : step === 0 && !mode && title.trim()
         ? 'בחרו איך ליצור את המסמך'
         : null;
@@ -244,12 +270,12 @@ export function CreateDocumentSheet({
             {saving ? (
               <>
                 <span className="sd-spinner" style={{ width: 22, height: 22, borderWidth: 3, borderColor: 'rgba(255,255,255,0.35)', borderTopColor: '#fff' }} />
-                שומרים את המסמך…
+                {mode === 'checklist' ? 'שומרים את הטופס…' : 'שומרים את המסמך…'}
               </>
             ) : (
               <>
                 <Ionicons name="checkmark-circle" size={21} color="#fff" />
-                שמירת המסמך
+                {mode === 'checklist' ? 'שמירת הטופס' : 'שמירת המסמך'}
               </>
             )}
           </button>
@@ -305,6 +331,18 @@ export function CreateDocumentSheet({
                 title="להעלות קובץ קיים"
                 text="בוחרים קובץ PDF, וורד או תמונה מהמחשב, ומסמנים עליו איפה הנהג חותם."
               />
+              <ChoiceCard
+                selected={mode === 'checklist'}
+                onPress={() => {
+                  setMode('checklist');
+                  if (!title.trim()) setTitle(DRIVER_MEETING_TITLE);
+                }}
+                icon="list"
+                gradient="linear-gradient(160deg,#4ADE9B,#12805C)"
+                title="רשימת סעיפים לסימון"
+                text="למפגשים, בדיקות והדרכות. ליד כל סעיף מסמנים ״בוצע״ או ״לא בוצע״ וכותבים הערה, ובסוף הקצין והנהג חותמים."
+                badge="חדש"
+              />
             </div>
           </div>
         ) : null}
@@ -315,6 +353,21 @@ export function CreateDocumentSheet({
               ref={editorRef}
               initial={editorDraft ?? initialEditorDraft(title.trim())}
               onSignatureChange={setEditorHasSignature}
+            />
+          </div>
+        ) : null}
+
+        {step === 1 && mode === 'checklist' && checklist ? (
+          <div className="sd-stage" key="checklist">
+            <ChecklistBuilder
+              title={title.trim()}
+              form={checklist}
+              onChange={setChecklist}
+              fromTemplate={fromTemplate}
+              onStartFrom={(which) => {
+                setFromTemplate(which === 'template');
+                setChecklist(which === 'template' ? driverMeetingForm() : blankChecklistForm());
+              }}
             />
           </div>
         ) : null}
@@ -337,7 +390,9 @@ export function CreateDocumentSheet({
         {step === 2 ? (
           <div className="sd-review sd-stage" key="review">
             <div className="sd-review-preview" aria-hidden="true">
-              {mode === 'upload' && pdf ? (
+              {mode === 'checklist' && checklist ? (
+                <ChecklistPaperPreview title={title.trim()} form={checklist} />
+              ) : mode === 'upload' && pdf ? (
                 <div style={{ width: '100%', maxWidth: 440, transform: 'rotate(-1.2deg)' }}>
                   <PdfPageView pdf={pdf} pageNumber={1} fields={fields.filter((f) => f.page === 1)} readOnly />
                 </div>
@@ -347,15 +402,19 @@ export function CreateDocumentSheet({
             </div>
             <div>
               <h2 className="sd-b">הכול מוכן?</h2>
-              <p className="sd-review-sub">בדקו את הפרטים. אחרי השמירה המסמך יופיע ברשימה, ותוכלו לשלוח אותו לנהגים מתוך תיק הנהג.</p>
+              <p className="sd-review-sub">
+                {mode === 'checklist'
+                  ? 'בדקו את הפרטים. אחרי השמירה הטופס יופיע ברשימה, ותוכלו לקיים מפגש מתוך תיק הנהג.'
+                  : 'בדקו את הפרטים. אחרי השמירה המסמך יופיע ברשימה, ותוכלו לשלוח אותו לנהגים מתוך תיק הנהג.'}
+              </p>
               <div className="sd-list">
                 <div className="sd-row">
-                  <span>שם המסמך</span>
+                  <span>{mode === 'checklist' ? 'שם הטופס' : 'שם המסמך'}</span>
                   <strong className="sd-sb">{title.trim()}</strong>
                 </div>
                 <div className="sd-row">
                   <span>איך נוצר</span>
-                  <strong className="sd-sb">{mode === 'editor' ? 'נכתב כאן' : 'קובץ שהועלה'}</strong>
+                  <strong className="sd-sb">{mode === 'editor' ? 'נכתב כאן' : mode === 'checklist' ? 'רשימת סעיפים לסימון' : 'קובץ שהועלה'}</strong>
                 </div>
                 {pdf && mode === 'upload' ? (
                   <div className="sd-row">
@@ -363,14 +422,30 @@ export function CreateDocumentSheet({
                     <strong className="sd-sb sd-num">{pdf.pages.length}</strong>
                   </div>
                 ) : null}
+                {mode === 'checklist' && checklist ? (
+                  <>
+                    <div className="sd-row">
+                      <span>סעיפים</span>
+                      <strong className="sd-sb sd-num">{filledItems(checklist).length}</strong>
+                    </div>
+                    <div className="sd-row">
+                      <span>תשובות</span>
+                      <strong className="sd-sb">{statusOptions(checklist).map((k) => STATUS_META[k].label).join(' / ')}</strong>
+                    </div>
+                    <div className="sd-row">
+                      <span>מפגש עם כל נהג</span>
+                      <strong className="sd-sb">{repeatLabel(checklist.repeatMonths)}</strong>
+                    </div>
+                  </>
+                ) : null}
                 <div className="sd-row">
                   <span>מי חותם</span>
-                  <strong className="sd-sb">הנהג</strong>
+                  <strong className="sd-sb">{mode === 'checklist' ? 'הקצין, ואחריו הנהג' : 'הנהג'}</strong>
                 </div>
               </div>
 
-              <div className="sd-group-label sd-sb" style={{ marginTop: 22 }}>שדות במסמך</div>
-              <div className="sd-list">
+              {mode !== 'checklist' ? <div className="sd-group-label sd-sb" style={{ marginTop: 22 }}>שדות במסמך</div> : null}
+              <div className="sd-list" hidden={mode === 'checklist'}>
                 {fieldSummary(fieldKinds).map(([kind, count]) => (
                   <div className="sd-row" key={kind}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--sd-ink)' }}>
@@ -402,15 +477,19 @@ export function CreateDocumentSheet({
                 <path d="M38 62 l15 15 l30 -32" />
               </svg>
             </div>
-            <h2 className="sd-xb">המסמך נשמר</h2>
-            <p>״{created?.title ?? title.trim()}״ מוכן. כדי לשלוח אותו לנהג, היכנסו לתיק הנהג ושם לחלק של הטפסים לחתימה.</p>
+            <h2 className="sd-xb">{mode === 'checklist' ? 'הטופס נשמר' : 'המסמך נשמר'}</h2>
+            <p>
+              {mode === 'checklist'
+                ? `״${created?.title ?? title.trim()}״ מוכן. כדי לקיים מפגש, היכנסו לתיק הנהג ושם לטופס הזה. אפשר גם מהטלפון.`
+                : `״${created?.title ?? title.trim()}״ מוכן. כדי לשלוח אותו לנהג, היכנסו לתיק הנהג ושם לחלק של הטפסים לחתימה.`}
+            </p>
             <div className="sd-success-path sd-sb">
               <Ionicons name="person" size={18} color="#0075B3" />
               תיק הנהג
               <Ionicons name="chevron-back" size={16} color="#8B98A4" />
               טפסים לחתימה
               <Ionicons name="chevron-back" size={16} color="#8B98A4" />
-              שליחה
+              {mode === 'checklist' ? 'מפגש חדש' : 'שליחה'}
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
               <button type="button" className="sd-btn sd-btn-plain sd-btn-lg" onClick={startOver}>
@@ -449,6 +528,7 @@ function ChoiceCard({
   gradient,
   title,
   text,
+  badge,
 }: {
   selected: boolean;
   onPress: () => void;
@@ -456,6 +536,7 @@ function ChoiceCard({
   gradient: string;
   title: string;
   text: string;
+  badge?: string;
 }) {
   return (
     <button type="button" role="radio" aria-checked={selected} className={`sd-choice${selected ? ' sd-selected' : ''}`} onClick={onPress}>
@@ -463,7 +544,10 @@ function ChoiceCard({
       <span className="sd-choice-icon" style={{ background: gradient, boxShadow: '0 12px 24px -10px rgba(0,0,0,0.35)' }}>
         <Ionicons name={icon} size={30} color="#fff" />
       </span>
-      <h3 className="sd-b">{title}</h3>
+      <h3 className="sd-b">
+        {title}
+        {badge ? <span className="sd-choice-badge sd-sb">{badge}</span> : null}
+      </h3>
       <p>{text}</p>
     </button>
   );

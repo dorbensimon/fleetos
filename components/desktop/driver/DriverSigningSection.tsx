@@ -15,6 +15,14 @@ import { DesktopModal } from '../DesktopModal';
 import { DText, HoverPressable } from '../primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
 import { recordStyles } from '../record/RecordKit';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../../navigation/types';
+import { checklistPreviewTarget, useFolderMeetings } from '../../checklist/useFolderMeetings';
+import { cancelMeeting, formatIsoDay, isChecklistTemplate, type MeetingRow } from '../../../lib/checklistForms';
+import { useNextMeeting } from '../../checklist/useNextMeeting';
+import { NextMeetingCard } from '../../checklist/NextMeetingCard';
+import { showAlert } from '../../../lib/platformAlert';
 
 type FolderStatus = ReturnType<typeof signingFolderStatus>;
 const STATUS_LABEL: Record<FolderStatus, string> = { pending: 'ממתין לחתימה', completed: 'נחתם', failed: 'דורש טיפול', empty: 'לא נשלח' };
@@ -128,13 +136,14 @@ export function DriverSigningList({
         const status = signingFolderStatus(folder);
         const signedAt = lastSignedAt(folder);
         const sentAt = lastSentAt(folder);
+        const checklist = isChecklistTemplate(folder.template);
         const meta = status === 'pending' && sentAt
-          ? `נשלח ב־${day(sentAt)}`
+          ? checklist ? `הקצין חתם ב־${day(sentAt)}` : `נשלח ב־${day(sentAt)}`
           : signedAt
             ? `נחתם ב־${day(signedAt)}`
             : status === 'failed'
               ? 'השליחה לא הצליחה'
-              : 'עוד לא נשלח לנהג';
+              : checklist ? 'עוד לא התקיים מפגש' : 'עוד לא נשלח לנהג';
         const color = STATUS_COLOR[status];
         return (
           <HoverPressable
@@ -145,7 +154,7 @@ export function DriverSigningList({
             accessibilityLabel={`${folder.title}, ${STATUS_LABEL[status]}. פתיחה`}
           >
             <View style={[styles.listIcon, status === 'completed' && styles.listIconDone]}>
-              <Ionicons name="create-outline" size={16} color={status === 'completed' ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkMuted} />
+              <Ionicons name={checklist ? 'list-outline' : 'create-outline'} size={16} color={status === 'completed' ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkMuted} />
             </View>
             <View style={styles.listText}>
               <DText weight="semiBold" style={styles.listTitle} numberOfLines={1}>{folder.title}</DText>
@@ -153,7 +162,7 @@ export function DriverSigningList({
             </View>
             <View style={styles.listStatus}>
               <View style={[styles.listDot, { backgroundColor: color }]} />
-              <DText weight="semiBold" style={[styles.listStatusText, { color }]}>{STATUS_LABEL[status]}</DText>
+              <DText weight="semiBold" style={[styles.listStatusText, { color }]}>{checklist && status === 'empty' ? 'אין מפגש' : STATUS_LABEL[status]}</DText>
             </View>
             <Ionicons name="chevron-back" size={15} color={DESKTOP_COLORS.inkFaint} />
           </HoverPressable>
@@ -195,6 +204,38 @@ function SigningFolderModal({
   const [opening, setOpening] = useState('');
   const [message, setMessage] = useState('');
   const sendingLock = useRef(false);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const meetings = useFolderMeetings(driverId, folder.template, folder.requests);
+  const next = useNextMeeting(companyId, folder.template, driverId);
+  const startMeeting = (meetingId?: string) => {
+    if (!folder.template) return;
+    onClose();
+    navigation.navigate('ChecklistMeeting', meetingId ? { driverId, meetingId } : { driverId, templateId: folder.template.id });
+  };
+  const askCancel = (meeting: MeetingRow) => {
+    const draft = meeting.status === 'draft';
+    showAlert(
+      draft ? 'למחוק את הטיוטה?' : 'לבטל את המפגש?',
+      draft ? 'מה שסומן בטיוטה יימחק.' : 'המסמך יסומן ״בוטל״ ויישאר ברשומות, והנהג לא יחתום עליו.',
+      [
+        { text: 'השארה', style: 'cancel' },
+        {
+          text: draft ? 'מחיקת הטיוטה' : 'ביטול המפגש',
+          style: 'destructive',
+          onPress: () => {
+            setOpening(`cancel:${meeting.id}`);
+            cancelMeeting(companyId, meeting.id)
+              .then(async () => {
+                await Promise.all([meetings.reload(), next.reload()]);
+                await onChanged();
+              })
+              .catch((err: Error) => setMessage(err?.message || 'הביטול נכשל. נסו שוב.'))
+              .finally(() => setOpening(''));
+          },
+        },
+      ],
+    );
+  };
 
   // Same refresh the full signing page runs: pull the live DocuSeal state of
   // requests that may have changed since they were stored.
@@ -235,7 +276,9 @@ function SigningFolderModal({
     setOpening('preview');
     setMessage('');
     try {
-      const session = await getSigningTemplatePreviewSession(folder.template.id);
+      const session = meetings.checklist
+        ? await checklistPreviewTarget(folder.template, folder.title)
+        : await getSigningTemplatePreviewSession(folder.template.id);
       onOpenSession({ ...session, title: folder.title });
       onClose();
     } catch (err: any) {
@@ -265,7 +308,27 @@ function SigningFolderModal({
   return (
     <DesktopModal visible title={folder.title} onClose={onClose} maxWidth={520}>
       <View style={styles.body}>
-        {canSend && folder.template && (
+        {next.row && <NextMeetingCard row={next.row} repeatMonths={next.repeatMonths} canEdit={canSend} onMove={next.move} />}
+        {canSend && folder.template && meetings.checklist && (
+          <View style={styles.actions}>
+            <HoverPressable
+              style={[styles.previewBtn, opening === 'preview' && recordStyles.disabled]}
+              hoverStyle={styles.previewHover}
+              pressStyle={recordStyles.pressDown}
+              disabled={opening === 'preview'}
+              onPress={preview}
+              accessibilityLabel="צפייה בטופס הריק"
+            >
+              <Ionicons name="eye-outline" size={16} color={DESKTOP_COLORS.ink} />
+              <DText weight="semiBold" style={styles.previewText}>{opening === 'preview' ? 'פותח…' : 'צפייה בטופס'}</DText>
+            </HoverPressable>
+            <HoverPressable style={styles.sendBtn} hoverStyle={recordStyles.rowHover} pressStyle={recordStyles.pressDown} onPress={() => startMeeting()}>
+              <Ionicons name="add-circle-outline" size={16} color={DESKTOP_COLORS.brand} />
+              <DText weight="semiBold" style={styles.sendText}>מפגש חדש</DText>
+            </HoverPressable>
+          </View>
+        )}
+        {canSend && folder.template && !meetings.checklist && (
           <View style={styles.actions}>
           {!(completed && !pending) && (
             <HoverPressable
@@ -295,12 +358,35 @@ function SigningFolderModal({
           </View>
         )}
         {!!message && <DText style={styles.error}>{message}</DText>}
+        {meetings.drafts.length > 0 && (
+          <View style={styles.list}>
+            {meetings.drafts.map((draft, index) => (
+              <View key={draft.id} style={[styles.row, index < meetings.drafts.length - 1 && recordStyles.rowBorder]}>
+                <Ionicons name="create-outline" size={16} color={DESKTOP_COLORS.brand} />
+                <View style={styles.rowText}>
+                  <DText weight="semiBold" style={styles.rowTitle}>{draft.title}</DText>
+                  <DText style={styles.rowMeta}>טיוטה, עוד לא נחתם · {formatIsoDay(draft.updated_at.slice(0, 10))}</DText>
+                </View>
+                {canSend && (
+                  <HoverPressable onPress={() => askCancel(draft)} disabled={!!opening} accessibilityLabel="מחיקת הטיוטה" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
+                    <DText weight="semiBold" style={styles.rowDanger}>מחיקה</DText>
+                  </HoverPressable>
+                )}
+                <HoverPressable onPress={() => startMeeting(draft.id)} accessibilityLabel="המשך מילוי הטיוטה" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
+                  <DText weight="semiBold" style={styles.rowLink}>המשך</DText>
+                </HoverPressable>
+              </View>
+            ))}
+          </View>
+        )}
         {folder.requests.length === 0 ? (
-          <DText style={styles.message}>הטופס עוד לא נשלח לנהג</DText>
+          meetings.drafts.length ? null : <DText style={styles.message}>{meetings.checklist ? 'עוד לא התקיים מפגש עם הנהג' : 'הטופס עוד לא נשלח לנהג'}</DText>
         ) : (
           <View style={styles.list}>
             {folder.requests.map((item, index) => {
-              const ready = item.status === 'pending' && !!item.docuseal_submitter_slug;
+              const meeting = meetings.byRequest.get(item.id);
+              const cancelled = meeting?.status === 'cancelled';
+              const ready = !cancelled && item.status === 'pending' && !!item.docuseal_submitter_slug;
               const openable = item.status === 'completed';
               return (
                 <HoverPressable
@@ -318,8 +404,12 @@ function SigningFolderModal({
                   <View style={styles.rowText}>
                     <DText weight="semiBold" style={styles.rowTitle}>{item.template_title || folder.title}</DText>
                     <DText style={styles.rowMeta}>
-                      {item.status === 'completed'
-                        ? `נחתם ${time(item.completed_at || item.created_at)}`
+                      {cancelled
+                        ? 'בוטל'
+                        : item.status === 'completed'
+                        ? `נחתם ${time(item.completed_at || item.created_at)}${meeting?.officer_name ? ` · ${meeting.officer_name}` : ''}`
+                        : ready && meeting
+                        ? 'הקצין חתם · ממתין לחתימת הנהג'
                         : ready
                         ? `נשלח ${time(item.sent_at || item.created_at)}`
                         : item.status === 'declined'
@@ -327,6 +417,16 @@ function SigningFolderModal({
                         : 'השליחה לא אושרה — ניתן לנסות שוב'}
                     </DText>
                   </View>
+                  {meeting && !cancelled && canSend && (
+                    <HoverPressable onPress={() => askCancel(meeting)} disabled={!!opening} accessibilityLabel="ביטול המפגש" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
+                      <DText weight="semiBold" style={styles.rowDanger}>ביטול</DText>
+                    </HoverPressable>
+                  )}
+                  {ready && meeting && canSend && (
+                    <HoverPressable onPress={() => startMeeting(meeting.id)} accessibilityLabel="הנהג חותם עכשיו, על המחשב הזה" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
+                      <DText weight="semiBold" style={styles.rowLink}>חתימה עכשיו</DText>
+                    </HoverPressable>
+                  )}
                   {openable && <DText weight="semiBold" style={styles.rowLink}>{opening === item.id ? 'פותח…' : 'צפייה'}</DText>}
                 </HoverPressable>
               );
@@ -387,4 +487,6 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 14.5 },
   rowMeta: { fontSize: 13, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   rowLink: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
+  rowDanger: { fontSize: 13.5, color: DESKTOP_COLORS.danger },
+  rowAction: { paddingHorizontal: 8, minHeight: 32, borderRadius: 8, justifyContent: 'center' },
 });

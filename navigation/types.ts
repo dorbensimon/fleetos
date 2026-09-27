@@ -32,9 +32,12 @@ export type RootStackParamList = {
   Reports: undefined;
   AdminProfile: undefined;
   CompanySettings: undefined;
-  SignedDocuments: undefined;
+  /** `openMeeting`: a repeating form's id, to open its "מפגש חדש" list (from a "meetings due" notification). */
+  SignedDocuments: { openMeeting?: string } | undefined;
   Notifications: undefined;
   AdminDocumentSigning: { companyId?: string } | undefined;
+  /** A meeting on a "רשימת סעיפים" form: a new one (templateId) or one in progress (meetingId). */
+  ChecklistMeeting: { driverId: string; templateId?: string; meetingId?: string };
   /** Owner-only: manage the global signing templates shared by every company. */
   GlobalSigningTemplates: undefined;
   DocusealWebView: {

@@ -17,6 +17,8 @@ export type NotificationTarget =
   | { screen: 'DriverPersonalDetails'; params: { driverId: string } }
   | { screen: 'AdminHome' }
   | { screen: 'DriverSigningDocuments' }
+  | { screen: 'DriverMeetingFolder'; params: { driverId: string; folderId: string } }
+  | { screen: 'SignedDocuments'; params: { openMeeting: string } }
   | { screen: 'DriverVehicle' }
   | { screen: 'DriverProfile' };
 
@@ -69,6 +71,14 @@ export async function adminNotificationTarget<N extends NotificationTargetFields
     return { screen: 'DriverDetail', params: { driverId: n.actor_id, openFolder: LICENSE_DOCS_CATEGORY } };
   }
 
+  // A repeating meeting is due (supabase/sql/97): one driver opens that
+  // driver's folder of the form; a summary opens the form's "מפגש חדש" list.
+  if (type === 'driver_meeting_due' && n.folder_key) {
+    return n.actor_id
+      ? { screen: 'DriverMeetingFolder', params: { driverId: n.actor_id, folderId: n.folder_key } }
+      : { screen: 'SignedDocuments', params: { openMeeting: n.folder_key } };
+  }
+
   if (type === 'signature_request_assigned' && n.recipient_id) {
     return { screen: 'DriverDetail', params: { driverId: n.recipient_id } };
   }
@@ -101,6 +111,12 @@ export function navigateToNotificationTarget(
       return;
     case 'DriverSigningDocuments':
       navigation.navigate('DriverSigningDocuments', undefined);
+      return;
+    case 'DriverMeetingFolder':
+      navigation.navigate('DriverSigningDocuments', target.params);
+      return;
+    case 'SignedDocuments':
+      navigation.navigate('SignedDocuments', target.params);
       return;
     default:
       navigation.navigate(target.screen);

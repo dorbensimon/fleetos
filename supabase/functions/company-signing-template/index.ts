@@ -1,7 +1,9 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { docusealFetch } from '../_shared/docuseal.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
+import { parseForm, renderChecklistHtml } from '../_shared/checklistDocument.ts';
 import { PDFDocument } from 'pdf-lib';
+import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 /**
  * A company admin's own signing templates (desktop "מסמכים חתומים").
@@ -12,6 +14,9 @@ import { PDFDocument } from 'pdf-lib';
  * on that PDF, or from a document written in the in-app editor (sent here as
  * a block model plus pixel field positions, never as raw HTML, so nothing the
  * browser sends is rendered verbatim), and saves it as a ready company template.
+ * A "רשימת סעיפים" form (`kind: 'checklist'`) has no DocuSeal template: each
+ * meeting renders its own document (checklist-meeting). Here it only gets a
+ * blank PDF of the form, for its preview and its card.
  *
  * Every draft lives in `<companyId>/signing-templates/<draftId>/`; its final
  * PDF is always `document.pdf` there, the path the template row points to.
@@ -160,6 +165,33 @@ const PAGE = { width: 794, height: 1123, padX: 72, padY: 64, headerH: 72, header
 const LETTERHEAD_DATE_FIELD = 'תאריך המסמך';
 
 type Letterhead = { name: string; logoUrl: string | null };
+
+/** The letterhead comes from the company's own record, never from the request. */
+async function companyLetterhead(adminClient: SupabaseClient, companyId: string): Promise<Letterhead> {
+  const { data: company } = await adminClient.from('companies').select('name, logo_url').eq('id', companyId).single();
+  const logosPrefix = `${Deno.env.get('SUPABASE_URL') ?? ''}/storage/v1/object/public/company-logos/`;
+  const logoUrl = typeof company?.logo_url === 'string' && company.logo_url.startsWith(logosPrefix) ? company.logo_url : null;
+  return { name: (company?.name ?? '').trim() || 'החברה', logoUrl };
+}
+
+/** DocuSeal renders the HTML to a PDF; we keep only the PDF and discard the throwaway template. */
+async function htmlToPdf(html: string): Promise<Uint8Array> {
+  const response = await docusealFetch('/templates/html', {
+    method: 'POST',
+    body: JSON.stringify({ name: 'draft-checklist', html, size: 'A4', folder_name: 'FleetOS-Drafts' }),
+  });
+  if (!response.ok) throw new Error(`DocuSeal rejected the html (${response.status})`);
+  const remote = await response.json() as RemoteTemplate;
+  try {
+    const url = remote.documents?.[0]?.url;
+    if (!url) throw new Error('html rendering returned no document');
+    const pdf = await fetch(url);
+    if (!pdf.ok) throw new Error('html pdf download failed');
+    return new Uint8Array(await pdf.arrayBuffer());
+  } finally {
+    await deleteRemoteTemplate(remote.id);
+  }
+}
 
 /** The company's letterhead, drawn exactly like the editor's `.sd-lh` (same box sizes, so the text below starts at the same spot). */
 function renderLetterhead({ name, logoUrl }: Letterhead): string {
@@ -375,6 +407,32 @@ Deno.serve(async (req) => {
     const title = typeof body.title === 'string' ? body.title.replace(/\s+/g, ' ').trim().slice(0, 120) : '';
     if (!title) return json({ error: 'חסר שם למסמך' }, 400);
     const kind = body.kind;
+    if (kind === 'checklist') {
+      const form = parseForm(body.form);
+      if (!form) return json({ error: 'הסעיפים בטופס אינם תקינים' }, 400);
+      let pdf: Uint8Array;
+      try {
+        pdf = await htmlToPdf(renderChecklistHtml({ title, form, letterhead: await companyLetterhead(access.adminClient, companyId), meeting: null }));
+      } catch (error) {
+        console.error('company-signing-template checklist preview failed', error instanceof Error ? error.message : 'unknown');
+        return json({ error: 'יצירת הטופס נכשלה. נסו שוב בעוד רגע.' }, 502);
+      }
+      const { error: uploadError } = await storage.upload(pdfPath, pdf, { contentType: 'application/pdf', upsert: true });
+      if (uploadError) return json({ error: 'שמירת הטופס נכשלה' }, 500);
+      const { data: row, error: insertError } = await access.adminClient
+        .from('signing_templates')
+        .insert({
+          company_id: companyId, created_by: access.callerId, title, source_file_path: pdfPath, source_file_name: `${title}.pdf`,
+          status: 'ready', form_kind: 'checklist', form_content: form,
+        })
+        .select('*')
+        .single();
+      if (insertError || !row) {
+        await storage.remove([pdfPath]);
+        return json({ error: 'שמירת הטופס נכשלה' }, 500);
+      }
+      return json({ template: row });
+    }
     if (kind !== 'pdf' && kind !== 'editor') return json({ error: 'סוג המסמך אינו תקין' }, 400);
 
     let fields: PlacedField[] | null = null;
@@ -388,11 +446,7 @@ Deno.serve(async (req) => {
       const editorFields = parseEditorFields(body.fields);
       if (!editorFields) return json({ error: 'השדות על המסמך אינם תקינים' }, 400);
       if (!editorFields.some((f) => f.kind === 'signature')) return json({ error: 'צריך להוסיף לפחות שדה חתימה אחד' }, 400);
-      // The letterhead comes from the company's own record, never from the request.
-      const { data: company } = await access.adminClient.from('companies').select('name, logo_url').eq('id', companyId).single();
-      const logosPrefix = `${Deno.env.get('SUPABASE_URL') ?? ''}/storage/v1/object/public/company-logos/`;
-      const logoUrl = typeof company?.logo_url === 'string' && company.logo_url.startsWith(logosPrefix) ? company.logo_url : null;
-      rendered = renderEditorDocument(body.blocks, editorFields, { name: (company?.name ?? '').trim() || 'החברה', logoUrl });
+      rendered = renderEditorDocument(body.blocks, editorFields, await companyLetterhead(access.adminClient, companyId));
       if (!rendered) return json({ error: 'תוכן המסמך אינו תקין' }, 400);
     }
 

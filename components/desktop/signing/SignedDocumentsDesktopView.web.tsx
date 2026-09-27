@@ -9,6 +9,14 @@ import { ConfirmAlert, Sheet, useSheetClose } from './Sheet.web';
 import { SendToDriversSheet } from './SendToDriversSheet.web';
 import { PdfPageView } from './FieldPlacer.web';
 import { loadPdf, renderPage, type LoadedPdf } from './pdf.web';
+import { StartMeetingSheet } from './StartMeetingSheet.web';
+import { isChecklistTemplate, readForm, repeatLabel } from '../../../lib/checklistForms';
+import { isDueSoon, loadMeetingPlan, planByDriver, setFormRepeat, type PlanRow } from '../../../lib/meetingPlan';
+import { MeetingsDue } from './MeetingsDue.web';
+import { RepeatChoice } from './ChecklistBuilder.web';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../../navigation/types';
 
 /**
  * Desktop "מסמכים חתומים": the company's own signing documents, the shared
@@ -94,7 +102,12 @@ function TemplateCard({ template, index, fresh, onOpen }: { template: SigningTem
       </div>
       <h4 className="sd-b">{template.title}</h4>
       <div className="sd-card-meta">
-        {isGlobal ? (
+        {isChecklistTemplate(template) && !fresh ? (
+          <span className="sd-badge sd-sb" style={{ color: '#12805C' }}>
+            <Ionicons name="list" size={14} color="#12805C" />
+            {readForm(template.form_content)?.repeatMonths ? repeatLabel(readForm(template.form_content)!.repeatMonths) : 'רשימת סעיפים'}
+          </span>
+        ) : isGlobal ? (
           <span className="sd-badge sd-sb">
             <Ionicons name="checkmark-circle" size={14} color="#1E8E45" />
             מוכן מהמערכת
@@ -118,14 +131,36 @@ function PreviewSheet({
   onClosed,
   onSend,
   onDeleted,
+  onChanged,
 }: {
   template: SigningTemplate;
   companyId: string;
   onClosed: () => void;
   onSend: () => void;
   onDeleted: () => void;
+  onChanged: (template: SigningTemplate) => void;
 }) {
   const { closing, close } = useSheetClose(onClosed);
+  const checklistForm = isChecklistTemplate(template) ? readForm(template.form_content) : null;
+  const [repeat, setRepeat] = useState(checklistForm?.repeatMonths ?? 0);
+  const [repeatSaving, setRepeatSaving] = useState(false);
+  const [repeatError, setRepeatError] = useState('');
+  const changeRepeat = async (months: number) => {
+    if (months === repeat || repeatSaving) return;
+    const before = repeat;
+    setRepeat(months);
+    setRepeatSaving(true);
+    setRepeatError('');
+    try {
+      await setFormRepeat(companyId, template.id, months);
+      onChanged({ ...template, form_content: { ...(template.form_content as object), repeatMonths: months } });
+    } catch (error) {
+      setRepeat(before);
+      setRepeatError((error as Error)?.message || 'שמירת התדירות נכשלה. נסו שוב.');
+    } finally {
+      setRepeatSaving(false);
+    }
+  };
   const [pdf, setPdf] = useState<LoadedPdf | null>(null);
   const [failed, setFailed] = useState(false);
   // Deleting: 'ask' shows the confirmation (with how many drivers are still waiting to sign).
@@ -184,8 +219,8 @@ function PreviewSheet({
             <span />
           )}
           <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={onSend} disabled={deleting} style={{ minWidth: 200 }}>
-            <Ionicons name="paper-plane" size={20} color="#fff" />
-            שליחה לנהגים
+            <Ionicons name={isChecklistTemplate(template) ? 'add-circle' : 'paper-plane'} size={20} color="#fff" />
+            {isChecklistTemplate(template) ? 'מפגש חדש עם נהג' : 'שליחה לנהגים'}
           </button>
         </>
       }
@@ -218,6 +253,15 @@ function PreviewSheet({
         </div>
       ) : (
         <div className="sd-preview-pages" style={{ maxWidth: 880, margin: '0 auto' }}>
+          {checklistForm && own ? (
+            <div className="sd-repeat-bar">
+              <h3 className="sd-b" id="sd-repeat-label">כל כמה זמן נפגשים עם כל נהג?</h3>
+              <RepeatChoice value={repeat} onChange={(months) => void changeRepeat(months)} labelledBy="sd-repeat-label" disabled={repeatSaving} />
+              <p role={repeatError ? 'alert' : undefined} style={repeatError ? { color: '#C4281C' } : undefined}>
+                {repeatError || (repeatSaving ? 'שומר…' : repeat ? 'המערכת תזכיר למנהלים שבוע לפני המועד וביום עצמו.' : 'בלי תזכורות. ממלאים את הטופס כשצריך.')}
+              </p>
+            </div>
+          ) : null}
           {pdf.pages.map((_, i) => (
             <PdfPageView key={i} pdf={pdf} pageNumber={i + 1} fields={[]} readOnly />
           ))}
@@ -252,13 +296,24 @@ function HeroArt() {
   );
 }
 
-export function SignedDocumentsDesktopView({ companyId }: { companyId: string }) {
+export function SignedDocumentsDesktopView({
+  companyId,
+  openMeetingTemplateId,
+  onMeetingOpened,
+}: {
+  companyId: string;
+  /** Opens "מפגש חדש" on this form, e.g. from a "meetings due" notification. */
+  openMeetingTemplateId?: string;
+  onMeetingOpened?: () => void;
+}) {
   const [templates, setTemplates] = useState<SigningTemplate[] | null>(null);
+  const [plan, setPlan] = useState<PlanRow[]>([]);
   const [error, setError] = useState(false);
   const [creating, setCreating] = useState(false);
   const [previewing, setPreviewing] = useState<SigningTemplate | null>(null);
   const [freshId, setFreshId] = useState<string | null>(null);
   const [sendingTemplate, setSendingTemplate] = useState<SigningTemplate | null>(null);
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const load = useCallback(async () => {
     try {
@@ -273,6 +328,20 @@ export function SignedDocumentsDesktopView({ companyId }: { companyId: string })
     void load();
   }, [load]);
 
+  // Who needs a meeting: fresh every time the page is shown (after a meeting, too).
+  const loadPlan = useCallback(() => {
+    loadMeetingPlan(companyId).then(setPlan).catch(() => setPlan([]));
+  }, [companyId]);
+  useFocusEffect(loadPlan);
+
+  useEffect(() => {
+    if (!openMeetingTemplateId || !templates) return;
+    const target = templates.find((t) => t.id === openMeetingTemplateId);
+    if (target) setSendingTemplate(target);
+    onMeetingOpened?.();
+  }, [openMeetingTemplateId, templates, onMeetingOpened]);
+
+  const dueRows = plan.filter((row) => isDueSoon(row));
   const own = (templates ?? []).filter((t) => t.company_id === companyId);
   const shared = (templates ?? []).filter((t) => t.company_id === null);
 
@@ -315,6 +384,8 @@ export function SignedDocumentsDesktopView({ companyId }: { companyId: string })
             </div>
           ))}
         </div>
+
+        <MeetingsDue rows={dueRows} onStart={(row) => navigation.navigate('ChecklistMeeting', { driverId: row.driverId, templateId: row.templateId })} />
 
         <section className="sd-section" aria-labelledby="sd-own">
           <div className="sd-section-head">
@@ -396,9 +467,23 @@ export function SignedDocumentsDesktopView({ companyId }: { companyId: string })
             setPreviewing(null);
           }}
           onDeleted={() => setTemplates((prev) => (prev ?? []).filter((t) => t.id !== previewing.id))}
+          onChanged={(changed) => {
+            setTemplates((prev) => (prev ?? []).map((t) => (t.id === changed.id ? changed : t)));
+            loadPlan();
+          }}
         />
       ) : null}
-      {sendingTemplate ? <SendToDriversSheet companyId={companyId} template={sendingTemplate} onClosed={() => setSendingTemplate(null)} /> : null}
+      {sendingTemplate && isChecklistTemplate(sendingTemplate) ? (
+        <StartMeetingSheet
+          companyId={companyId}
+          template={sendingTemplate}
+          plan={planByDriver(plan, sendingTemplate.id)}
+          onClosed={() => setSendingTemplate(null)}
+          onPick={(driverId) => navigation.navigate('ChecklistMeeting', { driverId, templateId: sendingTemplate.id })}
+        />
+      ) : sendingTemplate ? (
+        <SendToDriversSheet companyId={companyId} template={sendingTemplate} onClosed={() => setSendingTemplate(null)} />
+      ) : null}
     </div>
   );
 }

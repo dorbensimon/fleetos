@@ -19,6 +19,7 @@ import {
 } from '../../lib/adminApi';
 import { REPORT_CATEGORIES, exportDriversReport, type ReportCategory } from '../../lib/driverReport';
 import { VEHICLE_REPORT_CATEGORIES, exportVehiclesReport, type VehicleReportCategory } from '../../lib/vehicleReport';
+import { MEETING_REPORT_CATEGORIES, exportMeetingsReport, type MeetingReportCategory } from '../../lib/meetingReport';
 import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, webOnly } from './desktopTheme';
 import { DesktopModal } from './DesktopModal';
@@ -142,7 +143,7 @@ export function ReportsQuickAction() {
   const [vehicles, setVehicles] = useState<Awaited<ReturnType<typeof listVehicles>>>([]);
   const [compliance, setCompliance] = useState<Awaited<ReturnType<typeof listComplianceForOwners>>>(new Map());
   const [assignments, setAssignments] = useState<Awaited<ReturnType<typeof listActiveVehicleDriversForVehicles>>>(new Map());
-  const [kind, setKind] = useState<'drivers' | 'vehicles' | null>(null);
+  const [kind, setKind] = useState<'drivers' | 'vehicles' | 'meetings' | null>(null);
   const [exporting, setExporting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -183,6 +184,14 @@ export function ReportsQuickAction() {
     finally { setExporting(null); }
   };
 
+  const exportMeetings = async (category: MeetingReportCategory) => {
+    if (!company) return;
+    setExporting(category);
+    try { await exportMeetingsReport(company, drivers, category); setKind(null); }
+    catch (err: any) { showAlert('ייצוא הדוח נכשל', String(err?.message ?? 'נסה שוב')); }
+    finally { setExporting(null); }
+  };
+
   return (
     <>
       <HeaderAction icon="document-text-outline" label="דוחות" onPress={openModal} />
@@ -195,9 +204,11 @@ export function ReportsQuickAction() {
             onToggle={(next) => setKind((current) => (current === next ? null : next))}
             driverCategories={REPORT_CATEGORIES}
             vehicleCategories={VEHICLE_REPORT_CATEGORIES}
+            meetingCategories={MEETING_REPORT_CATEGORIES}
             exportingCategory={exporting}
             onSelectDriverCategory={(value) => void exportDrivers(value as ReportCategory)}
             onSelectVehicleCategory={(value) => void exportVehicles(value as VehicleReportCategory)}
+            onSelectMeetingCategory={(value) => void exportMeetings(value as MeetingReportCategory)}
           />
         )}
       </DesktopModal>

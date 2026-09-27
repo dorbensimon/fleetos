@@ -34,7 +34,8 @@ export type NotificationType =
   | 'vehicle_service_due'
   | 'signature_request_assigned'
   | 'vehicle_assignment'
-  | 'driver_profile_updated_by_manager';
+  | 'driver_profile_updated_by_manager'
+  | 'driver_meeting_due';
 
 export interface NotificationTypeInfo {
   type: NotificationType;
@@ -67,6 +68,11 @@ export const ADMIN_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     type: 'vehicle_service_due',
     label: 'טיפול רכב',
     description: 'נותרו עד 1,000 ק"מ לטיפול התקופתי הבא, או שהרכב עבר את מועד הטיפול',
+  },
+  {
+    type: 'driver_meeting_due',
+    label: 'מפגש עם נהג',
+    description: 'שבוע לפני מועד מפגש חוזר עם נהג (למשל מפגש שיחה עם נהג) וביום עצמו, וגם מפגש ראשון עם נהג חדש',
   },
 ];
 

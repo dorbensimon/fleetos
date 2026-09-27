@@ -119,6 +119,27 @@ Deno.serve(async (req) => {
     const nextStatus = statusForEvent(payload.event_type, data);
     if (!nextStatus) return json({ received: true, ignored: payload.event_type });
 
+    // A driver who signed on the manager's device (checklist-meeting) is
+    // marked completed at once, sometimes before DocuSeal finished the PDF.
+    // Its completion event only fills in that missing file.
+    const lateDocumentUrl = data.documents?.[0]?.url || data.submission?.combined_document_url;
+    if (request.status === 'completed' && !request.signed_file_path && nextStatus === 'completed' && lateDocumentUrl) {
+      const documentResponse = await fetch(lateDocumentUrl);
+      if (documentResponse.ok) {
+        const path = `${request.company_id}/driver/${request.driver_id}/signed/${request.id}.pdf`;
+        const { error: uploadError } = await admin.storage.from('documents').upload(path, new Uint8Array(await documentResponse.arrayBuffer()), {
+          contentType: 'application/pdf',
+          upsert: true,
+        });
+        if (!uploadError) {
+          await admin.from('signature_requests').update({ signed_file_path: path })
+            .eq('id', request.id).eq('status', 'completed').is('signed_file_path', null);
+          return json({ received: true, updated: true, request_id: request.id, status: 'completed' });
+        }
+        console.error('docuseal-webhook late signed document upload failed', uploadError.message);
+      }
+    }
+
     // DocuSeal may retry or deliver events out of order. Completed and
     // declined are terminal, so an older event must not change them again.
     if (request.status === 'completed' || request.status === 'declined') {
