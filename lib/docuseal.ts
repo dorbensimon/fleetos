@@ -422,10 +422,15 @@ export async function listDriverSigningRequests(driverId: string): Promise<Signa
   const { data, error } = await supabase.from('signature_requests')
     .select('*, template:signing_templates(title)')
     .eq('driver_id', driverId)
+    // A removed signed document is retained as legal evidence for managers,
+    // but it is no longer part of the driver's file and must not be returned.
+    .is('deleted_at', null)
+    // Signing-document archives are no longer part of the product. A driver
+    // must never receive an archived row, including an old completed one.
+    .is('archived_at', null)
     .order('created_at', { ascending: false });
   if (error) throw error;
-  // Preserve access to historical signed evidence, including the old archive.
-  return (data || []).filter((row) => row.status === 'completed' || (!row.archived_at && !row.deleted_at));
+  return (data || []) as SignatureRequest[];
 }
 
 export async function renameSigningTemplate(templateId: string, title: string) {

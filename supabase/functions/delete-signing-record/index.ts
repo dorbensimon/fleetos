@@ -110,11 +110,42 @@ Deno.serve(async (req) => {
 
       if (item.archived_at) return json({ success: true });
       if (item.status === 'pending' && item.docuseal_submission_id) {
+        // Reserve the pending request before touching DocuSeal. Without this,
+        // a driver could finish signing between the initial read and the
+        // provider deletion, leaving a completed remote document archived as
+        // cancelled locally (or losing its evidence entirely).
+        const lockStartedAt = new Date().toISOString();
+        const lockUntil = new Date(Date.now() + 3 * 60_000).toISOString();
+        const { data: claimed, error: claimError } = await access.adminClient.from('signature_requests')
+          .update({ sync_locked_until: lockUntil })
+          .eq('id', id).eq('company_id', companyId).eq('status', 'pending')
+          .or(`sync_locked_until.is.null,sync_locked_until.lt.${lockStartedAt}`)
+          .select('id').maybeSingle();
+        if (claimError) return json({ error: 'ביטול המסמך נכשל' }, 500);
+        if (!claimed) return json({ error: 'הנהג חותם על המסמך ברגע זה. חכו רגע ונסו שוב.' }, 409);
+
         const response = await docusealFetch(`/submissions/${item.docuseal_submission_id}`, { method: 'DELETE' });
         // Already gone on DocuSeal's side (e.g. deleted there directly) — nothing left to cancel.
-        if (!response.ok && response.status !== 404) return json({ error: 'לא ניתן לבטל את החתימה ב-DocuSeal כרגע' }, 502);
+        if (!response.ok && response.status !== 404) {
+          await access.adminClient.from('signature_requests').update({ sync_locked_until: null })
+            .eq('id', id).eq('status', 'pending').eq('sync_locked_until', lockUntil);
+          return json({ error: 'לא ניתן לבטל את החתימה ב-DocuSeal כרגע' }, 502);
+        }
+
+        const { data: archived, error: archiveError } = await access.adminClient.from('signature_requests').update({
+          archived_at: new Date().toISOString(), archived_by: access.callerId,
+          status: 'cancelled',
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: access.callerId,
+          next_email_reminder_at: null,
+          email_reminder_locked_until: null,
+          sync_locked_until: null,
+        }).eq('id', id).eq('status', 'pending').eq('sync_locked_until', lockUntil)
+          .select('id').maybeSingle();
+        if (archiveError || !archived) return json({ error: 'המסמך השתנה בזמן הביטול. רעננו ונסו שוב.' }, 409);
+        return json({ success: true });
       }
-      await access.adminClient.from('signature_requests').update({
+      const { error: archiveError } = await access.adminClient.from('signature_requests').update({
         archived_at: new Date().toISOString(), archived_by: access.callerId,
         ...(item.status === 'pending' ? {
           status: 'cancelled',
@@ -124,6 +155,7 @@ Deno.serve(async (req) => {
           email_reminder_locked_until: null,
         } : {}),
       }).eq('id', id);
+      if (archiveError) return json({ error: 'העברת המסמך לארכיון נכשלה' }, 500);
       return json({ success: true });
     }
 
