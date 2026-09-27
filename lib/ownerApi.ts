@@ -1,4 +1,5 @@
 import { supabase, Company } from './supabase';
+import { ACTIVITY_DAYS, type PlatformRows } from './platformOverview';
 
 /** Platform-owner data access. Keeps Supabase details out of OwnerHomeScreen. */
 export function listCompanies() {
@@ -19,4 +20,35 @@ export function deleteOwnedCompany(companyId: string, confirmName: string) {
 
 export function createCompanyAdmin(body: Record<string, unknown>) {
   return supabase.functions.invoke('create-company-admin', { body });
+}
+
+/**
+ * Every row the owner's control room aggregates, fetched in parallel. Each
+ * select names only the columns the counts need — no names, ID numbers,
+ * phones or notes — so personal data never reaches the platform view.
+ */
+export async function loadPlatformRows(): Promise<PlatformRows> {
+  const since = new Date(Date.now() - ACTIVITY_DAYS * 86_400_000).toISOString();
+  const [companies, profiles, drivers, vehicles, compliance, assignments, signatures, activity] = await Promise.all([
+    supabase.from('companies').select('*').order('created_at', { ascending: false }),
+    supabase.from('profiles').select('company_id, role, must_change_password').not('company_id', 'is', null),
+    supabase.from('driver_details').select('company_id, status, license_expiry'),
+    supabase.from('vehicles').select('id, company_id, status, plate_number, manufacturer, model'),
+    supabase.from('compliance_items').select('owner_id, company_id, item_type, expiry_date').eq('owner_type', 'vehicle'),
+    supabase.from('vehicle_drivers').select('vehicle_id, company_id').is('unassigned_at', null),
+    supabase.from('signature_requests').select('company_id, status').is('deleted_at', null).is('archived_at', null).eq('status', 'pending'),
+    supabase.from('activity_logs').select('company_id, created_at').gte('created_at', since).order('created_at', { ascending: false }).limit(5000),
+  ]);
+  const failed = [companies, profiles, drivers, vehicles, compliance, assignments, signatures, activity].find((r) => r.error);
+  if (failed?.error) throw failed.error;
+  return {
+    companies: (companies.data ?? []) as Company[],
+    profiles: profiles.data ?? [],
+    drivers: drivers.data ?? [],
+    vehicles: (vehicles.data ?? []) as PlatformRows['vehicles'],
+    compliance: compliance.data ?? [],
+    assignments: assignments.data ?? [],
+    signatures: signatures.data ?? [],
+    activity: activity.data ?? [],
+  };
 }

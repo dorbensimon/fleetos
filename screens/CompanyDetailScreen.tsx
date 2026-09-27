@@ -368,7 +368,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   if (loadError && !company) {
     if (isDesktop) {
       return (
-        <DesktopShell active="OwnerHome" breadcrumbs={['חברות', 'שגיאה']}>
+        <DesktopShell active="OwnerHome" breadcrumbs={['מרכז הבקרה', 'שגיאה']}>
           <ErrorState message={loadError} onRetry={load} />
         </DesktopShell>
       );
@@ -383,7 +383,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   if (loading || !company) {
     if (isDesktop) {
       return (
-        <DesktopShell active="OwnerHome" breadcrumbs={['חברות', '…']}>
+        <DesktopShell active="OwnerHome" breadcrumbs={['מרכז הבקרה', '…']}>
           <BrandLoader color={DESKTOP_COLORS.brand} />
         </DesktopShell>
       );
@@ -480,7 +480,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   if (isDesktop) {
     return (
       <>
-        <DesktopShell active="OwnerHome" breadcrumbs={['חברות', company.name]}>
+        <DesktopShell active="OwnerHome" breadcrumbs={['מרכז הבקרה', company.name]}>
           <View style={ds.wrap}>
             <View style={ds.headRow}>
               <View style={ds.headMain}>
