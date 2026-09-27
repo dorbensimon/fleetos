@@ -1,4 +1,4 @@
-import { adminNotificationTarget, driverNotificationTarget, type NotificationTargetFields } from '../notificationTargets';
+import { LICENSE_FOCUS, adminNotificationTarget, driverNotificationTarget, type NotificationTargetFields } from '../notificationTargets';
 
 function notification(fields: Partial<NotificationTargetFields>): NotificationTargetFields {
   return {
@@ -102,5 +102,27 @@ describe('adminNotificationTarget', () => {
 
   it('has no target for a notification without a type', async () => {
     await expect(adminNotificationTarget(notification({ actor_id: 'd1' }), noVehicle)).resolves.toBeNull();
+  });
+
+  it('opens the driver\'s license, the company settings, the signed document and the odometer (migration 101)', async () => {
+    await expect(adminNotificationTarget(notification({ notification_type: 'driver_license_expiry', actor_id: 'd1' }), noVehicle))
+      .resolves.toEqual({ screen: 'DriverDetail', params: { driverId: 'd1', focus: LICENSE_FOCUS } });
+    await expect(adminNotificationTarget(notification({ notification_type: 'company_carrier_license_expiry' }), noVehicle))
+      .resolves.toEqual({ screen: 'CompanySettings' });
+    await expect(adminNotificationTarget(notification({ notification_type: 'signature_request_completed', actor_id: 'd1', signature_request_id: 'r1' }), noVehicle))
+      .resolves.toEqual({ screen: 'DriverSigningDocuments', params: { driverId: 'd1', requestId: 'r1' } });
+    await expect(adminNotificationTarget(notification({ notification_type: 'vehicle_odometer_stale', vehicle_id: 'v1' }), noVehicle))
+      .resolves.toEqual({ screen: 'VehicleDetail', params: { vehicleId: 'v1', tab: 'maintenance', focus: 'odometer' } });
+    await expect(adminNotificationTarget(notification({ notification_type: 'vehicle_odometer_stale' }), noVehicle))
+      .resolves.toEqual({ screen: 'AdminHome' });
+  });
+});
+
+describe('driver targets for migration 101', () => {
+  it('opens the license and the odometer', () => {
+    expect(driverNotificationTarget(notification({ notification_type: 'driver_license_expiry' })))
+      .toEqual({ screen: 'DriverProfile', params: { focus: LICENSE_FOCUS } });
+    expect(driverNotificationTarget(notification({ notification_type: 'vehicle_odometer_stale', vehicle_id: 'v1' })))
+      .toEqual({ screen: 'DriverVehicle', params: { focus: 'odometer' } });
   });
 });

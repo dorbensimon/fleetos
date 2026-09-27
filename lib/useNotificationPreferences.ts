@@ -5,20 +5,22 @@ import { useCompany } from './CompanyContext';
 import {
   ADMIN_NOTIFICATION_TYPES,
   DRIVER_NOTIFICATION_TYPES,
-  MAX_VEHICLE_EXPIRY_LEAD_DAYS,
-  MIN_VEHICLE_EXPIRY_LEAD_DAYS,
+  LEAD_RULES,
+  NotificationLeads,
   NotificationPreferencesMap,
   NotificationType,
+  getNotificationLeads,
   getPreferences,
-  getVehicleExpiryLeadDays,
+  setNotificationLead,
   setPreference,
   setVehicleExpiryLeadDays,
 } from './notificationPreferencesApi';
+import { isVehicleFolderNotification } from './vehicleFolderAlerts';
 
 /**
- * The signed-in user's notification toggles plus the company's vehicle
- * expiry lead time (admins only) — shared by the phone preferences screen
- * and the desktop notifications page, which shows them beside the list.
+ * The signed-in user's notification toggles plus the company's lead time
+ * for each timed alert (admins only) — shared by the phone preferences
+ * screen and the desktop notifications page.
  * Loads on focus; pass `enabled: false` to skip loading entirely.
  */
 export function useNotificationPreferences({ enabled = true }: { enabled?: boolean } = {}) {
@@ -29,10 +31,9 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
   const [error, setError] = useState<string | null>(null);
   const [prefs, setPrefs] = useState<NotificationPreferencesMap | null>(null);
   const [savingType, setSavingType] = useState<NotificationType | null>(null);
-  // Company-wide lead time for vehicle folder expiry alerts (admins only).
-  const [leadDays, setLeadDays] = useState<number | null>(null);
-  const [leadDraft, setLeadDraft] = useState('');
-  const [savingLead, setSavingLead] = useState(false);
+  // Per-type lead times (admins only).
+  const [leads, setLeads] = useState<NotificationLeads | null>(null);
+  const [savingLeadType, setSavingLeadType] = useState<NotificationType | null>(null);
   const loadRequest = useRef(0);
 
   const isDriver = profile?.role === 'driver';
@@ -56,10 +57,9 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
       setPrefs(data);
       if (!isDriver && companyId) {
         // Hidden rather than failing the whole screen if the setting can't be read.
-        const days = await getVehicleExpiryLeadDays(companyId).catch(() => null);
+        const perType = await getNotificationLeads(companyId).catch(() => null);
         if (requestId !== loadRequest.current) return;
-        setLeadDays(days);
-        setLeadDraft(days != null ? String(days) : '');
+        setLeads(perType);
       }
     } catch (err: any) {
       if (requestId === loadRequest.current) setError(err?.message ?? 'טעינת ההעדפות נכשלה');
@@ -94,29 +94,43 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
     }
   };
 
-  const saveLeadDays = async () => {
-    if (!companyId || leadDays == null || savingLead) return;
-    const next = Number(leadDraft);
-    if (!Number.isInteger(next) || next < MIN_VEHICLE_EXPIRY_LEAD_DAYS || next > MAX_VEHICLE_EXPIRY_LEAD_DAYS) {
-      setLeadDraft(String(leadDays));
-      showToast(`יש להזין מספר ימים בין ${MIN_VEHICLE_EXPIRY_LEAD_DAYS} ל-${MAX_VEHICLE_EXPIRY_LEAD_DAYS}`);
-      return;
+  /**
+   * Saves one type's lead time, optimistically. Before migration 100 only
+   * the vehicle folders can change, and they change together.
+   */
+  const setLead = async (type: NotificationType, value: number): Promise<boolean> => {
+    const rule = LEAD_RULES[type];
+    if (!companyId || !leads || !rule) return false;
+    const next = Math.max(rule.min, Math.min(rule.max, Math.round(value / rule.step) * rule.step));
+    if (leads.values[type] === next) return true;
+    const shared = !leads.perType;
+    if (shared && !isVehicleFolderNotification(type)) return false;
+    const previous = leads;
+    const values = { ...leads.values };
+    const custom = new Set(leads.custom);
+    if (shared) {
+      for (const key of Object.keys(values) as NotificationType[]) if (isVehicleFolderNotification(key)) values[key] = next;
+    } else {
+      values[type] = next;
+      custom.add(type);
     }
-    if (next === leadDays) return;
-    setSavingLead(true);
+    setLeads({ ...leads, values, custom });
+    setSavingLeadType(type);
     try {
-      await setVehicleExpiryLeadDays(companyId, next);
-      setLeadDays(next);
-      showToast('זמן ההתראה נשמר');
+      if (shared) {
+        await setVehicleExpiryLeadDays(companyId, next);
+      } else {
+        await setNotificationLead(companyId, type, next);
+      }
+      return true;
     } catch {
-      setLeadDraft(String(leadDays));
+      setLeads(previous);
       showToast('שמירת זמן ההתראה נכשלה, נסה שוב');
+      return false;
     } finally {
-      setSavingLead(false);
+      setSavingLeadType(null);
     }
   };
-
-  const leadChanged = leadDays != null && leadDraft !== String(leadDays);
 
   return {
     loading,
@@ -127,16 +141,10 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
     toggle,
     isDriver,
     visibleTypes,
-    leadDays,
-    leadDraft,
-    setLeadDraft,
-    savingLead,
-    saveLeadDays,
-    leadChanged,
+    leads,
+    setLead,
+    savingLeadType,
   };
 }
 
 export type NotificationPreferencesState = ReturnType<typeof useNotificationPreferences>;
-
-export const LEAD_DAYS_LABEL = 'זמן התראה לפני פקיעת תוקף';
-export const LEAD_DAYS_DESCRIPTION = 'כמה ימים לפני שתוקף של תיקיית רכב פג תישלח התראה. חל על כל המנהלים והנהגים בחברה.';
