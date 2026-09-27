@@ -212,11 +212,11 @@ function renderTab(p: Props, v: Vehicle) {
     return (
       <>
         <KitSection>
-          <InfoLine first icon="speedometer" label="מד אוץ נוכחי" value={km(v.odometer)} />
+          <InfoLine first icon="speedometer" label="מד אוץ נוכחי" focusId="odometer" value={km(v.odometer)} />
           <InfoLine icon="time" label="עודכן לאחרונה" value={v.odometer_updated_at ? formatDate(v.odometer_updated_at) : null} />
           <InfoLine icon="build" label="ק״מ בטיפול האחרון" value={km(v.last_service_km)} />
           <InfoLine icon="repeat" label="טווח בין טיפולים" value={km(v.service_interval_km)} />
-          <InfoLine icon="flag" label="הטיפול הבא" value={km(nextServiceKmOf(v))} />
+          <InfoLine icon="flag" label="הטיפול הבא" focusId="service" value={km(nextServiceKmOf(v))} />
         </KitSection>
         <PrimaryAction label="עדכון נתוני טיפול" icon="create-outline" tone="ghost" onPress={p.onEditMaintenance} />
       </>

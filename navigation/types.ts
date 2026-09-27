@@ -20,11 +20,11 @@ export type RootStackParamList = {
   /** `returnTo: 'driver'` keeps the back affordance honest when a vehicle
    * is opened from inside a driver's dossier rather than from the fleet;
    * `fromDriverId` names that driver so a refreshed page still goes back to them. */
-  VehicleDetail: { vehicleId: string; returnTo?: 'driver'; fromDriverId?: string; tab?: 'general' | 'maintenance' | 'documents' | 'drivers' | 'licensing'; /** A folder key (lib/vehicleFolderAlerts.ts) to open on arrival, e.g. from an expiry notification. */ openFolder?: string; /** Opens the assigned-drivers dialog on arrival, e.g. from "needs attention". */ openDrivers?: boolean };
+  VehicleDetail: { vehicleId: string; returnTo?: 'driver'; fromDriverId?: string; tab?: 'general' | 'maintenance' | 'documents' | 'drivers' | 'licensing'; /** A folder key (lib/vehicleFolderAlerts.ts) to open on arrival, e.g. from an expiry notification. */ openFolder?: string; /** Opens the assigned-drivers dialog on arrival, e.g. from "needs attention". */ openDrivers?: boolean; /** 'odometer' or 'service': scroll to and light up the maintenance card (from a notification). */ focus?: string };
   VehicleForm: { vehicleId?: string };
-  DriverDetail: { driverId: string; /** Set when opened from a vehicle, so a refreshed page still goes back to it. */ fromVehicleId?: string; /** A document category to open on arrival, e.g. from a "driver uploaded a document" notification. */ openFolder?: string };
+  DriverDetail: { driverId: string; /** Set when opened from a vehicle, so a refreshed page still goes back to it. */ fromVehicleId?: string; /** A document category to open on arrival, e.g. from a "driver uploaded a document" notification. */ openFolder?: string; /** Field keys (comma separated) to scroll to and light up, e.g. from a "driver updated details" notification. */ focus?: string };
   DriverArchive: undefined;
-  DriverPersonalDetails: { driverId: string };
+  DriverPersonalDetails: { driverId: string; focus?: string };
   DriverForm: { driverId?: string };
   Departments: undefined;
   CompanyDocuments: undefined;
@@ -71,10 +71,15 @@ export type RootStackParamList = {
   };
   DriverLicenseDocuments: { driverId: string };
   // Driver module
-  DriverVehicle: undefined;
+  /** `focus`: a vehicle folder key to scroll to and light up. */
+  DriverVehicle: { focus?: string } | undefined;
   DriverDocuments: undefined;
-  DriverSigningDocuments: { driverId?: string; folderId?: string } | undefined;
-  DriverProfile: undefined;
+  /** `requestId`: open that request on arrival (a driver goes straight to signing it). */
+  DriverSigningDocuments: { driverId?: string; folderId?: string; requestId?: string } | undefined;
+  /** `focus`: field keys to scroll to and light up; `edit` opens the form so the driver can fill them in. */
+  DriverProfile: { focus?: string; edit?: boolean } | undefined;
+  /** A driver signs one request on the app's own signature pad (a document that only needs a signature). */
+  DriverSignDocument: { requestId: string; title: string; documentUrl: string | null };
   DriverOdometer: { vehicleId: string; currentOdometer: number };
   DriverAttention: undefined;
 

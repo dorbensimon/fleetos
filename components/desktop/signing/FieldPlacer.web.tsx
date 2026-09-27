@@ -5,6 +5,8 @@ import { AUTO_FIELDS, DRIVER_FIELDS, FIELD_META } from './fieldMeta';
 import { FieldTool } from './DocumentEditor.web';
 import { renderPage, type LoadedPdf } from './pdf.web';
 import { FIELD_DRAG_TYPE, FieldBox, FieldInspector, trackPointer } from './FieldBox.web';
+import { GUIDES_CSS, GuideLines, PageGrid, snapMove, snapResize, useGuidesToggle, GuidesToggle, type Guide } from './snapGuides.web';
+import { EDITOR_PAGE } from '../../../lib/companySigningTemplates';
 
 /**
  * Placing fields on an uploaded document: the pages in the middle, a palette
@@ -15,6 +17,13 @@ import { FIELD_DRAG_TYPE, FieldBox, FieldInspector, trackPointer } from './Field
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 const A4 = { width: 595, height: 842 };
+/** The page's middle and the usual A4 margins, as page fractions, for the smart guides. */
+const MARGIN = { x: EDITOR_PAGE.padX / EDITOR_PAGE.width, y: EDITOR_PAGE.padY / EDITOR_PAGE.height };
+const PAGE_LINES = { v: [0.5, MARGIN.x, 1 - MARGIN.x], h: [0.5, MARGIN.y, 1 - MARGIN.y], width: 1, height: 1 };
+/** A one-centimetre grid on an A4 page (21 × 29.7 cm). */
+const GRID_CELL = { x: 1 / 21, y: 1 / 29.7 };
+/** How close, in screen pixels, a field has to come to a line to snap to it. */
+const SNAP_PX = 6;
 
 let fieldSeq = 0;
 const newFieldId = () => `f${Date.now().toString(36)}${(fieldSeq += 1)}`;
@@ -101,9 +110,12 @@ type PageProps = {
   onRemove?: (id: string) => void;
   onDropField?: (kind: SigningFieldKind, page: number, x: number, y: number) => void;
   registerPage?: (page: number, el: HTMLDivElement | null) => void;
+  /** "קווי עזר": the margins, the middle and a centimetre grid over the page. */
+  showGrid?: boolean;
 };
 
-export function PdfPageView({ pdf, pageNumber, fields, selectedId, readOnly, onSelect, onMoveStart, onFieldChange, onRemove, onDropField, registerPage }: PageProps) {
+export function PdfPageView({ pdf, pageNumber, fields, selectedId, readOnly, onSelect, onMoveStart, onFieldChange, onRemove, onDropField, registerPage, showGrid }: PageProps) {
+  const [guides, setGuides] = useState<Guide[]>([]);
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [over, setOver] = useState(false);
@@ -143,15 +155,24 @@ export function PdfPageView({ pdf, pageNumber, fields, selectedId, readOnly, onS
   const moveOrResize = (field: PlacedSigningField, mode: 'move' | 'resize') => (event: React.PointerEvent) => {
     const page = wrapRef.current?.getBoundingClientRect();
     if (!page) return;
+    const others = fields.filter((f) => f.id !== field.id);
+    // Snapping works in page fractions; the reach is the same few pixels either way.
+    const reach = SNAP_PX / Math.min(page.width, page.height);
     trackPointer(event, () => onMoveStart?.(), (dxPx, dyPx) => {
       const dx = dxPx / page.width;
       const dy = dyPx / page.height;
       if (mode === 'move') {
-        onFieldChange?.({ ...field, x: clamp(field.x + dx, 0, 1 - field.w), y: clamp(field.y + dy, 0, 1 - field.h) });
+        const moved = { ...field, x: clamp(field.x + dx, 0, 1 - field.w), y: clamp(field.y + dy, 0, 1 - field.h) };
+        const snap = snapMove(moved, others, PAGE_LINES, reach);
+        setGuides(snap.guides);
+        onFieldChange?.({ ...moved, x: clamp(snap.x, 0, 1 - field.w), y: clamp(snap.y, 0, 1 - field.h) });
       } else {
-        onFieldChange?.({ ...field, w: clamp(field.w + dx, 0.02, 1 - field.x), h: clamp(field.h + dy, 0.012, 1 - field.y) });
+        const sized = { ...field, w: clamp(field.w + dx, 0.02, 1 - field.x), h: clamp(field.h + dy, 0.012, 1 - field.y) };
+        const snap = snapResize(sized, others, PAGE_LINES, reach);
+        setGuides(snap.guides);
+        onFieldChange?.({ ...sized, w: clamp(snap.w, 0.02, 1 - field.x), h: clamp(snap.h, 0.012, 1 - field.y) });
       }
-    });
+    }, () => setGuides([]));
   };
 
   const nudge = (field: PlacedSigningField) => (dx: number, dy: number, big: boolean) => {
@@ -185,6 +206,8 @@ export function PdfPageView({ pdf, pageNumber, fields, selectedId, readOnly, onS
         }}
       >
         <canvas ref={canvasRef} aria-label={`עמוד ${pageNumber}`} />
+        {showGrid && !readOnly ? <PageGrid margins={MARGIN} cell={GRID_CELL} unit="%" /> : null}
+        <GuideLines guides={guides} unit="%" />
         {fields.map((field) => (
           <FieldBox
             key={field.id}
@@ -220,6 +243,7 @@ export function FieldPlacer({
   onReplaceFile: () => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showGrid, toggleGrid] = useGuidesToggle();
   const history = useRef<PlacedSigningField[][]>([]);
   const pageEls = useRef(new Map<number, HTMLDivElement>());
   const fieldsRef = useRef(fields);
@@ -302,6 +326,7 @@ export function FieldPlacer({
 
   return (
     <div className="sd-work">
+      <style>{GUIDES_CSS}</style>
       <aside className="sd-panel" aria-label="שדות">
         <h3 className="sd-b">איפה הנהג ימלא?</h3>
         <p className="sd-panel-sub">גררו שדה אל המקום הנכון בעמוד, או לחצו עליו והוא יופיע בעמוד שמוצג. אחר כך אפשר להזיז אותו עם העכבר.</p>
@@ -331,6 +356,8 @@ export function FieldPlacer({
           />
         ) : null}
 
+        <GuidesToggle on={showGrid} onToggle={toggleGrid} />
+
         <button type="button" className="sd-btn sd-btn-link" style={{ marginTop: 18 }} onClick={onReplaceFile}>
           <Ionicons name="swap-horizontal" size={18} color="currentColor" />
           החלפת הקובץ
@@ -357,6 +384,7 @@ export function FieldPlacer({
             onRemove={remove}
             onDropField={(kind, page, x, y) => add(kind, page, x, y)}
             registerPage={registerPage}
+            showGrid={showGrid}
           />
         ))}
       </div>

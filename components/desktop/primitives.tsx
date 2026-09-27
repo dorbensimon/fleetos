@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { FocusTarget } from '../ui/FocusTarget';
 import { Modal, Pressable, PressableProps, ScrollView, StyleProp, Text, TextInput, TextProps, View, ViewStyle, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
@@ -114,14 +115,17 @@ export function DesktopFieldRow({
   error,
   children,
   last,
+  focusId,
 }: {
   label: string;
   required?: boolean;
   error?: string;
   children: React.ReactNode;
   last?: boolean;
+  /** Lights up and scrolls into view when the page is opened on this key (components/ui/FocusTarget). */
+  focusId?: string;
 }) {
-  return (
+  const row = (
     <View style={[fieldStyles.row, last && fieldStyles.rowLast]}>
       <DText weight="semiBold" style={fieldStyles.label}>
         {label}
@@ -133,6 +137,7 @@ export function DesktopFieldRow({
       </View>
     </View>
   );
+  return focusId ? <FocusTarget id={focusId} radius={6} tint={DESKTOP_COLORS.brand}>{row}</FocusTarget> : row;
 }
 
 /** Plain-bordered text input matching the desktop form row — the counterpart of the mobile FormFieldRow's input. */

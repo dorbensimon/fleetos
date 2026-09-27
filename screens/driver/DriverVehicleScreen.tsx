@@ -4,10 +4,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LoadingState, EmptyState, ErrorState } from '../../components/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FocusTarget, FocusTargetProvider } from '../../components/ui/FocusTarget';
 import { DriverVehicleMobile } from './DriverVehicleMobile';
 import { expiryState, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
-import { listActiveDriverVehicles, listComplianceForOwners, DriverVehicleAssignment, ComplianceItem } from '../../lib/adminApi';
+import { listActiveDriverVehicles, listComplianceForOwners, markNotificationsReadWhere, DriverVehicleAssignment, ComplianceItem } from '../../lib/adminApi';
 import { VEHICLE_TYPE_LABELS, complianceBadgeLabel, complianceBadgeState, findComplianceDef } from '../../lib/compliance';
 import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
@@ -26,7 +27,8 @@ import { Ionicons } from '@expo/vector-icons';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverVehicle'>;
 
-export default function DriverVehicleScreen({ navigation }: Props) {
+export default function DriverVehicleScreen({ navigation, route }: Props) {
+  const focus = route.params?.focus;
   const { profile, loading: profileLoading } = useCompany();
   const isDesktop = useIsDesktop();
   const insets = useSafeAreaInsets();
@@ -71,8 +73,16 @@ export default function DriverVehicleScreen({ navigation }: Props) {
     }, [load])
   );
 
+  // Seeing the vehicle is what "you were assigned a vehicle" asks for.
+  const profileId = profile?.id;
+  useFocusEffect(useCallback(() => {
+    if (!profileId) return;
+    markNotificationsReadWhere({ types: ['vehicle_assignment'], recipientId: profileId }).catch(() => undefined);
+  }, [profileId]));
+
   if (isDesktop) {
     return (
+      <FocusTargetProvider focus={focus}>
       <DesktopShell active="DriverHome" breadcrumbs={['הרכב שלי']}>
         {loading ? (
           <LoadingState />
@@ -95,6 +105,7 @@ export default function DriverVehicleScreen({ navigation }: Props) {
           </View>
         )}
       </DesktopShell>
+      </FocusTargetProvider>
     );
   }
 
@@ -109,6 +120,7 @@ export default function DriverVehicleScreen({ navigation }: Props) {
       onBack={() => navigation.goBack()}
       onRetry={load}
       onOdometer={(a) => navigation.navigate('DriverOdometer', { vehicleId: a.vehicle.id, currentOdometer: a.vehicle.odometer })}
+      focus={focus}
     />
   );
 }
@@ -149,18 +161,24 @@ function DesktopVehicleCard({
         </View>
         <DText weight="bold" style={ds.plateText}>{vehicle.plate_number}</DText>
       </View>
-      <View style={ds.metaRow}>
-        <DText style={ds.metaLabel}>ביטוח חובה</DText>
-        <StatusPill tone={toneFor(expiryState(insurance))} label={insurance ? formatDate(insurance) : 'חסר'} />
-      </View>
-      <View style={ds.metaRow}>
-        <DText style={ds.metaLabel}>טסט שנתי</DText>
-        <StatusPill tone={toneFor(testState)} label={testLabel} />
-      </View>
-      <View style={[ds.metaRow, ds.metaRowLast]}>
-        <DText style={ds.metaLabel}>קילומטראז׳</DText>
-        <DText weight="semiBold" style={ds.metaValue}>{vehicle.odometer.toLocaleString('he-IL')} ק״מ</DText>
-      </View>
+      <FocusTarget id="insurance_mandatory" radius={6} tint={DESKTOP_COLORS.brand}>
+        <View style={ds.metaRow}>
+          <DText style={ds.metaLabel}>ביטוח חובה</DText>
+          <StatusPill tone={toneFor(expiryState(insurance))} label={insurance ? formatDate(insurance) : 'חסר'} />
+        </View>
+      </FocusTarget>
+      <FocusTarget id="annual_test" radius={6} tint={DESKTOP_COLORS.brand}>
+        <View style={ds.metaRow}>
+          <DText style={ds.metaLabel}>טסט שנתי</DText>
+          <StatusPill tone={toneFor(testState)} label={testLabel} />
+        </View>
+      </FocusTarget>
+      <FocusTarget id="odometer,service" radius={6} tint={DESKTOP_COLORS.brand}>
+        <View style={[ds.metaRow, ds.metaRowLast]}>
+          <DText style={ds.metaLabel}>קילומטראז׳</DText>
+          <DText weight="semiBold" style={ds.metaValue}>{vehicle.odometer.toLocaleString('he-IL')} ק״מ</DText>
+        </View>
+      </FocusTarget>
       <HoverPressable style={ds.odometerButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.brandHover }} onPress={onOdometer}>
         <Ionicons name="speedometer-outline" size={14} color="#FFFFFF" />
         <DText weight="semiBold" style={ds.odometerButtonText}>עדכון קילומטרים</DText>

@@ -326,9 +326,9 @@ export async function notifyMeetingDriver(companyId: string, meetingId: string):
   await invoke({ action: 'notify', companyId, meetingId }, 'השליחה לנהג נכשלה');
 }
 
-/** Cancels a meeting at any stage. A signed document stays in the records, marked "בוטל". */
+/** Deletes a meeting at any stage, with its document, everywhere. */
 export async function cancelMeeting(companyId: string, meetingId: string): Promise<void> {
-  await invoke({ action: 'cancel', companyId, meetingId }, 'ביטול המפגש נכשל');
+  await invoke({ action: 'cancel', companyId, meetingId }, 'מחיקת המפגש נכשלה');
 }
 
 export async function createChecklistTemplate(companyId: string, draftId: string, title: string, form: ChecklistForm): Promise<SigningTemplate> {

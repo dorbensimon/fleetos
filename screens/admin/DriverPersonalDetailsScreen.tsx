@@ -1,5 +1,6 @@
-import React, { useCallback, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { ScrollView, View, StyleSheet } from 'react-native';
+import { FocusTargetProvider } from '../../components/ui/FocusTarget';
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -37,7 +38,8 @@ import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverPersonalDetails'>;
 
 export default function DriverPersonalDetailsScreen({ route, navigation }: Props) {
-  const { driverId } = route.params;
+  const { driverId, focus } = route.params;
+  const scrollRef = useRef<ScrollView>(null);
   const { companyId, company } = useCompany();
   const { showToast } = useToast();
   const [driver, setDriver] = useState<DriverRow | null>(null);
@@ -146,6 +148,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
 
   if (isDesktop) {
     return (
+      <FocusTargetProvider focus={focus}>
       <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', driver?.full_name ?? 'פרטי נהג']}>
         {loading ? (
           <LoadingState />
@@ -166,15 +169,15 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
               <DText weight="semiBold" style={desktopStyles.editButtonText}>עריכה</DText>
             </HoverPressable>
             <View style={desktopStyles.card}>
-              <DesktopFieldRow label="שם מלא"><DesktopInput value={driver?.full_name ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label="שם מלא" focusId="full_name"><DesktopInput value={driver?.full_name ?? ''} editable={false} /></DesktopFieldRow>
               <DesktopFieldRow label="חברה"><DesktopInput value={company?.name ?? ''} editable={false} /></DesktopFieldRow>
               <DesktopFieldRow label="מייל להתחברות"><DesktopInput value={email ?? ''} editable={false} ltr /></DesktopFieldRow>
-              <DesktopFieldRow label="טלפון"><DesktopInput value={driver?.phone ? formatPhone(driver.phone) : ''} editable={false} ltr /></DesktopFieldRow>
-              <DesktopFieldRow label="תעודת זהות"><DesktopInput value={driver?.national_id ?? ''} editable={false} ltr /></DesktopFieldRow>
-              <DesktopFieldRow label="מספר עובד"><DesktopInput value={driver?.employee_number ?? ''} editable={false} /></DesktopFieldRow>
-              <DesktopFieldRow label="מחלקה"><DesktopInput value={departmentName ?? ''} editable={false} /></DesktopFieldRow>
-              <DesktopFieldRow label="דרגת רישיון"><DesktopInput value={driver?.license_classes ?? ''} editable={false} /></DesktopFieldRow>
-              <DesktopFieldRow label="תוקף רישיון" last><DesktopInput value={driver?.license_expiry ?? ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label="טלפון" focusId="phone"><DesktopInput value={driver?.phone ? formatPhone(driver.phone) : ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label="תעודת זהות" focusId="national_id"><DesktopInput value={driver?.national_id ?? ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label="מספר עובד" focusId="employee_number"><DesktopInput value={driver?.employee_number ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label="מחלקה" focusId="department_id"><DesktopInput value={departmentName ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label="דרגת רישיון" focusId="license_classes"><DesktopInput value={driver?.license_classes ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label="תוקף רישיון" focusId="license_expiry" last><DesktopInput value={driver?.license_expiry ?? ''} editable={false} ltr /></DesktopFieldRow>
             </View>
 
             <DText weight="bold" style={desktopStyles.sectionTitle}>רכבים משויכים</DText>
@@ -197,6 +200,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
           </View>
         )}
       </DesktopShell>
+      </FocusTargetProvider>
     );
   }
 
@@ -208,9 +212,11 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
       .finally(() => setLoading(false));
   };
   return (
+    <FocusTargetProvider focus={focus} scrollRef={scrollRef}>
     <DriverPage
       insetTop={insets.top}
       insetBottom={insets.bottom}
+      scrollRef={scrollRef}
       hero={
         <HeroTitle
           title="פרטי נהג"
@@ -228,19 +234,19 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
         <>
           <Reveal index={0}>
             <KitSection>
-              <InfoLine first icon="person" label="שם מלא" value={driver?.full_name} />
+              <InfoLine first icon="person" label="שם מלא" focusId="full_name" value={driver?.full_name} />
               <InfoLine icon="mail" label="מייל להתחברות" value={email} ltr />
-              <InfoLine icon="call" label="טלפון" value={driver?.phone ? formatPhone(driver.phone) : null} ltr />
-              <InfoLine icon="card" label="תעודת זהות" value={driver?.national_id} ltr />
+              <InfoLine icon="call" label="טלפון" focusId="phone" value={driver?.phone ? formatPhone(driver.phone) : null} ltr />
+              <InfoLine icon="card" label="תעודת זהות" focusId="national_id" value={driver?.national_id} ltr />
             </KitSection>
           </Reveal>
           <Reveal index={1}>
             <KitSection title="עבודה ורישיון">
               <InfoLine first icon="business" label="חברה" value={company?.name} />
-              <InfoLine icon="briefcase" label="מספר עובד" value={driver?.employee_number} />
-              <InfoLine icon="people" label="מחלקה" value={departmentName} />
-              <InfoLine icon="ribbon" label="דרגת רישיון" value={driver?.license_classes} />
-              <InfoLine icon="calendar" label="תוקף רישיון" value={driver?.license_expiry ? formatDate(driver.license_expiry) : null} />
+              <InfoLine icon="briefcase" label="מספר עובד" focusId="employee_number" value={driver?.employee_number} />
+              <InfoLine icon="people" label="מחלקה" focusId="department_id" value={departmentName} />
+              <InfoLine icon="ribbon" label="דרגת רישיון" focusId="license_classes" value={driver?.license_classes} />
+              <InfoLine icon="calendar" label="תוקף רישיון" focusId="license_expiry" value={driver?.license_expiry ? formatDate(driver.license_expiry) : null} />
             </KitSection>
           </Reveal>
           <Reveal index={2}>
@@ -265,6 +271,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
         </>
       )}
     </DriverPage>
+    </FocusTargetProvider>
   );
 }
 

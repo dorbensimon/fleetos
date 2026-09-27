@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { FocusTarget } from '../ui/FocusTarget';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
@@ -453,6 +454,7 @@ export function VehicleDetailDesktopView({
 
         <View style={styles.sideCell}>
           <GroupLabel>תחזוקה</GroupLabel>
+          <FocusTarget id="odometer,service" radius={8} tint={DESKTOP_COLORS.brand}>
           <View style={[styles.card, styles.maintCard]}>
             <View style={styles.maintTop}>
               <View style={styles.odoRow}>
@@ -529,6 +531,7 @@ export function VehicleDetailDesktopView({
               <DText weight="semiBold" style={styles.primaryBtnText}>עדכון מד אוץ</DText>
             </HoverPressable>
           </View>
+          </FocusTarget>
         </View>
       </View>
 

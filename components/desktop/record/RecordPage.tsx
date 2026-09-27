@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { FocusTarget } from '../../ui/FocusTarget';
 import { StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
@@ -217,6 +218,7 @@ export function DetailRow({
   accessory,
   compact,
   valueColor,
+  focusId,
 }: {
   label: string;
   value: string | null;
@@ -227,6 +229,8 @@ export function DetailRow({
   accessory?: React.ReactNode;
   compact?: boolean;
   valueColor?: string;
+  /** Lights up and scrolls into view when the page is opened on this key (components/ui/FocusTarget). */
+  focusId?: string;
 }) {
   const [hovered, setHovered] = useState(false);
   const ValueText = ltr ? DLtrText : DText;
@@ -253,8 +257,9 @@ export function DetailRow({
     </>
   );
 
-  if (!onPress) return <View style={[pageStyles.detailRow, compact && pageStyles.detailRowCompact, !first && pageStyles.rowDivider]}>{content}</View>;
-  return (
+  const row = !onPress ? (
+    <View style={[pageStyles.detailRow, compact && pageStyles.detailRowCompact, !first && pageStyles.rowDivider]}>{content}</View>
+  ) : (
     <HoverPressable
       style={[pageStyles.detailRow, compact && pageStyles.detailRowCompact, !first && pageStyles.rowDivider]}
       hoverStyle={pageStyles.rowHover}
@@ -266,6 +271,7 @@ export function DetailRow({
       {content}
     </HoverPressable>
   );
+  return focusId ? <FocusTarget id={focusId} radius={6} tint={DESKTOP_COLORS.brand}>{row}</FocusTarget> : row;
 }
 
 export function GroupLabel({ children, action }: { children: string; action?: React.ReactNode }) {

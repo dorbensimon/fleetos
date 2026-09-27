@@ -436,6 +436,16 @@ export async function getSigningSession(requestId: string): Promise<DocuSealSess
   return invoke<DocuSealSession>('get-signing-session', { requestId });
 }
 
+/** Whether the driver can sign this request on the app's own pad, and where to read it first. */
+export async function inspectDriverSigning(requestId: string) {
+  return invoke<{ status: 'pending' | 'completed'; signOnly?: boolean; documentUrl?: string | null }>('driver-sign-request', { requestId, action: 'inspect' });
+}
+
+/** Signs a sign-only request with the drawing from the app's signature pad. */
+export async function submitDriverSignature(requestId: string, signature: string) {
+  return invoke<{ status: 'completed'; filePending?: boolean }>('driver-sign-request', { requestId, action: 'sign', signature });
+}
+
 export async function syncSigningRequest(requestId: string) {
   return invoke<{ success: boolean; status: SignatureRequest['status'] }>('sync-signing-request', { requestId });
 }
@@ -467,7 +477,8 @@ export async function updateCompanySigningSettings(companyId: string, settings: 
 // companyId is required for a request (it always belongs to one company),
 // but unused for a template. Global templates are managed by the owner only;
 // `company-delete` lets a company admin delete their own company's template
-// in one step (cancelling requests still waiting for a signature).
-export async function deleteSigningRecord(companyId: string | null, kind: 'template' | 'request', id: string, action: 'archive' | 'restore' | 'permanent-delete' | 'company-delete' = 'archive') {
+// in one step (cancelling requests still waiting for a signature). `erase`
+// deletes one request for good, in any state, signed ones included.
+export async function deleteSigningRecord(companyId: string | null, kind: 'template' | 'request', id: string, action: 'archive' | 'restore' | 'permanent-delete' | 'company-delete' | 'erase' = 'archive') {
   return invoke<{ success: boolean; cleanupPending?: boolean }>('delete-signing-record', { companyId, kind, id, action });
 }

@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useRef } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   DK,
@@ -17,6 +17,7 @@ import {
   validityProgress,
 } from '../../components/driverKit';
 import { ErrorState, LoadingState } from '../../components/ui';
+import { FocusTarget, FocusTargetProvider } from '../../components/ui/FocusTarget';
 import {
   VEHICLE_TYPE_LABELS,
   complianceBadgeLabel,
@@ -38,6 +39,8 @@ type Props = {
   onBack: () => void;
   onRetry: () => void;
   onOdometer: (assignment: DriverVehicleAssignment) => void;
+  /** A folder key, 'odometer' or 'service' to scroll to and light up (from a notification or task). */
+  focus?: string;
 };
 
 /** Insurance and the annual test always show — as "missing" when absent. */
@@ -65,10 +68,13 @@ function rowsFor(compliance: ComplianceItem[]) {
 
 export function DriverVehicleMobile(p: Props) {
   const many = p.assignments.length > 1;
+  const scrollRef = useRef<ScrollView>(null);
   return (
+    <FocusTargetProvider focus={p.focus} scrollRef={scrollRef}>
     <DriverPage
       insetTop={p.insetTop}
       insetBottom={p.insetBottom}
+      scrollRef={scrollRef}
       hero={
         <HeroTitle
           title={many ? 'הרכבים שלי' : 'הרכב שלי'}
@@ -127,19 +133,21 @@ export function DriverVehicleMobile(p: Props) {
 
                 <View style={styles.gauges}>
                   {rows.map((row, i) => (
-                    <Gauge
-                      key={row.type}
-                      label={row.label}
-                      value={row.value}
-                      detail={relativeDays(row.target)}
-                      status={row.status}
-                      progress={validityProgress(row.target)}
-                      index={i}
-                      last={i === rows.length - 1}
-                    />
+                    <FocusTarget key={row.type} id={row.type} tint={DK.accent}>
+                      <Gauge
+                        label={row.label}
+                        value={row.value}
+                        detail={relativeDays(row.target)}
+                        status={row.status}
+                        progress={validityProgress(row.target)}
+                        index={i}
+                        last={i === rows.length - 1}
+                      />
+                    </FocusTarget>
                   ))}
                 </View>
 
+                <FocusTarget id="odometer,service" tint={DK.accent}>
                 <View style={styles.odometer}>
                   <View style={styles.odometerText}>
                     <DKText variant="caption" color={DK.muted}>
@@ -157,12 +165,14 @@ export function DriverVehicleMobile(p: Props) {
                   </View>
                 </View>
                 <PrimaryAction label="עדכון קילומטרים" icon="create-outline" onPress={() => p.onOdometer(a)} style={styles.cta} />
+                </FocusTarget>
               </Surface>
             </Reveal>
           );
         })
       )}
     </DriverPage>
+    </FocusTargetProvider>
   );
 }
 

@@ -33,7 +33,9 @@ export type PlacedSigningField = {
 
 export type EditorInline =
   | { text: string; bold?: boolean; italic?: boolean; underline?: boolean; size?: number; color?: string; highlight?: boolean }
-  | { field: SigningFieldKind; label?: string };
+  | { field: SigningFieldKind; label?: string }
+  /** A field set into the line of text (the id of an EditorPlacedField with the same `slot`). */
+  | { slot: string };
 
 /**
  * The editor's page is an A4 sheet at 96dpi. The server renders the same page
@@ -71,6 +73,8 @@ export type EditorPlacedField = {
   y: number;
   w: number;
   h: number;
+  /** Set when the field sits inside a line of text: the server draws it there, in the flow, instead of at x/y. */
+  slot?: string;
 };
 
 /** A document written in the in-app editor, as sent to the server. */

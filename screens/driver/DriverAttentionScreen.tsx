@@ -19,7 +19,7 @@ export default function DriverAttentionScreen({ navigation }: Props) {
   const { expired, soon, signatures } = useMemo(() => {
     const expiredTasks: AttentionTask[] = [];
     const soonTasks: AttentionTask[] = [];
-    const openVehicle = () => navigation.navigate('DriverVehicle');
+    const openVehicle = (focus: string) => navigation.navigate('DriverVehicle', { focus });
     for (const item of items) {
       const status = statusOfDate(item.target);
       if (status !== 'expired' && status !== 'soon') continue;
@@ -33,7 +33,7 @@ export default function DriverAttentionScreen({ navigation }: Props) {
           ? `${item.title} של ${plate ? `הרכב ${plate}` : 'הרכב'} כבר לא בתוקף. תאם חידוש מול מנהל הצי.`
           : 'כדאי לתאם את החידוש כבר עכשיו, לפני שהתוקף פג.',
         action: 'לפרטי הרכב',
-        onPress: openVehicle,
+        onPress: () => openVehicle(item.item.item_type),
       };
       (status === 'expired' ? expiredTasks : soonTasks).push(task);
     }
@@ -49,12 +49,11 @@ export default function DriverAttentionScreen({ navigation }: Props) {
           ? 'אחרי שחידשת, עדכן את התוקף החדש ואת צילום הרישיון.'
           : 'אחרי החידוש, עדכן כאן את התוקף החדש.',
         action: 'לעדכון הרישיון',
-        onPress: () => navigation.navigate('DriverProfile'),
+        onPress: () => navigation.navigate('DriverProfile', { focus: 'license_expiry', edit: true }),
       });
     }
     const signatureTasks: AttentionTask[] = pendingRequests.map((request) => {
       const title = request.template?.title || request.template_title || 'מסמך לחתימה';
-      const folderId = request.template_id || `legacy:${request.template_title || request.id}`;
       const sent = request.sent_at || request.created_at;
       return {
         key: `sign-${request.id}`,
@@ -64,7 +63,7 @@ export default function DriverAttentionScreen({ navigation }: Props) {
         detail: `נשלח אליך ${new Date(sent).toLocaleDateString('he-IL')}`,
         hint: 'מנהל הצי מחכה לחתימה שלך. זה לוקח דקה.',
         action: 'לחתימה על המסמך',
-        onPress: () => navigation.navigate('DriverSigningDocuments', { folderId }),
+        onPress: () => navigation.navigate('DriverSigningDocuments', { requestId: request.id }),
       };
     });
     return { expired: expiredTasks, soon: soonTasks, signatures: signatureTasks };

@@ -1,5 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { docusealFetch } from '../_shared/docuseal.ts';
+import { isSignedRequestPath } from '../_shared/signingPaths.ts';
 import { verifyUser } from '../_shared/verifyUser.ts';
 import {
   DRIVER_FIELD,
@@ -27,14 +28,13 @@ import {
  *              driver gets a normal signing request in the app.
  * driver-sign  the driver signs right away, on the manager's device.
  * notify       tells the driver there is a meeting form to sign.
- * cancel       a draft is removed; a signed meeting is marked cancelled and
- *              its document is kept, out of the active lists.
+ * cancel       deletes the meeting at any stage, with its document.
  * set-next     moves one driver's next meeting on a repeating form.
  * set-repeat   how often a form repeats (0 = one time).
  *
  * Signing a meeting on a repeating form sets the driver's next meeting
  * (checklist_schedule, supabase/sql/97_checklist_meeting_schedule.sql);
- * cancelling that meeting takes the date back.
+ * deleting that meeting takes the date back.
  *
  * Only the company's managers (and the platform owner) reach any of these.
  */
@@ -404,82 +404,52 @@ Deno.serve(async (req) => {
     }
 
     // ── cancel ────────────────────────────────────────────────────────
+    // The manager's "delete": the meeting goes away completely, with its
+    // document (the DocuSeal submission, the stored PDF and the request), and
+    // the driver's next meeting date goes back to what it was before.
     if (action === 'cancel') {
       const meeting = await loadMeeting();
       if (!meeting) return json({ error: 'המפגש לא נמצא' }, 404);
-      if (meeting.status === 'cancelled') {
-        const restored = await restoreScheduleAfterCancellation(db, meeting.id, user.userId, new Date().toISOString());
-        return restored ? json({ success: true }) : json({ error: 'שחזור מועד המפגש הבא נכשל' }, 500);
-      }
-      if (meeting.status === 'draft') {
-        const { error } = await db.from('checklist_meetings').delete().eq('id', meeting.id).eq('status', 'draft');
-        if (error) return json({ error: 'מחיקת הטיוטה נכשלה' }, 500);
-        return json({ success: true, removed: true });
-      }
 
-      const now = new Date().toISOString();
       if (meeting.signature_request_id) {
         const { data: request } = await db.from('signature_requests')
-          .select('id, status, archived_at, docuseal_submission_id')
+          .select('id, company_id, driver_id, status, docuseal_submission_id, signed_file_path')
           .eq('id', meeting.signature_request_id).maybeSingle();
-        let requestStatus = request?.status;
-        let claimedCancellation = false;
-        if (request?.status === 'pending') {
-          // Claim cancellation before touching DocuSeal. A driver-sign flow uses
-          // the same lock, so a signed submission can never be deleted mid-save.
-          const { data: cancelled, error: cancelRequestError } = await db.from('signature_requests').update({
-            status: 'cancelled',
-            cancelled_at: now,
-            cancelled_by: user.userId,
-            next_email_reminder_at: null,
-            email_reminder_locked_until: null,
-          }).eq('id', request.id).eq('status', 'pending')
-            .or(`sync_locked_until.is.null,sync_locked_until.lt.${now}`)
-            .select('id').maybeSingle();
-          if (cancelRequestError) return json({ error: 'ביטול המפגש נכשל' }, 500);
-          if (!cancelled) {
-            const { data: current } = await db.from('signature_requests').select('status').eq('id', request.id).maybeSingle();
-            if (current?.status !== 'completed') return json({ error: 'חתימת הנהג נשמרת כעת. חכו רגע ונסו לבטל שוב.' }, 409);
-            requestStatus = 'completed';
-          } else {
-            requestStatus = 'cancelled';
-            claimedCancellation = true;
-          }
-        }
-        // A previous attempt may have claimed cancellation and then lost the
-        // provider call. Retrying a non-archived cancelled request finishes it.
-        if (request && requestStatus === 'cancelled' && request.docuseal_submission_id) {
-          if (!await discardProvisionedSubmission(request.docuseal_submission_id)) {
-            if (claimedCancellation) {
-              await db.from('signature_requests').update({
-                status: 'pending', cancelled_at: null, cancelled_by: null,
-              }).eq('id', request.id).eq('status', 'cancelled').eq('cancelled_at', now);
+        if (request) {
+          const now = new Date().toISOString();
+          if (request.status === 'pending') {
+            // Claim the request before touching DocuSeal. A driver-sign flow uses
+            // the same lock, so a signature being saved is never cut in half.
+            const { data: claimed, error: claimError } = await db.from('signature_requests').update({
+              status: 'cancelled', cancelled_at: now, cancelled_by: user.userId,
+              next_email_reminder_at: null, email_reminder_locked_until: null,
+            }).eq('id', request.id).eq('status', 'pending')
+              .or(`sync_locked_until.is.null,sync_locked_until.lt.${now}`)
+              .select('id').maybeSingle();
+            if (claimError) return json({ error: 'מחיקת המפגש נכשלה' }, 500);
+            if (!claimed) {
+              const { data: current } = await db.from('signature_requests').select('status').eq('id', request.id).maybeSingle();
+              if (current?.status === 'pending') return json({ error: 'חתימת הנהג נשמרת כעת. חכו רגע ונסו למחוק שוב.' }, 409);
             }
-            return json({ error: 'לא ניתן לבטל את המסמך כרגע. נסו שוב.' }, 502);
           }
-        }
-        if (request && !request.archived_at) {
-          // A signed document is evidence: it stays, out of the active lists.
-          const { data: archived, error: archiveError } = await db.from('signature_requests').update({
-            archived_at: now,
-            archived_by: user.userId,
-          }).eq('id', request.id).eq('status', requestStatus).select('id').maybeSingle();
-          if (archiveError) return json({ error: 'ביטול המפגש נכשל' }, 500);
-          // A driver may have completed the document while cancellation was in
-          // flight. Archive that evidence, but never overwrite its completion.
-          if (!archived) {
-            const { error: raceArchiveError } = await db.from('signature_requests').update({ archived_at: now, archived_by: user.userId })
-              .eq('id', request.id).is('archived_at', null);
-            if (raceArchiveError) return json({ error: 'ביטול המפגש נכשל' }, 500);
+          if (request.docuseal_submission_id && !await discardProvisionedSubmission(request.docuseal_submission_id)) {
+            return json({ error: 'לא ניתן למחוק את המסמך כרגע. נסו שוב.' }, 502);
           }
+          if (isSignedRequestPath(request.company_id, request.driver_id, request.id, request.signed_file_path)) {
+            const { error: storageError } = await db.storage.from('documents').remove([request.signed_file_path]);
+            if (storageError) return json({ error: 'מחיקת קובץ המסמך נכשלה' }, 500);
+          }
+          const { error: requestError } = await db.from('signature_requests').delete().eq('id', request.id);
+          if (requestError) return json({ error: 'מחיקת המפגש נכשלה' }, 500);
         }
       }
-      const { error } = await db.from('checklist_meetings').update({ status: 'cancelled', cancelled_at: now, cancelled_by: user.userId }).eq('id', meeting.id);
-      if (error) return json({ error: 'ביטול המפגש נכשל' }, 500);
-      if (!await restoreScheduleAfterCancellation(db, meeting.id, user.userId, now)) {
-        return json({ error: 'המפגש בוטל, אך שחזור מועד המפגש הבא נכשל' }, 500);
+
+      if (!await restoreScheduleAfterCancellation(db, meeting.id, user.userId, new Date().toISOString())) {
+        return json({ error: 'מחיקת המפגש נכשלה. נסו שוב.' }, 500);
       }
-      return json({ success: true });
+      const { error } = await db.from('checklist_meetings').delete().eq('id', meeting.id);
+      if (error) return json({ error: 'מחיקת המפגש נכשלה' }, 500);
+      return json({ success: true, removed: true });
     }
 
     // ── set-next ──────────────────────────────────────────────────────

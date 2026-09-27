@@ -23,6 +23,7 @@ import { cancelMeeting, formatIsoDay, isChecklistTemplate, type MeetingRow } fro
 import { useNextMeeting } from '../../checklist/useNextMeeting';
 import { NextMeetingCard } from '../../checklist/NextMeetingCard';
 import { showAlert } from '../../../lib/platformAlert';
+import { eraseSigningRequest, eraseWarning } from '../../../lib/signingSend';
 
 type FolderStatus = ReturnType<typeof signingFolderStatus>;
 const STATUS_LABEL: Record<FolderStatus, string> = { pending: 'ממתין לחתימה', completed: 'נחתם', failed: 'דורש טיפול', empty: 'לא נשלח' };
@@ -215,12 +216,12 @@ function SigningFolderModal({
   const askCancel = (meeting: MeetingRow) => {
     const draft = meeting.status === 'draft';
     showAlert(
-      draft ? 'למחוק את הטיוטה?' : 'לבטל את המפגש?',
-      draft ? 'מה שסומן בטיוטה יימחק.' : 'המסמך יסומן ״בוטל״ ויישאר ברשומות, והנהג לא יחתום עליו.',
+      draft ? 'למחוק את הטיוטה?' : 'למחוק את המפגש?',
+      draft ? 'מה שסומן בטיוטה יימחק.' : 'המפגש והמסמך שלו יימחקו לגמרי, גם אצל הנהג. אי אפשר לשחזר אותם.',
       [
         { text: 'השארה', style: 'cancel' },
         {
-          text: draft ? 'מחיקת הטיוטה' : 'ביטול המפגש',
+          text: draft ? 'מחיקת הטיוטה' : 'מחיקת המפגש',
           style: 'destructive',
           onPress: () => {
             setOpening(`cancel:${meeting.id}`);
@@ -229,12 +230,29 @@ function SigningFolderModal({
                 await Promise.all([meetings.reload(), next.reload()]);
                 await onChanged();
               })
-              .catch((err: Error) => setMessage(err?.message || 'הביטול נכשל. נסו שוב.'))
+              .catch((err: Error) => setMessage(err?.message || 'המחיקה נכשלה. נסו שוב.'))
               .finally(() => setOpening(''));
           },
         },
       ],
     );
+  };
+
+  const askErase = (item: SignatureRequest) => {
+    showAlert('למחוק את המסמך?', eraseWarning(item.status, null), [
+      { text: 'השארה', style: 'cancel' },
+      {
+        text: 'מחיקת המסמך',
+        style: 'destructive',
+        onPress: () => {
+          setOpening(`erase:${item.id}`);
+          eraseSigningRequest(companyId, item.id)
+            .then(onChanged)
+            .catch((err: Error) => setMessage(err?.message || 'המחיקה נכשלה. נסו שוב.'))
+            .finally(() => setOpening(''));
+        },
+      },
+    ]);
   };
 
   // Same refresh the full signing page runs: pull the live DocuSeal state of
@@ -417,9 +435,14 @@ function SigningFolderModal({
                         : 'השליחה לא אושרה — ניתן לנסות שוב'}
                     </DText>
                   </View>
-                  {meeting && !cancelled && canSend && (
-                    <HoverPressable onPress={() => askCancel(meeting)} disabled={!!opening} accessibilityLabel="ביטול המפגש" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
-                      <DText weight="semiBold" style={styles.rowDanger}>ביטול</DText>
+                  {meeting && canSend && (
+                    <HoverPressable onPress={() => askCancel(meeting)} disabled={!!opening} accessibilityLabel="מחיקת המפגש" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
+                      <DText weight="semiBold" style={styles.rowDanger}>מחיקה</DText>
+                    </HoverPressable>
+                  )}
+                  {!meeting && canSend && (
+                    <HoverPressable onPress={() => askErase(item)} disabled={!!opening} accessibilityLabel="מחיקת המסמך" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
+                      <DText weight="semiBold" style={styles.rowDanger}>{opening === `erase:${item.id}` ? 'מוחק…' : 'מחיקה'}</DText>
                     </HoverPressable>
                   )}
                   {ready && meeting && canSend && (

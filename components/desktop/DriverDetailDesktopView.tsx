@@ -329,12 +329,12 @@ export function DriverDetailDesktopView({
           <View style={styles.card}>
             <DetailRow
               first
-              label="שם מלא"
+              label="שם מלא" focusId="full_name"
               value={driver?.full_name?.trim() || null}
               onPress={() => setEditor(textEditor('שם מלא', driver?.full_name, (v) => onSaveField({ full_name: v.trim() }), { validate: (v) => (v.trim() ? null : 'זה שדה חובה') }))}
             />
             <DetailRow
-              label="טלפון נייד"
+              label="טלפון נייד" focusId="phone"
               value={driver?.phone || null}
               ltr
               accessory={driver?.phone ? <DText style={styles.rowNote} numberOfLines={1}>גם שם המשתמש לאפליקציה</DText> : undefined}
@@ -355,7 +355,7 @@ export function DriverDetailDesktopView({
               }))}
             />
             <DetailRow
-              label="תעודת זהות"
+              label="תעודת זהות" focusId="national_id"
               value={driver?.national_id ? (showNationalId ? driver.national_id : maskNationalId(driver.national_id)) : null}
               ltr
               accessory={driver?.national_id ? (
@@ -377,15 +377,15 @@ export function DriverDetailDesktopView({
               }))}
             />
             <DetailRow
-              label="תאריך לידה"
+              label="תאריך לידה" focusId="birth_date"
               value={driver?.birth_date ? formatDate(driver.birth_date) : null}
               ltr
               accessory={age != null ? <DText style={styles.rowNote}>בן {age}</DText> : undefined}
               onPress={() => setEditor(dateEditor('תאריך לידה', driver?.birth_date, (v) => onSaveField({ birth_date: v })))}
             />
-            <DetailRow label="כתובת" value={driver?.address || null} onPress={() => setEditor(textEditor('כתובת', driver?.address, (v) => onSaveField({ address: v.trim() || null })))} />
+            <DetailRow label="כתובת" focusId="address" value={driver?.address || null} onPress={() => setEditor(textEditor('כתובת', driver?.address, (v) => onSaveField({ address: v.trim() || null })))} />
             <DetailRow
-              label="טלפון בבית"
+              label="טלפון בבית" focusId="home_phone"
               value={driver?.home_phone || null}
               ltr
               onPress={() => setEditor(textEditor('טלפון בבית', driver?.home_phone, (v) => onSaveField({ home_phone: v.trim() || null }), {
@@ -395,12 +395,12 @@ export function DriverDetailDesktopView({
               }))}
             />
             <DetailRow
-              label="מצב משפחתי"
+              label="מצב משפחתי" focusId="marital_status"
               value={driver?.marital_status || null}
               onPress={() => setEditor({ kind: 'select', label: 'מצב משפחתי', raw: driver?.marital_status || null, options: optionsWithCurrent(MARITAL_STATUS_OPTIONS, driver?.marital_status), allowClear: true, placeholder: 'לא נבחר', onSave: (v) => onSaveField({ marital_status: v }) })}
             />
             <DetailRow
-              label="השכלה"
+              label="השכלה" focusId="education"
               value={driver?.education || null}
               onPress={() => setEditor({ kind: 'select', label: 'השכלה', raw: driver?.education || null, options: optionsWithCurrent(EDUCATION_OPTIONS, driver?.education), allowClear: true, placeholder: 'לא נבחרה', onSave: (v) => onSaveField({ education: v }) })}
             />
@@ -433,14 +433,14 @@ export function DriverDetailDesktopView({
             </HoverPressable>
             <DetailRow
               compact
-              label="מספר רישיון"
+              label="מספר רישיון" focusId="license_number"
               value={driver?.license_number || null}
               ltr
               onPress={() => setEditor(textEditor('מספר רישיון', driver?.license_number, (v) => onSaveField({ license_number: v.trim() || null }), { ltr: true, numeric: true }))}
             />
             <DetailRow
               compact
-              label="דרגות"
+              label="דרגות" focusId="license_classes"
               value={classesLabel ? classesLabel.replace(',', ', ') : null}
               ltr
               onPress={() => setEditor({
@@ -455,8 +455,8 @@ export function DriverDetailDesktopView({
                 onSave: (first, second) => onSaveField({ license_classes: joinLicenseClasses(first ?? '', second ?? '') || null }),
               })}
             />
-            <DetailRow compact label="תאריך הנפקה" value={driver?.license_issue_date ? formatDate(driver.license_issue_date) : null} ltr onPress={() => setEditor(dateEditor('תאריך הנפקה', driver?.license_issue_date, (v) => onSaveField({ license_issue_date: v })))} />
-            <DetailRow compact label="בתוקף עד" value={licenseExpiry ? formatDate(licenseExpiry) : null} ltr valueColor={licenseColor} onPress={() => setEditor(dateEditor('תוקף הרישיון', licenseExpiry, (v) => onSaveField({ license_expiry: v })))} />
+            <DetailRow compact label="תאריך הנפקה" focusId="license_issue_date" value={driver?.license_issue_date ? formatDate(driver.license_issue_date) : null} ltr onPress={() => setEditor(dateEditor('תאריך הנפקה', driver?.license_issue_date, (v) => onSaveField({ license_issue_date: v })))} />
+            <DetailRow compact label="בתוקף עד" focusId="license_expiry" value={licenseExpiry ? formatDate(licenseExpiry) : null} ltr valueColor={licenseColor} onPress={() => setEditor(dateEditor('תוקף הרישיון', licenseExpiry, (v) => onSaveField({ license_expiry: v })))} />
           </View>
         </View>
       </View>
@@ -465,14 +465,14 @@ export function DriverDetailDesktopView({
         <View style={styles.mainCell}>
           <GroupLabel>עבודה בחברה</GroupLabel>
           <View style={styles.card}>
-            <DetailRow first label="מספר עובד" value={driver?.employee_number || null} ltr onPress={() => setEditor(textEditor('מספר עובד', driver?.employee_number, (v) => onSaveField({ employee_number: v.trim() || null }), { ltr: true }))} />
+            <DetailRow first label="מספר עובד" focusId="employee_number" value={driver?.employee_number || null} ltr onPress={() => setEditor(textEditor('מספר עובד', driver?.employee_number, (v) => onSaveField({ employee_number: v.trim() || null }), { ltr: true }))} />
             <DetailRow
-              label="מחלקה"
+              label="מחלקה" focusId="department_id"
               value={departmentName}
               onPress={() => setEditor({ kind: 'select', label: 'מחלקה', raw: driver?.department_id ?? null, options: departmentOptions, allowClear: true, placeholder: 'ללא מחלקה', onSave: (v) => onSaveField({ department_id: v }) })}
             />
             <DetailRow
-              label="תחילת העסקה"
+              label="תחילת העסקה" focusId="employment_start_date"
               value={driver?.employment_start_date ? formatDate(driver.employment_start_date) : null}
               ltr
               accessory={inCompany ? <DText style={styles.rowNote}>{`${inCompany.value} ${inCompany.unit}`}</DText> : undefined}

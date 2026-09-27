@@ -9,6 +9,7 @@ function notification(fields: Partial<NotificationTargetFields>): NotificationTa
     folder_key: null,
     message: '',
     company_id: 'c1',
+    signature_request_id: null,
     ...fields,
   };
 }
@@ -17,22 +18,32 @@ const noVehicle = async () => null;
 const vehicleFromRow = async (n: NotificationTargetFields) => n.vehicle_id ?? null;
 
 describe('driverNotificationTarget', () => {
-  it('opens the signing documents for a signing request', () => {
+  it('goes straight to the request to sign', () => {
+    expect(driverNotificationTarget(notification({ notification_type: 'signature_request_assigned', signature_request_id: 'r1' })))
+      .toEqual({ screen: 'DriverSigningDocuments', params: { requestId: 'r1' } });
     expect(driverNotificationTarget(notification({ notification_type: 'signature_request_assigned' })))
       .toEqual({ screen: 'DriverSigningDocuments' });
   });
 
-  it('opens the vehicle screen for assignments, odometer and every vehicle alert', () => {
-    for (const type of ['vehicle_assignment', 'driver_odometer_update', 'vehicle_child_detection_expiry', 'vehicle_service_due']) {
-      expect(driverNotificationTarget(notification({ notification_type: type }))).toEqual({ screen: 'DriverVehicle' });
-    }
+  it('opens the vehicle at the folder, odometer or service it is about', () => {
+    expect(driverNotificationTarget(notification({ notification_type: 'vehicle_assignment' }))).toEqual({ screen: 'DriverVehicle' });
+    expect(driverNotificationTarget(notification({ notification_type: 'vehicle_annual_test_expiry', folder_key: 'annual_test' })))
+      .toEqual({ screen: 'DriverVehicle', params: { focus: 'annual_test' } });
+    expect(driverNotificationTarget(notification({ notification_type: 'vehicle_service_due' })))
+      .toEqual({ screen: 'DriverVehicle', params: { focus: 'service' } });
+    expect(driverNotificationTarget(notification({ notification_type: 'driver_odometer_update' })))
+      .toEqual({ screen: 'DriverVehicle', params: { focus: 'odometer' } });
   });
 
-  it('opens the profile when the manager changed their details', () => {
-    expect(driverNotificationTarget(notification({ notification_type: 'driver_profile_updated_by_manager' })))
+  it('opens the profile at the fields the manager changed', () => {
+    expect(driverNotificationTarget(notification({
+      notification_type: 'driver_profile_updated_by_manager',
+      message: 'המנהל עדכן בתיק שלך: טלפון, תוקף רישיון',
+    }))).toEqual({ screen: 'DriverProfile', params: { focus: 'phone,license_expiry' } });
+    expect(driverNotificationTarget(notification({ notification_type: 'driver_profile_updated_by_manager', message: 'שונה משהו' })))
       .toEqual({ screen: 'DriverProfile' });
     expect(driverNotificationTarget(notification({ notification_type: 'license_update_reviewed' })))
-      .toEqual({ screen: 'DriverProfile' });
+      .toEqual({ screen: 'DriverProfile', params: { focus: 'license_number,license_classes,license_expiry' } });
   });
 });
 
@@ -63,9 +74,25 @@ describe('adminNotificationTarget', () => {
       .resolves.toEqual({ screen: 'AdminHome' });
   });
 
-  it('opens the driver details a driver edited', async () => {
+  it('opens the driver at the fields they edited', async () => {
+    await expect(adminNotificationTarget(notification({ notification_type: 'driver_profile_update', actor_id: 'd1', message: 'דני עדכן/ה: כתובת, טלפון בבית' }), noVehicle))
+      .resolves.toEqual({ screen: 'DriverDetail', params: { driverId: 'd1', focus: 'address,home_phone' } });
     await expect(adminNotificationTarget(notification({ notification_type: 'driver_profile_update', actor_id: 'd1' }), noVehicle))
-      .resolves.toEqual({ screen: 'DriverPersonalDetails', params: { driverId: 'd1' } });
+      .resolves.toEqual({ screen: 'DriverDetail', params: { driverId: 'd1' } });
+  });
+
+  it('opens the odometer and service on the vehicle', async () => {
+    await expect(adminNotificationTarget(notification({ notification_type: 'driver_odometer_update', actor_id: 'd1', vehicle_id: 'v1' }), vehicleFromRow))
+      .resolves.toEqual({ screen: 'VehicleDetail', params: { vehicleId: 'v1', tab: 'maintenance', focus: 'odometer' } });
+    await expect(adminNotificationTarget(notification({ notification_type: 'driver_odometer_update', actor_id: 'd1' }), noVehicle))
+      .resolves.toEqual({ screen: 'DriverDetail', params: { driverId: 'd1' } });
+    await expect(adminNotificationTarget(notification({ notification_type: 'vehicle_service_due', vehicle_id: 'v1' }), vehicleFromRow))
+      .resolves.toEqual({ screen: 'VehicleDetail', params: { vehicleId: 'v1', tab: 'maintenance', focus: 'service' } });
+  });
+
+  it('opens the signing request the driver got', async () => {
+    await expect(adminNotificationTarget(notification({ notification_type: 'signature_request_assigned', recipient_id: 'd1', signature_request_id: 'r1' }), noVehicle))
+      .resolves.toEqual({ screen: 'DriverSigningDocuments', params: { driverId: 'd1', requestId: 'r1' } });
   });
 
   it('opens the license for a license update request', async () => {
