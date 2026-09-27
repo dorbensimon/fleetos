@@ -46,6 +46,7 @@ import LegalScreen from './screens/LegalScreen';
 import { LegalConsentGate } from './components/legal/LegalConsentGate';
 import { LEGAL_DOCUMENTS, isLegalDocId } from './lib/legal/documents';
 import SignedDocumentsScreen from './screens/admin/SignedDocumentsScreen';
+import ChecklistMeetingScreen from './screens/admin/ChecklistMeetingScreen';
 import NotificationsScreen from './screens/admin/NotificationsScreen';
 import AdminDocumentSigningScreen from './screens/admin/AdminDocumentSigningScreen';
 import GlobalSigningTemplatesScreen from './screens/GlobalSigningTemplatesScreen';
@@ -119,6 +120,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       AdminProfile: 'admin/profile',
       CompanySettings: 'admin/company-settings',
       SignedDocuments: 'signed-documents',
+      ChecklistMeeting: 'drivers/:driverId/meeting',
       Notifications: 'notifications',
       AdminDocumentSigning: 'documents/signing',
       GlobalSigningTemplates: 'owner/signing-templates',
@@ -300,6 +302,7 @@ export default function App() {
               <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
               <Stack.Screen name="CompanySettings" component={CompanySettingsScreen} />
               <Stack.Screen name="SignedDocuments" component={SignedDocumentsScreen} />
+              <Stack.Screen name="ChecklistMeeting" component={ChecklistMeetingScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               <Stack.Screen name="AdminDocumentSigning" component={AdminDocumentSigningScreen} />
               <Stack.Screen name="GlobalSigningTemplates" component={GlobalSigningTemplatesScreen} />

@@ -18,6 +18,9 @@ export type SigningTemplate = {
   status: 'draft' | 'ready';
   archived_at?: string | null;
   created_at: string;
+  /** 'checklist': a "רשימת סעיפים" form, filled in a meeting instead of sent as is (lib/checklistForms.ts). */
+  form_kind?: 'document' | 'checklist';
+  form_content?: unknown;
 };
 
 export type SignatureRequest = {

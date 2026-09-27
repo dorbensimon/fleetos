@@ -228,7 +228,7 @@ export const SIGNING_CSS = `
 .sd-stage { animation: sd-stage-in 480ms var(--sd-ease) both; }
 
 /* step 1 */
-.sd-start { max-width: 820px; margin: 0 auto; padding: 40px 24px 60px; }
+.sd-start { max-width: 900px; margin: 0 auto; padding: 40px 24px 60px; }
 .sd-q { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.015em; }
 .sd-q-sub { margin: 0 0 18px; font-size: 16px; color: var(--sd-ink-2); }
 .sd-name {
@@ -242,7 +242,8 @@ export const SIGNING_CSS = `
 .sd-chip { height: 38px; padding: 0 16px; border-radius: 19px; background: #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08); font-size: 15px; color: var(--sd-ink-2); transition: background-color 160ms ease, transform 160ms var(--sd-ease); }
 .sd-chip:active { transform: scale(0.96); }
 @media (hover: hover) and (pointer: fine) { .sd-chip:hover { background: var(--sd-tint-soft); color: var(--sd-tint-deep); } }
-.sd-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 40px; }
+.sd-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 40px; }
+.sd-choice-badge { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; margin-inline-start: 10px; border-radius: 999px; background: rgba(18,128,92,0.12); color: #12805C; font-size: 13px; vertical-align: middle; }
 .sd-choice {
   position: relative; text-align: right; border-radius: 26px; padding: 26px; background: #fff; min-height: 230px;
   box-shadow: var(--sd-depth-1), inset 0 0 0 1px rgba(0,0,0,0.05);
@@ -457,6 +458,28 @@ export const SIGNING_CSS = `
 @keyframes sd-fan-1 { from { transform: rotate(0) scale(0.95); opacity: 0; } }
 @keyframes sd-front { from { transform: translateY(24px) rotate(0); opacity: 0; } }
 @keyframes sd-sign { to { stroke-dashoffset: 0; } }
+.sd-drv-state.sd-late { background: rgba(255,69,58,0.12); color: #B42318; }
+
+/* ---------- meetings due (recurring checklist forms) ---------- */
+.sd-due { background: #fff; border-radius: 20px; box-shadow: var(--sd-depth-1); overflow: hidden; }
+.sd-due-row { display: flex; align-items: center; gap: 14px; min-height: 68px; padding: 10px 18px; border-bottom: 1px solid #EEF1F4; animation: sd-due-in 260ms var(--sd-ease) both; }
+.sd-due-row:last-of-type { border-bottom: 0; }
+@keyframes sd-due-in { from { opacity: 0; transform: translateY(6px); } }
+.sd-due-mark { flex: none; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; }
+.sd-due-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sd-due-name { font-size: 17px; }
+.sd-due-form { font-size: 14px; color: var(--sd-ink-3); }
+.sd-when { flex: none; display: inline-flex; align-items: center; gap: 5px; font-size: 14px; padding: 6px 12px; border-radius: 999px; }
+.sd-when-late { background: rgba(255,69,58,0.12); color: #B42318; }
+.sd-when-today, .sd-when-soon { background: rgba(255,149,0,0.14); color: #9A5200; }
+.sd-when-later { background: rgba(92,103,115,0.08); color: var(--sd-ink-2); }
+.sd-first { flex: none; font-size: 13px; padding: 4px 10px; border-radius: 999px; background: rgba(14,159,175,0.1); color: #0B7B87; }
+.sd-due-more { width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--sd-tint-deep); font-size: 15.5px; border-top: 1px solid #EEF1F4; }
+@media (hover: hover) and (pointer: fine) { .sd-due-more:hover { background: rgba(0,136,204,0.04); } }
+.sd-repeat-bar { max-width: 880px; margin: 0 auto 18px; background: #fff; border-radius: 18px; box-shadow: var(--sd-depth-1); padding: 16px 18px; }
+.sd-repeat-bar h3 { margin: 0 0 10px; font-size: 16px; }
+.sd-repeat-bar p { margin: 10px 0 0; font-size: 14px; color: var(--sd-ink-3); }
+@media (max-width: 760px) { .sd-due-row { flex-wrap: wrap; } .sd-due-row .sd-btn { width: 100%; } }
 @keyframes sd-pop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
 @keyframes sd-drop { 0% { transform: scale(0.85); opacity: 0; } 60% { transform: scale(1.04); opacity: 1; } 100% { transform: scale(1); } }
 @keyframes sd-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }

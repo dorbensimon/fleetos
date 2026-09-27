@@ -20,6 +20,7 @@ export function timeAgo(iso: string): string {
 
 export function notificationIcon(type: string | null): keyof typeof Ionicons.glyphMap {
   if (type === 'signature_request_assigned') return 'create-outline';
+  if (type === 'driver_meeting_due') return 'people-outline';
   if (type === 'vehicle_assignment') return 'car-outline';
   if (type?.startsWith('vehicle_')) return 'warning-outline';
   if (type?.startsWith('license_update')) return 'card-outline';
@@ -37,5 +38,7 @@ export function notificationTone(n: Pick<Notification, 'notification_type' | 'me
   const type = n.notification_type;
   if (isVehicleFolderNotification(type)) return n.message.includes(' פג ב-') ? 'bad' : 'warn';
   if (type === 'vehicle_service_due' || type === 'license_update_requested') return 'warn';
+  // Meeting reminders (supabase/sql/97): a week ahead is a heads-up, due or late is urgent.
+  if (type === 'driver_meeting_due') return n.message.includes('המועד בעוד') || n.message.includes('בשבוע הקרוב') ? 'warn' : 'bad';
   return 'brand';
 }

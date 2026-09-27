@@ -8,6 +8,8 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { SignedDocumentsDesktopView } from '../../components/desktop/signing/SignedDocumentsDesktopView';
 import { getSigningTemplatePreviewSession, listSigningTemplates, type SigningTemplate } from '../../lib/docuseal';
 import { SignedDocumentsMobile } from './mobile/SignedDocumentsMobile';
+import { loadMeetingPlan, type PlanRow } from '../../lib/meetingPlan';
+import { useFocusEffect } from '@react-navigation/native';
 
 /**
  * The company's signing documents. The desktop page (reached from the
@@ -16,26 +18,38 @@ import { SignedDocumentsMobile } from './mobile/SignedDocumentsMobile';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'SignedDocuments'>;
 
-export default function SignedDocumentsScreen({ navigation }: Props) {
+export default function SignedDocumentsScreen({ navigation, route }: Props) {
   const { company, loading: companyLoading } = useCompany();
   const isDesktop = useIsDesktop();
+  const openMeeting = route.params?.openMeeting;
+  const meetingOpened = useCallback(() => navigation.setParams({ openMeeting: undefined }), [navigation]);
 
   if (isDesktop) {
     return (
       <DesktopShell active="SignedDocuments" breadcrumbs={['ניהול', 'מסמכים חתומים']}>
-        {company ? <SignedDocumentsDesktopView companyId={company.id} /> : null}
+        {company ? <SignedDocumentsDesktopView companyId={company.id} openMeetingTemplateId={openMeeting} onMeetingOpened={meetingOpened} /> : null}
       </DesktopShell>
     );
   }
-  return <SignedDocumentsPhone navigation={navigation} companyId={company?.id ?? null} companyLoading={companyLoading} />;
+  return <SignedDocumentsPhone navigation={navigation} companyId={company?.id ?? null} companyLoading={companyLoading} openMeeting={openMeeting} onMeetingOpened={meetingOpened} />;
 }
 
-function SignedDocumentsPhone({ navigation, companyId, companyLoading }: { navigation: Props['navigation']; companyId: string | null; companyLoading: boolean }) {
+function SignedDocumentsPhone({
+  navigation, companyId, companyLoading, openMeeting, onMeetingOpened,
+}: { navigation: Props['navigation']; companyId: string | null; companyLoading: boolean; openMeeting?: string; onMeetingOpened: () => void }) {
   const insets = useSafeAreaInsets();
   const [templates, setTemplates] = useState<SigningTemplate[] | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [plan, setPlan] = useState<PlanRow[]>([]);
   const request = useRef(0);
+
+  // Who needs a meeting: fresh every time the screen is shown (after a meeting, too).
+  const loadPlan = useCallback(async () => {
+    if (!companyId) return;
+    setPlan(await loadMeetingPlan(companyId).catch(() => []));
+  }, [companyId]);
+  useFocusEffect(useCallback(() => { void loadPlan(); }, [loadPlan]));
 
   const load = useCallback(async () => {
     if (!companyId) return;
@@ -69,7 +83,7 @@ function SignedDocumentsPhone({ navigation, companyId, companyLoading }: { navig
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);
-        await load();
+        await Promise.all([load(), loadPlan()]);
         setRefreshing(false);
       }}
       onRetry={() => {
@@ -80,6 +94,10 @@ function SignedDocumentsPhone({ navigation, companyId, companyLoading }: { navig
       viewTarget={async (template) => ({ ...(await getSigningTemplatePreviewSession(template.id)), title: template.title })}
       onOpenViewer={(target) => navigation.navigate('DocusealWebView', target)}
       onDeleted={(template) => setTemplates((prev) => (prev ?? []).filter((t) => t.id !== template.id))}
+      onStartMeeting={(templateId, driverId) => navigation.navigate('ChecklistMeeting', { driverId, templateId })}
+      plan={plan}
+      openMeeting={openMeeting}
+      onMeetingOpened={onMeetingOpened}
     />
   );
 }

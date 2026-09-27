@@ -19,17 +19,21 @@ export function ReportsDesktopView({
   onToggle,
   driverCategories,
   vehicleCategories,
+  meetingCategories,
   exportingCategory,
   onSelectDriverCategory,
   onSelectVehicleCategory,
+  onSelectMeetingCategory,
 }: {
-  open: 'drivers' | 'vehicles' | null;
-  onToggle: (kind: 'drivers' | 'vehicles') => void;
+  open: 'drivers' | 'vehicles' | 'meetings' | null;
+  onToggle: (kind: 'drivers' | 'vehicles' | 'meetings') => void;
   driverCategories: Category[];
   vehicleCategories: Category[];
+  meetingCategories: Category[];
   exportingCategory: string | null;
   onSelectDriverCategory: (value: string) => void;
   onSelectVehicleCategory: (value: string) => void;
+  onSelectMeetingCategory: (value: string) => void;
 }) {
   return (
     <View style={styles.wrap}>
@@ -54,6 +58,16 @@ export function ReportsDesktopView({
         categories={vehicleCategories}
         exportingCategory={exportingCategory}
         onSelect={onSelectVehicleCategory}
+      />
+      <ReportGroup
+        icon="chatbubbles-outline"
+        title="מפגשים עם נהגים"
+        subtitle="מי נפגש, מי ממתין לחתימה ומי צריך מפגש"
+        open={open === 'meetings'}
+        onPress={() => onToggle('meetings')}
+        categories={meetingCategories}
+        exportingCategory={exportingCategory}
+        onSelect={onSelectMeetingCategory}
       />
     </View>
   );

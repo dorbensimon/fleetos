@@ -7,6 +7,7 @@ import { listDriverSigningRequests, listSigningTemplates } from '../../lib/docus
 import { useCompany } from '../../lib/CompanyContext';
 import { buildSigningFolders, signingFolderStatus, type SigningFolder } from '../../lib/signingFolders';
 import { DK, DKText, KitSection, ListRow, STATUS } from '../driverKit';
+import { isChecklistTemplate } from '../../lib/checklistForms';
 import { DText, HoverPressable, StatusPill } from '../desktop/primitives';
 import { DESKTOP_COLORS, webOnly } from '../desktop/desktopTheme';
 
@@ -69,7 +70,7 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = 'ט�
         ? { label: 'נחתם', tone: 'ok' as const, icon: 'checkmark-done' as const }
         : status === 'failed'
           ? { label: 'השליחה לא הושלמה', tone: 'expired' as const, icon: 'alert-circle' as const }
-          : { label: driverView ? 'ריק' : 'לא נשלח — אפשר לשלוח', tone: 'missing' as const, icon: 'folder-outline' as const };
+          : { label: driverView ? 'ריק' : isChecklistTemplate(folder.template) ? 'עוד לא התקיים מפגש' : 'לא נשלח — אפשר לשלוח', tone: 'missing' as const, icon: 'folder-outline' as const };
   };
   return (
     <KitSection title={title ?? undefined}>
