@@ -89,7 +89,7 @@ export function DesktopShell({
       ]
     : isOwner
     ? [
-        { key: 'OwnerHome', label: 'חברות', icon: 'business' },
+        { key: 'OwnerHome', label: 'מרכז הבקרה', icon: 'business' },
         { key: 'GlobalSigningTemplates', label: 'תבניות גלובליות', icon: 'document-text' },
       ]
     : isDriver
@@ -141,6 +141,7 @@ export function DesktopShell({
       case 'רכבים':
         return () => navigation.navigate('AdminHome', { mode: 'vehicles' });
       case 'חברות':
+      case 'מרכז הבקרה':
         return () => navigation.navigate('OwnerHome');
       case 'חשבון':
         return () => navigation.navigate(isDriver ? 'DriverProfile' : 'AdminProfile');
@@ -173,7 +174,7 @@ export function DesktopShell({
         </View>
         <View style={styles.companyBlock}>
           <DText weight="semiBold" style={styles.companyName} numberOfLines={1}>
-            {company?.name ?? ''}
+            {company?.name ?? (isOwner ? 'ניהול המערכת' : '')}
           </DText>
           <DText style={styles.companyRole}>{roleLabel}</DText>
         </View>
