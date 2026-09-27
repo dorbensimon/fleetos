@@ -4,12 +4,15 @@ import {
   Easing,
   Keyboard,
   Platform,
+  Pressable,
   StyleSheet,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { NavigationContext, StackActions, type NavigationContainerRefWithCurrent } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,7 +22,7 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import type { RootStackParamList } from '../../navigation/types';
 import { DK, DK_FONT } from './theme';
 // Runtime-only uses: this file is imported by index.tsx itself.
-import { DKText, Pressy, useReducedMotion } from './index';
+import { DKText, useReducedMotion } from './index';
 
 /**
  * The phone's bottom bar: home and the menu, on every signed-in screen.
@@ -35,8 +38,9 @@ type Route = keyof RootStackParamList;
 const NATIVE_DRIVER = Platform.OS !== 'web';
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
-const BAR_HEIGHT = 64;
-const BAR_WIDTH = 236;
+const BAR_HEIGHT = 62;
+const BAR_WIDTH = 228;
+const BAR_PAD = 5;
 /** Room a page leaves under its content so the bar never covers its end. */
 export const TAB_BAR_SPACE = 76;
 
@@ -198,6 +202,11 @@ export function useTabBarHold(active: boolean) {
 }
 
 // ── The bar ───────────────────────────────────────────────────────────────
+//
+// A capsule of smoked glass floating over the page. The selected tab sits
+// under a lens of brand-tinted glass; moving between tabs, the lens flows
+// across like a drop (it stretches on the way and settles round), a touch
+// swells it, and the arriving icon springs into place.
 
 type Tab = 'home' | 'menu';
 
@@ -265,34 +274,61 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
   const visible =
     enabled && !!route && !HIDDEN_ROUTES.has(route) && !keyboard && !(ctx?.scrollHidden ?? false) && (ctx?.holds ?? 0) === 0;
 
+  // `shown` is shared (the add button rides on it) so it moves without
+  // overshoot; the bar's own rise is a spring that lands with a little life.
   const shown = ctx?.shown;
+  const rise = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (!shown) return;
     Animated.timing(shown, {
       toValue: visible ? 1 : 0,
       // Leaving is quicker than arriving: out of the way at once, back with care.
-      duration: visible ? 340 : 220,
+      duration: visible ? 320 : 200,
       easing: EASE_OUT,
       useNativeDriver: NATIVE_DRIVER,
     }).start();
-  }, [shown, visible]);
+    (visible
+      ? Animated.spring(rise, { toValue: 1, stiffness: 300, damping: 22, mass: 1, useNativeDriver: NATIVE_DRIVER })
+      : Animated.timing(rise, { toValue: 0, duration: 200, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER })
+    ).start();
+  }, [shown, rise, visible]);
 
   const active: Tab | null = route === home ? 'home' : route === 'Menu' ? 'menu' : null;
-  const indicator = useRef(new Animated.Value(active === 'menu' ? 1 : 0)).current;
-  const indicatorOn = useRef(new Animated.Value(active ? 1 : 0)).current;
+  const lensAt = useRef(new Animated.Value(active === 'menu' ? 1 : 0)).current;
+  const lensOn = useRef(new Animated.Value(active ? 1 : 0)).current;
+  const stretch = useRef(new Animated.Value(0)).current;
+  const swell = useRef(new Animated.Value(0)).current;
+  const lastActive = useRef(active);
   useEffect(() => {
+    const from = lastActive.current;
+    lastActive.current = active;
     if (active) {
-      Animated.spring(indicator, {
+      Animated.spring(lensAt, {
         toValue: active === 'menu' ? 1 : 0,
         useNativeDriver: NATIVE_DRIVER,
-        // Critically damped: it lands, it doesn't wobble.
-        stiffness: 420,
-        damping: 40,
+        stiffness: reduce ? 900 : 320,
+        damping: reduce ? 80 : 30,
         mass: 1,
       }).start();
+      // Tab to tab, the lens pulls long in flight and rounds off as it lands.
+      if (from && from !== active && !reduce) {
+        stretch.setValue(0);
+        Animated.sequence([
+          Animated.timing(stretch, { toValue: 1, duration: 130, easing: Easing.out(Easing.quad), useNativeDriver: NATIVE_DRIVER }),
+          Animated.spring(stretch, { toValue: 0, stiffness: 260, damping: 14, mass: 1, useNativeDriver: NATIVE_DRIVER }),
+        ]).start();
+      }
     }
-    Animated.timing(indicatorOn, { toValue: active ? 1 : 0, duration: 200, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER }).start();
-  }, [active, indicator, indicatorOn]);
+    Animated.timing(lensOn, { toValue: active ? 1 : 0, duration: 220, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER }).start();
+  }, [active, lensAt, lensOn, stretch, reduce]);
+
+  const press = (down: boolean) => {
+    if (reduce) return;
+    (down
+      ? Animated.timing(swell, { toValue: 1, duration: 140, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER })
+      : Animated.spring(swell, { toValue: 0, stiffness: 380, damping: 18, mass: 1, useNativeDriver: NATIVE_DRIVER })
+    ).start();
+  };
 
   if (!ctx || !enabled || !shown || !home) return null;
 
@@ -316,52 +352,172 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
     else navigationRef.navigate('Menu');
   };
 
-  const slot = (BAR_WIDTH - 10) / 2;
-  const translateY = shown.interpolate({ inputRange: [0, 1], outputRange: [reduce ? 0 : travel, 0] });
-  const scale = shown.interpolate({ inputRange: [0, 1], outputRange: [reduce ? 1 : 0.94, 1] });
+  const slot = (BAR_WIDTH - BAR_PAD * 2) / 2;
+  const translateY = rise.interpolate({ inputRange: [0, 1], outputRange: [reduce ? 0 : travel, 0] });
+  const barScale = rise.interpolate({ inputRange: [0, 1], outputRange: [reduce ? 1 : 0.9, 1] });
   // RTL: home sits on the right, the menu on the left.
-  const indicatorX = indicator.interpolate({ inputRange: [0, 1], outputRange: [0, -slot] });
-  const indicatorScale = indicatorOn.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1] });
+  const lensX = lensAt.interpolate({ inputRange: [0, 1], outputRange: [0, -slot] });
+  const lensScaleX = Animated.add(
+    Animated.add(lensOn.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }), stretch.interpolate({ inputRange: [0, 1], outputRange: [0, 0.34] })),
+    swell.interpolate({ inputRange: [0, 1], outputRange: [0, 0.08] })
+  );
+  const lensScaleY = Animated.add(
+    Animated.add(lensOn.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }), stretch.interpolate({ inputRange: [0, 1], outputRange: [0, -0.16] })),
+    swell.interpolate({ inputRange: [0, 1], outputRange: [0, 0.12] })
+  );
+  const sheen = swell.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
   return (
     <Animated.View
       pointerEvents={visible ? 'box-none' : 'none'}
-      style={[styles.host, { bottom, opacity: shown, transform: [{ translateY }, { scale }] }]}
+      style={[styles.host, { bottom, opacity: shown, transform: [{ translateY }, { scale: barScale }] }]}
       {...(Platform.OS === 'web' ? ({ role: 'navigation', 'aria-label': 'ניווט ראשי', 'aria-hidden': !visible } as object) : {})}
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
     >
-      <View style={styles.bar}>
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.indicator, { width: slot, opacity: indicatorOn, transform: [{ translateX: indicatorX }, { scale: indicatorScale }] }]}
-        />
-        <TabButton icon="home" label="בית" selected={active === 'home'} onPress={goHome} />
-        <TabButton icon="menu" label="תפריט" selected={active === 'menu'} onPress={goMenu} />
+      <View style={styles.shadow}>
+        <View style={styles.bar}>
+          <Glass />
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.lens,
+              { width: slot, opacity: lensOn, transform: [{ translateX: lensX }, { scaleX: lensScaleX }, { scaleY: lensScaleY }] },
+            ]}
+          >
+            <LinearGradient
+              colors={['rgba(140,168,255,0.55)', 'rgba(47,91,255,0.38)']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            {/* The rim light across the lens's upper edge. */}
+            <LinearGradient
+              colors={['rgba(255,255,255,0.42)', 'rgba(255,255,255,0)']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <Animated.View style={[StyleSheet.absoluteFill, styles.lensSheen, { opacity: sheen }]} />
+          </Animated.View>
+          <TabButton icon="home" label="בית" selected={active === 'home'} onPress={goHome} onPressChange={press} reduce={reduce} />
+          <TabButton icon="grid" label="תפריט" selected={active === 'menu'} onPress={goMenu} onPressChange={press} reduce={reduce} />
+        </View>
       </View>
     </Animated.View>
   );
 }
 
-function TabButton({ icon, label, selected, onPress }: { icon: IconName; label: string; selected: boolean; onPress: () => void }) {
-  const color = selected ? DK.onNight : 'rgba(255,255,255,0.62)';
-  const glyph = (selected || icon === 'menu' ? icon : `${icon}-outline`) as IconName;
+/** The glass itself: a live blur of the page behind, smoked, with light on its upper edge. */
+function Glass() {
   return (
-    <Pressy
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.glassClip]}>
+      {Platform.OS !== 'web' ? (
+        <BlurView tint={Platform.OS === 'ios' ? 'systemChromeMaterialDark' : 'dark'} intensity={70} style={StyleSheet.absoluteFill} />
+      ) : null}
+      <LinearGradient
+        colors={['rgba(30,52,104,0.74)', 'rgba(10,22,38,0.86)']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* A soft specular bloom where light would strike the capsule. */}
+      <LinearGradient
+        colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0)']}
+        start={{ x: 0.2, y: 0 }}
+        end={{ x: 0.55, y: 0.75 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={[StyleSheet.absoluteFill, styles.glassRim]} />
+    </View>
+  );
+}
+
+function TabButton({
+  icon,
+  label,
+  selected,
+  onPress,
+  onPressChange,
+  reduce,
+}: {
+  icon: 'home' | 'grid';
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  onPressChange: (down: boolean) => void;
+  reduce: boolean;
+}) {
+  const squeeze = useRef(new Animated.Value(1)).current;
+  const pop = useRef(new Animated.Value(selected ? 1 : 0)).current;
+  const [ring, setRing] = useState(false);
+
+  // The arriving icon springs up into the lens; the leaving one settles.
+  const wasSelected = useRef(selected);
+  useEffect(() => {
+    if (wasSelected.current === selected) return;
+    wasSelected.current = selected;
+    if (reduce) {
+      pop.setValue(selected ? 1 : 0);
+      return;
+    }
+    if (selected) {
+      pop.setValue(0);
+      Animated.spring(pop, { toValue: 1, stiffness: 340, damping: 13, mass: 1, useNativeDriver: NATIVE_DRIVER }).start();
+    } else {
+      Animated.timing(pop, { toValue: 0, duration: 180, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER }).start();
+    }
+  }, [selected, pop, reduce]);
+
+  const to = (value: number) =>
+    (value < 1
+      ? Animated.timing(squeeze, { toValue: value, duration: 110, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER })
+      : Animated.spring(squeeze, { toValue: 1, stiffness: 420, damping: 16, mass: 1, useNativeDriver: NATIVE_DRIVER })
+    ).start();
+
+  const iconScale = Animated.multiply(squeeze, pop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }));
+  const iconLift = pop.interpolate({ inputRange: [0, 1], outputRange: [0, -1] });
+  const color = selected ? '#FFFFFF' : 'rgba(255,255,255,0.58)';
+  const glyph = (selected ? icon : `${icon}-outline`) as IconName;
+
+  return (
+    <Pressable
       onPress={() => {
         if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
         onPress();
       }}
+      onPressIn={() => {
+        if (!reduce) to(0.86);
+        if (selected) onPressChange(true);
+      }}
+      onPressOut={() => {
+        to(1);
+        onPressChange(false);
+      }}
+      onFocus={(e) => setRing(isFocusVisible(e))}
+      onBlur={() => setRing(false)}
+      accessibilityRole="button"
       accessibilityLabel={label}
-      style={styles.tab}
-      pressScale={0.9}
+      accessibilityState={{ selected }}
+      style={[styles.tab, ring && styles.tabRing]}
+      {...(Platform.OS === 'web' ? ({ 'aria-current': selected ? 'page' : undefined } as object) : {})}
     >
-      <View style={styles.tabInner} {...(Platform.OS === 'web' ? ({ 'aria-current': selected ? 'page' : undefined } as object) : {})}>
-        <Ionicons name={glyph} size={23} color={color} />
+      <Animated.View style={[styles.tabInner, { transform: [{ translateY: iconLift }, { scale: iconScale }] }]}>
+        <Ionicons name={glyph} size={22} color={color} />
         <DKText style={[styles.tabLabel, { color, fontFamily: selected ? DK_FONT.bold : DK_FONT.semibold }]}>{label}</DKText>
-      </View>
-    </Pressy>
+      </Animated.View>
+    </Pressable>
   );
+}
+
+function isFocusVisible(event: unknown): boolean {
+  if (Platform.OS !== 'web') return false;
+  const target = (event as { nativeEvent?: { target?: unknown } })?.nativeEvent?.target;
+  try {
+    return !!(target as Element | undefined)?.matches?.(':focus-visible');
+  } catch {
+    return false;
+  }
 }
 
 const styles = StyleSheet.create({
@@ -373,37 +529,73 @@ const styles = StyleSheet.create({
     zIndex: 50,
     ...Platform.select({ web: { position: 'fixed' } as object, default: {} }),
   },
+  // The shadow lives outside the clipped glass so the clip doesn't cut it off.
+  shadow: {
+    borderRadius: BAR_HEIGHT / 2,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 22px 48px -8px rgba(10,22,38,0.42), 0 6px 16px rgba(10,22,38,0.20), 0 0 0 0.5px rgba(10,22,38,0.35)',
+      } as object,
+      default: { shadowColor: DK.nightInk, shadowOpacity: 0.34, shadowRadius: 24, shadowOffset: { width: 0, height: 14 }, elevation: 14 },
+    }),
+  },
   bar: {
     width: BAR_WIDTH,
     height: BAR_HEIGHT,
     borderRadius: BAR_HEIGHT / 2,
-    padding: 5,
+    padding: BAR_PAD,
     flexDirection: 'row-reverse',
     alignItems: 'stretch',
-    backgroundColor: 'rgba(10,22,38,0.9)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
     ...Platform.select({
       web: {
-        backgroundColor: 'rgba(11,28,69,0.78)',
-        backdropFilter: 'blur(22px) saturate(170%)',
-        WebkitBackdropFilter: 'blur(22px) saturate(170%)',
-        boxShadow: '0 18px 44px rgba(10,22,38,0.30), 0 3px 10px rgba(10,22,38,0.18), inset 0 1px 0 rgba(255,255,255,0.10)',
+        backdropFilter: 'blur(24px) saturate(185%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(185%)',
       } as object,
-      default: { shadowColor: DK.nightInk, shadowOpacity: 0.3, shadowRadius: 22, shadowOffset: { width: 0, height: 14 }, elevation: 12 },
+      default: {},
     }),
   },
-  indicator: {
-    position: 'absolute',
-    top: 5,
-    right: 5,
-    bottom: 5,
-    borderRadius: (BAR_HEIGHT - 10) / 2,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+  glassClip: { borderRadius: BAR_HEIGHT / 2, overflow: 'hidden' },
+  glassRim: {
+    borderRadius: BAR_HEIGHT / 2,
+    borderWidth: StyleSheet.hairlineWidth * 2,
+    borderColor: 'rgba(255,255,255,0.16)',
+    ...Platform.select({
+      web: {
+        borderWidth: 0,
+        boxShadow:
+          'inset 0 1px 0.5px rgba(255,255,255,0.38), inset 0 -1px 1px rgba(255,255,255,0.07), inset 0 0 0 0.5px rgba(255,255,255,0.16)',
+      } as object,
+      default: {},
+    }),
   },
-  tab: { flex: 1 },
-  tabInner: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1 },
-  tabLabel: { fontSize: 12.5, lineHeight: 16, letterSpacing: 0.2 },
+  lens: {
+    position: 'absolute',
+    top: BAR_PAD,
+    right: BAR_PAD,
+    bottom: BAR_PAD,
+    borderRadius: (BAR_HEIGHT - BAR_PAD * 2) / 2,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth * 2,
+    borderColor: 'rgba(200,215,255,0.34)',
+    ...Platform.select({
+      web: {
+        borderWidth: 0,
+        boxShadow:
+          '0 6px 18px -4px rgba(47,91,255,0.55), inset 0 1px 0.5px rgba(255,255,255,0.55), inset 0 -1px 1px rgba(255,255,255,0.12), inset 0 0 0 0.5px rgba(200,215,255,0.35)',
+      } as object,
+      default: { shadowColor: DK.accent, shadowOpacity: 0.45, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
+    }),
+  },
+  lensSheen: { backgroundColor: 'rgba(255,255,255,0.14)' },
+  tab: {
+    flex: 1,
+    borderRadius: (BAR_HEIGHT - BAR_PAD * 2) / 2,
+    ...Platform.select({ web: { outlineStyle: 'none', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' } as object, default: {} }),
+  },
+  tabRing: Platform.select({
+    web: { outlineStyle: 'solid', outlineWidth: 2, outlineColor: '#8CA8FF', outlineOffset: -2 } as object,
+    default: {},
+  }) as object,
+  tabInner: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  tabLabel: { fontSize: 11.5, lineHeight: 14, letterSpacing: 0.3 },
 });

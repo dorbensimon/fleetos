@@ -94,6 +94,8 @@ export function Pressy({
   pressScale?: number;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
+  // The ring is for keyboard travel only; a tap or a click doesn't earn one.
+  const [ring, setRing] = useState(false);
   // Layout belongs to the touch target (it is the flex item); the look and
   // the press motion belong to the view inside it.
   const { outer, inner } = splitLayout(style);
@@ -117,11 +119,24 @@ export function Pressy({
       accessibilityState={{ disabled: !!disabled }}
       // react-native-web reads the aria-* props, not accessibilityState.
       aria-disabled={!!disabled}
-      style={(state) => [outer, (state as { focused?: boolean }).focused && styles.focusRing]}
+      onFocus={(e) => setRing(isFocusVisible(e))}
+      onBlur={() => setRing(false)}
+      style={[outer, ring && styles.focusRing]}
     >
       <Animated.View style={[inner, { transform: [{ scale }] }, disabled && styles.disabled]}>{children}</Animated.View>
     </Pressable>
   );
+}
+
+/** On the web, whether the browser itself would draw a focus ring here. */
+function isFocusVisible(event: unknown): boolean {
+  if (Platform.OS !== 'web') return false;
+  const target = (event as { nativeEvent?: { target?: unknown }; target?: unknown })?.nativeEvent?.target ?? (event as { target?: unknown })?.target;
+  try {
+    return !!(target as Element | undefined)?.matches?.(':focus-visible');
+  } catch {
+    return false;
+  }
 }
 
 const LAYOUT_KEYS = new Set([
