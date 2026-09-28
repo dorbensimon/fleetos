@@ -36,6 +36,7 @@ export type NotificationType =
   | 'vehicle_assignment'
   | 'driver_profile_updated_by_manager'
   | 'driver_meeting_due'
+  | 'vehicle_safety_check_due'
   | 'license_update_requested'
   | 'license_update_reviewed'
   | 'driver_license_expiry'
@@ -112,6 +113,11 @@ export const ADMIN_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     type: 'driver_meeting_due',
     label: 'מפגש עם נהג',
     description: 'לפני מועד מפגש חוזר עם נהג (למשל מפגש שיחה עם נהג) וביום עצמו, וגם מפגש ראשון עם נהג חדש',
+  },
+  {
+    type: 'vehicle_safety_check_due',
+    label: 'בדיקת בטיחות לרכב',
+    description: 'לפני מועד בדיקת הבטיחות התקופתית של רכב וביום עצמו, וגם כשהמועד עבר',
   },
 ];
 
@@ -315,6 +321,7 @@ const FOLDER_LEAD_RULE: LeadRule = { unit: 'days', min: 1, max: 90, step: 1, pre
 export const LEAD_RULES: Partial<Record<NotificationType, LeadRule>> = {
   ...Object.fromEntries(VEHICLE_FOLDER_ALERTS.map((folder) => [folder.notificationType, FOLDER_LEAD_RULE])),
   driver_meeting_due: { unit: 'days', min: 1, max: 30, step: 1, presets: [3, 7, 14, 30] },
+  vehicle_safety_check_due: { unit: 'days', min: 1, max: 30, step: 1, presets: [3, 7, 14, 30] },
   vehicle_service_due: { unit: 'km', min: 100, max: 5000, step: 100, presets: [500, 1000, 2000, 3000] },
   driver_license_expiry: { unit: 'days', min: 1, max: 90, step: 1, presets: [14, 30, 60, 90] },
   company_carrier_license_expiry: { unit: 'days', min: 1, max: 90, step: 1, presets: [14, 30, 60, 90] },
@@ -327,6 +334,7 @@ export const SERVICE_LEAD_KM_DEFAULT = 1000;
 /** What a type without its own value uses (migrations 100 and 101); folders use the company default. */
 const FIXED_LEAD_DEFAULTS: Partial<Record<NotificationType, number>> = {
   driver_meeting_due: MEETING_LEAD_DEFAULT,
+  vehicle_safety_check_due: 7,
   vehicle_service_due: SERVICE_LEAD_KM_DEFAULT,
   driver_license_expiry: 30,
   company_carrier_license_expiry: 30,
@@ -371,6 +379,7 @@ const ADMIN_GROUP_OF: Partial<Record<NotificationType, NotificationGroup['key']>
   vehicle_service_due: 'care',
   vehicle_odometer_stale: 'care',
   driver_meeting_due: 'care',
+  vehicle_safety_check_due: 'care',
 };
 
 /** The settings page's sections, the same on the phone and the desktop. */

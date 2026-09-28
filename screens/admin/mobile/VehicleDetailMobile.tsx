@@ -31,6 +31,7 @@ import { formatPlate } from '../../../lib/plate';
 import { formatDate } from '../../../lib/theme';
 import { nextServiceKmOf } from '../../../lib/serviceSchedule';
 import { vehicleHealth } from './FleetCards';
+import { VehicleInspectionsCard } from '../../../components/inspection/VehicleInspectionsCard';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 export type VehicleTab = 'general' | 'maintenance' | 'documents' | 'drivers' | 'licensing';
@@ -235,6 +236,7 @@ function renderTab(p: Props, v: Vehicle) {
             <ListRow key={folder.category} first={index === 0} icon={folder.icon as IconName} tint={folder.color} title={folder.title} onPress={() => p.onOpenFolder(folder)} />
           ))}
         </KitSection>
+        <VehicleInspectionsCard companyId={p.companyId} vehicleId={v.id} archived={archived} />
       </>
     );
   }

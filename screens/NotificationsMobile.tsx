@@ -36,6 +36,7 @@ function look(type: string | null): { icon: IconName; tint: string } {
   if (type === 'company_carrier_license_expiry') return { icon: 'business', tint: STATUS.expired.fg };
   if (type === 'vehicle_odometer_stale') return { icon: 'speedometer', tint: STATUS.soon.fg };
   if (type === 'driver_meeting_due') return { icon: 'people', tint: STATUS.soon.fg };
+  if (type === 'vehicle_safety_check_due') return { icon: 'shield-checkmark', tint: STATUS.soon.fg };
   if (type?.startsWith('vehicle_'))return { icon: 'warning', tint: STATUS.expired.fg };
   if (type === 'license_update_reviewed') return { icon: 'id-card', tint: STATUS.ok.fg };
   if (type === 'license_update_requested') return { icon: 'id-card', tint: STATUS.soon.fg };

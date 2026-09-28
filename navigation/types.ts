@@ -38,6 +38,11 @@ export type RootStackParamList = {
   AdminDocumentSigning: { companyId?: string } | undefined;
   /** A meeting on a "רשימת סעיפים" form: a new one (templateId) or one in progress (meetingId). */
   ChecklistMeeting: { driverId: string; templateId?: string; meetingId?: string };
+  /** "בדיקות בטיחות": the company's vehicle inspections and the vehicles due for one. */
+  SafetyInspections: undefined;
+  SafetyInspectionSettings: undefined;
+  /** One vehicle inspection: a new one, or one opened again (`inspectionId`). */
+  SafetyInspection: { vehicleId: string; inspectionId?: string };
   /** Owner-only: manage the global signing templates shared by every company. */
   DocusealWebView: {
     mode: 'builder' | 'sign' | 'preview' | 'document' | 'image';

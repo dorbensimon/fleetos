@@ -137,6 +137,7 @@ export default function MenuScreen({ navigation }: Props) {
             {
               title: 'ניהול הצי',
               rows: [
+                { key: 'inspections', icon: 'shield-checkmark', title: 'בדיקות בטיחות', subtitle: 'בדיקת קצין בטיחות לרכבים', onPress: () => navigation.navigate('SafetyInspections') },
                 { key: 'departments', icon: 'business', title: 'מחלקות', subtitle: 'חלוקת הנהגים והרכבים', onPress: () => navigation.navigate('Departments') },
                 { key: 'archive', icon: 'archive', title: 'ארכיון נהגים', subtitle: 'שחזור או מחיקה לצמיתות', onPress: () => navigation.navigate('DriverArchive') },
                 { key: 'reports', icon: 'stats-chart', title: 'ייצוא דוחות', subtitle: 'דוחות נהגים ורכבים לאקסל', onPress: () => navigation.navigate('Reports') },

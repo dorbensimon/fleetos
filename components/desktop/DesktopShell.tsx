@@ -91,6 +91,7 @@ export function DesktopShell({
     ? [
         { key: 'AdminHome', label: 'דשבורד', icon: 'grid' },
         { key: 'SignedDocuments', label: 'מסמכים חתומים', icon: 'create' },
+        { key: 'SafetyInspections', label: 'בדיקות בטיחות', icon: 'shield-checkmark' },
       ]
     : isOwner
     ? [
@@ -143,6 +144,8 @@ export function DesktopShell({
         return () => navigation.navigate('AdminHome', { mode: 'drivers' });
       case 'רכבים':
         return () => navigation.navigate('AdminHome', { mode: 'vehicles' });
+      case 'בדיקות בטיחות':
+        return () => navigation.navigate('SafetyInspections');
       case 'חברות':
       case 'מרכז הבקרה':
         return () => navigation.navigate('OwnerHome');

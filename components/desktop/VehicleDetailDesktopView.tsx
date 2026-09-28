@@ -13,6 +13,7 @@ import type {
 } from '../../lib/adminApi';
 import { ComplianceSection } from '../ComplianceSection';
 import { VehicleDriversEditor } from '../VehicleDriversEditor';
+import { VehicleInspectionsDesktopSection } from '../inspection/VehicleInspectionsDesktopSection';
 import { DesktopModal } from './DesktopModal';
 import {
   ACQUISITION_TYPE_LABELS,
@@ -612,6 +613,8 @@ export function VehicleDetailDesktopView({
           </View>
         </View>
       </View>
+
+      <VehicleInspectionsDesktopSection companyId={companyId} vehicleId={vehicleId} archived={isArchived} />
 
       {openDocumentFolder && (
         <DocumentFolderUploadModal

@@ -53,6 +53,7 @@ const ICON: Partial<Record<NotificationType, IconName>> = {
   vehicle_service_due: 'build',
   vehicle_odometer_stale: 'speedometer',
   driver_meeting_due: 'people',
+  vehicle_safety_check_due: 'shield-checkmark',
 };
 
 const shortLabel = (label: string) => label.replace(/^תוקף /, '');

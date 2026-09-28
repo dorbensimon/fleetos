@@ -13,11 +13,12 @@ import { fieldKeysFromMessage, focusParam } from './notificationFocus';
  * is about.
  */
 export type NotificationTarget =
-  | { screen: 'VehicleDetail'; params: { vehicleId: string; openFolder?: string; tab?: 'maintenance'; focus?: string } }
+  | { screen: 'VehicleDetail'; params: { vehicleId: string; openFolder?: string; tab?: 'maintenance' | 'documents'; focus?: string } }
   | { screen: 'DriverDetail'; params: { driverId: string; openFolder?: string; focus?: string } }
   | { screen: 'DriverPersonalDetails'; params: { driverId: string; focus?: string } }
   | { screen: 'AdminHome' }
   | { screen: 'CompanySettings' }
+  | { screen: 'SafetyInspections' }
   | { screen: 'DriverSigningDocuments'; params?: { driverId?: string; requestId?: string } }
   | { screen: 'DriverMeetingFolder'; params: { driverId: string; folderId: string } }
   | { screen: 'SignedDocuments'; params: { openMeeting: string } }
@@ -89,6 +90,14 @@ export async function adminNotificationTarget<N extends NotificationTargetFields
     return n.vehicle_id
       ? { screen: 'VehicleDetail', params: { vehicleId: n.vehicle_id, tab: 'maintenance', focus: 'odometer' } }
       : { screen: 'AdminHome' };
+  }
+
+  // A safety inspection is due (supabase/sql/103): one vehicle opens its card
+  // (the section is on the phone's documents tab); a summary opens the list.
+  if (type === 'vehicle_safety_check_due') {
+    return n.vehicle_id
+      ? { screen: 'VehicleDetail', params: { vehicleId: n.vehicle_id, tab: 'documents' } }
+      : { screen: 'SafetyInspections' };
   }
 
   if (isVehicleNotificationType(type)) {

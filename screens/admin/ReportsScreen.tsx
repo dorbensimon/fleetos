@@ -12,6 +12,7 @@ import { listDrivers, listVehicles, listComplianceForOwners, listActiveVehicleDr
 import { REPORT_CATEGORIES, exportDriversReport, type ReportCategory } from '../../lib/driverReport';
 import { VEHICLE_REPORT_CATEGORIES, exportVehiclesReport, type VehicleReportCategory } from '../../lib/vehicleReport';
 import { MEETING_REPORT_CATEGORIES, exportMeetingsReport, type MeetingReportCategory } from '../../lib/meetingReport';
+import { INSPECTION_REPORT_CATEGORIES, exportInspectionsReport, type InspectionReportCategory } from '../../lib/inspectionReport';
 import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
@@ -23,11 +24,12 @@ export default function ReportsScreen({ navigation }: Props) {
   const isDesktop = useIsDesktop();
   const [drivers, setDrivers] = useState<DriverRow[]>([]); const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [compliance, setCompliance] = useState<Map<string, ComplianceItem[]>>(new Map()); const [assignments, setAssignments] = useState<Map<string, VehicleDriverWithProfile[]>>(new Map());
-  const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [kind, setKind] = useState<'drivers' | 'vehicles' | 'meetings' | null>(null); const [exporting, setExporting] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [kind, setKind] = useState<'drivers' | 'vehicles' | 'meetings' | 'inspections' | null>(null); const [exporting, setExporting] = useState<string | null>(null);
   const load = useCallback(async () => { if (!companyId) { setError('לא נמצאה חברה משויכת'); setLoading(false); return; } setLoading(true); setError(null); try { const [d, v] = await Promise.all([listDrivers(companyId), listVehicles(companyId, true)]); const [c, a] = await Promise.all([listComplianceForOwners('vehicle', v.map((x) => x.id)), listActiveVehicleDriversForVehicles(v.map((x) => x.id))]); setDrivers(d); setVehicles(v); setCompliance(c); setAssignments(a); } catch (e: any) { setError(e?.message ?? 'טעינת נתוני הדוחות נכשלה'); } finally { setLoading(false); } }, [companyId]);
   useEffect(() => { load(); }, [load]);
   const exportDrivers = async (category: ReportCategory) => { if (!company) return; setExporting(category); try { await exportDriversReport(company, drivers, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert('ייצוא הדוח נכשל', String(e?.message ?? 'נסה שוב')); } finally { setExporting(null); } };
   const exportMeetings = async (category: MeetingReportCategory) => { if (!company) return; setExporting(category); try { await exportMeetingsReport(company, drivers, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert('ייצוא הדוח נכשל', String(e?.message ?? 'נסה שוב')); } finally { setExporting(null); } };
+  const exportInspections = async (category: InspectionReportCategory) => { if (!company) return; setExporting(category); try { await exportInspectionsReport(company, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert('ייצוא הדוח נכשל', String(e?.message ?? 'נסה שוב')); } finally { setExporting(null); } };
   const exportVehicles = async (category: VehicleReportCategory) => { if (!company) return; setExporting(category); try { await exportVehiclesReport(company, vehicles, compliance, assignments, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert('ייצוא הדוח נכשל', String(e?.message ?? 'נסה שוב')); } finally { setExporting(null); } };
 
   if (isDesktop) {
@@ -42,10 +44,12 @@ export default function ReportsScreen({ navigation }: Props) {
             driverCategories={REPORT_CATEGORIES}
             vehicleCategories={VEHICLE_REPORT_CATEGORIES}
             meetingCategories={MEETING_REPORT_CATEGORIES}
+            inspectionCategories={INSPECTION_REPORT_CATEGORIES}
             exportingCategory={exporting}
             onSelectDriverCategory={(value) => void exportDrivers(value as ReportCategory)}
             onSelectVehicleCategory={(value) => void exportVehicles(value as VehicleReportCategory)}
             onSelectMeetingCategory={(value) => void exportMeetings(value as MeetingReportCategory)}
+            onSelectInspectionCategory={(value) => void exportInspections(value as InspectionReportCategory)}
           />
         )}
       </DesktopShell>
@@ -53,7 +57,7 @@ export default function ReportsScreen({ navigation }: Props) {
   }
 
   const mode = kind ?? 'drivers';
-  const categories = mode === 'drivers' ? REPORT_CATEGORIES : mode === 'meetings' ? MEETING_REPORT_CATEGORIES : VEHICLE_REPORT_CATEGORIES;
+  const categories = mode === 'drivers' ? REPORT_CATEGORIES : mode === 'meetings' ? MEETING_REPORT_CATEGORIES : mode === 'inspections' ? INSPECTION_REPORT_CATEGORIES : VEHICLE_REPORT_CATEGORIES;
   return (
     <DriverPage
       insetTop={insets.top}
@@ -62,14 +66,16 @@ export default function ReportsScreen({ navigation }: Props) {
         <View>
           <HeroTitle title="ייצוא דוחות" subtitle="קובץ אקסל מוכן לשליחה או להדפסה" onBack={() => navigation.goBack()} />
           <View style={s.segment}>
-            <Segmented<'drivers' | 'vehicles' | 'meetings'>
+            <Segmented<'drivers' | 'vehicles' | 'meetings' | 'inspections'>
               onNight
               value={mode}
               onChange={setKind}
               options={[
-                { value: 'drivers', label: 'נהגים', icon: 'people', count: loading ? undefined : drivers.length },
-                { value: 'vehicles', label: 'רכבים', icon: 'car-sport', count: loading ? undefined : vehicles.filter((v) => v.status !== 'archived').length },
+                // Four tabs share a phone's width: words and icons, no counts.
+                { value: 'drivers', label: 'נהגים', icon: 'people' },
+                { value: 'vehicles', label: 'רכבים', icon: 'car-sport' },
                 { value: 'meetings', label: 'מפגשים', icon: 'chatbubbles' },
+                { value: 'inspections', label: 'בדיקות', icon: 'shield-checkmark' },
               ]}
             />
           </View>
@@ -90,7 +96,7 @@ export default function ReportsScreen({ navigation }: Props) {
                   key={category.value}
                   first={index === 0}
                   icon={category.icon as React.ComponentProps<typeof Ionicons>['name']}
-                  tint={category.value === 'expired' || category.value === 'issues' || category.value === 'due' ? STATUS.expired.fg : DK.accent}
+                  tint={category.value === 'expired' || category.value === 'issues' || category.value === 'due' || category.value === 'insp_due' || category.value === 'insp_defects' ? STATUS.expired.fg : DK.accent}
                   title={category.label}
                   subtitle={busy ? 'מכין את הקובץ…' : 'ייצוא לאקסל'}
                   trailing={
@@ -102,7 +108,7 @@ export default function ReportsScreen({ navigation }: Props) {
                       </View>
                     )
                   }
-                  onPress={exporting ? undefined : () => void (mode === 'drivers' ? exportDrivers(category.value as ReportCategory) : mode === 'meetings' ? exportMeetings(category.value as MeetingReportCategory) : exportVehicles(category.value as VehicleReportCategory))}
+                  onPress={exporting ? undefined : () => void (mode === 'drivers' ? exportDrivers(category.value as ReportCategory) : mode === 'meetings' ? exportMeetings(category.value as MeetingReportCategory) : mode === 'inspections' ? exportInspections(category.value as InspectionReportCategory) : exportVehicles(category.value as VehicleReportCategory))}
                 />
               );
             })}

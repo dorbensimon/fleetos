@@ -59,6 +59,8 @@ export interface FleetDesktopViewProps<LF extends string, SF extends string> {
   vehicleKpis: { total: number; active: number; inactive: number };
   compliance: Map<string, ComplianceItem[]>;
   vehicleDrivers: Map<string, VehicleDriverWithProfile[]>;
+  /** Defects in each vehicle's last safety inspection; absent when none. */
+  inspectionDefects: Map<string, number>;
   departmentNames: Map<string, string>;
   restoringVehicleId: string | null;
 
@@ -509,6 +511,11 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                                 <View style={styles.twoLine}>
                                   <Plate plate={vehicle.plate_number} query={query} />
                                   <Highlight text={vehicleName(vehicle)} query={query} style={styles.subText} />
+                                  {vehicle.status !== 'archived' && (props.inspectionDefects.get(vehicle.id) ?? 0) > 0 && (
+                                    <View style={styles.defectMark}>
+                                      <Status tone="bad" label="יש ליקויים" />
+                                    </View>
+                                  )}
                                 </View>
                               </View>
                             </View>
@@ -810,6 +817,7 @@ const BRAND_SOFT = '#E6F2F9';
 const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
 
 const styles = StyleSheet.create({
+  defectMark: { flexDirection: 'row-reverse', marginTop: 3 },
   pressDown: { transform: [{ scale: 0.97 }] },
   root: { flex: 1, paddingTop: 24, paddingHorizontal: 32, paddingBottom: 22, gap: 18 },
   rootCompact: { paddingTop: 16, paddingBottom: 14, gap: 12 },
