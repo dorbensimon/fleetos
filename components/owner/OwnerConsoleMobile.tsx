@@ -26,13 +26,16 @@ import {
 import { BrandLogo } from '../ui/Brand';
 import { timeGreeting } from '../../lib/theme';
 import { ACTIVITY_DAYS, lastSeenLabel, type CompanyHealth, type PlatformOverview, type Tone } from '../../lib/platformOverview';
+import { accountNextStep, formatMoney, formatMoneyCompact, statusLabel, statusTone } from '../../lib/companyAccount';
+import { ACCOUNT_TONE, TonePill } from './ownerKit';
 import { COMPANY_FILTERS, filterCompanies, type CompanyFilter } from './ownerConsole';
 
 /**
- * The owner's control room on the phone: the night carries the platform at a
- * glance (what needs the owner, three live counts, search); below, every
- * company as a card that says whether it is healthy and why, then how the
- * system is being used and its security state. Counts only, like desktop.
+ * The owner's control room on the phone: the night carries the business at a
+ * glance (what needs the owner, companies, monthly revenue, vehicles,
+ * search); below, every company as a card that says whether it is healthy,
+ * where it stands as a customer and why; then revenue, how the system is
+ * being used and its security state. Counts only, like desktop.
  */
 
 const TONE_FILL: Record<Tone, string> = { ok: STATUS.ok.fill, warn: STATUS.soon.fill, bad: STATUS.expired.fill, off: STATUS.missing.fill };
@@ -53,7 +56,9 @@ type Props = {
   onOpenCompany: (id: string) => void;
   onCompanyMenu: (company: CompanyHealth) => void;
   onAddCompany: () => void;
-  onTemplates: () => void;
+  unread: number;
+  onNotifications: () => void;
+  onExport: () => void;
 };
 
 type Entry =
@@ -166,7 +171,7 @@ export function OwnerConsoleMobile(p: Props) {
           renderItem={renderItem}
           {...tabBarScroll}
           ListHeaderComponent={<Hero {...p} search={search} onSearch={setSearch} onAttention={() => setFilter('attention')} />}
-          ListFooterComponent={p.overview ? <Footer overview={p.overview} /> : null}
+          ListFooterComponent={p.overview ? <Footer overview={p.overview} onOpen={p.onOpenCompany} onExport={p.onExport} /> : null}
           stickyHeaderIndices={[1]}
           style={styles.flex}
           contentContainerStyle={[styles.content, { paddingBottom: p.insetBottom + 104 + tabBarSpace }]}
@@ -191,7 +196,12 @@ function Hero(p: Props & { search: string; onSearch: (v: string) => void; onAtte
       <View style={styles.topBar}>
         <View style={styles.heroSlot} />
         <BrandLogo height={20} onDark />
-        <HeroButton icon="document-text-outline" label="תבניות חתימה" onPress={p.onTemplates} />
+        <HeroButton
+          icon="notifications-outline"
+          label={p.unread ? `התראות, ${p.unread} חדשות` : 'התראות'}
+          badge={p.unread > 0}
+          onPress={p.onNotifications}
+        />
       </View>
 
       <Reveal index={0}>
@@ -235,7 +245,7 @@ function Hero(p: Props & { search: string; onSearch: (v: string) => void; onAtte
 
       <Reveal index={2} style={styles.stats}>
         <HeroStat value={t ? `${t.activeCompanies}/${t.companies}` : '–'} label="חברות פעילות" />
-        <HeroStat value={t?.drivers ?? '–'} label="נהגים" />
+        <HeroStat value={t ? formatMoneyCompact(t.mrr) : '–'} label="הכנסה חודשית" />
         <HeroStat value={t?.vehicles ?? '–'} label="רכבים" />
       </Reveal>
 
@@ -249,7 +259,8 @@ function Hero(p: Props & { search: string; onSearch: (v: string) => void; onAtte
 function CompanyCard({ row, onPress, onMenu }: { row: CompanyHealth; onPress: () => void; onMenu: () => void }) {
   const c = row.company;
   const issue = row.issues[0];
-  const meta = `${row.drivers} נהגים · ${row.vehicles} רכבים`;
+  const meta = `${row.drivers} נהגים · ${row.vehicles}${row.account?.vehicle_limit ? `/${row.account.vehicle_limit}` : ''} רכבים`;
+  const next = accountNextStep(row.account);
   return (
     <Surface style={[styles.card, !row.active && styles.cardOff]}>
       <Pressy onPress={onPress} accessibilityLabel={`${c.name}, ${TONE_LABEL[row.tone]}${issue ? `: ${issue.title}` : ''}`} pressScale={0.985}>
@@ -291,20 +302,18 @@ function CompanyCard({ row, onPress, onMenu }: { row: CompanyHealth; onPress: ()
       </Pressy>
 
       <View style={styles.cardFoot}>
+        {!!row.account && row.active && (
+          <TonePill
+            tone={next && next.tone !== 'ok' ? next.tone : statusTone(row.account.status)}
+            label={[statusLabel(row.account.status), next && next.tone !== 'ok' ? next.label : row.account.monthly_price ? formatMoney(row.account.monthly_price) : null].filter(Boolean).join(' · ')}
+          />
+        )}
         <View style={styles.footItem}>
           <Ionicons name="pulse" size={14} color={DK.muted} />
           <DKText variant="caption" color={DK.muted} numberOfLines={1}>
-            {row.lastActivity ? `פעילות ${lastSeenLabel(row.lastActivity)}` : 'לא פעילה החודש'}
+            {row.lastActivity ? lastSeenLabel(row.lastActivity) : 'לא פעילה החודש'}
           </DKText>
         </View>
-        {row.pendingSignatures > 0 && (
-          <View style={styles.footItem}>
-            <Ionicons name="create-outline" size={14} color={DK.muted} />
-            <DKText variant="caption" color={DK.muted}>
-              {row.pendingSignatures} לחתימה
-            </DKText>
-          </View>
-        )}
         <Pressy onPress={onMenu} accessibilityLabel={`פעולות עבור ${c.name}`} style={styles.more} pressScale={0.9}>
           <Ionicons name="ellipsis-horizontal" size={20} color={DK.inkSoft} />
         </Pressy>
@@ -313,7 +322,7 @@ function CompanyCard({ row, onPress, onMenu }: { row: CompanyHealth; onPress: ()
   );
 }
 
-function Footer({ overview }: { overview: PlatformOverview }) {
+function Footer({ overview, onOpen, onExport }: { overview: PlatformOverview; onOpen: (id: string) => void; onExport: () => void }) {
   const days = overview.activityByDay;
   const max = Math.max(1, ...days.map((d) => d.count));
   const total = days.reduce((n, d) => n + d.count, 0);
@@ -321,7 +330,9 @@ function Footer({ overview }: { overview: PlatformOverview }) {
   const notActivated = overview.totals.notActivated;
   return (
     <View style={styles.footer}>
-      <KitSection title="שימוש במערכת">
+      <Revenue overview={overview} onOpen={onOpen} onExport={onExport} />
+
+      <KitSection title="שימוש במערכת" style={styles.sectionGap}>
         <View style={styles.chartBox} accessible accessibilityLabel={`${total} פעולות ב-${ACTIVITY_DAYS} הימים האחרונים`}>
           <View style={styles.chartHead}>
             <DKText variant="title" style={styles.tabular}>
@@ -378,6 +389,74 @@ function Footer({ overview }: { overview: PlatformOverview }) {
         </View>
       </KitSection>
     </View>
+  );
+}
+
+function Revenue({ overview, onOpen, onExport }: { overview: PlatformOverview; onOpen: (id: string) => void; onExport: () => void }) {
+  const t = overview.totals;
+  const segments = [
+    { label: 'משלמים', value: t.paying - t.overdue, color: ACCOUNT_TONE.ok.fill },
+    { label: 'בניסיון', value: t.trials, color: ACCOUNT_TONE.warn.fill },
+    { label: 'בפיגור', value: t.overdue, color: ACCOUNT_TONE.bad.fill },
+  ];
+  const total = Math.max(1, segments.reduce((n, s) => n + s.value, 0));
+  const upcoming = overview.companies
+    .filter((c) => c.active)
+    .map((c) => ({ c, next: accountNextStep(c.account), date: c.account?.status === 'trial' ? c.account.trial_ends_at : c.account?.renewal_date }))
+    .filter((x) => x.next && x.date && x.next.tone !== 'ok')
+    .sort((a, b) => (a.date! < b.date! ? -1 : 1))
+    .slice(0, 3);
+  return (
+    <KitSection title="מנויים והכנסות">
+      <View style={styles.chartBox} accessible accessibilityLabel={`הכנסה חודשית ${formatMoney(t.mrr)}. ${segments.map((s) => `${s.label} ${s.value}`).join(', ')}`}>
+        <View style={styles.chartHead}>
+          <DKText variant="title" style={styles.tabular}>
+            {formatMoney(t.mrr)}
+          </DKText>
+          <DKText variant="caption" color={DK.muted}>
+            בחודש, לפני מע״מ · {formatMoney(t.mrr * 12)} בשנה
+          </DKText>
+        </View>
+        <View style={styles.stack}>
+          {segments.map((s) => (s.value ? <View key={s.label} style={{ flex: s.value / total, backgroundColor: s.color }} /> : null))}
+        </View>
+        <View style={styles.legend}>
+          {segments.map((s) => (
+            <View key={s.label} style={styles.footItem}>
+              <View style={[styles.chipDot, { backgroundColor: s.color }]} />
+              <DKText variant="caption" color={DK.muted}>
+                {s.label} <DKText variant="label">{s.value}</DKText>
+              </DKText>
+            </View>
+          ))}
+        </View>
+      </View>
+      {upcoming.map(({ c, next }) => (
+        <Pressy key={c.company.id} onPress={() => onOpen(c.company.id)} accessibilityLabel={`${c.company.name}: ${next!.label}`} pressScale={0.985}>
+          <View style={[styles.upRow, styles.divider]}>
+            <View style={[styles.chipDot, { backgroundColor: ACCOUNT_TONE[next!.tone].fill }]} />
+            <DKText variant="label" numberOfLines={1} style={styles.flex}>
+              {c.company.name}
+            </DKText>
+            <DKText variant="caption" color={ACCOUNT_TONE[next!.tone].fg}>
+              {next!.label}
+            </DKText>
+            <Ionicons name="chevron-back" size={16} color={DK.faint} />
+          </View>
+        </Pressy>
+      ))}
+      <Pressy onPress={onExport} accessibilityLabel="הפקת דוח לקוחות" pressScale={0.985}>
+        <View style={[styles.upRow, styles.divider]}>
+          <Ionicons name="document-text-outline" size={18} color={DK.accent} />
+          <DKText variant="label" color={DK.accent} style={styles.flex}>
+            דוח לקוחות
+          </DKText>
+          <DKText variant="caption" color={DK.muted}>
+            PDF לשיתוף או הדפסה
+          </DKText>
+        </View>
+      </Pressy>
+    </KitSection>
   );
 }
 
@@ -470,6 +549,10 @@ const styles = StyleSheet.create({
   barEmpty: { backgroundColor: '#E3E8F0' },
   barToday: { backgroundColor: DK.accent },
   axis: { flexDirection: 'row-reverse', justifyContent: 'space-between', marginTop: 8 },
+
+  stack: { flexDirection: 'row-reverse', height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: '#E3E8F0', marginTop: 14, gap: 2 },
+  legend: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 14, marginTop: 10 },
+  upRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, minHeight: 52, paddingHorizontal: DK_SPACE.md },
 
   secLine: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 12, padding: DK_SPACE.md },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },

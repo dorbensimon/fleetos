@@ -41,7 +41,15 @@ export type NotificationType =
   | 'driver_license_expiry'
   | 'company_carrier_license_expiry'
   | 'vehicle_odometer_stale'
-  | 'signature_request_completed';
+  | 'signature_request_completed'
+  | 'owner_company_activated'
+  | 'owner_admin_added'
+  | 'owner_company_not_activated'
+  | 'owner_company_inactive'
+  | 'owner_carrier_license_expiry'
+  | 'owner_trial_ending'
+  | 'owner_renewal_due'
+  | 'owner_vehicle_limit';
 
 export interface NotificationTypeInfo {
   type: NotificationType;
@@ -141,9 +149,68 @@ export const DRIVER_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
   ...vehicleFolderTypes('ברכב שלך — לפני שהתוקף פג וביום שהוא פג'),
 ];
 
+/**
+ * The owner's alerts (migration 102): about companies and their managers,
+ * never about drivers. Grouped in notificationGroups by OWNER_GROUP_OF.
+ */
+export const OWNER_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
+  {
+    type: 'owner_company_activated',
+    label: 'חברה התחילה לעבוד',
+    description: 'מנהל בחברה נכנס בפעם הראשונה ובחר סיסמה משלו',
+  },
+  {
+    type: 'owner_company_not_activated',
+    label: 'חברה שעוד לא התחילה',
+    description: 'שלושה ימים אחרי פתיחת החברה אף מנהל עוד לא נכנס',
+  },
+  {
+    type: 'owner_admin_added',
+    label: 'מנהל חדש בחברה',
+    description: 'חברה הוסיפה לעצמה מנהל נוסף',
+  },
+  {
+    type: 'owner_company_inactive',
+    label: 'חברה לא פעילה',
+    description: 'חברה פעילה לא ביצעה אף פעולה במשך 14 ימים',
+  },
+  {
+    type: 'owner_trial_ending',
+    label: 'סוף תקופת ניסיון',
+    description: 'שבוע לפני שתקופת הניסיון של חברה מסתיימת, וביום שהיא הסתיימה',
+  },
+  {
+    type: 'owner_renewal_due',
+    label: 'חידוש מנוי',
+    description: 'שבועיים לפני מועד החידוש של לקוח משלם, ואם המועד עבר',
+  },
+  {
+    type: 'owner_vehicle_limit',
+    label: 'מכסת רכבים מלאה',
+    description: 'חברה הגיעה למספר הרכבים שכלול במנוי שלה',
+  },
+  {
+    type: 'owner_carrier_license_expiry',
+    label: 'רישיון מוביל של חברה',
+    description: '30 יום לפני שרישיון המוביל של חברה פג, וביום שהוא פג',
+  },
+];
+
+const OWNER_GROUP_OF: Partial<Record<NotificationType, 'customers' | 'billing' | 'compliance'>> = {
+  owner_company_activated: 'customers',
+  owner_company_not_activated: 'customers',
+  owner_admin_added: 'customers',
+  owner_company_inactive: 'customers',
+  owner_trial_ending: 'billing',
+  owner_renewal_due: 'billing',
+  owner_vehicle_limit: 'billing',
+  owner_carrier_license_expiry: 'compliance',
+};
+
 export const NOTIFICATION_TYPES: NotificationTypeInfo[] = [
   ...ADMIN_NOTIFICATION_TYPES,
   ...DRIVER_NOTIFICATION_TYPES,
+  ...OWNER_NOTIFICATION_TYPES,
 ];
 
 export type NotificationPreferencesMap = Record<NotificationType, boolean>;
@@ -286,7 +353,7 @@ export function leadStepLabels(rule: LeadRule): { up: string; down: string } {
 }
 
 export interface NotificationGroup {
-  key: 'drivers' | 'licenses' | 'folders' | 'care' | 'personal';
+  key: 'drivers' | 'licenses' | 'folders' | 'care' | 'personal' | 'customers' | 'billing' | 'compliance';
   title: string;
   subtitle?: string;
   items: NotificationTypeInfo[];
@@ -307,7 +374,15 @@ const ADMIN_GROUP_OF: Partial<Record<NotificationType, NotificationGroup['key']>
 };
 
 /** The settings page's sections, the same on the phone and the desktop. */
-export function notificationGroups(types: NotificationTypeInfo[], isDriver: boolean): NotificationGroup[] {
+export function notificationGroups(types: NotificationTypeInfo[], isDriver: boolean, isOwner = false): NotificationGroup[] {
+  if (isOwner) {
+    const ownerGroups: NotificationGroup[] = [
+      { key: 'customers', title: 'החברות', subtitle: 'מתי חברה מתחילה לעבוד, מוסיפה מנהל או מפסיקה להשתמש.', items: types.filter((t) => OWNER_GROUP_OF[t.type] === 'customers') },
+      { key: 'billing', title: 'מנויים ותשלומים', subtitle: 'לפי פרטי המנוי שהזנת לכל חברה.', items: types.filter((t) => OWNER_GROUP_OF[t.type] === 'billing') },
+      { key: 'compliance', title: 'רישוי', items: types.filter((t) => OWNER_GROUP_OF[t.type] === 'compliance') },
+    ];
+    return ownerGroups.filter((group) => group.items.length > 0);
+  }
   const folders = types.filter((t) => isVehicleFolderNotification(t.type));
   const rest = types.filter((t) => !folders.includes(t));
   const folderGroup: NotificationGroup = {

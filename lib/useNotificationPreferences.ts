@@ -5,6 +5,7 @@ import { useCompany } from './CompanyContext';
 import {
   ADMIN_NOTIFICATION_TYPES,
   DRIVER_NOTIFICATION_TYPES,
+  OWNER_NOTIFICATION_TYPES,
   LEAD_RULES,
   NotificationLeads,
   NotificationPreferencesMap,
@@ -37,8 +38,9 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
   const loadRequest = useRef(0);
 
   const isDriver = profile?.role === 'driver';
+  const isOwner = profile?.role === 'owner';
   const profileId = profile?.id;
-  const visibleTypes = isDriver ? DRIVER_NOTIFICATION_TYPES : ADMIN_NOTIFICATION_TYPES;
+  const visibleTypes = isDriver ? DRIVER_NOTIFICATION_TYPES : isOwner ? OWNER_NOTIFICATION_TYPES : ADMIN_NOTIFICATION_TYPES;
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
@@ -140,6 +142,7 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
     savingType,
     toggle,
     isDriver,
+    isOwner,
     visibleTypes,
     leads,
     setLead,

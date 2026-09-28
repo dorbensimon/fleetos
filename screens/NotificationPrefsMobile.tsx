@@ -69,7 +69,7 @@ const animateNext = () => {
 export function NotificationPrefsMobile({ insetTop, insetBottom, state, onBack }: Props) {
   const reduceMotion = useReducedMotion();
   const [open, setOpen] = useState<NotificationType | null>(null);
-  const groups = notificationGroups(state.visibleTypes, state.isDriver);
+  const groups = notificationGroups(state.visibleTypes, state.isDriver, state.isOwner);
   const on = state.visibleTypes.filter((t) => state.prefs?.[t.type] ?? true).length;
   const canEditLeads = !state.isDriver && !!state.leads;
 

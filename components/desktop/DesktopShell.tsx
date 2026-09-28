@@ -10,7 +10,7 @@ import { RootStackParamList } from '../../navigation/types';
 import { DText, HoverPressable } from './primitives';
 import { BrandLogo } from '../ui/Brand';
 import { HeaderMenuProvider } from './headerMenu';
-import { NotificationsBell } from './NotificationsBell';
+import { NotificationsBell, OwnerNotificationsBell } from './NotificationsBell';
 import { DESKTOP_COLORS, DESKTOP_HEADER_HEIGHT, DESKTOP_SIDEBAR_WIDTH } from './desktopTheme';
 
 /**
@@ -30,7 +30,7 @@ type NavItem = {
 };
 
 const ROLE_LABEL: Record<string, string> = {
-  owner: 'בעל החברה',
+  owner: 'סופר אדמין',
   admin: 'מנהל מערכת',
   driver: 'נהג',
 };
@@ -90,7 +90,6 @@ export function DesktopShell({
     : isOwner
     ? [
         { key: 'OwnerHome', label: 'מרכז הבקרה', icon: 'business' },
-        { key: 'GlobalSigningTemplates', label: 'תבניות גלובליות', icon: 'document-text' },
       ]
     : isDriver
     ? [
@@ -251,6 +250,7 @@ export function DesktopShell({
             <View style={styles.headerActions}>
               {headerAccessory}
               {isAdmin && !!companyId && <NotificationsBell companyId={companyId} role={profile?.role} />}
+              {isOwner && <OwnerNotificationsBell />}
               <View style={styles.headerDivider} />
               <HoverPressable
                 style={styles.user}

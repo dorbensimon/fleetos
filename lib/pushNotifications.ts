@@ -7,6 +7,7 @@ import { supabase, type UserRole } from './supabase';
 import { markNotificationRead, resolveNotificationVehicleId } from './adminApi/notifications';
 import type { Notification } from './adminApi/types';
 import { notificationTarget, type NotificationTarget } from './notificationTargets';
+import { markOwnerNotificationRead } from './ownerNotifications';
 
 const STORED_TOKEN_KEY = 'fleetos_expo_push_token';
 
@@ -53,6 +54,14 @@ async function openNotification(
   // The push carries the notification's id; the stored row names the driver
   // or vehicle it is about, so a tap lands exactly where the in-app list would.
   const data = response.notification.request.content.data ?? {};
+
+  // The owner's own alerts (owner_notifications) are about a company.
+  if (typeof data.ownerNotificationId === 'string') {
+    markOwnerNotificationRead(data.ownerNotificationId).catch(() => undefined);
+    navigate(typeof data.companyId === 'string' ? { screen: 'CompanyDetail', params: { companyId: data.companyId } } : null);
+    return;
+  }
+
   const notificationId = typeof data.notificationId === 'string' ? data.notificationId : null;
   if (!notificationId) {
     navigate(null);

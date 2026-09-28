@@ -349,7 +349,7 @@ export function NotificationsHubDesktopView({
             ) : (
               <>
                 {canEditLeads && <LeadTimeline prefs={prefs} onPick={revealCard} reduceMotion={reduceMotion} />}
-                {notificationGroups(prefs.visibleTypes, prefs.isDriver).map((group) => (
+                {notificationGroups(prefs.visibleTypes, prefs.isDriver, prefs.isOwner).map((group) => (
                   <SettingsSection
                     key={group.key}
                     group={group}

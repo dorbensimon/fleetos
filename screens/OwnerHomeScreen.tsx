@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../lib/platformAlert';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -10,12 +11,15 @@ import {
   createCompanyAdmin,
 } from '../lib/ownerApi';
 import { pickAndUploadLogo } from '../lib/uploadLogo';
-import { isValidIsraeliPhone } from '../lib/phone';
-import { isValidEmail, isValidTemporaryPassword } from '../lib/validation';
 import { CompanyRow } from '../components/owner/CompanyCard';
 import { CompanyActionsSheet } from '../components/owner/CompanyActionsSheet';
-import { AddCompanySheet, EMPTY_OWNER_COMPANY_FORM, OwnerCompanyForm } from '../components/owner/AddCompanySheet';
-import { DeleteCompanyModal, CompanyCreatedModal } from '../components/owner/DeleteCompanyModal';
+import { AddCompanySheet, CompanyCreatedSheet, emptyOwnerCompanyForm, OwnerCompanyForm } from '../components/owner/AddCompanySheet';
+import { DeleteCompanyModal } from '../components/owner/DeleteCompanyModal';
+import { CompanyAccountSheet } from '../components/owner/CompanyAccountSheet';
+import { formToAccountInput, type CompanyAccount } from '../lib/companyAccount';
+import { saveCompanyAccount } from '../lib/companyAccountApi';
+import { countUnreadOwnerNotifications } from '../lib/ownerNotifications';
+import { exportPlatformReport } from '../lib/platformReport';
 import { functionErrorMessage } from '../lib/functionError';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import { useCompany } from '../lib/CompanyContext';
@@ -25,12 +29,12 @@ import { OwnerConsoleDesktop } from '../components/owner/OwnerConsoleDesktop';
 import { OwnerConsoleMobile } from '../components/owner/OwnerConsoleMobile';
 
 /**
- * The owner's (super-admin) control room: the health of every company on the
- * platform, what needs the owner, how the system is used and its security
- * state — plus creating, disabling and deleting companies. The views live in
- * components/owner/OwnerConsole{Desktop,Mobile}; the numbers come from
- * lib/platformOverview. This screen owns loading and the create/delete/toggle
- * handlers the views and sheets call back into.
+ * The owner's (super-admin) control room: every company as a customer — its
+ * health, its subscription and revenue, what needs the owner, how the system
+ * is used and its security state — plus opening, billing, disabling and
+ * deleting companies. The views live in components/owner/OwnerConsole
+ * {Desktop,Mobile}; the numbers come from lib/platformOverview. This screen
+ * owns loading and the handlers the views and sheets call back into.
  */
 
 function toCompanyRow(h: CompanyHealth): CompanyRow {
@@ -51,10 +55,10 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const [menuCompany, setMenuCompany] = useState<CompanyRow | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [accountTarget, setAccountTarget] = useState<{ id: string; name: string; account: CompanyAccount | null } | null>(null);
+  const [unread, setUnread] = useState(0);
 
-  const [form, setForm] = useState<OwnerCompanyForm>(EMPTY_OWNER_COMPANY_FORM);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [showPassword, setShowPassword] = useState(false);
+  const [form, setForm] = useState<OwnerCompanyForm>(emptyOwnerCompanyForm);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoError, setLogoError] = useState('');
 
@@ -78,7 +82,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
 
-  const [successOpen, setSuccessOpen] = useState(false);
+  const [created, setCreated] = useState<{ companyId: string | null; companyName: string; email: string; password: string } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const loadRequest = useRef(0);
 
@@ -92,6 +96,19 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       if (requestId === loadRequest.current) setLoadError(err?.message ?? 'טעינת נתוני המערכת נכשלה');
     }
   }, []);
+
+  // The bell's count follows the owner back from the notifications screen.
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      countUnreadOwnerNotifications()
+        .then((n) => alive && setUnread(n))
+        .catch(() => {});
+      return () => {
+        alive = false;
+      };
+    }, []),
+  );
 
   useEffect(() => {
     let active = true;
@@ -115,13 +132,30 @@ export default function OwnerHomeScreen({ navigation }: Props) {
     }
   };
 
+  const openCompany = (id: string) => navigation.navigate('CompanyDetail', { companyId: id });
+
   const closeAll = () => {
     setMenuCompany(null);
     setAddOpen(false);
     setDeleteOpen(false);
     setDeleteConfirmText('');
     setCreateError('');
-    setFieldErrors({});
+  };
+
+  const openAccount = (companyId: string) => {
+    const health = overview?.companies.find((c) => c.company.id === companyId);
+    if (!health) return;
+    setMenuCompany(null);
+    setAccountTarget({ id: companyId, name: health.company.name, account: health.account });
+  };
+
+  const exportReport = async () => {
+    if (!overview) return;
+    try {
+      await exportPlatformReport(overview);
+    } catch {
+      showAlert('הפקת הדוח נכשלה', 'נסה שוב בעוד רגע.');
+    }
   };
 
   const setStatus = async (company: CompanyRow, status: CompanyRow['status']) => {
@@ -163,28 +197,9 @@ export default function OwnerHomeScreen({ navigation }: Props) {
     await loadCompanies();
   };
 
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-    if (!form.name.trim()) errors.name = 'שדה חובה';
-    if (!form.adminFirstName.trim()) errors.adminFirstName = 'שדה חובה';
-    if (!form.adminLastName.trim()) errors.adminLastName = 'שדה חובה';
-    if (!form.email.trim()) errors.email = 'שדה חובה';
-    else if (!isValidEmail(form.email)) errors.email = 'כתובת מייל לא תקינה';
-    if (!form.phone.trim()) errors.phone = 'שדה חובה';
-    else if (!isValidIsraeliPhone(form.phone)) errors.phone = 'מספר טלפון לא תקין';
-    if (!form.password) errors.password = 'שדה חובה';
-    else if (!isValidTemporaryPassword(form.password)) errors.password = 'לפחות 4 ספרות בלבד';
-    if (!form.confirmPassword) errors.confirmPassword = 'שדה חובה';
-    else if (form.confirmPassword !== form.password) errors.confirmPassword = 'הסיסמאות אינן תואמות';
-    return errors;
-  };
-
+  // AddCompanySheet validates each step before it calls this.
   const createCompany = async () => {
     setCreateError('');
-    const errors = validateForm();
-    setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
-
     setCreating(true);
     try {
       const { data, error } = await createCompanyAdmin({
@@ -204,10 +219,13 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         return;
       }
 
-      setForm(EMPTY_OWNER_COMPANY_FORM);
-      setFieldErrors({});
+      const companyId: string | null = data.companyId ?? null;
+      // The subscription is the owner's own record; a failure here leaves the
+      // default trial in place and is fixable from the company's page.
+      if (companyId) await saveCompanyAccount(companyId, formToAccountInput(form.account)).catch(() => {});
+      setCreated({ companyId, companyName: form.name.trim(), email: form.email.trim(), password: form.password });
+      setForm(emptyOwnerCompanyForm());
       setAddOpen(false);
-      setSuccessOpen(true);
       await loadCompanies();
     } catch {
       setCreateError('אירעה שגיאה. נסה שוב');
@@ -222,6 +240,12 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         company={menuCompany}
         visible={!!menuCompany && !deleteOpen}
         onClose={closeAll}
+        onOpen={() => {
+          const id = menuCompany?.id;
+          setMenuCompany(null);
+          if (id) openCompany(id);
+        }}
+        onAccount={() => menuCompany && openAccount(menuCompany.id)}
         onToggleActive={toggleActive}
         onDelete={() => setDeleteOpen(true)}
       />
@@ -229,8 +253,6 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       <AddCompanySheet
         visible={addOpen}
         form={form}
-        fieldErrors={fieldErrors}
-        showPassword={showPassword}
         uploadingLogo={uploadingLogo}
         logoError={logoError}
         createError={createError}
@@ -238,8 +260,16 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         onClose={closeAll}
         onChangeForm={setForm}
         onPickLogo={handlePickLogo}
-        onToggleShowPassword={() => setShowPassword((v) => !v)}
         onSubmit={createCompany}
+      />
+
+      <CompanyAccountSheet
+        visible={!!accountTarget}
+        companyId={accountTarget?.id ?? null}
+        companyName={accountTarget?.name ?? ''}
+        account={accountTarget?.account ?? null}
+        onClose={() => setAccountTarget(null)}
+        onSaved={() => void loadCompanies()}
       />
 
       <DeleteCompanyModal
@@ -252,11 +282,9 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         onConfirm={confirmDelete}
       />
 
-      <CompanyCreatedModal visible={successOpen} onClose={() => setSuccessOpen(false)} />
+      <CompanyCreatedSheet visible={!!created} details={created} onClose={() => setCreated(null)} onOpenCompany={(id) => openCompany(id)} />
     </>
   );
-
-  const openCompany = (id: string) => navigation.navigate('CompanyDetail', { companyId: id });
 
   if (isDesktop) {
     return (
@@ -270,7 +298,8 @@ export default function OwnerHomeScreen({ navigation }: Props) {
             onRetry={loadCompanies}
             onOpenCompany={openCompany}
             onAddCompany={() => setAddOpen(true)}
-            onTemplates={() => navigation.navigate('GlobalSigningTemplates')}
+            onExport={() => void exportReport()}
+            onAccount={(h) => openAccount(h.company.id)}
             onToggleActive={(h) => requestToggle(toCompanyRow(h))}
             onDelete={(h) => {
               setMenuCompany(toCompanyRow(h));
@@ -298,7 +327,9 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         onOpenCompany={openCompany}
         onCompanyMenu={(h) => setMenuCompany(toCompanyRow(h))}
         onAddCompany={() => setAddOpen(true)}
-        onTemplates={() => navigation.navigate('GlobalSigningTemplates')}
+        unread={unread}
+        onNotifications={() => navigation.navigate('Notifications')}
+        onExport={() => void exportReport()}
       />
       {sheets}
     </>

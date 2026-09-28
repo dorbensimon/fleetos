@@ -9,14 +9,16 @@ import { BrandLoader } from '../ui/BrandLoader';
 import { ErrorState } from '../ui';
 import { formatDate, timeGreeting } from '../../lib/theme';
 import { ACTIVITY_DAYS, lastSeenLabel, type CompanyHealth, type CompanyIssue, type PlatformOverview, type Tone } from '../../lib/platformOverview';
+import { accountNextStep, formatMoney, planLabel, statusLabel, statusTone, type AccountTone } from '../../lib/companyAccount';
 import { COMPANY_FILTERS, filterCompanies, type CompanyFilter, type CompanySort } from './ownerConsole';
 
 /**
- * The owner's control room on desktop. One band of platform vitals on top;
- * below, every company as a row that says at a glance whether it is healthy,
- * who works in it and when it was last used, with the problems that need the
- * owner gathered in a queue beside it. Counts only: people's details stay
- * inside each company's own page.
+ * The owner's control room on desktop. One band of business vitals on top
+ * (companies, monthly revenue, trials, people, vehicles, use); below, every
+ * company as a row that says at a glance whether it is healthy, where it
+ * stands as a customer and when it was last used, with the revenue picture
+ * and the problems that need the owner beside it. Counts only: people's
+ * details stay inside each company's own page.
  */
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -34,7 +36,8 @@ type Props = {
   onRetry: () => void;
   onOpenCompany: (id: string) => void;
   onAddCompany: () => void;
-  onTemplates: () => void;
+  onExport: () => void;
+  onAccount: (company: CompanyHealth) => void;
   onToggleActive: (company: CompanyHealth) => void;
   onDelete: (company: CompanyHealth) => void;
 };
@@ -64,10 +67,10 @@ export function OwnerConsoleDesktop(p: Props) {
           </DText>
         </View>
         <View style={styles.headerActions}>
-          <HoverPressable style={styles.secondaryButton} hoverStyle={styles.secondaryButtonHover} onPress={p.onTemplates}>
-            <Ionicons name="document-text-outline" size={16} color={DESKTOP_COLORS.ink} />
+          <HoverPressable style={styles.secondaryButton} hoverStyle={styles.secondaryButtonHover} onPress={p.onExport} disabled={!p.overview}>
+            <Ionicons name="download-outline" size={16} color={DESKTOP_COLORS.ink} />
             <DText weight="semiBold" style={styles.secondaryButtonText}>
-              תבניות חתימה
+              דוח לקוחות
             </DText>
           </HoverPressable>
           <HoverPressable style={styles.primaryButton} hoverStyle={styles.primaryButtonHover} pressMotionStyle={styles.pressDown} onPress={p.onAddCompany}>
@@ -151,6 +154,7 @@ export function OwnerConsoleDesktop(p: Props) {
             </View>
 
             <View style={[styles.sideColumn, !wide && styles.sideColumnStacked, enter(3)]}>
+              <BusinessPanel overview={p.overview} onOpen={p.onOpenCompany} />
               <AttentionQueue issues={p.overview.issues} onOpen={p.onOpenCompany} />
             </View>
           </View>
@@ -167,6 +171,16 @@ export function OwnerConsoleDesktop(p: Props) {
               onPress={() => {
                 setMenu(null);
                 p.onOpenCompany(menu.company.id);
+              }}
+            />
+            <MenuAction
+              icon="card-outline"
+              title="מנוי ותשלום"
+              caption="מצב הלקוח, מסלול, מחיר ומועד חידוש"
+              onPress={() => {
+                const target = menu;
+                setMenu(null);
+                p.onAccount(target);
               }}
             />
             <MenuAction
@@ -205,25 +219,37 @@ function Vitals({ overview }: { overview: PlatformOverview }) {
   const t = overview.totals;
   const vehicleIssues = overview.companies.reduce((n, c) => n + (c.active ? c.vehicleIssues : 0), 0);
   const licensesExpired = overview.companies.reduce((n, c) => n + (c.active ? c.licensesExpired : 0), 0);
-  const cells: { label: string; value: number; sub: string; tone?: 'bad' | 'warn'; icon: IconName }[] = [
-    { label: 'חברות פעילות', value: t.activeCompanies, sub: `מתוך ${t.companies}`, icon: 'business-outline' },
-    { label: 'מנהלי צי', value: t.admins, sub: 'בכל החברות', icon: 'person-outline' },
+  const cells: { label: string; value: string; sub: string; tone?: 'bad' | 'warn'; icon: IconName }[] = [
+    { label: 'חברות פעילות', value: t.activeCompanies.toLocaleString('he-IL'), sub: `מתוך ${t.companies}`, icon: 'business-outline' },
+    {
+      label: 'הכנסה חודשית',
+      value: formatMoney(t.mrr),
+      sub: t.overdue ? `${t.overdue} בפיגור תשלום` : t.paying === 1 ? 'מלקוח משלם אחד' : `מ-${t.paying} לקוחות משלמים`,
+      tone: t.overdue ? 'bad' : undefined,
+      icon: 'cash-outline',
+    },
+    {
+      label: 'בתקופת ניסיון',
+      value: t.trials.toLocaleString('he-IL'),
+      sub: t.trialsEndingSoon ? `${t.trialsEndingSoon} מסתיימים השבוע` : 'אין ניסיון שמסתיים השבוע',
+      tone: t.trialsEndingSoon ? 'warn' : undefined,
+      icon: 'timer-outline',
+    },
     {
       label: 'נהגים',
-      value: t.drivers,
-      sub: licensesExpired ? `${licensesExpired} עם רישיון שפג` : 'כל הרישיונות בתוקף',
+      value: t.drivers.toLocaleString('he-IL'),
+      sub: licensesExpired ? `${licensesExpired} עם רישיון שפג` : `${t.admins} מנהלי צי`,
       tone: licensesExpired ? 'bad' : undefined,
       icon: 'people-outline',
     },
     {
       label: 'רכבים',
-      value: t.vehicles,
+      value: t.vehicles.toLocaleString('he-IL'),
       sub: vehicleIssues ? `${vehicleIssues} בלי ביטוח או רישיון בתוקף` : 'כולם עם ביטוח ורישיון',
       tone: vehicleIssues ? 'bad' : undefined,
       icon: 'car-sport-outline',
     },
-    { label: 'ממתינים לחתימה', value: t.pendingSignatures, sub: 'מסמכים שנשלחו לנהגים', icon: 'create-outline' },
-    { label: 'פעולות השבוע', value: t.activity7d, sub: 'עדכונים בכל החברות', icon: 'pulse-outline' },
+    { label: 'פעולות השבוע', value: t.activity7d.toLocaleString('he-IL'), sub: 'עדכונים בכל החברות', icon: 'pulse-outline' },
   ];
   return (
     <View style={[styles.vitals, enter(1)]}>
@@ -235,8 +261,8 @@ function Vitals({ overview }: { overview: PlatformOverview }) {
               {c.label}
             </DText>
           </View>
-          <DText weight="extraBold" style={[styles.vitalValue, TABULAR]}>
-            {c.value.toLocaleString('he-IL')}
+          <DText weight="extraBold" style={[styles.vitalValue, TABULAR]} numberOfLines={1}>
+            {c.value}
           </DText>
           <DText weight={c.tone ? 'semiBold' : 'regular'} style={[styles.vitalSub, c.tone && { color: DESKTOP_TONES[c.tone].fg }]} numberOfLines={1}>
             {c.sub}
@@ -256,7 +282,7 @@ const COLUMNS: { key: string; label: string; sort?: CompanySort; style: object }
   { key: 'state', label: 'מצב', sort: 'health', style: { width: 150 } },
   { key: 'team', label: 'צוות', sort: 'size', style: { width: 110 } },
   { key: 'vehicles', label: 'רכבים', style: { width: 120 } },
-  { key: 'signing', label: 'לחתימה', style: { width: 76 } },
+  { key: 'account', label: 'מנוי', style: { width: 132 } },
   { key: 'activity', label: 'פעילות אחרונה', sort: 'activity', style: { width: 128 } },
   { key: 'menu', label: '', style: { width: 36 } },
 ];
@@ -281,10 +307,11 @@ function CompanyTable({
   onAdd: () => void;
 }) {
   const [width, setWidth] = useState(0);
-  // Narrow panels drop the two least-needed columns before anything squeezes.
-  const noSigning = width > 0 && width < 800;
-  const compact = width > 0 && width < 680;
-  const columns = COLUMNS.filter((c) => !(c.key === 'signing' && noSigning) && !(c.key === 'team' && compact));
+  // Narrow panels drop the two least-needed columns before anything squeezes:
+  // the team size first, the subscription only when there is truly no room.
+  const compact = width > 0 && width < 820;
+  const noAccount = width > 0 && width < 660;
+  const columns = COLUMNS.filter((c) => !(c.key === 'account' && noAccount) && !(c.key === 'team' && compact));
 
   if (totalCompanies === 0) {
     return (
@@ -348,7 +375,7 @@ function CompanyTable({
         </View>
       ) : (
         rows.map((row, index) => (
-          <CompanyRowView key={row.company.id} row={row} index={index} compact={compact} noSigning={noSigning} last={index === rows.length - 1} onOpen={onOpen} onMenu={onMenu} />
+          <CompanyRowView key={row.company.id} row={row} index={index} compact={compact} noAccount={noAccount} last={index === rows.length - 1} onOpen={onOpen} onMenu={onMenu} />
         ))
       )}
     </View>
@@ -380,7 +407,7 @@ function CompanyRowView({
   row,
   index,
   compact,
-  noSigning,
+  noAccount,
   last,
   onOpen,
   onMenu,
@@ -388,7 +415,7 @@ function CompanyRowView({
   row: CompanyHealth;
   index: number;
   compact: boolean;
-  noSigning: boolean;
+  noAccount: boolean;
   last: boolean;
   onOpen: (id: string) => void;
   onMenu: (c: CompanyHealth) => void;
@@ -458,11 +485,24 @@ function CompanyRowView({
           ) : null}
         </View>
 
-        {!noSigning && (
-          <View style={[styles.cell, { width: 76 }]}>
-            <DText weight="semiBold" style={[styles.cellMain, TABULAR, !row.pendingSignatures && styles.faint]}>
-              {row.pendingSignatures || '–'}
-            </DText>
+        {!noAccount && (
+          <View style={[styles.cell, { width: 132 }]}>
+            {row.account ? (
+              <>
+                <View style={styles.accountLine}>
+                  <View style={[styles.dot, { backgroundColor: ACCOUNT_DOT[statusTone(row.account.status)] }]} />
+                  <DText weight="semiBold" style={styles.cellMain} numberOfLines={1}>
+                    {statusLabel(row.account.status)}
+                    {row.account.monthly_price ? ` · ${formatMoney(row.account.monthly_price)}` : ''}
+                  </DText>
+                </View>
+                <DText style={[styles.cellSub, nextTone(row) && { color: DESKTOP_TONES[nextTone(row)!].fg }]} numberOfLines={1}>
+                  {accountNextStep(row.account)?.label ?? planLabel(row.account.plan)}
+                </DText>
+              </>
+            ) : (
+              <DText style={[styles.cellMain, styles.faint]}>–</DText>
+            )}
           </View>
         )}
 
@@ -482,6 +522,13 @@ function CompanyRowView({
       </HoverPressable>
     </View>
   );
+}
+
+const ACCOUNT_DOT: Record<AccountTone, string> = { ok: '#1E9E4C', warn: '#D97706', bad: '#DC2F26', off: '#98A2AD' };
+
+function nextTone(row: CompanyHealth): 'warn' | 'bad' | null {
+  const t = accountNextStep(row.account)?.tone;
+  return t === 'warn' || t === 'bad' ? t : null;
 }
 
 function MenuAction({ icon, title, caption, danger, onPress }: { icon: IconName; title: string; caption: string; danger?: boolean; onPress: () => void }) {
@@ -512,6 +559,67 @@ function PanelTitle({ title, trailing }: { title: string; trailing?: React.React
         {title}
       </DText>
       {trailing}
+    </View>
+  );
+}
+
+/** Revenue at a glance: monthly income, customers by standing, and the next dates that bring money in. */
+function BusinessPanel({ overview, onOpen }: { overview: PlatformOverview; onOpen: (id: string) => void }) {
+  const t = overview.totals;
+  const segments: { label: string; value: number; color: string }[] = [
+    { label: 'משלמים', value: t.paying - t.overdue, color: ACCOUNT_DOT.ok },
+    { label: 'בניסיון', value: t.trials, color: ACCOUNT_DOT.warn },
+    { label: 'בפיגור', value: t.overdue, color: ACCOUNT_DOT.bad },
+  ];
+  const total = Math.max(1, segments.reduce((n, s) => n + s.value, 0));
+  const upcoming = overview.companies
+    .filter((c) => c.active && accountNextStep(c.account))
+    .map((c) => ({ c, next: accountNextStep(c.account)!, date: c.account?.status === 'trial' ? c.account.trial_ends_at : c.account?.renewal_date }))
+    .filter((x) => !!x.date)
+    .sort((a, b) => (a.date! < b.date! ? -1 : 1))
+    .slice(0, 4);
+  return (
+    <View style={styles.panel}>
+      <PanelTitle title="הכנסות ומנויים" />
+      <View style={styles.chartHead}>
+        <DText weight="extraBold" style={[styles.chartValue, TABULAR]}>
+          {formatMoney(t.mrr)}
+        </DText>
+        <DText style={styles.cellSub}>בחודש, לפני מע״מ · {formatMoney(t.mrr * 12)} בשנה</DText>
+      </View>
+      <View style={styles.stack} accessible accessibilityLabel={segments.map((s) => `${s.label} ${s.value}`).join(', ')}>
+        {segments.map((s) =>
+          s.value ? <View key={s.label} style={{ flex: s.value / total, backgroundColor: s.color, height: '100%' }} /> : null,
+        )}
+      </View>
+      <View style={styles.legend}>
+        {segments.map((s) => (
+          <View key={s.label} style={styles.legendItem}>
+            <View style={[styles.dot, { backgroundColor: s.color }]} />
+            <DText style={styles.cellSub}>
+              {s.label} <DText weight="bold" style={[styles.legendValue, TABULAR]}>{s.value}</DText>
+            </DText>
+          </View>
+        ))}
+      </View>
+      {upcoming.length > 0 && (
+        <View style={styles.upcoming}>
+          <DText weight="semiBold" style={styles.upcomingTitle}>
+            מה מתקרב
+          </DText>
+          {upcoming.map(({ c, next }) => (
+            <HoverPressable key={c.company.id} style={styles.upcomingRow} hoverStyle={styles.rowHover} onPress={() => onOpen(c.company.id)} accessibilityRole="link">
+              <View style={[styles.dot, { backgroundColor: ACCOUNT_DOT[next.tone] }]} />
+              <DText weight="semiBold" style={[styles.cellMain, styles.flex1]} numberOfLines={1}>
+                {c.company.name}
+              </DText>
+              <DText style={[styles.cellSub, next.tone === 'bad' && { color: DESKTOP_TONES.bad.fg }]} numberOfLines={1}>
+                {next.label}
+              </DText>
+            </HoverPressable>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -858,6 +966,16 @@ const styles = StyleSheet.create({
     backgroundColor: DESKTOP_COLORS.surfaceMuted,
   },
   privacyText: { flex: 1, fontSize: 12.5, lineHeight: 19, color: DESKTOP_COLORS.inkMuted },
+
+  accountLine: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  flex1: { flex: 1 },
+  stack: { flexDirection: 'row-reverse', height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: DESKTOP_COLORS.borderSoft, marginHorizontal: 18, marginTop: 14, gap: 2 },
+  legend: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 14, paddingHorizontal: 18, paddingTop: 10, paddingBottom: 16 },
+  legendItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  legendValue: { fontSize: 12.5, color: DESKTOP_COLORS.ink },
+  upcoming: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft, paddingVertical: 8 },
+  upcomingTitle: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, paddingHorizontal: 18, paddingVertical: 6 },
+  upcomingRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 9, marginHorizontal: 0 },
 
   menu: { gap: 4 },
   menuAction: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, padding: 12, borderRadius: 10 },

@@ -13,6 +13,13 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { NotificationsHubDesktopView } from '../../components/desktop/NotificationsHubDesktopView';
 import { useNotificationPreferences } from '../../lib/useNotificationPreferences';
 import { NotificationsMobile } from '../NotificationsMobile';
+import { OwnerNotificationsDesktop, OwnerNotificationsMobile } from '../../components/owner/OwnerNotifications';
+import {
+  listOwnerNotifications,
+  markAllOwnerNotificationsRead,
+  markOwnerNotificationRead,
+  type OwnerNotification,
+} from '../../lib/ownerNotifications';
 
 /**
  * Logs every driver self-edit (name/phone/ID/license/department) so
@@ -23,7 +30,14 @@ import { NotificationsMobile } from '../NotificationsMobile';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
 
-export default function NotificationsScreen({ navigation, route }: Props) {
+export default function NotificationsScreen(props: Props) {
+  const { profile } = useCompany();
+  // The owner's feed is about companies, not drivers: its own table and view.
+  if (profile?.role === 'owner') return <OwnerNotificationsScreen {...props} />;
+  return <CompanyNotificationsScreen {...props} />;
+}
+
+function CompanyNotificationsScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
   const { companyId, profile } = useCompany();
@@ -155,6 +169,106 @@ export default function NotificationsScreen({ navigation, route }: Props) {
           ? 'כשמנהל הצי ישלח מסמך, ישייך רכב או כשתוקף יתקרב — העדכון יופיע כאן.'
           : 'כשנהג יעדכן פרטים, יעלה מסמך או כשתוקף ברכב יתקרב — העדכון יופיע כאן.'
       }
+    />
+  );
+}
+
+function OwnerNotificationsScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
+  const isDesktop = useIsDesktop();
+  const [items, setItems] = useState<OwnerNotification[]>([]);
+  const [unreadIds, setUnreadIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const loadRequest = useRef(0);
+  const preferences = useNotificationPreferences({ enabled: isDesktop });
+
+  const load = useCallback(async () => {
+    const requestId = ++loadRequest.current;
+    setError(null);
+    try {
+      const rows = await listOwnerNotifications();
+      if (requestId !== loadRequest.current) return;
+      setItems(rows);
+      setUnreadIds(new Set(rows.filter((r) => !r.read_at).map((r) => r.id)));
+    } catch (err: any) {
+      if (requestId === loadRequest.current) setError(err?.message ?? 'טעינת ההתראות נכשלה');
+    } finally {
+      if (requestId === loadRequest.current) setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+      return () => {
+        loadRequest.current += 1;
+      };
+    }, [load])
+  );
+
+  const open = async (n: OwnerNotification) => {
+    if (unreadIds.has(n.id)) {
+      setUnreadIds((prev) => {
+        const next = new Set(prev);
+        next.delete(n.id);
+        return next;
+      });
+      markOwnerNotificationRead(n.id).catch(() => setUnreadIds((prev) => new Set(prev).add(n.id)));
+    }
+    if (n.company_id) navigation.navigate('CompanyDetail', { companyId: n.company_id });
+  };
+
+  const markAllRead = async () => {
+    if (unreadIds.size === 0) return;
+    const previous = unreadIds;
+    setUnreadIds(new Set());
+    try {
+      await markAllOwnerNotificationsRead();
+    } catch {
+      setUnreadIds(previous);
+    }
+  };
+
+  if (isDesktop) {
+    return (
+      <DesktopShell active="Notifications" breadcrumbs={['התראות']}>
+        <OwnerNotificationsDesktop
+          items={items}
+          unreadIds={unreadIds}
+          loading={loading}
+          error={error}
+          timeAgo={timeAgo}
+          onOpen={(n) => void open(n)}
+          onMarkAllRead={() => void markAllRead()}
+          onRetry={load}
+          prefs={preferences}
+        />
+      </DesktopShell>
+    );
+  }
+
+  return (
+    <OwnerNotificationsMobile
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
+      items={items}
+      unreadIds={unreadIds}
+      loading={loading}
+      error={error}
+      timeAgo={timeAgo}
+      onOpen={(n) => void open(n)}
+      onMarkAllRead={() => void markAllRead()}
+      onSettings={() => navigation.navigate('NotificationPreferences')}
+      onBack={() => navigation.goBack()}
+      onRetry={load}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     />
   );
 }

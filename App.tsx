@@ -49,7 +49,6 @@ import SignedDocumentsScreen from './screens/admin/SignedDocumentsScreen';
 import ChecklistMeetingScreen from './screens/admin/ChecklistMeetingScreen';
 import NotificationsScreen from './screens/admin/NotificationsScreen';
 import AdminDocumentSigningScreen from './screens/admin/AdminDocumentSigningScreen';
-import GlobalSigningTemplatesScreen from './screens/GlobalSigningTemplatesScreen';
 import DocusealWebViewScreen from './screens/DocusealWebViewScreen';
 import DocumentCategoryScreen from './screens/admin/DocumentCategoryScreen';
 import DriverLicenseDocumentsScreen from './screens/admin/DriverLicenseDocumentsScreen';
@@ -125,7 +124,6 @@ const linking: LinkingOptions<RootStackParamList> = {
       ChecklistMeeting: 'drivers/:driverId/meeting',
       Notifications: 'notifications',
       AdminDocumentSigning: 'documents/signing',
-      GlobalSigningTemplates: 'owner/signing-templates',
       DocusealWebView: 'documents/view',
       NotificationPreferences: 'notification-preferences',
       DocumentCategory: 'documents/:ownerType/:ownerId/:category',
@@ -316,7 +314,6 @@ export default function App() {
               <Stack.Screen name="ChecklistMeeting" component={ChecklistMeetingScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               <Stack.Screen name="AdminDocumentSigning" component={AdminDocumentSigningScreen} />
-              <Stack.Screen name="GlobalSigningTemplates" component={GlobalSigningTemplatesScreen} />
               <Stack.Screen name="DocusealWebView" component={DocusealWebViewScreen} />
               <Stack.Screen name="DocumentCategory" component={DocumentCategoryScreen} />
               <Stack.Screen name="DriverLicenseDocuments" component={DriverLicenseDocumentsScreen} />

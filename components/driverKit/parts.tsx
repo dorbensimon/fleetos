@@ -700,6 +700,7 @@ export function KitSheet({
   children,
   footer,
   dismissable = true,
+  scrollKey,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -710,8 +711,14 @@ export function KitSheet({
   children?: ReactNode;
   footer?: ReactNode;
   dismissable?: boolean;
+  /** Changing it brings the sheet back to its top (e.g. the next step of a form). */
+  scrollKey?: string | number;
 }) {
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [scrollKey]);
   const desktop = useIsDesktop();
   const reduce = useReducedMotion();
   const [mounted, setMounted] = useState(visible);
@@ -750,7 +757,7 @@ export function KitSheet({
           ]}
         >
           {!desktop && <View style={styles.grab} />}
-          <ScrollView bounces={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheetBody} style={styles.sheetScroll}>
+          <ScrollView ref={scrollRef} bounces={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.sheetBody} style={styles.sheetScroll}>
             <View style={styles.sheetHead}>
               {!!icon && (
                 <View style={[styles.sheetIcon, { backgroundColor: iconBg }]}>
