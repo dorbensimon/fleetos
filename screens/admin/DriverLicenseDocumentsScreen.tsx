@@ -20,6 +20,9 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES } from '../../components/desktop/desktopTheme';
+import { t, textEnd } from '../../lib/i18n';
+import { LICENSE_SIDE_STORED_TITLE } from '../../lib/licenseSides';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * Dedicated license-photos screen — replaces the generic DocumentCategory
@@ -30,7 +33,7 @@ import { DESKTOP_COLORS, DESKTOP_TONES } from '../../components/desktop/desktopT
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverLicenseDocuments'>;
 
 type Side = 'front' | 'back';
-const SIDE_TITLE: Record<Side, string> = { front: 'צד קדמי', back: 'צד אחורי' };
+const SIDE_TITLE: Record<Side, string> = { get front() { return t('documents.frontSide'); }, get back() { return t('documents.backSide'); } };
 const SHEET_ANIM_MS = 280;
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
@@ -89,8 +92,8 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
         getDriver(driverId),
         listDocuments('driver', driverId, 'license_docs'),
       ]);
-      const front = allDocs.find((d) => d.title === SIDE_TITLE.front) ?? null;
-      const back = allDocs.find((d) => d.title === SIDE_TITLE.back) ?? null;
+      const front = allDocs.find((d) => d.title === LICENSE_SIDE_STORED_TITLE.front) ?? null;
+      const back = allDocs.find((d) => d.title === LICENSE_SIDE_STORED_TITLE.back) ?? null;
 
       const [frontUrl, backUrl] = await Promise.all([
         front ? getDocumentUrl(front) : Promise.resolve(null),
@@ -101,7 +104,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       setDocs({ front, back });
       setImageUrl({ front: frontUrl, back: backUrl });
     } catch (err: any) {
-      if (requestId === loadRequest.current) setLoadError(err?.message ?? 'טעינת המסמכים נכשלה');
+      if (requestId === loadRequest.current) setLoadError(errorMessage(err, t('documents.loadFailedShort')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -116,13 +119,13 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
 
   const bothSides = !!docs.front && !!docs.back;
   const isVerified = bothSides && !!driver?.license_expiry;
-  const status = isVerified ? 'מאומת' : 'ממתין להשלמה';
+  const status = isVerified ? t('common.verified') : t('common.pendingCompletion');
 
   const footerText = editMode
-    ? 'לחיצה על ריבוע מחליפה את הצילום. אפשר לעדכן את תאריך התוקף בשדה שלמעלה.'
+    ? t('license.tapToReplace')
     : bothSides
-    ? 'המסמכים נשמרים באזור פרטי ומוצגים בקישור זמני. לחיצה על ריבוע פותחת את הצילום בגדול.'
-    : 'לחיצה על הריבוע הריק מעלה צילום של הצד החסר.';
+    ? t('license.privateTapToOpen')
+    : t('license.tapEmptyToUpload');
 
   const openSheet = (side: Side) => {
     setSheetFor(side);
@@ -180,7 +183,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
         ownerType: 'driver',
         ownerId: driverId,
         category: 'license_docs',
-        title: SIDE_TITLE[side],
+        title: LICENSE_SIDE_STORED_TITLE[side],
         file,
       });
       if (existing) await deleteDocument(existing);
@@ -195,14 +198,14 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
           await updateDriver(driverId, { license_expiry: scan.extractedDate });
           setDriver((prev) => (prev ? { ...prev, license_expiry: scan.extractedDate } : prev));
           setExpiryDraft(scan.extractedDate);
-          showToast(`זוהה תוקף: ${formatDdMmYyyy(scan.extractedDate)}`, 2400);
+          showToast(t('license.detected', { v1: formatDdMmYyyy(scan.extractedDate) }), 2400);
         } else {
-          showToast('התמונה הועלתה, אך לא זוהה תאריך תוקף — ניתן להזין ידנית', 2400);
+          showToast(t('license.uploadedNoDateManual'), 2400);
         }
       }
     } catch (err: any) {
       setFailedSide(side);
-      showAlert('ההעלאה נכשלה', err?.message ?? 'נסה שוב');
+      showAlert(t('common.uploadFailedFem'), errorMessage(err, t('common.tryAgain')));
     } finally {
       setProcessingSide(null);
       setUploadingSide(null);
@@ -217,7 +220,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       setDocs((prev) => ({ ...prev, [side]: null }));
       setImageUrl((prev) => ({ ...prev, [side]: null }));
     } catch {
-      showAlert('מחיקה נכשלה', 'נסה שוב');
+      showAlert(t('common.deleteFailed'), t('common.tryAgain'));
     }
   };
 
@@ -237,9 +240,9 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       await updateDriver(driverId, { license_expiry: expiryDraft });
       setDriver((prev) => (prev ? { ...prev, license_expiry: expiryDraft } : prev));
       setEditMode(false);
-      showToast('הפרטים נשמרו', 1800);
+      showToast(t('common.detailsSaved'), 1800);
     } catch (err: any) {
-      showAlert('השמירה נכשלה', err?.message ?? 'נסה שוב');
+      showAlert(t('common.saveFailedF'), errorMessage(err, t('common.tryAgain')));
     } finally {
       setSaving(false);
     }
@@ -251,7 +254,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
     try {
       await downloadDocument(doc);
     } catch (err: any) {
-      showAlert('ההורדה נכשלה', err?.message ?? 'נסה שוב');
+      showAlert(t('common.downloadFailed'), errorMessage(err, t('common.tryAgain')));
     }
   };
 
@@ -279,14 +282,14 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
           visible={!!sheetFor}
           onClose={() => setSheetFor(null)}
           icon="camera"
-          title={sheetFor ? `צילום ה${SIDE_TITLE[sheetFor]}` : 'צילום'}
-          subtitle="בסריקה ננסה לזהות את תאריך התוקף ולמלא אותו. כדאי לוודא אותו לפני השמירה."
+          title={sheetFor ? t('license.photoOfSide', { v1: SIDE_TITLE[sheetFor] }) : t('license.photo')}
+          subtitle={t('license.scanHint')}
         >
           <Surface style={styles.kitSheetList}>
-            <ActionRow icon="scan" label="סריקה עם זיהוי תוקף" hint="מומלץ — צילום ומילוי התוקף אוטומטית" onPress={() => pickAndUpload('scan')} />
-            <ActionRow first={false} icon="camera-outline" label="צילום" onPress={() => pickAndUpload('camera')} />
-            <ActionRow first={false} icon="images-outline" label="בחירה מהתמונות" onPress={() => pickAndUpload('gallery')} />
-            <ActionRow first={false} icon="document-outline" label="בחירה מהקבצים" onPress={() => pickAndUpload('file')} />
+            <ActionRow icon="scan" label={t('license.scanWithDetect')} hint={t('license.scanRecommended')} onPress={() => pickAndUpload('scan')} />
+            <ActionRow first={false} icon="camera-outline" label={t('license.photo')} onPress={() => pickAndUpload('camera')} />
+            <ActionRow first={false} icon="images-outline" label={t('common.chooseFromPhotos')} onPress={() => pickAndUpload('gallery')} />
+            <ActionRow first={false} icon="document-outline" label={t('common.chooseFromFiles')} onPress={() => pickAndUpload('file')} />
           </Surface>
         </KitSheet>
       )}
@@ -307,18 +310,18 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
           >
             <Pressable onPress={(e) => e.stopPropagation()}>
               <View style={styles.sheetCard}>
-                <Text style={styles.sheetTitle}>{sheetFor ? `צילום ${SIDE_TITLE[sheetFor]}` : ''}</Text>
+                <Text style={styles.sheetTitle}>{sheetFor ? t('license.photoV1', { v1: SIDE_TITLE[sheetFor] }) : ''}</Text>
                 <View style={styles.sheetDivider} />
-                <SheetAction label="צילום מסמך" onPress={() => pickAndUpload('camera')} />
+                <SheetAction label={t('common.photographDocument')} onPress={() => pickAndUpload('camera')} />
                 <View style={styles.sheetDivider} />
-                <SheetAction label="בחירה מהתמונות" onPress={() => pickAndUpload('gallery')} />
+                <SheetAction label={t('common.chooseFromPhotos')} onPress={() => pickAndUpload('gallery')} />
                 <View style={styles.sheetDivider} />
-                <SheetAction label="בחירה מקבצים" onPress={() => pickAndUpload('file')} />
+                <SheetAction label={t('common.chooseFromFilesAlt')} onPress={() => pickAndUpload('file')} />
                 <View style={styles.sheetDivider} />
-                <SheetAction label="סריקה (זיהוי תוקף אוטומטי)" onPress={() => pickAndUpload('scan')} />
+                <SheetAction label={t('license.scanAutoDetect')} onPress={() => pickAndUpload('scan')} />
               </View>
               <View style={styles.sheetCard}>
-                <SheetAction label="ביטול" onPress={closeSheet} bold />
+                <SheetAction label={t('common.cancel')} onPress={closeSheet} bold />
               </View>
             </Pressable>
           </Animated.View>
@@ -329,14 +332,14 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
         <View style={[styles.viewer, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}>
           <View style={styles.viewerHeader}>
             <Pressable onPress={() => setViewerSide(null)} hitSlop={8}>
-              <Text style={styles.viewerAction}>סגירה</Text>
+              <Text style={styles.viewerAction}>{t('common.close')}</Text>
             </Pressable>
             <Text style={styles.viewerTitle} numberOfLines={1}>
               {viewerSide ? `${SIDE_TITLE[viewerSide]} · ${docs[viewerSide]?.file_name ?? ''}` : ''}
             </Text>
           </View>
           {viewerSide && imageUrl[viewerSide] ? (
-            <Image source={{ uri: imageUrl[viewerSide]! }} accessibilityLabel={`רישיון נהיגה, ${SIDE_TITLE[viewerSide]}`} style={styles.viewerImage} resizeMode="contain" />
+            <Image source={{ uri: imageUrl[viewerSide]! }} accessibilityLabel={t('license.drivingLicenseSide', { v1: SIDE_TITLE[viewerSide] })} style={styles.viewerImage} resizeMode="contain" />
           ) : null}
           <View style={styles.viewerActions}>
             <Pressable
@@ -344,7 +347,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
               onPress={() => viewerSide && download(viewerSide)}
             >
               <Feather name="download" size={18} color="#FFFFFF" />
-              <Text style={styles.viewerActionText}>הורדה</Text>
+              <Text style={styles.viewerActionText}>{t('common.download')}</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.viewerActionBtn, pressed && styles.viewerActionBtnPressed]}
@@ -356,7 +359,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
               }}
             >
               <Feather name="refresh-cw" size={18} color="#FFFFFF" />
-              <Text style={styles.viewerActionText}>החלפה</Text>
+              <Text style={styles.viewerActionText}>{t('common.replace')}</Text>
             </Pressable>
           </View>
         </View>
@@ -366,8 +369,8 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
         <View style={styles.processingOverlay}>
           <View style={[styles.processingCard, !isDesktop && styles.processingCardKit]}>
             <BrandLoader size="large" color={isDesktop ? DC_COLORS.blueLight : DK.accent} />
-            <Text style={styles.processingTitle}>מעבד את התמונה…</Text>
-            <Text style={styles.processingSubtitle}>אנא המתן, אין צורך לבחור שוב</Text>
+            <Text style={styles.processingTitle}>{t('common.processingImage')}</Text>
+            <Text style={styles.processingSubtitle}>{t('common.pleaseWaitNoReselect')}</Text>
           </View>
         </View>
       </Modal>
@@ -382,13 +385,13 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
         insetBottom={insets.bottom}
         hero={
           <HeroTitle
-            title="רישיון נהיגה"
-            subtitle={[isDriverSelf ? null : driver?.full_name, loading ? null : isVerified ? 'מאומת' : 'ממתין להשלמה'].filter(Boolean).join(' · ') || ' '}
+            title={t('driver.drivingLicense')}
+            subtitle={[isDriverSelf ? null : driver?.full_name, loading ? null : isVerified ? t('common.verified') : t('common.pendingCompletion')].filter(Boolean).join(' · ') || ' '}
             onBack={() => (editMode ? setEditMode(false) : navigation.goBack())}
-            right={!loading && !loadError ? <HeroButton icon={editMode ? 'close' : 'create-outline'} label={editMode ? 'ביטול עריכה' : 'עריכה'} onPress={toggleEdit} /> : undefined}
+            right={!loading && !loadError ? <HeroButton icon={editMode ? 'close' : 'create-outline'} label={editMode ? t('common.cancelEdit') : t('common.edit')} onPress={toggleEdit} /> : undefined}
           />
         }
-        footer={editMode ? <PrimaryAction label="שמירת השינויים" icon="checkmark" onPress={save} loading={saving} /> : undefined}
+        footer={editMode ? <PrimaryAction label={t('common.saveChangesAction')} icon="checkmark" onPress={save} loading={saving} /> : undefined}
         overlay={overlays}
       >
         {body}
@@ -399,7 +402,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
   if (loading) {
     if (isDesktop) {
       return (
-        <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', 'מסמכי רישיון נהיגה']}>
+        <DesktopShell active="AdminHome" breadcrumbs={[t('nav.management'), t('common.drivers'), t('license.documents')]}>
           <LoadingState />
         </DesktopShell>
       );
@@ -410,18 +413,18 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
   if (loadError) {
     if (isDesktop) {
       return (
-        <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', 'מסמכי רישיון נהיגה']}>
+        <DesktopShell active="AdminHome" breadcrumbs={[t('nav.management'), t('common.drivers'), t('license.documents')]}>
           <ErrorState message={loadError} onRetry={load} />
         </DesktopShell>
       );
     }
-    return phonePage(<ErrorPanel message="טעינת מסמכי הרישיון נכשלה" hint={loadError} onRetry={load} />);
+    return phonePage(<ErrorPanel message={t('license.docsLoadFailed')} hint={loadError} onRetry={load} />);
   }
 
   const desktopTileGrid = (
     <View style={desktopStyles.grid}>
       <SideTile
-        label="צד קדמי"
+        label={t('documents.frontSide')}
         fileName={docs.front?.file_name ?? null}
         url={imageUrl.front}
         editMode={editMode}
@@ -431,7 +434,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
         onRemove={() => removeSide('front')}
       />
       <SideTile
-        label="צד אחורי"
+        label={t('documents.backSide')}
         fileName={docs.back?.file_name ?? null}
         url={imageUrl.back}
         editMode={editMode}
@@ -448,26 +451,26 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       <>
         <DesktopShell
           active={isDriverSelf ? 'DriverDocuments' : 'AdminHome'}
-          breadcrumbs={isDriverSelf ? ['המסמכים שלי', 'מסמכי רישיון נהיגה'] : ['ניהול', 'נהגים', 'מסמכי רישיון נהיגה']}
+          breadcrumbs={isDriverSelf ? [t('nav.myDocuments'), t('license.documents')] : [t('nav.management'), t('common.drivers'), t('license.documents')]}
         >
           <View style={desktopStyles.wrap}>
             <HoverPressable style={desktopStyles.editButton} onPress={toggleEdit}>
-              <DText weight="semiBold" style={desktopStyles.editButtonText}>{editMode ? 'סיום עריכה' : 'עריכה'}</DText>
+              <DText weight="semiBold" style={desktopStyles.editButtonText}>{editMode ? t('common.finishEdit') : t('common.edit')}</DText>
             </HoverPressable>
             {desktopTileGrid}
             <View style={desktopStyles.card}>
               <View style={desktopStyles.row}>
-                <DText weight="semiBold" style={desktopStyles.rowLabel}>תוקף הרישיון</DText>
+                <DText weight="semiBold" style={desktopStyles.rowLabel}>{t('license.expiry')}</DText>
                 {editMode ? (
-                  <DateField value={expiryDraft} onChange={setExpiryDraft} placeholder="לא הוזן" />
+                  <DateField value={expiryDraft} onChange={setExpiryDraft} placeholder={t('common.notEntered')} />
                 ) : (
                   <DText style={desktopStyles.rowValue}>
-                    {driver?.license_expiry ? formatDdMmYyyy(driver.license_expiry) : 'לא הוזן'}
+                    {driver?.license_expiry ? formatDdMmYyyy(driver.license_expiry) : t('common.notEntered')}
                   </DText>
                 )}
               </View>
               <View style={desktopStyles.rowLast}>
-                <DText weight="semiBold" style={desktopStyles.rowLabel}>סטטוס</DText>
+                <DText weight="semiBold" style={desktopStyles.rowLabel}>{t('common.status')}</DText>
                 <DText weight="semiBold" style={{ color: isVerified ? DESKTOP_TONES.ok.fg : DESKTOP_TONES.warn.fg, fontSize: 12.5 }}>
                   {status}
                 </DText>
@@ -476,7 +479,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
             <DText style={desktopStyles.footer}>{footerText}</DText>
             {editMode && (
               <HoverPressable style={desktopStyles.saveButton} onPress={save} disabled={saving}>
-                <DText weight="bold" style={[desktopStyles.saveButtonText, saving && { opacity: 0 }]}>שמירת שינויים</DText>
+                <DText weight="bold" style={[desktopStyles.saveButtonText, saving && { opacity: 0 }]}>{t('common.saveChangesShort')}</DText>
                 {saving && <BrandLoader size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
               </HoverPressable>
             )}
@@ -509,15 +512,15 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
         </Surface>
       </Reveal>
       <Reveal index={1}>
-        <KitSection title="פרטי הרישיון">
+        <KitSection title={t('license.details')}>
           {editMode ? (
-            <EditField first label="תוקף הרישיון" editor={<DateField value={expiryDraft} onChange={setExpiryDraft} placeholder="לא הוזן" />} />
+            <EditField first label={t('license.expiry')} editor={<DateField value={expiryDraft} onChange={setExpiryDraft} placeholder={t('common.notEntered')} />} />
           ) : (
             <InfoLine
               first
               icon="calendar"
               tint={expiryStatus === 'missing' ? DK.accent : STATUS[expiryStatus].fg}
-              label="תוקף הרישיון"
+              label={t('license.expiry')}
               value={driver?.license_expiry ? formatDdMmYyyy(driver.license_expiry) : null}
               trailing={driver?.license_expiry ? <StatusChip status={expiryStatus} /> : undefined}
             />
@@ -525,8 +528,8 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
           <InfoLine
             icon={isVerified ? 'shield-checkmark' : 'hourglass'}
             tint={isVerified ? STATUS.ok.fg : STATUS.soon.fg}
-            label="סטטוס"
-            value={isVerified ? 'מאומת — שני הצדדים ותוקף' : `ממתין ל${[!docs.front && 'צד קדמי', !docs.back && 'צד אחורי', !driver?.license_expiry && 'תוקף'].filter(Boolean).join(', ')}`}
+            label={t('common.status')}
+            value={isVerified ? t('license.verifiedBoth') : t('license.waitingFor', { v1: [!docs.front && t('documents.frontSide'), !docs.back && t('documents.backSide'), !driver?.license_expiry && t('common.validity')].filter(Boolean).join(', ') })}
           />
         </KitSection>
       </Reveal>
@@ -567,7 +570,7 @@ function SideTile({
         disabled={uploading}
         style={({ pressed }) => [styles.tile, !filled && styles.tileEmpty, phone && styles.tileKit, phone && !filled && styles.tileEmptyKit, pressed && styles.tilePressed]}
         accessibilityRole="button"
-        accessibilityLabel={filled ? `${label}, ${editMode ? 'החלפת הצילום' : 'הצגת הצילום'}` : `${label}, העלאת צילום`}
+        accessibilityLabel={filled ? `${label}, ${editMode ? t('license.replacePhoto') : t('license.showPhoto')}` : t('license.uploadPhotoLabel', { label })}
       >
         {filled ? (
           <>
@@ -576,7 +579,7 @@ function SideTile({
               <>
                 <View style={styles.tileEditOverlay}>
                   <Feather name="repeat" size={20} color="#FFFFFF" />
-                  <Text style={styles.tileEditText}>החלפת תמונה</Text>
+                  <Text style={styles.tileEditText}>{t('common.replaceImage')}</Text>
                 </View>
                 <Pressable
                   style={styles.tileRemove}
@@ -596,7 +599,7 @@ function SideTile({
         ) : (
           <>
             <Feather name="camera" size={27} color={phone ? DK.accent : DC_COLORS.labelTertiary} />
-            <Text style={[styles.tileEmptyText, phone && styles.tileEmptyTextKit]}>{failed ? 'ההעלאה נכשלה, נסה שוב' : 'העלאת צילום'}</Text>
+            <Text style={[styles.tileEmptyText, phone && styles.tileEmptyTextKit]}>{failed ? t('common.uploadFailedRetry') : t('license.uploadPhoto')}</Text>
           </>
         )}
         {uploading && (
@@ -608,7 +611,7 @@ function SideTile({
       <View style={styles.tileCaption}>
         <Text style={[DC_TYPO.badge, styles.tileCaptionLabel, phone && styles.tileCaptionKit]}>{label}</Text>
         <Text style={[DC_TYPO.badge, styles.tileCaptionValue, phone && styles.tileCaptionValueKit]} numberOfLines={1}>
-          {fileName ?? 'לא הועלה'}
+          {fileName ?? t('documents.notUploaded')}
         </Text>
       </View>
     </View>
@@ -695,7 +698,7 @@ const styles = StyleSheet.create({
   tileRemove: {
     position: 'absolute',
     top: 8,
-    left: 8,
+    start: 8,
     width: 26,
     height: 26,
     borderRadius: 13,
@@ -711,7 +714,7 @@ const styles = StyleSheet.create({
   },
   tileCaption: { flexDirection: 'row-reverse', justifyContent: 'space-between', paddingHorizontal: 2 },
   tileCaptionLabel: { color: DC_COLORS.labelSecondary },
-  tileCaptionValue: { color: DC_COLORS.labelTertiary, flexShrink: 1, textAlign: 'left' },
+  tileCaptionValue: { color: DC_COLORS.labelTertiary, flexShrink: 1, textAlign: textEnd() },
 
 
 
@@ -750,7 +753,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   viewerAction: { color: DC_COLORS.blueLight, fontFamily: DC_TYPO.rowValue.fontFamily, fontSize: 16 },
-  viewerTitle: { color: '#FFFFFF', fontFamily: DC_TYPO.navTitle.fontFamily, fontSize: 14, flex: 1, textAlign: 'left' },
+  viewerTitle: { color: '#FFFFFF', fontFamily: DC_TYPO.navTitle.fontFamily, fontSize: 14, flex: 1, textAlign: textEnd() },
   viewerImage: { flex: 1, marginVertical: 16, borderRadius: 14 },
   viewerActions: { flexDirection: 'row-reverse', justifyContent: 'center', gap: 32, paddingTop: 8 },
   viewerActionBtn: { alignItems: 'center', gap: 4 },

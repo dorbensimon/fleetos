@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { getSigningTemplateSourceUrl, listSigningTemplates, type SigningTemplate } from '../../../lib/docuseal';
-import { requestErrorDetails, type RequestErrorDetails } from '../../../lib/requestError';
+import { errorMessage, requestErrorDetails, type RequestErrorDetails } from '../../../lib/requestError';
 import { countWaitingSigners, deleteCompanyTemplate, deleteTemplateMessage } from '../../../lib/signingSend';
 import { formatDate } from '../../../lib/theme';
 import { SIGNING_CSS } from './signingCss';
@@ -18,6 +18,7 @@ import { RepeatChoice } from './ChecklistBuilder.web';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../navigation/types';
+import { t } from '../../../lib/i18n';
 
 /**
  * Desktop "מסמכים חתומים": the company's own signing documents, the shared
@@ -90,7 +91,7 @@ function TemplateCard({ template, index, fresh, onOpen }: { template: SigningTem
       onMouseMove={onMove}
       onMouseLeave={onLeave}
       onClick={onOpen}
-      aria-label={`פתיחת ${template.title}`}
+      aria-label={t('common.openTitle', { title: template.title })}
     >
       <div className="sd-thumb">
         <canvas ref={canvasRef} style={{ opacity: state === 'ready' ? 1 : 0, transition: 'opacity 300ms ease' }} />
@@ -106,20 +107,20 @@ function TemplateCard({ template, index, fresh, onOpen }: { template: SigningTem
         {isChecklistTemplate(template) && !fresh ? (
           <span className="sd-badge sd-sb" style={{ color: '#12805C' }}>
             <Ionicons name="list" size={14} color="#12805C" />
-            {readForm(template.form_content)?.repeatMonths ? repeatLabel(readForm(template.form_content)!.repeatMonths) : 'רשימת סעיפים'}
+            {readForm(template.form_content)?.repeatMonths ? repeatLabel(readForm(template.form_content)!.repeatMonths) : t('checklist.checklist')}
           </span>
         ) : isGlobal ? (
           <span className="sd-badge sd-sb">
             <Ionicons name="checkmark-circle" size={14} color="#1E8E45" />
-            מוכן מהמערכת
+            {t('signing.builtIn')}
           </span>
         ) : fresh ? (
           <span className="sd-badge sd-sb">
             <Ionicons name="sparkles" size={14} color="#1E8E45" />
-            חדש
+            {t('common.new')}
           </span>
         ) : (
-          <span className="sd-num">נוצר ב-{formatDate(template.created_at)}</span>
+          <span className="sd-num">{t('common.createdOnPrefix')}{formatDate(template.created_at)}</span>
         )}
       </div>
     </button>
@@ -157,7 +158,7 @@ function PreviewSheet({
       onChanged({ ...template, form_content: { ...(template.form_content as object), repeatMonths: months } });
     } catch (error) {
       setRepeat(before);
-      setRepeatError((error as Error)?.message || 'שמירת התדירות נכשלה. נסו שוב.');
+      setRepeatError(errorMessage(error, t('meeting.saveFrequencyFailedRetry')));
     } finally {
       setRepeatSaving(false);
     }
@@ -183,7 +184,7 @@ function PreviewSheet({
       onDeleted();
       close();
     } catch (error) {
-      setDeleteError((error as Error)?.message || 'מחיקת המסמך נכשלה. נסו שוב.');
+      setDeleteError(errorMessage(error, t('documents.deleteFailedRetry')));
       setDeleting(false);
     }
   };
@@ -202,10 +203,10 @@ function PreviewSheet({
           <div />
           <div className="sd-sheet-title">
             <strong className="sd-b">{template.title}</strong>
-            <div className="sd-progress-label">{pdf ? `${pdf.pages.length} ${pdf.pages.length === 1 ? 'עמוד' : 'עמודים'}` : ' '}</div>
+            <div className="sd-progress-label">{pdf ? `${pdf.pages.length} ${pdf.pages.length === 1 ? t('common.page') : t('common.pages')}` : ' '}</div>
           </div>
           <button type="button" className="sd-btn sd-btn-link sd-b" onClick={close}>
-            סגירה
+            {t('common.close')}
           </button>
         </>
       }
@@ -214,14 +215,14 @@ function PreviewSheet({
           {own ? (
             <button type="button" className="sd-btn sd-btn-plain sd-danger sd-btn-lg" onClick={() => void askDelete()} disabled={deleting}>
               <Ionicons name="trash" size={19} color="#FF453A" />
-              {deleting ? 'מוחק…' : 'מחיקת המסמך'}
+              {deleting ? t('common.deleting') : t('documents.deleteDocument')}
             </button>
           ) : (
             <span />
           )}
           <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={onSend} disabled={deleting} style={{ minWidth: 200 }}>
             <Ionicons name={isChecklistTemplate(template) ? 'add-circle' : 'paper-plane'} size={20} color="#fff" />
-            {isChecklistTemplate(template) ? 'מפגש חדש עם נהג' : 'שליחה לנהגים'}
+            {isChecklistTemplate(template) ? t('meeting.newWithDriver') : t('signing.sendToDrivers')}
           </button>
         </>
       }
@@ -234,10 +235,10 @@ function PreviewSheet({
       ) : null}
       {confirm ? (
         <ConfirmAlert
-          title="למחוק את המסמך?"
+          title={t('documents.deleteQuestion')}
           message={deleteTemplateMessage(confirm.waiting, isChecklistTemplate(template))}
-          confirmLabel="מחיקה"
-          cancelLabel="ביטול"
+          confirmLabel={t('common.deleteAction')}
+          cancelLabel={t('common.cancel')}
           onConfirm={() => void doDelete()}
           onCancel={() => setConfirm(null)}
         />
@@ -245,8 +246,8 @@ function PreviewSheet({
       {failed ? (
         <div className="sd-busy">
           <Ionicons name="alert-circle" size={48} color="#FF3B30" />
-          <h3 className="sd-b">לא הצלחנו להציג את המסמך</h3>
-          <p>נסו לסגור ולפתוח שוב בעוד רגע.</p>
+          <h3 className="sd-b">{t('documents.couldNotDisplay')}</h3>
+          <p>{t('common.closeAndReopen')}</p>
         </div>
       ) : !pdf ? (
         <div className="sd-busy" role="status">
@@ -256,10 +257,10 @@ function PreviewSheet({
         <div className="sd-preview-pages" style={{ maxWidth: 880, margin: '0 auto' }}>
           {checklistForm && own ? (
             <div className="sd-repeat-bar">
-              <h3 className="sd-b" id="sd-repeat-label">כל כמה זמן נפגשים עם כל נהג?</h3>
+              <h3 className="sd-b" id="sd-repeat-label">{t('meeting.howOften')}</h3>
               <RepeatChoice value={repeat} onChange={(months) => void changeRepeat(months)} labelledBy="sd-repeat-label" disabled={repeatSaving} />
               <p role={repeatError ? 'alert' : undefined} style={repeatError ? { color: '#C4281C' } : undefined}>
-                {repeatError || (repeatSaving ? 'שומר…' : repeat ? 'המערכת תזכיר למנהלים שבוע לפני המועד וביום עצמו.' : 'בלי תזכורות. ממלאים את הטופס כשצריך.')}
+                {repeatError || (repeatSaving ? t('common.savingEllipsis') : repeat ? t('meeting.remindWeekBefore') : t('meeting.noRemindersFillWhenNeeded'))}
               </p>
             </div>
           ) : null}
@@ -321,7 +322,7 @@ export function SignedDocumentsDesktopView({
       setError(null);
       setTemplates(await listSigningTemplates(companyId));
     } catch (error) {
-      setError(requestErrorDetails(error, 'לא הצלחנו לטעון את המסמכים'));
+      setError(requestErrorDetails(error, t('documents.loadFailed')));
     }
   }, [companyId]);
 
@@ -337,14 +338,14 @@ export function SignedDocumentsDesktopView({
 
   useEffect(() => {
     if (!openMeetingTemplateId || !templates) return;
-    const target = templates.find((t) => t.id === openMeetingTemplateId);
+    const target = templates.find((entry) => entry.id === openMeetingTemplateId);
     if (target) setSendingTemplate(target);
     onMeetingOpened?.();
   }, [openMeetingTemplateId, templates, onMeetingOpened]);
 
   const dueRows = plan.filter((row) => isDueSoon(row));
-  const own = (templates ?? []).filter((t) => t.company_id === companyId);
-  const shared = (templates ?? []).filter((t) => t.company_id === null);
+  const own = (templates ?? []).filter((entry) => entry.company_id === companyId);
+  const shared = (templates ?? []).filter((entry) => entry.company_id === null);
 
   return (
     <div className="sd-root sd-scroll">
@@ -358,12 +359,12 @@ export function SignedDocumentsDesktopView({
           </div>
           <div className="sd-hero-grain" />
           <div>
-            <h1 className="sd-xb">מסמכים חתומים</h1>
-            <p>כאן יוצרים טפסים שהנהגים חותמים עליהם, כמו הצהרת בריאות או נוהל בטיחות. כותבים או מעלים קובץ, מסמנים איפה חותמים, וזהו.</p>
+            <h1 className="sd-xb">{t('nav.signedDocuments')}</h1>
+            <p>{t('signing.intro')}</p>
             <div className="sd-hero-actions">
               <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={() => setCreating(true)}>
                 <Ionicons name="add" size={22} color="#fff" />
-                מסמך חדש
+                {t('signing.newDocument')}
               </button>
             </div>
           </div>
@@ -372,9 +373,9 @@ export function SignedDocumentsDesktopView({
 
         <div className="sd-steps">
           {[
-            { title: 'כותבים או מעלים', text: 'כותבים את המסמך כאן, או מעלים קובץ PDF, וורד או תמונה.' },
-            { title: 'מסמנים איפה חותמים', text: 'מוסיפים חתימה, תאריך ושדות נוספים במקום הנכון.' },
-            { title: 'שולחים לנהגים', text: 'לוחצים על המסמך ובוחרים נהג אחד, כמה נהגים או את כולם. המסמך החתום נשמר בתיק הנהג.' },
+            { title: t('signing.step.writeOrUpload'), text: t('signing.step.writeOrUploadText') },
+            { title: t('signing.step.markSign'), text: t('signing.step.markSignText') },
+            { title: t('signing.step.send'), text: t('signing.step.sendText') },
           ].map((s, i) => (
             <div className="sd-step" key={s.title} style={{ animationDelay: `${120 + i * 70}ms` }}>
               <span className="sd-step-num sd-b">{i + 1}</span>
@@ -390,8 +391,8 @@ export function SignedDocumentsDesktopView({
 
         <section className="sd-section" aria-labelledby="sd-own">
           <div className="sd-section-head">
-            <h2 id="sd-own" className="sd-b">המסמכים של החברה</h2>
-            {templates && own.length ? <span className="sd-num">{own.length === 1 ? 'מסמך אחד' : `${own.length} מסמכים`}</span> : null}
+            <h2 id="sd-own" className="sd-b">{t('signing.companyDocuments')}</h2>
+            {templates && own.length ? <span className="sd-num">{own.length === 1 ? t('documents.oneDocument') : t('documents.count', { length: own.length })}</span> : null}
           </div>
           {error ? (
             <div className="sd-empty">
@@ -399,7 +400,7 @@ export function SignedDocumentsDesktopView({
               <h3 className="sd-b">{error.message}</h3>
               {error.hint ? <p>{error.hint}</p> : null}
               <button type="button" className="sd-btn sd-btn-tinted sd-btn-lg" onClick={() => void load()}>
-                נסו שוב
+                {t('common.tryAgainPlural')}
               </button>
             </div>
           ) : !templates ? (
@@ -411,11 +412,11 @@ export function SignedDocumentsDesktopView({
           ) : own.length === 0 ? (
             <div className="sd-empty">
               <Ionicons name="documents" size={52} color="#0075B3" />
-              <h3 className="sd-b">עדיין אין מסמכים של החברה</h3>
-              <p>צרו את המסמך הראשון. זה לוקח כמה דקות, וכל שלב מוסבר על המסך.</p>
+              <h3 className="sd-b">{t('signing.noCompanyDocs')}</h3>
+              <p>{t('signing.createFirstHint')}</p>
               <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={() => setCreating(true)}>
                 <Ionicons name="add" size={22} color="#fff" />
-                יצירת המסמך הראשון
+                {t('signing.createFirst')}
               </button>
             </div>
           ) : (
@@ -424,10 +425,10 @@ export function SignedDocumentsDesktopView({
                 <span className="sd-card-new-icon">
                   <Ionicons name="add" size={32} color="#0075B3" />
                 </span>
-                <span className="sd-b">מסמך חדש</span>
+                <span className="sd-b">{t('signing.newDocument')}</span>
               </button>
-              {own.map((t, i) => (
-                <TemplateCard key={t.id} template={t} index={i + 1} fresh={t.id === freshId} onOpen={() => setPreviewing(t)} />
+              {own.map((entry, i) => (
+                <TemplateCard key={entry.id} template={entry} index={i + 1} fresh={entry.id === freshId} onOpen={() => setPreviewing(entry)} />
               ))}
             </div>
           )}
@@ -436,12 +437,12 @@ export function SignedDocumentsDesktopView({
         {shared.length ? (
           <section className="sd-section" aria-labelledby="sd-shared">
             <div className="sd-section-head">
-              <h2 id="sd-shared" className="sd-b">מסמכים מוכנים מהמערכת</h2>
-              <span>אפשר לשלוח אותם כמו שהם</span>
+              <h2 id="sd-shared" className="sd-b">{t('signing.builtInDocuments')}</h2>
+              <span>{t('signing.canSendAsIs')}</span>
             </div>
             <div className="sd-grid">
-              {shared.map((t, i) => (
-                <TemplateCard key={t.id} template={t} index={i} onOpen={() => setPreviewing(t)} />
+              {shared.map((entry, i) => (
+                <TemplateCard key={entry.id} template={entry} index={i} onOpen={() => setPreviewing(entry)} />
               ))}
             </div>
           </section>
@@ -451,11 +452,11 @@ export function SignedDocumentsDesktopView({
       {creating ? (
         <CreateDocumentSheet
           companyId={companyId}
-          takenTitles={(templates ?? []).map((t) => t.title)}
+          takenTitles={(templates ?? []).map((entry) => entry.title)}
           onClosed={() => setCreating(false)}
           onCreated={(template) => {
             setFreshId(template.id);
-            setTemplates((prev) => [template, ...(prev ?? []).filter((t) => t.id !== template.id)]);
+            setTemplates((prev) => [template, ...(prev ?? []).filter((entry) => entry.id !== template.id)]);
           }}
         />
       ) : null}
@@ -468,9 +469,9 @@ export function SignedDocumentsDesktopView({
             setSendingTemplate(previewing);
             setPreviewing(null);
           }}
-          onDeleted={() => setTemplates((prev) => (prev ?? []).filter((t) => t.id !== previewing.id))}
+          onDeleted={() => setTemplates((prev) => (prev ?? []).filter((entry) => entry.id !== previewing.id))}
           onChanged={(changed) => {
-            setTemplates((prev) => (prev ?? []).map((t) => (t.id === changed.id ? changed : t)));
+            setTemplates((prev) => (prev ?? []).map((entry) => (entry.id === changed.id ? changed : entry)));
             loadPlan();
           }}
         />

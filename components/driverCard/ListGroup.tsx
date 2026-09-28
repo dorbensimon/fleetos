@@ -3,6 +3,7 @@ import { ListRowNav } from './ListRowNav';
 import { ListRowValue } from './ListRowValue';
 import { DC_COLORS, DC_SPACING, DC_TYPO } from './driverCardTheme';
 import type { DriverCardGroup, DriverCardRow } from './driverCardSections';
+import { textStart, textDirection } from '../../lib/i18n';
 
 export function ListGroup({
   group,
@@ -44,10 +45,10 @@ const styles = StyleSheet.create({
   },
   title: {
     color: DC_COLORS.labelTertiary,
-    writingDirection: 'rtl',
-    textAlign: 'right',
+    writingDirection: textDirection(),
+    textAlign: textStart(),
     marginBottom: 8,
-    marginRight: DC_SPACING.screenPaddingH + 2,
+    marginEnd: DC_SPACING.screenPaddingH + 2,
   },
   card: {
     marginHorizontal: DC_SPACING.screenPaddingH,

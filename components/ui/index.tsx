@@ -28,6 +28,7 @@ import {
 import { DOSSIER_BLUE } from '../../lib/dossierColors';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DK, DK_FONT, DK_SHADOW, STATUS } from '../driverKit/theme';
+import { t, dirIcon, textEnd } from '../../lib/i18n';
 
 /**
  * On the phone these primitives take the icar kit's look (the same one the
@@ -43,7 +44,7 @@ export { ToastProvider, useToast } from './Toast';
 /** The single compact back affordance used in app navigation headers. */
 export function BackButton({
   onPress,
-  accessibilityLabel = 'חזור',
+  accessibilityLabel = t('common.goBack'),
   style,
 }: {
   onPress: () => void;
@@ -60,7 +61,7 @@ export function BackButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
     >
-      <Ionicons name="chevron-forward" size={20} color={phone ? DK.ink : COLORS.accent} />
+      <Ionicons name={dirIcon('chevron-forward')} size={20} color={phone ? DK.ink : COLORS.accent} />
     </TouchableOpacity>
   );
 }
@@ -247,7 +248,7 @@ export function Field({
     <View style={[styles.field, phone && kit.field]}>
       <AppText weight="bold" style={[styles.fieldLabel, phone && kit.fieldLabel, phone && !!error && { color: STATUS.expired.fg }]}>
         {label}
-        {optional && <AppText style={[styles.fieldOptional, phone && kit.fieldOptional]}> (אופציונלי)</AppText>}
+        {optional && <AppText style={[styles.fieldOptional, phone && kit.fieldOptional]}> {t('form.optionalParen')}</AppText>}
       </AppText>
       {children}
       {!!error &&
@@ -339,11 +340,11 @@ export function InputLtr({ style, hasError, ...rest }: TextInputProps & { hasErr
 export function LoadingState({ size = 48 }: { size?: number }) {
   const [shown, setShown] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setShown(true), 150);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setShown(true), 150);
+    return () => clearTimeout(timer);
   }, []);
   return (
-    <View style={styles.loadingCentered} accessibilityRole="progressbar" accessibilityLabel="טוען">
+    <View style={styles.loadingCentered} accessibilityRole="progressbar" accessibilityLabel={t('common.loading')}>
       {shown && <BrandLoader size={size} />}
     </View>
   );
@@ -382,8 +383,8 @@ export function EmptyState({
  * found" message that misrepresents the failure as absence of data.
  */
 export function ErrorState({
-  message = 'משהו השתבש בטעינת הנתונים',
-  hint = 'נסה שוב בעוד רגע',
+  message = t('error.loadData'),
+  hint = t('common.tryAgainMoment'),
   onRetry,
 }: {
   message?: string;
@@ -413,11 +414,11 @@ export function ErrorState({
           onPress={onRetry}
           style={[styles.retryBtn, phone && kit.retryBtn]}
           accessibilityRole="button"
-          accessibilityLabel="נסה שוב"
+          accessibilityLabel={t('common.tryAgain')}
         >
           <Ionicons name="refresh" size={16} color={phone ? DK.accent : COLORS.accent} />
           <AppText weight="bold" style={[styles.retryText, phone && kit.retryText]}>
-            נסה שוב
+            {t('common.tryAgain')}
           </AppText>
         </TouchableOpacity>
       )}
@@ -628,7 +629,7 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.divider,
   },
   infoLabel: { fontSize: 13, color: COLORS.textMuted },
-  infoValue: { fontSize: 13.5, flexShrink: 1, textAlign: 'left' },
+  infoValue: { fontSize: 13.5, flexShrink: 1, textAlign: textEnd() },
 });
 
 /* The phone's look — the icar kit (components/driverKit). */

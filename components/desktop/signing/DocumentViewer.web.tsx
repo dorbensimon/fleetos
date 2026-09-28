@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { downloadSignedRequest } from '../../../lib/docuseal';
 import { downloadRemoteFileOnWeb } from '../../../lib/webDownload';
 import { loadPdf, renderPage, type LoadedPdf } from './pdf.web';
+import { t, getLocale } from '../../../lib/i18n';
+import { errorMessage } from '../../../lib/requestError';
 
 /**
  * Desktop document viewer (web only). The phone viewer squeezes a PDF into a
@@ -15,7 +17,7 @@ import { loadPdf, renderPage, type LoadedPdf } from './pdf.web';
 
 const ZOOMS = [0.6, 0.8, 1, 1.25, 1.5, 2];
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-const day = (date: string) => new Date(date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const day = (date: string) => new Date(date).toLocaleDateString(getLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 function baseWidth() {
   return Math.max(320, Math.min(860, window.innerWidth - 200));
@@ -51,7 +53,7 @@ function Page({ pdf, number, width, index }: { pdf: LoadedPdf; number: number; w
       className={`dv-page${drawn ? ' dv-drawn' : ''}`}
       data-page={number}
       style={{ width, height, animationDelay: `${120 + Math.min(index, 6) * 70}ms` }}
-      aria-label={`עמוד ${number}`}
+      aria-label={t('viewer.pageN', { number })}
     />
   );
 }
@@ -146,7 +148,7 @@ export function DocumentViewer({
       if (requestId) await downloadSignedRequest({ id: requestId, template_title: title, template: null });
       else await downloadRemoteFileOnWeb(src, `${title}.pdf`);
     } catch (err) {
-      setError((err as Error)?.message || 'ההורדה נכשלה');
+      setError(errorMessage(err, t('common.downloadFailed')));
     } finally {
       setBusy('');
     }
@@ -173,7 +175,7 @@ export function DocumentViewer({
       };
       document.body.appendChild(frame);
     } catch {
-      setError('ההדפסה נכשלה. אפשר להוריד את המסמך ולהדפיס אותו.');
+      setError(t('viewer.printFailed'));
     } finally {
       setBusy('');
     }
@@ -187,7 +189,7 @@ export function DocumentViewer({
 
       <header className="dv-bar">
         <div className="dv-bar-start">
-          <button ref={closeRef} type="button" className="dv-round" onClick={close} aria-label="סגירה">
+          <button ref={closeRef} type="button" className="dv-round" onClick={close} aria-label={t('common.close')}>
             <Ionicons name="close" size={22} color="#fff" />
           </button>
           <div className="dv-title">
@@ -197,33 +199,33 @@ export function DocumentViewer({
                 <span className="dv-seal-dot">
                   <Ionicons name="checkmark" size={12} color="#fff" />
                 </span>
-                {signedAt ? `נחתם ב-${day(signedAt)}` : 'מסמך חתום'}
+                {signedAt ? t('viewer.signedOn', { signedAt: day(signedAt) }) : t('viewer.signedDocument')}
               </span>
             ) : pages > 1 ? (
-              <span className="dv-sub">{pages} עמודים</span>
+              <span className="dv-sub">{pages} {t('common.pages')}</span>
             ) : null}
           </div>
         </div>
 
         <div className="dv-bar-end">
           {pdf ? (
-            <div className="dv-zoom" role="group" aria-label="גודל תצוגה">
-              <button type="button" onClick={() => setZoom(ZOOMS[zoomIndex - 1])} disabled={zoomIndex <= 0} aria-label="הקטנה">
+            <div className="dv-zoom" role="group" aria-label={t('viewer.zoom')}>
+              <button type="button" onClick={() => setZoom(ZOOMS[zoomIndex - 1])} disabled={zoomIndex <= 0} aria-label={t('viewer.zoomOut')}>
                 <Ionicons name="remove" size={20} color="currentColor" />
               </button>
-              <button type="button" className="dv-zoom-value" onClick={() => setZoom(1)} aria-label="גודל רגיל">
+              <button type="button" className="dv-zoom-value" onClick={() => setZoom(1)} aria-label={t('viewer.zoomReset')}>
                 {Math.round(zoom * 100)}%
               </button>
-              <button type="button" onClick={() => setZoom(ZOOMS[zoomIndex + 1])} disabled={zoomIndex >= ZOOMS.length - 1} aria-label="הגדלה">
+              <button type="button" onClick={() => setZoom(ZOOMS[zoomIndex + 1])} disabled={zoomIndex >= ZOOMS.length - 1} aria-label={t('viewer.zoomIn')}>
                 <Ionicons name="add" size={20} color="currentColor" />
               </button>
             </div>
           ) : null}
           <button type="button" className="dv-ghost" onClick={() => void print()} disabled={!!busy}>
             <Ionicons name="print-outline" size={19} color="currentColor" />
-            {busy === 'print' ? 'מכין…' : 'הדפסה'}
+            {busy === 'print' ? t('common.preparing') : t('viewer.print')}
           </button>
-          <button type="button" className="dv-primary" onClick={() => void download()} disabled={!!busy} aria-label="הורדת המסמך" title="הורדה">
+          <button type="button" className="dv-primary" onClick={() => void download()} disabled={!!busy} aria-label={t('viewer.downloadDocument')} title={t('common.download')}>
             <Ionicons name={busy === 'download' ? 'hourglass-outline' : 'download-outline'} size={21} color="#fff" />
           </button>
         </div>
@@ -242,14 +244,14 @@ export function DocumentViewer({
           </div>
         ) : (
           <div className="dv-pages">
-            <div className="dv-page dv-skeleton" style={{ width: base, height: Math.round(base * 1.414) }} role="status" aria-label="טוען את המסמך" />
+            <div className="dv-page dv-skeleton" style={{ width: base, height: Math.round(base * 1.414) }} role="status" aria-label={t('viewer.loadingDocument')} />
           </div>
         )}
       </div>
 
       {pages > 1 ? (
         <div className="dv-counter" aria-live="polite">
-          עמוד <b>{current}</b> מתוך {pages}
+          {t('common.page')} <b>{current}</b> {t('common.of')} {pages}
         </div>
       ) : null}
       {error ? (
@@ -269,7 +271,7 @@ const VIEWER_CSS = `
   --dv-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --dv-tint: #0075B3;
   position: fixed; inset: 0; z-index: 10000;
-  direction: rtl; color: #fff;
+  direction: var(--app-dir, rtl); color: #fff;
   font-family: 'Heebo_400Regular', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   animation: dv-fade 280ms ease both;
@@ -295,7 +297,7 @@ const VIEWER_CSS = `
 
 /* ---------- glass toolbar ---------- */
 .dv-bar {
-  position: absolute; top: 16px; left: 24px; right: 24px; z-index: 2;
+  position: absolute; top: 16px; inset-inline-end: 24px; inset-inline-start: 24px; z-index: 2;
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   min-height: 68px; padding: 10px 12px 10px 14px; border-radius: 22px;
   background: rgba(22,34,46,0.58);

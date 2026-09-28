@@ -53,6 +53,12 @@ export function refreshBackFallback(
       return typeof params.driverId === 'string'
         ? { name: 'DriverDetail', params: { driverId: params.driverId } }
         : { name: 'AdminHome' };
+    case 'ChecklistMeeting':
+      return typeof params.driverId === 'string'
+        ? { name: 'DriverDetail', params: { driverId: params.driverId } }
+        : { name: 'AdminHome' };
+    case 'DriverSignDocument':
+      return { name: 'DriverSigningDocuments' };
     case 'DriverOdometer':
       return { name: 'DriverVehicle' };
     case 'DriverVehicle':

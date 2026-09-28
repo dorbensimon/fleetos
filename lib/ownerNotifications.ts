@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { t } from './i18n';
 
 /**
  * The owner's own feed (table owner_notifications, migration 102): about
@@ -70,7 +71,7 @@ export async function markAllOwnerNotificationsRead() {
 export function ownerActionLabel(n: OwnerNotification): string | null {
   if (!n.company_id) return null;
   if (n.notification_type === 'owner_trial_ending' || n.notification_type === 'owner_renewal_due' || n.notification_type === 'owner_vehicle_limit') {
-    return 'למנוי של החברה';
+    return t('owner.notif.toSubscription');
   }
-  return 'לדף החברה';
+  return t('owner.notif.toCompany');
 }

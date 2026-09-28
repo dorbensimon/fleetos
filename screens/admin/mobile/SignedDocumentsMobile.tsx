@@ -28,6 +28,7 @@ import { checklistPreviewTarget } from '../../../components/checklist/useFolderM
 import { isChecklistTemplate, readForm, repeatLabel } from '../../../lib/checklistForms';
 import { isDueSoon, planByDriver, type PlanRow } from '../../../lib/meetingPlan';
 import { DuePill } from '../../../components/checklist/DuePill';
+import { t, dirIcon } from '../../../lib/i18n';
 
 type Props = {
   insetTop: number;
@@ -55,9 +56,9 @@ type Props = {
 
 const DUE_COLLAPSED = 4;
 
-function checklistSubtitle(t: SigningTemplate): string {
-  const months = readForm(t.form_content)?.repeatMonths ?? 0;
-  return months ? `רשימת סעיפים · מפגש ${repeatLabel(months)}` : `רשימת סעיפים · נוצר ב-${formatDate(t.created_at)}`;
+function checklistSubtitle(entry: SigningTemplate): string {
+  const months = readForm(entry.form_content)?.repeatMonths ?? 0;
+  return months ? t('signing.checklistMeetingRepeat', { months: repeatLabel(months) }) : t('signing.checklistCreatedOn', { v1: formatDate(entry.created_at) });
 }
 
 type Mode = 'actions' | 'confirm' | 'send' | 'meet';
@@ -87,12 +88,12 @@ export function SignedDocumentsMobile(p: Props) {
     return [...rows].sort((a, b) => (templatePlan.get(a.id)?.nextDue ?? '9999').localeCompare(templatePlan.get(b.id)?.nextDue ?? '9999'));
   }, [send.drivers, templatePlan]);
 
-  const own = (p.templates ?? []).filter((t) => t.company_id === p.companyId);
-  const shared = (p.templates ?? []).filter((t) => t.company_id === null);
+  const own = (p.templates ?? []).filter((entry) => entry.company_id === p.companyId);
+  const shared = (p.templates ?? []).filter((entry) => entry.company_id === null);
   const isOwn = !!template && template.company_id === p.companyId;
 
-  const openSheet = (t: SigningTemplate) => {
-    setTemplate(t);
+  const openSheet = (entry: SigningTemplate) => {
+    setTemplate(entry);
     setMode('actions');
     setMessage('');
     setBusy('');
@@ -101,7 +102,7 @@ export function SignedDocumentsMobile(p: Props) {
   const { openMeeting, onMeetingOpened, templates } = p;
   useEffect(() => {
     if (!openMeeting || !templates) return;
-    const target = templates.find((t) => t.id === openMeeting);
+    const target = templates.find((entry) => entry.id === openMeeting);
     if (target) {
       setTemplate(target);
       setMode('meet');
@@ -134,19 +135,19 @@ export function SignedDocumentsMobile(p: Props) {
       // The sheet goes first, so it never sits over the viewer.
       setOpen(false);
       p.onOpenViewer(target);
-    }, 'פתיחת המסמך נכשלה. נסו שוב.');
-  const download = () => run('download', () => downloadSigningTemplate(template!), 'הורדת המסמך נכשלה. נסו שוב.');
+    }, t('signing.openFailedRetry'));
+  const download = () => run('download', () => downloadSigningTemplate(template!), t('signing.downloadFailedRetry'));
   const askDelete = () =>
     run('check', async () => {
       setWaiting(await countWaitingSigners(p.companyId, template!.id));
       setMode('confirm');
-    }, 'לא ניתן למחוק כרגע. נסו שוב.');
+    }, t('signing.cannotDeleteNow'));
   const doDelete = () =>
     run('delete', async () => {
       await deleteCompanyTemplate(p.companyId, template!.id);
       setOpen(false);
       p.onDeleted(template!);
-    }, 'מחיקת המסמך נכשלה. נסו שוב.');
+    }, t('documents.deleteFailedRetry'));
 
   const count = own.length + shared.length;
   return (
@@ -155,7 +156,7 @@ export function SignedDocumentsMobile(p: Props) {
       insetBottom={p.insetBottom}
       refreshing={p.refreshing}
       onRefresh={p.onRefresh}
-      hero={<HeroTitle title="מסמכים חתומים" subtitle={p.templates ? (count ? `${count === 1 ? 'מסמך אחד' : `${count} מסמכים`} שאפשר לשלוח לנהגים` : 'טפסים שהנהגים חותמים עליהם') : ' '} onBack={p.onBack} />}
+      hero={<HeroTitle title={t('nav.signedDocuments')} subtitle={p.templates ? (count ? t('signing.canSendToDrivers', { v1: count === 1 ? t('documents.oneDocument') : t('documents.countN', { count }) }) : t('signing.formsDriversSign')) : ' '} onBack={p.onBack} />}
       overlay={
         <KitSheet
           visible={open}
@@ -163,34 +164,34 @@ export function SignedDocumentsMobile(p: Props) {
           dismissable={busy !== 'delete' && !send.sending}
           icon={mode === 'confirm' ? 'trash' : mode === 'send' ? 'paper-plane' : mode === 'meet' ? 'people' : checklist ? 'list' : 'document-text'}
           tone={mode === 'confirm' ? 'danger' : 'accent'}
-          title={mode === 'confirm' ? 'למחוק את המסמך?' : mode === 'send' ? 'שליחה לנהגים' : mode === 'meet' ? 'עם מי המפגש?' : template?.title ?? ''}
+          title={mode === 'confirm' ? t('documents.deleteQuestion') : mode === 'send' ? t('signing.sendToDrivers') : mode === 'meet' ? t('meeting.withWhom') : template?.title ?? ''}
           subtitle={
             mode === 'confirm'
               ? deleteTemplateMessage(waiting, checklist)
               : mode === 'meet'
-                ? templatePlan.size ? 'מי שהמפגש שלו קרוב מופיע ראשון. לוחצים על השם, והטופס נפתח.' : 'לוחצים על שם הנהג, והטופס נפתח למילוי.'
+                ? templatePlan.size ? t('signing.closestFirst') : t('meeting.clickDriverName')
               : mode === 'send'
-                ? `${template?.title ?? ''} · הנהגים יקבלו את המסמך באפליקציה ויחתמו בה`
+                ? t('signing.driversGetInApp', { v1: template?.title ?? '' })
                 : template
                   ? checklist
-                    ? `${checklistSubtitle(template)} · ממלאים אותה במפגש עם הנהג`
-                    : isOwn ? `נוצר ב-${formatDate(template.created_at)}` : 'מוכן מהמערכת · אפשר לשלוח אותו כמו שהוא'
+                    ? t('signing.fillInMeeting', { template: checklistSubtitle(template) })
+                    : isOwn ? t('signing.createdOnV1', { v1: formatDate(template.created_at) }) : t('signing.builtInSendAsIs')
                   : undefined
           }
           footer={
             mode === 'send' ? (
               <SendFooter s={send} onCancel={() => setMode('actions')} onDone={() => setOpen(false)} />
             ) : mode === 'meet' ? (
-              <PrimaryAction label="חזרה" tone="ghost" onPress={() => setMode('actions')} />
+              <PrimaryAction label={t('common.goBack')} tone="ghost" onPress={() => setMode('actions')} />
             ) : mode === 'confirm' ? (
               <SheetActions>
-                <PrimaryAction label="ביטול" tone="ghost" onPress={() => setMode('actions')} disabled={busy === 'delete'} style={styles.flex} />
-                <PrimaryAction label="מחיקה" icon="trash" tone="destructive" onPress={() => void doDelete()} loading={busy === 'delete'} style={styles.flex} />
+                <PrimaryAction label={t('common.cancel')} tone="ghost" onPress={() => setMode('actions')} disabled={busy === 'delete'} style={styles.flex} />
+                <PrimaryAction label={t('common.deleteAction')} icon="trash" tone="destructive" onPress={() => void doDelete()} loading={busy === 'delete'} style={styles.flex} />
               </SheetActions>
             ) : checklist ? (
-              <PrimaryAction label="מפגש חדש עם נהג" icon="add-circle-outline" onPress={() => setMode('meet')} disabled={!!busy} />
+              <PrimaryAction label={t('meeting.newWithDriver')} icon="add-circle-outline" onPress={() => setMode('meet')} disabled={!!busy} />
             ) : (
-              <PrimaryAction label="שליחה לנהגים" icon="paper-plane" onPress={() => setMode('send')} disabled={!!busy} />
+              <PrimaryAction label={t('signing.sendToDrivers')} icon="paper-plane" onPress={() => setMode('send')} disabled={!!busy} />
             )
           }
         >
@@ -200,9 +201,9 @@ export function SignedDocumentsMobile(p: Props) {
           ) : mode === 'meet' ? (
             <View style={styles.actions}>
               {!send.drivers ? (
-                <DKText variant="caption" color={DK.muted} style={styles.empty}>טוען נהגים…</DKText>
+                <DKText variant="caption" color={DK.muted} style={styles.empty}>{t('driver.loadingDrivers')}</DKText>
               ) : !send.drivers.length ? (
-                <DKText variant="caption" color={DK.muted} style={styles.empty}>אין עדיין נהגים פעילים בחברה.</DKText>
+                <DKText variant="caption" color={DK.muted} style={styles.empty}>{t('driver.noActiveDriversDot')}</DKText>
               ) : (
                 meetDrivers.map((d, index) => (
                   <Pressy
@@ -211,17 +212,17 @@ export function SignedDocumentsMobile(p: Props) {
                       setOpen(false);
                       p.onStartMeeting(template!.id, d.id);
                     }}
-                    accessibilityLabel={`מפגש עם ${d.name}`}
+                    accessibilityLabel={t('meeting.withName', { name: d.name })}
                     pressScale={0.985}
                   >
                     <View style={[styles.driver, index > 0 && styles.divider]}>
                       <Ionicons name="person-circle-outline" size={28} color={DK.accent} />
                       <View style={styles.flex}>
                         <DKText variant="label" numberOfLines={1}>{d.name}</DKText>
-                        {d.state === 'pending' && <DKText variant="caption" color={DK.muted}>ממתין לחתימת הנהג</DKText>}
+                        {d.state === 'pending' && <DKText variant="caption" color={DK.muted}>{t('common.awaitingDriverSignature')}</DKText>}
                       </View>
                       {templatePlan.get(d.id) && <DuePill nextDue={templatePlan.get(d.id)!.nextDue} firstMeeting={templatePlan.get(d.id)!.firstMeeting} />}
-                      <Ionicons name="chevron-back" size={18} color={DK.faint} />
+                      <Ionicons name={dirIcon('chevron-back')} size={18} color={DK.faint} />
                     </View>
                   </Pressy>
                 ))
@@ -229,10 +230,10 @@ export function SignedDocumentsMobile(p: Props) {
             </View>
           ) : mode === 'actions' ? (
             <View style={styles.actions}>
-              <ActionRow icon="eye-outline" label={busy === 'view' ? 'פותח…' : checklist ? 'צפייה בטופס' : 'צפייה במסמך'} hint={checklist ? 'הטופס הריק, כמו שיודפס' : 'כך הנהג יראה אותו, עם מקומות החתימה'} onPress={() => void view()} disabled={!!busy} />
-              <ActionRow icon="download-outline" label={busy === 'download' ? 'מוריד…' : 'הורדה'} hint="שמירה בקבצים או שיתוף" onPress={() => void download()} disabled={!!busy} first={false} />
+              <ActionRow icon="eye-outline" label={busy === 'view' ? t('common.opening') : checklist ? t('signing.viewForm') : t('signing.viewDocument')} hint={checklist ? t('signing.blankAsPrinted') : t('signing.asDriverSees')} onPress={() => void view()} disabled={!!busy} />
+              <ActionRow icon="download-outline" label={busy === 'download' ? t('common.downloading') : t('common.download')} hint={t('signing.saveOrShare')} onPress={() => void download()} disabled={!!busy} first={false} />
               {isOwn && (
-                <ActionRow icon="trash-outline" tone="danger" label={busy === 'check' ? 'בודק…' : 'מחיקת המסמך'} onPress={() => void askDelete()} disabled={!!busy} first={false} />
+                <ActionRow icon="trash-outline" tone="danger" label={busy === 'check' ? t('common.checking') : t('documents.deleteDocument')} onPress={() => void askDelete()} disabled={!!busy} first={false} />
               )}
             </View>
           ) : null}
@@ -247,14 +248,14 @@ export function SignedDocumentsMobile(p: Props) {
         <>
           <Reveal index={0}>
             <Banner tone="info" icon="desktop-outline">
-              מסמך חדש יוצרים מהמחשב, ב־icar-app.com. מכאן אפשר לצפות, להוריד, לשלוח ולמחוק.
+              {t('signing.createOnComputer')}
             </Banner>
           </Reveal>
           {dueRows.length > 0 && (
             <Reveal index={1}>
               <KitSection
-                title="מפגשים שצריך לקיים"
-                trailing={<DKText variant="caption" color={DK.muted}>{dueRows.length === 1 ? 'נהג אחד' : `${dueRows.length} נהגים`}</DKText>}
+                title={t('meeting.dueList')}
+                trailing={<DKText variant="caption" color={DK.muted}>{dueRows.length === 1 ? t('common.oneDriver') : t('common.driversLength', { length: dueRows.length })}</DKText>}
               >
                 {(dueExpanded ? dueRows : dueRows.slice(0, DUE_COLLAPSED)).map((row, index) => (
                   <ListRow
@@ -262,15 +263,15 @@ export function SignedDocumentsMobile(p: Props) {
                     first={index === 0}
                     icon="people"
                     title={row.driverName}
-                    subtitle={row.firstMeeting ? `${row.title} · מפגש ראשון` : row.title}
+                    subtitle={row.firstMeeting ? t('signing.firstMeetingTitle', { title: row.title }) : row.title}
                     trailing={<DuePill nextDue={row.nextDue} />}
                     onPress={() => p.onStartMeeting(row.templateId, row.driverId)}
                   />
                 ))}
                 {dueRows.length > DUE_COLLAPSED && (
-                  <Pressy onPress={() => setDueExpanded((v) => !v)} accessibilityLabel={dueExpanded ? 'הצגת פחות' : 'הצגת כל הנהגים'} pressScale={0.985}>
+                  <Pressy onPress={() => setDueExpanded((v) => !v)} accessibilityLabel={dueExpanded ? t('common.showLess') : t('signing.showAllDrivers')} pressScale={0.985}>
                     <View style={[styles.more, styles.divider]}>
-                      <DKText variant="label" color={DK.accent}>{dueExpanded ? 'הצגת פחות' : `הצגת כל ${dueRows.length} הנהגים`}</DKText>
+                      <DKText variant="label" color={DK.accent}>{dueExpanded ? t('common.showLess') : t('meeting.showAllDrivers', { length: dueRows.length })}</DKText>
                       <Ionicons name={dueExpanded ? 'chevron-up' : 'chevron-down'} size={17} color={DK.accent} />
                     </View>
                   </Pressy>
@@ -279,23 +280,23 @@ export function SignedDocumentsMobile(p: Props) {
             </Reveal>
           )}
           <Reveal index={2}>
-            <KitSection title="המסמכים של החברה" trailing={own.length ? <DKText variant="micro" color={DK.muted}>{own.length === 1 ? 'מסמך אחד' : `${own.length} מסמכים`}</DKText> : undefined}>
+            <KitSection title={t('signing.companyDocuments')} trailing={own.length ? <DKText variant="micro" color={DK.muted}>{own.length === 1 ? t('documents.oneDocument') : t('documents.count', { length: own.length })}</DKText> : undefined}>
               {own.length ? (
-                own.map((t, index) => (
-                  <ListRow key={t.id} first={index === 0} leading={<TemplateThumb template={t} />} title={t.title} subtitle={isChecklistTemplate(t) ? checklistSubtitle(t) : `נוצר ב-${formatDate(t.created_at)}`} onPress={() => openSheet(t)} />
+                own.map((entry, index) => (
+                  <ListRow key={entry.id} first={index === 0} leading={<TemplateThumb template={entry} />} title={entry.title} subtitle={isChecklistTemplate(entry) ? checklistSubtitle(entry) : t('signing.createdOnV1', { v1: formatDate(entry.created_at) })} onPress={() => openSheet(entry)} />
                 ))
               ) : (
                 <DKText variant="caption" color={DK.muted} style={styles.empty}>
-                  עדיין אין מסמכים של החברה. יוצרים אותם מהמחשב, והם יופיעו כאן.
+                  {t('signing.noCompanyDocsMobile')}
                 </DKText>
               )}
             </KitSection>
           </Reveal>
           {shared.length > 0 && (
             <Reveal index={3}>
-              <KitSection title="מסמכים מוכנים מהמערכת" trailing={<DKText variant="micro" color={DK.muted}>אפשר לשלוח כמו שהם</DKText>}>
-                {shared.map((t, index) => (
-                  <ListRow key={t.id} first={index === 0} leading={<TemplateThumb template={t} />} title={t.title} subtitle="מוכן מהמערכת" onPress={() => openSheet(t)} />
+              <KitSection title={t('signing.builtInDocuments')} trailing={<DKText variant="micro" color={DK.muted}>{t('signing.canSendAsIsShort')}</DKText>}>
+                {shared.map((entry, index) => (
+                  <ListRow key={entry.id} first={index === 0} leading={<TemplateThumb template={entry} />} title={entry.title} subtitle={t('signing.builtIn')} onPress={() => openSheet(entry)} />
                 ))}
               </KitSection>
             </Reveal>

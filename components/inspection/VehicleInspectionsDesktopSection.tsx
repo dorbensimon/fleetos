@@ -12,6 +12,8 @@ import { INSPECTION_STATE_META, formatIsoDay, inspectionRepeatLabel, todayIso } 
 import type { RootStackParamList } from '../../navigation/types';
 import { useVehicleInspections } from './useVehicleInspections';
 import { defectsText, latestNextDue } from './VehicleInspectionsCard';
+import { t, dirIcon } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 const HISTORY_SHOWN = 6;
 const STATE_TONE: Record<string, DesktopTone> = { ok: 'ok', soon: 'warn', expired: 'bad', missing: 'neutral', info: 'neutral' };
@@ -29,7 +31,7 @@ export function VehicleInspectionsDesktopSection({ companyId, vehicleId, archive
   const change = async (value: string | null) => {
     if (!value || value === plan?.nextDue || saving) return;
     if (value < todayIso() || value > latestNextDue()) {
-      setMoveError('בחרו תאריך מהיום ועד שלוש שנים קדימה');
+      setMoveError(t('inspection.dateRange'));
       return;
     }
     setSaving(true);
@@ -37,7 +39,7 @@ export function VehicleInspectionsDesktopSection({ companyId, vehicleId, archive
     try {
       await move(value);
     } catch (e) {
-      setMoveError((e as Error)?.message || 'שמירת התאריך נכשלה. נסו שוב.');
+      setMoveError(errorMessage(e, t('common.saveDateFailedRetry')));
     } finally {
       setSaving(false);
     }
@@ -51,44 +53,44 @@ export function VehicleInspectionsDesktopSection({ companyId, vehicleId, archive
   return (
     <>
       <View style={pageStyles.docsHead}>
-        <DText weight="bold" style={pageStyles.docsTitle}>בדיקות בטיחות</DText>
-        <DText style={pageStyles.mutedText}>בדיקת קצין הבטיחות לרכב, עם חתימה שלו ושל הנהג</DText>
+        <DText weight="bold" style={pageStyles.docsTitle}>{t('nav.safetyInspections')}</DText>
+        <DText style={pageStyles.mutedText}>{t('inspection.sectionHint')}</DText>
       </View>
       <View style={pageStyles.gridRow}>
         <View style={pageStyles.halfCell}>
-          <GroupLabel>{plan?.firstInspection ? 'הבדיקה הראשונה' : 'הבדיקה הבאה'}</GroupLabel>
+          <GroupLabel>{plan?.firstInspection ? t('inspection.first') : t('inspection.next')}</GroupLabel>
           <View style={[pageStyles.card, styles.body]}>
             {!!error && <DText style={styles.error}>{error}</DText>}
             {!archived && (
               <View style={styles.dueRow}>
                 <DLtrText weight="bold" style={[styles.dueDate, { color: plan?.nextDue ? dueColor : DESKTOP_COLORS.inkFaint }]}>
-                  {plan?.nextDue ? formatIsoDay(plan.nextDue) : 'לא נקבע מועד'}
+                  {plan?.nextDue ? formatIsoDay(plan.nextDue) : t('inspection.noDateSet')}
                 </DLtrText>
                 {plan?.nextDue && state !== 'later' && <StatusPill tone={state === 'late' ? 'bad' : 'warn'} label={dueText(plan.nextDue)} />}
               </View>
             )}
             <DText style={pageStyles.mutedText}>
-              {repeatMonths > 0 ? `בדיקה ${inspectionRepeatLabel(repeatMonths)}` : 'בלי תזכורות קבועות'}
-              {plan?.lastInspection ? ` · האחרונה ב-${formatIsoDay(plan.lastInspection)}` : ' · עוד לא נעשתה בדיקה'}
+              {repeatMonths > 0 ? t('inspection.repeatLabel', { repeatMonths: inspectionRepeatLabel(repeatMonths) }) : t('inspection.noFixedReminders')}
+              {plan?.lastInspection ? t('inspection.lastOn', { v1: formatIsoDay(plan.lastInspection) }) : t('inspection.noneYetSuffix')}
             </DText>
             {!!plan?.lastDefects && (
               <View style={styles.defects}>
                 <Ionicons name="warning-outline" size={16} color={DESKTOP_TONES.bad.fg} />
-                <DText weight="semiBold" style={styles.defectsText}>יש ליקויים: {defectsText(plan.lastDefects)} בבדיקה האחרונה</DText>
+                <DText weight="semiBold" style={styles.defectsText}>{t('inspection.hasDefectsColon')} {defectsText(plan.lastDefects)} {t('inspection.inLast')}</DText>
               </View>
             )}
             {!archived && plan && (
               <View style={styles.move}>
-                <DText style={pageStyles.editFieldLabel}>שינוי מועד הבדיקה הבאה</DText>
-                <DateField value={plan.nextDue} onChange={(value) => void change(value)} placeholder="בחירת תאריך" disabled={saving} hasError={!!moveError} />
+                <DText style={pageStyles.editFieldLabel}>{t('inspection.changeNextDate')}</DText>
+                <DateField value={plan.nextDue} onChange={(value) => void change(value)} placeholder={t('date.chooseDateAction')} disabled={saving} hasError={!!moveError} />
                 {!!moveError && <DText style={styles.error} accessibilityRole="alert">{moveError}</DText>}
-                {saving && <DText style={pageStyles.mutedText}>שומר…</DText>}
+                {saving && <DText style={pageStyles.mutedText}>{t('common.savingEllipsis')}</DText>}
               </View>
             )}
             {!archived && (
               <HoverPressable style={[pageStyles.primaryBtn, styles.button]} hoverStyle={pageStyles.primaryBtnHover} pressStyle={pageStyles.pressDown} onPress={() => open(draft?.id)}>
                 <Ionicons name={draft ? 'play-outline' : 'add'} size={16} color="#FFFFFF" />
-                <DText weight="semiBold" style={pageStyles.primaryBtnText}>{draft ? 'המשך הבדיקה שהתחלתם' : 'בדיקה חדשה'}</DText>
+                <DText weight="semiBold" style={pageStyles.primaryBtnText}>{draft ? t('inspection.continueStarted') : t('inspection.new')}</DText>
               </HoverPressable>
             )}
           </View>
@@ -98,19 +100,19 @@ export function VehicleInspectionsDesktopSection({ companyId, vehicleId, archive
           <GroupLabel
             action={
               (entries?.length ?? 0) > HISTORY_SHOWN ? (
-                <HoverPressable style={pageStyles.linkBtn} hoverStyle={pageStyles.softBtnHover} onPress={() => navigation.navigate('SafetyInspections')} accessibilityLabel="כל בדיקות הבטיחות">
-                  <DText weight="semiBold" style={pageStyles.linkText}>הכול ({entries!.length})</DText>
+                <HoverPressable style={pageStyles.linkBtn} hoverStyle={pageStyles.softBtnHover} onPress={() => navigation.navigate('SafetyInspections')} accessibilityLabel={t('inspection.all')}>
+                  <DText weight="semiBold" style={pageStyles.linkText}>{t('common.allOpen')}{entries!.length})</DText>
                 </HoverPressable>
               ) : undefined
             }
           >
-            בדיקות קודמות
+            {t('inspection.previous')}
           </GroupLabel>
           <View style={[pageStyles.card, pageStyles.listCard]}>
             {entries === null ? (
-              <DText style={[pageStyles.mutedText, styles.empty]}>טוען…</DText>
+              <DText style={[pageStyles.mutedText, styles.empty]}>{t('common.loadingEllipsis')}</DText>
             ) : shown.length === 0 ? (
-              <DText style={[pageStyles.mutedText, styles.empty]}>עוד אין בדיקות לרכב הזה</DText>
+              <DText style={[pageStyles.mutedText, styles.empty]}>{t('inspection.noneForVehicle')}</DText>
             ) : (
               shown.map(({ row, state: rowState }, index) => {
                 const meta = INSPECTION_STATE_META[rowState];
@@ -121,7 +123,7 @@ export function VehicleInspectionsDesktopSection({ companyId, vehicleId, archive
                     style={[pageStyles.detailRow, index > 0 && pageStyles.rowDivider]}
                     hoverStyle={pageStyles.rowHover}
                     onPress={() => open(row.id)}
-                    accessibilityLabel={`בדיקה מ-${formatIsoDay(row.inspection_date)}, ${meta.label}${defects ? `, ${defects}` : ''}`}
+                    accessibilityLabel={t('inspection.fromLabel', { v1: formatIsoDay(row.inspection_date), label: meta.label, v2: defects ? `, ${defects}` : '' })}
                   >
                     <DLtrText weight="semiBold" style={styles.rowDate}>{formatIsoDay(row.inspection_date)}</DLtrText>
                     <View style={pageStyles.flex}>
@@ -130,7 +132,7 @@ export function VehicleInspectionsDesktopSection({ companyId, vehicleId, archive
                       </DText>
                     </View>
                     <StatusPill tone={STATE_TONE[meta.tone]} label={meta.label} />
-                    <Ionicons name="chevron-back" size={15} color={DESKTOP_COLORS.inkFaint} />
+                    <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
                   </HoverPressable>
                 );
               })

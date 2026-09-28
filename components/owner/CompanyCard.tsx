@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Company } from '../../lib/supabase';
 import { COLORS, AVATAR_PALETTE } from './ownerTheme';
+import { t } from '../../lib/i18n';
 
 export type CompanyRow = Company & { admins: number; drivers: number };
 
@@ -24,7 +25,7 @@ export function CompanyCard({
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.8} onPress={onPress}>
       {item.logo_url ? (
-        <Image source={{ uri: item.logo_url }} accessibilityLabel={`לוגו ${item.name}`} style={styles.avatar} resizeMode="cover" />
+        <Image source={{ uri: item.logo_url }} accessibilityLabel={t('company.logoOf', { name: item.name })} style={styles.avatar} resizeMode="cover" />
       ) : (
         <View style={[styles.avatar, { backgroundColor: avatarColor }]}>
           <Text style={[styles.avatarText, { color: avatarTextColor }]}>{item.name.trim().charAt(0)}</Text>
@@ -37,18 +38,18 @@ export function CompanyCard({
           </Text>
           <View style={[styles.badge, active ? styles.badgeActive : styles.badgeDisabled]}>
             <Text style={[styles.badgeText, active ? styles.badgeTextActive : styles.badgeTextDisabled]}>
-              {active ? 'פעיל' : 'מושבת'}
+              {active ? t('vehicle.status.active') : t('vehicle.status.disabled')}
             </Text>
           </View>
         </View>
         <View style={styles.cardMetaRow}>
           <View style={styles.metaItem}>
             <Ionicons name="shield-outline" size={13} color={COLORS.grayLight} />
-            <Text style={styles.metaText}>{item.admins} אדמינים</Text>
+            <Text style={styles.metaText}>{item.admins} {t('owner.admins')}</Text>
           </View>
           <View style={styles.metaItem}>
             <Ionicons name="car-outline" size={13} color={COLORS.grayLight} />
-            <Text style={styles.metaText}>{item.drivers} נהגים</Text>
+            <Text style={styles.metaText}>{item.drivers} {t('common.drivers')}</Text>
           </View>
         </View>
       </View>

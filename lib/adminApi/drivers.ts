@@ -3,6 +3,7 @@ import { DriverDetails, DriverRow, DriverRowVehicle } from './types';
 import { listActiveDriverVehicles } from './assignments';
 import { functionErrorMessage } from '../functionError';
 import { chunkIds, fetchAllPages } from './paging';
+import { t } from '../i18n';
 
 /**
  * Drivers live across two tables: `profiles` (identity + auth link) and
@@ -200,7 +201,7 @@ export async function archiveDriver(
   });
 
   if (error || !data?.success) {
-    return { ok: false, error: await functionErrorMessage(error, data, 'ההעברה לארכיון נכשלה', false) };
+    return { ok: false, error: await functionErrorMessage(error, data, t('driver.archiveFailed'), false) };
   }
 
   return { ok: true };
@@ -216,7 +217,7 @@ export async function restoreDriver(
   });
 
   if (error || !data?.success) {
-    return { ok: false, error: await functionErrorMessage(error, data, 'שחזור הנהג נכשל', false) };
+    return { ok: false, error: await functionErrorMessage(error, data, t('driver.restoreFailed'), false) };
   }
 
   return { ok: true };
@@ -246,7 +247,7 @@ export async function createDriverAccount(payload: {
   });
 
   if (error || !data?.success) {
-    return { ok: false, error: await functionErrorMessage(error, data, 'יצירת הנהג נכשלה', false) };
+    return { ok: false, error: await functionErrorMessage(error, data, t('driver.createFailed'), false) };
   }
 
   return { ok: true, driverId: data.driverId };
@@ -270,7 +271,7 @@ export async function deleteDriver(
   });
 
   if (error || !data?.success) {
-    return { ok: false, error: await functionErrorMessage(error, data, 'מחיקת הנהג נכשלה', false) };
+    return { ok: false, error: await functionErrorMessage(error, data, t('driver.deleteFailed'), false) };
   }
 
   return { ok: true };
@@ -294,7 +295,7 @@ export async function deleteAllCompanyDrivers(
   });
 
   if (error || !data?.success) {
-    return { ok: false, error: await functionErrorMessage(error, data, 'מחיקת הנהגים נכשלה', false) };
+    return { ok: false, error: await functionErrorMessage(error, data, t('driver.deleteManyFailed'), false) };
   }
 
   return {
@@ -320,7 +321,7 @@ export async function resetDriverPassword(
   });
 
   if (error || !data?.success) {
-    return { ok: false, error: await functionErrorMessage(error, data, 'איפוס הסיסמה נכשל', false) };
+    return { ok: false, error: await functionErrorMessage(error, data, t('driver.resetPasswordFailed'), false) };
   }
 
   return { ok: true };
@@ -349,7 +350,7 @@ export async function updateUserEmail(
   });
 
   if (error || !data?.success) {
-    return { ok: false, error: await functionErrorMessage(error, data, 'עדכון המייל נכשל', false) };
+    return { ok: false, error: await functionErrorMessage(error, data, t('driver.updateEmailFailed'), false) };
   }
 
   return { ok: true };

@@ -1,4 +1,5 @@
 import type { CompanyHealth, Tone } from '../../lib/platformOverview';
+import { t } from '../../lib/i18n';
 
 /** Filters and ordering shared by the owner's desktop and phone control room. */
 
@@ -6,10 +7,10 @@ export type CompanyFilter = 'all' | 'attention' | 'ok' | 'off';
 export type CompanySort = 'health' | 'name' | 'activity' | 'size';
 
 export const COMPANY_FILTERS: { value: CompanyFilter; label: string; tone?: Tone }[] = [
-  { value: 'all', label: 'כל החברות' },
-  { value: 'attention', label: 'דורשות טיפול', tone: 'bad' },
-  { value: 'ok', label: 'תקינות', tone: 'ok' },
-  { value: 'off', label: 'מושבתות', tone: 'off' },
+  { value: 'all', get label() { return t('owner.filter.all'); } },
+  { value: 'attention', get label() { return t('owner.filter.needAttention'); }, tone: 'bad' },
+  { value: 'ok', get label() { return t('owner.filter.ok'); }, tone: 'ok' },
+  { value: 'off', get label() { return t('owner.filter.disabled'); }, tone: 'off' },
 ];
 
 const TONE_ORDER: Record<Tone, number> = { bad: 0, warn: 1, ok: 2, off: 3 };

@@ -12,6 +12,7 @@ import { daysUntilExpiry, formatDate } from '../../lib/theme';
 import { DLtrText, DText, HoverPressable } from './primitives';
 import { DESKTOP_AVATAR_COLORS, DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { enter, enterRow, FilterCard, FilterCards, FleetHeader, FleetMode, ModeSwitch } from './FleetOverview';
+import { t, dirIcon, textStart, textDirection, dirSign } from '../../lib/i18n';
 
 /**
  * Desktop body of the fleet screen, sized to the window (no page scroll).
@@ -78,17 +79,17 @@ const COMPACT_HEIGHT = 820;
 const TIGHT_DOCK_WIDTH = 900;
 
 const DRIVER_CARDS: Record<string, Omit<FilterCard<string>, 'value' | 'count'>> = {
-  all: { label: 'כל הנהגים', hint: 'נהגים פעילים בחברה', icon: 'people' },
-  soon: { label: 'עומד לפוג', hint: 'רישיון פג בתוך 30 יום', icon: 'time', tone: 'warn' },
-  expired: { label: 'פג תוקף', hint: 'צריך לחדש עכשיו', icon: 'alert-circle', tone: 'bad' },
-  no_vehicle: { label: 'ללא רכב', hint: 'לא שויך להם רכב', icon: 'car-outline', tone: 'neutral' },
+  all: { get label() { return t('fleet.filter.allDrivers'); }, get hint() { return t('fleet.filter.allDriversHint'); }, icon: 'people' },
+  soon: { get label() { return t('fleet.filter.aboutToExpire'); }, get hint() { return t('fleet.filter.aboutToExpireHint'); }, icon: 'time', tone: 'warn' },
+  expired: { get label() { return t('status.expiredLong'); }, get hint() { return t('fleet.filter.renewNow'); }, icon: 'alert-circle', tone: 'bad' },
+  no_vehicle: { get label() { return t('fleet.filter.noVehicle'); }, get hint() { return t('fleet.filter.noVehicleHint'); }, icon: 'car-outline', tone: 'neutral' },
 };
 
 const VEHICLE_CARDS: Record<string, Omit<FilterCard<string>, 'value' | 'count'>> = {
-  all: { label: 'כל הרכבים', hint: 'לא כולל ארכיון', icon: 'car-sport' },
-  active: { label: 'פעילים', hint: 'בשימוש שוטף', icon: 'checkmark-circle', tone: 'ok' },
-  maintenance: { label: 'בטיפול', hint: 'לא זמינים כרגע', icon: 'construct', tone: 'warn' },
-  disabled: { label: 'מושבתים', hint: 'יצאו משימוש', icon: 'pause-circle', tone: 'neutral' },
+  all: { get label() { return t('fleet.filter.allVehicles'); }, get hint() { return t('fleet.filter.excludingArchive'); }, icon: 'car-sport' },
+  active: { get label() { return t('fleet.filter.active'); }, get hint() { return t('fleet.filter.activeHint'); }, icon: 'checkmark-circle', tone: 'ok' },
+  maintenance: { get label() { return t('vehicle.status.maintenance'); }, get hint() { return t('fleet.filter.unavailableHint'); }, icon: 'construct', tone: 'warn' },
+  disabled: { get label() { return t('fleet.filter.disabled'); }, get hint() { return t('fleet.filter.disabledHint'); }, icon: 'pause-circle', tone: 'neutral' },
 };
 
 const VEHICLE_STATUS_TONE: Record<string, DesktopTone> = {
@@ -101,38 +102,39 @@ const VEHICLE_STATUS_TONE: Record<string, DesktopTone> = {
 /** Plain words instead of a bare date: how long until (or since) it expires. */
 function expiryWords(date: string | null | undefined): { tone: DesktopTone; label: string } {
   const days = daysUntilExpiry(date);
-  if (days == null) return { tone: 'neutral', label: 'לא הוזן' };
-  if (days < 0) return { tone: 'bad', label: days === -1 ? 'פג אתמול' : `פג לפני ${Math.abs(days)} ימים` };
-  if (days === 0) return { tone: 'bad', label: 'פג היום' };
-  if (days <= 30) return { tone: 'warn', label: days === 1 ? 'פג מחר' : `עוד ${days} ימים` };
-  return { tone: 'ok', label: 'בתוקף' };
+  if (days == null) return { tone: 'neutral', label: t('common.notEntered') };
+  if (days < 0) return { tone: 'bad', label: days === -1 ? t('expiry.expiredYesterday') : t('expiry.expiredDaysAgoShort', { v1: Math.abs(days) }) };
+  if (days === 0) return { tone: 'bad', label: t('expiry.expiredToday') };
+  if (days <= 30) return { tone: 'warn', label: days === 1 ? t('expiry.expiresTomorrow') : t('time.daysLeft', { days }) };
+  return { tone: 'ok', label: t('status.valid') };
 }
 
 /** Health declaration: valid, expiring, expired, waiting for signature or never signed. */
 function healthWords(info: HealthDeclarationInfo | undefined): { tone: DesktopTone; label: string; sub: string } {
   if (info?.expiresAt) {
     const words = expiryWords(info.expiresAt);
-    if (words.tone === 'bad' && info.pending) return { tone: 'warn', label: 'ממתינה לחתימה', sub: `פגה ${formatDate(info.expiresAt)}` };
-    return { ...words, sub: `עד ${formatDate(info.expiresAt)}` };
+    if (words.tone === 'bad' && info.pending) return { tone: 'warn', label: t('signing.awaitingSignatureF'), sub: t('expiry.expiredWhen', { v1: formatDate(info.expiresAt) }) };
+    return { ...words, sub: t('common.untilValue', { v1: formatDate(info.expiresAt) }) };
   }
-  if (info?.pending) return { tone: 'warn', label: 'ממתינה לחתימה', sub: '' };
-  return { tone: 'neutral', label: 'לא נחתמה', sub: '' };
+  if (info?.pending) return { tone: 'warn', label: t('signing.awaitingSignatureF'), sub: '' };
+  return { tone: 'neutral', label: t('signing.notSigned'), sub: '' };
 }
 
 function serviceInfo(vehicle: Vehicle): { tone: DesktopTone; label: string } {
   const nextServiceKm = nextServiceKmOf(vehicle);
   if (nextServiceKm == null) return { tone: 'neutral', label: '—' };
   const km = nextServiceKm - vehicle.odometer;
-  if (km <= 0) return { tone: 'bad', label: `באיחור ${Math.abs(km).toLocaleString()} ק״מ` };
-  return { tone: km <= SERVICE_WARN_KM ? 'warn' : 'neutral', label: `בעוד ${km.toLocaleString()} ק״מ` };
+  if (km <= 0) return { tone: 'bad', label: t('vehicle.serviceOverdueKm', { v1: Math.abs(km).toLocaleString() }) };
+  return { tone: km <= SERVICE_WARN_KM ? 'warn' : 'neutral', label: t('vehicle.serviceInKm', { km: km.toLocaleString() }) };
 }
 
 function initialOf(name: string | null | undefined): string {
   return (name ?? '').trim().charAt(0) || '?';
 }
 
+/** "נהג אחד" / "12 נהגים": the count's wording comes whole from each language's file. */
 function countWords(n: number, one: string, many: string): string {
-  return n === 1 ? one : `${n} ${many}`;
+  return n === 1 ? one : many;
 }
 
 
@@ -191,10 +193,10 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
   };
 
   const listTitle = isDrivers
-    ? (driverCards.find((c) => c.value === props.driverFilter)?.label ?? 'נהגים')
+    ? (driverCards.find((c) => c.value === props.driverFilter)?.label ?? t('common.drivers'))
     : showingArchive
-      ? 'רכבים בארכיון'
-      : (vehicleCards.find((c) => c.value === props.vehicleFilter)?.label ?? 'רכבים');
+      ? t('fleet.archivedVehicles')
+      : (vehicleCards.find((c) => c.value === props.vehicleFilter)?.label ?? t('common.vehicles'));
   const listCount = isDrivers ? props.filteredDrivers.length : props.filteredVehicles.length;
   const search = isDrivers ? props.driverSearch : props.vehicleSearch;
   const query = search.trim();
@@ -229,7 +231,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
       <View
         style={[styles.toolbar, enter(1)]}
         onLayout={(e) => setToolbarWidth(e.nativeEvent.layout.width)}
-        accessibilityLabel="מה מוצג"
+        accessibilityLabel={t('fleet.whatsShown')}
       >
         <ModeSwitch mode={mode} compact={tight} counts={modeCounts} onChange={props.onModeChange} />
         <View style={styles.grow} />
@@ -245,7 +247,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
             ref={searchRef}
             value={search}
             onChangeText={setSearch}
-            placeholder={isDrivers ? 'חיפוש לפי שם, טלפון, ת.ז., רישיון או רכב' : 'חיפוש לפי מספר רכב, יצרן, דגם או נהג'}
+            placeholder={isDrivers ? t('fleet.searchDriversShort') : t('fleet.searchVehiclesShort')}
             placeholderTextColor={DESKTOP_COLORS.inkFaint}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
@@ -253,7 +255,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
               if ((e.nativeEvent as { key?: string }).key === 'Escape' && search) setSearch('');
             }}
             style={[styles.search, searchFocused && styles.searchFocused]}
-            accessibilityLabel={isDrivers ? 'חיפוש נהג לפי שם, טלפון, תעודת זהות, מספר רישיון או מספר רכב' : 'חיפוש רכב לפי מספר רכב, יצרן, דגם, קוד פנימי או שם נהג'}
+            accessibilityLabel={isDrivers ? t('fleet.searchDriversLong') : t('fleet.searchVehiclesLong')}
           />
           {search ? (
             <HoverPressable
@@ -263,7 +265,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                 setSearch('');
                 searchRef.current?.focus();
               }}
-              accessibilityLabel="ניקוי החיפוש"
+              accessibilityLabel={t('common.clearSearch')}
             >
               <Ionicons name="close" size={18} color={DESKTOP_COLORS.inkMuted} />
             </HoverPressable>
@@ -282,14 +284,14 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
           hoverStyle={showingArchive ? undefined : styles.ghostButtonHover}
           pressMotionStyle={styles.pressDown}
           onPress={isDrivers ? props.onOpenArchive : () => props.onVehicleFilter((showingArchive ? 'all' : 'archived') as SF)}
-          accessibilityLabel={`${isDrivers ? 'ארכיון נהגים' : 'ארכיון רכבים'}, ${archiveCount}`}
+          accessibilityLabel={`${isDrivers ? t('fleet.driverArchive') : t('fleet.vehicleArchive')}, ${archiveCount}`}
           accessibilityState={isDrivers ? undefined : { selected: showingArchive }}
           aria-pressed={isDrivers ? undefined : showingArchive}
         >
           <Ionicons name="archive-outline" size={19} color={showingArchive ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkMuted} />
           {!tight && (
             <DText weight="semiBold" style={[styles.ghostButtonText, showingArchive && styles.ghostButtonTextOn]}>
-              ארכיון
+              {t('common.archive')}
             </DText>
           )}
           {archiveCount > 0 && (
@@ -305,12 +307,12 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
           hoverMotionStyle={styles.primaryButtonHover}
           pressMotionStyle={styles.pressDown}
           onPress={onAdd}
-          accessibilityLabel={isDrivers ? 'נהג חדש' : 'רכב חדש'}
+          accessibilityLabel={isDrivers ? t('driver.new') : t('vehicle.new')}
         >
           <Ionicons name="add" size={22} color="#FFFFFF" />
           {!tight && (
             <DText weight="semiBold" style={styles.primaryButtonText}>
-              {isDrivers ? 'נהג חדש' : 'רכב חדש'}
+              {isDrivers ? t('driver.new') : t('vehicle.new')}
             </DText>
           )}
         </HoverPressable>
@@ -343,19 +345,19 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
           </DText>
           {!loading && !error && (
             <DText style={styles.listCount}>
-              {isDrivers ? countWords(listCount, 'נהג אחד', 'נהגים') : countWords(listCount, 'רכב אחד', 'רכבים')}
+              {isDrivers ? countWords(listCount, t('common.oneDriver'), t('common.driversCount', { count: listCount })) : countWords(listCount, t('common.oneVehicle'), t('common.vehiclesCount', { count: listCount }))}
             </DText>
           )}
           {!!query && (
             <View style={styles.searchChip}>
               <DText weight="semiBold" style={styles.searchChipText} numberOfLines={1}>
-                תוצאות עבור „{query}”
+                {t('fleet.resultsFor')}{query}”
               </DText>
               <HoverPressable
                 style={styles.searchChipClear}
                 hoverStyle={styles.searchChipClearHover}
                 onPress={() => setSearch('')}
-                accessibilityLabel="ניקוי החיפוש"
+                accessibilityLabel={t('common.clearSearch')}
               >
                 <Ionicons name="close" size={14} color={DESKTOP_COLORS.brand} />
               </HoverPressable>
@@ -366,31 +368,31 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
         {error ? (
           <EmptyState
             icon="cloud-offline-outline"
-            title={isDrivers ? 'לא ניתן לטעון את הנהגים' : 'לא ניתן לטעון את הרכבים'}
+            title={isDrivers ? t('fleet.cannotLoadDrivers') : t('fleet.cannotLoadVehicles')}
             hint={error}
-            action={{ label: 'נסה שוב', icon: 'refresh', onPress: isDrivers ? props.onRetryDrivers : props.onRetryVehicles }}
+            action={{ label: t('common.tryAgain'), icon: 'refresh', onPress: isDrivers ? props.onRetryDrivers : props.onRetryVehicles }}
           />
         ) : !loading && isEmpty ? (
           !hasAny ? (
             <EmptyState
               icon={isDrivers ? 'people-outline' : 'car-sport-outline'}
-              title={isDrivers ? 'עדיין אין נהגים' : 'עדיין אין רכבים'}
-              hint={isDrivers ? 'הוסף את הנהג הראשון של החברה' : 'הוסף את הרכב הראשון של החברה'}
-              action={{ label: isDrivers ? 'נהג חדש' : 'רכב חדש', icon: 'add', onPress: onAdd, primary: true }}
+              title={isDrivers ? t('fleet.noDriversYet') : t('fleet.noVehiclesYet')}
+              hint={isDrivers ? t('fleet.addFirstDriver') : t('fleet.addFirstVehicle')}
+              action={{ label: isDrivers ? t('driver.new') : t('vehicle.new'), icon: 'add', onPress: onAdd, primary: true }}
             />
           ) : query ? (
             <EmptyState
               icon="search"
-              title="לא נמצאו תוצאות"
-              hint={`אין התאמה ל„${query}”. נסה מילה אחרת או בחר כרטיס אחר`}
-              action={{ label: 'ניקוי החיפוש', icon: 'close', onPress: () => setSearch('') }}
+              title={t('common.noResults')}
+              hint={t('fleet.noMatch', { query })}
+              action={{ label: t('common.clearSearch'), icon: 'close', onPress: () => setSearch('') }}
             />
           ) : (
             <EmptyState
               icon="checkmark-circle"
               iconTone="ok"
-              title="אין כאן אף אחד"
-              hint="אין פריטים שמתאימים לכרטיס הזה"
+              title={t('fleet.nobodyHere')}
+              hint={t('fleet.noItemsForCard')}
             />
           )
         ) : (
@@ -427,7 +429,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                                   </DText>
                                 </View>
                                 <View style={styles.twoLine}>
-                                  <Highlight text={driver.full_name || 'נהג ללא שם'} query={query} weight="bold" style={styles.cellTitle} />
+                                  <Highlight text={driver.full_name || t('common.unnamedDriver')} query={query} weight="bold" style={styles.cellTitle} />
                                   {!!driver.job_title && (
                                     <DText style={styles.subText} numberOfLines={1}>
                                       {driver.job_title}
@@ -446,7 +448,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                               <DataText value={driver.license_number} query={query} />
                               {!!driver.license_classes && (
                                 <DText style={styles.subText} numberOfLines={1}>
-                                  דרגה {driver.license_classes}
+                                  {t('driver.licenseClassShort')} {driver.license_classes}
                                 </DText>
                               )}
                             </View>
@@ -454,7 +456,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                               <Status tone={license.tone} label={license.label} />
                               {!!driver.license_expiry && (
                                 <DText style={styles.subText} numberOfLines={1}>
-                                  עד {formatDate(driver.license_expiry)}
+                                  {t('common.until')} {formatDate(driver.license_expiry)}
                                 </DText>
                               )}
                             </View>
@@ -475,13 +477,13 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                                 </View>
                               ) : (
                                 <DText style={[styles.cellText, styles.faint]} numberOfLines={1}>
-                                  ללא רכב
+                                  {t('fleet.filter.noVehicle')}
                                 </DText>
                               )}
                             </View>
                             <View style={[styles.cell, colStyle(DRIVER_COLUMNS[7])]}>
                               {pending > 0 ? (
-                                <Pill tone="warn" label={countWords(pending, 'מסמך אחד', 'מסמכים')} />
+                                <Pill tone="warn" label={countWords(pending, t('documents.oneDocument'), t('documents.countN', { count: pending }))} />
                               ) : (
                                 <DText style={[styles.cellText, styles.faint]}>—</DText>
                               )}
@@ -493,7 +495,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                         const insurance = (props.compliance.get(vehicle.id) ?? []).find((c) => c.item_type === 'insurance_mandatory');
                         const words = expiryWords(insurance?.expiry_date);
                         // Driving without mandatory insurance is never neutral.
-                        const insuranceInfo = words.tone === 'neutral' ? { tone: 'bad' as const, label: 'אין ביטוח' } : words;
+                        const insuranceInfo = words.tone === 'neutral' ? { tone: 'bad' as const, label: t('vehicle.noInsurance') } : words;
                         const { primary, extra } = assignedDrivers(vehicle);
                         const service = serviceInfo(vehicle);
                         return (
@@ -513,7 +515,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                                   <Highlight text={vehicleName(vehicle)} query={query} style={styles.subText} />
                                   {vehicle.status !== 'archived' && (props.inspectionDefects.get(vehicle.id) ?? 0) > 0 && (
                                     <View style={styles.defectMark}>
-                                      <Status tone="bad" label="יש ליקויים" />
+                                      <Status tone="bad" label={t('vehicle.hasDefects')} />
                                     </View>
                                   )}
                                 </View>
@@ -529,7 +531,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                                 />
                               ) : (
                                 <DText style={[styles.cellText, styles.faint]} numberOfLines={1}>
-                                  ללא נהג
+                                  {t('vehicle.noDriver')}
                                 </DText>
                               )}
                             </View>
@@ -537,7 +539,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                               <Status tone={insuranceInfo.tone} label={insuranceInfo.label} />
                               {!!insurance?.expiry_date && (
                                 <DText style={styles.subText} numberOfLines={1}>
-                                  עד {formatDate(insurance.expiry_date)}
+                                  {t('common.until')} {formatDate(insurance.expiry_date)}
                                 </DText>
                               )}
                             </View>
@@ -574,22 +576,22 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
 type Column = { label: string; flex: number; min: number };
 
 const DRIVER_COLUMNS: Column[] = [
-  { label: 'נהג', flex: 1.7, min: 184 },
-  { label: 'טלפון נייד', flex: 1, min: 120 },
-  { label: 'תעודת זהות', flex: 0.9, min: 104 },
-  { label: 'מספר רישיון', flex: 0.9, min: 96 },
-  { label: 'תוקף רישיון', flex: 1.15, min: 146 },
-  { label: 'הצהרת בריאות', flex: 1.15, min: 150 },
-  { label: 'רכבים משויכים', flex: 1, min: 116 },
-  { label: 'ממתין לחתימה', flex: 0.9, min: 106 },
+  { get label() { return t('role.driver'); }, flex: 1.7, min: 184 },
+  { get label() { return t('common.mobilePhone'); }, flex: 1, min: 120 },
+  { get label() { return t('field.nationalId'); }, flex: 0.9, min: 104 },
+  { get label() { return t('field.licenseNumber'); }, flex: 0.9, min: 96 },
+  { get label() { return t('driver.licenseExpiry'); }, flex: 1.15, min: 146 },
+  { get label() { return t('compliance.item.healthDeclaration'); }, flex: 1.15, min: 150 },
+  { get label() { return t('driver.assignedVehicles'); }, flex: 1, min: 116 },
+  { get label() { return t('signing.pendingSignature'); }, flex: 0.9, min: 106 },
 ];
 
 const VEHICLE_COLUMNS: Column[] = [
-  { label: 'רכב', flex: 1.6, min: 210 },
-  { label: 'נהג ראשי', flex: 1.3, min: 140 },
-  { label: 'ביטוח חובה', flex: 1.2, min: 150 },
-  { label: 'טיפול הבא', flex: 1.2, min: 160 },
-  { label: 'סטטוס', flex: 0.7, min: 104 },
+  { get label() { return t('vehicle.vehicle'); }, flex: 1.6, min: 210 },
+  { get label() { return t('vehicle.primaryDriver'); }, flex: 1.3, min: 140 },
+  { get label() { return t('folder.mandatoryInsurance'); }, flex: 1.2, min: 150 },
+  { get label() { return t('vehicle.nextService'); }, flex: 1.2, min: 160 },
+  { get label() { return t('common.status'); }, flex: 0.7, min: 104 },
 ];
 
 const ROW_INSET = 10;
@@ -644,7 +646,7 @@ function TableRow({
           {children}
           <View style={styles.rowChevron}>
             <Ionicons
-              name="chevron-back"
+              name={dirIcon('chevron-back')}
               size={18}
               color={(state as { hovered?: boolean }).hovered ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint}
               style={[styles.chevronIcon, (state as { hovered?: boolean }).hovered && styles.chevronIconHover]}
@@ -692,7 +694,7 @@ function DataText({ value, query }: { value: string | null | undefined; query: s
   if (!value) {
     return (
       <DText style={[styles.cellText, styles.faint]} numberOfLines={1}>
-        לא הוזן
+        {t('common.notEntered')}
       </DText>
     );
   }
@@ -743,7 +745,7 @@ function Plate({ plate, small, query = '' }: { plate: string; small?: boolean; q
 
 function SkeletonRows({ columns }: { columns: Column[] }) {
   return (
-    <View style={styles.rowsContent} accessibilityLabel="טוען" aria-busy>
+    <View style={styles.rowsContent} accessibilityLabel={t('common.loading')} aria-busy>
       {Array.from({ length: 7 }, (_, i) => (
         <View key={i} style={[styles.row, i % 2 === 1 && styles.rowAlt]}>
           {columns.map((column, c) => (
@@ -826,18 +828,18 @@ const styles = StyleSheet.create({
   grow: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
   searchWrap: { flexGrow: 0, flexShrink: 1, flexBasis: 400, minWidth: 240, justifyContent: 'center' },
   searchWrapTight: { flexBasis: 280, minWidth: 180 },
-  searchIcon: { position: 'absolute', right: 15, zIndex: 1 },
+  searchIcon: { position: 'absolute', end: 15, zIndex: 1 },
   search: {
     height: 48,
     borderRadius: 14,
     backgroundColor: DESKTOP_COLORS.surface,
-    paddingRight: 44,
-    paddingLeft: 46,
+    paddingEnd: 44,
+    paddingStart: 46,
     fontSize: 15.5,
     fontFamily: DESKTOP_FONT.regular,
     color: DESKTOP_COLORS.ink,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    textAlign: textStart(),
+    writingDirection: textDirection(),
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.border,
     ...webOnly({
@@ -852,7 +854,7 @@ const styles = StyleSheet.create({
   },
   kbd: {
     position: 'absolute',
-    left: 12,
+    start: 12,
     minWidth: 24,
     height: 24,
     borderRadius: 7,
@@ -866,7 +868,7 @@ const styles = StyleSheet.create({
   kbdText: { fontSize: 12, color: DESKTOP_COLORS.inkFaint },
   clear: {
     position: 'absolute',
-    left: 8,
+    start: 8,
     width: 32,
     height: 32,
     borderRadius: 9,
@@ -913,8 +915,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     height: 48,
-    paddingRight: 18,
-    paddingLeft: 22,
+    paddingEnd: 18,
+    paddingStart: 22,
     borderRadius: 14,
     backgroundColor: DESKTOP_COLORS.brand,
     ...webOnly({
@@ -923,7 +925,7 @@ const styles = StyleSheet.create({
       transition: `transform 180ms ${EASE_OUT}, box-shadow 200ms ${EASE_OUT}`,
     }),
   },
-  primaryButtonTight: { width: 48, paddingLeft: 0, paddingRight: 0 },
+  primaryButtonTight: { width: 48, paddingStart: 0, paddingEnd: 0 },
   primaryButtonHover: {
     transform: [{ translateY: -1 }],
     ...webOnly({ boxShadow: '0 14px 26px -12px rgba(0,117,179,0.95), inset 0 1px 0 rgba(255,255,255,0.3)' }),
@@ -957,8 +959,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     height: 32,
-    paddingRight: 12,
-    paddingLeft: 6,
+    paddingEnd: 12,
+    paddingStart: 6,
     borderRadius: 16,
     backgroundColor: BRAND_SOFT,
     maxWidth: 320,
@@ -1000,7 +1002,7 @@ const styles = StyleSheet.create({
   rowPressed: { backgroundColor: '#E3ECF3' },
   rowChevron: { width: CHEVRON_WIDTH, flexShrink: 0, alignItems: 'flex-start' },
   chevronIcon: { ...webOnly({ transition: `transform 220ms ${EASE_OUT}` }) },
-  chevronIconHover: { transform: [{ translateX: -3 }] },
+  chevronIconHover: { transform: [{ translateX: -3 * dirSign() }] },
   headerRow: {
     minHeight: 0,
     paddingVertical: 11,
@@ -1013,7 +1015,7 @@ const styles = StyleSheet.create({
     backgroundColor: DESKTOP_COLORS.surfaceMuted,
   },
   headerText: { fontSize: 13, color: '#4F5B67' },
-  cell: { paddingLeft: 14, gap: 3, alignItems: 'flex-end' },
+  cell: { paddingStart: 14, gap: 3, alignItems: 'flex-end' },
   cellText: { fontSize: 15, color: DESKTOP_COLORS.inkMuted, maxWidth: '100%' },
   cellValue: { fontSize: 15, color: DESKTOP_COLORS.ink, maxWidth: '100%' },
   cellTitle: { fontSize: 16, color: DESKTOP_COLORS.ink, maxWidth: '100%' },
@@ -1043,7 +1045,7 @@ const styles = StyleSheet.create({
   },
 
   status: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, flexShrink: 0 },
-  statusLoud: { height: 28, paddingRight: 9, paddingLeft: 11, borderRadius: 14 },
+  statusLoud: { height: 28, paddingEnd: 9, paddingStart: 11, borderRadius: 14 },
   statusText: { fontSize: 14.5 },
   pill: { height: 28, paddingHorizontal: 11, borderRadius: 14, justifyContent: 'center', flexShrink: 0 },
   pillText: { fontSize: 13.5 },
@@ -1066,14 +1068,14 @@ const styles = StyleSheet.create({
   plateIL: { fontSize: 7, lineHeight: 8, color: '#FFFFFF', textAlign: 'center' },
   plateText: {
     alignSelf: 'center',
-    paddingLeft: 7,
-    paddingRight: 8,
+    paddingStart: 7,
+    paddingEnd: 8,
     fontSize: 14.5,
     letterSpacing: 0.6,
     color: '#111111',
     ...webOnly({ fontVariantNumeric: 'tabular-nums' }),
   },
-  plateTextSmall: { fontSize: 13, paddingLeft: 6, paddingRight: 7 },
+  plateTextSmall: { fontSize: 13, paddingStart: 6, paddingEnd: 7 },
 
   skeleton: {
     height: 12,

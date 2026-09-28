@@ -1,4 +1,5 @@
 import type { Ionicons } from '@expo/vector-icons';
+import { t } from './i18n';
 
 /**
  * The driver's document folders, grouped as on the driver card — shared by
@@ -15,33 +16,31 @@ export interface DriverDocumentFolder {
 
 export const DRIVER_DOCUMENT_GROUPS: { title: string; folders: DriverDocumentFolder[] }[] = [
   {
-    title: 'רישוי ומסמכים',
+    get title() { return t('folder.licensingAndDocs'); },
     folders: [
-      { category: 'general', title: 'מסמכים כלליים', icon: 'document-text-outline' },
-      { category: 'transport_info', title: 'מסמכי מידע תעבורתי', icon: 'information-circle-outline' },
+      { category: 'general', get title() { return t('folder.generalDocs'); }, icon: 'document-text-outline' },
+      { category: 'transport_info', get title() { return t('folder.trafficInfoDocs'); }, icon: 'information-circle-outline' },
     ],
   },
   {
-    title: 'תיק נהג',
+    get title() { return t('folder.driverFile'); },
     folders: [
-      { category: 'driver_file', title: 'תיק נהג', icon: 'folder-open-outline' },
-      { category: 'notes_feedback', title: 'הערות ותגובות', icon: 'chatbubbles-outline' },
-      { category: 'traffic_reports', title: 'דוחות תעבורה', icon: 'warning-outline' },
-      { category: 'accompanying_drivers', title: 'נהגים נלווים', icon: 'people-outline' },
+      { category: 'driver_file', get title() { return t('folder.driverFile'); }, icon: 'folder-open-outline' },
+      { category: 'notes_feedback', get title() { return t('folder.notesAndResponses'); }, icon: 'chatbubbles-outline' },
+      { category: 'traffic_reports', get title() { return t('folder.trafficReports'); }, icon: 'warning-outline' },
+      { category: 'accompanying_drivers', get title() { return t('folder.companionDrivers'); }, icon: 'people-outline' },
     ],
   },
   {
-    title: 'בטיחות והדרכות',
+    get title() { return t('folder.safetyAndTraining'); },
     folders: [
-      { category: 'procedure_6', title: 'נוהל 6', icon: 'shield-checkmark-outline' },
-      { category: 'certifications', title: 'הסמכות והכשרות', icon: 'ribbon-outline' },
-      { category: 'hazmat', title: 'חומרים מסוכנים', icon: 'flask-outline' },
-      { category: 'trainings', title: 'הדרכות והכשרות', icon: 'school-outline' },
+      { category: 'procedure_6', get title() { return t('folder.procedure6'); }, icon: 'shield-checkmark-outline' },
+      { category: 'certifications', get title() { return t('folder.certifications'); }, icon: 'ribbon-outline' },
+      { category: 'hazmat', get title() { return t('folder.hazmat'); }, icon: 'flask-outline' },
+      { category: 'trainings', get title() { return t('folder.trainings'); }, icon: 'school-outline' },
     ],
   },
 ];
 
 /** Category of the license front/back photos. */
 export const LICENSE_DOCS_CATEGORY = 'license_docs';
-/** Document titles the license photos are stored under. */
-export const LICENSE_SIDE_TITLES = { front: 'צד קדמי', back: 'צד אחורי' } as const;

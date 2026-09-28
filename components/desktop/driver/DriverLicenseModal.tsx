@@ -10,14 +10,17 @@ import { scanLicenseImage } from '../../../lib/documentScanner';
 import { showAlert } from '../../../lib/platformAlert';
 import { expiryState, formatDate } from '../../../lib/theme';
 import { DesktopModal } from '../DesktopModal';
+import { LICENSE_SIDE_STORED_TITLE, type LicenseSide } from '../../../lib/licenseSides';
 import { DText, HoverPressable } from '../primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
 import { EditableDateField, EXPIRY_TONE_MAP, recordStyles, STATE_LABEL } from '../record/RecordKit';
+import { t } from '../../../lib/i18n';
+import { errorMessage } from '../../../lib/requestError';
 
-type Side = 'front' | 'back';
+type Side = LicenseSide;
 const SIDES: Side[] = ['front', 'back'];
 /** The document titles the license photos are stored under — shared with DriverLicenseDocumentsScreen. */
-export const LICENSE_SIDE_TITLE: Record<Side, string> = { front: 'צד קדמי', back: 'צד אחורי' };
+export const LICENSE_SIDE_TITLE: Record<Side, string> = { get front() { return t('documents.frontSide'); }, get back() { return t('documents.backSide'); } };
 
 /**
  * Desktop "מסמכי רישיון נהיגה" folder as a centered modal, replacing the
@@ -58,8 +61,8 @@ export function DriverLicenseModal({
 
   const load = useCallback(async () => {
     const all = await listDocuments('driver', driverId, 'license_docs').catch(() => []);
-    const front = all.find((d) => d.title === LICENSE_SIDE_TITLE.front) ?? null;
-    const back = all.find((d) => d.title === LICENSE_SIDE_TITLE.back) ?? null;
+    const front = all.find((d) => d.title === LICENSE_SIDE_STORED_TITLE.front) ?? null;
+    const back = all.find((d) => d.title === LICENSE_SIDE_STORED_TITLE.back) ?? null;
     const [frontUrl, backUrl] = await Promise.all([
       front ? getDocumentUrl(front).catch(() => null) : Promise.resolve(null),
       back ? getDocumentUrl(back).catch(() => null) : Promise.resolve(null),
@@ -83,7 +86,7 @@ export function DriverLicenseModal({
         const file = await pickDocumentSource(source);
         if (!file) return;
         const existing = docs[side];
-        await uploadDocument({ companyId, ownerType: 'driver', ownerId: driverId, category: 'license_docs', title: LICENSE_SIDE_TITLE[side], file });
+        await uploadDocument({ companyId, ownerType: 'driver', ownerId: driverId, category: 'license_docs', title: LICENSE_SIDE_STORED_TITLE[side], file });
         if (existing) await deleteDocument(existing);
         await load();
         onPhotosChanged();
@@ -91,13 +94,13 @@ export function DriverLicenseModal({
           const result = await scanLicenseImage(file);
           if (result.extractedDate) {
             const err = await onSaveExpiry(result.extractedDate);
-            setScanNote(err ? `זוהה תוקף ${formatDate(result.extractedDate)}, אך השמירה נכשלה: ${err}` : `זוהה תוקף: ${formatDate(result.extractedDate)}`);
+            setScanNote(err ? t('license.detectedSaveFailed', { v1: formatDate(result.extractedDate), err }) : t('license.detected', { v1: formatDate(result.extractedDate) }));
           } else {
-            setScanNote('התמונה הועלתה, אך לא זוהה תאריך תוקף. אפשר להזין אותו ידנית למטה.');
+            setScanNote(t('license.uploadedNoDate'));
           }
         }
       } catch (err: any) {
-        showAlert('ההעלאה נכשלה', err?.message ?? 'נסה שוב');
+        showAlert(t('common.uploadFailedFem'), errorMessage(err, t('common.tryAgain')));
       } finally {
         setBusySide(null);
       }
@@ -111,21 +114,21 @@ export function DriverLicenseModal({
   const tone = DESKTOP_TONES[EXPIRY_TONE_MAP[state]];
 
   return (
-    <DesktopModal visible={visible} title="מסמכי רישיון נהיגה" onClose={onClose} maxWidth={620}>
+    <DesktopModal visible={visible} title={t('license.documents')} onClose={onClose} maxWidth={620}>
       <View style={styles.body}>
         {pendingRequest && (
           <View style={[styles.request, { backgroundColor: DESKTOP_TONES.warn.bg }]}>
             <View style={styles.requestText}>
-              <DText weight="bold" style={[styles.requestTitle, { color: DESKTOP_TONES.warn.fg }]}>בקשת עדכון רישיון מהנהג</DText>
+              <DText weight="bold" style={[styles.requestTitle, { color: DESKTOP_TONES.warn.fg }]}>{t('license.updateRequest')}</DText>
               <DText style={styles.requestLine}>
-                מספר {pendingRequest.requested_license_number} · דרגות {pendingRequest.requested_license_classes} · תוקף עד {formatDate(pendingRequest.requested_license_expiry)}
+                {t('common.number')} {pendingRequest.requested_license_number} {t('license.classesSep')} {pendingRequest.requested_license_classes} {t('license.validUntilSep')} {formatDate(pendingRequest.requested_license_expiry)}
               </DText>
             </View>
             <HoverPressable style={[styles.requestBtn, styles.approveBtn, reviewing && recordStyles.disabled]} hoverStyle={recordStyles.saveChipHover} pressStyle={recordStyles.pressDown} onPress={() => onReview(true)} disabled={reviewing}>
-              <DText weight="bold" style={styles.approveText}>אישור</DText>
+              <DText weight="bold" style={styles.approveText}>{t('common.ok')}</DText>
             </HoverPressable>
             <HoverPressable style={[styles.requestBtn, styles.rejectBtn, reviewing && recordStyles.disabled]} hoverStyle={recordStyles.rowHover} pressStyle={recordStyles.pressDown} onPress={() => onReview(false)} disabled={reviewing}>
-              <DText weight="bold" style={styles.rejectText}>דחייה</DText>
+              <DText weight="bold" style={styles.rejectText}>{t('common.reject')}</DText>
             </HoverPressable>
           </View>
         )}
@@ -141,7 +144,7 @@ export function DriverLicenseModal({
                 {!loaded ? (
                   <View style={styles.slot}><BrandLoader color={DESKTOP_COLORS.brand} /></View>
                 ) : doc ? (
-                  <HoverPressable style={styles.slot} hoverMotionStyle={styles.slotHoverMotion} onPress={() => openDocumentExternally(doc)} accessibilityLabel={`פתיחת ${LICENSE_SIDE_TITLE[side]} בגודל מלא`}>
+                  <HoverPressable style={styles.slot} hoverMotionStyle={styles.slotHoverMotion} onPress={() => openDocumentExternally(doc)} accessibilityLabel={t('license.openFullSize', { v1: LICENSE_SIDE_TITLE[side] })}>
                     {url && doc.mime_type?.startsWith('image/') ? (
                       <Image source={{ uri: url }} style={styles.slotImage as ImageStyle} resizeMode="cover" />
                     ) : (
@@ -150,23 +153,23 @@ export function DriverLicenseModal({
                     {busy && <View style={styles.slotBusy}><BrandLoader color={DESKTOP_COLORS.brand} /></View>}
                   </HoverPressable>
                 ) : (
-                  <HoverPressable style={[styles.slot, styles.slotEmpty]} hoverStyle={styles.slotEmptyHover} onPress={() => upload(side, false)} disabled={busy} accessibilityLabel={`העלאת ${LICENSE_SIDE_TITLE[side]}`}>
+                  <HoverPressable style={[styles.slot, styles.slotEmpty]} hoverStyle={styles.slotEmptyHover} onPress={() => upload(side, false)} disabled={busy} accessibilityLabel={t('common.uploadV1', { v1: LICENSE_SIDE_TITLE[side] })}>
                     {busy ? <BrandLoader color={DESKTOP_COLORS.brand} /> : (
                       <>
                         <Ionicons name="cloud-upload-outline" size={22} color={DESKTOP_COLORS.brand} />
-                        <DText weight="semiBold" style={styles.slotEmptyText}>העלאת צילום</DText>
+                        <DText weight="semiBold" style={styles.slotEmptyText}>{t('license.uploadPhoto')}</DText>
                       </>
                     )}
                   </HoverPressable>
                 )}
                 <View style={[styles.sideActions, !loaded && styles.hidden]}>
-                  <SideAction icon="scan-outline" label={doc ? 'סריקה' : 'סריקה וזיהוי תוקף'} hint={doc ? 'החלפת הצילום וזיהוי תוקף אוטומטי' : undefined} onPress={() => upload(side, true)} disabled={busy} />
-                  {doc && <SideAction icon="swap-horizontal-outline" label="החלפה" onPress={() => upload(side, false)} disabled={busy} />}
-                  {doc && <SideAction icon="download-outline" label="הורדה" onPress={() => downloadDocumentWithAlert(doc)} />}
+                  <SideAction icon="scan-outline" label={doc ? t('license.scan') : t('license.scanDetect')} hint={doc ? t('license.replaceDetect') : undefined} onPress={() => upload(side, true)} disabled={busy} />
+                  {doc && <SideAction icon="swap-horizontal-outline" label={t('common.replace')} onPress={() => upload(side, false)} disabled={busy} />}
+                  {doc && <SideAction icon="download-outline" label={t('common.download')} onPress={() => downloadDocumentWithAlert(doc)} />}
                   {doc && (
                     <SideAction
                       icon="trash-outline"
-                      label="מחיקה"
+                      label={t('common.deleteAction')}
                       danger
                       onPress={() => confirmDeleteDocument(doc, async () => { await load(); onPhotosChanged(); })}
                       disabled={busy}
@@ -182,24 +185,24 @@ export function DriverLicenseModal({
 
         <View style={styles.details}>
           <EditableDateField
-            label="תוקף הרישיון"
-            value={expiry ? formatDate(expiry) : 'לא הוזן'}
+            label={t('license.expiry')}
+            value={expiry ? formatDate(expiry) : t('common.notEntered')}
             raw={expiry}
             onSave={onSaveExpiry}
           />
           <View style={[recordStyles.field, styles.statusField]}>
-            <DText style={recordStyles.fieldGridLabel}>מצב</DText>
+            <DText style={recordStyles.fieldGridLabel}>{t('common.state')}</DText>
             <View style={styles.statusRow}>
               <View style={[recordStyles.dot, styles.statusDot, state !== 'missing' && { backgroundColor: tone.fg }]} />
               <DText weight="semiBold" style={[recordStyles.fieldGridValue, state !== 'missing' && { color: tone.fg }]}>
-                {state === 'missing' ? 'לא הוזן תוקף' : STATE_LABEL[state]}
+                {state === 'missing' ? t('license.noExpiry') : STATE_LABEL[state]}
               </DText>
-              <DText style={styles.statusSub}>{verified ? '· המסמכים מאומתים' : bothSides ? '' : '· חסר צילום'}</DText>
+              <DText style={styles.statusSub}>{verified ? t('license.docsVerified') : bothSides ? '' : t('license.photoMissing')}</DText>
             </View>
           </View>
         </View>
 
-        <DText style={styles.footnote}>המסמכים נשמרים באזור פרטי ומוצגים בקישור זמני. לחיצה על צילום פותחת אותו בגודל מלא.</DText>
+        <DText style={styles.footnote}>{t('license.privacyNote')}</DText>
       </View>
     </DesktopModal>
   );
@@ -264,7 +267,7 @@ const styles = StyleSheet.create({
   },
   slotHoverMotion: webOnly({ transform: 'translateY(-2px)' }),
   slotImage: { width: '100%', height: '100%' },
-  slotBusy: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(255,255,255,0.7)', alignItems: 'center', justifyContent: 'center' },
+  slotBusy: { position: 'absolute', top: 0, end: 0, bottom: 0, start: 0, backgroundColor: 'rgba(255,255,255,0.7)', alignItems: 'center', justifyContent: 'center' },
   slotEmpty: { borderStyle: 'dashed', borderColor: DESKTOP_COLORS.borderInput, gap: 6 },
   slotEmptyHover: { backgroundColor: DESKTOP_COLORS.brandFocusRing },
   slotEmptyText: { fontSize: 12.5, color: DESKTOP_COLORS.brand },

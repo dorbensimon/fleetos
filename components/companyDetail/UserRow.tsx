@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../owner/ownerTheme';
 import { CompanyUser } from './types';
+import { t, textStart } from '../../lib/i18n';
 
 export function UserRow({
   user,
@@ -27,13 +28,13 @@ export function UserRow({
         <Ionicons name="pencil-outline" size={16} color={COLORS.gray} />
       </TouchableOpacity>
       <View style={styles.userInfo}>
-        <Text style={styles.userName}>{user.full_name || 'ללא שם'}</Text>
+        <Text style={styles.userName}>{user.full_name || t('common.unnamed')}</Text>
         <Text style={styles.userEmail}>{user.email || '—'}</Text>
         {!!user.phone && <Text style={styles.userEmail}>{user.phone}</Text>}
       </View>
       {user.must_change_password && (
         <View style={styles.pendingBadge}>
-          <Text style={styles.pendingBadgeText}>ממתין לקביעת סיסמה</Text>
+          <Text style={styles.pendingBadgeText}>{t('users.awaitingPassword')}</Text>
         </View>
       )}
     </View>
@@ -50,8 +51,8 @@ const styles = StyleSheet.create({
     borderTopColor: '#F0F0F0',
   },
   userInfo: { flex: 1, gap: 2 },
-  userName: { fontSize: 14, fontWeight: '600', color: COLORS.black, textAlign: 'right' },
-  userEmail: { fontSize: 12.5, color: COLORS.gray, textAlign: 'right' },
+  userName: { fontSize: 14, fontWeight: '600', color: COLORS.black, textAlign: textStart() },
+  userEmail: { fontSize: 12.5, color: COLORS.gray, textAlign: textStart() },
   userRemoveButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   pendingBadge: { backgroundColor: COLORS.disabledBg, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
   pendingBadgeText: { fontSize: 10.5, fontWeight: '600', color: COLORS.disabledText },

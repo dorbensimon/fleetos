@@ -4,6 +4,7 @@ import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS } from './desktopTheme';
+import { t } from '../../lib/i18n';
 
 /**
  * Desktop body of the reports screen: two export groups (drivers/vehicles),
@@ -41,12 +42,12 @@ export function ReportsDesktopView({
 }) {
   return (
     <View style={styles.wrap}>
-      <DText style={styles.hint}>בחר את סוג הדוח שברצונך להפיק כקובץ אקסל</DText>
+      <DText style={styles.hint}>{t('reports.chooseType')}</DText>
 
       <ReportGroup
         icon="people-outline"
-        title="דוחות נהגים"
-        subtitle="רישיונות, תוקפים ונהגים ללא רכב"
+        title={t('reports.drivers')}
+        subtitle={t('reports.driversHint')}
         open={open === 'drivers'}
         onPress={() => onToggle('drivers')}
         categories={driverCategories}
@@ -55,8 +56,8 @@ export function ReportsDesktopView({
       />
       <ReportGroup
         icon="car-outline"
-        title="דוחות רכבים"
-        subtitle="ביטוח, טסט, טיפולים וחריגות"
+        title={t('reports.vehicles')}
+        subtitle={t('reports.vehiclesHint')}
         open={open === 'vehicles'}
         onPress={() => onToggle('vehicles')}
         categories={vehicleCategories}
@@ -65,8 +66,8 @@ export function ReportsDesktopView({
       />
       <ReportGroup
         icon="chatbubbles-outline"
-        title="מפגשים עם נהגים"
-        subtitle="מי נפגש, מי ממתין לחתימה ומי צריך מפגש"
+        title={t('reports.meetings')}
+        subtitle={t('reports.meetingsHint')}
         open={open === 'meetings'}
         onPress={() => onToggle('meetings')}
         categories={meetingCategories}
@@ -75,8 +76,8 @@ export function ReportsDesktopView({
       />
       <ReportGroup
         icon="shield-checkmark-outline"
-        title="בדיקות בטיחות לרכבים"
-        subtitle="מה נבדק, ליקויים, ומי צריך בדיקה"
+        title={t('reports.inspections')}
+        subtitle={t('reports.inspectionsHint')}
         open={open === 'inspections'}
         onPress={() => onToggle('inspections')}
         categories={inspectionCategories}

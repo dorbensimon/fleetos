@@ -11,6 +11,8 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { AttentionDesktopView } from '../../components/desktop/AttentionDesktopView';
 import { AttentionMobile } from './mobile/AttentionMobile';
+import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Attention'>;
 
@@ -25,7 +27,7 @@ export default function AttentionScreen({ navigation }: Props) {
 
   const load = useCallback(async () => {
     if (!companyId) {
-      setError('לא נמצאה חברה משויכת');
+      setError(t('company.noLinkedCompany'));
       setLoading(false);
       return;
     }
@@ -33,7 +35,7 @@ export default function AttentionScreen({ navigation }: Props) {
     try {
       setDetails(await getAttentionDetails(companyId));
     } catch (e: any) {
-      setError(e?.message ?? 'טעינת המשימות נכשלה');
+      setError(errorMessage(e, t('attention.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -50,13 +52,13 @@ export default function AttentionScreen({ navigation }: Props) {
     const data = details ? summarizeAttention(details) : { license: 0, insurance: 0, unassignedVehicles: 0, missingLicenseDocuments: 0 };
     const total = Object.values(data).reduce((a, b) => a + b, 0);
     const rows = [
-      { count: data.license, icon: 'card-outline' as React.ComponentProps<typeof Ionicons>['name'], title: 'רישיונות נהיגה דורשים טיפול', detail: 'רישיונות שפגו או יפוגו בתוך 30 יום' },
-      { count: data.insurance, icon: 'shield-outline' as const, title: 'רכבים ללא ביטוח חובה בתוקף', detail: 'ביטוח חסר או שתוקפו פג' },
-      { count: data.unassignedVehicles, icon: 'car-outline' as const, title: 'רכבים ללא נהג משויך', detail: 'אין לרכב שיוך פעיל של נהג' },
-      { count: data.missingLicenseDocuments, icon: 'document-outline' as const, title: 'נהגים ללא רישיון מאומת', detail: 'חסר צילום קדמי, אחורי או תוקף רישיון' },
+      { count: data.license, icon: 'card-outline' as React.ComponentProps<typeof Ionicons>['name'], title: t('attention.licensesNeedAttention'), detail: t('attention.licensesExpiring30') },
+      { count: data.insurance, icon: 'shield-outline' as const, title: t('attention.vehiclesNoInsurance'), detail: t('attention.insuranceMissingExpired') },
+      { count: data.unassignedVehicles, icon: 'car-outline' as const, title: t('attention.vehiclesNoDriver'), detail: t('attention.noActiveAssignment') },
+      { count: data.missingLicenseDocuments, icon: 'document-outline' as const, title: t('attention.driversUnverified'), detail: t('attention.licensePhotoMissing') },
     ].filter((x) => x.count > 0);
     return (
-      <DesktopShell active="Attention" breadcrumbs={['ניהול', 'דורש טיפול']}>
+      <DesktopShell active="Attention" breadcrumbs={[t('nav.management'), t('status.needsAttention')]}>
         {loading ? null : error ? <ErrorState message={error} onRetry={load} /> : <AttentionDesktopView rows={rows} total={total} />}
       </DesktopShell>
     );

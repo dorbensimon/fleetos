@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { DK, KitSheet, ListRow, STATUS, Surface } from '../driverKit';
 import { CompanyRow } from './CompanyCard';
+import { t } from '../../lib/i18n';
 
 /** The "⋯" menu of a company: open it, its subscription, switch it off or on, or delete it. */
 export function CompanyActionsSheet({
@@ -23,20 +24,20 @@ export function CompanyActionsSheet({
 }) {
   const active = company?.status === 'active';
   return (
-    <KitSheet visible={visible} onClose={onClose} title={company?.name ?? ''} subtitle={active ? 'חברה פעילה' : 'חברה מושבתת'}>
+    <KitSheet visible={visible} onClose={onClose} title={company?.name ?? ''} subtitle={active ? t('owner.activeCompany') : t('owner.disabledCompany')}>
       <Surface style={styles.list}>
-        <ListRow first icon="open-outline" title="פתיחת דף החברה" subtitle="פרטים, מנהלים ונהגים" onPress={onOpen} />
-        <ListRow icon="card-outline" title="מנוי ותשלום" subtitle="מצב הלקוח, מחיר ומועד חידוש" onPress={onAccount} />
+        <ListRow first icon="open-outline" title={t('owner.openCompanyPage')} subtitle={t('owner.detailsManagersDrivers')} onPress={onOpen} />
+        <ListRow icon="card-outline" title={t('owner.subscriptionAndPayment')} subtitle={t('owner.statusPriceRenewal')} onPress={onAccount} />
         <ListRow
           icon={active ? 'pause-circle-outline' : 'play-circle-outline'}
           tint={active ? STATUS.soon.fg : STATUS.ok.fg}
-          title={active ? 'השבתת החברה' : 'הפעלת החברה מחדש'}
-          subtitle={active ? 'המשתמשים שלה לא יוכלו להיכנס. הנתונים נשמרים.' : 'המשתמשים שלה יוכלו להיכנס שוב'}
+          title={active ? t('owner.disableCompany') : t('owner.reactivateCompany')}
+          subtitle={active ? t('owner.disableHint') : t('owner.reactivateCaption')}
           onPress={onToggleActive}
         />
       </Surface>
       <Surface style={[styles.list, styles.gap]}>
-        <ListRow first icon="trash-outline" tint={STATUS.expired.fg} title="מחיקת החברה" subtitle="מחיקה סופית של כל הנתונים" onPress={onDelete} />
+        <ListRow first icon="trash-outline" tint={STATUS.expired.fg} title={t('owner.deleteCompany')} subtitle={t('owner.permanentDeleteAll')} onPress={onDelete} />
       </Surface>
     </KitSheet>
   );

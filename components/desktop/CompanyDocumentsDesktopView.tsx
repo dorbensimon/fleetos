@@ -12,12 +12,14 @@ import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, webOnly } from './desktopT
 import { DocumentPreview } from './record/DocumentPreview';
 import { CARD_SHADOW, pageStyles } from './record/RecordPage';
 import { EASE_OUT } from './record/RecordKit';
+import { t, textStart } from '../../lib/i18n';
 
 export type CompanyDocumentDraft = { title: string; date: string; description: string; file: PickedFile };
 
-const titleOf = (doc: DocumentRow) => doc.title?.trim() || doc.file_name || 'מסמך ללא שם';
-const kindOf = (mime: string | null | undefined) => (mime?.includes('pdf') ? 'PDF' : mime?.startsWith('image/') ? 'תמונה' : 'קובץ');
-const countLabel = (count: number) => (count === 1 ? 'מסמך אחד' : `${count} מסמכים`);
+/** A company document's name: its title, else its file name. */
+export const titleOf = (doc: DocumentRow) => doc.title?.trim() || doc.file_name || t('documents.untitled');
+const kindOf = (mime: string | null | undefined) => (mime?.includes('pdf') ? 'PDF' : mime?.startsWith('image/') ? t('common.image') : t('common.file'));
+const countLabel = (count: number) => (count === 1 ? t('documents.oneDocument') : t('documents.countN', { count }));
 const withoutExtension = (name: string) => name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
 
 function todayIso(): string {
@@ -76,8 +78,8 @@ export function CompanyDocumentsDesktopView({
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <DText weight="extraBold" style={styles.title}>מסמכי החברה</DText>
-          <DText style={styles.subtitle}>רישיונות, ביטוחים ואישורים — הכול במקום אחד. לחיצה על מסמך פותחת אותו.</DText>
+          <DText weight="extraBold" style={styles.title}>{t('companyDocs.title')}</DText>
+          <DText style={styles.subtitle}>{t('companyDocs.intro')}</DText>
         </View>
         {!empty && <AddButton onPress={() => setAdding(true)} />}
       </View>
@@ -89,19 +91,19 @@ export function CompanyDocumentsDesktopView({
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="חיפוש מסמך לפי שם או תיאור"
+              placeholder={t('companyDocs.searchPlaceholder')}
               placeholderTextColor={DESKTOP_COLORS.inkFaint}
               style={styles.searchInput}
-              accessibilityLabel="חיפוש מסמך"
+              accessibilityLabel={t('companyDocs.search')}
             />
             {!!query && (
-              <HoverPressable style={styles.searchClear} hoverStyle={styles.searchClearHover} onPress={() => setQuery('')} accessibilityLabel="ניקוי החיפוש">
+              <HoverPressable style={styles.searchClear} hoverStyle={styles.searchClearHover} onPress={() => setQuery('')} accessibilityLabel={t('common.clearSearch')}>
                 <Ionicons name="close" size={13} color="#FFFFFF" />
               </HoverPressable>
             )}
           </View>
           <DText weight="medium" style={styles.count}>
-            {query.trim() ? `${shown.length} מתוך ${countLabel(docs.length)}` : countLabel(docs.length)}
+            {query.trim() ? t('common.lengthOf', { length: shown.length, v1: countLabel(docs.length) }) : countLabel(docs.length)}
           </DText>
         </View>
       )}
@@ -118,8 +120,8 @@ export function CompanyDocumentsDesktopView({
         ) : shown.length === 0 ? (
           <View style={styles.noResults}>
             <Ionicons name="search-outline" size={30} color={DESKTOP_COLORS.inkFaint} />
-            <DText weight="bold" style={styles.noResultsTitle}>{`לא נמצא מסמך עבור "${query.trim()}"`}</DText>
-            <DText style={styles.noResultsText}>כדאי לנסות מילה אחרת מתוך שם המסמך.</DText>
+            <DText weight="bold" style={styles.noResultsTitle}>{t('companyDocs.notFound', { query: query.trim() })}</DText>
+            <DText style={styles.noResultsText}>{t('companyDocs.tryOtherWord')}</DText>
           </View>
         ) : (
           <View style={styles.grid}>
@@ -142,10 +144,10 @@ function AddButton({ onPress, large }: { onPress: () => void; large?: boolean })
       hoverStyle={styles.addBtnHover}
       pressMotionStyle={pageStyles.pressDown}
       onPress={onPress}
-      accessibilityLabel="הוספת מסמך חדש"
+      accessibilityLabel={t('companyDocs.addNew')}
     >
       <View style={styles.addBtnIcon}><Ionicons name="add" size={18} color={DESKTOP_COLORS.brand} /></View>
-      <DText weight="semiBold" style={styles.addBtnText}>הוספת מסמך</DText>
+      <DText weight="semiBold" style={styles.addBtnText}>{t('documents.addDocument')}</DText>
     </HoverPressable>
   );
 }
@@ -192,7 +194,7 @@ function DocumentCard({
         onPress={() => onOpen(doc)}
         onHoverIn={() => setHovered(true)}
         onHoverOut={() => setHovered(false)}
-        accessibilityLabel={`פתיחת המסמך ${title}`}
+        accessibilityLabel={t('companyDocs.openDoc', { title })}
       >
         <View style={styles.stage}>
           <View style={[styles.sheet, lifts && hovered && styles.sheetLifted]}>
@@ -203,7 +205,7 @@ function DocumentCard({
           </View>
           <View style={[styles.openHint, hovered && styles.openHintOn]} pointerEvents="none">
             <Ionicons name="eye-outline" size={14} color="#FFFFFF" />
-            <DText weight="semiBold" style={styles.openHintText}>פתיחה</DText>
+            <DText weight="semiBold" style={styles.openHintText}>{t('common.open')}</DText>
           </View>
         </View>
         <View style={styles.cardBody}>
@@ -217,9 +219,9 @@ function DocumentCard({
       </HoverPressable>
 
       <View style={styles.cardFooter}>
-        <CardAction icon="download-outline" label="הורדה" onPress={() => onDownload(doc)} a11y={`הורדת המסמך ${title}`} />
+        <CardAction icon="download-outline" label={t('common.download')} onPress={() => onDownload(doc)} a11y={t('companyDocs.downloadDoc', { title })} />
         <View style={styles.footerDivider} />
-        <CardAction icon="trash-outline" label="מחיקה" danger onPress={() => onDelete(doc)} a11y={`מחיקת המסמך ${title}`} />
+        <CardAction icon="trash-outline" label={t('common.deleteAction')} danger onPress={() => onDelete(doc)} a11y={t('companyDocs.deleteDoc', { title })} />
       </View>
     </View>
   );
@@ -243,7 +245,7 @@ function CardAction({ icon, label, onPress, danger, a11y }: { icon: keyof typeof
 
 function SkeletonCard({ width }: { width: number }) {
   return (
-    <View style={[styles.card, { width }]} accessibilityLabel="טוען מסמכים">
+    <View style={[styles.card, { width }]} accessibilityLabel={t('companyDocs.loading')}>
       <View style={[styles.stage, styles.skeletonPulse]}>
         <View style={styles.skeletonSheet} />
       </View>
@@ -268,9 +270,9 @@ function EmptyShelf({ onAdd }: { onAdd: () => void }) {
           <View style={[styles.emptyPaperLine, { width: '48%' }]} />
         </View>
       </View>
-      <DText weight="extraBold" style={styles.emptyTitle}>עדיין אין כאן מסמכים</DText>
+      <DText weight="extraBold" style={styles.emptyTitle}>{t('companyDocs.emptyTitle')}</DText>
       <DText style={styles.emptyText}>
-        מוסיפים כאן את המסמכים הקבועים של החברה, כמו רישיון עסק, פוליסת ביטוח או אישור ניהול חשבון.
+        {t('companyDocs.emptyHint')}
       </DText>
       <AddButton onPress={onAdd} large />
     </View>
@@ -344,7 +346,7 @@ function AddDocumentDialog({
   }, [visible, titleTouched]);
 
   const browse = () =>
-    chooseDocumentSource('בחירת מסמך', async (source) => {
+    chooseDocumentSource(t('documents.chooseDocument'), async (source) => {
       const picked = await pickDocumentSource(source);
       if (picked) choose(picked);
     });
@@ -362,7 +364,7 @@ function AddDocumentDialog({
   };
 
   return (
-    <DesktopModal visible={visible} title="הוספת מסמך" onClose={close} maxWidth={560}>
+    <DesktopModal visible={visible} title={t('documents.addDocument')} onClose={close} maxWidth={560}>
       <View style={styles.form}>
         <View ref={zoneRef}>
           <HoverPressable
@@ -370,7 +372,7 @@ function AddDocumentDialog({
             hoverStyle={styles.dropHover}
             onPress={browse}
             disabled={saving}
-            accessibilityLabel={file ? `נבחר הקובץ ${file.name}. לחיצה להחלפה` : 'בחירת קובץ מהמחשב'}
+            accessibilityLabel={file ? t('documents.fileChosen', { name: file.name }) : t('documents.chooseFromComputer')}
           >
             {file ? (
               <View style={styles.chosen}>
@@ -379,7 +381,7 @@ function AddDocumentDialog({
                 </View>
                 <View style={styles.chosenText}>
                   <DText weight="semiBold" style={styles.chosenName} numberOfLines={1}>{file.name}</DText>
-                  <DText style={styles.chosenHint}>הקובץ מוכן. לחיצה כאן מחליפה אותו.</DText>
+                  <DText style={styles.chosenHint}>{t('companyDocs.fileReady')}</DText>
                 </View>
                 <Ionicons name="checkmark-circle" size={24} color={DESKTOP_TONES.ok.fg} />
               </View>
@@ -388,48 +390,48 @@ function AddDocumentDialog({
                 <View style={[styles.dropIcon, dragOver && styles.dropIconActive]}>
                   <Ionicons name="cloud-upload-outline" size={26} color={DESKTOP_COLORS.brand} />
                 </View>
-                <DText weight="semiBold" style={styles.dropTitle}>{dragOver ? 'משחררים כאן את הקובץ' : 'גוררים לכאן את הקובץ'}</DText>
+                <DText weight="semiBold" style={styles.dropTitle}>{dragOver ? t('documents.dropHere') : t('companyDocs.dragFileHere')}</DText>
                 {!dragOver && (
                   <DText style={styles.dropText}>
-                    {'או '}
-                    <DText weight="semiBold" style={styles.dropLink}>לוחצים לבחירה מהמחשב</DText>
-                    {' · PDF או תמונה'}
+                    {t('common.orSpace')}
+                    <DText weight="semiBold" style={styles.dropLink}>{t('companyDocs.clickToChoose')}</DText>
+                    {t('companyDocs.pdfOrImage')}
                   </DText>
                 )}
               </>
             )}
           </HoverPressable>
-          {errors.file && <DText style={styles.fieldError}>יש לבחור את קובץ המסמך</DText>}
+          {errors.file && <DText style={styles.fieldError}>{t('companyDocs.chooseFile')}</DText>}
         </View>
 
         <View style={styles.field}>
-          <DText weight="semiBold" style={styles.label}>שם המסמך</DText>
+          <DText weight="semiBold" style={styles.label}>{t('signing.documentName')}</DText>
           <DesktopInput
             large
             value={title}
             onChangeText={(v) => { setTitle(v); setTitleTouched(true); if (v.trim()) setErrors((e) => ({ ...e, title: false })); }}
-            placeholder="למשל: רישיון עסק 2026"
+            placeholder={t('companyDocs.nameExample')}
             hasError={errors.title}
             editable={!saving}
           />
-          {errors.title && <DText style={styles.fieldError}>יש לתת למסמך שם</DText>}
+          {errors.title && <DText style={styles.fieldError}>{t('companyDocs.nameRequired')}</DText>}
         </View>
 
         <View style={styles.field}>
-          <DText weight="semiBold" style={styles.label}>תאריך המסמך</DText>
-          <DesktopDateField large value={date} onChange={(iso) => { setDate(iso); if (iso) setErrors((e) => ({ ...e, date: false })); }} placeholder="בחירת תאריך" hasError={errors.date} allowClear={false} />
-          {errors.date && <DText style={styles.fieldError}>יש לבחור תאריך</DText>}
+          <DText weight="semiBold" style={styles.label}>{t('companyDocs.date')}</DText>
+          <DesktopDateField large value={date} onChange={(iso) => { setDate(iso); if (iso) setErrors((e) => ({ ...e, date: false })); }} placeholder={t('date.chooseDateAction')} hasError={errors.date} allowClear={false} />
+          {errors.date && <DText style={styles.fieldError}>{t('companyDocs.dateRequired')}</DText>}
         </View>
 
         <View style={styles.field}>
           <DText weight="semiBold" style={styles.label}>
-            {'תיאור '}
-            <DText style={styles.optional}>(לא חובה)</DText>
+            {t('companyDocs.descriptionSpace')}
+            <DText style={styles.optional}>{t('common.optionalParenShort')}</DText>
           </DText>
           <TextInput
             value={description}
             onChangeText={setDescription}
-            placeholder="מה יש במסמך? למשל: בתוקף לשנה, נשלח מהביטוח"
+            placeholder={t('companyDocs.descriptionPlaceholder')}
             placeholderTextColor={DESKTOP_COLORS.inkFaint}
             editable={!saving}
             multiline
@@ -444,9 +446,9 @@ function AddDocumentDialog({
             pressMotionStyle={pageStyles.pressDown}
             onPress={() => void save()}
             disabled={saving}
-            accessibilityLabel="שמירת המסמך"
+            accessibilityLabel={t('signing.saveDocument')}
           >
-            <DText weight="semiBold" style={styles.dialogBtnPrimaryText}>{saving ? 'שומר…' : 'שמירת המסמך'}</DText>
+            <DText weight="semiBold" style={styles.dialogBtnPrimaryText}>{saving ? t('common.savingEllipsis') : t('signing.saveDocument')}</DText>
           </HoverPressable>
           <HoverPressable
             style={[pageStyles.plainBtn, styles.dialogBtn]}
@@ -454,9 +456,9 @@ function AddDocumentDialog({
             pressMotionStyle={pageStyles.pressDown}
             onPress={close}
             disabled={saving}
-            accessibilityLabel="ביטול"
+            accessibilityLabel={t('common.cancel')}
           >
-            <DText weight="semiBold" style={styles.dialogBtnText}>ביטול</DText>
+            <DText weight="semiBold" style={styles.dialogBtnText}>{t('common.cancel')}</DText>
           </HoverPressable>
         </View>
       </View>
@@ -478,8 +480,8 @@ const styles = StyleSheet.create({
 
   addBtn: {
     height: 48,
-    paddingRight: 8,
-    paddingLeft: 20,
+    paddingEnd: 8,
+    paddingStart: 20,
     borderRadius: 14,
     backgroundColor: DESKTOP_COLORS.brand,
     flexDirection: 'row-reverse',
@@ -517,7 +519,7 @@ const styles = StyleSheet.create({
     fontFamily: DESKTOP_FONT.regular,
     fontSize: 15.5,
     color: DESKTOP_COLORS.ink,
-    textAlign: 'right',
+    textAlign: textStart(),
     ...webOnly({ outlineStyle: 'none' }),
   },
   searchClear: { width: 20, height: 20, borderRadius: 10, backgroundColor: DESKTOP_COLORS.inkFaint, alignItems: 'center', justifyContent: 'center' },
@@ -561,7 +563,7 @@ const styles = StyleSheet.create({
   kind: {
     position: 'absolute',
     top: 12,
-    right: 12,
+    end: 12,
     paddingHorizontal: 8,
     height: 22,
     borderRadius: 7,
@@ -707,7 +709,7 @@ const styles = StyleSheet.create({
     fontSize: 15.5,
     lineHeight: 22,
     color: DESKTOP_COLORS.ink,
-    textAlign: 'right',
+    textAlign: textStart(),
     textAlignVertical: 'top',
   },
   dialogActions: { flexDirection: 'row-reverse', gap: 12, marginTop: 4 },

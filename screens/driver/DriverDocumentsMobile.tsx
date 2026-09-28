@@ -16,6 +16,7 @@ import {
 import { ErrorState, LoadingState } from '../../components/ui';
 import type { DriverCardGroup, DriverCardIconKey, DriverCardRow } from '../../components/driverCard/driverCardSections';
 import type { DriverCardTint } from '../../components/driverCard/driverCardTheme';
+import { t } from '../../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -78,10 +79,10 @@ export function DriverDocumentsMobile(p: Props) {
       insetBottom={p.insetBottom}
       hero={
         <HeroTitle
-          title="המסמכים שלי"
+          title={t('nav.myDocuments')}
           subtitle={p.name}
           onBack={p.onBack}
-          right={<HeroButton icon="create-outline" label="עריכת הפרטים שלי" onPress={p.onEditProfile} />}
+          right={<HeroButton icon="create-outline" label={t('driver.editMyDetails')} onPress={p.onEditProfile} />}
         />
       }
     >
@@ -101,8 +102,8 @@ export function DriverDocumentsMobile(p: Props) {
                 first
                 icon="create"
                 tint={TINTS.orange}
-                title="מסמכים לחתימה"
-                subtitle="טפסים שמנהל הצי שלח אליך"
+                title={t('nav.signingDocuments')}
+                subtitle={t('driver.formsFromManager')}
                 onPress={p.onSigning}
               />
             </Surface>
@@ -141,7 +142,7 @@ export function DriverDocumentsMobile(p: Props) {
           <View style={styles.note}>
             <Ionicons name="lock-closed" size={14} color={DK.muted} />
             <DKText variant="caption" color={DK.muted} style={styles.noteText}>
-              חלק מהפרטים מנוהלים על ידי מנהל הצי. אפשר לצפות במסמכים ולהעלות מסמכים לפי ההרשאות שלך.
+              {t('driver.someManaged')}
             </DKText>
           </View>
         </>

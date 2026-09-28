@@ -5,13 +5,14 @@ import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
 import { extensionForMimeType, isAllowedLogoMimeType } from './fileTypes';
 import { readBlobUrlAsBase64 } from './webDownload';
+import { t } from './i18n';
 
 const MAX_LOGO_BYTES = 5 * 1024 * 1024;
 
 export async function pickAndUploadLogo(): Promise<string | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
-    throw new Error('נדרשת הרשאת גישה לתמונות כדי להעלות לוגו');
+    throw new Error(t('logo.photosPermissionRequired'));
   }
 
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -36,14 +37,14 @@ export async function pickAndUploadLogo(): Promise<string | null> {
  */
 export async function uploadCompanyLogoImage(uri: string, mimeType: string, folder?: string, prefix?: string): Promise<string> {
   if (!isAllowedLogoMimeType(mimeType)) {
-    throw new Error('סוג הלוגו אינו נתמך. ניתן להעלות JPG, PNG או WEBP');
+    throw new Error(t('logo.unsupportedType'));
   }
   const base64 = Platform.OS === 'web'
     ? await readBlobUrlAsBase64(uri)
     : await new File(uri).base64();
   const arrayBuffer = decode(base64);
   if (arrayBuffer.byteLength > MAX_LOGO_BYTES) {
-    throw new Error('הלוגו גדול מדי. ניתן להעלות תמונה עד 5MB');
+    throw new Error(t('logo.tooLarge'));
   }
   const fileExt = extensionForMimeType(mimeType);
   const baseName = `${prefix ? `${prefix}-` : ''}${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;

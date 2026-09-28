@@ -10,8 +10,10 @@ import { DK, DKText, KitSection, ListRow, STATUS } from '../driverKit';
 import { isChecklistTemplate } from '../../lib/checklistForms';
 import { DText, HoverPressable, StatusPill } from '../desktop/primitives';
 import { DESKTOP_COLORS, webOnly } from '../desktop/desktopTheme';
+import { t, dirIcon, textStart } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
-export function SigningFolders({ driverId, onOpen, desktop = false, title = 'טפסים ומסמכים לחתימה' }: { driverId: string; onOpen: (folder: SigningFolder) => void; desktop?: boolean; /** Phone section heading; none when the list opens a page. */ title?: string | null }) {
+export function SigningFolders({ driverId, onOpen, desktop = false, title = t('signing.formsAndDocsToSign') }: { driverId: string; onOpen: (folder: SigningFolder) => void; desktop?: boolean; /** Phone section heading; none when the list opens a page. */ title?: string | null }) {
   const [folders, setFolders] = useState<SigningFolder[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -25,23 +27,23 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = 'ט�
     (async () => {
       try {
         const driver = await getDriver(driverId);
-        if (!driver?.company_id) throw new Error('לא נמצא שיוך חברה לנהג');
+        if (!driver?.company_id) throw new Error(t('signing.noCompanyForDriver'));
         const [templates, requests] = await Promise.all([listSigningTemplates(driver.company_id), listDriverSigningRequests(driverId)]);
         const all = buildSigningFolders(templates, requests);
         if (active) { setFolders(driverView ? all.filter(folder => folder.requests.length > 0) : all); setError(''); }
-      } catch (err: any) { if (active) setError(err?.message || 'טעינת התיקיות נכשלה'); }
+      } catch (err: any) { if (active) setError(errorMessage(err, t('signing.foldersLoadFailed'))); }
       finally { if (active) setLoading(false); }
     })();
     return () => { active = false; };
   }, [driverId, driverView]));
   if (desktop) {
     return <View style={desktopStyles.wrap}>
-      <DText weight="bold" style={desktopStyles.title}>טפסים ומסמכים</DText>
+      <DText weight="bold" style={desktopStyles.title}>{t('signing.formsAndDocs')}</DText>
       <View style={desktopStyles.card}>
-        {loading ? <DText style={desktopStyles.message}>טוען תיקיות…</DText> : error ? <DText style={desktopStyles.message}>{error}</DText> : folders.map((folder, index) => {
+        {loading ? <DText style={desktopStyles.message}>{t('signing.loadingFolders')}</DText> : error ? <DText style={desktopStyles.message}>{error}</DText> : folders.map((folder, index) => {
           const status = signingFolderStatus(folder);
           const tone = status === 'pending' ? 'warn' : status === 'completed' ? 'ok' : status === 'failed' ? 'bad' : 'neutral';
-          const label = status === 'pending' ? 'ממתין לחתימה' : status === 'completed' ? 'נחתם' : status === 'failed' ? 'דורש טיפול' : 'ריק';
+          const label = status === 'pending' ? t('signing.pendingSignature') : status === 'completed' ? t('common.signedDone') : status === 'failed' ? t('status.needsAttention') : t('common.empty');
           return <HoverPressable
             key={folder.id}
             accessibilityLabel={`${folder.title}, ${label}`}
@@ -54,10 +56,10 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = 'ט�
             <View style={desktopStyles.folder}><Ionicons name="folder-outline" size={21} color={DESKTOP_COLORS.brand} /></View>
             <DText weight="semiBold" style={desktopStyles.label}>{folder.title}</DText>
             <StatusPill tone={tone} label={label} />
-            <Ionicons name="chevron-back" size={16} color={DESKTOP_COLORS.inkFaint} />
+            <Ionicons name={dirIcon('chevron-back')} size={16} color={DESKTOP_COLORS.inkFaint} />
           </HoverPressable>;
         })}
-        {!loading && !error && !folders.length && <DText style={desktopStyles.message}>{driverView ? 'עדיין לא נשלחו אליך מסמכים' : 'אין עדיין תבניות זמינות'}</DText>}
+        {!loading && !error && !folders.length && <DText style={desktopStyles.message}>{driverView ? t('signing.noneSentToYou') : t('signing.noTemplatesYet')}</DText>}
       </View>
     </View>;
   }
@@ -65,21 +67,21 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = 'ט�
   const meta = (folder: SigningFolder) => {
     const status = signingFolderStatus(folder);
     return status === 'pending'
-      ? { label: driverView ? 'מחכה לחתימה שלך' : 'ממתין לחתימת הנהג', tone: 'soon' as const, icon: 'time' as const }
+      ? { label: driverView ? t('signing.awaitingYourSignature') : t('common.awaitingDriverSignature'), tone: 'soon' as const, icon: 'time' as const }
       : status === 'completed'
-        ? { label: 'נחתם', tone: 'ok' as const, icon: 'checkmark-done' as const }
+        ? { label: t('common.signedDone'), tone: 'ok' as const, icon: 'checkmark-done' as const }
         : status === 'failed'
-          ? { label: 'השליחה לא הושלמה', tone: 'expired' as const, icon: 'alert-circle' as const }
-          : { label: driverView ? 'ריק' : isChecklistTemplate(folder.template) ? 'עוד לא התקיים מפגש' : 'לא נשלח — אפשר לשלוח', tone: 'missing' as const, icon: 'folder-outline' as const };
+          ? { label: t('signing.sendIncomplete'), tone: 'expired' as const, icon: 'alert-circle' as const }
+          : { label: driverView ? t('common.empty') : isChecklistTemplate(folder.template) ? t('meeting.notHeldYet') : t('signing.notSentCanSend'), tone: 'missing' as const, icon: 'folder-outline' as const };
   };
   return (
     <KitSection title={title ?? undefined}>
       {loading ? (
-        <DKText variant="caption" color={DK.muted} style={s.message}>טוען תיקיות…</DKText>
+        <DKText variant="caption" color={DK.muted} style={s.message}>{t('signing.loadingFolders')}</DKText>
       ) : error ? (
         <DKText variant="caption" color={STATUS.expired.fg} style={s.message}>{error}</DKText>
       ) : !folders.length ? (
-        <DKText variant="caption" color={DK.muted} style={s.message}>{driverView ? 'עדיין לא נשלחו אליך מסמכים' : 'אין עדיין תבניות זמינות'}</DKText>
+        <DKText variant="caption" color={DK.muted} style={s.message}>{driverView ? t('signing.noneSentToYou') : t('signing.noTemplatesYet')}</DKText>
       ) : (
         folders.map((folder, index) => {
           const m = meta(folder);
@@ -128,6 +130,6 @@ const desktopStyles = StyleSheet.create({
   rowHoverMotion: webOnly({ transform: 'translateY(-2px)' }),
   rowPress: webOnly({ transform: 'scale(0.98)' }),
   folder: { width: 34, height: 34, borderRadius: 9, backgroundColor: DESKTOP_COLORS.brandFocusRing, alignItems: 'center', justifyContent: 'center' },
-  label: { flex: 1, textAlign: 'right', color: DESKTOP_COLORS.ink, fontSize: 13, lineHeight: 20 },
+  label: { flex: 1, textAlign: textStart(), color: DESKTOP_COLORS.ink, fontSize: 13, lineHeight: 20 },
   message: { textAlign: 'center', color: DESKTOP_COLORS.inkMuted, padding: 20, fontSize: 13, lineHeight: 20 },
 });

@@ -23,6 +23,7 @@ import { BrandLoader } from '../ui/BrandLoader';
 import { syncWebThemeColor } from '../../lib/webThemeColor';
 import { DK, DK_FONT, DK_RADIUS, DK_SHADOW, DK_SPACE, STATUS, type Status } from './theme';
 import { useTabBarHold, useTabBarScroll, useTabBarSpace } from './tabBar';
+import { t, dirIcon, textEnd, textStart, textDirection, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../lib/i18n';
 
 export * from './theme';
 
@@ -54,18 +55,18 @@ export function useReducedMotion() {
  */
 export function Reveal({ index = 0, children, style }: { index?: number; children: ReactNode; style?: StyleProp<ViewStyle> }) {
   const reduce = useReducedMotion();
-  const t = useRef(new Animated.Value(0)).current;
+  const ratio = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(t, {
+    Animated.timing(ratio, {
       toValue: 1,
       duration: 280,
       delay: 40 + index * 55,
       easing: EASE_OUT,
       useNativeDriver: NATIVE_DRIVER,
     }).start();
-  }, [index, t]);
-  const translateY = t.interpolate({ inputRange: [0, 1], outputRange: [reduce ? 0 : 14, 0] });
-  return <Animated.View style={[style, { opacity: t, transform: [{ translateY }] }]}>{children}</Animated.View>;
+  }, [index, ratio]);
+  const translateY = ratio.interpolate({ inputRange: [0, 1], outputRange: [reduce ? 0 : 14, 0] });
+  return <Animated.View style={[style, { opacity: ratio, transform: [{ translateY }] }]}>{children}</Animated.View>;
 }
 
 /**
@@ -181,7 +182,7 @@ export function DKText({
       {...rest}
       style={[
         VARIANTS[variant],
-        { color, textAlign: ltr ? 'left' : 'right', writingDirection: ltr ? 'ltr' : 'rtl' },
+        { color, textAlign: ltr ? textEnd() : textStart(), writingDirection: ltr ? 'ltr' : textDirection() },
         style,
       ]}
     />
@@ -238,7 +239,7 @@ export function NightHero({
           importantForAccessibility="no-hide-descendants"
           style={[
             styles.heroRing,
-            { width: size, height: size, top: insetTop + (compact ? 40 : 56), left: -size * 0.34 },
+            { width: size, height: size, top: insetTop + (compact ? 40 : 56), start: -size * 0.34 },
             {
               opacity: ring.interpolate({ inputRange: [0, 1], outputRange: [0, 0.12] }),
               transform: [{ rotate: ring.interpolate({ inputRange: [0, 1], outputRange: [reduce ? '-24deg' : '-64deg', '-24deg'] }) }],
@@ -286,7 +287,7 @@ export function HeroTitle({
   return (
     <View>
       <View style={styles.heroBar}>
-        <HeroButton icon="chevron-forward" label="חזרה" onPress={onBack} />
+        <HeroButton icon={dirIcon('chevron-forward')} label={t('common.goBack')} onPress={onBack} />
         <View style={styles.heroBarSlot}>{right}</View>
       </View>
       <DKText variant="display" color={DK.onNight} style={styles.heroTitle} accessibilityRole="header" numberOfLines={2}>
@@ -326,7 +327,7 @@ export function NightBar({
     <View style={[styles.nightBar, { paddingTop: insetTop + 8 }]}>
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={[DK.night[0], DK.night[1]]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-      <HeroButton icon="chevron-forward" label="חזרה" onPress={onBack} />
+      <HeroButton icon={dirIcon('chevron-forward')} label={t('common.goBack')} onPress={onBack} />
       <View style={styles.nightBarText}>
         <DKText variant="heading" color={DK.onNight} numberOfLines={1} accessibilityRole="header">
           {title}
@@ -521,7 +522,7 @@ export function Plate({ number, size = 'md' }: { number: string; size?: 'sm' | '
   const lg = size === 'lg';
   const sm = size === 'sm';
   return (
-    <View style={styles.plate} accessibilityLabel={`לוחית רישוי ${number}`} accessible>
+    <View {...fixedLayoutProps} style={[styles.plate, FIXED_LAYOUT_STYLE]} accessibilityLabel={t('vehicle.plateLabel', { number })} accessible>
       <View style={[styles.plateIl, lg && styles.plateIlLg, sm && styles.plateIlSm]}>
         <DKText variant="micro" color="#FFFFFF" ltr style={styles.plateIlText}>
           IL
@@ -584,7 +585,7 @@ export function ListRow({
         </DKText>
       )}
       {trailing}
-      {!!onPress && <Ionicons name="chevron-back" size={18} color={DK.faint} />}
+      {!!onPress && <Ionicons name={dirIcon('chevron-back')} size={18} color={DK.faint} />}
     </View>
   );
   if (!onPress) return content;
@@ -643,8 +644,8 @@ const styles = StyleSheet.create({
 
   hero: {
     overflow: 'hidden',
-    borderBottomLeftRadius: 36,
-    borderBottomRightRadius: 36,
+    borderBottomStartRadius: 36,
+    borderBottomEndRadius: 36,
     backgroundColor: DK.night[0],
     // Safari drops a rounded clip while a child is animating (the corners
     // flash square); a mask keeps the clip on the GPU layer.
@@ -659,18 +660,18 @@ const styles = StyleSheet.create({
   glowBlue: {
     width: 420,
     height: 420,
-    right: -170,
+    end: -170,
     backgroundImage: 'radial-gradient(closest-side, rgba(47,91,255,0.42), rgba(47,91,255,0.16) 55%, rgba(47,91,255,0) 100%)',
   } as any,
   glowCyan: {
     width: 320,
     height: 320,
     bottom: -190,
-    left: -90,
+    start: -90,
     backgroundImage: 'radial-gradient(closest-side, rgba(25,198,240,0.28), rgba(25,198,240,0) 100%)',
   } as any,
   heroRing: { position: 'absolute' },
-  statusBand: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: DK.night[0] },
+  statusBand: { position: 'absolute', top: 0, start: 0, end: 0, backgroundColor: DK.night[0] },
   heroContent: { paddingHorizontal: DK_SPACE.lg, width: '100%', maxWidth: 560, alignSelf: 'center' },
   heroButton: {
     width: 48,
@@ -685,7 +686,7 @@ const styles = StyleSheet.create({
   heroBadge: {
     position: 'absolute',
     top: 11,
-    left: 12,
+    start: 12,
     width: 10,
     height: 10,
     borderRadius: 5,
@@ -711,7 +712,7 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: DK.canvas },
   pageScroll: { flex: 1 },
   pageContent: { flexGrow: 1, backgroundColor: DK.canvas },
-  underlay: { position: 'absolute', top: 0, left: 0, right: 0, height: '50%', backgroundColor: DK.night[0] },
+  underlay: { position: 'absolute', top: 0, start: 0, end: 0, height: '50%', backgroundColor: DK.night[0] },
   pageBody: { marginTop: -24, paddingHorizontal: DK_SPACE.md, gap: 18, width: '100%', maxWidth: 560, alignSelf: 'center' },
   pageFooter: {
     paddingHorizontal: DK_SPACE.md,

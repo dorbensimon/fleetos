@@ -8,6 +8,7 @@ import { COLORS, CONTENT_MAX_WIDTH, RADIUS, SPACING, CARD_SHADOW } from '../../l
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { PICKER_FIELD_STYLES } from './pickerFieldStyles';
 import { DK, DK_FONT, DK_SHADOW } from '../driverKit/theme';
+import { t, dirIcon, textStart } from '../../lib/i18n';
 
 const ENTER_MS = 340;
 const EXIT_MS = 220;
@@ -26,7 +27,7 @@ export function Select<T extends string>({
   value,
   options,
   onChange,
-  placeholder = 'בחר',
+  placeholder = t('common.choose'),
   hasError,
   allowClear,
 }: {
@@ -49,7 +50,7 @@ export function Select<T extends string>({
         style={[styles.box, phone && kit.box, hasError && (phone ? kit.boxError : styles.boxError)]}
         accessibilityRole="button"
         accessibilityLabel={selected?.label ?? placeholder}
-        accessibilityHint="פתיחת רשימת האפשרויות"
+        accessibilityHint={t('select.openOptions')}
       >
         <Ionicons name="chevron-down" size={phone ? 18 : 16} color={phone ? DK.muted : COLORS.textFaint} />
         <AppText style={[styles.value, phone && kit.value, !selected && (phone ? kit.placeholder : styles.placeholder)]} numberOfLines={1}>
@@ -124,7 +125,7 @@ export function ChoiceSheet<T extends string>({
   return (
     <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: scrimOpacity }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="סגירה">
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={t('common.close')}>
           <BlurView intensity={8} tint="dark" style={StyleSheet.absoluteFill} />
           <View style={[StyleSheet.absoluteFill, styles.scrim]} />
         </Pressable>
@@ -147,7 +148,7 @@ export function ChoiceSheet<T extends string>({
           <ScrollView bounces={false}>
             {allowClear && (
               <TouchableOpacity style={[styles.option, phone && kit.option]} onPress={() => pick(null)}>
-                <AppText style={[styles.clearText, phone && kit.optionText, phone && { color: DK.muted }]}>ללא</AppText>
+                <AppText style={[styles.clearText, phone && kit.optionText, phone && { color: DK.muted }]}>{t('common.none')}</AppText>
               </TouchableOpacity>
             )}
             {options.map((opt) => {
@@ -179,7 +180,7 @@ export function ChoiceSheet<T extends string>({
                   {active ? (
                     <Ionicons name={phone ? 'checkmark-circle' : 'checkmark'} size={phone ? 20 : 17} color={phone ? DK.accent : COLORS.accent} />
                   ) : opt.icon ? (
-                    <Ionicons name="chevron-back" size={18} color={phone ? DK.faint : COLORS.textFaint} />
+                    <Ionicons name={dirIcon('chevron-back')} size={18} color={phone ? DK.faint : COLORS.textFaint} />
                   ) : null}
                 </TouchableOpacity>
               );
@@ -200,8 +201,8 @@ const styles = StyleSheet.create({
   scrim: { backgroundColor: 'rgba(10, 24, 38, 0.38)' },
   sheet: {
     position: 'absolute',
-    left: SPACING.sm,
-    right: SPACING.sm,
+    start: SPACING.sm,
+    end: SPACING.sm,
     maxWidth: CONTENT_MAX_WIDTH,
     marginHorizontal: 'auto',
     backgroundColor: COLORS.card,
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
   optionBody: { flex: 1, gap: 2 },
   optionText: { fontSize: 15 },
   hint: { fontSize: 13, color: COLORS.textFaint },
-  title: { fontSize: 16, textAlign: 'right', paddingHorizontal: SPACING.lg, paddingTop: SPACING.xs, paddingBottom: SPACING.sm },
+  title: { fontSize: 16, textAlign: textStart(), paddingHorizontal: SPACING.lg, paddingTop: SPACING.xs, paddingBottom: SPACING.sm },
   clearText: { flex: 1, fontSize: 15, color: COLORS.textFaint },
 });
 

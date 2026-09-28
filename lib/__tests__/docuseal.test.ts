@@ -39,8 +39,7 @@ jest.mock('react-native', () => {
 
 import * as Print from 'expo-print';
 import { File } from 'expo-file-system';
-import { Image } from 'react-native';
-import { Platform } from 'react-native';
+import { Image , Platform } from 'react-native';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from '../supabase';
 import { createTemplateBuilderSession } from '../docuseal';

@@ -18,6 +18,8 @@ import { useToast } from '../../ui';
 import { DesktopSelect, DLtrText, DText, HoverPressable } from '../primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
 import { pageStyles } from '../record/RecordPage';
+import { t, dirIcon, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../../lib/i18n';
+import { errorMessage } from '../../../lib/requestError';
 
 type Row = { assignmentId: string | null; vehicleId: string; plate: string; name: string; isPrimary: boolean };
 
@@ -103,10 +105,10 @@ export function DriverVehiclesCard({
       const current = await listActiveVehicleDrivers(adding);
       await assignDriverToVehicle(adding, driverId, current.length === 0);
       setAdding(null);
-      await afterChange('הרכב שויך לנהג');
+      await afterChange(t('driver.vehicleAssigned'));
     } catch (err: any) {
       if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-      showAlert('שיוך הרכב נכשל', String(err?.message ?? 'נסה שוב'));
+      showAlert(t('driver.assignFailed'), String(errorMessage(err, t('common.tryAgain'))));
     } finally {
       setBusy(null);
     }
@@ -115,19 +117,19 @@ export function DriverVehiclesCard({
   const remove = (row: Row) => {
     if (!row.assignmentId) return;
     const assignmentId = row.assignmentId;
-    showAlert('הסרת רכב מהנהג', `להסיר את הרכב ${row.plate} מהנהג? אפשר לשייך אותו שוב בכל רגע.`, [
-      { text: 'ביטול', style: 'cancel' },
+    showAlert(t('driver.removeVehicleTitle'), t('driver.removeVehicleConfirm', { plate: row.plate }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'הסרה',
+        text: t('common.remove'),
         style: 'destructive',
         onPress: async () => {
           setBusy(assignmentId);
           try {
             await unassignVehicleDriver(assignmentId);
-            await afterChange('הרכב הוסר מהנהג');
+            await afterChange(t('driver.vehicleRemoved'));
           } catch (err: any) {
             if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-            showAlert('הסרת הרכב נכשלה', String(err?.message ?? 'נסה שוב'));
+            showAlert(t('driver.removeVehicleFailed'), String(errorMessage(err, t('common.tryAgain'))));
           } finally {
             setBusy(null);
           }
@@ -140,7 +142,7 @@ export function DriverVehiclesCard({
     <View style={pageStyles.card}>
       {rows.length === 0 ? (
         <View style={styles.empty}>
-          <DText style={pageStyles.mutedText}>לנהג הזה אין רכב משויך.</DText>
+          <DText style={pageStyles.mutedText}>{t('driver.noAssignedVehicle')}</DText>
         </View>
       ) : (
         rows.map((row, index) => (
@@ -149,14 +151,14 @@ export function DriverVehiclesCard({
               style={styles.rowMain}
               hoverStyle={pageStyles.rowHover}
               onPress={() => onOpenVehicle(row.vehicleId)}
-              accessibilityLabel={`פתיחת תיק הרכב ${row.plate}`}
+              accessibilityLabel={t('vehicle.openFile', { plate: row.plate })}
             >
               <MiniPlate plate={row.plate} />
               <View style={styles.rowText}>
                 {!!row.name && <DText weight="semiBold" style={styles.name} numberOfLines={1}>{row.name}</DText>}
-                <DText style={pageStyles.mutedText}>{row.isPrimary ? 'נהג ראשי ברכב' : 'נהג נוסף ברכב'}</DText>
+                <DText style={pageStyles.mutedText}>{row.isPrimary ? t('driver.primaryInVehicle') : t('driver.secondaryInVehicle')}</DText>
               </View>
-              <Ionicons name="chevron-back" size={15} color={DESKTOP_COLORS.inkFaint} />
+              <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
             </HoverPressable>
             {canEdit && (
               <HoverPressable
@@ -165,7 +167,7 @@ export function DriverVehiclesCard({
                 pressStyle={pageStyles.pressDown}
                 disabled={!row.assignmentId || busy === row.assignmentId}
                 onPress={() => remove(row)}
-                accessibilityLabel={`הסרת הרכב ${row.plate} מהנהג`}
+                accessibilityLabel={t('driver.removeVehicleLabel', { plate: row.plate })}
               >
                 <Ionicons name="close" size={18} color={DESKTOP_TONES.bad.fg} />
               </HoverPressable>
@@ -181,7 +183,7 @@ export function DriverVehiclesCard({
               value={adding}
               onChange={setAdding}
               options={options}
-              placeholder={options.length ? 'הוספת רכב לנהג' : 'אין רכבים פנויים להוספה'}
+              placeholder={options.length ? t('driver.addVehicle') : t('driver.noFreeVehicles')}
               allowClear
             />
           </View>
@@ -192,9 +194,9 @@ export function DriverVehiclesCard({
               pressStyle={pageStyles.pressDown}
               disabled={busy === '__add__'}
               onPress={() => void add()}
-              accessibilityLabel="שיוך הרכב שנבחר לנהג"
+              accessibilityLabel={t('driver.assignSelectedVehicle')}
             >
-              <DText weight="semiBold" style={pageStyles.primaryBtnText}>{busy === '__add__' ? 'משייך…' : 'הוספה'}</DText>
+              <DText weight="semiBold" style={pageStyles.primaryBtnText}>{busy === '__add__' ? t('common.assigning') : t('common.add')}</DText>
             </HoverPressable>
           )}
         </View>
@@ -205,7 +207,7 @@ export function DriverVehiclesCard({
 
 function MiniPlate({ plate }: { plate: string }) {
   return (
-    <View style={styles.miniPlate} accessibilityRole="image" accessibilityLabel={`מספר רכב ${plate}`}>
+    <View {...fixedLayoutProps} style={[styles.miniPlate, FIXED_LAYOUT_STYLE]} accessibilityRole="image" accessibilityLabel={t('vehicle.numberLabel', { plate })}>
       <View style={styles.miniPlateBand}>
         <DText weight="extraBold" style={styles.miniPlateBandText}>IL</DText>
       </View>
@@ -216,7 +218,7 @@ function MiniPlate({ plate }: { plate: string }) {
 
 const styles = StyleSheet.create({
   empty: { padding: 16 },
-  row: { flexDirection: 'row-reverse', alignItems: 'center', paddingLeft: 10 },
+  row: { flexDirection: 'row-reverse', alignItems: 'center', paddingStart: 10 },
   rowMain: { flex: 1, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 16, paddingVertical: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },
   rowText: { flex: 1, minWidth: 0, gap: 1 },
   name: { fontSize: 14.5, color: DESKTOP_COLORS.ink },

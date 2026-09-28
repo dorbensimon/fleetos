@@ -3,6 +3,7 @@ import { Feather } from '@expo/vector-icons';
 import { DriverCardIcon } from './DriverCardIcon';
 import { DC_BADGE_TONE, DC_COLORS, DC_SPACING, DC_TYPO } from './driverCardTheme';
 import type { DriverCardNavRow } from './driverCardSections';
+import { dirIcon, textDirection } from '../../lib/i18n';
 
 export function ListRowNav({
   row,
@@ -35,7 +36,7 @@ export function ListRowNav({
               {row.badge}
             </Text>
           ) : null}
-          <Feather name="chevron-left" size={17} color={DC_COLORS.chevron} />
+          <Feather name={dirIcon('chevron-left')} size={17} color={DC_COLORS.chevron} />
         </View>
       </View>
     </Pressable>
@@ -47,7 +48,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     minHeight: DC_SPACING.rowMinHeight,
-    paddingRight: DC_SPACING.rowPaddingH,
+    paddingEnd: DC_SPACING.rowPaddingH,
   },
   rowPressed: {
     backgroundColor: 'rgba(0,0,0,0.04)',
@@ -59,13 +60,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    marginLeft: DC_SPACING.iconTextGap,
+    marginStart: DC_SPACING.iconTextGap,
   },
   iconHighlight: {
     position: 'absolute',
     top: 0,
-    left: 0,
-    right: 0,
+    start: 0,
+    end: 0,
     height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(255,255,255,0.28)',
   },
@@ -75,7 +76,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     minHeight: DC_SPACING.rowMinHeight,
-    paddingLeft: DC_SPACING.rowPaddingH,
+    paddingStart: DC_SPACING.rowPaddingH,
   },
   separator: {
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -83,7 +84,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: DC_COLORS.label,
-    writingDirection: 'rtl',
+    writingDirection: textDirection(),
   },
   trailing: {
     flexDirection: 'row-reverse',

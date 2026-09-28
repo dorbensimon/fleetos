@@ -14,6 +14,8 @@ import { formatDate } from '../../lib/theme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DriverArchiveDesktopView } from '../../components/desktop/DriverArchiveDesktopView';
+import { t, dirIcon } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * The driver archive — the only screen that shows archived drivers, and
@@ -44,7 +46,7 @@ export default function DriverArchiveScreen({ navigation }: Props) {
 
   const load = useCallback(async () => {
     if (!companyId) {
-      setError('לא נמצאה חברה משויכת');
+      setError(t('company.noLinkedCompany'));
       setLoading(false);
       return;
     }
@@ -53,7 +55,7 @@ export default function DriverArchiveScreen({ navigation }: Props) {
     try {
       setRows(await listArchivedDrivers(companyId));
     } catch (e: any) {
-      setError(e?.message ?? 'טעינת הארכיון נכשלה');
+      setError(errorMessage(e, t('archive.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -70,7 +72,7 @@ export default function DriverArchiveScreen({ navigation }: Props) {
       showToast(result.error);
       return;
     }
-    showToast(`${driver.full_name ?? 'הנהג'} שוחזר מהארכיון`);
+    showToast(t('archive.restoredName', { v1: driver.full_name ?? t('common.theDriver') }));
     await load();
   };
 
@@ -84,22 +86,22 @@ export default function DriverArchiveScreen({ navigation }: Props) {
       showToast(result.error);
       return;
     }
-    const name = deleteTarget.full_name ?? 'הנהג';
+    const name = deleteTarget.full_name ?? t('common.theDriver');
     setDeleteTarget(null);
-    showToast(`${name} נמחק לצמיתות`);
+    showToast(t('archive.deletedName', { name }));
     await load();
   };
 
   const deleteModal = (
     <ConfirmActionModal
       visible={!!deleteTarget}
-      title="מחיקת נהג לצמיתות"
-      message={`הפעולה תמחק את ${deleteTarget?.full_name ?? 'הנהג'}, את המסמכים שהועלו לתיק שלו ואת קובצי החתימות השמורים באפליקציה. הטפסים החתומים יישארו במערכת החתימות בלבד. הפעולה אינה ניתנת לשחזור.`}
-      confirmLabel="מחק לצמיתות"
+      title={t('archive.deleteDriverTitle')}
+      message={t('archive.deleteDriverBody', { v1: deleteTarget?.full_name ?? t('common.theDriver') })}
+      confirmLabel={t('common.deletePermanentlyAction')}
       destructive
       loading={deleting}
       requireTypedText={deleteTarget?.full_name ?? null}
-      typedTextHint={`לאישור, הקלד את שם הנהג: ${deleteTarget?.full_name ?? ''}`}
+      typedTextHint={t('archive.typeDriverName', { v1: deleteTarget?.full_name ?? '' })}
       onConfirm={runDelete}
       onClose={() => setDeleteTarget(null)}
     />
@@ -108,7 +110,7 @@ export default function DriverArchiveScreen({ navigation }: Props) {
   if (isDesktop) {
     return (
       <>
-        <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', 'ארכיון']}>
+        <DesktopShell active="AdminHome" breadcrumbs={[t('nav.management'), t('common.drivers'), t('common.archive')]}>
           {loading ? null : error ? (
             <ErrorState message={error} onRetry={load} />
           ) : (
@@ -138,8 +140,8 @@ export default function DriverArchiveScreen({ navigation }: Props) {
       }}
       hero={
         <HeroTitle
-          title="ארכיון נהגים"
-          subtitle={loading ? 'טוען…' : rows.length ? `${rows.length} נהגים ללא גישה לאפליקציה` : 'נהגים שהועברו לארכיון'}
+          title={t('fleet.driverArchive')}
+          subtitle={loading ? t('common.loadingEllipsis') : rows.length ? t('archive.driversNoAccess', { length: rows.length }) : t('archive.archivedDrivers')}
           onBack={() => navigation.goBack()}
         />
       }
@@ -151,36 +153,36 @@ export default function DriverArchiveScreen({ navigation }: Props) {
         <ErrorPanel message={error} onRetry={load} />
       ) : rows.length === 0 ? (
         <Reveal>
-          <EmptyPanel icon="archive" title="הארכיון ריק" body="נהג שתעביר לארכיון יופיע כאן — בלי גישה לאפליקציה, ועם אפשרות לשחזר אותו בכל רגע." />
+          <EmptyPanel icon="archive" title={t('archive.empty')} body={t('archive.emptyHint')} />
         </Reveal>
       ) : (
         <>
           <Reveal index={0}>
             <Banner tone="info" icon="information-circle">
-              שחזור מחזיר לנהג את הגישה לאפליקציה. מחיקה לצמיתות מוחקת גם את המסמכים שלו ואינה ניתנת לביטול.
+              {t('archive.explainer')}
             </Banner>
           </Reveal>
           {rows.map((item, index) => (
             <Reveal key={item.id} index={Math.min(index + 1, 8)}>
               <Surface style={s.card}>
-                <Pressy onPress={() => navigation.navigate('DriverDetail', { driverId: item.id })} accessibilityLabel={`${item.full_name ?? 'ללא שם'}, לתיק הנהג`} pressScale={0.985}>
+                <Pressy onPress={() => navigation.navigate('DriverDetail', { driverId: item.id })} accessibilityLabel={t('archive.toDriverFile', { v1: item.full_name ?? t('common.unnamed') })} pressScale={0.985}>
                   <View style={s.head}>
                     <Avatar name={item.full_name} size={48} tone="muted" />
                     <View style={s.flex}>
                       <DKText variant="heading" numberOfLines={1}>
-                        {item.full_name ?? 'ללא שם'}
+                        {item.full_name ?? t('common.unnamed')}
                       </DKText>
                       <DKText variant="caption" color={DK.muted} numberOfLines={2}>
-                        {item.archived_at ? `בארכיון מ־${formatDate(item.archived_at)}` : 'בארכיון'}
-                        {item.archived_by_name ? ` · על ידי ${item.archived_by_name}` : ''}
+                        {item.archived_at ? t('archive.sinceV1', { v1: formatDate(item.archived_at) }) : t('common.archived')}
+                        {item.archived_by_name ? t('archive.byName', { archived_by_name: item.archived_by_name }) : ''}
                       </DKText>
                     </View>
-                    <Ionicons name="chevron-back" size={18} color={DK.faint} />
+                    <Ionicons name={dirIcon('chevron-back')} size={18} color={DK.faint} />
                   </View>
                 </Pressy>
                 <View style={s.actions}>
-                  <PrimaryAction label="שחזור" icon="arrow-undo" tone="ghost" loading={restoringId === item.id} onPress={() => void runRestore(item)} style={s.flex} />
-                  <PrimaryAction label="מחיקה לצמיתות" icon="trash-outline" tone="danger" onPress={() => setDeleteTarget(item)} style={s.flex} />
+                  <PrimaryAction label={t('common.restore')} icon="arrow-undo" tone="ghost" loading={restoringId === item.id} onPress={() => void runRestore(item)} style={s.flex} />
+                  <PrimaryAction label={t('common.deletePermanently')} icon="trash-outline" tone="danger" onPress={() => setDeleteTarget(item)} style={s.flex} />
                 </View>
               </Surface>
             </Reveal>

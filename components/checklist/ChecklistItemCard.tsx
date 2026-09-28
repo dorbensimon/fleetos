@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DK, DKText, KitInput, Pressy, Surface } from '../driverKit';
 import { CHECKLIST_LIMITS, STATUS_META, type ChecklistAnswer, type ChecklistItem, type ChecklistStatus } from '../../lib/checklistForms';
+import { t } from '../../lib/i18n';
 
 /**
  * One item of the meeting: its text, one big button per answer (icon, word
@@ -45,7 +46,7 @@ export const ChecklistItemCard = memo(function ChecklistItemCard({
         </DKText>
       </View>
 
-      <View style={[styles.options, options.length === 3 && styles.optionsThree]} accessibilityRole="radiogroup" accessibilityLabel={`תשובה לסעיף ${index + 1}`}>
+      <View style={[styles.options, options.length === 3 && styles.optionsThree]} accessibilityRole="radiogroup" accessibilityLabel={t('checklist.answerForItem', { v1: index + 1 })}>
         {options.map((key) => {
           const on = status === key;
           const m = STATUS_META[key];
@@ -55,7 +56,7 @@ export const ChecklistItemCard = memo(function ChecklistItemCard({
               onPress={() => onStatus(item.id, key)}
               haptic
               pressScale={0.96}
-              accessibilityLabel={`${m.label}${on ? ", נבחר" : ""}, סעיף ${index + 1}`}
+              accessibilityLabel={t('checklist.optionLabel', { label: m.label, v1: on ? t('common.selectedSuffix') : "", v2: index + 1 })}
               style={[styles.option, options.length === 3 && styles.optionThree, on ? { backgroundColor: m.soft, borderColor: m.fg } : styles.optionOff]}
             >
               <View style={[styles.optionIcon, on ? { backgroundColor: m.fg } : styles.optionIconOff]}>
@@ -74,38 +75,38 @@ export const ChecklistItemCard = memo(function ChecklistItemCard({
           <KitInput
             value={note}
             onChangeText={(text) => onNote(item.id, text)}
-            placeholder="מה חשוב לרשום על הסעיף הזה?"
-            accessibilityLabel={`הערה לסעיף ${index + 1}`}
+            placeholder={t('checklist.notePlaceholder')}
+            accessibilityLabel={t('checklist.noteForItem', { v1: index + 1 })}
             multiline
             autoFocus
             maxLength={CHECKLIST_LIMITS.note}
             style={styles.noteInput}
           />
-          <Pressy onPress={() => setEditing(false)} accessibilityLabel="סיום ההערה" style={styles.noteDone} pressScale={0.95}>
+          <Pressy onPress={() => setEditing(false)} accessibilityLabel={t('checklist.finishNoteLabel')} style={styles.noteDone} pressScale={0.95}>
             <Ionicons name="checkmark" size={18} color={DK.accent} />
             <DKText variant="label" color={DK.accent}>
-              סיום הערה
+              {t('checklist.finishNote')}
             </DKText>
           </Pressy>
         </View>
       ) : note ? (
-        <Pressy onPress={() => setEditing(true)} accessibilityLabel={`הערה: ${note}. עריכה`} style={styles.noteSaved} pressScale={0.985}>
+        <Pressy onPress={() => setEditing(true)} accessibilityLabel={t('checklist.noteEdit', { note })} style={styles.noteSaved} pressScale={0.985}>
           <Ionicons name="chatbox-ellipses-outline" size={18} color={DK.inkSoft} style={styles.noteIcon} />
           <DKText variant="caption" color={DK.inkSoft} style={styles.flex}>
             {note}
           </DKText>
           <DKText variant="micro" color={DK.accent}>
-            עריכה
+            {t('common.edit')}
           </DKText>
         </Pressy>
       ) : (
-        <Pressy onPress={() => setEditing(true)} accessibilityLabel={`הוספת הערה לסעיף ${index + 1}, לא חובה`} style={styles.noteAdd} pressScale={0.97}>
+        <Pressy onPress={() => setEditing(true)} accessibilityLabel={t('checklist.addNoteForItem', { v1: index + 1 })} style={styles.noteAdd} pressScale={0.97}>
           <Ionicons name="add" size={19} color={DK.accent} />
           <DKText variant="label" color={DK.accent}>
-            הוספת הערה
+            {t('checklist.addNote')}
           </DKText>
           <DKText variant="caption" color={DK.muted}>
-            (לא חובה)
+            {t('common.optionalParenShort')}
           </DKText>
         </Pressy>
       )}

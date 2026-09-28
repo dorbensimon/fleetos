@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { DK, DKText, EditField, KitSection, KitSheet, ListRow, PrimaryAction, Pressy, SheetActions, STATUS, Surface } from '../driverKit';
 import { formatPhone } from '../../lib/phone';
 import { CompanyUser } from './types';
+import { t, textEnd } from '../../lib/i18n';
 
 /**
  * Every dialog of the owner's company page, in the app kit (a sheet on the
@@ -33,28 +34,28 @@ function ErrorLine({ message }: { message: string }) {
 function PasswordField({ value, onChange, error }: { value: string; onChange: (v: string) => void; error?: string }) {
   return (
     <KitSection
-      title="סיסמה זמנית"
+      title={t('password.temporary')}
       trailing={
-        <Pressy onPress={() => onChange(randomDigits(6))} accessibilityLabel="יצירת סיסמה אקראית" style={styles.linkChip} pressScale={0.95}>
+        <Pressy onPress={() => onChange(randomDigits(6))} accessibilityLabel={t('password.generateRandom')} style={styles.linkChip} pressScale={0.95}>
           <Ionicons name="sparkles" size={14} color={DK.accent} />
           <DKText variant="micro" color={DK.accent}>
-            יצירה אוטומטית
+            {t('password.autoGenerate')}
           </DKText>
         </Pressy>
       }
     >
       <EditField
         first
-        label="סיסמה"
+        label={t('common.password')}
         required
         value={value}
         onChangeText={(v) => onChange(v.replace(/\D/g, ''))}
         keyboardType="number-pad"
         autoComplete="off"
         ltr
-        placeholder="לפחות 4 ספרות"
+        placeholder={t('validation.min4DigitsPlaceholder')}
         error={error}
-        hint="בכניסה הבאה יתבקש לבחור סיסמה קבועה משלו."
+        hint={t('users.nextSignInChoose')}
       />
     </KitSection>
   );
@@ -75,24 +76,24 @@ export function UserActionsSheet({
   onReset: () => void;
   onRemove: () => void;
 }) {
-  const role = user?.role === 'admin' ? 'מנהל' : 'נהג';
+  const role = user?.role === 'admin' ? t('role.manager') : t('role.driver');
   return (
     <KitSheet
       visible={!!user}
       onClose={onClose}
-      title={user?.full_name || 'ללא שם'}
-      subtitle={[role, user?.must_change_password ? 'עוד לא נכנס' : null].filter(Boolean).join(' · ')}
+      title={user?.full_name || t('common.unnamed')}
+      subtitle={[role, user?.must_change_password ? t('users.notSignedInYet') : null].filter(Boolean).join(' · ')}
     >
       <Surface style={styles.list}>
-        <ListRow first icon="mail-outline" title="מייל" value={user?.email || '—'} ltrValue />
-        <ListRow icon="call-outline" title="טלפון" value={user?.phone ? formatPhone(user.phone) : '—'} ltrValue />
+        <ListRow first icon="mail-outline" title={t('common.emailShort')} value={user?.email || '—'} ltrValue />
+        <ListRow icon="call-outline" title={t('common.phone')} value={user?.phone ? formatPhone(user.phone) : '—'} ltrValue />
       </Surface>
       <Surface style={[styles.list, styles.gap]}>
-        <ListRow first icon="create-outline" title="עריכת פרטים" subtitle="שם וטלפון" onPress={onEdit} />
-        <ListRow icon="key-outline" title="סיסמה זמנית חדשה" subtitle="כשהוא לא מצליח להיכנס" onPress={onReset} />
+        <ListRow first icon="create-outline" title={t('profile.editDetails')} subtitle={t('users.nameAndPhone')} onPress={onEdit} />
+        <ListRow icon="key-outline" title={t('password.newTemporary')} subtitle={t('users.whenCantSignIn')} onPress={onReset} />
       </Surface>
       <Surface style={[styles.list, styles.gap]}>
-        <ListRow first icon="trash-outline" tint={STATUS.expired.fg} title={`הסרת ה${role}`} subtitle="מחיקה לצמיתות של המשתמש והגישה שלו" onPress={onRemove} />
+        <ListRow first icon="trash-outline" tint={STATUS.expired.fg} title={t('users.removeRole', { role })} subtitle={t('users.removeHint')} onPress={onRemove} />
       </Surface>
     </KitSheet>
   );
@@ -131,14 +132,14 @@ export function AddAdminSheet({
       onClose={onClose}
       dismissable={!submitting}
       icon="person-add"
-      title="מנהל נוסף"
-      subtitle={`יוכל לנהל את הצי של ${companyName}.`}
+      title={t('users.additionalManager')}
+      subtitle={t('users.canManageFleet', { companyName })}
       footer={
         <View style={styles.footer}>
           <ErrorLine message={submitError} />
           <SheetActions>
-            <PrimaryAction label="ביטול" tone="ghost" onPress={onClose} disabled={submitting} style={styles.grow} />
-            <PrimaryAction label="הוספה" icon="checkmark" onPress={onSubmit} loading={submitting} style={styles.grow} />
+            <PrimaryAction label={t('common.cancel')} tone="ghost" onPress={onClose} disabled={submitting} style={styles.grow} />
+            <PrimaryAction label={t('common.add')} icon="checkmark" onPress={onSubmit} loading={submitting} style={styles.grow} />
           </SheetActions>
         </View>
       }
@@ -147,14 +148,14 @@ export function AddAdminSheet({
         <KitSection>
           <View style={styles.pairRow}>
             <View style={styles.flex}>
-              <EditField first label="שם פרטי" required value={form.firstName} onChangeText={(v) => set('firstName', v)} error={fieldErrors.firstName} />
+              <EditField first label={t('common.firstName')} required value={form.firstName} onChangeText={(v) => set('firstName', v)} error={fieldErrors.firstName} />
             </View>
             <View style={styles.flex}>
-              <EditField first label="שם משפחה" required value={form.lastName} onChangeText={(v) => set('lastName', v)} error={fieldErrors.lastName} />
+              <EditField first label={t('common.lastName')} required value={form.lastName} onChangeText={(v) => set('lastName', v)} error={fieldErrors.lastName} />
             </View>
           </View>
           <EditField
-            label="מייל"
+            label={t('common.emailShort')}
             required
             value={form.email}
             onChangeText={(v) => set('email', v.trim())}
@@ -165,7 +166,7 @@ export function AddAdminSheet({
             error={fieldErrors.email}
           />
           <EditField
-            label="טלפון נייד"
+            label={t('common.mobilePhone')}
             required
             value={formatPhone(form.phone)}
             onChangeText={(v) => set('phone', v.replace(/\D/g, ''))}
@@ -210,14 +211,14 @@ export function EditUserSheet({
       onClose={onClose}
       dismissable={!submitting}
       icon="create"
-      title="עריכת פרטים"
+      title={t('profile.editDetails')}
       subtitle={target?.email ?? undefined}
       footer={
         <View style={styles.footer}>
           <ErrorLine message={submitError} />
           <SheetActions>
-            <PrimaryAction label="ביטול" tone="ghost" onPress={onClose} disabled={submitting} style={styles.grow} />
-            <PrimaryAction label="שמירה" icon="checkmark" onPress={onSubmit} loading={submitting} style={styles.grow} />
+            <PrimaryAction label={t('common.cancel')} tone="ghost" onPress={onClose} disabled={submitting} style={styles.grow} />
+            <PrimaryAction label={t('common.save')} icon="checkmark" onPress={onSubmit} loading={submitting} style={styles.grow} />
           </SheetActions>
         </View>
       }
@@ -225,14 +226,14 @@ export function EditUserSheet({
       <KitSection>
         <View style={styles.pairRow}>
           <View style={styles.flex}>
-            <EditField first label="שם פרטי" required value={form.firstName} onChangeText={(v) => onChangeForm((f) => ({ ...f, firstName: v }))} error={fieldErrors.firstName} />
+            <EditField first label={t('common.firstName')} required value={form.firstName} onChangeText={(v) => onChangeForm((f) => ({ ...f, firstName: v }))} error={fieldErrors.firstName} />
           </View>
           <View style={styles.flex}>
-            <EditField first label="שם משפחה" required value={form.lastName} onChangeText={(v) => onChangeForm((f) => ({ ...f, lastName: v }))} error={fieldErrors.lastName} />
+            <EditField first label={t('common.lastName')} required value={form.lastName} onChangeText={(v) => onChangeForm((f) => ({ ...f, lastName: v }))} error={fieldErrors.lastName} />
           </View>
         </View>
         <EditField
-          label="טלפון נייד"
+          label={t('common.mobilePhone')}
           required
           value={formatPhone(form.phone)}
           onChangeText={(v) => onChangeForm((f) => ({ ...f, phone: v.replace(/\D/g, '') }))}
@@ -272,14 +273,14 @@ export function ResetPasswordSheet({
       onClose={onClose}
       dismissable={!submitting}
       icon="key"
-      title="סיסמה זמנית חדשה"
-      subtitle={`ל${target?.full_name || target?.email || 'משתמש'}. הסיסמה הקודמת תפסיק לעבוד מיד.`}
+      title={t('password.newTemporary')}
+      subtitle={t('users.forUserOldStops', { v1: target?.full_name || target?.email || t('users.user') })}
       footer={
         <View style={styles.footer}>
           <ErrorLine message={submitError} />
           <SheetActions>
-            <PrimaryAction label="ביטול" tone="ghost" onPress={onClose} disabled={submitting} style={styles.grow} />
-            <PrimaryAction label="קביעת הסיסמה" icon="checkmark" onPress={onSubmit} loading={submitting} style={styles.grow} />
+            <PrimaryAction label={t('common.cancel')} tone="ghost" onPress={onClose} disabled={submitting} style={styles.grow} />
+            <PrimaryAction label={t('password.setThe')} icon="checkmark" onPress={onSubmit} loading={submitting} style={styles.grow} />
           </SheetActions>
         </View>
       }
@@ -310,16 +311,16 @@ export function RemoveUserSheet({
       dismissable={!removing}
       icon="trash"
       tone="danger"
-      title={`להסיר את ${target?.full_name || target?.email || 'המשתמש'}?`}
+      title={t('users.removeQuestion', { v1: target?.full_name || target?.email || t('users.theUser') })}
       subtitle={
         admin
-          ? 'המנהל יימחק לצמיתות ולא יוכל להיכנס. הנהגים והרכבים של החברה נשארים.'
-          : 'הנהג יימחק לצמיתות, יחד עם הגישה שלו למערכת. אי אפשר לשחזר.'
+          ? t('users.removeManagerWarning')
+          : t('users.removeDriverWarning')
       }
       footer={
         <SheetActions>
-          <PrimaryAction label="השארה" tone="ghost" onPress={onClose} disabled={removing} style={styles.grow} />
-          <PrimaryAction label="הסרה לצמיתות" tone="destructive" onPress={onConfirm} loading={removing} style={styles.grow} />
+          <PrimaryAction label={t('common.keep')} tone="ghost" onPress={onClose} disabled={removing} style={styles.grow} />
+          <PrimaryAction label={t('users.removePermanently')} tone="destructive" onPress={onConfirm} loading={removing} style={styles.grow} />
         </SheetActions>
       }
     />
@@ -332,7 +333,7 @@ export type Credentials = { title: string; subtitle: string; name: string; email
 
 export function CredentialsSheet({ details, onClose }: { details: Credentials | null; onClose: () => void }) {
   const message = details
-    ? `שלום ${details.name},\nפרטי הכניסה שלך ל-icar:\nמייל: ${details.email}\nסיסמה זמנית: ${details.password}\nבכניסה תתבקש לבחור סיסמה קבועה.\nhttps://icar-app.com`
+    ? t('users.shareCredentials', { name: details.name, email: details.email, password: details.password })
     : '';
   return (
     <KitSheet
@@ -343,8 +344,8 @@ export function CredentialsSheet({ details, onClose }: { details: Credentials | 
       subtitle={details?.subtitle}
       footer={
         <SheetActions>
-          <PrimaryAction label="סגירה" tone="ghost" onPress={onClose} style={styles.grow} />
-          <PrimaryAction label="שליחת הפרטים" icon="share-outline" onPress={() => void Share.share({ message }).catch(() => {})} style={styles.grow} />
+          <PrimaryAction label={t('common.close')} tone="ghost" onPress={onClose} style={styles.grow} />
+          <PrimaryAction label={t('addCompany.sendDetails')} icon="share-outline" onPress={() => void Share.share({ message }).catch(() => {})} style={styles.grow} />
         </SheetActions>
       }
     >
@@ -352,7 +353,7 @@ export function CredentialsSheet({ details, onClose }: { details: Credentials | 
         <KitSection>
           <View style={styles.sumRow}>
             <DKText variant="caption" color={DK.muted}>
-              מייל לכניסה
+              {t('addCompany.signInEmail')}
             </DKText>
             <DKText variant="label" ltr selectable style={styles.sumValue}>
               {details.email}
@@ -360,7 +361,7 @@ export function CredentialsSheet({ details, onClose }: { details: Credentials | 
           </View>
           <View style={[styles.sumRow, styles.divider]}>
             <DKText variant="caption" color={DK.muted}>
-              סיסמה זמנית
+              {t('password.temporary')}
             </DKText>
             <DKText variant="number" ltr selectable style={styles.sumValue}>
               {details.password}
@@ -384,5 +385,5 @@ const styles = StyleSheet.create({
   errorBox: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14, backgroundColor: STATUS.expired.soft },
   linkChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, minHeight: 32, paddingHorizontal: 10, borderRadius: 999, backgroundColor: DK.accentSoft },
   sumRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 16, minHeight: 52 },
-  sumValue: { flexShrink: 1, textAlign: 'left' },
+  sumValue: { flexShrink: 1, textAlign: textEnd() },
 });

@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar, CountPill, DK, DK_SPACE, DKText, DriverPage, HeroButton, KitSection, ListRow, Pressy, Reveal, STATUS, Surface } from '../components/driverKit';
 import { BrandLogo } from '../components/ui/Brand';
+import { t, dirIcon } from '../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -44,21 +45,21 @@ export function MenuMobile(p: Props) {
       hero={
         <View>
           <View style={styles.heroBar}>
-            <HeroButton icon="chevron-forward" label="חזרה" onPress={p.onBack} />
+            <HeroButton icon={dirIcon('chevron-forward')} label={t('common.goBack')} onPress={p.onBack} />
             <BrandLogo height={20} onDark />
           </View>
-          <Pressy onPress={p.onProfile} accessibilityLabel={`${p.name}, ${p.subtitle}. לפרטים שלי`} pressScale={0.98}>
+          <Pressy onPress={p.onProfile} accessibilityLabel={t('menu.profileRowLabel', { name: p.name, subtitle: p.subtitle })} pressScale={0.98}>
             <View style={styles.identity}>
               <Avatar name={p.name} size={64} tone="accent" />
               <View style={styles.identityText}>
                 <DKText variant="title" color={DK.onNight} numberOfLines={1}>
-                  {p.name || 'ללא שם'}
+                  {p.name || t('common.unnamed')}
                 </DKText>
                 <DKText variant="caption" color={DK.onNightMuted} numberOfLines={1}>
                   {[p.subtitle, p.companyName].filter(Boolean).join(' · ')}
                 </DKText>
               </View>
-              <Ionicons name="chevron-back" size={20} color={DK.onNightFaint} />
+              <Ionicons name={dirIcon('chevron-back')} size={20} color={DK.onNightFaint} />
             </View>
           </Pressy>
         </View>
@@ -85,20 +86,20 @@ export function MenuMobile(p: Props) {
       ))}
 
       <Reveal index={p.groups.length}>
-        <Pressy onPress={p.onLogout} accessibilityLabel="התנתקות מהחשבון" pressScale={0.98}>
+        <Pressy onPress={p.onLogout} accessibilityLabel={t('auth.signOutOfAccountAction')} pressScale={0.98}>
           <Surface style={styles.logout}>
             <View style={styles.logoutIcon}>
               <Ionicons name="log-out-outline" size={20} color={STATUS.expired.fg} />
             </View>
             <DKText variant="label" color={STATUS.expired.fg} style={styles.flex}>
-              התנתקות
+              {t('auth.signOut')}
             </DKText>
           </Surface>
         </Pressy>
       </Reveal>
 
       <DKText variant="caption" color={DK.faint} style={styles.version}>
-        icar · גרסה 1.0.0
+        {t('menu.version')}
       </DKText>
     </DriverPage>
   );

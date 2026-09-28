@@ -28,6 +28,7 @@ import { BrandLoader } from '../ui/BrandLoader';
 import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
 import { HeaderMenuBackdrop, headerMenuEnter, headerMenuStyles, useHeaderMenu } from './headerMenu';
+import { t, dirIcon } from '../../lib/i18n';
 
 const PREVIEW_COUNT = 6;
 const TABULAR = webOnly({ fontVariantNumeric: 'tabular-nums' });
@@ -186,7 +187,7 @@ function Bell<T extends { id: string }>({ feed, refreshKey }: { feed: Feed<T>; r
     } catch {
       setRows(before);
       setUnread(beforeUnread);
-      showAlert('הפעולה נכשלה', 'לא הצלחנו לסמן את ההתראות כנקראו.');
+      showAlert(t('common.actionFailed'), t('notifications.markReadFailed'));
     }
   };
 
@@ -215,7 +216,7 @@ function Bell<T extends { id: string }>({ feed, refreshKey }: { feed: Feed<T>; r
         style={[styles.bell, menu.open && styles.bellOpen]}
         hoverStyle={styles.bellHover}
         onPress={menu.toggle}
-        accessibilityLabel={unread > 0 ? `התראות, ${unread} שלא נקראו` : 'התראות'}
+        accessibilityLabel={unread > 0 ? t('notifications.titleUnread', { unread }) : t('notifications.title')}
         accessibilityState={{ expanded: menu.open }}
         aria-expanded={menu.open}
         aria-haspopup="dialog"
@@ -231,21 +232,21 @@ function Bell<T extends { id: string }>({ feed, refreshKey }: { feed: Feed<T>; r
       </HoverPressable>
 
       {menu.open && (
-        <View style={[headerMenuStyles.menu, headerMenuEnter()]} role="dialog" aria-label="התראות">
+        <View style={[headerMenuStyles.menu, headerMenuEnter()]} role="dialog" aria-label={t('notifications.title')}>
           <View style={headerMenuStyles.head}>
             <View style={headerMenuStyles.headText}>
               <DText weight="bold" style={headerMenuStyles.title}>
-                התראות
+                {t('notifications.title')}
               </DText>
               <DText style={[headerMenuStyles.hint, TABULAR]}>
-                {unread === 0 ? 'אין התראות שלא נקראו' : unread === 1 ? 'התראה אחת שלא נקראה' : `${unread} התראות שלא נקראו`}
+                {unread === 0 ? t('notifications.noUnread') : unread === 1 ? t('notifications.oneUnread') : t('notifications.unreadCount', { unread })}
               </DText>
             </View>
             {unread > 0 && (
-              <HoverPressable style={styles.readAll} hoverStyle={headerMenuStyles.rowHover} onPress={() => void readAll()} accessibilityLabel="סימון כל ההתראות כנקראו">
+              <HoverPressable style={styles.readAll} hoverStyle={headerMenuStyles.rowHover} onPress={() => void readAll()} accessibilityLabel={t('notifications.markAllReadLabel')}>
                 <Ionicons name="checkmark-done" size={14} color={DESKTOP_COLORS.brand} />
                 <DText weight="semiBold" style={styles.readAllText}>
-                  סימון הכל כנקרא
+                  {t('notifications.markAllRead')}
                 </DText>
               </HoverPressable>
             )}
@@ -253,21 +254,21 @@ function Bell<T extends { id: string }>({ feed, refreshKey }: { feed: Feed<T>; r
 
           {rows === null && failed ? (
             <View style={styles.state}>
-              <DText style={styles.stateText}>לא הצלחנו לטעון את ההתראות</DText>
+              <DText style={styles.stateText}>{t('notifications.loadFailed')}</DText>
               <HoverPressable style={styles.retry} hoverStyle={headerMenuStyles.rowHover} onPress={() => void load()}>
                 <DText weight="semiBold" style={styles.readAllText}>
-                  לנסות שוב
+                  {t('common.tryAgain')}
                 </DText>
               </HoverPressable>
             </View>
           ) : rows === null ? (
-            <View style={styles.state} accessibilityLabel="טוען התראות">
+            <View style={styles.state} accessibilityLabel={t('notifications.loading')}>
               <BrandLoader size={28} />
             </View>
           ) : rows.length === 0 ? (
             <View style={styles.state}>
               <Ionicons name="notifications-off-outline" size={24} color={DESKTOP_COLORS.inkFaint} />
-              <DText style={styles.stateText}>אין עדיין התראות</DText>
+              <DText style={styles.stateText}>{t('notifications.noneYet')}</DText>
             </View>
           ) : (
             <ScrollView style={headerMenuStyles.scroll}>
@@ -282,7 +283,7 @@ function Bell<T extends { id: string }>({ feed, refreshKey }: { feed: Feed<T>; r
                     hoverStyle={headerMenuStyles.rowHover}
                     onPress={() => void openRow(item)}
                     accessibilityRole="button"
-                    accessibilityLabel={`${isUnread ? 'לא נקראה. ' : ''}${n.title ? `${n.title}. ` : ''}${n.text}, ${timeAgo(n.createdAt)}`}
+                    accessibilityLabel={`${isUnread ? t('notifications.unreadPrefix') : ''}${n.title ? `${n.title}. ` : ''}${n.text}, ${timeAgo(n.createdAt)}`}
                   >
                     <View style={[styles.icon, { backgroundColor: colors.bg }]}>
                       <Ionicons name={n.icon} size={15} color={colors.fg} />
@@ -300,7 +301,7 @@ function Bell<T extends { id: string }>({ feed, refreshKey }: { feed: Feed<T>; r
                         {timeAgo(n.createdAt)} · {formatDateTime(n.createdAt)}
                       </DText>
                     </View>
-                    {isUnread ? <View style={styles.unreadDot} /> : <Ionicons name="chevron-back" size={13} color={DESKTOP_COLORS.inkFaint} />}
+                    {isUnread ? <View style={styles.unreadDot} /> : <Ionicons name={dirIcon('chevron-back')} size={13} color={DESKTOP_COLORS.inkFaint} />}
                   </HoverPressable>
                 );
               })}
@@ -309,7 +310,7 @@ function Bell<T extends { id: string }>({ feed, refreshKey }: { feed: Feed<T>; r
 
           <HoverPressable style={headerMenuStyles.footer} hoverStyle={headerMenuStyles.rowHover} onPress={openAll} accessibilityRole="link">
             <DText weight="semiBold" style={headerMenuStyles.footerText}>
-              לכל ההתראות וההגדרות
+              {t('notifications.allAndSettings')}
             </DText>
           </HoverPressable>
         </View>
@@ -335,7 +336,7 @@ const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
     top: -6,
-    right: -7,
+    end: -7,
     minWidth: 18,
     height: 18,
     paddingHorizontal: 4,

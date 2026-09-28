@@ -2,6 +2,7 @@ import { supabase } from '../supabase';
 import { Vehicle } from './types';
 import { functionErrorMessage } from '../functionError';
 import { fetchAllPages } from './paging';
+import { t } from '../i18n';
 
 export async function listVehicles(companyId: string, includeArchived = false): Promise<Vehicle[]> {
   return fetchAllPages<Vehicle>(async (from, to) => {
@@ -52,6 +53,6 @@ export async function deleteVehicle(vehicleId: string, companyId: string) {
     body: { vehicleId, companyId },
   });
   if (error || !data?.success) {
-    throw new Error(await functionErrorMessage(error, data, 'מחיקת הרכב נכשלה', false));
+    throw new Error(await functionErrorMessage(error, data, t('vehicle.deleteFailed'), false));
   }
 }

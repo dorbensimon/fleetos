@@ -1,6 +1,8 @@
 import { isValidIsraeliPhone } from './phone';
 import { isValidEmail, isValidTemporaryPassword } from './validation';
 import { emptyAccountForm, validateAccountForm, type AccountForm } from './companyAccount';
+import { t } from './i18n';
+import type { CompanyType } from './companyType';
 
 /**
  * The owner's "חברה חדשה" form (components/owner/AddCompanySheet): its
@@ -10,7 +12,7 @@ import { emptyAccountForm, validateAccountForm, type AccountForm } from './compa
 export type OwnerCompanyForm = {
   name: string;
   logoUrl: string;
-  companyType: '' | 'בע״מ' | 'עוסק מורשה';
+  companyType: '' | CompanyType;
   businessId: string;
   adminFirstName: string;
   adminLastName: string;
@@ -44,18 +46,18 @@ type FieldErrors = Record<string, string>;
 export function validateCompanyStep(step: CompanyStep, form: OwnerCompanyForm): FieldErrors {
   const errors: FieldErrors = {};
   if (step === 0) {
-    if (!form.name.trim()) errors.name = 'שם החברה חובה';
-    if (form.businessId.trim() && !/^\d{8,9}$/.test(form.businessId.trim())) errors.businessId = '8 או 9 ספרות';
+    if (!form.name.trim()) errors.name = t('validation.companyNameRequired');
+    if (form.businessId.trim() && !/^\d{8,9}$/.test(form.businessId.trim())) errors.businessId = t('validation.8or9Digits');
   }
   if (step === 1) {
-    if (!form.adminFirstName.trim()) errors.adminFirstName = 'שדה חובה';
-    if (!form.adminLastName.trim()) errors.adminLastName = 'שדה חובה';
-    if (!form.email.trim()) errors.email = 'שדה חובה';
-    else if (!isValidEmail(form.email)) errors.email = 'כתובת מייל לא תקינה';
-    if (!form.phone.trim()) errors.phone = 'שדה חובה';
-    else if (!isValidIsraeliPhone(form.phone)) errors.phone = 'מספר טלפון לא תקין';
-    if (!form.password) errors.password = 'צריך סיסמה זמנית';
-    else if (!isValidTemporaryPassword(form.password)) errors.password = 'לפחות 4 ספרות, ספרות בלבד';
+    if (!form.adminFirstName.trim()) errors.adminFirstName = t('validation.required');
+    if (!form.adminLastName.trim()) errors.adminLastName = t('validation.required');
+    if (!form.email.trim()) errors.email = t('validation.required');
+    else if (!isValidEmail(form.email)) errors.email = t('validation.invalidEmail');
+    if (!form.phone.trim()) errors.phone = t('validation.required');
+    else if (!isValidIsraeliPhone(form.phone)) errors.phone = t('validation.invalidPhone');
+    if (!form.password) errors.password = t('validation.tempPasswordRequired');
+    else if (!isValidTemporaryPassword(form.password)) errors.password = t('validation.min4Digits');
   }
   if (step === 2) {
     for (const [key, message] of Object.entries(validateAccountForm(form.account))) errors[`account.${key}`] = message as string;

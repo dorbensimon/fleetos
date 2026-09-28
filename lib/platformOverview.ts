@@ -3,6 +3,7 @@ import type { ComplianceItem, Vehicle, VehicleDriverWithProfile } from './adminA
 import { vehicleAttentionGroups } from './vehicleAttention';
 import { daysUntilExpiry, expiryState, formatDate } from './theme';
 import { accountMrr, type CompanyAccount } from './companyAccount';
+import { t } from './i18n';
 
 /**
  * The owner's control room, computed from raw rows. Only counts, dates and
@@ -164,40 +165,40 @@ export function buildPlatformOverview(rows: PlatformRows, now: Date = new Date()
 
     // A disabled company is switched off on purpose; its paperwork isn't the owner's problem today.
     if (active) {
-      if (admins.length === 0) add('bad', 'אין מנהל לחברה', 'אף אחד לא יכול לנהל את הצי. צריך להוסיף מנהל.');
+      if (admins.length === 0) add('bad', t('owner.health.noManager'), t('owner.health.noManagerDetail'));
       else if (adminsNotActivated === admins.length) {
-        add('warn', admins.length === 1 ? 'המנהל עוד לא נכנס' : 'המנהלים עוד לא נכנסו', 'החשבון עדיין על הסיסמה הזמנית שנוצרה לו.');
+        add('warn', admins.length === 1 ? t('owner.health.managerNotLoggedIn') : t('owner.health.managersNotLoggedIn'), t('owner.health.tempPasswordDetail'));
       }
 
       const carrierDays = daysUntilExpiry(company.carrier_license_expiry ?? null);
-      if (carrierDays != null && carrierDays < 0) add('bad', 'רישיון המוביל פג', `פג ב-${formatDate(company.carrier_license_expiry!)}`);
+      if (carrierDays != null && carrierDays < 0) add('bad', t('owner.health.carrierLicenseExpired'), t('owner.health.expiredOn', { v1: formatDate(company.carrier_license_expiry!) }));
       else if (carrierDays != null && carrierDays <= 30) {
-        add('warn', 'רישיון המוביל עומד לפוג', carrierDays === 0 ? 'פג היום' : `עוד ${plural(carrierDays, 'יום אחד', 'ימים')}`);
+        add('warn', t('owner.health.carrierLicenseExpiring'), carrierDays === 0 ? t('expiry.expiredToday') : t('common.inTime', { v1: plural(carrierDays, t('common.oneDay'), t('common.days')) }));
       }
 
       if (problemVehicles.size) {
-        add('bad', plural(problemVehicles.size, 'רכב אחד לא תקין', 'רכבים לא תקינים'), 'ביטוח חובה או רישיון רכב לא בתוקף');
+        add('bad', plural(problemVehicles.size, t('owner.health.oneVehicleInvalid'), t('owner.health.vehiclesInvalid')), t('owner.health.vehiclesInvalidDetail'));
       }
-      if (licensesExpired) add('bad', plural(licensesExpired, 'רישיון נהיגה אחד פג', 'רישיונות נהיגה פגו'), 'נהגים שנוהגים ברישיון לא בתוקף');
+      if (licensesExpired) add('bad', plural(licensesExpired, t('owner.health.oneLicenseExpired'), t('owner.health.licensesExpired')), t('owner.health.licensesExpiredDetail'));
 
       if (people.length > 0 && (!lastActivity || new Date(lastActivity).getTime() < idleSince)) {
-        add('warn', 'אין פעילות בחודש האחרון', 'לא נרשמה פעולה ב-30 הימים האחרונים');
+        add('warn', t('owner.health.noActivity'), t('owner.health.noActivityDetail'));
       }
 
       // The customer side: money and dates the owner has to act on.
-      if (account?.status === 'overdue') add('bad', 'התשלום בפיגור', 'החברה מסומנת כלקוח בפיגור תשלום');
+      if (account?.status === 'overdue') add('bad', t('owner.health.paymentOverdue'), t('owner.health.paymentOverdueDetail'));
       if (account?.status === 'trial' && account.trial_ends_at) {
         const d = daysUntilExpiry(account.trial_ends_at);
-        if (d != null && d < 0) add('bad', 'תקופת הניסיון הסתיימה', `הסתיימה ב-${formatDate(account.trial_ends_at)}`);
-        else if (d != null && d <= 7) add('warn', 'תקופת הניסיון מסתיימת', d === 0 ? 'מסתיימת היום' : `עוד ${plural(d, 'יום אחד', 'ימים')}`);
+        if (d != null && d < 0) add('bad', t('owner.health.trialEnded'), t('owner.health.endedOn', { v1: formatDate(account.trial_ends_at) }));
+        else if (d != null && d <= 7) add('warn', t('owner.health.trialEnding'), d === 0 ? t('owner.health.endsToday') : t('common.inTime', { v1: plural(d, t('common.oneDay'), t('common.days')) }));
       }
       if ((account?.status === 'active' || account?.status === 'overdue') && account.renewal_date) {
         const d = daysUntilExpiry(account.renewal_date);
-        if (d != null && d < 0) add('bad', 'מועד החידוש עבר', `היה ב-${formatDate(account.renewal_date)}`);
-        else if (d != null && d <= 14) add('warn', 'חידוש מנוי מתקרב', d === 0 ? 'היום' : `עוד ${plural(d, 'יום אחד', 'ימים')}`);
+        if (d != null && d < 0) add('bad', t('account.renewalPassed'), t('owner.health.wasOn', { v1: formatDate(account.renewal_date) }));
+        else if (d != null && d <= 14) add('warn', t('owner.health.renewalApproaching'), d === 0 ? t('common.today') : t('common.inTime', { v1: plural(d, t('common.oneDay'), t('common.days')) }));
       }
       if (account?.vehicle_limit && vehicles.length >= account.vehicle_limit) {
-        add('warn', 'הגיעה למכסת הרכבים', `${vehicles.length} מתוך ${account.vehicle_limit} במנוי`);
+        add('warn', t('owner.health.vehicleQuotaReached'), t('owner.health.vehicleQuotaDetail', { length: vehicles.length, vehicle_limit: account.vehicle_limit }));
       }
     }
 
@@ -282,14 +283,14 @@ export function buildPlatformOverview(rows: PlatformRows, now: Date = new Date()
 
 /** "עכשיו", "לפני 3 שעות", "אתמול", "לפני 12 ימים", or the date once it's old. */
 export function lastSeenLabel(iso: string | null, now: Date = new Date()): string {
-  if (!iso) return 'לא החודש';
+  if (!iso) return t('time.notThisMonth');
   const mins = Math.floor((now.getTime() - new Date(iso).getTime()) / 60000);
-  if (mins < 1) return 'עכשיו';
-  if (mins < 60) return `לפני ${mins} דק׳`;
+  if (mins < 1) return t('time.now');
+  if (mins < 60) return t('time.minutesAgo', { mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `לפני ${hours} שע׳`;
+  if (hours < 24) return t('time.hoursAgo', { hours });
   const daysAgo = Math.floor(hours / 24);
-  if (daysAgo === 1) return 'אתמול';
-  if (daysAgo < 30) return `לפני ${daysAgo} ימים`;
+  if (daysAgo === 1) return t('time.yesterday');
+  if (daysAgo < 30) return t('time.daysAgoLong', { daysAgo });
   return formatDate(iso);
 }

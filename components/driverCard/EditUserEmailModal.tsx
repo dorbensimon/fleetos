@@ -4,6 +4,7 @@ import { COLORS } from '../../lib/theme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { modalKit as kit, modalStyles as styles } from './driverModalStyles';
 import { EditField, KitSheet, PrimaryAction, SheetActions } from '../driverKit';
+import { t } from '../../lib/i18n';
 
 export function EditUserEmailModal({
   visible,
@@ -32,17 +33,17 @@ export function EditUserEmailModal({
         onClose={onClose}
         dismissable={!loading}
         icon="mail"
-        title="עדכון כתובת מייל"
-        subtitle={`כתובת המייל של ${driverName ?? 'הנהג'} משמשת להתחברות לאפליקציה. עדכון כאן משנה אותה מיידית.`}
+        title={t('email.updateTitle')}
+        subtitle={t('email.updateDescription', { v1: driverName ?? t('common.theDriver') })}
         footer={
           <SheetActions>
-            <PrimaryAction label="ביטול" tone="ghost" onPress={onClose} disabled={loading} style={kit.cancel} />
-            <PrimaryAction label="עדכון המייל" icon="checkmark" onPress={onSubmit} loading={loading} style={kit.confirm} />
+            <PrimaryAction label={t('common.cancel')} tone="ghost" onPress={onClose} disabled={loading} style={kit.cancel} />
+            <PrimaryAction label={t('email.update')} icon="checkmark" onPress={onSubmit} loading={loading} style={kit.confirm} />
           </SheetActions>
         }
       >
         <View style={kit.fields}>
-          <EditField first label="כתובת מייל" value={email} onChangeText={onEmailChange} keyboardType="email-address" ltr error={error || undefined} placeholder="name@example.com" autoComplete="email" />
+          <EditField first label={t('email.address')} value={email} onChangeText={onEmailChange} keyboardType="email-address" ltr error={error || undefined} placeholder="name@example.com" autoComplete="email" />
         </View>
       </KitSheet>
     );
@@ -52,17 +53,17 @@ export function EditUserEmailModal({
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.modal} onPress={(event) => event.stopPropagation()}>
           <AppText weight="bold" style={styles.title}>
-            עדכון כתובת מייל
+            {t('email.updateTitle')}
           </AppText>
           <AppText style={styles.subtitle}>
-            כתובת המייל של {driverName ?? 'הנהג'} משמשת להתחברות לאפליקציה. עדכון כאן משנה אותה מיידית.
+            {t('email.ofPrefix')} {driverName ?? t('common.theDriver')} {t('email.usedForSignIn')}
           </AppText>
 
           <TextInput
             style={styles.input}
             value={email}
             onChangeText={onEmailChange}
-            placeholder="כתובת מייל"
+            placeholder={t('email.address')}
             placeholderTextColor={COLORS.textFaint}
             keyboardType="email-address"
             autoCapitalize="none"
@@ -75,10 +76,10 @@ export function EditUserEmailModal({
           <View style={styles.actions}>
             <TouchableOpacity style={styles.cancel} onPress={onClose} disabled={loading}>
               <AppText weight="bold" style={styles.cancelText}>
-                ביטול
+                {t('common.cancel')}
               </AppText>
             </TouchableOpacity>
-            <PrimaryButton label="עדכן מייל" onPress={onSubmit} loading={loading} style={styles.confirmBtn} />
+            <PrimaryButton label={t('email.updateAction')} onPress={onSubmit} loading={loading} style={styles.confirmBtn} />
           </View>
         </Pressable>
       </Pressable>

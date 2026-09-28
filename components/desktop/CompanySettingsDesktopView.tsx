@@ -26,6 +26,8 @@ import {
 } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
 import { FORM_PAGE_STYLES, heroEnter, useReducedMotion } from './form/RecordFormKit';
+import { t, getLocale } from '../../lib/i18n';
+import { COMPANY_TYPE_OPTIONS, companyTypeLabel, type CompanyType } from '../../lib/companyType';
 
 /**
  * Desktop body of the company settings page. Three zones fill the width:
@@ -36,7 +38,6 @@ import { FORM_PAGE_STYLES, heroEnter, useReducedMotion } from './form/RecordForm
  * Purely presentational — CompanySettingsScreen owns state and saving.
  */
 
-export type CompanyType = 'בע״מ' | 'עוסק מורשה';
 
 export interface CompanyContactForm {
   name: string;
@@ -81,45 +82,40 @@ const SECTIONS: {
 }[] = [
   {
     key: 'details',
-    label: 'פרטי החברה',
-    hint: 'השם, ח.פ והפרטים הרשמיים של החברה.',
+    get label() { return t('settings.section.company'); },
+    get hint() { return t('settings.section.companyHint'); },
     icon: 'business-outline',
   },
   {
     key: 'contact',
-    label: 'תקשורת ודוא״ל',
-    hint: 'איך אפשר להשיג את החברה ולאן לשלוח קבצים.',
+    get label() { return t('settings.section.contact'); },
+    get hint() { return t('settings.section.contactHint'); },
     icon: 'call-outline',
   },
   {
     key: 'report',
-    label: 'דוח ספידומטר חודשי',
-    hint: 'ב-1 לכל חודש יישלח למייל הזה קובץ אקסל עם הקילומטראז׳ של כל הרכבים.',
+    get label() { return t('settings.section.odometerReport'); },
+    get hint() { return t('settings.section.odometerReportHint'); },
     icon: 'speedometer-outline',
   },
   {
     key: 'people',
-    label: 'אנשי קשר',
-    hint: 'האנשים שאפשר לפנות אליהם בחברה.',
+    get label() { return t('settings.section.contacts'); },
+    get hint() { return t('settings.section.contactsHint'); },
     icon: 'people-outline',
   },
   {
     key: 'safety',
-    label: 'קציני בטיחות',
-    hint: 'החברה הבודקת ואנשי הקשר שלה.',
+    get label() { return t('settings.section.safetyOfficers'); },
+    get hint() { return t('settings.section.safetyOfficersHint'); },
     icon: 'shield-checkmark-outline',
   },
   {
     key: 'branding',
-    label: 'לוגו וחותמת',
-    hint: 'PNG או JPG. רקע שקוף ייראה הכי טוב על מסמכים.',
+    get label() { return t('settings.section.logoStamp'); },
+    get hint() { return t('settings.section.logoStampHint'); },
     icon: 'image-outline',
   },
-];
-
-const COMPANY_TYPE_OPTIONS: { value: CompanyType; label: string }[] = [
-  { value: 'בע״מ', label: 'חברה בע״מ' },
-  { value: 'עוסק מורשה', label: 'עוסק מורשה' },
 ];
 
 // The grouped background is the app's own canvas, so the page flows with the rest of the site.
@@ -241,10 +237,10 @@ export function CompanySettingsDesktopView({
 
           <Section {...sectionProps('details', 0)}>
             <Panel>
-              <Cell label="שם החברה" required error={errors.name}>
+              <Cell label={t('company.name')} required error={errors.name}>
                 <DesktopInput large value={form.name} onChangeText={(v) => onChange('name', v)} hasError={!!errors.name} />
               </Cell>
-              <Cell label="ח.פ / ע.מ" required error={errors.businessId}>
+              <Cell label={t('company.businessId')} required error={errors.businessId}>
                 <DesktopInput
                   large
                   value={form.businessId}
@@ -255,37 +251,37 @@ export function CompanySettingsDesktopView({
                   hasError={!!errors.businessId}
                 />
               </Cell>
-              <Cell label="סוג חברה">
+              <Cell label={t('company.type')}>
                 <DesktopSelect
                   large
                   value={form.companyType}
                   options={COMPANY_TYPE_OPTIONS}
                   onChange={(v) => onChange('companyType', v)}
-                  placeholder="בחר סוג חברה"
+                  placeholder={t('company.chooseType')}
                   allowClear
                 />
               </Cell>
-              <Cell label="תוקף רישיון מוביל">
+              <Cell label={t('company.carrierLicenseExpiry')}>
                 <DesktopDateField large value={form.carrierLicenseExpiry} onChange={(v) => onChange('carrierLicenseExpiry', v)} />
               </Cell>
-              <Cell label="כתובת החברה" wide>
+              <Cell label={t('company.address')} wide>
                 <DesktopInput
                   large
                   value={form.address}
                   onChangeText={(v) => onChange('address', v)}
-                  placeholder="רחוב, מספר, עיר"
+                  placeholder={t('company.addressPlaceholder')}
                 />
               </Cell>
             </Panel>
             <DText style={styles.footnote}>
-              <Ionicons name="lock-closed" size={11} color={DESKTOP_COLORS.inkFaint} /> במערכת מאז{' '}
+              <Ionicons name="lock-closed" size={11} color={DESKTOP_COLORS.inkFaint} /> {t('company.inSystemSince')}{' '}
               {joinedAt ? formatDate(joinedAt) : '—'}
             </DText>
           </Section>
 
           <Section {...sectionProps('contact', 1)}>
             <Panel>
-              <Cell label="טלפון קווי" error={errors.landline}>
+              <Cell label={t('company.landline')} error={errors.landline}>
                 <PhoneInput
                   value={form.landline}
                   error={errors.landline}
@@ -294,7 +290,7 @@ export function CompanySettingsDesktopView({
                   onBlur={() => onFieldBlur('landline')}
                 />
               </Cell>
-              <Cell label="טלפון נייד" error={errors.mobile}>
+              <Cell label={t('common.mobilePhone')} error={errors.mobile}>
                 <PhoneInput
                   value={form.mobile}
                   error={errors.mobile}
@@ -302,7 +298,7 @@ export function CompanySettingsDesktopView({
                   onBlur={() => onFieldBlur('mobile')}
                 />
               </Cell>
-              <Cell label="פקס" error={errors.fax}>
+              <Cell label={t('company.fax')} error={errors.fax}>
                 <PhoneInput
                   value={form.fax}
                   error={errors.fax}
@@ -312,21 +308,21 @@ export function CompanySettingsDesktopView({
                 />
               </Cell>
               <EmailCell
-                label="דוא״ל"
+                label={t('common.email')}
                 value={form.email}
                 error={errors.email}
                 onChange={(v) => onChange('email', v)}
                 onBlur={() => onFieldBlur('email')}
               />
               <EmailCell
-                label="מייל לשליחת קבצים"
+                label={t('company.filesEmail')}
                 value={form.filesEmail}
                 error={errors.filesEmail}
                 onChange={(v) => onChange('filesEmail', v)}
                 onBlur={() => onFieldBlur('filesEmail')}
               />
               <EmailCell
-                label="מייל נוסף לקבצים"
+                label={t('company.filesEmailExtra')}
                 value={form.filesEmail2}
                 error={errors.filesEmail2}
                 onChange={(v) => onChange('filesEmail2', v)}
@@ -338,14 +334,14 @@ export function CompanySettingsDesktopView({
           <Section {...sectionProps('report', 2)}>
             <Panel>
               <ToggleRow
-                title="שליחה אוטומטית"
-                caption={form.reportAuto ? 'הדוח יישלח ב-1 לכל חודש' : 'הדוח לא נשלח'}
+                title={t('company.autoSend')}
+                caption={form.reportAuto ? t('company.reportMonthly') : t('company.reportNotSent')}
                 value={form.reportAuto}
                 onValueChange={(v) => onChange('reportAuto', v)}
               />
               {form.reportAuto && <NextReportRow email={form.reportEmail} />}
               <EmailCell
-                label="מייל לקבלת הדוח"
+                label={t('company.reportEmail')}
                 value={form.reportEmail}
                 error={errors.reportEmail}
                 required={form.reportAuto}
@@ -359,19 +355,19 @@ export function CompanySettingsDesktopView({
           <Section {...sectionProps('people', 3)}>
             <View style={styles.panelStack}>
               {form.contacts.map((c, i) => (
-                <Panel key={i} title={`איש קשר ${i + 1}`} icon="person-circle-outline">
-                  <Cell label="שם מלא">
+                <Panel key={i} title={t('company.contactN', { v1: i + 1 })} icon="person-circle-outline">
+                  <Cell label={t('common.fullName')}>
                     <DesktopInput large value={c.name} onChangeText={(v) => onChangeContact(i, 'name', v)} />
                   </Cell>
-                  <Cell label="תפקיד">
+                  <Cell label={t('common.role')}>
                     <DesktopInput
                       large
                       value={c.role}
                       onChangeText={(v) => onChangeContact(i, 'role', v)}
-                      placeholder="למשל: מנהל תפעול"
+                      placeholder={t('company.rolePlaceholder')}
                     />
                   </Cell>
-                  <Cell label="טלפון" error={errors[`contact${i}Phone`]}>
+                  <Cell label={t('common.phone')} error={errors[`contact${i}Phone`]}>
                     <PhoneInput
                       value={c.phone}
                       error={errors[`contact${i}Phone`]}
@@ -380,7 +376,7 @@ export function CompanySettingsDesktopView({
                     />
                   </Cell>
                   <EmailCell
-                    label="דוא״ל"
+                    label={t('common.email')}
                     value={c.email}
                     error={errors[`contact${i}Email`]}
                     onChange={(v) => onChangeContact(i, 'email', v)}
@@ -394,11 +390,11 @@ export function CompanySettingsDesktopView({
           <Section {...sectionProps('safety', 4)}>
             <View style={styles.panelStack}>
               {form.officers.map((o, i) => (
-                <Panel key={i} title={i === 0 ? 'קצין בטיחות' : 'קצין בטיחות נוסף'} icon="shield-half-outline">
-                  <Cell label="שם">
+                <Panel key={i} title={i === 0 ? t('company.safetyOfficer') : t('company.extraSafetyOfficer')} icon="shield-half-outline">
+                  <Cell label={t('common.name')}>
                     <DesktopInput large value={o.name} onChangeText={(v) => onChangeOfficer(i, 'name', v)} />
                   </Cell>
-                  <Cell label="טלפון" error={errors[`officer${i}Phone`]}>
+                  <Cell label={t('common.phone')} error={errors[`officer${i}Phone`]}>
                     <PhoneInput
                       value={o.phone}
                       error={errors[`officer${i}Phone`]}
@@ -415,14 +411,14 @@ export function CompanySettingsDesktopView({
             <View style={styles.brandingRow}>
               <View style={styles.brandingSlots}>
               <ImageSlot
-                title="לוגו החברה"
+                title={t('company.logo')}
                 uri={form.logoUri}
                 icon="image-outline"
                 onPick={() => onPickImage('logo')}
                 onClear={() => onClearImage('logo')}
               />
               <ImageSlot
-                title="חותמת החברה"
+                title={t('company.stamp')}
                 uri={form.stampUri}
                 icon="ribbon-outline"
                 onPick={() => onPickImage('stamp')}
@@ -486,9 +482,9 @@ function SectionNav({
   return (
     <View style={styles.nav}>
       <DText weight="bold" style={styles.navTitle} accessibilityRole="header">
-        הגדרות החברה
+        {t('nav.companySettings')}
       </DText>
-      <DText style={styles.navSubtitle}>הפרטים שמופיעים בדוחות, במסמכים ובתקשורת עם החברה.</DText>
+      <DText style={styles.navSubtitle}>{t('settings.detailsIntro')}</DText>
 
       <View style={styles.navCard}>
       <View style={styles.navList}>
@@ -506,7 +502,7 @@ function SectionNav({
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               aria-selected={selected}
-              accessibilityLabel={flagged ? `${s.label}, יש שדות לתיקון` : s.label}
+              accessibilityLabel={flagged ? t('settings.sectionHasErrors', { label: s.label }) : s.label}
             >
               <View style={[styles.navIcon, selected && styles.navIconActive]}>
                 <Ionicons name={s.icon} size={17} color={selected ? DESKTOP_COLORS.brand : '#FFFFFF'} />
@@ -699,8 +695,8 @@ function SaveCapsule({
   useEffect(() => {
     if (savedNonce === 0) return;
     setSavedFlash(true);
-    const t = setTimeout(() => setSavedFlash(false), 1900);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setSavedFlash(false), 1900);
+    return () => clearTimeout(timer);
   }, [savedNonce]);
 
   const mode: CapsuleMode = saving ? 'saving' : errorCount > 0 ? 'errors' : dirty ? 'dirty' : savedFlash ? 'saved' : 'hidden';
@@ -731,7 +727,7 @@ function SaveCapsule({
                 <Ionicons name="checkmark" size={14} color="#FFFFFF" />
               </View>
               <DText weight="semiBold" style={styles.capsuleText}>
-                השינויים נשמרו
+                {t('common.changesSaved')}
               </DText>
             </>
           ) : view === 'errors' ? (
@@ -740,14 +736,14 @@ function SaveCapsule({
                 <Ionicons name="alert" size={14} color="#FFFFFF" />
               </View>
               <DText weight="semiBold" style={styles.capsuleText}>
-                {errorCount === 1 ? 'יש שדה אחד לתיקון' : `יש ${errorCount} שדות לתיקון`}
+                {errorCount === 1 ? t('settings.oneFieldToFix') : t('settings.fieldsToFix', { errorCount })}
               </DText>
             </>
           ) : (
             <>
               <View style={styles.capsuleDot} />
               <DText weight="semiBold" style={styles.capsuleText}>
-                יש שינויים שלא נשמרו
+                {t('settings.unsavedChanges')}
               </DText>
             </>
           )}
@@ -761,7 +757,7 @@ function SaveCapsule({
               disabled={saving}
             >
               <DText weight="semiBold" style={styles.capsuleGhostText}>
-                ביטול
+                {t('common.cancel')}
               </DText>
             </HoverPressable>
             <HoverPressable
@@ -770,10 +766,10 @@ function SaveCapsule({
               pressMotionStyle={styles.capsuleCtaPress}
               onPress={onSave}
               disabled={saving}
-              accessibilityLabel={saving ? 'שומר' : 'שמור שינויים'}
+              accessibilityLabel={saving ? t('common.saving') : t('common.saveChanges')}
             >
               <DText weight="semiBold" style={[styles.capsuleCtaText, saving && styles.busyLabel]}>
-                שמור שינויים
+                {t('common.saveChanges')}
               </DText>
               {saving && <BrandLoader size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
             </HoverPressable>
@@ -798,12 +794,12 @@ function useCountUp(target: number, duration = 900): number {
     const origin = from.current;
     let frame = 0;
     const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3);
+      const ratio = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - ratio, 3);
       const next = origin + (target - origin) * eased;
       from.current = next;
       setValue(next);
-      if (t < 1) frame = requestAnimationFrame(tick);
+      if (ratio < 1) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
@@ -821,13 +817,13 @@ function CompanyOverview({ form, onJump }: { form: CompanySettingsForm; onJump: 
   const initial = form.name.trim().charAt(0) || '?';
   const officer = form.officers[0];
   const checklist: { label: string; done: boolean; section: SectionKey }[] = [
-    { label: 'לוגו', done: !!form.logoUri, section: 'branding' },
-    { label: 'כתובת', done: !!form.address.trim(), section: 'details' },
-    { label: 'טלפון קווי', done: !!form.landline, section: 'contact' },
-    { label: 'דוא״ל', done: !!form.email, section: 'contact' },
-    { label: 'קצין בטיחות', done: !!officer?.name.trim() && !!officer?.phone, section: 'safety' },
-    { label: 'איש קשר', done: !!form.contacts[0]?.name.trim(), section: 'people' },
-    { label: 'חותמת', done: !!form.stampUri, section: 'branding' },
+    { label: t('company.logoShort'), done: !!form.logoUri, section: 'branding' },
+    { label: t('common.address'), done: !!form.address.trim(), section: 'details' },
+    { label: t('company.landline'), done: !!form.landline, section: 'contact' },
+    { label: t('common.email'), done: !!form.email, section: 'contact' },
+    { label: t('company.safetyOfficer'), done: !!officer?.name.trim() && !!officer?.phone, section: 'safety' },
+    { label: t('company.contactPerson'), done: !!form.contacts[0]?.name.trim(), section: 'people' },
+    { label: t('company.stampShort'), done: !!form.stampUri, section: 'branding' },
   ];
   const doneCount = checklist.filter((c) => c.done).length;
   const missing = checklist.filter((c) => !c.done);
@@ -843,21 +839,21 @@ function CompanyOverview({ form, onJump }: { form: CompanySettingsForm; onJump: 
           <View style={styles.heroTop}>
             <View style={[styles.heroMark, !!form.logoUri && styles.heroMarkLogo]}>
               {form.logoUri ? (
-                <Image source={{ uri: form.logoUri }} accessibilityLabel="לוגו החברה" style={styles.heroLogo} resizeMode="contain" />
+                <Image source={{ uri: form.logoUri }} accessibilityLabel={t('company.logo')} style={styles.heroLogo} resizeMode="contain" />
               ) : (
                 <DText weight="extraBold" style={styles.heroInitial}>{initial}</DText>
               )}
             </View>
             <View style={styles.heroNameBlock}>
               <DText weight="extraBold" style={styles.heroName} numberOfLines={1}>
-                {form.name.trim() || 'שם החברה'}
+                {form.name.trim() || t('company.name')}
               </DText>
               <View style={styles.heroIdRow}>
-                <DText style={styles.heroIdLabel}>ח.פ</DText>
+                <DText style={styles.heroIdLabel}>{t('company.businessIdShort')}</DText>
                 <DLtrText weight="semiBold" style={[styles.heroIdValue, styles.tabular]}>{form.businessId || '—'}</DLtrText>
                 {!!form.companyType && (
                   <View style={styles.heroTag}>
-                    <DText weight="semiBold" style={styles.heroTagText}>{form.companyType}</DText>
+                    <DText weight="semiBold" style={styles.heroTagText}>{companyTypeLabel(form.companyType)}</DText>
                   </View>
                 )}
               </View>
@@ -872,7 +868,7 @@ function CompanyOverview({ form, onJump }: { form: CompanySettingsForm; onJump: 
             <HeroChip
               icon="shield-checkmark-outline"
               value={officer?.name.trim() ? `${officer.name.trim()}${officer.phone ? ` · ${formatPhone(officer.phone)}` : ''}` : ''}
-              empty="אין קצין בטיחות"
+              empty={t('company.noSafetyOfficer')}
             />
           </View>
         </View>
@@ -880,7 +876,7 @@ function CompanyOverview({ form, onJump }: { form: CompanySettingsForm; onJump: 
         <View style={styles.heroProgress}>
           <View
             style={[styles.ring, webOnly({ backgroundImage: `conic-gradient(${ringColor} ${pct}%, rgba(255,255,255,0.1) ${pct}%)` })]}
-            accessibilityLabel={`${doneCount} מתוך ${checklist.length} פרטים מולאו`}
+            accessibilityLabel={t('settings.filledOfTotal', { doneCount, length: checklist.length })}
           >
             <View style={styles.ringInner}>
               {complete ? (
@@ -895,10 +891,10 @@ function CompanyOverview({ form, onJump }: { form: CompanySettingsForm; onJump: 
           </View>
           <View style={styles.heroProgressText}>
             <DText weight="bold" style={styles.heroProgressTitle}>
-              {complete ? 'כל הפרטים מולאו' : missing.length === 1 ? 'חסר עוד פרט אחד' : `חסרים עוד ${missing.length} פרטים`}
+              {complete ? t('settings.allFilled') : missing.length === 1 ? t('settings.oneMissing') : t('settings.missingCount', { length: missing.length })}
             </DText>
             <DText style={styles.heroProgressHint}>
-              {complete ? 'הדוחות והמסמכים יוצאים מלאים.' : 'לחיצה על פרט מובילה ישר למקום שלו:'}
+              {complete ? t('settings.reportsComplete') : t('settings.clickToJump')}
             </DText>
             {!complete && (
               <View style={styles.missingRow}>
@@ -909,7 +905,7 @@ function CompanyOverview({ form, onJump }: { form: CompanySettingsForm; onJump: 
                     hoverStyle={styles.missingPillHover}
                     pressMotionStyle={styles.missingPillPress}
                     onPress={() => onJump(c.section)}
-                    accessibilityLabel={`הוספת ${c.label}`}
+                    accessibilityLabel={t('common.addLabel', { label: c.label })}
                   >
                     <Ionicons name="add" size={15} color={DESKTOP_COLORS.brand} />
                     <DText weight="semiBold" style={styles.missingPillText}>{c.label}</DText>
@@ -924,7 +920,7 @@ function CompanyOverview({ form, onJump }: { form: CompanySettingsForm; onJump: 
   );
 }
 
-function HeroChip({ icon, value, ltr, empty = 'לא הוזן' }: { icon: IconName; value: string; ltr?: boolean; empty?: string }) {
+function HeroChip({ icon, value, ltr, empty = t('common.notEntered') }: { icon: IconName; value: string; ltr?: boolean; empty?: string }) {
   const Text = ltr && value ? DLtrText : DText;
   return (
     <View style={[styles.heroChip, !value && styles.heroChipEmpty]}>
@@ -940,7 +936,7 @@ function HeroChip({ icon, value, ltr, empty = 'לא הוזן' }: { icon: IconNam
 function NextReportRow({ email }: { email: string }) {
   const now = new Date();
   const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const month = next.toLocaleDateString('he-IL', { month: 'long' });
+  const month = next.toLocaleDateString(getLocale(), { month: 'long' });
   return (
     <View style={styles.nextReport}>
       <View style={styles.calTile}>
@@ -950,9 +946,9 @@ function NextReportRow({ email }: { email: string }) {
         <DText weight="extraBold" style={styles.calTileDay}>1</DText>
       </View>
       <View style={styles.nextReportText}>
-        <DText weight="semiBold" style={styles.nextReportTitle}>{`הדוח הבא יישלח ב-1 ב${month} ${next.getFullYear()}`}</DText>
+        <DText weight="semiBold" style={styles.nextReportTitle}>{t('settings.nextReport', { month, next: next.getFullYear() })}</DText>
         <DText style={styles.nextReportHint} numberOfLines={1}>
-          {email ? `לכתובת ${email}` : 'צריך למלא למטה לאיזה מייל לשלוח אותו'}
+          {email ? t('settings.toEmail', { email }) : t('settings.needReportEmail')}
         </DText>
       </View>
     </View>
@@ -965,27 +961,27 @@ function NextReportRow({ email }: { email: string }) {
  * clear what the two images are for before anything is printed.
  */
 function LetterheadPreview({ form }: { form: CompanySettingsForm }) {
-  const details = [form.businessId && `ח.פ ${form.businessId}`, form.address.trim(), form.landline && formatPhone(form.landline)]
+  const details = [form.businessId && t('company.businessIdValue', { businessId: form.businessId }), form.address.trim(), form.landline && formatPhone(form.landline)]
     .filter(Boolean)
     .join('  ·  ');
   return (
     <View style={[styles.panel, styles.paperStage]}>
       <View style={styles.paperCaption}>
         <Ionicons name="eye-outline" size={17} color={DESKTOP_COLORS.brand} />
-        <DText weight="semiBold" style={styles.paperCaptionText}>כך זה ייראה על מסמך</DText>
+        <DText weight="semiBold" style={styles.paperCaptionText}>{t('settings.documentPreview')}</DText>
       </View>
       <View style={styles.paper}>
         <View style={styles.paperHead}>
           <View style={styles.paperLogo}>
             {form.logoUri ? (
-              <Image source={{ uri: form.logoUri }} accessibilityLabel="לוגו החברה" style={styles.paperLogoImage} resizeMode="contain" />
+              <Image source={{ uri: form.logoUri }} accessibilityLabel={t('company.logo')} style={styles.paperLogoImage} resizeMode="contain" />
             ) : (
-              <DText style={styles.paperPlaceholder}>לוגו</DText>
+              <DText style={styles.paperPlaceholder}>{t('company.logoShort')}</DText>
             )}
           </View>
           <View style={styles.paperHeadText}>
-            <DText weight="bold" style={styles.paperCompany} numberOfLines={1}>{form.name.trim() || 'שם החברה'}</DText>
-            <DText style={styles.paperDetails} numberOfLines={1}>{details || 'ח.פ · כתובת · טלפון'}</DText>
+            <DText weight="bold" style={styles.paperCompany} numberOfLines={1}>{form.name.trim() || t('company.name')}</DText>
+            <DText style={styles.paperDetails} numberOfLines={1}>{details || t('settings.previewLine')}</DText>
           </View>
         </View>
         <View style={styles.paperRule} />
@@ -994,12 +990,12 @@ function LetterheadPreview({ form }: { form: CompanySettingsForm }) {
         ))}
         <View style={styles.paperSign}>
           <View style={styles.paperSignLine} />
-          <DText style={styles.paperSignLabel}>חתימה</DText>
+          <DText style={styles.paperSignLabel}>{t('field.signature')}</DText>
           {form.stampUri ? (
-            <Image source={{ uri: form.stampUri }} accessibilityLabel="חותמת החברה" style={styles.paperStamp} resizeMode="contain" />
+            <Image source={{ uri: form.stampUri }} accessibilityLabel={t('company.stamp')} style={styles.paperStamp} resizeMode="contain" />
           ) : (
             <View style={styles.paperStampEmpty}>
-              <DText style={styles.paperPlaceholder}>חותמת</DText>
+              <DText style={styles.paperPlaceholder}>{t('company.stampShort')}</DText>
             </View>
           )}
         </View>
@@ -1085,7 +1081,7 @@ function EmailField({
       hasError={!!error}
     />
   );
-  return render(input, error ?? (blocked ? 'כתובת מייל נכתבת באנגלית בלבד' : undefined));
+  return render(input, error ?? (blocked ? t('validation.emailEnglishOnly') : undefined));
 }
 
 /**
@@ -1219,14 +1215,14 @@ function ImageSlot({
         </DText>
         {!!uri && (
           <View style={styles.slotActions}>
-            <HoverPressable onPress={onPick} hoverStyle={styles.linkHover} accessibilityLabel={`החלפת ${title}`}>
+            <HoverPressable onPress={onPick} hoverStyle={styles.linkHover} accessibilityLabel={t('common.replaceTitle', { title })}>
               <DText weight="semiBold" style={styles.link}>
-                החלפה
+                {t('common.replace')}
               </DText>
             </HoverPressable>
-            <HoverPressable onPress={onClear} hoverStyle={styles.linkHover} accessibilityLabel={`הסרת ${title}`}>
+            <HoverPressable onPress={onClear} hoverStyle={styles.linkHover} accessibilityLabel={t('common.removeTitle', { title })}>
               <DText weight="semiBold" style={[styles.link, styles.linkDanger]}>
-                הסרה
+                {t('common.remove')}
               </DText>
             </HoverPressable>
           </View>
@@ -1236,7 +1232,7 @@ function ImageSlot({
         style={[styles.drop, !!uri && styles.dropFilled]}
         hoverStyle={styles.dropHover}
         onPress={onPick}
-        accessibilityLabel={uri ? `החלפת ${title}` : `העלאת ${title}`}
+        accessibilityLabel={uri ? t('common.replaceTitle', { title }) : t('common.uploadTitle', { title })}
       >
         {uri ? (
           <Image source={{ uri }} style={styles.dropImage} resizeMode="contain" />
@@ -1246,9 +1242,9 @@ function ImageSlot({
               <Ionicons name={icon} size={22} color={DESKTOP_COLORS.brand} />
             </View>
             <DText weight="semiBold" style={styles.dropText}>
-              העלאת תמונה
+              {t('common.uploadImage')}
             </DText>
-            <DText style={styles.dropHint}>לחץ כדי לבחור קובץ</DText>
+            <DText style={styles.dropHint}>{t('common.clickToChooseFile')}</DText>
           </>
         )}
       </HoverPressable>
@@ -1282,8 +1278,8 @@ const styles = StyleSheet.create({
   navPlatter: {
     position: 'absolute',
     top: 0,
-    left: 0,
-    right: 0,
+    start: 0,
+    end: 0,
     height: NAV_STEP - 4,
     borderRadius: 13,
     backgroundColor: DESKTOP_COLORS.brand,
@@ -1379,8 +1375,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     minHeight: 76,
-    marginRight: 20,
-    paddingLeft: 20,
+    marginEnd: 20,
+    paddingStart: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
     borderTopColor: DESKTOP_COLORS.borderSoft,
@@ -1459,8 +1455,8 @@ const styles = StyleSheet.create({
   // Save capsule
   capsuleDock: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    start: 0,
+    end: 0,
     bottom: 24,
     alignItems: 'center',
   },
@@ -1469,8 +1465,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 28,
     paddingVertical: 8,
-    paddingRight: 18,
-    paddingLeft: 8,
+    paddingEnd: 18,
+    paddingStart: 8,
     borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.82)',
     borderWidth: 1,
@@ -1548,9 +1544,9 @@ const styles = StyleSheet.create({
   heroGrid: {
     position: 'absolute',
     top: 0,
-    right: 0,
+    end: 0,
     bottom: 0,
-    left: 0,
+    start: 0,
     opacity: 0.5,
     ...webOnly({
       backgroundImage:
@@ -1584,7 +1580,7 @@ const styles = StyleSheet.create({
   heroIdLabel: { fontSize: 15, color: 'rgba(255,255,255,0.6)' },
   heroIdValue: { fontSize: 15.5, color: '#FFFFFF' },
   heroTag: {
-    marginRight: 4,
+    marginEnd: 4,
     paddingHorizontal: 10,
     height: 26,
     borderRadius: 13,
@@ -1644,8 +1640,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     height: 34,
-    paddingRight: 10,
-    paddingLeft: 13,
+    paddingEnd: 10,
+    paddingStart: 13,
     borderRadius: 17,
     backgroundColor: '#FFFFFF',
     ...webOnly({ transition: 'background-color 150ms ease, transform 160ms cubic-bezier(0.23, 1, 0.32, 1)' }),
@@ -1660,8 +1656,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     minHeight: 84,
-    marginRight: 20,
-    paddingLeft: 20,
+    marginEnd: 20,
+    paddingStart: 20,
     paddingVertical: 14,
     borderTopWidth: 1,
     borderTopColor: DESKTOP_COLORS.borderSoft,
@@ -1730,12 +1726,12 @@ const styles = StyleSheet.create({
   paperSign: { marginTop: 'auto', flexDirection: 'row-reverse', alignItems: 'flex-end', gap: 8 },
   paperSignLine: { width: 80, height: 1, backgroundColor: DESKTOP_COLORS.inkFaint, marginBottom: 12 },
   paperSignLabel: { fontSize: 8.5, color: DESKTOP_COLORS.inkFaint, marginBottom: 8 },
-  paperStamp: { width: 64, height: 64, marginRight: 'auto', transform: [{ rotate: '-10deg' }], opacity: 0.9 },
+  paperStamp: { width: 64, height: 64, marginEnd: 'auto', transform: [{ rotate: '-10deg' }], opacity: 0.9 },
   paperStampEmpty: {
     width: 58,
     height: 58,
     borderRadius: 29,
-    marginRight: 'auto',
+    marginEnd: 'auto',
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: '#C9D2DA',

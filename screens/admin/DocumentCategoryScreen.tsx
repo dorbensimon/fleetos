@@ -12,7 +12,7 @@ import { DocumentFileRow } from '../../components/documents/DocumentFileRow';
 import { Procedure6FormModal } from '../../components/documents/Procedure6FormModal';
 import { useCompany } from '../../lib/CompanyContext';
 import { DocumentRow } from '../../lib/adminApi';
-import { listDocuments, readPickedFileBase64, uploadDocument, type PickedFile } from '../../lib/documents';
+import { listDocuments, readPickedFileBase64, storedFolderTitle, uploadDocument, type PickedFile } from '../../lib/documents';
 import { createProcedure6Report, Procedure6FormValues } from '../../lib/procedure6Report';
 import { chooseDocumentSource, confirmDeleteDocument, documentDisplayName, documentViewerMode, downloadDocumentWithAlert, getDocumentViewUrl, pickDocumentSource, type DocumentSource } from '../../lib/documentActions';
 import { RootStackParamList } from '../../navigation/types';
@@ -21,6 +21,8 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
+import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * A generic "one category, one screen" document list — reused by every
@@ -84,7 +86,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       const rows = await listDocuments(ownerType, ownerId, category);
       if (requestId === loadRequest.current) setDocs(rows);
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message ?? 'טעינת המסמכים נכשלה');
+      if (requestId === loadRequest.current) setError(errorMessage(err, t('documents.loadFailedShort')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -102,7 +104,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const addDocument = async () => {
     if (!companyId) return;
     if (requiresExpiry && !expiryDate) {
-      showAlert('חסר תוקף', 'יש לבחור תאריך תוקף למסמך לפני ההעלאה');
+      showAlert(t('documents.expiryMissing'), t('documents.chooseExpiryBeforeUpload'));
       return;
     }
 
@@ -112,11 +114,11 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
         const file = await pickDocumentSource(source);
         if (!file) return;
 
-        await uploadDocument({ companyId, ownerType, ownerId, category, title, file, expiryDate });
+        await uploadDocument({ companyId, ownerType, ownerId, category, title: storedFolderTitle(category, title), file, expiryDate });
         if (requiresExpiry) setExpiryDate(null);
         await load();
       } catch (err: any) {
-        showAlert('העלאה נכשלה', err?.message ?? 'נסה שוב');
+        showAlert(t('common.uploadFailedShort'), errorMessage(err, t('common.tryAgain')));
       } finally {
         setUploading(false);
       }
@@ -157,13 +159,13 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       {docs.length === 0 ? (
         <EmptyState
           icon="document-text-outline"
-          title={isProcedure6 ? 'אין עדיין דיווחי נוהל 6' : 'אין עדיין מסמכים'}
+          title={isProcedure6 ? t('procedure6.noneYet') : t('documents.noneYetShort')}
           hint={
             isProcedure6
               ? canCreateProcedure6
-                ? 'הוסף דיווח כדי ליצור את המסמך הראשון'
-                : 'המנהל עדיין לא הוסיף דיווח בקטגוריה זו'
-              : 'הנהג עדיין לא צילם או העלה מסמכים בקטגוריה זו'
+                ? t('procedure6.addToCreateFirst')
+                : t('procedure6.managerNoneYet')
+              : t('documents.driverNoneInCategory')
           }
         />
       ) : (
@@ -187,8 +189,8 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
         <>
           {requiresExpiry && (
             <View style={desktopStyles.expiryField}>
-              <DText weight="semiBold" style={desktopStyles.expiryLabel}>תוקף המסמך</DText>
-              <DateField value={expiryDate} onChange={setExpiryDate} placeholder="בחר תאריך תוקף" />
+              <DText weight="semiBold" style={desktopStyles.expiryLabel}>{t('documents.documentExpiry')}</DText>
+              <DateField value={expiryDate} onChange={setExpiryDate} placeholder={t('documents.chooseExpiryDate')} />
             </View>
           )}
           <HoverPressable
@@ -203,7 +205,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
               <>
                 <Ionicons name={isProcedure6 ? 'add-circle-outline' : 'cloud-upload-outline'} size={15} color="#FFFFFF" />
                 <DText weight="semiBold" style={desktopStyles.uploadText}>
-                  {isProcedure6 ? 'הוסף דיווח נוהל 6' : 'העלה מסמך'}
+                  {isProcedure6 ? t('procedure6.addReport') : t('documents.uploadDocument')}
                 </DText>
               </>
             )}
@@ -216,7 +218,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   if (isDesktop) {
     return (
       <>
-        <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', title]}>
+        <DesktopShell active="AdminHome" breadcrumbs={[t('nav.management'), t('common.drivers'), title]}>
           {desktopBody}
         </DesktopShell>
         {isProcedure6 && (
@@ -235,7 +237,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       hero={
         <HeroTitle
           title={title}
-          subtitle={loading ? 'טוען מסמכים…' : docs.length ? `${docs.length} ${docs.length === 1 ? 'מסמך' : 'מסמכים'} בתיקייה` : 'התיקייה ריקה'}
+          subtitle={loading ? t('documents.loadingEllipsis') : docs.length ? t('documents.inFolder', { length: docs.length, v1: docs.length === 1 ? t('documents.document') : t('common.documents') }) : t('documents.folderEmptyShort')}
           onBack={() => navigation.goBack()}
           right={<View style={styles.heroIcon}><Ionicons name={icon} size={22} color={DK.onNight} /></View>}
         />
@@ -243,7 +245,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       footer={
         canAdd && !loading && !error ? (
           <PrimaryAction
-            label={isProcedure6 ? 'דיווח נוהל 6 חדש' : 'הוספת מסמך'}
+            label={isProcedure6 ? t('procedure6.newReport') : t('documents.addDocument')}
             icon={isProcedure6 ? 'add-circle-outline' : 'cloud-upload-outline'}
             loading={uploading}
             onPress={() => (isProcedure6 ? setShowProcedure6Form(true) : void addDocument())}
@@ -257,20 +259,20 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       {loading ? (
         <LoadingPanel />
       ) : error ? (
-        <ErrorPanel message="טעינת המסמכים נכשלה" hint={error} onRetry={load} />
+        <ErrorPanel message={t('documents.loadFailedShort')} hint={error} onRetry={load} />
       ) : (
         <>
           {docs.length === 0 ? (
             <Reveal>
               <EmptyPanel
                 icon={icon}
-                title={isProcedure6 ? 'אין עדיין דיווחי נוהל 6' : 'אין עדיין מסמכים'}
+                title={isProcedure6 ? t('procedure6.noneYet') : t('documents.noneYetShort')}
                 body={
                   isProcedure6
                     ? canCreateProcedure6
-                      ? 'דיווח חדש יוצר מסמך PDF מסודר ושומר אותו כאן.'
-                      : 'המנהל עדיין לא הוסיף דיווח בתיקייה הזו.'
-                    : 'צלם או העלה את המסמך הראשון — הוא יישמר כאן ויהיה זמין גם במחשב.'
+                      ? t('procedure6.newReportHint')
+                      : t('procedure6.managerNoneInFolder')
+                    : t('documents.captureFirstHint')
                 }
               />
             </Reveal>
@@ -291,8 +293,8 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
           )}
           {canAdd && requiresExpiry && (
             <Reveal index={Math.min(docs.length, 8) + 1}>
-              <KitSection title="המסמך הבא">
-                <EditField first label="תוקף המסמך" required editor={<DateField value={expiryDate} onChange={setExpiryDate} placeholder="בחר תאריך תוקף" />} hint="חובה לבחור תוקף לפני ההעלאה" />
+              <KitSection title={t('documents.nextDocument')}>
+                <EditField first label={t('documents.documentExpiry')} required editor={<DateField value={expiryDate} onChange={setExpiryDate} placeholder={t('documents.chooseExpiryDate')} />} hint={t('documents.expiryRequiredBeforeUpload')} />
               </KitSection>
             </Reveal>
           )}

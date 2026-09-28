@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { t } from './i18n';
 
 /**
  * Browser downloads cannot use Expo's native cache/share-sheet flow. Keep the
@@ -9,7 +10,7 @@ export async function downloadRemoteFileOnWeb(url: string, fileName: string): Pr
   if (Platform.OS !== 'web') return false;
 
   const response = await fetch(url);
-  if (!response.ok) throw new Error('הורדת הקובץ נכשלה');
+  if (!response.ok) throw new Error(t('common.fileDownloadFailed'));
 
   const objectUrl = URL.createObjectURL(await response.blob());
   const anchor = document.createElement('a');
@@ -32,11 +33,11 @@ export async function readBlobUrlAsBase64(blobUrl: string): Promise<string> {
   const blob = await response.blob();
   return await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('קריאת הקובץ נכשלה'));
+    reader.onerror = () => reject(new Error(t('common.fileReadFailed')));
     reader.onload = () => {
       const result = reader.result;
       if (typeof result !== 'string') {
-        reject(new Error('קריאת הקובץ נכשלה'));
+        reject(new Error(t('common.fileReadFailed')));
         return;
       }
       resolve(result.split(',')[1] ?? '');

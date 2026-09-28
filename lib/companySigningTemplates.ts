@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { requestErrorDetails } from './requestError';
 import { functionErrorMessage } from './functionError';
 import type { SigningTemplate } from './docuseal';
+import { t } from './i18n';
 
 /**
  * A company admin's own signing templates, created on desktop ("מסמכים חתומים").
@@ -50,17 +51,17 @@ export type EditorInline =
  */
 /** Text sizes, colours and the marker the editor offers. The server accepts only these. */
 export const EDITOR_TEXT_SIZES = [
-  { px: 13, label: 'קטן' },
-  { px: 16, label: 'רגיל' },
-  { px: 20, label: 'גדול' },
-  { px: 24, label: 'גדול מאוד' },
+  { px: 13, get label() { return t('editor.size.small'); } },
+  { px: 16, get label() { return t('editor.size.normal'); } },
+  { px: 20, get label() { return t('editor.size.large'); } },
+  { px: 24, get label() { return t('editor.size.xlarge'); } },
 ] as const;
 export const EDITOR_TEXT_COLORS = [
-  { hex: '#111111', label: 'שחור' },
-  { hex: '#5C6773', label: 'אפור' },
-  { hex: '#0088CC', label: 'כחול' },
-  { hex: '#D92D20', label: 'אדום' },
-  { hex: '#12805C', label: 'ירוק' },
+  { hex: '#111111', get label() { return t('editor.color.black'); } },
+  { hex: '#5C6773', get label() { return t('editor.color.gray'); } },
+  { hex: '#0088CC', get label() { return t('editor.color.blue'); } },
+  { hex: '#D92D20', get label() { return t('editor.color.red'); } },
+  { hex: '#12805C', get label() { return t('editor.color.green'); } },
 ] as const;
 export const EDITOR_HIGHLIGHT = '#FFF1A8';
 
@@ -115,7 +116,7 @@ export function uploadExtension(file: File): string | null {
 /** Uploads the picked file and returns the path of the draft's PDF (Word and images are converted on the server). */
 export async function uploadSigningDraft(companyId: string, draftId: string, file: File): Promise<string> {
   const ext = uploadExtension(file);
-  if (!ext) throw new Error('אפשר להעלות קובץ PDF, וורד (docx) או תמונה');
+  if (!ext) throw new Error(t('signing.uploadTypes'));
   const folder = `${companyId}/signing-templates/${draftId}`;
   const uploadName = ext === 'pdf' ? 'document.pdf' : `original.${ext}`;
   const { error } = await supabase.storage.from('documents').upload(`${folder}/${uploadName}`, file, {
@@ -123,17 +124,17 @@ export async function uploadSigningDraft(companyId: string, draftId: string, fil
     upsert: true,
   });
   if (error) {
-    const details = requestErrorDetails(error, 'העלאת הקובץ נכשלה');
+    const details = requestErrorDetails(error, t('common.uploadFailed'));
     throw new Error([details.message, details.hint].filter(Boolean).join(' '));
   }
   if (ext === 'pdf') return `${folder}/document.pdf`;
-  const { pdfPath } = await invoke<{ pdfPath: string }>({ action: 'prepare', companyId, draftId, uploadName }, 'הכנת הקובץ נכשלה');
+  const { pdfPath } = await invoke<{ pdfPath: string }>({ action: 'prepare', companyId, draftId, uploadName }, t('signing.prepareFailed'));
   return pdfPath;
 }
 
 export async function signedDocumentUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from('documents').createSignedUrl(path, 60 * 30);
-  if (error || !data?.signedUrl) throw new Error('לא הצלחנו לפתוח את הקובץ');
+  if (error || !data?.signedUrl) throw new Error(t('common.openFileFailed'));
   return data.signedUrl;
 }
 
@@ -141,7 +142,7 @@ export async function createTemplateFromFields(companyId: string, draftId: strin
   const payload = fields.map(({ kind, label, page, x, y, w, h }) => ({ kind, label, page, x, y, w, h }));
   const { template } = await invoke<{ template: SigningTemplate }>(
     { action: 'create', kind: 'pdf', companyId, draftId, title, fields: payload },
-    'שמירת המסמך נכשלה',
+    t('signing.saveDocumentFailed'),
   );
   return template;
 }
@@ -150,7 +151,7 @@ export async function createTemplateFromEditor(companyId: string, draftId: strin
   const payload = fields.map(({ kind, label, x, y, w, h }) => ({ kind, label, x, y, w, h }));
   const { template } = await invoke<{ template: SigningTemplate }>(
     { action: 'create', kind: 'editor', companyId, draftId, title, blocks, fields: payload },
-    'שמירת המסמך נכשלה',
+    t('signing.saveDocumentFailed'),
   );
   return template;
 }

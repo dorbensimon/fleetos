@@ -53,6 +53,8 @@ import {
 import { getSigningSession, syncSigningRequest } from '../../lib/docuseal';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import type { RootStackParamList } from '../../navigation/types';
+import { t, dirIcon } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * A meeting on a "רשימת סעיפים" form, from the first answer to the last
@@ -106,7 +108,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
   const scrollRef = useRef<ScrollView>(null);
 
   const companyId = driver?.company_id ?? '';
-  const driverName = driver?.full_name?.trim() || 'הנהג';
+  const driverName = driver?.full_name?.trim() || t('common.theDriver');
   const items = useMemo(() => (form ? filledItems(form) : []), [form]);
   const options = useMemo(() => (form ? statusOptions(form) : []), [form]);
   const marked = form ? answeredCount(form, answers) : 0;
@@ -119,7 +121,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
     (async () => {
       try {
         const target = await getDriver(driverId);
-        if (!target?.company_id) throw new Error('הנהג לא נמצא');
+        if (!target?.company_id) throw new Error(t('driver.notFound'));
         let loadedForm: ChecklistForm | null = null;
         let loadedTitle = '';
         let loadedMeeting: MeetingRow | null = null;
@@ -127,26 +129,26 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
         let request: string | null = null;
         if (meetingId) {
           loadedMeeting = await getMeeting(meetingId);
-          if (!loadedMeeting || loadedMeeting.driver_id !== driverId) throw new Error('המפגש לא נמצא');
-          if (loadedMeeting.status === 'cancelled') throw new Error('המפגש הזה בוטל');
+          if (!loadedMeeting || loadedMeeting.driver_id !== driverId) throw new Error(t('meeting.notFound'));
+          if (loadedMeeting.status === 'cancelled') throw new Error(t('meeting.cancelled'));
           loadedForm = readForm(loadedMeeting.form);
           loadedTitle = loadedMeeting.title;
           if (loadedMeeting.status === 'signed' && loadedMeeting.signature_request_id) {
             request = loadedMeeting.signature_request_id;
             const requestStatus = await getRequestStatus(request);
-            if (requestStatus === 'cancelled') throw new Error('המפגש הזה בוטל');
-            if (requestStatus === 'declined') throw new Error('הנהג דחה את החתימה. אפשר לבטל את המפגש מתיק הנהג ולפתוח מפגש חדש.');
-            if (requestStatus === 'failed') throw new Error('בקשת החתימה לא הושלמה. אפשר לבטל את המפגש מתיק הנהג ולפתוח מפגש חדש.');
-            if (!requestStatus) throw new Error('בקשת החתימה של המפגש לא נמצאה');
+            if (requestStatus === 'cancelled') throw new Error(t('meeting.cancelled'));
+            if (requestStatus === 'declined') throw new Error(t('meeting.driverDeclined'));
+            if (requestStatus === 'failed') throw new Error(t('meeting.signingIncomplete'));
+            if (!requestStatus) throw new Error(t('meeting.signingNotFound'));
             nextStep = requestStatus === 'completed' ? 'done' : 'choose';
           }
         } else if (templateId) {
           const template = await getChecklistTemplate(templateId);
-          if (!template) throw new Error('הטופס לא נמצא');
+          if (!template) throw new Error(t('meeting.formNotFound'));
           loadedForm = template.form;
           loadedTitle = template.title;
         }
-        if (!loadedForm) throw new Error('הטופס לא נמצא');
+        if (!loadedForm) throw new Error(t('meeting.formNotFound'));
         const names = await recentOfficerNames(target.company_id);
         if (!active) return;
         setDriver(target);
@@ -160,7 +162,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
         setStep(nextStep);
         setRecent(names);
       } catch (err) {
-        if (active) setLoadError((err as Error)?.message || 'טעינת המפגש נכשלה');
+        if (active) setLoadError(errorMessage(err, t('meeting.loadFailed')));
       }
     })();
     return () => {
@@ -236,7 +238,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
     try {
       await task();
     } catch (err) {
-      setError((err as Error)?.message || 'הפעולה נכשלה. נסו שוב.');
+      setError(errorMessage(err, t('common.actionFailedRetryPlural')));
       toTop();
     } finally {
       setBusy('');
@@ -246,7 +248,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
   const saveDraft = () =>
     run('save', async () => {
       await persist();
-      setNotice('נשמר. אפשר להמשיך אחר כך מאותה נקודה, מתוך תיק הנהג.');
+      setNotice(t('meeting.savedContinueLater'));
       toTop();
     });
   const toOfficer = () =>
@@ -292,7 +294,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
   // ── frames ────────────────────────────────────────────────────────────
   const inShell = (content: React.ReactNode) =>
     isDesktop ? (
-      <DesktopShell active="AdminHome" breadcrumbs={['נהגים', driverName, title || 'מפגש']}>
+      <DesktopShell active="AdminHome" breadcrumbs={[t('common.drivers'), driverName, title || t('meeting.meeting')]}>
         {content}
       </DesktopShell>
     ) : (
@@ -303,7 +305,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
 
   if (loadError || !form || !driver) {
     return inShell(
-      <DriverPage insetTop={topInset} insetBottom={bottomInset} hero={<HeroTitle title={title || 'מפגש'} onBack={leave} />}>
+      <DriverPage insetTop={topInset} insetBottom={bottomInset} hero={<HeroTitle title={title || t('meeting.meeting')} onBack={leave} />}>
         {loadError ? <ErrorPanel message={loadError} /> : <LoadingPanel />}
       </DriverPage>,
     );
@@ -341,10 +343,10 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
               title={title}
               onBack={leave}
               right={
-                <Pressy onPress={() => void saveDraft()} disabled={!!busy} accessibilityLabel="שמירה והמשך אחר כך" style={styles.glassPill} pressScale={0.94}>
+                <Pressy onPress={() => void saveDraft()} disabled={!!busy} accessibilityLabel={t('common.saveAndContinueLater')} style={styles.glassPill} pressScale={0.94}>
                   <Ionicons name={busy === 'save' ? 'hourglass-outline' : 'bookmark-outline'} size={17} color={DK.onNight} />
                   <DKText variant="label" color={DK.onNight}>
-                    שמירה
+                    {t('common.save')}
                   </DKText>
                 </Pressy>
               }
@@ -356,7 +358,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
                   {driverName}
                 </DKText>
                 <DKText variant="caption" color={DK.onNightMuted}>
-                  {[driver.license_classes ? `רישיון ${driver.license_classes}` : null, `המפגש היום, ${formatIsoDay(today)}`].filter(Boolean).join(' · ')}
+                  {[driver.license_classes ? t('meeting.licenseClasses', { license_classes: driver.license_classes }) : null, t('meeting.todayIs', { today: formatIsoDay(today) })].filter(Boolean).join(' · ')}
                 </DKText>
               </View>
             </View>
@@ -370,19 +372,19 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
                 <>
                   <Ionicons name="information-circle-outline" size={18} color={DK.muted} />
                   <DKText variant="caption" color={DK.muted}>
-                    {left === 1 ? 'נשאר סעיף אחד לסימון' : `נשארו ${left} סעיפים לסימון`}
+                    {left === 1 ? t('inspection.oneItemLeft') : t('meeting.itemsLeft', { left })}
                   </DKText>
                 </>
               ) : (
                 <>
                   <Ionicons name="checkmark-circle" size={18} color={STATUS.ok.fg} />
                   <DKText variant="label" color={STATUS.ok.fg}>
-                    כל הסעיפים מסומנים
+                    {t('meeting.allMarked')}
                   </DKText>
                 </>
               )}
             </View>
-            <PrimaryAction label="המשך לחתימה" icon="arrow-back" onPress={() => void toOfficer()} disabled={!complete} loading={busy === 'next'} />
+            <PrimaryAction label={t('common.continueToSign')} icon={dirIcon('arrow-back')} onPress={() => void toOfficer()} disabled={!complete} loading={busy === 'next'} />
           </View>
         }
         overlay={
@@ -390,12 +392,12 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
             visible={!!leaving}
             onClose={() => setLeaving(null)}
             icon="bookmark-outline"
-            title="לשמור את מה שסומן?"
-            subtitle="אם תשמרו, אפשר יהיה להמשיך את המפגש אחר כך מאותה נקודה."
+            title={t('common.saveMarkedQuestion')}
+            subtitle={t('meeting.saveHint')}
             footer={
               <View style={styles.sheetStack}>
                 <PrimaryAction
-                  label="שמירה ויציאה"
+                  label={t('common.saveAndExit')}
                   icon="bookmark"
                   loading={busy === 'save'}
                   onPress={() =>
@@ -409,9 +411,9 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
                   }
                 />
                 <SheetActions>
-                  <PrimaryAction label="להמשיך למלא" tone="ghost" onPress={() => setLeaving(null)} style={styles.flex} />
+                  <PrimaryAction label={t('common.keepFilling')} tone="ghost" onPress={() => setLeaving(null)} style={styles.flex} />
                   <PrimaryAction
-                    label="יציאה בלי לשמור"
+                    label={t('common.exitWithoutSaving')}
                     tone="danger"
                     onPress={() => {
                       allowLeave.current = true;
@@ -439,10 +441,10 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
         )}
         {left > 0 && (
           <Reveal>
-            <Pressy onPress={markRest} accessibilityLabel={marked ? 'סימון כל השאר כבוצע' : 'סימון הכל כבוצע'} style={styles.markAll} pressScale={0.97} haptic>
+            <Pressy onPress={markRest} accessibilityLabel={marked ? t('meeting.markRestDone') : t('meeting.markAllDone')} style={styles.markAll} pressScale={0.97} haptic>
               <Ionicons name="checkmark-done" size={21} color={DK.accent} />
               <DKText variant="label" color={DK.accent}>
-                {marked ? 'סימון כל השאר כבוצע' : 'סימון הכל כבוצע'}
+                {marked ? t('meeting.markRestDone') : t('meeting.markAllDone')}
               </DKText>
             </Pressy>
           </Reveal>
@@ -466,16 +468,16 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
         insetBottom={bottomInset}
         scrollRef={scrollRef}
         scrollEnabled={!drawing}
-        hero={<HeroTitle title={form.labels.officer} subtitle={`המפגש עם ${driverName}, ${formatIsoDay(today)}`} onBack={() => setStep('fill')} />}
+        hero={<HeroTitle title={form.labels.officer} subtitle={t('meeting.withDriverToday', { driverName, today: formatIsoDay(today) })} onBack={() => setStep('fill')} />}
         footer={
           <View style={styles.footer}>
             <View style={styles.need}>
               <Ionicons name="lock-closed-outline" size={17} color={DK.muted} />
               <DKText variant="caption" color={DK.muted}>
-                אחרי השמירה אי אפשר לשנות את הסעיפים
+                {t('meeting.cantChangeAfterSave')}
               </DKText>
             </View>
-            <PrimaryAction label="שמירת החתימה והמשך" icon="checkmark-circle" onPress={() => void officerSigns()} disabled={!canSign} loading={busy === 'sign'} />
+            <PrimaryAction label={t('common.saveSignatureContinue')} icon="checkmark-circle" onPress={() => void officerSigns()} disabled={!canSign} loading={busy === 'sign'} />
           </View>
         }
       >
@@ -483,28 +485,28 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
         <Reveal>
           <Surface style={styles.block}>
             <DKText variant="label" color={DK.inkSoft} nativeID="officer-name-label">
-              השם של מי שחותם
+              {t('signature.signerName')}
             </DKText>
             <KitInput
               value={officerName}
               onChangeText={setOfficerName}
-              placeholder="לדוגמה: רונית שגיא"
+              placeholder={t('signature.nameExample')}
               autoComplete="name"
               textContentType="name"
               maxLength={CHECKLIST_LIMITS.officerName}
-              accessibilityLabel="השם של מי שחותם"
+              accessibilityLabel={t('signature.signerName')}
               accessibilityLabelledBy="officer-name-label"
             />
             {recent.length > 0 && (
               <>
                 <DKText variant="caption" color={DK.muted}>
-                  שמות שכבר חתמו:
+                  {t('signature.namesSigned')}
                 </DKText>
                 <View style={styles.chips}>
                   {recent.map((name) => {
                     const on = officerName.trim() === name;
                     return (
-                      <Pressy key={name} onPress={() => setOfficerName(name)} accessibilityLabel={`${name}${on ? ', נבחר' : ''}`} style={[styles.chip, on && styles.chipOn]} pressScale={0.95}>
+                      <Pressy key={name} onPress={() => setOfficerName(name)} accessibilityLabel={`${name}${on ? t('common.selectedSuffix') : ''}`} style={[styles.chip, on && styles.chipOn]} pressScale={0.95}>
                         <Ionicons name={on ? 'checkmark' : 'person-outline'} size={16} color={on ? '#FFFFFF' : DK.accent} />
                         <DKText variant="label" color={on ? '#FFFFFF' : DK.accent}>
                           {name}
@@ -516,7 +518,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
               </>
             )}
             <DKText variant="caption" color={DK.muted}>
-              השם יודפס מתחת לחתימה, כדי שיהיה ברור מי חתם.
+              {t('signature.namePrinted')}
             </DKText>
           </Surface>
         </Reveal>
@@ -524,7 +526,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
           <Surface style={styles.block}>
             <SignaturePad title={form.labels.officer} onChange={setOfficerSig} onDrawing={setDrawing} disabled={busy === 'sign'} />
             <DKText variant="caption" color={DK.muted}>
-              החתימה לא נשמרת במכשיר. בכל מפגש חותמים מחדש.
+              {t('signature.notStored')}
             </DKText>
           </Surface>
         </Reveal>
@@ -536,7 +538,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
   if (step === 'choose') {
     const first = firstName(driverName);
     return inShell(
-      <DriverPage key={step} insetTop={topInset} insetBottom={bottomInset} scrollRef={scrollRef} hero={<HeroTitle title={`החתימה של ${first}`} subtitle="בחרו אחת משתי הדרכים" onBack={leave} />}>
+      <DriverPage key={step} insetTop={topInset} insetBottom={bottomInset} scrollRef={scrollRef} hero={<HeroTitle title={t('signature.ofFirst', { first })} subtitle={t('signature.chooseWay')} onBack={leave} />}>
         {messages}
         <Reveal>
           <SignedBy image={officerSig} label={form.labels.officer} name={meeting?.officer_name ?? officerName} date={formatIsoDay(meeting?.meeting_date ?? today)} />
@@ -545,9 +547,9 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
           <Choice
             icon={isDesktop ? 'desktop-outline' : 'phone-portrait-outline'}
             tone="accent"
-            title={isDesktop ? 'עכשיו, על המחשב הזה' : 'עכשיו, על הטלפון הזה'}
-            body={`הנהג כאן? ${isDesktop ? 'מפנים אליו את המסך' : 'מעבירים לו את הטלפון'}, והחתימה נעשית במקום.`}
-            tag="הכי נפוץ"
+            title={isDesktop ? t('signature.nowComputer') : t('signature.nowPhone')}
+            body={t('signature.driverHere', { v1: isDesktop ? t('signature.turnScreen') : t('signature.handPhone') })}
+            tag={t('signature.mostCommon')}
             onPress={() => {
               setError('');
               setDriverSig(null);
@@ -560,8 +562,8 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
           <Choice
             icon="paper-plane-outline"
             tone="cyan"
-            title={`שליחה ל${first} לחתימה`}
-            body={`הטופס יגיע לאפליקציה של ${first}, והחתימה תיעשה משם. בינתיים בתיק מופיע ״ממתין לחתימת הנהג״.`}
+            title={t('signature.sendToFirst', { first })}
+            body={t('signature.formToApp', { first })}
             onPress={() => void sendToDriver()}
             loading={busy === 'notify'}
             disabled={!!busy}
@@ -587,33 +589,33 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
             </Reveal>
             <Reveal index={1}>
               <DKText variant="display" color={DK.onNight} style={styles.center}>
-                {isDesktop ? `עכשיו החתימה של ${driverName}` : `העבירו את הטלפון ל${driverName}`}
+                {isDesktop ? t('signature.nowDriver', { driverName }) : t('signature.passPhoneTo', { driverName })}
               </DKText>
             </Reveal>
             <Reveal index={2}>
               <DKText variant="body" color={DK.onNightMuted} style={styles.center}>
-                על המסך יופיע רק הטופס הזה, לחתימה.
+                {t('signature.onlyThisForm')}
               </DKText>
             </Reveal>
             <Reveal index={3}>
               <View style={styles.lockLine}>
                 <Ionicons name="lock-closed" size={15} color={DK.onNightMuted} />
                 <DKText variant="caption" color={DK.onNightMuted}>
-                  שאר המערכת סגורה עד סוף החתימה
+                  {t('signature.systemLocked')}
                 </DKText>
               </View>
             </Reveal>
           </View>
           <View style={styles.nightActions}>
-            <Pressy onPress={() => setStep('driver')} haptic accessibilityLabel={`אני ${first}, אפשר להתחיל`} style={styles.whiteCta}>
+            <Pressy onPress={() => setStep('driver')} haptic accessibilityLabel={t('signature.iAmReady', { first })} style={styles.whiteCta}>
               <DKText variant="heading" color={DK.nightInk}>
-                אני {first}, אפשר להתחיל
+                {t('signature.iAm')} {first}{t('signature.readyToStart')}
               </DKText>
-              <Ionicons name="arrow-back" size={21} color={DK.nightInk} />
+              <Ionicons name={dirIcon('arrow-back')} size={21} color={DK.nightInk} />
             </Pressy>
-            <Pressy onPress={() => setStep('choose')} accessibilityLabel="חזרה, הנהג לא חותם עכשיו" style={styles.quietLink} pressScale={0.96}>
+            <Pressy onPress={() => setStep('choose')} accessibilityLabel={t('signature.backDriverNotSigning')} style={styles.quietLink} pressScale={0.96}>
               <DKText variant="label" color={DK.onNightMuted}>
-                חזרה, החתימה לא עכשיו
+                {t('signature.backNotNow')}
               </DKText>
             </Pressy>
           </View>
@@ -637,15 +639,15 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
           {messages}
           <Reveal>
             <Surface style={styles.hello}>
-              <DKText variant="title">שלום {first}</DKText>
+              <DKText variant="title">{t('common.hello')} {first}</DKText>
               <DKText variant="body" color={DK.inkSoft}>
-                הטופס ״{title}״ מולא במפגש שלכם על ידי {meeting?.officer_name ?? officerName}. עברו על מה שסומן וחתמו למטה.
+                {t('meeting.formQuoteOpen')}{title}{t('meeting.filledBy')} {meeting?.officer_name ?? officerName}{t('meeting.reviewAndSign')}
               </DKText>
             </Surface>
           </Reveal>
           <Reveal index={1}>
             <DKText variant="heading" style={styles.sectionTitle}>
-              מה סומן במפגש
+              {t('meeting.whatWasMarked')}
             </DKText>
             <Surface style={styles.summary}>
               {items.map((item, index) => {
@@ -665,7 +667,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
                       <DKText variant="body">{item.text}</DKText>
                       {!!answer?.note && (
                         <DKText variant="caption" color={DK.muted}>
-                          הערה: {answer.note}
+                          {t('common.noteColon')} {answer.note}
                         </DKText>
                       )}
                     </View>
@@ -682,14 +684,14 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
               <SignaturePad title={form.labels.driver} onChange={setDriverSig} onDrawing={setDrawing} disabled={busy === 'driver'} />
             </Surface>
           </Reveal>
-          <Pressy onPress={() => setStep('choose')} accessibilityLabel="החזרה למנהל בלי לחתום" style={styles.quietLinkDark} pressScale={0.96}>
+          <Pressy onPress={() => setStep('choose')} accessibilityLabel={t('signature.returnWithoutSigning')} style={styles.quietLinkDark} pressScale={0.96}>
             <DKText variant="label" color={DK.muted}>
-              החזרה למנהל בלי לחתום
+              {t('signature.returnWithoutSigning')}
             </DKText>
           </Pressy>
         </ScrollView>
         <View style={[styles.pageFooter, { paddingBottom: insets.bottom + 12 }]}>
-          <PrimaryAction label="חתימה" icon="create-outline" onPress={() => void driverSigns()} disabled={!driverSig} loading={busy === 'driver'} />
+          <PrimaryAction label={t('field.signature')} icon="create-outline" onPress={() => void driverSigns()} disabled={!driverSig} loading={busy === 'driver'} />
         </View>
       </View>
     );
@@ -706,14 +708,14 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
         <SuccessTick tone={sent ? 'accent' : 'ok'} />
         <Reveal index={2}>
           <DKText variant="display" style={styles.center} accessibilityRole="header">
-            {sent ? `הטופס נשלח ל${first}` : 'תודה, הטופס נחתם'}
+            {sent ? t('meeting.formSentTo', { first }) : t('meeting.thanksSigned')}
           </DKText>
         </Reveal>
         <Reveal index={3}>
           <DKText variant="body" color={DK.inkSoft} style={styles.center}>
             {sent
-              ? `החתימה של ${meeting?.officer_name ?? officerName} כבר על הטופס. ההודעה תגיע לאפליקציה של ${first}, והחתימה תיעשה משם. עד אז בתיק הנהג מופיע ״ממתין לחתימת הנהג״.`
-              : `המסמך החתום נשמר בתיק של ${driverName}, בתיקייה ״${title}״.`}
+              ? t('meeting.sentBody', { v1: meeting?.officer_name ?? officerName, first })
+              : t('meeting.signedSavedIn', { driverName, title })}
           </DKText>
         </Reveal>
         {nextDue ? (
@@ -723,16 +725,16 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
                 <Ionicons name="calendar" size={22} color={DK.accent} />
               </View>
               <View style={styles.flex}>
-                <DKText variant="caption" color={DK.muted}>המפגש הבא עם {first}</DKText>
+                <DKText variant="caption" color={DK.muted}>{t('meeting.nextWith')} {first}</DKText>
                 <DKText variant="heading">{formatIsoDay(nextDue)}</DKText>
               </View>
             </Surface>
-            <DKText variant="caption" color={DK.muted} style={styles.center}>נזכיר לכם שבוע לפני. אפשר לשנות את התאריך בתיק הנהג.</DKText>
+            <DKText variant="caption" color={DK.muted} style={styles.center}>{t('meeting.remindWeekChange')}</DKText>
           </Reveal>
         ) : null}
         <Reveal index={5} style={styles.doneActions}>
-          {!sent && <PrimaryAction label="צפייה במסמך החתום" icon="document-text-outline" onPress={() => void openDocument()} loading={busy === 'open'} />}
-          <PrimaryAction label="סיום" tone={sent ? 'accent' : 'ghost'} onPress={leave} />
+          {!sent && <PrimaryAction label={t('signing.viewSigned')} icon="document-text-outline" onPress={() => void openDocument()} loading={busy === 'open'} />}
+          <PrimaryAction label={t('common.done')} tone={sent ? 'accent' : 'ghost'} onPress={leave} />
         </Reveal>
       </ScrollView>
     </View>,
@@ -749,13 +751,13 @@ function Progress({ marked, total }: { marked: number; total: number }) {
     Animated.timing(width, { toValue: value, duration: reduce ? 0 : 240, easing: EASE_OUT, useNativeDriver: false }).start();
   }, [reduce, value, width]);
   return (
-    <View style={styles.progress} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: marked }} accessibilityLabel={`סומנו ${marked} מתוך ${total}`}>
+    <View style={styles.progress} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: marked }} accessibilityLabel={t('common.markedOfTotal', { marked, total })}>
       <View style={styles.progressRow}>
         <DKText variant="caption" color={DK.onNightMuted}>
-          התקדמות
+          {t('common.progress')}
         </DKText>
         <DKText variant="label" color={DK.onNight}>
-          סומנו {marked} מתוך {total}
+          {t('common.marked')} {marked} {t('common.of')} {total}
         </DKText>
       </View>
       <View style={styles.progressTrack}>
@@ -781,7 +783,7 @@ function SignedBy({ image, label, name, date }: { image: string | null; label: s
           </DKText>
         </View>
         <DKText variant="caption" color={DK.inkSoft}>
-          נחתם על ידי {name}, {date}
+          {t('signature.signedBy')} {name}, {date}
         </DKText>
       </View>
     </Surface>
@@ -831,7 +833,7 @@ function Choice({
           </View>
         )}
       </View>
-      <Ionicons name="chevron-back" size={22} color={DK.faint} />
+      <Ionicons name={dirIcon('chevron-back')} size={22} color={DK.faint} />
     </Pressy>
   );
 }

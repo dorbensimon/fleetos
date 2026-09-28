@@ -20,6 +20,7 @@ import { RootStackParamList } from '../../navigation/types';
 import {
   departmentNameById,
   EDUCATION_OPTIONS,
+  storedValueLabel,
   joinLicenseClasses,
   LICENSE_CLASS_OPTIONS,
   MARITAL_STATUS_OPTIONS,
@@ -31,6 +32,9 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DesktopFieldRow, DesktopInput, DesktopSelect, DText, HoverPressable } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
+import { t, textStart } from '../../lib/i18n';
+import { LanguageRows, LanguageSection } from '../../components/LanguagePicker';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverProfile'>;
 
@@ -60,7 +64,7 @@ interface ProfileDraft {
 type DraftErrors = Partial<Record<'full_name' | 'phone' | 'home_phone' | 'national_id', string>>;
 
 // Same short class labels as the manager's inline editor on the driver card.
-const LICENSE_CLASS_SELECT = LICENSE_CLASS_OPTIONS.map((option) => ({ value: option.value, label: option.label.split(',')[0].trim() }));
+const LICENSE_CLASS_SELECT = () => LICENSE_CLASS_OPTIONS.map((option) => ({ value: option.value, label: option.label.split(',')[0].trim() }));
 
 function draftFromDriver(driver: DriverRow | null): ProfileDraft {
   const license = splitLicenseClasses(driver?.license_classes);
@@ -83,11 +87,11 @@ function draftFromDriver(driver: DriverRow | null): ProfileDraft {
 
 function validateDraft(draft: ProfileDraft): DraftErrors {
   const errors: DraftErrors = {};
-  if (!draft.full_name.trim()) errors.full_name = 'שדה חובה';
-  if (!draft.phone.trim()) errors.phone = 'שדה חובה';
-  else if (!isValidIsraeliPhone(draft.phone)) errors.phone = 'מספר טלפון לא תקין';
-  if (draft.home_phone.trim() && !isValidIsraeliPhone(draft.home_phone)) errors.home_phone = 'מספר טלפון לא תקין';
-  if (draft.national_id && !isValidIsraeliNationalId(draft.national_id)) errors.national_id = 'תעודת זהות לא תקינה';
+  if (!draft.full_name.trim()) errors.full_name = t('validation.required');
+  if (!draft.phone.trim()) errors.phone = t('validation.required');
+  else if (!isValidIsraeliPhone(draft.phone)) errors.phone = t('validation.invalidPhone');
+  if (draft.home_phone.trim() && !isValidIsraeliPhone(draft.home_phone)) errors.home_phone = t('validation.invalidPhone');
+  if (draft.national_id && !isValidIsraeliNationalId(draft.national_id)) errors.national_id = t('validation.invalidNationalId');
   return errors;
 }
 
@@ -157,7 +161,7 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
     if (!profile) {
       // Right after a refresh the profile is still on its way: keep loading.
       if (profileLoading) return;
-      setError('פרופיל הנהג אינו זמין');
+      setError(t('driver.profileUnavailable'));
       setLoading(false);
       return;
     }
@@ -173,7 +177,7 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
       setDepartments(deps);
       hasLoadedOnce.current = true;
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message ?? 'טעינת הפרטים נכשלה');
+      if (requestId === loadRequest.current) setError(errorMessage(err, t('profile.loadFailed')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -229,17 +233,17 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
       await updateDriver(profile.id, patch);
       setDriver((prev) => (prev ? { ...prev, ...patch } : prev));
       setEditMode(false);
-      showToast('נשמר בהצלחה');
+      showToast(t('common.savedSuccessfully'));
     } catch (err: any) {
-      showAlert('השמירה נכשלה', err?.message ?? 'נסה שוב');
+      showAlert(t('common.saveFailedF'), errorMessage(err, t('common.tryAgain')));
     } finally {
       setSaving(false);
     }
   };
 
-  const signOut = () => showAlert('התנתקות', 'להתנתק מהחשבון?', [
-    { text: 'ביטול', style: 'cancel' },
-    { text: 'התנתק', style: 'destructive', onPress: () => void signOutEverywhere().catch(() => showAlert('ההתנתקות נכשלה', 'נסה שוב בעוד רגע.')) },
+  const signOut = () => showAlert(t('auth.signOut'), t('auth.signOutConfirm'), [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('auth.signOutAction'), style: 'destructive', onPress: () => void signOutEverywhere().catch(() => showAlert(t('auth.signOutFailed'), t('common.tryAgainShortly'))) },
   ]);
   const departmentName = departmentNameById(departments, driver?.department_id);
   const maritalOptions = optionsWithCurrent(MARITAL_STATUS_OPTIONS, driver?.marital_status);
@@ -248,7 +252,7 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
   if (isDesktop) {
     return (
       <FocusTargetProvider focus={focus}>
-      <DesktopShell active="DriverProfile" breadcrumbs={['חשבון', 'הפרטים שלי']}>
+      <DesktopShell active="DriverProfile" breadcrumbs={[t('nav.account'), t('nav.myDetails')]}>
         {loading ? (
           <LoadingState />
         ) : error ? (
@@ -258,118 +262,123 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
             <View style={ds.headRow}>
               <DText weight="bold" style={ds.heading}>{driver?.full_name || '—'}</DText>
               <HoverPressable style={ds.editButton} onPress={toggleEdit} disabled={saving}>
-                <DText weight="semiBold" style={[ds.editButtonText, saving && { opacity: 0 }]}>{editMode ? 'שמירה' : 'עריכה'}</DText>
+                <DText weight="semiBold" style={[ds.editButtonText, saving && { opacity: 0 }]}>{editMode ? t('common.save') : t('common.edit')}</DText>
                 {saving && <BrandLoader size="small" color={DESKTOP_COLORS.brand} style={StyleSheet.absoluteFill} />}
               </HoverPressable>
             </View>
 
-            <DText weight="bold" style={ds.sectionTitle}>פרטים אישיים</DText>
+            <DText weight="bold" style={ds.sectionTitle}>{t('driver.personalDetails')}</DText>
             <View style={ds.card}>
-              <DesktopFieldRow label="אימייל"><DesktopInput value={email ?? ''} editable={false} ltr /></DesktopFieldRow>
-              <DesktopFieldRow label="טלפון" focusId="phone" error={fieldErrors.phone}>
+              <DesktopFieldRow label={t('common.emailAddress')}><DesktopInput value={email ?? ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label={t('common.phone')} focusId="phone" error={fieldErrors.phone}>
                 {editMode ? (
                   <DesktopInput value={draft.phone} onChangeText={(v) => set('phone', v)} keyboardType="phone-pad" ltr hasError={!!fieldErrors.phone} />
                 ) : (
                   <DesktopInput value={driver?.phone ? formatPhone(driver.phone) : ''} editable={false} ltr />
                 )}
               </DesktopFieldRow>
-              <DesktopFieldRow label="שם מלא" focusId="full_name" error={fieldErrors.full_name}>
+              <DesktopFieldRow label={t('common.fullName')} focusId="full_name" error={fieldErrors.full_name}>
                 {editMode ? (
                   <DesktopInput value={draft.full_name} onChangeText={(v) => set('full_name', v)} hasError={!!fieldErrors.full_name} />
                 ) : (
                   <DesktopInput value={driver?.full_name ?? ''} editable={false} />
                 )}
               </DesktopFieldRow>
-              <DesktopFieldRow label="תפקיד" focusId="job_title"><DesktopInput value="נהג" editable={false} /></DesktopFieldRow>
-              <DesktopFieldRow label="תאריך לידה" focusId="birth_date">
+              <DesktopFieldRow label={t('common.role')} focusId="job_title"><DesktopInput value={t('role.driver')} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label={t('driver.birthDate')} focusId="birth_date">
                 {editMode ? (
-                  <DateField value={draft.birth_date} onChange={(v) => set('birth_date', v)} placeholder="לא הוזן" />
+                  <DateField value={draft.birth_date} onChange={(v) => set('birth_date', v)} placeholder={t('common.notEntered')} />
                 ) : (
                   <DesktopInput value={driver?.birth_date ? formatDate(driver.birth_date) : ''} editable={false} ltr />
                 )}
               </DesktopFieldRow>
-              <DesktopFieldRow label="כתובת" focusId="address">
+              <DesktopFieldRow label={t('common.address')} focusId="address">
                 <DesktopInput value={editMode ? draft.address : driver?.address ?? ''} onChangeText={(v) => set('address', v)} editable={editMode} />
               </DesktopFieldRow>
-              <DesktopFieldRow label="טלפון בבית" focusId="home_phone" error={fieldErrors.home_phone}>
+              <DesktopFieldRow label={t('driver.homePhone')} focusId="home_phone" error={fieldErrors.home_phone}>
                 {editMode ? (
                   <DesktopInput value={draft.home_phone} onChangeText={(v) => set('home_phone', v)} keyboardType="phone-pad" ltr hasError={!!fieldErrors.home_phone} />
                 ) : (
                   <DesktopInput value={driver?.home_phone ? formatPhone(driver.home_phone) : ''} editable={false} ltr />
                 )}
               </DesktopFieldRow>
-              <DesktopFieldRow label="מצב משפחתי" focusId="marital_status">
+              <DesktopFieldRow label={t('driver.maritalStatus')} focusId="marital_status">
                 {editMode ? (
-                  <DesktopSelect value={draft.marital_status || null} options={maritalOptions} onChange={(v) => set('marital_status', v ?? '')} allowClear placeholder="לא נבחר" />
+                  <DesktopSelect value={draft.marital_status || null} options={maritalOptions} onChange={(v) => set('marital_status', v ?? '')} allowClear placeholder={t('common.notSelected')} />
                 ) : (
-                  <DesktopInput value={driver?.marital_status ?? ''} editable={false} />
+                  <DesktopInput value={storedValueLabel(driver?.marital_status) ?? ''} editable={false} />
                 )}
               </DesktopFieldRow>
-              <DesktopFieldRow label="השכלה" focusId="education" last>
+              <DesktopFieldRow label={t('driver.education')} focusId="education" last>
                 {editMode ? (
-                  <DesktopSelect value={draft.education || null} options={educationOptions} onChange={(v) => set('education', v ?? '')} allowClear placeholder="לא נבחרה" />
+                  <DesktopSelect value={draft.education || null} options={educationOptions} onChange={(v) => set('education', v ?? '')} allowClear placeholder={t('common.notSelectedF')} />
                 ) : (
-                  <DesktopInput value={driver?.education ?? ''} editable={false} />
+                  <DesktopInput value={storedValueLabel(driver?.education) ?? ''} editable={false} />
                 )}
               </DesktopFieldRow>
             </View>
 
-            <DText weight="bold" style={ds.sectionTitle}>פרטי עבודה</DText>
+            <DText weight="bold" style={ds.sectionTitle}>{t('driver.workDetails')}</DText>
             <View style={ds.card}>
-              <DesktopFieldRow label="חברה"><DesktopInput value={company?.name ?? ''} editable={false} /></DesktopFieldRow>
-              <DesktopFieldRow label="מספר עובד" focusId="employee_number"><DesktopInput value={driver?.employee_number ?? ''} editable={false} /></DesktopFieldRow>
-              <DesktopFieldRow label="מחלקה" focusId="department_id" last><DesktopInput value={departmentName ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label={t('owner.col.company')}><DesktopInput value={company?.name ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label={t('driver.employeeNumber')} focusId="employee_number"><DesktopInput value={driver?.employee_number ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label={t('common.department')} focusId="department_id" last><DesktopInput value={departmentName ?? ''} editable={false} /></DesktopFieldRow>
             </View>
 
-            <DText weight="bold" style={ds.sectionTitle}>רישיון נהיגה</DText>
+            <DText weight="bold" style={ds.sectionTitle}>{t('driver.drivingLicense')}</DText>
             <View style={ds.card}>
-              <DesktopFieldRow label="תעודת זהות" focusId="national_id" error={fieldErrors.national_id}>
+              <DesktopFieldRow label={t('field.nationalId')} focusId="national_id" error={fieldErrors.national_id}>
                 {editMode ? (
                   <DesktopInput value={draft.national_id} onChangeText={(v) => set('national_id', onlyDigits(v, 9))} keyboardType="number-pad" ltr hasError={!!fieldErrors.national_id} />
                 ) : (
                   <DesktopInput value={driver?.national_id ?? ''} editable={false} ltr />
                 )}
               </DesktopFieldRow>
-              <DesktopFieldRow label="מספר רישיון" focusId="license_number">
+              <DesktopFieldRow label={t('field.licenseNumber')} focusId="license_number">
                 <DesktopInput value={editMode ? draft.license_number : driver?.license_number ?? ''} onChangeText={(v) => set('license_number', v)} editable={editMode} ltr />
               </DesktopFieldRow>
-              <DesktopFieldRow label="דרגת רישיון" focusId="license_classes">
+              <DesktopFieldRow label={t('driver.licenseClass')} focusId="license_classes">
                 {editMode ? (
-                  <DesktopSelect value={draft.license_primary || null} options={LICENSE_CLASS_SELECT} onChange={setLicensePrimary} allowClear placeholder="לא נבחרה" />
+                  <DesktopSelect value={draft.license_primary || null} options={LICENSE_CLASS_SELECT()} onChange={setLicensePrimary} allowClear placeholder={t('common.notSelectedF')} />
                 ) : (
                   <DesktopInput value={driver?.license_classes ?? ''} editable={false} />
                 )}
               </DesktopFieldRow>
               {editMode && !!draft.license_primary && (
-                <DesktopFieldRow label="דרגה נוספת">
+                <DesktopFieldRow label={t('driver.additionalClass')}>
                   <DesktopSelect
                     value={draft.license_secondary || null}
-                    options={LICENSE_CLASS_SELECT.filter((option) => option.value !== draft.license_primary)}
+                    options={LICENSE_CLASS_SELECT().filter((option) => option.value !== draft.license_primary)}
                     onChange={(v) => set('license_secondary', v ?? '')}
                     allowClear
-                    placeholder="ללא"
+                    placeholder={t('common.none')}
                   />
                 </DesktopFieldRow>
               )}
-              <DesktopFieldRow label="תאריך הנפקה" focusId="license_issue_date">
+              <DesktopFieldRow label={t('driver.issueDate')} focusId="license_issue_date">
                 {editMode ? (
-                  <DateField value={draft.license_issue_date} onChange={(v) => set('license_issue_date', v)} placeholder="לא הוזן" />
+                  <DateField value={draft.license_issue_date} onChange={(v) => set('license_issue_date', v)} placeholder={t('common.notEntered')} />
                 ) : (
                   <DesktopInput value={driver?.license_issue_date ? formatDate(driver.license_issue_date) : ''} editable={false} ltr />
                 )}
               </DesktopFieldRow>
-              <DesktopFieldRow label="תוקף רישיון" focusId="license_expiry">
+              <DesktopFieldRow label={t('driver.licenseExpiry')} focusId="license_expiry">
                 {editMode ? (
-                  <DateField value={draft.license_expiry} onChange={(v) => set('license_expiry', v)} placeholder="לא הוזן" />
+                  <DateField value={draft.license_expiry} onChange={(v) => set('license_expiry', v)} placeholder={t('common.notEntered')} />
                 ) : (
                   <DesktopInput value={driver?.license_expiry ? formatDate(driver.license_expiry) : ''} editable={false} ltr />
                 )}
               </DesktopFieldRow>
-              <DesktopFieldRow label="הצטרפות לאפליקציה" last><DesktopInput value={driver?.created_at ? formatDate(driver.created_at) : ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label={t('driver.joinedApp')} last><DesktopInput value={driver?.created_at ? formatDate(driver.created_at) : ''} editable={false} ltr /></DesktopFieldRow>
+            </View>
+
+            <DText weight="bold" style={ds.sectionTitle}>{t('settings.language')}</DText>
+            <View style={ds.card}>
+              <LanguageRows />
             </View>
 
             <HoverPressable style={ds.signOutButton} onPress={signOut}>
-              <DText weight="semiBold" style={ds.signOutText}>התנתקות</DText>
+              <DText weight="semiBold" style={ds.signOutText}>{t('auth.signOut')}</DText>
             </HoverPressable>
           </View>
         )}
@@ -393,17 +402,17 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
       scrollRef={scrollRef}
       hero={
         <HeroTitle
-          title={editMode ? 'עריכת הפרטים' : 'הפרטים שלי'}
-          subtitle={company?.name ? `נהג · ${company.name}` : 'נהג'}
+          title={editMode ? t('profile.editDetailsTitle') : t('nav.myDetails')}
+          subtitle={company?.name ? t('driver.roleAt', { name: company.name }) : t('role.driver')}
           onBack={() => (editMode ? cancelEdit() : navigation.goBack())}
-          right={!loading && !error && !editMode ? <HeroButton icon="create-outline" label="עריכת הפרטים" onPress={toggleEdit} /> : undefined}
+          right={!loading && !error && !editMode ? <HeroButton icon="create-outline" label={t('profile.editDetailsTitle')} onPress={toggleEdit} /> : undefined}
         />
       }
       footer={
         editMode ? (
           <View style={styles.footerRow}>
-            <PrimaryAction label="ביטול" tone="ghost" onPress={cancelEdit} style={styles.footerCancel} />
-            <PrimaryAction label="שמירת השינויים" icon="checkmark" onPress={() => void saveEdit()} loading={saving} style={styles.footerSave} />
+            <PrimaryAction label={t('common.cancel')} tone="ghost" onPress={cancelEdit} style={styles.footerCancel} />
+            <PrimaryAction label={t('common.saveChangesAction')} icon="checkmark" onPress={() => void saveEdit()} loading={saving} style={styles.footerSave} />
           </View>
         ) : undefined
       }
@@ -416,33 +425,33 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
         <>
           <Surface style={styles.editNote}>
             <DKText variant="caption" color={DK.inkSoft}>
-              עדכן את מה שצריך ולחץ על ״שמירת השינויים״. חברה, מספר עובד ומחלקה מנוהלים על ידי מנהל הצי.
+              {t('driver.profileEditHint')}
             </DKText>
           </Surface>
           <Reveal index={0}>
-            <ProfileSection title="פרטים אישיים">
-              <EditField first label="שם מלא" focusId="full_name" value={draft.full_name} onChangeText={(v) => set('full_name', v)} error={fieldErrors.full_name} />
-              <EditField label="טלפון" focusId="phone" value={draft.phone} onChangeText={(v) => set('phone', v)} keyboardType="phone-pad" ltr error={fieldErrors.phone} />
-              <EditField label="תאריך לידה" focusId="birth_date" editor={<DateField value={draft.birth_date} onChange={(v) => set('birth_date', v)} placeholder="לא הוזן" />} />
-              <EditField label="כתובת" focusId="address" value={draft.address} onChangeText={(v) => set('address', v)} />
-              <EditField label="טלפון בבית" focusId="home_phone" value={draft.home_phone} onChangeText={(v) => set('home_phone', v)} keyboardType="phone-pad" ltr error={fieldErrors.home_phone} />
-              <EditField label="מצב משפחתי" focusId="marital_status" editor={<Select value={draft.marital_status || null} options={maritalOptions} onChange={(v) => set('marital_status', v ?? '')} allowClear placeholder="לא נבחר" />} />
-              <EditField label="השכלה" focusId="education" editor={<Select value={draft.education || null} options={educationOptions} onChange={(v) => set('education', v ?? '')} allowClear placeholder="לא נבחרה" />} />
+            <ProfileSection title={t('driver.personalDetails')}>
+              <EditField first label={t('common.fullName')} focusId="full_name" value={draft.full_name} onChangeText={(v) => set('full_name', v)} error={fieldErrors.full_name} />
+              <EditField label={t('common.phone')} focusId="phone" value={draft.phone} onChangeText={(v) => set('phone', v)} keyboardType="phone-pad" ltr error={fieldErrors.phone} />
+              <EditField label={t('driver.birthDate')} focusId="birth_date" editor={<DateField value={draft.birth_date} onChange={(v) => set('birth_date', v)} placeholder={t('common.notEntered')} />} />
+              <EditField label={t('common.address')} focusId="address" value={draft.address} onChangeText={(v) => set('address', v)} />
+              <EditField label={t('driver.homePhone')} focusId="home_phone" value={draft.home_phone} onChangeText={(v) => set('home_phone', v)} keyboardType="phone-pad" ltr error={fieldErrors.home_phone} />
+              <EditField label={t('driver.maritalStatus')} focusId="marital_status" editor={<Select value={draft.marital_status || null} options={maritalOptions} onChange={(v) => set('marital_status', v ?? '')} allowClear placeholder={t('common.notSelected')} />} />
+              <EditField label={t('driver.education')} focusId="education" editor={<Select value={draft.education || null} options={educationOptions} onChange={(v) => set('education', v ?? '')} allowClear placeholder={t('common.notSelectedF')} />} />
             </ProfileSection>
           </Reveal>
           <Reveal index={1}>
-            <ProfileSection title="רישיון נהיגה">
-              <EditField first label="תעודת זהות" focusId="national_id" value={draft.national_id} onChangeText={(v) => set('national_id', onlyDigits(v, 9))} keyboardType="number-pad" ltr error={fieldErrors.national_id} hint="9 ספרות" />
-              <EditField label="מספר רישיון" focusId="license_number" value={draft.license_number} onChangeText={(v) => set('license_number', v)} ltr />
-              <EditField label="דרגת רישיון" focusId="license_classes" editor={<Select value={draft.license_primary || null} options={LICENSE_CLASS_SELECT} onChange={setLicensePrimary} allowClear placeholder="לא נבחרה" />} />
+            <ProfileSection title={t('driver.drivingLicense')}>
+              <EditField first label={t('field.nationalId')} focusId="national_id" value={draft.national_id} onChangeText={(v) => set('national_id', onlyDigits(v, 9))} keyboardType="number-pad" ltr error={fieldErrors.national_id} hint={t('common.9digits')} />
+              <EditField label={t('field.licenseNumber')} focusId="license_number" value={draft.license_number} onChangeText={(v) => set('license_number', v)} ltr />
+              <EditField label={t('driver.licenseClass')} focusId="license_classes" editor={<Select value={draft.license_primary || null} options={LICENSE_CLASS_SELECT()} onChange={setLicensePrimary} allowClear placeholder={t('common.notSelectedF')} />} />
               {!!draft.license_primary && (
                 <EditField
-                  label="דרגה נוספת"
-                  editor={<Select value={draft.license_secondary || null} options={LICENSE_CLASS_SELECT.filter((option) => option.value !== draft.license_primary)} onChange={(v) => set('license_secondary', v ?? '')} allowClear placeholder="ללא" />}
+                  label={t('driver.additionalClass')}
+                  editor={<Select value={draft.license_secondary || null} options={LICENSE_CLASS_SELECT().filter((option) => option.value !== draft.license_primary)} onChange={(v) => set('license_secondary', v ?? '')} allowClear placeholder={t('common.none')} />}
                 />
               )}
-              <EditField label="תאריך הנפקה" focusId="license_issue_date" editor={<DateField value={draft.license_issue_date} onChange={(v) => set('license_issue_date', v)} placeholder="לא הוזן" />} />
-              <EditField label="תוקף רישיון" focusId="license_expiry" editor={<DateField value={draft.license_expiry} onChange={(v) => set('license_expiry', v)} placeholder="לא הוזן" />} />
+              <EditField label={t('driver.issueDate')} focusId="license_issue_date" editor={<DateField value={draft.license_issue_date} onChange={(v) => set('license_issue_date', v)} placeholder={t('common.notEntered')} />} />
+              <EditField label={t('driver.licenseExpiry')} focusId="license_expiry" editor={<DateField value={draft.license_expiry} onChange={(v) => set('license_expiry', v)} placeholder={t('common.notEntered')} />} />
             </ProfileSection>
           </Reveal>
         </>
@@ -457,43 +466,46 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
                 <DKText variant="title" numberOfLines={2}>{driver?.full_name || '—'}</DKText>
                 <DKText variant="caption" color={DK.muted} ltr style={styles.alignRight} numberOfLines={1}>{email || ''}</DKText>
                 <View style={styles.licenseRow}>
-                  <StatusChip status={statusOfDate(driver?.license_expiry)} label={driver?.license_expiry ? `רישיון עד ${formatDate(driver.license_expiry)}` : 'תוקף רישיון חסר'} />
+                  <StatusChip status={statusOfDate(driver?.license_expiry)} label={driver?.license_expiry ? t('driver.licenseUntil', { v1: formatDate(driver.license_expiry) }) : t('driver.licenseExpiryMissing')} />
                 </View>
               </View>
             </Surface>
           </Reveal>
           <Reveal index={1}>
-            <ProfileSection title="פרטים אישיים">
-              <InfoLine first icon="person" label="שם מלא" focusId="full_name" value={driver?.full_name} />
-              <InfoLine icon="call" label="טלפון" focusId="phone" value={driver?.phone ? formatPhone(driver.phone) : null} ltr />
-              <InfoLine icon="mail" label="אימייל" value={email} ltr locked />
-              <InfoLine icon="gift" label="תאריך לידה" focusId="birth_date" value={driver?.birth_date ? formatDate(driver.birth_date) : null} />
-              <InfoLine icon="home" label="כתובת" focusId="address" value={driver?.address} />
-              <InfoLine icon="call-outline" label="טלפון בבית" focusId="home_phone" value={driver?.home_phone ? formatPhone(driver.home_phone) : null} ltr />
-              <InfoLine icon="heart" label="מצב משפחתי" focusId="marital_status" value={driver?.marital_status} />
-              <InfoLine icon="school" label="השכלה" focusId="education" value={driver?.education} />
+            <ProfileSection title={t('driver.personalDetails')}>
+              <InfoLine first icon="person" label={t('common.fullName')} focusId="full_name" value={driver?.full_name} />
+              <InfoLine icon="call" label={t('common.phone')} focusId="phone" value={driver?.phone ? formatPhone(driver.phone) : null} ltr />
+              <InfoLine icon="mail" label={t('common.emailAddress')} value={email} ltr locked />
+              <InfoLine icon="gift" label={t('driver.birthDate')} focusId="birth_date" value={driver?.birth_date ? formatDate(driver.birth_date) : null} />
+              <InfoLine icon="home" label={t('common.address')} focusId="address" value={driver?.address} />
+              <InfoLine icon="call-outline" label={t('driver.homePhone')} focusId="home_phone" value={driver?.home_phone ? formatPhone(driver.home_phone) : null} ltr />
+              <InfoLine icon="heart" label={t('driver.maritalStatus')} focusId="marital_status" value={storedValueLabel(driver?.marital_status)} />
+              <InfoLine icon="school" label={t('driver.education')} focusId="education" value={storedValueLabel(driver?.education)} />
             </ProfileSection>
           </Reveal>
           <Reveal index={2}>
-            <ProfileSection title="רישיון נהיגה">
-              <InfoLine first icon="card" label="תעודת זהות" focusId="national_id" value={driver?.national_id} ltr />
-              <InfoLine icon="document-text" label="מספר רישיון" focusId="license_number" value={driver?.license_number} ltr />
-              <InfoLine icon="ribbon" label="דרגת רישיון" focusId="license_classes" value={driver?.license_classes} />
-              <InfoLine icon="calendar" label="תאריך הנפקה" focusId="license_issue_date" value={driver?.license_issue_date ? formatDate(driver.license_issue_date) : null} />
-              <InfoLine icon="calendar-clear" label="תוקף רישיון" focusId="license_expiry" value={driver?.license_expiry ? formatDate(driver.license_expiry) : null} />
+            <ProfileSection title={t('driver.drivingLicense')}>
+              <InfoLine first icon="card" label={t('field.nationalId')} focusId="national_id" value={driver?.national_id} ltr />
+              <InfoLine icon="document-text" label={t('field.licenseNumber')} focusId="license_number" value={driver?.license_number} ltr />
+              <InfoLine icon="ribbon" label={t('driver.licenseClass')} focusId="license_classes" value={driver?.license_classes} />
+              <InfoLine icon="calendar" label={t('driver.issueDate')} focusId="license_issue_date" value={driver?.license_issue_date ? formatDate(driver.license_issue_date) : null} />
+              <InfoLine icon="calendar-clear" label={t('driver.licenseExpiry')} focusId="license_expiry" value={driver?.license_expiry ? formatDate(driver.license_expiry) : null} />
             </ProfileSection>
           </Reveal>
           <Reveal index={3}>
-            <ProfileSection title="פרטי עבודה">
-              <InfoLine first icon="business" label="חברה" value={company?.name} locked />
-              <InfoLine icon="star" label="תפקיד" focusId="job_title" value="נהג" locked />
-              <InfoLine icon="briefcase" label="מספר עובד" focusId="employee_number" value={driver?.employee_number} locked />
-              <InfoLine icon="people" label="מחלקה" focusId="department_id" value={departmentName} locked />
-              <InfoLine icon="time" label="הצטרפות לאפליקציה" value={driver?.created_at ? formatDate(driver.created_at) : null} locked />
+            <ProfileSection title={t('driver.workDetails')}>
+              <InfoLine first icon="business" label={t('owner.col.company')} value={company?.name} locked />
+              <InfoLine icon="star" label={t('common.role')} focusId="job_title" value={t('role.driver')} locked />
+              <InfoLine icon="briefcase" label={t('driver.employeeNumber')} focusId="employee_number" value={driver?.employee_number} locked />
+              <InfoLine icon="people" label={t('common.department')} focusId="department_id" value={departmentName} locked />
+              <InfoLine icon="time" label={t('driver.joinedApp')} value={driver?.created_at ? formatDate(driver.created_at) : null} locked />
             </ProfileSection>
           </Reveal>
           <Reveal index={4}>
-            <PrimaryAction label="התנתקות מהחשבון" icon="log-out-outline" tone="danger" onPress={signOut} />
+            <LanguageSection />
+          </Reveal>
+          <Reveal index={5}>
+            <PrimaryAction label={t('auth.signOutOfAccountAction')} icon="log-out-outline" tone="danger" onPress={signOut} />
           </Reveal>
         </>
       )}
@@ -504,7 +516,7 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   center: { textAlign: 'center' },
-  alignRight: { textAlign: 'right' },
+  alignRight: { textAlign: textStart() },
   identity: { flexDirection: 'row-reverse', alignItems: 'center', gap: 16, padding: 18 },
   avatar: { width: 72, height: 72, borderRadius: 24, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
   identityText: { flex: 1, gap: 3 },

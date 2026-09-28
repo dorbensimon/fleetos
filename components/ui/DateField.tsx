@@ -7,6 +7,7 @@ import { COLORS, RADIUS, formatDate, parseDateValue } from '../../lib/theme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { PICKER_FIELD_STYLES } from './pickerFieldStyles';
 import { DK, DK_FONT } from '../driverKit/theme';
+import { t } from '../../lib/i18n';
 
 /**
  * Date input that stays usable on every target.
@@ -24,7 +25,7 @@ function toIso(d: Date): string {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
-const HEBREW_MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+const monthNames = () => [t('date.months.1'), t('date.months.2'), t('date.months.3'), t('date.months.4'), t('date.months.5'), t('date.months.6'), t('date.months.7'), t('date.months.8'), t('date.months.9'), t('date.months.10'), t('date.months.11'), t('date.months.12')];
 
 function WebDatePicker({ value, onConfirm, onClose }: { value: string | null; onConfirm: (iso: string) => void; onClose: () => void }) {
   const [draft, setDraft] = useState(() => value ? parseDateValue(value) : new Date());
@@ -87,11 +88,11 @@ function WebDatePicker({ value, onConfirm, onClose }: { value: string | null; on
         <Pressable style={styles.webSheet} onPress={(event) => event.stopPropagation()}>
           <View style={styles.grabHandle} />
           <View style={styles.webSheetHeader}>
-            <TouchableOpacity onPress={onClose}><AppText style={styles.sheetAction}>ביטול</AppText></TouchableOpacity>
-            <TouchableOpacity onPress={() => setChoosingYear((current) => !current)} accessibilityRole="button" accessibilityLabel="בחירת שנה">
-              <AppText weight="bold" style={styles.sheetTitle}>{choosingYear ? 'בחירת שנה' : 'בחירת תאריך'}</AppText>
+            <TouchableOpacity onPress={onClose}><AppText style={styles.sheetAction}>{t('common.cancel')}</AppText></TouchableOpacity>
+            <TouchableOpacity onPress={() => setChoosingYear((current) => !current)} accessibilityRole="button" accessibilityLabel={t('date.chooseYear')}>
+              <AppText weight="bold" style={styles.sheetTitle}>{choosingYear ? t('date.chooseYear') : t('date.chooseDateAction')}</AppText>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => onConfirm(toIso(draft))}><AppText weight="bold" style={styles.sheetAction}>אישור</AppText></TouchableOpacity>
+            <TouchableOpacity onPress={() => onConfirm(toIso(draft))}><AppText weight="bold" style={styles.sheetAction}>{t('common.ok')}</AppText></TouchableOpacity>
           </View>
           {choosingYear ? (
             <ScrollView style={styles.yearGridScroll} contentContainerStyle={styles.yearGrid} showsVerticalScrollIndicator={false}>
@@ -105,7 +106,7 @@ function WebDatePicker({ value, onConfirm, onClose }: { value: string | null; on
           ) : (
             <View style={styles.pickerColumns}>
               {column(Array.from({ length: daysInMonth }, (_, index) => ({ value: index + 1, label: String(index + 1) })), draft.getDate(), 'day', dayScrollRef)}
-              {column(HEBREW_MONTHS.map((label, index) => ({ value: index, label })), draft.getMonth(), 'month', monthScrollRef)}
+              {column(monthNames().map((label, index) => ({ value: index, label })), draft.getMonth(), 'month', monthScrollRef)}
               {column(years.map((year) => ({ value: year, label: String(year) })), draft.getFullYear(), 'year', yearScrollRef)}
             </View>
           )}
@@ -118,7 +119,7 @@ function WebDatePicker({ value, onConfirm, onClose }: { value: string | null; on
 export function DateField({
   value,
   onChange,
-  placeholder = 'בחר תאריך',
+  placeholder = t('date.chooseDate'),
   hasError,
   disabled,
   style,
@@ -154,10 +155,10 @@ export function DateField({
   };
 
   if (Platform.OS === 'web') return <>
-    <TouchableOpacity activeOpacity={disabled ? 1 : 0.8} onPress={openPicker} style={boxStyle} accessibilityRole="button" accessibilityLabel={value ? formatDate(value) : placeholder} accessibilityHint="פתיחת בחירת תאריך">
+    <TouchableOpacity activeOpacity={disabled ? 1 : 0.8} onPress={openPicker} style={boxStyle} accessibilityRole="button" accessibilityLabel={value ? formatDate(value) : placeholder} accessibilityHint={t('date.openPicker')}>
       <Ionicons name="calendar-outline" size={17} color={iconColor} />
       <AppText style={valueStyle}>{value ? formatDate(value) : placeholder}</AppText>
-      {!disabled && !!value && <TouchableOpacity onPress={(event) => { event.stopPropagation(); onChange(null); }} hitSlop={8} accessibilityRole="button" accessibilityLabel="ניקוי התאריך"><Ionicons name="close-circle" size={17} color={iconColor} /></TouchableOpacity>}
+      {!disabled && !!value && <TouchableOpacity onPress={(event) => { event.stopPropagation(); onChange(null); }} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('date.clear')}><Ionicons name="close-circle" size={17} color={iconColor} /></TouchableOpacity>}
       {disabled && <Ionicons name="lock-closed-outline" size={15} color={iconColor} />}
     </TouchableOpacity>
     {showPicker && <WebDatePicker value={value} onClose={() => setShowPicker(false)} onConfirm={(iso) => { onChange(iso); setShowPicker(false); }} />}
@@ -171,7 +172,7 @@ export function DateField({
         style={boxStyle}
         accessibilityRole="button"
         accessibilityLabel={value ? formatDate(value) : placeholder}
-        accessibilityHint="פתיחת בחירת תאריך"
+        accessibilityHint={t('date.openPicker')}
       >
         <Ionicons name="calendar-outline" size={17} color={iconColor} />
         <AppText style={valueStyle}>
@@ -185,7 +186,7 @@ export function DateField({
             }}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="ניקוי התאריך"
+            accessibilityLabel={t('date.clear')}
           >
             <Ionicons name="close-circle" size={17} color={iconColor} />
           </TouchableOpacity>
@@ -217,7 +218,7 @@ export function DateField({
               />
               <TouchableOpacity style={styles.iosDone} onPress={() => setShowPicker(false)}>
                 <AppText weight="bold" style={styles.iosDoneText}>
-                  סיום
+                  {t('common.done')}
                 </AppText>
               </TouchableOpacity>
             </Pressable>
@@ -233,8 +234,8 @@ const styles = StyleSheet.create({
   webSheet: {
     width: '100%',
     backgroundColor: COLORS.card,
-    borderTopLeftRadius: RADIUS.lg,
-    borderTopRightRadius: RADIUS.lg,
+    borderTopStartRadius: RADIUS.lg,
+    borderTopEndRadius: RADIUS.lg,
     paddingHorizontal: 16,
     paddingBottom: 22,
   },

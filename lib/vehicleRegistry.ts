@@ -1,5 +1,6 @@
 import { functionErrorMessage } from './functionError';
 import { supabase } from './supabase';
+import { t } from './i18n';
 
 export type VehicleRegistryDetails = {
   plateNumber: string;
@@ -18,7 +19,7 @@ type VehicleRegistryResponse =
 export async function lookupVehicleRegistry(plateNumber: string): Promise<VehicleRegistryDetails | null> {
   const plate = plateNumber.replace(/\D/g, '');
   if (!/^\d{7,8}$/.test(plate)) {
-    throw new Error('מספר הרישוי חייב להכיל 7–8 ספרות');
+    throw new Error(t('vehicle.plateDigits'));
   }
 
   const { data, error } = await supabase.functions.invoke('lookup-vehicle-registry', {
@@ -26,7 +27,7 @@ export async function lookupVehicleRegistry(plateNumber: string): Promise<Vehicl
   });
   const response = data as VehicleRegistryResponse | null;
   if (error || !response) {
-    throw new Error(await functionErrorMessage(error, data, 'לא ניתן לחפש את פרטי הרכב כרגע'));
+    throw new Error(await functionErrorMessage(error, data, t('vehicle.registryUnavailable')));
   }
 
   return response.found ? response.vehicle : null;

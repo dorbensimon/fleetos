@@ -48,6 +48,8 @@ import { useIsDesktop } from '../lib/useDesktopLayout';
 import { DesktopShell } from '../components/desktop/DesktopShell';
 import { DText, HoverPressable, StatusPill } from '../components/desktop/primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES } from '../components/desktop/desktopTheme';
+import { t } from '../lib/i18n';
+import { errorMessage } from '../lib/requestError';
 
 /**
  * Owner-only screen: one company as a customer — its subscription, its
@@ -99,7 +101,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       const url = await pickAndUploadLogo();
       if (url) setFields((f) => ({ ...f, logoUrl: url }));
     } catch (err: any) {
-      setLogoError(err?.message || 'העלאת הלוגו נכשלה');
+      setLogoError(errorMessage(err, t('company.logoUploadFailed')));
     } finally {
       setUploadingLogo(false);
     }
@@ -147,10 +149,10 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   const saveEdit = async () => {
     if (!editTarget) return;
     const errors: Record<string, string> = {};
-    if (!editForm.firstName.trim()) errors.firstName = 'שדה חובה';
-    if (!editForm.lastName.trim()) errors.lastName = 'שדה חובה';
-    if (!editForm.phone.trim()) errors.phone = 'שדה חובה';
-    else if (!isValidIsraeliPhone(editForm.phone)) errors.phone = 'מספר טלפון לא תקין';
+    if (!editForm.firstName.trim()) errors.firstName = t('validation.required');
+    if (!editForm.lastName.trim()) errors.lastName = t('validation.required');
+    if (!editForm.phone.trim()) errors.phone = t('validation.required');
+    else if (!isValidIsraeliPhone(editForm.phone)) errors.phone = t('validation.invalidPhone');
     setEditFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -162,7 +164,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       });
     setEditing(false);
     if (error) {
-      setEditError('שמירת השינויים נכשלה');
+      setEditError(t('common.saveChangesFailed'));
       return;
     }
     setEditTarget(null);
@@ -174,7 +176,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     setLoadError(null);
     try {
     const { data: companyData, error: companyError } = await getCompany(companyId);
-    if (companyError || !companyData) throw companyError ?? new Error('החברה לא נמצאה');
+    if (companyError || !companyData) throw companyError ?? new Error(t('company.notFound'));
 
     if (requestId === loadRequest.current) {
       setCompany(companyData);
@@ -197,13 +199,13 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     const { data: usersData, error } = await listCompanyUsers(companyId);
 
     if (error || !usersData?.success) {
-      throw new Error(await functionErrorMessage(error, usersData, 'טעינת המשתמשים נכשלה', false));
+      throw new Error(await functionErrorMessage(error, usersData, t('company.usersLoadFailed'), false));
     }
     if (requestId === loadRequest.current) {
       setUsers(usersData.users);
     }
     } catch (err: any) {
-      if (requestId === loadRequest.current) setLoadError(err?.message ?? 'טעינת החברה נכשלה');
+      if (requestId === loadRequest.current) setLoadError(errorMessage(err, t('company.loadFailedShort')));
     }
   }, [companyId]);
 
@@ -247,7 +249,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       });
     setSaving(false);
     if (error) {
-      setSaveError('שמירת השינויים נכשלה');
+      setSaveError(t('common.saveChangesFailed'));
       return;
     }
     await load();
@@ -257,7 +259,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     if (!company) return;
     const { error } = await updateCompany(company.id, { status });
     if (error) {
-      showAlert('העדכון נכשל', 'לא הצלחנו לעדכן את סטטוס החברה');
+      showAlert(t('common.updateFailed'), t('company.statusUpdateFailed'));
       return;
     }
     await load();
@@ -270,9 +272,9 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       void setStatus('active');
       return;
     }
-    showAlert('השבתת החברה', `המנהלים והנהגים של ${company.name} לא יוכלו להיכנס עד שתפעיל אותה מחדש. הנתונים נשמרים.`, [
-      { text: 'ביטול', style: 'cancel' },
-      { text: 'השבתה', style: 'destructive', onPress: () => void setStatus('disabled') },
+    showAlert(t('owner.disableCompany'), t('company.disableConfirm', { name: company.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('company.disableAction'), style: 'destructive', onPress: () => void setStatus('disabled') },
     ]);
   };
 
@@ -291,7 +293,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     const { data, error } = await deleteCompany(company.id, deleteConfirmText.trim());
     setDeleting(false);
     if (error || !data?.success) {
-      showAlert('מחיקת החברה נכשלה', await functionErrorMessage(error, data, 'נסה שוב', false));
+      showAlert(t('company.deleteFailed'), await functionErrorMessage(error, data, t('common.tryAgain'), false));
       return;
     }
     navigation.goBack();
@@ -299,14 +301,14 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
 
   const validateNewAdminForm = () => {
     const errors: Record<string, string> = {};
-    if (!newAdminForm.firstName.trim()) errors.firstName = 'שדה חובה';
-    if (!newAdminForm.lastName.trim()) errors.lastName = 'שדה חובה';
-    if (!newAdminForm.email.trim()) errors.email = 'שדה חובה';
-    else if (!isValidEmail(newAdminForm.email)) errors.email = 'כתובת מייל לא תקינה';
-    if (!newAdminForm.phone.trim()) errors.phone = 'שדה חובה';
-    else if (!isValidIsraeliPhone(newAdminForm.phone)) errors.phone = 'מספר טלפון לא תקין';
-    if (!newAdminForm.password) errors.password = 'צריך סיסמה זמנית';
-    else if (!isValidTemporaryPassword(newAdminForm.password)) errors.password = 'לפחות 4 ספרות, ספרות בלבד';
+    if (!newAdminForm.firstName.trim()) errors.firstName = t('validation.required');
+    if (!newAdminForm.lastName.trim()) errors.lastName = t('validation.required');
+    if (!newAdminForm.email.trim()) errors.email = t('validation.required');
+    else if (!isValidEmail(newAdminForm.email)) errors.email = t('validation.invalidEmail');
+    if (!newAdminForm.phone.trim()) errors.phone = t('validation.required');
+    else if (!isValidIsraeliPhone(newAdminForm.phone)) errors.phone = t('validation.invalidPhone');
+    if (!newAdminForm.password) errors.password = t('validation.tempPasswordRequired');
+    else if (!isValidTemporaryPassword(newAdminForm.password)) errors.password = t('validation.min4Digits');
     return errors;
   };
 
@@ -327,12 +329,12 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
           adminPassword: newAdminForm.password,
       });
       if (error || !data?.success) {
-        setAddAdminError(await functionErrorMessage(error, data, 'הוספת האדמין נכשלה', false));
+        setAddAdminError(await functionErrorMessage(error, data, t('company.addAdminFailed'), false));
         return;
       }
       setCredentials({
-        title: 'המנהל נוסף',
-        subtitle: 'העבר לו את פרטי הכניסה. בכניסה הראשונה יבחר סיסמה קבועה.',
+        title: t('company.managerAdded'),
+        subtitle: t('company.managerAddedHint'),
         name: newAdminForm.firstName.trim(),
         email: newAdminForm.email.trim(),
         password: newAdminForm.password,
@@ -342,7 +344,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       setAddAdminOpen(false);
       await load();
     } catch {
-      setAddAdminError('אירעה שגיאה. נסה שוב');
+      setAddAdminError(t('common.errorTryAgain'));
     } finally {
       setAddingAdmin(false);
     }
@@ -354,7 +356,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     const { data, error } = await deleteCompanyUser(removeTarget.id);
     setRemoving(false);
     if (error || !data?.success) {
-      showAlert('מחיקת המשתמש נכשלה', await functionErrorMessage(error, data, 'נסה שוב', false));
+      showAlert(t('company.deleteUserFailed'), await functionErrorMessage(error, data, t('common.tryAgain'), false));
       return;
     }
     setRemoveTarget(null);
@@ -364,7 +366,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   const resetPassword = async () => {
     if (!resetTarget) return;
     setResetError('');
-    const fieldError = !resetPasswordValue ? 'צריך סיסמה זמנית' : !isValidTemporaryPassword(resetPasswordValue) ? 'לפחות 4 ספרות, ספרות בלבד' : '';
+    const fieldError = !resetPasswordValue ? t('validation.tempPasswordRequired') : !isValidTemporaryPassword(resetPasswordValue) ? t('validation.min4Digits') : '';
     setResetFieldError(fieldError);
     if (fieldError) return;
 
@@ -373,13 +375,13 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       const { data, error } = await resetCompanyUserPassword(resetTarget.id, resetPasswordValue, companyId);
 
       if (error || !data?.success) {
-        setResetError(await functionErrorMessage(error, data, 'איפוס הסיסמה נכשל', false));
+        setResetError(await functionErrorMessage(error, data, t('driver.resetPasswordFailed'), false));
         return;
       }
 
       setCredentials({
-        title: 'הסיסמה הוחלפה',
-        subtitle: 'הסיסמה הקודמת כבר לא עובדת. העבר את הפרטים החדשים.',
+        title: t('password.replaced'),
+        subtitle: t('password.replacedHint'),
         name: (resetTarget.full_name || '').trim().split(/\s+/)[0] || '',
         email: resetTarget.email || '',
         password: resetPasswordValue,
@@ -389,7 +391,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       setResetTarget(null);
       await load();
     } catch {
-      setResetError('אירעה שגיאה. נסה שוב');
+      setResetError(t('common.errorTryAgain'));
     } finally {
       setResetting(false);
     }
@@ -400,7 +402,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   if (loadError && !company) {
     if (isDesktop) {
       return (
-        <DesktopShell active="OwnerHome" breadcrumbs={['מרכז הבקרה', 'שגיאה']}>
+        <DesktopShell active="OwnerHome" breadcrumbs={[t('nav.controlCenter'), t('common.error')]}>
           <ErrorState message={loadError} onRetry={load} />
         </DesktopShell>
       );
@@ -415,7 +417,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   if (loading || !company) {
     if (isDesktop) {
       return (
-        <DesktopShell active="OwnerHome" breadcrumbs={['מרכז הבקרה', '…']}>
+        <DesktopShell active="OwnerHome" breadcrumbs={[t('nav.controlCenter'), '…']}>
           <BrandLoader color={DESKTOP_COLORS.brand} />
         </DesktopShell>
       );
@@ -528,13 +530,13 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   if (isDesktop) {
     return (
       <>
-        <DesktopShell active="OwnerHome" breadcrumbs={['מרכז הבקרה', company.name]}>
+        <DesktopShell active="OwnerHome" breadcrumbs={[t('nav.controlCenter'), company.name]}>
           <View style={ds.wrap}>
             <View style={ds.headRow}>
               <View style={ds.headMain}>
-                {!!company.logo_url && <Image source={{ uri: company.logo_url }} accessibilityLabel={`לוגו ${company.name}`} style={ds.logo} resizeMode="cover" />}
+                {!!company.logo_url && <Image source={{ uri: company.logo_url }} accessibilityLabel={t('company.logoOf', { name: company.name })} style={ds.logo} resizeMode="cover" />}
                 <DText weight="bold" style={ds.heading} numberOfLines={1}>{company.name}</DText>
-                <StatusPill tone={active ? 'ok' : 'neutral'} label={active ? 'פעיל' : 'מושבת'} />
+                <StatusPill tone={active ? 'ok' : 'neutral'} label={active ? t('vehicle.status.active') : t('vehicle.status.disabled')} />
               </View>
             </View>
 
@@ -558,15 +560,15 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
             <DesktopAccountPanel account={account} onEdit={() => setAccountOpen(true)} />
 
             <View style={ds.sectionHeadRow}>
-              <DText weight="bold" style={ds.sectionTitle}>אדמינים ({admins.length})</DText>
+              <DText weight="bold" style={ds.sectionTitle}>{t('company.adminsOpen')}{admins.length})</DText>
               <HoverPressable style={ds.addButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={() => setAddAdminOpen(true)}>
                 <Ionicons name="add" size={14} color={DESKTOP_COLORS.brand} />
-                <DText weight="semiBold" style={ds.addButtonText}>הוסף אדמין</DText>
+                <DText weight="semiBold" style={ds.addButtonText}>{t('company.addAdmin')}</DText>
               </HoverPressable>
             </View>
             <View style={ds.card}>
               {admins.length === 0 ? (
-                <DText style={ds.empty}>אין אדמינים עדיין</DText>
+                <DText style={ds.empty}>{t('company.noAdminsYet')}</DText>
               ) : (
                 admins.map((u) => (
                   <UserRow key={u.id} user={u} onRemove={() => setRemoveTarget(u)} onResetPassword={() => setResetTarget(u)} onEdit={() => openEdit(u)} />
@@ -574,10 +576,10 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
               )}
             </View>
 
-            <DText weight="bold" style={ds.sectionTitle}>נהגים ({drivers.length})</DText>
+            <DText weight="bold" style={ds.sectionTitle}>{t('company.driversOpen')}{drivers.length})</DText>
             <View style={ds.card}>
               {drivers.length === 0 ? (
-                <DText style={ds.empty}>אין נהגים עדיין</DText>
+                <DText style={ds.empty}>{t('company.noDriversYetShort')}</DText>
               ) : (
                 drivers.map((u) => (
                   <UserRow key={u.id} user={u} onRemove={() => setRemoveTarget(u)} onResetPassword={() => setResetTarget(u)} onEdit={() => openEdit(u)} />
@@ -629,16 +631,16 @@ function DesktopAccountPanel({ account, onEdit }: { account: CompanyAccount | nu
   const tone = statusTone(account?.status);
   const pill = tone === 'off' ? 'neutral' : tone;
   const facts: [string, string][] = [
-    ['מסלול', planLabel(account?.plan)],
-    ['לחודש', formatMoney(account?.monthly_price)],
-    [account?.status === 'trial' ? 'סוף הניסיון' : 'חידוש', formatDate(account?.status === 'trial' ? account?.trial_ends_at : account?.renewal_date)],
-    ['מכסת רכבים', account?.vehicle_limit ? String(account.vehicle_limit) : 'ללא'],
+    [t('account.planLabel'), planLabel(account?.plan)],
+    [t('common.perMonth'), formatMoney(account?.monthly_price)],
+    [account?.status === 'trial' ? t('company.trialEnd') : t('company.renewal'), formatDate(account?.status === 'trial' ? account?.trial_ends_at : account?.renewal_date)],
+    [t('company.vehicleQuota'), account?.vehicle_limit ? String(account.vehicle_limit) : t('common.none')],
   ];
   const contact = [account?.contact_name, account?.contact_phone, account?.contact_email].filter(Boolean).join(' · ');
   return (
     <View style={ds.card}>
       <View style={ds.accountHead}>
-        <DText weight="bold" style={ds.sectionTitleDark}>מנוי ותשלום</DText>
+        <DText weight="bold" style={ds.sectionTitleDark}>{t('owner.subscriptionAndPayment')}</DText>
         <StatusPill tone={pill} label={statusLabel(account?.status)} />
         {!!next && next.tone !== 'ok' && (
           <DText weight="semiBold" style={[ds.accountNext, { color: DESKTOP_TONES[next.tone === 'bad' ? 'bad' : 'warn'].fg }]}>{next.label}</DText>
@@ -646,7 +648,7 @@ function DesktopAccountPanel({ account, onEdit }: { account: CompanyAccount | nu
         <View style={{ flex: 1 }} />
         <HoverPressable style={ds.addButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={onEdit}>
           <Ionicons name="create-outline" size={14} color={DESKTOP_COLORS.brand} />
-          <DText weight="semiBold" style={ds.addButtonText}>עריכה</DText>
+          <DText weight="semiBold" style={ds.addButtonText}>{t('common.edit')}</DText>
         </HoverPressable>
       </View>
       <View style={ds.facts}>
@@ -659,8 +661,8 @@ function DesktopAccountPanel({ account, onEdit }: { account: CompanyAccount | nu
       </View>
       {(!!contact || !!account?.notes) && (
         <View style={ds.accountFoot}>
-          {!!contact && <DText style={ds.linkSubtitle}>איש קשר לחיוב: {contact}</DText>}
-          {!!account?.notes && <DText style={ds.linkSubtitle}>הערות: {account.notes}</DText>}
+          {!!contact && <DText style={ds.linkSubtitle}>{t('company.billingContactColon')} {contact}</DText>}
+          {!!account?.notes && <DText style={ds.linkSubtitle}>{t('common.notesColon')} {account.notes}</DText>}
         </View>
       )}
     </View>

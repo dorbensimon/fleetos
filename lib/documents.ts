@@ -9,6 +9,7 @@ import { DocumentRow, OwnerType } from './adminApi';
 import { safeFileName } from './fileNames';
 import { extensionForMimeType, isAllowedDocumentMimeType } from './fileTypes';
 import { downloadRemoteFileOnWeb, readBlobUrlAsBase64 } from './webDownload';
+import { t } from './i18n';
 
 /**
  * Documents live in a PRIVATE storage bucket, unlike company logos.
@@ -46,7 +47,7 @@ export async function readPickedFileBase64(file: PickedFile): Promise<string> {
 export async function pickImage(): Promise<PickedFile | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
-    throw new Error('נדרשת הרשאת גישה לתמונות');
+    throw new Error(t('permission.photos'));
   }
 
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -71,7 +72,7 @@ export async function pickImage(): Promise<PickedFile | null> {
 export async function captureImage(): Promise<PickedFile | null> {
   const permission = await ImagePicker.requestCameraPermissionsAsync();
   if (!permission.granted) {
-    throw new Error('נדרשת הרשאת גישה למצלמה');
+    throw new Error(t('permission.camera'));
   }
 
   const result = await ImagePicker.launchCameraAsync({ quality: 0.85 });
@@ -169,6 +170,36 @@ async function storeDocumentBytes(params: {
   return data as DocumentRow;
 }
 
+// Each document folder's name, by category.
+const FOLDER_TITLE_KEY: Record<string, string> = {
+  accompanying_drivers: 'folder.companionDrivers',
+  brakes_annual: 'folder.brakesAnnual',
+  brakes_semiannual: 'folder.brakesSemiAnnual',
+  certifications: 'folder.certifications',
+  child_detection: 'folder.childLeftBehind',
+  driver_file: 'folder.driverFile',
+  general: 'folder.generalDocs',
+  hazmat: 'folder.hazmat',
+  notes_feedback: 'folder.notesAndResponses',
+  procedure_6: 'folder.procedure6',
+  safety_officer_approval: 'folder.safetyOfficerApproval',
+  tachograph_calibration: 'folder.tachographValidity',
+  traffic_reports: 'folder.trafficReports',
+  trainings: 'folder.trainings',
+  transport_info: 'folder.trafficInfoDocs',
+  winter_inspection: 'folder.winterCheck',
+};
+
+/**
+ * The title a file uploaded to a folder is stored under: the folder's Hebrew
+ * name, in every UI language. Stored data, and the server quotes it in its
+ * Hebrew "uploaded a document" notifications.
+ */
+export function storedFolderTitle(category: string, title: string): string {
+  const key = FOLDER_TITLE_KEY[category];
+  return key ? t(key, { lng: 'he' }) : title;
+}
+
 /**
  * Uploads a picked file and records it in the `documents` table.
  *
@@ -190,13 +221,13 @@ export async function uploadDocument(params: {
 }): Promise<DocumentRow> {
   const { file } = params;
   if (!isAllowedDocumentMimeType(file.mimeType)) {
-    throw new Error('סוג הקובץ אינו נתמך. ניתן להעלות PDF או תמונה בפורמט JPG, PNG, WEBP או HEIC');
+    throw new Error(t('documents.unsupportedType'));
   }
 
   const base64 = await readPickedFileBase64(file);
   const bytes = decode(base64);
   if (bytes.byteLength > MAX_DOCUMENT_BYTES) {
-    throw new Error('הקובץ גדול מדי. ניתן להעלות קובץ עד 20MB');
+    throw new Error(t('documents.tooLarge'));
   }
 
   return storeDocumentBytes({
@@ -231,7 +262,7 @@ export async function uploadGeneratedDocument(params: {
 }): Promise<DocumentRow> {
   const bytes = decode(rawBase64(params.base64));
   if (bytes.byteLength > MAX_DOCUMENT_BYTES) {
-    throw new Error('הקובץ שנוצר גדול מדי');
+    throw new Error(t('documents.generatedTooLarge'));
   }
 
   return storeDocumentBytes({
@@ -289,7 +320,7 @@ export async function getDocumentUrl(doc: DocumentRow): Promise<string | null> {
  */
 export async function downloadDocument(doc: DocumentRow): Promise<void> {
   const url = await getDocumentUrl(doc);
-  if (!url) throw new Error('לא ניתן להוריד את המסמך כרגע');
+  if (!url) throw new Error(t('documents.downloadUnavailable'));
 
   if (await downloadRemoteFileOnWeb(url, safeFileName(doc.file_name ?? doc.title, 'document'))) return;
 

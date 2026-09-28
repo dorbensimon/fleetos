@@ -23,9 +23,11 @@ import { checklistPreviewTarget, useFolderMeetings } from '../../components/chec
 import { cancelMeeting, formatIsoDay, type MeetingRow } from '../../lib/checklistForms';
 import { useNextMeeting } from '../../components/checklist/useNextMeeting';
 import { NextMeetingCard } from '../../components/checklist/NextMeetingCard';
+import { t, dirIcon, getLocale } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverSigningDocuments'>;
-const time = (date: string) => new Date(date).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
+const time = (date: string) => new Date(date).toLocaleString(getLocale(), { dateStyle: 'short', timeStyle: 'short' });
 
 export default function DriverSigningDocumentsScreen({ navigation, route }: Props) {
   const { profile, loading: profileLoading } = useCompany();
@@ -65,10 +67,10 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
     const generation = ++loadRequest.current;
     // Right after a refresh the profile is still on its way: keep loading.
     if (!driverId && profileLoading) return;
-    if (!driverId) { setError('יש לפתוח את המסמך מתוך פרופיל נהג'); setLoading(false); return; }
+    if (!driverId) { setError(t('signing.openFromDriverProfile')); setLoading(false); return; }
     try {
       const target = await getDriver(driverId);
-      if (!target?.company_id) throw new Error('הנהג לא נמצא');
+      if (!target?.company_id) throw new Error(t('driver.notFound'));
       const [templates, initial] = await Promise.all([listSigningTemplates(target.company_id), listDriverSigningRequests(driverId)]);
       const toSync = initial.filter(item => (item.status === 'pending' && item.docuseal_submitter_slug) || (item.status === 'completed' && !item.signed_file_path));
       const results = await Promise.allSettled(toSync.map(item => syncSigningRequest(item.id)));
@@ -79,8 +81,8 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
       setFolder(built.find(item => item.id === folderId) || null);
       // The driver's own list shows only folders with something sent to them.
       setFolders(built.filter(item => item.requests.length > 0));
-      setError(results.some(result => result.status === 'rejected') ? 'לא ניתן לעדכן כרגע את כל מצבי החתימה. מוצג המידע האחרון שנשמר.' : '');
-    } catch (err: any) { if (generation === loadRequest.current) setError(err?.message || 'טעינת המסמכים נכשלה'); }
+      setError(results.some(result => result.status === 'rejected') ? t('signing.statusRefreshFailed') : '');
+    } catch (err: any) { if (generation === loadRequest.current) setError(errorMessage(err, t('documents.loadFailedShort'))); }
     finally { if (generation === loadRequest.current) setLoading(false); }
   }, [driverId, folderId, profileLoading]);
   useFocusEffect(useCallback(() => {
@@ -99,7 +101,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
         if (check?.status === 'pending' && check.signOnly) {
           navigation.navigate('DriverSignDocument', {
             requestId: item.id,
-            title: item.template_title || folder?.title || 'מסמך',
+            title: item.template_title || folder?.title || t('documents.document'),
             documentUrl: check.documentUrl ?? null,
           });
           return;
@@ -108,12 +110,12 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
       const session = await getSigningSession(item.id);
       navigation.navigate('DocusealWebView', {
         ...session,
-        title: item.template_title || folder?.title || 'מסמך',
+        title: item.template_title || folder?.title || t('documents.document'),
         requestId: item.id,
         returnToDriverDocuments: profile?.role === 'driver',
         allowDownload: item.status === 'completed',
       });
-    } catch (err: any) { setError(err?.message || 'פתיחת המסמך נכשלה'); }
+    } catch (err: any) { setError(errorMessage(err, t('common.openDocumentFailed'))); }
     finally { setOpening(''); }
   };
   const send = async () => {
@@ -122,8 +124,8 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
     try {
       const result = await assignSigningTemplate(driver.company_id, folder.template.id, [driver.id]);
       await load();
-      if (!result.success || result.created !== 1) setError(result.message || 'השליחה לא אושרה. נסה שוב.');
-    } catch (err: any) { setError(err?.message || 'השליחה נכשלה. נסה שוב.'); }
+      if (!result.success || result.created !== 1) setError(result.message || t('signing.sendNotApprovedRetry'));
+    } catch (err: any) { setError(errorMessage(err, t('signing.sendFailedRetry'))); }
     finally { sendingLock.current = false; setSending(false); }
   };
   // The blank form as the driver will get it, so the manager can check it before sending.
@@ -135,7 +137,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
         ? await checklistPreviewTarget(folder.template, folder.title)
         : await getSigningTemplatePreviewSession(folder.template.id);
       navigation.navigate('DocusealWebView', { ...session, title: folder.title });
-    } catch (err: any) { setError(err?.message || 'פתיחת המסמך נכשלה. נסה שוב.'); }
+    } catch (err: any) { setError(errorMessage(err, t('common.openDocumentFailedRetry'))); }
     finally { setOpening(''); }
   };
   // Opened from a notification or a task about one request: a driver goes
@@ -157,7 +159,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
   const download = async (item: SignatureRequest) => {
     setOpening(`download:${item.id}`); setError('');
     try { await downloadSignedRequest(item); }
-    catch (err: any) { setError(err?.message || 'הורדת המסמך נכשלה'); }
+    catch (err: any) { setError(errorMessage(err, t('signing.downloadFailed'))); }
     finally { setOpening(''); }
   };
   const cancel = async () => {
@@ -169,22 +171,22 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
       await Promise.all([reloadMeetings(), reloadNext()]);
       setCancelOpen(false);
       await load();
-    } catch (err: any) { setCancelOpen(false); setError(err?.message || 'המחיקה נכשלה. נסו שוב.'); }
+    } catch (err: any) { setCancelOpen(false); setError(errorMessage(err, t('common.deleteFailedRetry'))); }
     finally { setCancelling(false); }
   };
   const askErase = (item: SignatureRequest) => {
     if (!driver?.company_id) return;
     const companyId = driver.company_id;
-    showAlert('למחוק את המסמך?', eraseWarning(item.status, driver.full_name), [
-      { text: 'השארה', style: 'cancel' },
+    showAlert(t('documents.deleteQuestion'), eraseWarning(item.status, driver.full_name), [
+      { text: t('common.keep'), style: 'cancel' },
       {
-        text: 'מחיקת המסמך',
+        text: t('documents.deleteDocument'),
         style: 'destructive',
         onPress: () => {
           setOpening(`erase:${item.id}`); setError('');
           eraseSigningRequest(companyId, item.id)
             .then(load)
-            .catch((err: Error) => setError(err?.message || 'המחיקה נכשלה. נסו שוב.'))
+            .catch((err: Error) => setError(errorMessage(err, t('common.deleteFailedRetry'))))
             .finally(() => setOpening(''));
         },
       },
@@ -196,18 +198,18 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
     const companyId = driver.company_id;
     const draft = meeting.status === 'draft';
     showAlert(
-      draft ? 'למחוק את הטיוטה?' : 'למחוק את המפגש?',
-      draft ? 'מה שסומן בטיוטה יימחק. אפשר להתחיל מפגש חדש בכל רגע.' : 'המפגש והמסמך שלו יימחקו לגמרי, גם אצל הנהג. אי אפשר לשחזר אותם.',
+      draft ? t('meeting.deleteDraftQuestion') : t('meeting.deleteQuestion'),
+      draft ? t('meeting.draftDeletedStartNew') : t('meeting.deleteWarning'),
       [
-        { text: 'השארה', style: 'cancel' },
+        { text: t('common.keep'), style: 'cancel' },
         {
-          text: draft ? 'מחיקת הטיוטה' : 'מחיקת המפגש',
+          text: draft ? t('meeting.deleteDraft') : t('meeting.delete'),
           style: 'destructive',
           onPress: () => {
             setOpening(`cancel:${meeting.id}`); setError('');
             cancelMeeting(companyId, meeting.id)
               .then(async () => { await Promise.all([reloadMeetings(), reloadNext()]); await load(); })
-              .catch((err: Error) => setError(err?.message || 'המחיקה נכשלה. נסו שוב.'))
+              .catch((err: Error) => setError(errorMessage(err, t('common.deleteFailedRetry'))))
               .finally(() => setOpening(''));
           },
         },
@@ -219,25 +221,25 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
 
   if (isDesktop) {
     return (
-      <DesktopShell active="DriverSigningDocuments" breadcrumbs={['מסמכים לחתימה', ...(folder ? [folder.title] : [])]}>
+      <DesktopShell active="DriverSigningDocuments" breadcrumbs={[t('nav.signingDocuments'), ...(folder ? [folder.title] : [])]}>
         {loading ? (
           <LoadingState />
         ) : !driver ? (
-          <ErrorState message={error || 'הנהג לא נמצא'} onRetry={load} />
+          <ErrorState message={error || t('driver.notFound')} onRetry={load} />
         ) : (
           <View style={ds.wrap}>
             {!!error && <DText style={ds.error}>{error}</DText>}
             {!folderId ? (
               <SigningFolders desktop driverId={driver.id} onOpen={item => navigation.push('DriverSigningDocuments', { driverId: driver.id, folderId: item.id })} />
             ) : !folder ? (
-              <EmptyState title="התיקייה אינה זמינה" />
+              <EmptyState title={t('signing.folderUnavailable')} />
             ) : (
               <>
                 {nextCard && <View style={ds.next}>{nextCard}</View>}
                 {canSend && folder.template && meetings.checklist && (
                   <HoverPressable style={ds.sendButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={() => startMeeting()}>
                     <Ionicons name="add-circle-outline" size={15} color={DESKTOP_COLORS.brand} />
-                    <DText weight="semiBold" style={ds.sendText}>מפגש חדש</DText>
+                    <DText weight="semiBold" style={ds.sendText}>{t('meeting.new')}</DText>
                   </HoverPressable>
                 )}
                 {meetings.drafts.length > 0 && (
@@ -248,19 +250,19 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                         style={[ds.row, index === meetings.drafts.length - 1 && ds.rowLast]}
                         hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}
                         onPress={() => startMeeting(draft.id)}
-                        accessibilityLabel={`${draft.title}, טיוטה. המשך מילוי`}
+                        accessibilityLabel={t('meeting.draftContinue', { title: draft.title })}
                       >
                         <Ionicons name="create-outline" size={16} color={DESKTOP_COLORS.brand} />
                         <View style={{ flex: 1 }}>
                           <DText weight="semiBold" style={ds.rowTitle}>{draft.title}</DText>
-                          <DText style={ds.rowMeta}>טיוטה, עוד לא נחתם · {formatIsoDay(draft.updated_at.slice(0, 10))}</DText>
+                          <DText style={ds.rowMeta}>{t('signing.draftNotSignedSep')} {formatIsoDay(draft.updated_at.slice(0, 10))}</DText>
                         </View>
                         {canSend && (
-                          <HoverPressable onPress={() => askCancelMeeting(draft)} disabled={!!opening} accessibilityLabel="מחיקת הטיוטה" style={ds.rowAction} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}>
-                            <DText weight="semiBold" style={ds.rowDanger}>{opening === `cancel:${draft.id}` ? 'מוחק…' : 'מחיקה'}</DText>
+                          <HoverPressable onPress={() => askCancelMeeting(draft)} disabled={!!opening} accessibilityLabel={t('meeting.deleteDraft')} style={ds.rowAction} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}>
+                            <DText weight="semiBold" style={ds.rowDanger}>{opening === `cancel:${draft.id}` ? t('common.deleting') : t('common.deleteAction')}</DText>
                           </HoverPressable>
                         )}
-                        <DText weight="semiBold" style={ds.sendText}>המשך</DText>
+                        <DText weight="semiBold" style={ds.sendText}>{t('common.continue')}</DText>
                       </HoverPressable>
                     ))}
                   </View>
@@ -274,12 +276,12 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                   >
                     <Ionicons name={completed && !pending ? 'document-text-outline' : 'send-outline'} size={14} color={DESKTOP_COLORS.brand} />
                     <DText weight="semiBold" style={ds.sendText}>
-                      {sending ? 'שולח…' : pending ? `שלח מחדש את ${folder.title}` : completed ? 'צפייה במסמך' : `שלח ${folder.title} לחתימה`}
+                      {sending ? t('common.sending') : pending ? t('signing.resendTitle', { title: folder.title }) : completed ? t('signing.viewDocument') : t('signing.sendTitleForSignature', { title: folder.title })}
                     </DText>
                   </HoverPressable>
                 )}
                 {folder.requests.length === 0 ? (
-                  meetings.drafts.length ? null : <EmptyState icon="folder-outline" title={meetings.checklist ? 'עוד לא התקיים מפגש' : 'התיקייה ריקה'} />
+                  meetings.drafts.length ? null : <EmptyState icon="folder-outline" title={meetings.checklist ? t('meeting.notHeldYet') : t('documents.folderEmptyShort')} />
                 ) : (
                   <View style={ds.table}>
                     {folder.requests.map((item, index) => {
@@ -304,20 +306,20 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                           <View style={{ flex: 1 }}>
                             <DText weight="semiBold" style={ds.rowTitle}>{item.template_title || folder.title}</DText>
                             <DText style={ds.rowMeta}>
-                              {cancelled ? 'בוטל' : item.status === 'completed' ? `נחתם ${time(item.completed_at || item.created_at)}` : signNow ? 'ממתין לחתימת הנהג · לחצו כדי שיחתום עכשיו' : ready ? `נשלח ${time(item.sent_at || item.created_at)}` : item.status === 'declined' ? 'החתימה נדחתה' : 'השליחה לא אושרה — ניתן לנסות שוב'}
+                              {cancelled ? t('common.cancelled') : item.status === 'completed' ? t('signing.signedV1', { v1: time(item.completed_at || item.created_at) }) : signNow ? t('signing.awaitingDriverTapNow') : ready ? t('signing.sentWhen', { v1: time(item.sent_at || item.created_at) }) : item.status === 'declined' ? t('signing.declined') : t('signing.notApprovedCanRetry')}
                             </DText>
                           </View>
                           {canSend && meeting && (
-                            <HoverPressable onPress={() => askCancelMeeting(meeting)} disabled={!!opening} accessibilityLabel="מחיקת המפגש" style={ds.rowAction} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}>
-                              <DText weight="semiBold" style={ds.rowDanger}>{opening === `cancel:${meeting.id}` ? 'מוחק…' : 'מחיקה'}</DText>
+                            <HoverPressable onPress={() => askCancelMeeting(meeting)} disabled={!!opening} accessibilityLabel={t('meeting.delete')} style={ds.rowAction} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}>
+                              <DText weight="semiBold" style={ds.rowDanger}>{opening === `cancel:${meeting.id}` ? t('common.deleting') : t('common.deleteAction')}</DText>
                             </HoverPressable>
                           )}
                           {canSend && !meeting && (
-                            <HoverPressable onPress={() => askErase(item)} disabled={!!opening} accessibilityLabel="מחיקת המסמך" style={ds.rowAction} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}>
-                              <DText weight="semiBold" style={ds.rowDanger}>{opening === `erase:${item.id}` ? 'מוחק…' : 'מחיקה'}</DText>
+                            <HoverPressable onPress={() => askErase(item)} disabled={!!opening} accessibilityLabel={t('documents.deleteDocument')} style={ds.rowAction} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}>
+                              <DText weight="semiBold" style={ds.rowDanger}>{opening === `erase:${item.id}` ? t('common.deleting') : t('common.deleteAction')}</DText>
                             </HoverPressable>
                           )}
-                          {openable && <Ionicons name="chevron-back" size={14} color={DESKTOP_COLORS.inkFaint} />}
+                          {openable && <Ionicons name={dirIcon('chevron-back')} size={14} color={DESKTOP_COLORS.inkFaint} />}
                         </HoverPressable>
                       );
                     })}
@@ -353,22 +355,22 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
 
   // The manager's view: every folder (empty ones are where sending starts),
   // and inside one, what was sent and its state, with send / resend on top.
-  const sendLabel = sending ? 'שולח…' : pending ? 'שליחה מחדש לחתימה' : completed ? 'צפייה במסמך החתום' : 'שליחה לחתימה';
+  const sendLabel = sending ? t('common.sending') : pending ? t('signing.resendForSignature') : completed ? t('signing.viewSigned') : t('signing.sendForSignature');
   return (
     <DriverPage
       insetTop={insets.top}
       insetBottom={insets.bottom}
-      hero={<HeroTitle title={folder?.title || 'טפסים ומסמכים'} subtitle={driver?.full_name || ' '} onBack={() => navigation.goBack()} />}
+      hero={<HeroTitle title={folder?.title || t('signing.formsAndDocs')} subtitle={driver?.full_name || ' '} onBack={() => navigation.goBack()} />}
       footer={
         folderId && folder && canSend && folder.template && meetings.checklist ? (
           <View style={styles.footer}>
-            <PrimaryAction label="צפייה בטופס" icon="eye-outline" tone="ghost" loading={opening === 'preview'} onPress={() => void preview()} style={styles.grow} />
-            <PrimaryAction label="מפגש חדש" icon="add-circle-outline" onPress={() => startMeeting()} disabled={opening === 'preview'} style={styles.flex2} />
+            <PrimaryAction label={t('signing.viewForm')} icon="eye-outline" tone="ghost" loading={opening === 'preview'} onPress={() => void preview()} style={styles.grow} />
+            <PrimaryAction label={t('meeting.new')} icon="add-circle-outline" onPress={() => startMeeting()} disabled={opening === 'preview'} style={styles.flex2} />
           </View>
         ) : folderId && folder && canSend && folder.template ? (
           <View style={styles.footer}>
             {!(completed && !pending) && (
-              <PrimaryAction label="צפייה" icon="eye-outline" tone="ghost" loading={opening === 'preview'} disabled={sending} onPress={() => void preview()} style={styles.grow} />
+              <PrimaryAction label={t('common.view')} icon="eye-outline" tone="ghost" loading={opening === 'preview'} disabled={sending} onPress={() => void preview()} style={styles.grow} />
             )}
             <PrimaryAction
               label={sendLabel}
@@ -389,19 +391,19 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
           dismissable={!cancelling}
           icon="trash"
           tone="danger"
-          title={cancelMeetingTarget ? (cancelMeetingTarget.status === 'draft' ? 'למחוק את הטיוטה?' : 'למחוק את המפגש?') : 'למחוק את המסמך?'}
+          title={cancelMeetingTarget ? (cancelMeetingTarget.status === 'draft' ? t('meeting.deleteDraftQuestion') : t('meeting.deleteQuestion')) : t('documents.deleteQuestion')}
           subtitle={
             cancelMeetingTarget
               ? cancelMeetingTarget.status === 'draft'
-                ? 'מה שסומן בטיוטה יימחק. אפשר להתחיל מפגש חדש בכל רגע.'
-                : 'המפגש והמסמך שלו יימחקו לגמרי, גם אצל הנהג. אי אפשר לשחזר אותם.'
+                ? t('meeting.draftDeletedStartNew')
+                : t('meeting.deleteWarning')
               : eraseWarning(cancelTarget?.status ?? 'pending', driver?.full_name)
           }
           footer={
             <SheetActions>
-              <PrimaryAction label="השארה" tone="ghost" onPress={() => setCancelOpen(false)} disabled={cancelling} style={styles.grow} />
+              <PrimaryAction label={t('common.keep')} tone="ghost" onPress={() => setCancelOpen(false)} disabled={cancelling} style={styles.grow} />
               <PrimaryAction
-                label={cancelMeetingTarget ? (cancelMeetingTarget.status === 'draft' ? 'מחיקת הטיוטה' : 'מחיקת המפגש') : 'מחיקת המסמך'}
+                label={cancelMeetingTarget ? (cancelMeetingTarget.status === 'draft' ? t('meeting.deleteDraft') : t('meeting.delete')) : t('documents.deleteDocument')}
                 tone="destructive"
                 onPress={() => void cancel()}
                 loading={cancelling}
@@ -415,21 +417,21 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
       {loading ? (
         <LoadingPanel />
       ) : !driver ? (
-        <ErrorPanel message={error || 'הנהג לא נמצא'} onRetry={load} />
+        <ErrorPanel message={error || t('driver.notFound')} onRetry={load} />
       ) : (
         <>
           {!!error && <Banner tone="soon">{error}</Banner>}
           {!folderId ? (
             <SigningFolders title={null} driverId={driver.id} onOpen={(item) => navigation.push('DriverSigningDocuments', { driverId: driver.id, folderId: item.id })} />
           ) : !folder ? (
-            <EmptyPanel icon="folder-outline" tone="muted" title="התיקייה אינה זמינה" body="ייתכן שהתבנית הוסרה." />
+            <EmptyPanel icon="folder-outline" tone="muted" title={t('signing.folderUnavailable')} body={t('signing.templateMaybeRemoved')} />
           ) : !folder.requests.length && !meetings.drafts.length ? (
             <Reveal>
               {nextCard}
               {meetings.checklist ? (
-                <EmptyPanel icon="list-outline" title="עוד לא התקיים מפגש" body={`לחצו ״מפגש חדש״ כדי למלא את ${folder.title} יחד עם ${driver.full_name ?? 'הנהג'}.`} />
+                <EmptyPanel icon="list-outline" title={t('meeting.notHeldYet')} body={t('meeting.clickNewToFill', { title: folder.title, v1: driver.full_name ?? t('common.theDriver') })} />
               ) : (
-                <EmptyPanel icon="paper-plane-outline" title="עוד לא נשלח לנהג" body={`שלח את ${folder.title} ל${driver.full_name ?? 'נהג'} — הוא יקבל התראה ויוכל לחתום מהטלפון.`} />
+                <EmptyPanel icon="paper-plane-outline" title={t('signing.notSentToDriverYet')} body={t('signing.sendTitleToV1', { title: folder.title, v1: driver.full_name ?? t('role.driver') })} />
               )}
             </Reveal>
           ) : (
@@ -443,16 +445,16 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                   </View>
                   <View style={styles.flex}>
                     <DKText variant="label" numberOfLines={2}>{draft.title}</DKText>
-                    <DKText variant="caption" color={DK.accent}>טיוטה, עוד לא נחתם · {formatIsoDay(draft.updated_at.slice(0, 10))}</DKText>
+                    <DKText variant="caption" color={DK.accent}>{t('signing.draftNotSignedSep')} {formatIsoDay(draft.updated_at.slice(0, 10))}</DKText>
                   </View>
-                  <Pressy onPress={() => startMeeting(draft.id)} accessibilityLabel="המשך מילוי הטיוטה" style={styles.resume} pressScale={0.94}>
-                    <DKText variant="label" color="#FFFFFF">המשך</DKText>
+                  <Pressy onPress={() => startMeeting(draft.id)} accessibilityLabel={t('meeting.continueDraft')} style={styles.resume} pressScale={0.94}>
+                    <DKText variant="label" color="#FFFFFF">{t('common.continue')}</DKText>
                   </Pressy>
                   {canSend && (
                     <Pressy
                       onPress={() => { setCancelTarget(null); setCancelMeetingTarget(draft); setCancelOpen(true); }}
                       disabled={cancelling}
-                      accessibilityLabel="מחיקת הטיוטה"
+                      accessibilityLabel={t('meeting.deleteDraft')}
                       style={[styles.view, styles.cancel]}
                       pressScale={0.92}
                     >
@@ -478,25 +480,25 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                       <DKText variant="label" numberOfLines={2}>{item.template_title || folder.title}</DKText>
                       <DKText variant="caption" color={done ? DK.muted : tone.fg}>
                         {cancelled
-                          ? `בוטל${meeting?.cancelled_at ? ` ${time(meeting.cancelled_at)}` : ''}`
+                          ? t('signing.cancelledV1', { v1: meeting?.cancelled_at ? ` ${time(meeting.cancelled_at)}` : '' })
                           : done
-                            ? `נחתם ${time(item.completed_at || item.created_at)}${meeting?.officer_name ? ` · ${meeting.officer_name}` : ''}`
+                            ? t('signing.signedWith', { v1: time(item.completed_at || item.created_at), v2: meeting?.officer_name ? ` · ${meeting.officer_name}` : '' })
                             : ready
-                              ? meeting ? `הקצין חתם · ממתין לחתימת הנהג` : `ממתין לחתימה · נשלח ${time(item.sent_at || item.created_at)}`
-                              : item.status === 'declined' ? 'הנהג דחה את החתימה' : 'השליחה לא הושלמה — אפשר לשלוח שוב'}
+                              ? meeting ? t('signing.officerSignedAwaitingDriver') : t('signing.awaitingSentV1', { v1: time(item.sent_at || item.created_at) })
+                              : item.status === 'declined' ? t('signing.driverDeclined') : t('signing.incompleteCanResend')}
                       </DKText>
                     </View>
                     {ready && meeting && canSend && (
-                      <Pressy onPress={() => startMeeting(meeting.id)} accessibilityLabel="הנהג חותם עכשיו, על המכשיר הזה" style={styles.resume} pressScale={0.94}>
-                        <DKText variant="label" color="#FFFFFF">חתימה עכשיו</DKText>
+                      <Pressy onPress={() => startMeeting(meeting.id)} accessibilityLabel={t('signing.driverSignsOnDevice')} style={styles.resume} pressScale={0.94}>
+                        <DKText variant="label" color="#FFFFFF">{t('signing.signNow')}</DKText>
                       </Pressy>
                     )}
                     {(done || (cancelled && item.status === 'completed')) && (
                       <>
-                        <Pressy onPress={() => void download(item)} disabled={!!opening} accessibilityLabel="הורדת המסמך החתום" style={styles.view} pressScale={0.92}>
+                        <Pressy onPress={() => void download(item)} disabled={!!opening} accessibilityLabel={t('signing.downloadSigned')} style={styles.view} pressScale={0.92}>
                           <Ionicons name={opening === `download:${item.id}` ? 'hourglass-outline' : 'download-outline'} size={19} color={DK.accent} />
                         </Pressy>
-                        <Pressy onPress={() => void open(item)} disabled={!!opening} accessibilityLabel="צפייה במסמך החתום" style={styles.view} pressScale={0.92}>
+                        <Pressy onPress={() => void open(item)} disabled={!!opening} accessibilityLabel={t('signing.viewSigned')} style={styles.view} pressScale={0.92}>
                           <Ionicons name="eye-outline" size={19} color={DK.accent} />
                         </Pressy>
                       </>
@@ -505,8 +507,8 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                       <Pressy
                         onPress={() => { setCancelTarget(item); setCancelMeetingTarget(meeting ?? null); setCancelOpen(true); }}
                         disabled={sending || cancelling}
-                        accessibilityLabel={meeting ? 'מחיקת המפגש' : 'מחיקת המסמך'}
-                        accessibilityHint={meeting ? 'המפגש והמסמך שלו יימחקו' : 'המסמך יימחק לגמרי'}
+                        accessibilityLabel={meeting ? t('meeting.delete') : t('documents.deleteDocument')}
+                        accessibilityHint={meeting ? t('meeting.andDocDeleted') : t('signing.docFullyDeleted')}
                         style={[styles.view, styles.cancel]}
                         pressScale={0.92}
                       >

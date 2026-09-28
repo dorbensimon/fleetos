@@ -35,6 +35,10 @@ import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { AdminProfileDesktopView } from '../../components/desktop/AdminProfileDesktopView';
+import { LanguageSection } from '../../components/LanguagePicker';
+import { t, textStart } from '../../lib/i18n';
+import { companyTypeLabel } from '../../lib/companyType';
+import { errorMessage } from '../../lib/requestError';
 
 /** The logged-in admin's own details, reached from the hamburger menu. */
 type Props = NativeStackScreenProps<RootStackParamList, 'AdminProfile'>;
@@ -64,7 +68,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
         setEmail(data.user?.email ?? null);
       }
     } catch (err: any) {
-      if (requestId === loadRequest.current) setLoadError(err?.message ?? 'טעינת הפרטים נכשלה');
+      if (requestId === loadRequest.current) setLoadError(errorMessage(err, t('profile.loadFailed')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -96,11 +100,11 @@ export default function AdminProfileScreen({ navigation }: Props) {
   const save = async () => {
     if (!profile || !company) return;
     const e: Record<string, string> = {};
-    if (!form.fullName.trim()) e.fullName = 'שדה חובה';
-    if (!form.phone.trim()) e.phone = 'שדה חובה';
-    else if (!isValidIsraeliPhone(form.phone)) e.phone = 'מספר טלפון לא תקין';
+    if (!form.fullName.trim()) e.fullName = t('validation.required');
+    if (!form.phone.trim()) e.phone = t('validation.required');
+    else if (!isValidIsraeliPhone(form.phone)) e.phone = t('validation.invalidPhone');
     if (form.companyPhone.trim() && !isValidIsraeliPhone(form.companyPhone)) {
-      e.companyPhone = 'מספר טלפון לא תקין';
+      e.companyPhone = t('validation.invalidPhone');
     }
     setErrors(e);
     if (Object.keys(e).length > 0) return;
@@ -114,39 +118,39 @@ export default function AdminProfileScreen({ navigation }: Props) {
     let companyPhoneError: string | null = null;
     if (!error && form.companyPhone.trim() && form.companyPhone.trim() !== (company.phone || '')) {
       const { data, error: fnError } = await updateCompanySettings(company.id, { landline: form.companyPhone.trim() });
-      if (fnError) companyPhoneError = await functionErrorMessage(fnError, data, 'עדכון טלפון החברה נכשל', false);
+      if (fnError) companyPhoneError = await functionErrorMessage(fnError, data, t('profile.companyPhoneFailed'), false);
     }
     setSaving(false);
 
     if (error) {
-      showAlert('שמירה נכשלה', 'לא הצלחנו לשמור את השינויים. נסה שוב');
+      showAlert(t('common.saveFailed'), t('profile.saveChangesFailed'));
       return;
     }
     if (companyPhoneError) {
-      showAlert('שמירה נכשלה', companyPhoneError);
+      showAlert(t('common.saveFailed'), companyPhoneError);
       return;
     }
     setEditing(false);
     await refresh();
-    showToast('נשמר בהצלחה');
+    showToast(t('common.savedSuccessfully'));
   };
 
   const signOut = () => {
-    showAlert('התנתקות', 'להתנתק מהחשבון?', [
-      { text: 'ביטול', style: 'cancel' },
-      { text: 'התנתק', style: 'destructive', onPress: () => void signOutEverywhere().catch(() => showAlert('ההתנתקות נכשלה', 'נסה שוב בעוד רגע.')) },
+    showAlert(t('auth.signOut'), t('auth.signOutConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('auth.signOutAction'), style: 'destructive', onPress: () => void signOutEverywhere().catch(() => showAlert(t('auth.signOutFailed'), t('common.tryAgainShortly'))) },
     ]);
   };
 
   if (isDesktop) {
     return (
-      <DesktopShell active="AdminProfile" breadcrumbs={['חשבון', 'הפרטים שלי']}>
+      <DesktopShell active="AdminProfile" breadcrumbs={[t('nav.account'), t('nav.myDetails')]}>
         {loading ? null : loadError ? (
           <ErrorState message={loadError} onRetry={load} />
         ) : (
           <AdminProfileDesktopView
             fullName={editing ? form.fullName || profile?.full_name || '' : profile?.full_name || ''}
-            role="אדמין"
+            role={t('role.adminShort')}
             email={email}
             company={company}
             editing={editing}
@@ -171,17 +175,17 @@ export default function AdminProfileScreen({ navigation }: Props) {
       insetBottom={insets.bottom}
       hero={
         <HeroTitle
-          title={editing ? 'עריכת הפרטים' : 'הפרטים שלי'}
-          subtitle={company?.name ? `מנהל צי · ${company.name}` : 'מנהל צי'}
+          title={editing ? t('profile.editDetailsTitle') : t('nav.myDetails')}
+          subtitle={company?.name ? t('profile.fleetManagerAt', { name: company.name }) : t('role.fleetManager')}
           onBack={() => (editing ? setEditing(false) : navigation.goBack())}
-          right={!loading && !loadError && !editing ? <HeroButton icon="create-outline" label="עריכת הפרטים" onPress={toggleEdit} /> : undefined}
+          right={!loading && !loadError && !editing ? <HeroButton icon="create-outline" label={t('profile.editDetailsTitle')} onPress={toggleEdit} /> : undefined}
         />
       }
       footer={
         editing ? (
           <View style={styles.footer}>
-            <PrimaryAction label="ביטול" tone="ghost" onPress={() => setEditing(false)} style={styles.footerCancel} />
-            <PrimaryAction label="שמירת השינויים" icon="checkmark" onPress={() => void save()} loading={saving} style={styles.footerSave} />
+            <PrimaryAction label={t('common.cancel')} tone="ghost" onPress={() => setEditing(false)} style={styles.footerCancel} />
+            <PrimaryAction label={t('common.saveChangesAction')} icon="checkmark" onPress={() => void save()} loading={saving} style={styles.footerSave} />
           </View>
         ) : undefined
       }
@@ -194,13 +198,13 @@ export default function AdminProfileScreen({ navigation }: Props) {
         <>
           <Reveal index={0}>
             <KitSection>
-              <EditField first label="שם מלא" required value={form.fullName} onChangeText={(v) => set('fullName', v)} error={errors.fullName} />
-              <EditField label="טלפון" required value={form.phone} onChangeText={(v) => set('phone', v.replace(/\D/g, ''))} keyboardType="phone-pad" ltr error={errors.phone} />
+              <EditField first label={t('common.fullName')} required value={form.fullName} onChangeText={(v) => set('fullName', v)} error={errors.fullName} />
+              <EditField label={t('common.phone')} required value={form.phone} onChangeText={(v) => set('phone', v.replace(/\D/g, ''))} keyboardType="phone-pad" ltr error={errors.phone} />
             </KitSection>
           </Reveal>
           <Reveal index={1}>
-            <KitSection title="החברה">
-              <EditField first label="טלפון החברה" value={form.companyPhone} onChangeText={(v) => set('companyPhone', v.replace(/\D/g, ''))} keyboardType="phone-pad" ltr error={errors.companyPhone} hint="שאר פרטי החברה נערכים בהגדרות החברה" />
+            <KitSection title={t('owner.theCompany')}>
+              <EditField first label={t('company.phone')} value={form.companyPhone} onChangeText={(v) => set('companyPhone', v.replace(/\D/g, ''))} keyboardType="phone-pad" ltr error={errors.companyPhone} hint={t('profile.companyEditedInSettings')} />
             </KitSection>
           </Reveal>
         </>
@@ -219,34 +223,37 @@ export default function AdminProfileScreen({ navigation }: Props) {
                 <View style={styles.roleChip}>
                   <Ionicons name="shield-checkmark" size={14} color={DK.accent} />
                   <DKText variant="micro" color={DK.accent}>
-                    מנהל צי
+                    {t('role.fleetManager')}
                   </DKText>
                 </View>
               </View>
             </Surface>
           </Reveal>
           <Reveal index={1}>
-            <KitSection title="פרטים אישיים">
-              <InfoLine first icon="person" label="שם מלא" value={profile?.full_name} />
-              <InfoLine icon="call" label="טלפון" value={profile?.phone ? formatPhone(profile.phone) : null} ltr />
-              <InfoLine icon="mail" label="אימייל" value={email} ltr locked />
-              <InfoLine icon="calendar" label="הצטרפות" value={profile?.created_at ? formatDate(profile.created_at) : null} locked />
+            <KitSection title={t('driver.personalDetails')}>
+              <InfoLine first icon="person" label={t('common.fullName')} value={profile?.full_name} />
+              <InfoLine icon="call" label={t('common.phone')} value={profile?.phone ? formatPhone(profile.phone) : null} ltr />
+              <InfoLine icon="mail" label={t('common.emailAddress')} value={email} ltr locked />
+              <InfoLine icon="calendar" label={t('profile.joined')} value={profile?.created_at ? formatDate(profile.created_at) : null} locked />
             </KitSection>
           </Reveal>
           <Reveal index={2}>
-            <KitSection title="החברה">
-              <InfoLine first icon="business" label="שם החברה" value={company?.name} />
-              <InfoLine icon="pricetag" label="סוג חברה" value={company?.company_type} />
-              <InfoLine icon="card" label="ח.פ / ע.מ" value={company?.business_id} ltr />
-              <InfoLine icon="location" label="כתובת" value={company?.address} />
-              <InfoLine icon="call" label="טלפון החברה" value={company?.phone ? formatPhone(company.phone) : null} ltr />
-              <ListRow icon="settings" title="הגדרות החברה" subtitle="אנשי קשר, קציני בטיחות, לוגו וחותמת" onPress={() => navigation.navigate('CompanySettings')} />
+            <KitSection title={t('owner.theCompany')}>
+              <InfoLine first icon="business" label={t('company.name')} value={company?.name} />
+              <InfoLine icon="pricetag" label={t('company.type')} value={companyTypeLabel(company?.company_type)} />
+              <InfoLine icon="card" label={t('company.businessId')} value={company?.business_id} ltr />
+              <InfoLine icon="location" label={t('common.address')} value={company?.address} />
+              <InfoLine icon="call" label={t('company.phone')} value={company?.phone ? formatPhone(company.phone) : null} ltr />
+              <ListRow icon="settings" title={t('nav.companySettings')} subtitle={t('profile.companySettingsHint')} onPress={() => navigation.navigate('CompanySettings')} />
             </KitSection>
           </Reveal>
           <Reveal index={3}>
-            <KitSection title="אבטחה">
-              <ActionRow icon="lock-closed" label="שינוי סיסמה" hint="סיסמה חדשה לכניסה לאפליקציה" onPress={() => navigation.navigate('SetPassword', { voluntary: true })} />
-              <ActionRow first={false} icon="log-out-outline" tone="danger" label="התנתקות מהחשבון" onPress={signOut} />
+            <LanguageSection />
+          </Reveal>
+          <Reveal index={4}>
+            <KitSection title={t('profile.security')}>
+              <ActionRow icon="lock-closed" label={t('password.change')} hint={t('profile.newPasswordHint')} onPress={() => navigation.navigate('SetPassword', { voluntary: true })} />
+              <ActionRow first={false} icon="log-out-outline" tone="danger" label={t('auth.signOutOfAccountAction')} onPress={signOut} />
             </KitSection>
           </Reveal>
         </>
@@ -257,7 +264,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, gap: 3 },
-  alignRight: { textAlign: 'right' },
+  alignRight: { textAlign: textStart() },
   identity: { flexDirection: 'row-reverse', alignItems: 'center', gap: 16, padding: 18 },
   roleChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, alignSelf: 'flex-end', marginTop: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: DK.accentSoft },
   footer: { flexDirection: 'row-reverse', gap: 10 },

@@ -6,6 +6,8 @@ import { DateField } from '../ui/DateField';
 import { formatIsoDay, repeatLabel, todayIso } from '../../lib/checklistForms';
 import { dueState, type PlanRow } from '../../lib/meetingPlan';
 import { DuePill } from './DuePill';
+import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * "המפגש הבא" in a driver's folder on a repeating form: the date, how far off
@@ -30,7 +32,7 @@ export function NextMeetingCard({
   const change = async (value: string | null) => {
     if (!value || value === row.nextDue || saving) return;
     if (value < todayIso()) {
-      setError('בחרו תאריך מהיום והלאה');
+      setError(t('meeting.chooseFromToday'));
       return;
     }
     setSaving(true);
@@ -38,7 +40,7 @@ export function NextMeetingCard({
     try {
       await onMove(value);
     } catch (e) {
-      setError((e as Error)?.message || 'שמירת התאריך נכשלה. נסו שוב.');
+      setError(errorMessage(e, t('common.saveDateFailedRetry')));
     } finally {
       setSaving(false);
     }
@@ -51,21 +53,21 @@ export function NextMeetingCard({
           <Ionicons name={state === 'late' ? 'alert-circle' : 'calendar'} size={24} color={tone?.fg ?? DK.accent} />
         </View>
         <View style={styles.flex}>
-          <DKText variant="caption" color={DK.muted}>{row.firstMeeting ? 'המפגש הראשון' : 'המפגש הבא'}</DKText>
+          <DKText variant="caption" color={DK.muted}>{row.firstMeeting ? t('meeting.firstOne') : t('meeting.next')}</DKText>
           <DKText variant="heading">{formatIsoDay(row.nextDue)}</DKText>
         </View>
         {state !== 'later' && <DuePill nextDue={row.nextDue} />}
       </View>
       <DKText variant="caption" color={DK.muted}>
-        {`מפגש ${repeatLabel(repeatMonths)}`}
-        {row.lastMeeting ? ` · האחרון היה ב-${formatIsoDay(row.lastMeeting)}` : ' · עוד לא התקיים מפגש'}
+        {t('meeting.repeatLabel', { repeatMonths: repeatLabel(repeatMonths) })}
+        {row.lastMeeting ? t('meeting.lastWasOn', { v1: formatIsoDay(row.lastMeeting) }) : t('meeting.noneHeldSuffix')}
       </DKText>
       {canEdit && (
         <View style={styles.move}>
-          <DKText variant="label">שינוי התאריך לנהג הזה</DKText>
-          <DateField value={row.nextDue} onChange={(value) => void change(value)} placeholder="בחירת תאריך" disabled={saving} hasError={!!error} />
+          <DKText variant="label">{t('meeting.changeDateForDriver')}</DKText>
+          <DateField value={row.nextDue} onChange={(value) => void change(value)} placeholder={t('date.chooseDateAction')} disabled={saving} hasError={!!error} />
           {!!error && <DKText variant="caption" color={STATUS.expired.fg} accessibilityRole="alert">{error}</DKText>}
-          {saving && <DKText variant="caption" color={DK.muted}>שומר…</DKText>}
+          {saving && <DKText variant="caption" color={DK.muted}>{t('common.savingEllipsis')}</DKText>}
         </View>
       )}
     </Surface>

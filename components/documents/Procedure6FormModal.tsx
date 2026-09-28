@@ -14,6 +14,8 @@ import { captureImage, pickImage, type PickedFile } from '../../lib/documents';
 import { Procedure6FormValues } from '../../lib/procedure6Report';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DK, HeroButton, NightBar, PrimaryAction } from '../driverKit';
+import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = {
   visible: boolean;
@@ -52,22 +54,22 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
   };
 
   const addPhoto = () => {
-    showAlert('הוספת תיעוד', undefined, [
-      { text: 'צלם', onPress: () => void captureImage().then((f) => f && setPhoto(f)).catch(() => undefined) },
-      { text: 'בחר מהגלריה', onPress: () => void pickImage().then((f) => f && setPhoto(f)).catch(() => undefined) },
-      { text: 'ביטול', style: 'cancel' },
+    showAlert(t('procedure6.addDocumentation'), undefined, [
+      { text: t('common.takePhoto'), onPress: () => void captureImage().then((f) => f && setPhoto(f)).catch(() => undefined) },
+      { text: t('common.chooseFromGallery'), onPress: () => void pickImage().then((f) => f && setPhoto(f)).catch(() => undefined) },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
   const validate = (): Record<string, string> => {
     const e: Record<string, string> = {};
-    if (!eventDateIso) e.eventDate = 'שדה חובה';
-    if (!eventTime) e.eventTime = 'שדה חובה';
-    if (!details.trim()) e.details = 'שדה חובה';
-    if (!vehicleNumber.trim()) e.vehicleNumber = 'שדה חובה';
-    if (!complainantName.trim()) e.complainantName = 'שדה חובה';
-    if (!complainantPhone.trim()) e.complainantPhone = 'שדה חובה';
-    else if (!isValidIsraeliPhone(complainantPhone)) e.complainantPhone = 'מספר טלפון לא תקין';
+    if (!eventDateIso) e.eventDate = t('validation.required');
+    if (!eventTime) e.eventTime = t('validation.required');
+    if (!details.trim()) e.details = t('validation.required');
+    if (!vehicleNumber.trim()) e.vehicleNumber = t('validation.required');
+    if (!complainantName.trim()) e.complainantName = t('validation.required');
+    if (!complainantPhone.trim()) e.complainantPhone = t('validation.required');
+    else if (!isValidIsraeliPhone(complainantPhone)) e.complainantPhone = t('validation.invalidPhone');
     return e;
   };
 
@@ -91,7 +93,7 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
       );
       reset();
     } catch (err: any) {
-      showAlert('שמירה נכשלה', err?.message ?? 'נסה שוב');
+      showAlert(t('common.saveFailed'), errorMessage(err, t('common.tryAgain')));
     } finally {
       setSaving(false);
     }
@@ -105,19 +107,19 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
         {!desktop ? (
           <NightBar
             insetTop={insets.top}
-            title="דיווח נוהל 6"
-            subtitle="המסמך נוצר כ־PDF ונשמר בתיק הנהג"
+            title={t('procedure6.report')}
+            subtitle={t('procedure6.savedAsPdf')}
             onBack={close}
-            right={saving ? undefined : <HeroButton icon="checkmark" label="שמירת הדיווח" onPress={() => void submit()} />}
+            right={saving ? undefined : <HeroButton icon="checkmark" label={t('procedure6.save')} onPress={() => void submit()} />}
           />
         ) : (
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <TouchableOpacity onPress={close} disabled={saving} hitSlop={10}>
-            <AppText weight="bold" style={styles.cancelText}>ביטול</AppText>
+            <AppText weight="bold" style={styles.cancelText}>{t('common.cancel')}</AppText>
           </TouchableOpacity>
-          <AppText weight="bold" style={styles.title}>הוסף מסמך נוהל 6</AppText>
+          <AppText weight="bold" style={styles.title}>{t('procedure6.addDocument')}</AppText>
           <TouchableOpacity onPress={submit} disabled={saving} hitSlop={10}>
-            <AppText weight="bold" style={[styles.saveText, saving && { opacity: 0 }]}>שמור</AppText>
+            <AppText weight="bold" style={[styles.saveText, saving && { opacity: 0 }]}>{t('common.save')}</AppText>
             {saving && <BrandLoader size="small" color={COLORS.accent} style={StyleSheet.absoluteFill} />}
           </TouchableOpacity>
         </View>
@@ -125,17 +127,17 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Card style={styles.formCard}>
-            <Field label="תאריך האירוע" error={errors.eventDate}>
+            <Field label={t('procedure6.eventDate')} error={errors.eventDate}>
               <DateField value={eventDateIso} onChange={setEventDateIso} disabled={saving} />
             </Field>
 
-            <Field label="שעת האירוע" error={errors.eventTime}>
+            <Field label={t('procedure6.eventTime')} error={errors.eventTime}>
               <TimeField value={eventTime} onChange={setEventTime} disabled={saving} hasError={!!errors.eventTime} />
             </Field>
 
-            <Field label="פרטי האירוע" error={errors.details}>
+            <Field label={t('procedure6.eventDetails')} error={errors.details}>
               <Input
-                placeholder="תיאור האירוע"
+                placeholder={t('procedure6.eventDescription')}
                 value={details}
                 onChangeText={setDetails}
                 multiline
@@ -146,9 +148,9 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
               />
             </Field>
 
-            <Field label="מס' רכב" error={errors.vehicleNumber}>
+            <Field label={t('vehicle.numberShort')} error={errors.vehicleNumber}>
               <InputLtr
-                placeholder="מספר רכב"
+                placeholder={t('vehicle.number')}
                 value={vehicleNumber}
                 onChangeText={setVehicleNumber}
                 editable={!saving}
@@ -156,9 +158,9 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
               />
             </Field>
 
-            <Field label="שם הנהג המתלונן" error={errors.complainantName}>
+            <Field label={t('procedure6.complainantName')} error={errors.complainantName}>
               <Input
-                placeholder="שם מלא"
+                placeholder={t('common.fullName')}
                 value={complainantName}
                 onChangeText={setComplainantName}
                 editable={!saving}
@@ -166,7 +168,7 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
               />
             </Field>
 
-            <Field label="טלפון הנהג המתלונן" error={errors.complainantPhone}>
+            <Field label={t('procedure6.complainantPhone')} error={errors.complainantPhone}>
               <InputLtr
                 placeholder="050-0000000"
                 value={formatPhone(complainantPhone)}
@@ -178,10 +180,10 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
               />
             </Field>
 
-            <Field label="העלאת תיעוד / תמונה" optional>
+            <Field label={t('procedure6.uploadPhoto')} optional>
               {photo ? (
                 <View style={styles.photoPreviewWrap}>
-                  <Image source={{ uri: photo.uri }} accessibilityLabel="התמונה שצורפה לדיווח" style={styles.photoPreview} />
+                  <Image source={{ uri: photo.uri }} accessibilityLabel={t('procedure6.attachedPhoto')} style={styles.photoPreview} />
                   <TouchableOpacity
                     style={styles.photoRemove}
                     onPress={() => setPhoto(null)}
@@ -194,12 +196,12 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
               ) : (
                 <TouchableOpacity style={styles.photoAddBtn} onPress={addPhoto} disabled={saving} activeOpacity={0.7}>
                   <Ionicons name="camera-outline" size={20} color={COLORS.accent} />
-                  <AppText weight="bold" style={styles.photoAddText}>הוסף תמונה</AppText>
+                  <AppText weight="bold" style={styles.photoAddText}>{t('common.addPhoto')}</AppText>
                 </TouchableOpacity>
               )}
             </Field>
           </Card>
-          {!desktop && <PrimaryAction label="שמירת הדיווח" icon="document-text-outline" onPress={() => void submit()} loading={saving} style={styles.kitSave} />}
+          {!desktop && <PrimaryAction label={t('procedure6.save')} icon="document-text-outline" onPress={() => void submit()} loading={saving} style={styles.kitSave} />}
         </ScrollView>
       </View>
     </Modal>
@@ -249,7 +251,7 @@ const styles = StyleSheet.create({
   photoRemove: {
     position: 'absolute',
     top: -8,
-    left: -8,
+    start: -8,
     backgroundColor: COLORS.card,
     borderRadius: 11,
   },

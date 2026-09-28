@@ -14,6 +14,8 @@ import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DepartmentsDesktopView } from '../../components/desktop/DepartmentsDesktopView';
+import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * Manages the company's internal org units ("תפעול", "הסעות" ...) that
@@ -44,7 +46,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
     setError(null);
     if (!companyId) {
       if (requestId === loadRequest.current) {
-        setError('לא נמצאה חברה משויכת');
+        setError(t('company.noLinkedCompany'));
         setLoading(false);
       }
       return;
@@ -53,7 +55,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
       const rows = await listDepartments(companyId);
       if (requestId === loadRequest.current) setDepartments(rows);
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message ?? 'טעינת המחלקות נכשלה');
+      if (requestId === loadRequest.current) setError(errorMessage(err, t('departments.loadFailed')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -75,9 +77,9 @@ export default function DepartmentsScreen({ navigation }: Props) {
       await createDepartment(companyId, newName.trim());
       setNewName('');
       await load();
-      showToast('נשמר בהצלחה');
+      showToast(t('common.savedSuccessfully'));
     } catch (err: any) {
-      showAlert('הוספת מחלקה נכשלה', String(err?.message ?? 'נסה שוב'));
+      showAlert(t('departments.addFailed'), String(errorMessage(err, t('common.tryAgain'))));
     } finally {
       setAdding(false);
     }
@@ -92,9 +94,9 @@ export default function DepartmentsScreen({ navigation }: Props) {
       await updateDepartment(id, editingName.trim());
       setEditingId(null);
       await load();
-      showToast('נשמר בהצלחה');
+      showToast(t('common.savedSuccessfully'));
     } catch (err: any) {
-      showAlert('שינוי השם נכשל', String(err?.message ?? 'נסה שוב'));
+      showAlert(t('departments.renameFailed'), String(errorMessage(err, t('common.tryAgain'))));
     }
   };
 
@@ -109,19 +111,19 @@ export default function DepartmentsScreen({ navigation }: Props) {
     const message = departmentDeleteMessage(dept.name, usage);
 
     showAlert(
-      'מחיקת מחלקה',
+      t('departments.deleteTitle'),
       message,
       [
-        { text: 'ביטול', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'מחק',
+          text: t('common.deleteAction'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteDepartment(companyId, dept.id);
               await load();
             } catch (err: any) {
-              showAlert('מחיקה נכשלה', String(err?.message ?? 'נסה שוב'));
+              showAlert(t('common.deleteFailed'), String(errorMessage(err, t('common.tryAgain'))));
             }
           },
         },
@@ -131,7 +133,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
 
   if (isDesktop) {
     return (
-      <DesktopShell active="Departments" breadcrumbs={['ניהול', 'מחלקות']}>
+      <DesktopShell active="Departments" breadcrumbs={[t('nav.management'), t('departments.title')]}>
         {loading ? null : error ? (
           <ErrorState message={error} onRetry={load} />
         ) : (
@@ -161,8 +163,8 @@ export default function DepartmentsScreen({ navigation }: Props) {
       insetBottom={insets.bottom}
       hero={
         <HeroTitle
-          title="מחלקות"
-          subtitle={loading ? 'טוען…' : departments.length ? `${departments.length} מחלקות בחברה` : 'חלוקת הנהגים והרכבים לפי יחידות'}
+          title={t('departments.title')}
+          subtitle={loading ? t('common.loadingEllipsis') : departments.length ? t('departments.countInCompany', { length: departments.length }) : t('departments.subtitle')}
           onBack={() => navigation.goBack()}
         />
       }
@@ -178,24 +180,24 @@ export default function DepartmentsScreen({ navigation }: Props) {
               <KitInput
                 value={newName}
                 onChangeText={setNewName}
-                placeholder="שם מחלקה חדשה, למשל: תפעול"
+                placeholder={t('departments.newNamePlaceholder')}
                 onSubmitEditing={() => void addDepartment()}
                 returnKeyType="done"
-                accessibilityLabel="שם מחלקה חדשה"
+                accessibilityLabel={t('departments.newName')}
                 style={styles.flex}
               />
-              <Pressy onPress={() => void addDepartment()} disabled={!canAdd} haptic accessibilityLabel="הוספת מחלקה" style={[styles.addBtn, !canAdd && styles.addBtnIdle]} pressScale={0.92}>
+              <Pressy onPress={() => void addDepartment()} disabled={!canAdd} haptic accessibilityLabel={t('departments.add')} style={[styles.addBtn, !canAdd && styles.addBtnIdle]} pressScale={0.92}>
                 <Ionicons name="add" size={24} color={canAdd ? '#FFFFFF' : DK.faint} />
               </Pressy>
             </Surface>
           </Reveal>
           {departments.length === 0 ? (
             <Reveal index={1}>
-              <EmptyPanel icon="business" title="עדיין אין מחלקות" body="מחלקות עוזרות לסנן ולארגן נהגים ורכבים. הוסף את הראשונה למעלה." />
+              <EmptyPanel icon="business" title={t('departments.noneYet')} body={t('departments.emptyBody')} />
             </Reveal>
           ) : (
             <Reveal index={1}>
-              <KitSection title="רשימת מחלקות">
+              <KitSection title={t('departments.list')}>
                 {departments.map((item, index) => (
                   <View key={item.id} style={[styles.row, index > 0 && styles.divider]}>
                     <View style={styles.icon}>
@@ -209,7 +211,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
                         onSubmitEditing={() => void saveRename(item.id)}
                         onBlur={() => void saveRename(item.id)}
                         returnKeyType="done"
-                        accessibilityLabel={`שם חדש למחלקה ${item.name}`}
+                        accessibilityLabel={t('departments.renameInput', { name: item.name })}
                         style={styles.flex}
                       />
                     ) : (
@@ -218,7 +220,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
                       </DKText>
                     )}
                     {editingId === item.id ? (
-                      <Pressy onPress={() => void saveRename(item.id)} accessibilityLabel="שמירת השם" style={[styles.iconBtn, styles.iconBtnAccent]} pressScale={0.9}>
+                      <Pressy onPress={() => void saveRename(item.id)} accessibilityLabel={t('departments.saveNameShort')} style={[styles.iconBtn, styles.iconBtnAccent]} pressScale={0.9}>
                         <Ionicons name="checkmark" size={19} color="#FFFFFF" />
                       </Pressy>
                     ) : (
@@ -228,13 +230,13 @@ export default function DepartmentsScreen({ navigation }: Props) {
                             setEditingId(item.id);
                             setEditingName(item.name);
                           }}
-                          accessibilityLabel={`שינוי שם ${item.name}`}
+                          accessibilityLabel={t('departments.renameLabel', { name: item.name })}
                           style={styles.iconBtn}
                           pressScale={0.9}
                         >
                           <Ionicons name="pencil" size={17} color={DK.accent} />
                         </Pressy>
-                        <Pressy onPress={() => void confirmDelete(item)} accessibilityLabel={`מחיקת ${item.name}`} style={[styles.iconBtn, styles.iconBtnDanger]} pressScale={0.9}>
+                        <Pressy onPress={() => void confirmDelete(item)} accessibilityLabel={t('common.deleteName', { name: item.name })} style={[styles.iconBtn, styles.iconBtnDanger]} pressScale={0.9}>
                           <Ionicons name="trash-outline" size={17} color={STATUS.expired.fg} />
                         </Pressy>
                       </>

@@ -2,6 +2,7 @@ import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { SigningFieldKind } from '../../../lib/companySigningTemplates';
 import { FIELD_META } from './fieldMeta';
+import { t } from '../../../lib/i18n';
 
 /**
  * One field on a page (an uploaded PDF or an editor page): drag it to move,
@@ -111,7 +112,7 @@ export function FieldBox({
       style={{ ['--c' as string]: meta.color, ...box, cursor: readOnly ? 'default' : undefined }}
       tabIndex={readOnly ? -1 : 0}
       role={readOnly ? undefined : 'button'}
-      aria-label={`${label || meta.label}. אפשר לגרור עם העכבר, להזיז עם החצים ולמחוק עם Delete`}
+      aria-label={t('field.dragHelp', { v1: label || meta.label })}
       onPointerDown={start(onMovePointer)}
       onKeyDown={onKeyDown}
       onFocus={onSelect}
@@ -119,7 +120,7 @@ export function FieldBox({
       {kind === 'signature' ? (
         <span className="sd-sign-hint">
           <Ionicons name={meta.icon} size={15} color="currentColor" />
-          <span>הנהג יחתום בתוך המסגרת</span>
+          <span>{t('field.driverSignsInFrame')}</span>
         </span>
       ) : kind !== 'checkbox' ? (
         <>
@@ -134,7 +135,7 @@ export function FieldBox({
           <span
             className="sd-field-del"
             role="button"
-            aria-label="מחיקת השדה"
+            aria-label={t('field.delete')}
             onPointerDown={(e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -190,13 +191,13 @@ export function FieldInspector({
       </div>
       {kind === 'text' || kind === 'checkbox' ? (
         <>
-          <label htmlFor="sd-field-label">{kind === 'checkbox' ? 'על מה הנהג מאשר? (לא חובה)' : 'מה הנהג צריך לכתוב? (לא חובה)'}</label>
+          <label htmlFor="sd-field-label">{kind === 'checkbox' ? t('field.checkboxQuestion') : t('field.textQuestion')}</label>
           <input
             id="sd-field-label"
             className="sd-input"
             value={label ?? ''}
             maxLength={80}
-            placeholder={kind === 'checkbox' ? 'לדוגמה: קראתי את הנוהל' : 'לדוגמה: מספר רכב'}
+            placeholder={kind === 'checkbox' ? t('field.checkboxExample') : t('field.textExample')}
             onFocus={onEditStart}
             onChange={(e) => onLabelChange(e.target.value)}
           />
@@ -204,27 +205,27 @@ export function FieldInspector({
       ) : (
         <p className="sd-panel-sub" style={{ margin: 0 }}>
           {kind === 'signature'
-            ? 'החתימה של הנהג תופיע בדיוק בתוך המסגרת הכחולה, באותו מקום ובאותו גודל. כדי להגדיל אותה, משכו את העיגול שבפינת המסגרת.'
+            ? t('field.signatureFrameHint')
             : meta.auto
-              ? 'המידע יילקח מתיק הנהג, הנהג לא צריך למלא אותו.'
+              ? t('field.autoFillHint')
               : meta.hint}
         </p>
       )}
       {size ? (
         <div className="sd-insp-size">
           <Ionicons name="resize" size={16} color="currentColor" />
-          גודל על הדף: <strong className="sd-sb">{size}</strong>
+          {t('field.sizeOnPage')} <strong className="sd-sb">{size}</strong>
         </div>
       ) : null}
       {covers ? (
         <div className="sd-insp-warn" role="status">
           <Ionicons name="warning" size={18} color="currentColor" />
-          <span>השדה מונח על טקסט ויסתיר אותו במסמך. גררו אותו למקום ריק או לשורה ריקה.</span>
+          <span>{t('field.overlapsText')}</span>
         </div>
       ) : null}
       <button type="button" className="sd-btn sd-btn-plain sd-danger" style={{ width: '100%', marginTop: 12 }} onClick={onRemove}>
         <Ionicons name="trash" size={18} color="#FF453A" />
-        מחיקת השדה
+        {t('field.delete')}
       </button>
     </div>
   );

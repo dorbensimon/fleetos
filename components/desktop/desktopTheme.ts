@@ -1,4 +1,5 @@
 import { Platform, TextStyle, ViewStyle } from 'react-native';
+import { fontStack } from '../../lib/fontStack';
 
 /**
  * Desktop web design language ("Fleet Desktop" handoff): a dark sidebar,
@@ -49,11 +50,11 @@ export const DESKTOP_TONES: Record<DesktopTone, { bg: string; fg: string }> = {
 export const DESKTOP_AVATAR_COLORS = ['#0088CC', '#5856D6', '#FF9500', '#34C759', '#FF453A', '#5AC8FA'];
 
 export const DESKTOP_FONT = {
-  regular: 'Heebo_400Regular',
-  medium: 'Heebo_500Medium',
-  semiBold: 'Heebo_600SemiBold',
-  bold: 'Heebo_700Bold',
-  extraBold: 'Heebo_800ExtraBold',
+  regular: fontStack('Heebo_400Regular'),
+  medium: fontStack('Heebo_500Medium'),
+  semiBold: fontStack('Heebo_600SemiBold'),
+  bold: fontStack('Heebo_700Bold'),
+  extraBold: fontStack('Heebo_800ExtraBold'),
 } as const;
 
 export const DESKTOP_SIDEBAR_WIDTH = 232;

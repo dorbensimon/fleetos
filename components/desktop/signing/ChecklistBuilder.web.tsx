@@ -12,6 +12,7 @@ import {
 } from '../../../lib/checklistForms';
 import { Letterhead } from './DocumentEditor.web';
 import { GUIDES_CSS, GuidesToggle, PageGrid, useGuidesToggle } from './snapGuides.web';
+import { t } from '../../../lib/i18n';
 
 /**
  * Building a "רשימת סעיפים" form on desktop: the sheet as it will print (the
@@ -35,7 +36,7 @@ export const CHECKLIST_BUILDER_CSS = `
 .cl-auto { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 22px; font-size: 14px; color: var(--sd-ink-3); }
 .cl-auto-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 9px; background: rgba(14,159,175,0.09); color: #0B7B87; font-size: 14px; }
 .cl-block { position: relative; border-radius: 16px; box-shadow: inset 0 0 0 1.5px rgba(0,117,179,0.22); padding: 16px 12px 12px; }
-.cl-block-tab { position: absolute; top: -13px; right: 16px; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 8px; background: var(--sd-tint); color: #fff; font-size: 13px; }
+.cl-block-tab { position: absolute; top: -13px; inset-inline-start: 16px; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 8px; background: var(--sd-tint); color: #fff; font-size: 13px; }
 .cl-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px 10px; font-size: 14px; color: var(--sd-ink-3); }
 .cl-row { display: grid; grid-template-columns: 30px 28px minmax(0, 1fr) 40px; align-items: start; gap: 8px; padding: 10px 6px; border-radius: 12px; transition: background-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease; }
 .cl-row + .cl-row { box-shadow: 0 -1px 0 var(--sd-sep); }
@@ -73,11 +74,11 @@ export const CHECKLIST_BUILDER_CSS = `
 .cl-pnote { display: block; margin-top: 8px; font-size: 13.5px; line-height: 1.45; color: var(--sd-ink-2); }
 .cl-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .cl-pill { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 12px; border-radius: 999px; font-size: 14px; }
-.cl-switch-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; font-size: 15px; text-align: right; }
+.cl-switch-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; font-size: 15px; text-align: start; }
 .cl-switch { flex: none; position: relative; width: 51px; height: 31px; border-radius: 16px; background: rgba(120,120,128,0.24); transition: background-color 200ms ease; }
-.cl-switch::after { content: ''; position: absolute; top: 2px; right: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.15), 0 1px 1px rgba(0,0,0,0.16); transition: transform 240ms var(--sd-ease); }
+.cl-switch::after { content: ''; position: absolute; top: 2px; inset-inline-start: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.15), 0 1px 1px rgba(0,0,0,0.16); transition: transform 240ms var(--sd-ease); }
 .cl-switch-row[aria-checked="true"] .cl-switch { background: var(--sd-green); }
-.cl-switch-row[aria-checked="true"] .cl-switch::after { transform: translateX(-20px); }
+.cl-switch-row[aria-checked="true"] .cl-switch::after { transform: translateX(calc(-20px * var(--app-dir-sign, 1))); }
 .cl-repeat { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 6px; }
 .cl-repeat button { min-height: 44px; padding: 0 10px; border-radius: 12px; font-size: 15px; color: var(--sd-ink); background: var(--sd-bg); box-shadow: inset 0 0 0 1px var(--sd-sep); transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 100ms ease; }
 .cl-repeat button:active { transform: scale(0.97); }
@@ -197,31 +198,31 @@ export function ChecklistBuilder({
   return (
     <div className="sd-work cl-work">
       <style>{CHECKLIST_BUILDER_CSS + GUIDES_CSS}</style>
-      <aside className="sd-panel" aria-label="הגדרות רשימת הסעיפים">
-        <h3 className="sd-b">הגדרות רשימת הסעיפים</h3>
-        <p className="sd-panel-sub">כותבים את הסעיפים על הדף. כאן בוחרים מה מסמנים ליד כל סעיף.</p>
+      <aside className="sd-panel" aria-label={t('checklist.settings')}>
+        <h3 className="sd-b">{t('checklist.settings')}</h3>
+        <p className="sd-panel-sub">{t('checklist.settingsIntro')}</p>
 
         <div className="cl-prow">
-          <span className="cl-plabel sd-sb">מי מסמן את הסעיפים?</span>
+          <span className="cl-plabel sd-sb">{t('checklist.whoMarks')}</span>
           <div className="cl-fixed">
             <Ionicons name="shield-checkmark" size={19} color="#0075B3" />
-            <span>המנהל או קצין הבטיחות, בזמן המפגש</span>
+            <span>{t('checklist.managerOrOfficer')}</span>
           </div>
-          <span className="cl-pnote">הנהג לא מסמן כלום. הוא רק חותם בסוף.</span>
+          <span className="cl-pnote">{t('checklist.driverOnlySigns')}</span>
         </div>
 
         <div className="cl-prow">
-          <span className="cl-plabel sd-sb" id="cl-repeat-label">כל כמה זמן נפגשים עם כל נהג?</span>
+          <span className="cl-plabel sd-sb" id="cl-repeat-label">{t('meeting.howOften')}</span>
           <RepeatChoice value={form.repeatMonths} onChange={(repeatMonths) => set({ repeatMonths })} labelledBy="cl-repeat-label" />
           <span className="cl-pnote">
             {form.repeatMonths
-              ? 'המערכת תזכיר למנהלים שבוע לפני המועד וביום עצמו. נהג חדש מקבל תזכורת למפגש ראשון.'
-              : 'בלי תזכורות. ממלאים את הטופס כשצריך.'}
+              ? t('checklist.remindIncludingNew')
+              : t('meeting.noRemindersFillWhenNeeded')}
           </span>
         </div>
 
         <div className="cl-prow">
-          <span className="cl-plabel sd-sb">התשובות ליד כל סעיף</span>
+          <span className="cl-plabel sd-sb">{t('checklist.answersPerItem')}</span>
           <div className="cl-pills">
             {options.map((key) => (
               <span key={key} className="cl-pill sd-sb" style={{ background: STATUS_META[key].soft, color: STATUS_META[key].fg }}>
@@ -231,26 +232,26 @@ export function ChecklistBuilder({
             ))}
           </div>
           <button type="button" role="switch" aria-checked={form.allowNa} className="cl-switch-row" onClick={() => set({ allowNa: !form.allowNa })}>
-            <span>להוסיף גם ״לא רלוונטי״</span>
+            <span>{t('checklist.addNotRelevant')}</span>
             <span className="cl-switch" aria-hidden="true" />
           </button>
         </div>
 
         <div className="cl-prow">
-          <span className="cl-plabel sd-sb">הערה ליד כל סעיף</span>
+          <span className="cl-plabel sd-sb">{t('checklist.notePerItem')}</span>
           <div className="cl-fixed">
             <Ionicons name="chatbox-ellipses-outline" size={19} color="#0075B3" />
-            <span>אפשר לכתוב, לא חובה</span>
+            <span>{t('checklist.canWriteOptional')}</span>
           </div>
         </div>
 
         <div className="cl-prow">
-          <span className="cl-plabel sd-sb">החתימות</span>
+          <span className="cl-plabel sd-sb">{t('checklist.signatures')}</span>
           <div className="cl-fixed">
             <Ionicons name="create-outline" size={19} color="#0075B3" />
-            <span>קודם הקצין חותם ביד ושמו מודפס מתחת, ואחריו הנהג.</span>
+            <span>{t('checklist.signOrder')}</span>
           </div>
-          <span className="cl-pnote">את הכותרות מעל החתימות אפשר לשנות על הדף.</span>
+          <span className="cl-pnote">{t('checklist.headingsEditable')}</span>
         </div>
         <GuidesToggle on={showGrid} onToggle={toggleGrid} />
       </aside>
@@ -263,38 +264,38 @@ export function ChecklistBuilder({
           <p>
             {fromTemplate ? (
               <>
-                <strong className="sd-sb">התחלתם מהתבנית המוכנה ״מפגש שיחה עם נהג״.</strong> אפשר לשנות, למחוק ולהוסיף כל סעיף.
+                <strong className="sd-sb">{t('checklist.startedFromTemplate')}</strong> {t('checklist.canEditAnyItem')}
               </>
             ) : (
               <>
-                <strong className="sd-sb">טופס חדש מדף ריק.</strong> כתבו את הסעיפים שלכם. Enter מוסיף סעיף חדש.
+                <strong className="sd-sb">{t('checklist.newBlankForm')}</strong> {t('checklist.writeYourItems')}
               </>
             )}
           </p>
           <button type="button" className={`sd-btn ${fromTemplate ? 'sd-btn-plain' : 'sd-btn-tinted'}`} onClick={() => onStartFrom(fromTemplate ? 'blank' : 'template')}>
-            {fromTemplate ? 'התחלה מדף ריק' : 'התבנית המוכנה'}
+            {fromTemplate ? t('checklist.startBlank') : t('checklist.readyTemplate')}
           </button>
         </div>
 
         <div className="cl-sheet">
           {showGrid ? <PageGrid margins={{ x: 64, y: 56 }} cell={{ x: 794 / 21, y: 794 / 21 }} unit="px" middleH={false} /> : null}
           <Letterhead />
-          <h1 className="cl-title sd-b">{title || 'טופס ללא שם'}</h1>
+          <h1 className="cl-title sd-b">{title || t('checklist.untitledForm')}</h1>
           <GrowingText
             className="cl-intro"
             value={form.intro}
             onChange={(intro) => set({ intro })}
-            placeholder="פתיח לטופס (לא חובה). לדוגמה: במפגש נבדקו הנושאים הבאים"
-            label="פתיח לטופס, לא חובה"
+            placeholder={t('checklist.introPlaceholder')}
+            label={t('checklist.introLabel')}
             maxLength={CHECKLIST_LIMITS.intro}
           />
-          <div className="cl-auto" aria-label="פרטים שימולאו לבד">
-            <span>ימולא לבד מתיק הנהג:</span>
+          <div className="cl-auto" aria-label={t('checklist.autoFilledDetails')}>
+            <span>{t('checklist.autoFilledFromFile')}</span>
             {[
-              ['person', 'שם הנהג'],
-              ['id-card', 'תעודת זהות'],
-              ['card', 'מספר רישיון'],
-              ['bus', 'סוג רישיון'],
+              ['person', t('field.driverName')],
+              ['id-card', t('field.nationalId')],
+              ['card', t('field.licenseNumber')],
+              ['bus', t('field.licenseType')],
             ].map(([icon, label]) => (
               <span key={label} className="cl-auto-chip sd-sb">
                 <Ionicons name={icon as 'person'} size={15} color="currentColor" />
@@ -306,11 +307,11 @@ export function ChecklistBuilder({
           <div className="cl-block">
             <span className="cl-block-tab sd-sb">
               <Ionicons name="list" size={15} color="#fff" />
-              רשימת סעיפים
+              {t('checklist.checklist')}
             </span>
             <div className="cl-head">
-              <span className="sd-sb">הסעיפים</span>
-              <span className="sd-num">{count === 1 ? 'סעיף אחד' : `${count} סעיפים`}</span>
+              <span className="sd-sb">{t('checklist.items')}</span>
+              <span className="sd-num">{count === 1 ? t('checklist.oneItem') : t('checklist.itemsCount', { count })}</span>
             </div>
             {items.map((item, index) => (
               <div
@@ -329,7 +330,7 @@ export function ChecklistBuilder({
                 }}
               >
                 <div className="cl-move">
-                  <button type="button" aria-label={`הזזת סעיף ${index + 1} למעלה`} disabled={index === 0} onClick={() => move(item.id, index - 1)}>
+                  <button type="button" aria-label={t('checklist.moveItemUp', { v1: index + 1 })} disabled={index === 0} onClick={() => move(item.id, index - 1)}>
                     <Ionicons name="chevron-up" size={17} color="currentColor" />
                   </button>
                   <button
@@ -350,7 +351,7 @@ export function ChecklistBuilder({
                   >
                     <Ionicons name="reorder-two" size={18} color="currentColor" />
                   </button>
-                  <button type="button" aria-label={`הזזת סעיף ${index + 1} למטה`} disabled={index === items.length - 1} onClick={() => move(item.id, index + 1)}>
+                  <button type="button" aria-label={t('checklist.moveItemDown', { v1: index + 1 })} disabled={index === items.length - 1} onClick={() => move(item.id, index + 1)}>
                     <Ionicons name="chevron-down" size={17} color="currentColor" />
                   </button>
                 </div>
@@ -360,8 +361,8 @@ export function ChecklistBuilder({
                     className="cl-text"
                     value={item.text}
                     onChange={(text) => setText(item.id, text.replace(/\n/g, ' '))}
-                    placeholder="כתבו כאן את הסעיף"
-                    label={`סעיף ${index + 1}`}
+                    placeholder={t('checklist.writeItemHere')}
+                    label={t('checklist.itemN', { v1: index + 1 })}
                     maxLength={CHECKLIST_LIMITS.itemText}
                     textRef={(el) => {
                       if (el) textRefs.current.set(item.id, el);
@@ -386,21 +387,21 @@ export function ChecklistBuilder({
                     ))}
                     <span className="cl-ghost cl-ghost-note">
                       <Ionicons name="chatbox-ellipses-outline" size={13} color="currentColor" />
-                      הערה, לא חובה
+                      {t('checklist.noteOptional')}
                     </span>
                   </div>
                 </div>
-                <button type="button" className="cl-del" aria-label={`מחיקת סעיף ${index + 1}`} onClick={() => remove(item.id)}>
+                <button type="button" className="cl-del" aria-label={t('checklist.deleteItem', { v1: index + 1 })} onClick={() => remove(item.id)}>
                   <Ionicons name="trash-outline" size={19} color="currentColor" />
                 </button>
               </div>
             ))}
             <button type="button" className="cl-add sd-sb" onClick={() => addAfter(items.length - 1)} disabled={items.length >= CHECKLIST_LIMITS.items}>
               <Ionicons name="add-circle" size={21} color="currentColor" />
-              הוספת סעיף
+              {t('checklist.addItem')}
             </button>
           </div>
-          <p className="cl-legend">בכל מפגש מסמנים ליד כל סעיף: {options.map((k) => STATUS_META[k].label).join(' / ')}</p>
+          <p className="cl-legend">{t('checklist.eachMeetingMark')} {options.map((k) => STATUS_META[k].label).join(' / ')}</p>
 
           <div className="cl-sigs">
             {(['officer', 'driver'] as const).map((who) => (
@@ -408,12 +409,12 @@ export function ChecklistBuilder({
                 <input
                   value={form.labels[who]}
                   maxLength={CHECKLIST_LIMITS.label}
-                  aria-label={who === 'officer' ? 'הכותרת מעל חתימת החברה' : 'הכותרת מעל חתימת הנהג'}
+                  aria-label={who === 'officer' ? t('checklist.companySignatureHeading') : t('checklist.driverSignatureHeading')}
                   onChange={(e) => set({ labels: { ...form.labels, [who]: e.target.value } })}
                 />
                 <div className="cl-sig-line">
                   <Ionicons name="create-outline" size={16} color="currentColor" />
-                  {who === 'officer' ? 'חותמים ביד בכל מפגש, השם מודפס מתחת' : 'הנהג חותם בסוף'}
+                  {who === 'officer' ? t('checklist.signByHandEachMeeting') : t('checklist.driverSignsAtEnd')}
                 </div>
               </div>
             ))}
@@ -462,7 +463,7 @@ export function ChecklistPaperPreview({ title, form }: { title: string; form: Ch
           <span style={{ width: 44, height: 16, borderRadius: 8, border: '1px dashed #C9D1D8', flex: 'none' }} />
         </div>
       ))}
-      {items.length > 8 ? <div style={{ fontSize: 12, color: '#8B98A4', paddingTop: 6 }}>ועוד {items.length - 8} סעיפים</div> : null}
+      {items.length > 8 ? <div style={{ fontSize: 12, color: '#8B98A4', paddingTop: 6 }}>{t('common.andMore')} {items.length - 8} {t('checklist.itemsWord')}</div> : null}
       <div style={{ display: 'flex', gap: 18, marginTop: 20 }}>
         {[form.labels.officer, form.labels.driver].map((label) => (
           <div key={label} style={{ flex: 1, fontSize: 11.5, color: '#5C6773' }}>

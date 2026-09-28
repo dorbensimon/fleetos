@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { DK, DK_SPACE, DKText, DriverPage, HeroTitle, ListRow, Pressy, Reveal, STATUS, Surface } from '../components/driverKit';
 import { ErrorState, LoadingState } from '../components/ui';
 import type { Notification } from '../lib/adminApi';
+import { t, dirIcon } from '../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -50,10 +51,10 @@ function dayGroup(iso: string): string {
   const today = new Date();
   const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diff = Math.round((start(today) - start(d)) / 86400000);
-  if (diff <= 0) return 'היום';
-  if (diff === 1) return 'אתמול';
-  if (diff < 7) return 'השבוע';
-  return 'מוקדם יותר';
+  if (diff <= 0) return t('common.today');
+  if (diff === 1) return t('time.yesterday');
+  if (diff < 7) return t('time.thisWeek');
+  return t('time.earlier');
 }
 
 /**
@@ -78,8 +79,8 @@ export function NotificationsMobile(p: Props) {
       onRefresh={p.onRefresh}
       hero={
         <HeroTitle
-          title="התראות"
-          subtitle={p.loading ? 'טוען עדכונים…' : unread ? `${unread} ${unread === 1 ? 'התראה חדשה' : 'התראות חדשות'}` : 'קראת את כל העדכונים'}
+          title={t('notifications.title')}
+          subtitle={p.loading ? t('notifications.loadingUpdates') : unread ? `${unread} ${unread === 1 ? t('notifications.newOne') : t('notifications.newMany')}` : t('notifications.allRead')}
           onBack={p.onBack}
         />
       }
@@ -99,14 +100,14 @@ export function NotificationsMobile(p: Props) {
               <Ionicons name="notifications-outline" size={30} color={DK.accent} />
             </View>
             <DKText variant="heading" style={styles.center}>
-              אין עדיין התראות
+              {t('notifications.noneYet')}
             </DKText>
             <DKText variant="body" color={DK.muted} style={styles.center}>
               {p.emptyHint}
             </DKText>
           </Surface>
           <Surface style={styles.gapTop}>
-            <ListRow first icon="options" title="ניהול התראות" subtitle="בחירת העדכונים שיישלחו אליך" onPress={p.onSettings} />
+            <ListRow first icon="options" title={t('owner.notif.manage')} subtitle={t('owner.notif.manageHint')} onPress={p.onSettings} />
           </Surface>
         </Reveal>
       ) : (
@@ -119,10 +120,10 @@ export function NotificationsMobile(p: Props) {
                     {group.title}
                   </DKText>
                   {gi === 0 && unread > 0 && (
-                    <Pressy onPress={p.onMarkAllRead} accessibilityLabel="סימון כל ההתראות כנקראו" style={styles.markAll} pressScale={0.96}>
+                    <Pressy onPress={p.onMarkAllRead} accessibilityLabel={t('notifications.markAllReadLabel')} style={styles.markAll} pressScale={0.96}>
                       <Ionicons name="checkmark-done" size={16} color={DK.accent} />
                       <DKText variant="micro" color={DK.accent}>
-                        סימון הכול כנקרא
+                        {t('notifications.markAllReadShort')}
                       </DKText>
                     </Pressy>
                   )}
@@ -135,7 +136,7 @@ export function NotificationsMobile(p: Props) {
                     <Pressy
                       key={n.id}
                       onPress={() => p.onOpen(n)}
-                      accessibilityLabel={`${isUnread ? 'חדש. ' : ''}${n.message}. ${p.timeAgo(n.created_at)}${action ? `. ${action}` : ''}`}
+                      accessibilityLabel={`${isUnread ? t('notifications.newPrefix') : ''}${n.message}. ${p.timeAgo(n.created_at)}${action ? `. ${action}` : ''}`}
                       pressScale={0.985}
                     >
                       <View style={[styles.row, styles.divider, isUnread && styles.rowUnread]}>
@@ -160,7 +161,7 @@ export function NotificationsMobile(p: Props) {
                             )}
                           </View>
                         </View>
-                        {isUnread ? <View style={styles.unreadDot} /> : <Ionicons name="chevron-back" size={18} color={DK.faint} />}
+                        {isUnread ? <View style={styles.unreadDot} /> : <Ionicons name={dirIcon('chevron-back')} size={18} color={DK.faint} />}
                       </View>
                     </Pressy>
                   );
@@ -169,7 +170,7 @@ export function NotificationsMobile(p: Props) {
             </Reveal>
           ))}
           <Surface>
-            <ListRow first icon="options" title="ניהול התראות" subtitle="בחירת העדכונים שיישלחו אליך" onPress={p.onSettings} />
+            <ListRow first icon="options" title={t('owner.notif.manage')} subtitle={t('owner.notif.manageHint')} onPress={p.onSettings} />
           </Surface>
         </>
       )}
@@ -184,7 +185,7 @@ const styles = StyleSheet.create({
   gapTop: { marginTop: 18 },
   list: { overflow: 'hidden' },
   row: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 12, paddingHorizontal: DK_SPACE.md, paddingVertical: 14, minHeight: 72 },
-  rowUnread: { backgroundColor: '#F5F8FF', borderRightWidth: 3, borderRightColor: DK.accent },
+  rowUnread: { backgroundColor: '#F5F8FF', borderEndWidth: 3, borderEndColor: DK.accent },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },
   icon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   text: { flex: 1, gap: 4 },

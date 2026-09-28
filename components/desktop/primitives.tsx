@@ -4,6 +4,7 @@ import { Modal, Pressable, PressableProps, ScrollView, StyleProp, Text, TextInpu
 import { Ionicons } from '@expo/vector-icons';
 import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { formatDate, parseDateValue } from '../../lib/theme';
+import { t, dirIcon, textStart, textDirection, getLocale } from '../../lib/i18n';
 
 type Weight = keyof typeof DESKTOP_FONT;
 
@@ -206,7 +207,7 @@ export function DesktopSelect<T extends string>({
   value,
   options,
   onChange,
-  placeholder = 'בחר',
+  placeholder = t('common.choose'),
   allowClear,
   hasError,
   large,
@@ -247,7 +248,7 @@ export function DesktopSelect<T extends string>({
       {open && anchor && (
         <Modal transparent visible animationType="none" onRequestClose={() => setOpen(false)}>
           <Pressable style={fieldStyles.selectCatcher} onPress={() => setOpen(false)} />
-          <ScrollView style={[fieldStyles.selectMenu, { top: anchor.top, left: anchor.left, width: anchor.width }, prefersReducedMotion() ? fieldStyles.popoverInReduced : fieldStyles.popoverIn]}>
+          <ScrollView style={[fieldStyles.selectMenu, { top: anchor.top, start: anchor.left, width: anchor.width }, prefersReducedMotion() ? fieldStyles.popoverInReduced : fieldStyles.popoverIn]}>
             {allowClear && (
               <HoverPressable
                 style={fieldStyles.selectOption}
@@ -283,7 +284,7 @@ export function DesktopSelect<T extends string>({
   );
 }
 
-const WEEKDAY_LABELS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+const weekdayLabels = () => [t('date.weekdayShort.sun'), t('date.weekdayShort.mon'), t('date.weekdayShort.tue'), t('date.weekdayShort.wed'), t('date.weekdayShort.thu'), t('date.weekdayShort.fri'), t('date.weekdayShort.sat')];
 
 function toIsoDate(d: Date): string {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -295,7 +296,7 @@ function toIsoDate(d: Date): string {
 export function DesktopDateField({
   value,
   onChange,
-  placeholder = 'בחר תאריך',
+  placeholder = t('date.chooseDate'),
   hasError,
   allowClear = true,
   large,
@@ -346,24 +347,24 @@ export function DesktopDateField({
       {open && anchor && (
         <Modal transparent visible animationType="none" onRequestClose={() => setOpen(false)}>
           <Pressable style={fieldStyles.selectCatcher} onPress={() => setOpen(false)} />
-          <View style={[fieldStyles.calendarMenu, { top: anchor.top, left: anchor.left }, prefersReducedMotion() ? fieldStyles.popoverInReduced : fieldStyles.popoverIn]}>
+          <View style={[fieldStyles.calendarMenu, { top: anchor.top, start: anchor.left }, prefersReducedMotion() ? fieldStyles.popoverInReduced : fieldStyles.popoverIn]}>
             <View style={fieldStyles.calendarHeader}>
               <HoverPressable
                 style={fieldStyles.calendarNavBtn}
                 hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}
                 onPress={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
               >
-                <Ionicons name="chevron-forward" size={14} color={DESKTOP_COLORS.ink} />
+                <Ionicons name={dirIcon('chevron-forward')} size={14} color={DESKTOP_COLORS.ink} />
               </HoverPressable>
               <HoverPressable
                 style={fieldStyles.calendarTitleButton}
                 hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}
                 onPress={() => setChoosingYear((current) => !current)}
                 accessibilityRole="button"
-                accessibilityLabel="בחירת שנה"
+                accessibilityLabel={t('date.chooseYear')}
               >
                 <DText weight="semiBold" style={fieldStyles.calendarTitle}>
-                  {choosingYear ? 'בחירת שנה' : cursor.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}
+                  {choosingYear ? t('date.chooseYear') : cursor.toLocaleDateString(getLocale(), { month: 'long', year: 'numeric' })}
                 </DText>
               </HoverPressable>
               <HoverPressable
@@ -371,7 +372,7 @@ export function DesktopDateField({
                 hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}
                 onPress={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
               >
-                <Ionicons name="chevron-back" size={14} color={DESKTOP_COLORS.ink} />
+                <Ionicons name={dirIcon('chevron-back')} size={14} color={DESKTOP_COLORS.ink} />
               </HoverPressable>
             </View>
             {choosingYear ? (
@@ -394,7 +395,7 @@ export function DesktopDateField({
             ) : (
               <>
                 <View style={fieldStyles.calendarWeekRow}>
-                  {WEEKDAY_LABELS.map((label) => (
+                  {weekdayLabels().map((label) => (
                     <DText key={label} style={fieldStyles.calendarWeekday}>{label}</DText>
                   ))}
                 </View>
@@ -429,7 +430,7 @@ export function DesktopDateField({
                   setOpen(false);
                 }}
               >
-                <DText style={fieldStyles.calendarClearText}>נקה תאריך</DText>
+                <DText style={fieldStyles.calendarClearText}>{t('date.clearDate')}</DText>
               </HoverPressable>
             )}
           </View>
@@ -440,7 +441,7 @@ export function DesktopDateField({
 }
 
 const styles = StyleSheet.create({
-  text: { color: DESKTOP_COLORS.ink, fontSize: 13.5, textAlign: 'right', writingDirection: 'rtl' },
+  text: { color: DESKTOP_COLORS.ink, fontSize: 13.5, textAlign: textStart(), writingDirection: textDirection() },
   ltr: { writingDirection: 'ltr' },
   pill: { alignSelf: 'flex-end', borderRadius: 5, paddingHorizontal: 8, paddingVertical: 2.5 },
   pillText: { fontSize: 11 },
@@ -469,7 +470,7 @@ const fieldStyles = StyleSheet.create({
     fontSize: 13,
     color: DESKTOP_COLORS.ink,
     fontFamily: DESKTOP_FONT.regular,
-    textAlign: 'right',
+    textAlign: textStart(),
     backgroundColor: DESKTOP_COLORS.surface,
   },
   inputLarge: { height: 44, borderRadius: 10, paddingHorizontal: 14, fontSize: 15 },
@@ -491,7 +492,7 @@ const fieldStyles = StyleSheet.create({
   selectBoxLarge: { height: 44, borderRadius: 10, paddingHorizontal: 14 },
   selectValueLarge: { fontSize: 15 },
   placeholder: { color: DESKTOP_COLORS.inkFaint },
-  selectCatcher: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  selectCatcher: { position: 'absolute', top: 0, start: 0, end: 0, bottom: 0 },
   selectMenu: {
     position: 'absolute',
     backgroundColor: DESKTOP_COLORS.surface,

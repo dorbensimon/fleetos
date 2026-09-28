@@ -37,9 +37,14 @@ import { FolderDocumentsModal, FolderListRow, FolderUploadBar } from './desktop/
 import { DESKTOP_COLORS } from './desktop/desktopTheme';
 import { DK, DK_FONT } from './driverKit/theme';
 import { FocusTarget } from './ui/FocusTarget';
+import { t, dirIcon } from '../lib/i18n';
+import { errorMessage } from '../lib/requestError';
 
 /** compliance_items only tracks driver/vehicle expiries — not company-level documents. */
 type ComplianceOwnerType = 'driver' | 'vehicle';
+
+/** Saved on the document row and matched on it, so it stays the same in every UI language. */
+const GENERAL_DOCUMENT_TITLE = 'מסמך כללי';
 
 const complianceFolderIcon = (itemType: string): keyof typeof Ionicons.glyphMap => ({
   vehicle_license: 'car-outline', operating_license: 'document-text-outline',
@@ -138,7 +143,7 @@ export function ComplianceSection({
     async (documentRows: DocumentRow[], complianceRows: ComplianceItem[]) => {
       const def = complianceCatalog(ownerType).find((d) => d.itemType === 'insurance_mandatory');
       if (!def) return;
-      const folderDocs = documentRows.filter((d) => d.title === def.label);
+      const folderDocs = documentRows.filter((d) => d.title === def.storedTitle);
       const latestDoc = folderDocs.reduce<DocumentRow | null>(
         (latest, d) => (!latest || d.created_at > latest.created_at ? d : latest),
         null
@@ -235,9 +240,9 @@ export function ComplianceSection({
         return next;
       });
       await load();
-      showToast('נשמר בהצלחה');
+      showToast(t('common.savedSuccessfully'));
     } catch {
-      showAlert('שמירה נכשלה', 'לא הצלחנו לשמור את התאריך. נסה שוב.');
+      showAlert(t('common.saveFailed'), t('compliance.saveDateFailed'));
     } finally {
       setSavingItem(null);
     }
@@ -250,7 +255,7 @@ export function ComplianceSection({
     const requiresExpiryOnUpload = def.requiresExpiryOnUpload === true;
     const stagedExpiryDate = drafts[def.itemType]?.expiry_date ?? null;
     if (requiresExpiryOnUpload && !stagedExpiryDate) {
-      showAlert('חסר תוקף', 'יש לבחור תאריך תוקף למסמך לפני ההעלאה');
+      showAlert(t('documents.expiryMissing'), t('documents.chooseExpiryBeforeUpload'));
       return false;
     }
     const uploadExpiryDate = requiresExpiryOnUpload
@@ -266,7 +271,7 @@ export function ComplianceSection({
           ownerType,
           ownerId,
           category: def.category,
-          title: def.label,
+          title: def.storedTitle,
           file,
           complianceItemId: items.get(def.itemType)?.id ?? null,
           expiryDate: uploadExpiryDate,
@@ -292,7 +297,7 @@ export function ComplianceSection({
         if (requiresExpiryOnUpload) setDrafts((prev) => { const next = { ...prev }; delete next[def.itemType]; return next; });
         return true;
       } catch (err: any) {
-        showAlert('העלאה נכשלה', err?.message ?? 'נסה שוב');
+        showAlert(t('common.uploadFailedShort'), errorMessage(err, t('common.tryAgain')));
         return false;
       } finally {
         setBusyItem(null);
@@ -324,7 +329,7 @@ export function ComplianceSection({
       <>
         {def.tracksLastDate && (
           <View style={styles.dateRow}>
-            <AppText style={styles.dateLabel}>בדיקה אחרונה</AppText>
+            <AppText style={styles.dateLabel}>{t('compliance.lastInspection')}</AppText>
             <View style={styles.dateInput}>
               <DateField value={currentLastDate} onChange={(iso) => setDraftDate(def, 'last_date', iso)} />
             </View>
@@ -332,7 +337,7 @@ export function ComplianceSection({
         )}
 
         <View style={styles.dateRow}>
-          <AppText style={styles.dateLabel}>{def.tracksLastDate ? 'בדיקה הבאה (אופציונלי)' : 'תוקף'}</AppText>
+          <AppText style={styles.dateLabel}>{def.tracksLastDate ? t('compliance.nextInspectionOptional') : t('common.validity')}</AppText>
           <View style={styles.dateInput}>
             <DateField value={currentExpiryDate} onChange={(iso) => setDraftDate(def, 'expiry_date', iso)} />
           </View>
@@ -340,7 +345,7 @@ export function ComplianceSection({
 
         {isDirty && (
           <PrimaryButton
-            label="אישור"
+            label={t('common.ok')}
             icon="checkmark-outline"
             style={styles.confirmBtn}
             loading={savingItem === def.itemType}
@@ -366,7 +371,7 @@ export function ComplianceSection({
       return (
         <>
           <View style={styles.desktopDateField}>
-            <DesktopDateField value={draft?.expiry_date ?? null} onChange={(iso) => setDraftDate(def, 'expiry_date', iso)} placeholder="תוקף המסמך החדש" />
+            <DesktopDateField value={draft?.expiry_date ?? null} onChange={(iso) => setDraftDate(def, 'expiry_date', iso)} placeholder={t('compliance.newDocExpiry')} />
           </View>
         </>
       );
@@ -376,14 +381,14 @@ export function ComplianceSection({
       <>
         {def.tracksLastDate && (
           <View style={styles.desktopDateField}>
-            <DesktopDateField value={currentLastDate} onChange={(iso) => setDraftDate(def, 'last_date', iso)} placeholder="בדיקה אחרונה" />
+            <DesktopDateField value={currentLastDate} onChange={(iso) => setDraftDate(def, 'last_date', iso)} placeholder={t('compliance.lastInspection')} />
           </View>
         )}
         <View style={styles.desktopDateField}>
           <DesktopDateField
             value={currentExpiryDate}
             onChange={(iso) => setDraftDate(def, 'expiry_date', iso)}
-            placeholder={def.tracksLastDate ? 'בדיקה הבאה' : 'תוקף'}
+            placeholder={def.tracksLastDate ? t('compliance.nextInspection') : t('common.validity')}
           />
         </View>
         {isDirty && (
@@ -400,7 +405,7 @@ export function ComplianceSection({
   };
 
   const renderItemBody = (def: ComplianceItemDef) => {
-    const itemDocs = docs.filter((d) => d.title === def.label);
+    const itemDocs = docs.filter((d) => d.title === def.storedTitle);
     const datesEachUpload = def.requiresExpiryOnUpload === true;
     const uploading = busyItem === def.itemType;
     const stagedExpiry = drafts[def.itemType]?.expiry_date ?? null;
@@ -412,17 +417,17 @@ export function ComplianceSection({
         onPress={() => addDocument(def)}
         disabled={uploading}
         accessibilityRole="button"
-        accessibilityHint={datesEachUpload && !stagedExpiry ? 'יש לבחור קודם את תוקף המסמך' : undefined}
+        accessibilityHint={datesEachUpload && !stagedExpiry ? t('documents.chooseExpiryBeforeUpload') : undefined}
       >
         {uploading ? (
           <>
             <BrandLoader size="small" color={COLORS.accent} />
-            <AppText weight="bold" style={styles.uploadText}>מעבד ומעלה…</AppText>
+            <AppText weight="bold" style={styles.uploadText}>{t('common.processingUploading')}</AppText>
           </>
         ) : (
           <>
             <Ionicons name="cloud-upload-outline" size={16} color={COLORS.accent} />
-            <AppText weight="bold" style={styles.uploadText}>העלה מסמך</AppText>
+            <AppText weight="bold" style={styles.uploadText}>{t('documents.uploadDocument')}</AppText>
           </>
         )}
       </TouchableOpacity>
@@ -432,7 +437,7 @@ export function ComplianceSection({
       <View style={[styles.itemBody, spacious && styles.itemBodySpacious, folderAppearance && styles.folderItemBody]}>
         {renderDateFields(def)}
 
-        {itemDocs.length === 0 && <AppText style={styles.emptyFolder}>אין עדיין מסמכים בתיקייה</AppText>}
+        {itemDocs.length === 0 && <AppText style={styles.emptyFolder}>{t('documents.noneYetShort')}</AppText>}
 
         {itemDocs.map((doc) => (
           <DocumentFileRow
@@ -453,13 +458,13 @@ export function ComplianceSection({
 
         {datesEachUpload ? (
           <View style={styles.newDocBlock}>
-            <AppText style={styles.newDocLabel}>מסמך חדש: בחר תוקף ואז העלה</AppText>
+            <AppText style={styles.newDocLabel}>{t('compliance.newDocHint')}</AppText>
             <View style={styles.uploadRow}>
               <View style={styles.uploadRowDate}>
                 <DateField
                   value={stagedExpiry}
                   onChange={(iso) => setDraftDate(def, 'expiry_date', iso)}
-                  placeholder="תוקף המסמך"
+                  placeholder={t('documents.documentExpiry')}
                   style={styles.uploadRowDateBox}
                 />
               </View>
@@ -491,13 +496,13 @@ export function ComplianceSection({
             key={def.itemType}
             title={def.label}
             icon={complianceFolderIcon(def.itemType)}
-            docs={docs.filter((d) => d.title === def.label)}
+            docs={docs.filter((d) => d.title === def.storedTitle)}
             onPress={() => setExpanded(def.itemType)}
             first={index === 0}
           />
         ))}
         {openDef && (() => {
-          const itemDocs = docs.filter((d) => d.title === openDef.label);
+          const itemDocs = docs.filter((d) => d.title === openDef.storedTitle);
           return (
             <FolderDocumentsModal
               title={openDef.label}
@@ -541,10 +546,10 @@ export function ComplianceSection({
           {folderAppearance && desktopModal ? (
             <View style={styles.folderGrid}>
               {group.items.map((def) => {
-                const itemDocs = docs.filter((d) => d.title === def.label);
+                const itemDocs = docs.filter((d) => d.title === def.storedTitle);
                 const latestDoc = latestDocument(itemDocs);
                 const latestExpiry = latestDoc?.expiry_date ?? null;
-                const thumbnail = thumbnails[def.label];
+                const thumbnail = thumbnails[def.storedTitle];
 
                 return (
                   <FolderTile
@@ -554,7 +559,7 @@ export function ComplianceSection({
                     thumbnail={thumbnail}
                     signedVisual
                     onPress={() => setExpanded(def.itemType)}
-                    meta={latestDoc ? <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : 'חסר תוקף'} /> : <AppText style={styles.itemDocCount}>אין מסמכים</AppText>}
+                    meta={latestDoc ? <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : t('documents.expiryMissing')} /> : <AppText style={styles.itemDocCount}>{t('documents.none')}</AppText>}
                   />
                 );
               })}
@@ -564,7 +569,7 @@ export function ComplianceSection({
             <>
               {group.items.map((def, index) => {
                 const isOpen = expanded === def.itemType;
-                const itemDocs = docs.filter((d) => d.title === def.label);
+                const itemDocs = docs.filter((d) => d.title === def.storedTitle);
                 const latestDoc = latestDocument(itemDocs);
                 const latestExpiry = latestDoc ? latestDoc.expiry_date ?? null : items.get(def.itemType)?.expiry_date ?? null;
                 return (
@@ -581,10 +586,10 @@ export function ComplianceSection({
                     </View>
                     <View style={styles.itemLabelWrap}>
                       <AppText weight="bold" style={styles.folderItemLabel}>{def.label}</AppText>
-                      <AppText style={styles.itemDocCount}>{itemDocs.length ? `${itemDocs.length} ${itemDocs.length === 1 ? 'מסמך' : 'מסמכים'}` : 'אין מסמכים'}</AppText>
+                      <AppText style={styles.itemDocCount}>{itemDocs.length ? `${itemDocs.length} ${itemDocs.length === 1 ? t('documents.document') : t('common.documents')}` : t('documents.none')}</AppText>
                     </View>
-                    {(!!latestDoc || !!latestExpiry) && <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : 'חסר תוקף'} />}
-                    <Ionicons name={isOpen ? 'chevron-down' : 'chevron-back'} size={18} color={DK.faint} />
+                    {(!!latestDoc || !!latestExpiry) && <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : t('documents.expiryMissing')} />}
+                    <Ionicons name={isOpen ? 'chevron-down' : dirIcon('chevron-back')} size={18} color={DK.faint} />
                   </TouchableOpacity>
                   </FocusTarget>
                   {isOpen && <View style={styles.folderDetailPanel}>{renderItemBody(def)}</View>}
@@ -596,7 +601,7 @@ export function ComplianceSection({
           ) : (
             group.items.map((def) => {
               const item = items.get(def.itemType);
-              const itemDocs = docs.filter((d) => d.title === def.label);
+              const itemDocs = docs.filter((d) => d.title === def.storedTitle);
               const isOpen = expanded === def.itemType;
               const badgeState = complianceBadgeState(def, item);
               const derivedTargetDate = complianceTargetDate(def, item);
@@ -604,11 +609,11 @@ export function ComplianceSection({
               return (
                 <View key={def.itemType} style={styles.item}>
                   <TouchableOpacity activeOpacity={0.7} style={[styles.itemHead, spacious && styles.itemHeadSpacious]} onPress={() => setExpanded(isOpen ? null : def.itemType)}>
-                    <Ionicons name={isOpen ? 'chevron-down' : 'chevron-back'} size={15} color={COLORS.textFaint} />
+                    <Ionicons name={isOpen ? 'chevron-down' : dirIcon('chevron-back')} size={15} color={COLORS.textFaint} />
                     <View style={styles.itemLabelWrap}>
                       <AppText weight="bold" style={styles.itemLabel}>{def.label}</AppText>
-                      {itemDocs.length > 0 && <AppText style={styles.itemDocCount}>{itemDocs.length} מסמכים</AppText>}
-                      {def.tracksLastDate && item?.last_date && !item?.expiry_date && <AppText style={[styles.itemStatusNote, { color: EXPIRY_STYLE[badgeState].fg }]}>בדיקה אחרונה{derivedTargetDate ? ' · תוקף מחושב אוטומטית' : ''}</AppText>}
+                      {itemDocs.length > 0 && <AppText style={styles.itemDocCount}>{itemDocs.length} {t('common.documents')}</AppText>}
+                      {def.tracksLastDate && item?.last_date && !item?.expiry_date && <AppText style={[styles.itemStatusNote, { color: EXPIRY_STYLE[badgeState].fg }]}>{t('compliance.lastInspection')}{derivedTargetDate ? t('compliance.autoExpirySuffix') : ''}</AppText>}
                     </View>
                     <ExpiryBadge state={badgeState} label={complianceBadgeLabel(def, item)} />
                   </TouchableOpacity>
@@ -625,7 +630,7 @@ export function ComplianceSection({
       {folderAppearance && desktopModal && (() => {
         const openDef = displayedGroups.flatMap((group) => group.items).find((def) => def.itemType === expanded);
         if (!openDef) return null;
-        const itemDocs = docs.filter((d) => d.title === openDef.label);
+        const itemDocs = docs.filter((d) => d.title === openDef.storedTitle);
         return (
           <DocumentFolderModal
             visible
@@ -641,7 +646,7 @@ export function ComplianceSection({
                 {renderDesktopDateFields(openDef)}
                 <TouchableOpacity style={styles.desktopUploadBtn} activeOpacity={0.8} onPress={() => addDocument(openDef)} disabled={busyItem === openDef.itemType}>
                   <Ionicons name="cloud-upload-outline" size={13} color={COLORS.accent} />
-                  <AppText weight="bold" style={styles.desktopUploadText}>{busyItem === openDef.itemType ? 'מעלה…' : 'העלה מסמך'}</AppText>
+                  <AppText weight="bold" style={styles.desktopUploadText}>{busyItem === openDef.itemType ? t('common.uploading') : t('documents.uploadDocument')}</AppText>
                 </TouchableOpacity>
               </View>
             }
@@ -677,7 +682,7 @@ function GeneralDocuments({
   const [busy, setBusy] = useState(false);
 
   const add = async () => {
-    chooseDocumentSource('מסמך כללי', async (source: DocumentSource) => {
+    chooseDocumentSource(t('documents.generalDocument'), async (source: DocumentSource) => {
       setBusy(true);
       try {
         const file = await pickDocumentSource(source);
@@ -687,12 +692,12 @@ function GeneralDocuments({
           ownerType,
           ownerId,
           category: 'general',
-          title: 'מסמך כללי',
+          title: GENERAL_DOCUMENT_TITLE,
           file,
         });
         await onChanged();
       } catch (err: any) {
-        showAlert('העלאה נכשלה', err?.message ?? 'נסה שוב');
+        showAlert(t('common.uploadFailedShort'), errorMessage(err, t('common.tryAgain')));
       } finally {
         setBusy(false);
       }
@@ -708,12 +713,12 @@ function GeneralDocuments({
       <View style={styles.groupHead}>
         <Ionicons name="folder-open-outline" size={18} color={COLORS.accent} />
         <AppText weight="bold" style={styles.groupTitle}>
-          מסמכים כלליים
+          {t('folder.generalDocs')}
         </AppText>
       </View>
 
       {docs.length === 0 && (
-        <AppText style={styles.emptyDocs}>אין עדיין מסמכים כלליים</AppText>
+        <AppText style={styles.emptyDocs}>{t('documents.noGeneralYet')}</AppText>
       )}
 
       {docs.map((doc) => (
@@ -731,14 +736,14 @@ function GeneralDocuments({
           <>
             <BrandLoader size="small" color={COLORS.accent} />
             <AppText weight="bold" style={styles.uploadText}>
-              מעבד ומעלה…
+              {t('common.processingUploading')}
             </AppText>
           </>
         ) : (
           <>
             <Ionicons name="cloud-upload-outline" size={16} color={COLORS.accent} />
             <AppText weight="bold" style={styles.uploadText}>
-              העלה מסמך
+              {t('documents.uploadDocument')}
             </AppText>
           </>
         )}

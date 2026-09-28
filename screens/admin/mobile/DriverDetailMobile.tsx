@@ -28,6 +28,7 @@ import type { LicenseUpdateRequest } from '../../../lib/licenseUpdate';
 import type { SigningFolder } from '../../../lib/signingFolders';
 import { formatDate } from '../../../lib/theme';
 import { formatPlate } from '../../../lib/plate';
+import { t, dirIcon } from '../../../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -98,11 +99,11 @@ export function DriverDetailMobile(p: Props) {
     if (vehicles.length > 1) setPickingVehicle(true);
     else if (vehicles[0]) p.onOpenVehicle(vehicles[0].id);
   };
-  const state = p.archived ? 'בארכיון' : p.pendingActivation ? 'ממתין להפעלה' : 'פעיל';
+  const state = p.archived ? t('common.archived') : p.pendingActivation ? t('driver.awaitingActivation') : t('vehicle.status.active');
   const quick: { key: string; icon: IconName; label: string; disabled: boolean; onPress: () => void }[] = [
-    { key: 'call', icon: 'call', label: 'התקשר', disabled: !d?.phone, onPress: p.onCall },
-    { key: 'message', icon: 'chatbubble', label: 'הודעה', disabled: !d?.phone, onPress: p.onMessage },
-    { key: 'vehicle', icon: 'car-sport', label: 'רכב', disabled: !vehicles.length, onPress: openVehicle },
+    { key: 'call', icon: 'call', label: t('common.call'), disabled: !d?.phone, onPress: p.onCall },
+    { key: 'message', icon: 'chatbubble', label: t('common.message'), disabled: !d?.phone, onPress: p.onMessage },
+    { key: 'vehicle', icon: 'car-sport', label: t('vehicle.vehicle'), disabled: !vehicles.length, onPress: openVehicle },
   ];
 
   return (
@@ -115,10 +116,10 @@ export function DriverDetailMobile(p: Props) {
           <ChoiceSheet
             open={pickingVehicle}
             onClose={() => setPickingVehicle(false)}
-            title="לאיזה רכב להיכנס?"
+            title={t('driver.whichVehicleEnter')}
             options={[...vehicles]
               .sort((a, b) => Number(b.is_primary) - Number(a.is_primary))
-              .map((v) => ({ value: v.id, label: formatPlate(v.plate_number) || 'רכב ללא מספר', hint: v.is_primary ? 'רכב ראשי' : 'רכב נוסף', icon: 'car-sport' as const }))}
+              .map((v) => ({ value: v.id, label: formatPlate(v.plate_number) || t('vehicle.noNumber'), hint: v.is_primary ? t('driver.primaryVehicle') : t('vehicle.additional'), icon: 'car-sport' as const }))}
             onPick={(id) => id && p.onOpenVehicle(id)}
           />
         </>
@@ -126,14 +127,14 @@ export function DriverDetailMobile(p: Props) {
       hero={
         <View>
           <View style={styles.bar}>
-            <HeroButton icon="chevron-forward" label="חזרה" onPress={p.onBack} />
-            {!p.loading && !p.error && <HeroButton icon="create-outline" label="עריכת פרטי הנהג" onPress={p.onEdit} />}
+            <HeroButton icon={dirIcon('chevron-forward')} label={t('common.goBack')} onPress={p.onBack} />
+            {!p.loading && !p.error && <HeroButton icon="create-outline" label={t('driver.editDetails')} onPress={p.onEdit} />}
           </View>
           <View style={styles.identity}>
             <Avatar name={d?.full_name} size={68} tone="night" />
             <View style={styles.flex}>
               <DKText variant="title" color={DK.onNight} numberOfLines={2} accessibilityRole="header">
-                {p.loading ? ' ' : d?.full_name ?? 'ללא שם'}
+                {p.loading ? ' ' : d?.full_name ?? t('common.unnamed')}
               </DKText>
               <View style={styles.chips}>
                 <View style={styles.stateChip}>
@@ -146,7 +147,7 @@ export function DriverDetailMobile(p: Props) {
                   <StatusChip
                     onNight
                     status={license}
-                    label={d.license_expiry ? `רישיון ${license === 'expired' ? 'פג' : 'עד'} ${formatDate(d.license_expiry)}` : 'אין תוקף רישיון'}
+                    label={d.license_expiry ? t('driver.licenseV1V2', { v1: license === 'expired' ? t('status.expired') : t('common.until'), v2: formatDate(d.license_expiry) }) : t('driver.noLicenseExpiry')}
                   />
                 )}
               </View>
@@ -170,38 +171,36 @@ export function DriverDetailMobile(p: Props) {
       {p.loading ? (
         <LoadingPanel />
       ) : p.error ? (
-        <ErrorPanel message="טעינת תיק הנהג נכשלה" hint={p.error} onRetry={p.onRetry} />
+        <ErrorPanel message={t('driver.fileLoadFailed')} hint={p.error} onRetry={p.onRetry} />
       ) : (
         <>
           {p.archived && (
             <Reveal index={0}>
-              <Banner tone="missing" icon="archive" title="הנהג בארכיון">
-                אין לו גישה לאפליקציה. מחיקה לצמיתות נעשית ממסך הארכיון.
+              <Banner tone="missing" icon="archive" title={t('driver.archivedTitle')}>
+                {t('driver.archivedNoAccess')}
               </Banner>
             </Reveal>
           )}
           {p.pendingActivation && (
             <Reveal index={0}>
-              <Banner tone="soon" icon="hourglass" title="ממתין להפעלת החשבון">
-                {`הנהג עדיין משתמש בסיסמה הזמנית${
-                  p.pendingActivationDays == null
+              <Banner tone="soon" icon="hourglass" title={t('driver.awaitingAccountActivation')}>
+                {t('driver.stillTempPassword', { v1: p.pendingActivationDays == null
                     ? ''
                     : p.pendingActivationDays === 0
-                      ? ' (מהיום)'
-                      : ` (${p.pendingActivationDays} ${p.pendingActivationDays === 1 ? 'יום' : 'ימים'})`
-                }, ויקבע סיסמה קבועה בכניסה הבאה.`}
+                      ? t('driver.fromToday')
+                      : ` (${p.pendingActivationDays} ${p.pendingActivationDays === 1 ? t('common.dayWord') : t('common.days')})` })}
               </Banner>
             </Reveal>
           )}
           {!!p.licenseRequest && (
             <Reveal index={0}>
-              <Banner tone="soon" icon="id-card" title="בקשה לעדכון רישיון">
+              <Banner tone="soon" icon="id-card" title={t('prefs.type.licenseUpdateRequest')}>
                 <DKText variant="caption" color={STATUS.soon.fg}>
-                  {`מספר ${p.licenseRequest.requested_license_number} · דרגות ${p.licenseRequest.requested_license_classes} · תוקף עד ${formatDate(p.licenseRequest.requested_license_expiry)}`}
+                  {t('driver.requestedLicense', { requested_license_number: p.licenseRequest.requested_license_number, requested_license_classes: p.licenseRequest.requested_license_classes, v1: formatDate(p.licenseRequest.requested_license_expiry) })}
                 </DKText>
                 <View style={styles.review}>
-                  <PrimaryAction label="אישור" icon="checkmark" onPress={() => p.onReviewLicense(true)} loading={p.reviewingLicense} style={styles.flex} />
-                  <PrimaryAction label="דחייה" tone="danger" onPress={() => p.onReviewLicense(false)} disabled={p.reviewingLicense} style={styles.flex} />
+                  <PrimaryAction label={t('common.ok')} icon="checkmark" onPress={() => p.onReviewLicense(true)} loading={p.reviewingLicense} style={styles.flex} />
+                  <PrimaryAction label={t('common.reject')} tone="danger" onPress={() => p.onReviewLicense(false)} disabled={p.reviewingLicense} style={styles.flex} />
                 </View>
               </Banner>
             </Reveal>
@@ -224,18 +223,18 @@ export function DriverDetailMobile(p: Props) {
           ))}
 
           <Reveal index={p.groups.length + 1}>
-            <KitSection title="מצב החשבון">
+            <KitSection title={t('driver.accountState')}>
               {p.archived ? (
-                <ActionRow icon="arrow-undo" label={p.restoring ? 'משחזר…' : 'שחזור מהארכיון'} hint="מחזיר לנהג את הגישה לאפליקציה" onPress={p.onRestore} disabled={p.restoring} />
+                <ActionRow icon="arrow-undo" label={p.restoring ? t('common.restoring') : t('common.restoreFromArchiveShort')} hint={t('driver.restoresAccess')} onPress={p.onRestore} disabled={p.restoring} />
               ) : (
-                <ActionRow icon="archive-outline" tone="danger" label="העברה לארכיון" hint="חוסם את הגישה לאפליקציה; אפשר לשחזר תמיד" onPress={p.onArchive} disabled={p.archiving} />
+                <ActionRow icon="archive-outline" tone="danger" label={t('common.moveToArchive')} hint={t('driver.blocksAccess')} onPress={p.onArchive} disabled={p.archiving} />
               )}
             </KitSection>
           </Reveal>
 
           {!!d?.created_at && (
             <DKText variant="caption" color={DK.faint} style={styles.footer}>
-              {`הצטרף לאפליקציה ב־${formatDate(d.created_at)}${d.updated_at ? ` · עודכן ${formatDate(d.updated_at)}` : ''}`}
+              {t('driver.joinedAppOnV', { v1: formatDate(d.created_at), v2: d.updated_at ? t('driver.updatedSuffix', { v1: formatDate(d.updated_at) }) : '' })}
             </DKText>
           )}
         </>
@@ -264,7 +263,7 @@ function GroupRow({ row, first, busy, onPress }: { row: DriverCardRow; first: bo
       icon={ICONS[row.icon]}
       tint={tone ? tone.fg : DK.accent}
       title={row.label}
-      subtitle={busy ? 'מכין את הדוח…' : undefined}
+      subtitle={busy ? t('driver.preparingReport') : undefined}
       trailing={
         row.badge ? (
           <View style={[styles.badge, { backgroundColor: tone ? tone.soft : DK.surfaceSunk }]}>

@@ -1,4 +1,5 @@
 import type { SignatureRequest, SigningTemplate } from './docuseal';
+import { t } from './i18n';
 
 export type SigningFolder = { id: string; title: string; template: SigningTemplate | null; requests: SignatureRequest[] };
 
@@ -10,7 +11,7 @@ export function buildSigningFolders(templates: SigningTemplate[], requests: Sign
     // Removed templates have no stable identifier left in legacy records;
     // retain access under their saved title without rewriting the document.
     const id = request.template_id || `legacy:${request.template_title || request.id}`;
-    if (!folders.has(id)) folders.set(id, { id, title: request.template?.title || request.template_title || 'מסמך קודם', template: null, requests: [] });
+    if (!folders.has(id)) folders.set(id, { id, title: request.template?.title || request.template_title || t('signing.previousDocument'), template: null, requests: [] });
     folders.get(id)!.requests.push(request);
   }
   return [...folders.values()].sort((a, b) => a.title.localeCompare(b.title, 'he'));

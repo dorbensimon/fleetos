@@ -32,6 +32,7 @@ import { FleetDesktopView } from '../../components/desktop/FleetDesktopView';
 import { loadInspectionPlan } from '../../lib/inspections';
 import { AttentionMenu } from '../../components/desktop/FleetOverview';
 import { FleetMobile, type DriverFilter, type VehicleFilter } from './mobile/FleetMobile';
+import { t } from '../../lib/i18n';
 
 /**
  * The fleet workspace: drivers and vehicles, one switch apart. This screen
@@ -104,7 +105,7 @@ export default function FleetScreen() {
       if (requestId === driverLoadRequest.current) {
         setDrivers([]);
         setArchivedCount(0);
-        setDriversError('לא נמצאה חברה פעילה עבור המשתמש');
+        setDriversError(t('fleet.noActiveCompany'));
       }
       return false;
     }
@@ -130,7 +131,7 @@ export default function FleetScreen() {
       return true;
     } catch (error) {
       if (requestId === driverLoadRequest.current) {
-        setDriversError(errorMessage(error, 'טעינת הנהגים נכשלה'));
+        setDriversError(errorMessage(error, t('fleet.driversLoadFailed')));
       }
       return false;
     }
@@ -182,18 +183,18 @@ export default function FleetScreen() {
   const call = async (phone: string | null) => {
     const number = phone?.replace(/[^\d+]/g, '') ?? '';
     if (!number || number === '+') {
-      showAlert('לא ניתן לחייג', 'לנהג לא מוגדר מספר טלפון תקין');
+      showAlert(t('fleet.cannotCall'), t('fleet.driverNoPhone'));
       return;
     }
 
     const url = `tel:${number}`;
     try {
       if (!(await Linking.canOpenURL(url))) {
-        throw new Error('שיחות טלפון אינן נתמכות במכשיר זה');
+        throw new Error(t('fleet.callsUnsupported'));
       }
       await Linking.openURL(url);
     } catch (error) {
-      showAlert('לא ניתן לחייג', errorMessage(error, 'נסה שוב מאוחר יותר'));
+      showAlert(t('fleet.cannotCall'), errorMessage(error, t('common.tryAgainLater')));
     }
   };
 
@@ -230,7 +231,7 @@ export default function FleetScreen() {
         setCompliance(new Map());
         setVehicleDrivers(new Map());
         setDepartmentNames(new Map());
-        setVehiclesError('לא נמצאה חברה פעילה עבור המשתמש');
+        setVehiclesError(t('fleet.noActiveCompany'));
       }
       return false;
     }
@@ -254,7 +255,7 @@ export default function FleetScreen() {
       return true;
     } catch (error) {
       if (requestId === vehicleLoadRequest.current) {
-        setVehiclesError(errorMessage(error, 'טעינת הרכבים נכשלה'));
+        setVehiclesError(errorMessage(error, t('fleet.vehiclesLoadFailed')));
       }
       return false;
     }
@@ -315,10 +316,10 @@ export default function FleetScreen() {
       await updateVehicle(vehicleId, { status: 'active' });
       const refreshed = await loadVehicles();
       if (!refreshed) {
-        showAlert('הרכב שוחזר', 'לא הצלחנו לרענן את הרשימה. אפשר למשוך למטה כדי לנסות שוב.');
+        showAlert(t('fleet.vehicleRestored'), t('fleet.refreshFailedPull'));
       }
     } catch (error) {
-      showAlert('שחזור הרכב נכשל', errorMessage(error, 'נסה שוב מאוחר יותר'));
+      showAlert(t('fleet.restoreVehicleFailed'), errorMessage(error, t('common.tryAgainLater')));
     } finally {
       setRestoringVehicleId(null);
     }
@@ -381,7 +382,7 @@ export default function FleetScreen() {
     setRefreshing(true);
     try {
       const [driversOk, vehiclesOk] = await Promise.all([loadDrivers(), loadVehicles(), loadExtras()]);
-      if (!driversOk || !vehiclesOk) showAlert('הרענון נכשל', 'לא הצלחנו לרענן את הרשימה. נסו שוב בעוד רגע.');
+      if (!driversOk || !vehiclesOk) showAlert(t('fleet.refreshFailed'), t('fleet.refreshFailedMoment'));
     } finally {
       setRefreshing(false);
     }
@@ -411,7 +412,7 @@ export default function FleetScreen() {
     return (
       <DesktopShell
         active="AdminHome"
-        breadcrumbs={['דשבורד']}
+        breadcrumbs={[t('nav.dashboard')]}
         headerAccessory={
           <AttentionMenu
             vehicles={vehicles}
@@ -435,10 +436,10 @@ export default function FleetScreen() {
           driverFilter={licenseFilter}
           onDriverFilter={setLicenseFilter}
           driverChips={[
-            { value: 'all', label: 'הכל', count: driverCounts.all },
-            { value: 'soon', label: 'רישיון קרוב לפוג', count: driverCounts.soon },
-            { value: 'expired', label: 'רישיון פג', count: driverCounts.expired },
-            { value: 'no_vehicle', label: 'ללא רכב', count: driverCounts.noVehicle },
+            { value: 'all', label: t('common.allShort'), count: driverCounts.all },
+            { value: 'soon', label: t('fleet.licenseExpiringSoon'), count: driverCounts.soon },
+            { value: 'expired', label: t('fleet.licenseExpired'), count: driverCounts.expired },
+            { value: 'no_vehicle', label: t('fleet.filter.noVehicle'), count: driverCounts.noVehicle },
           ]}
           driverKpis={{ total: driverCounts.all, soon: driverCounts.soon, expired: driverCounts.expired }}
           archivedCount={archivedCount}
@@ -454,11 +455,11 @@ export default function FleetScreen() {
           vehicleFilter={status}
           onVehicleFilter={setStatus}
           vehicleChips={[
-            { value: 'all', label: 'הכל', count: vehicleCounts.all },
-            { value: 'active', label: 'פעיל', count: vehicleCounts.active },
-            { value: 'maintenance', label: 'בטיפול', count: vehicleCounts.maintenance },
-            { value: 'disabled', label: 'מושבת', count: vehicleCounts.disabled },
-            { value: 'archived', label: 'בארכיון', count: vehicleCounts.archived },
+            { value: 'all', label: t('common.allShort'), count: vehicleCounts.all },
+            { value: 'active', label: t('vehicle.status.active'), count: vehicleCounts.active },
+            { value: 'maintenance', label: t('vehicle.status.maintenance'), count: vehicleCounts.maintenance },
+            { value: 'disabled', label: t('vehicle.status.disabled'), count: vehicleCounts.disabled },
+            { value: 'archived', label: t('common.archived'), count: vehicleCounts.archived },
           ]}
           vehicleKpis={{
             total: vehicleCounts.all,

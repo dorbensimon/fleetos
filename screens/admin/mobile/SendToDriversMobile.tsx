@@ -6,6 +6,7 @@ import { BrandLoader } from '../../../components/ui/BrandLoader';
 import type { SigningTemplate } from '../../../lib/docuseal';
 import { driversCount, loadSendRecipients, recipientNote, sendToRecipients, type SendOutcome, type SendRecipient } from '../../../lib/signingSend';
 import { requestErrorDetails, type RequestErrorDetails } from '../../../lib/requestError';
+import { t } from '../../../lib/i18n';
 
 /**
  * "שליחה לנהגים" on the phone: the desktop sheet's flow (lib/signingSend.ts)
@@ -32,7 +33,7 @@ export function useSendToDrivers(companyId: string, template: SigningTemplate | 
     let cancelled = false;
     loadSendRecipients(companyId, templateId)
       .then((rows) => !cancelled && setDrivers(rows))
-      .catch((error) => !cancelled && setLoadError(requestErrorDetails(error, 'לא הצלחנו לטעון את רשימת הנהגים')));
+      .catch((error) => !cancelled && setLoadError(requestErrorDetails(error, t('driver.listLoadFailed'))));
     return () => {
       cancelled = true;
     };
@@ -86,17 +87,17 @@ export function SendBody({ s }: { s: SendState }) {
           <Ionicons name={ok ? 'checkmark' : 'alert'} size={30} color={tone.fg} />
         </View>
         <DKText variant="heading" style={styles.center}>
-          {ok ? `המסמך נשלח ל-${driversCount(s.outcome.sent)}` : 'המסמך לא נשלח'}
+          {ok ? t('signing.sentTo', { v1: driversCount(s.outcome.sent) }) : t('signing.notSent')}
         </DKText>
         {ok && (
           <DKText variant="body" color={DK.muted} style={styles.center}>
-            הנהגים יראו אותו באפליקציה, ואחרי החתימה הוא יישמר בתיק של כל נהג.
+            {t('signing.sentExplainer')}
           </DKText>
         )}
         {s.outcome.failed.length > 0 && (
           <View style={styles.failed}>
             <DKText variant="label" color={STATUS.expired.fg}>
-              {s.outcome.failed.length === 1 ? 'לנהג אחד לא נשלח:' : `ל-${s.outcome.failed.length} נהגים לא נשלח:`}
+              {s.outcome.failed.length === 1 ? t('signing.notSentToOne') : t('signing.notSentToMany', { length: s.outcome.failed.length })}
             </DKText>
             {s.outcome.failed.map((f) => (
               <DKText key={f.name} variant="caption" color={STATUS.expired.fg}>
@@ -117,7 +118,7 @@ export function SendBody({ s }: { s: SendState }) {
   }
   if (!s.drivers) {
     return (
-      <View style={styles.loading} accessibilityLabel="טוען נהגים">
+      <View style={styles.loading} accessibilityLabel={t('driver.loadingDriversShort')}>
         <BrandLoader size={34} />
       </View>
     );
@@ -125,7 +126,7 @@ export function SendBody({ s }: { s: SendState }) {
   if (!s.drivers.length) {
     return (
       <DKText variant="body" color={DK.muted} style={styles.center}>
-        אין עדיין נהגים פעילים בחברה.
+        {t('driver.noActiveDriversDot')}
       </DKText>
     );
   }
@@ -133,14 +134,14 @@ export function SendBody({ s }: { s: SendState }) {
   return (
     <View style={styles.pick}>
       <View style={styles.quick}>
-        <QuickChip icon="people" label={`כל הנהגים (${s.drivers.length})`} disabled={s.sending} onPress={() => s.setPicked(new Set(s.drivers!.map((d) => d.id)))} />
+        <QuickChip icon="people" label={t('signing.allDriversN', { length: s.drivers.length })} disabled={s.sending} onPress={() => s.setPicked(new Set(s.drivers!.map((d) => d.id)))} />
         {notYet.length > 0 && notYet.length !== s.drivers.length && (
-          <QuickChip label={`רק מי שעוד לא קיבל (${notYet.length})`} disabled={s.sending} onPress={() => s.setPicked(new Set(notYet.map((d) => d.id)))} />
+          <QuickChip label={t('signing.onlyNotReceivedN', { length: notYet.length })} disabled={s.sending} onPress={() => s.setPicked(new Set(notYet.map((d) => d.id)))} />
         )}
-        {s.picked.size > 0 && <QuickChip label="ניקוי הבחירה" muted disabled={s.sending} onPress={() => s.setPicked(new Set())} />}
+        {s.picked.size > 0 && <QuickChip label={t('common.clearSelection')} muted disabled={s.sending} onPress={() => s.setPicked(new Set())} />}
       </View>
       {s.drivers.length > 6 && (
-        <KitInput value={s.query} onChangeText={s.setQuery} placeholder="חיפוש נהג לפי שם" accessibilityLabel="חיפוש נהג לפי שם" returnKeyType="search" />
+        <KitInput value={s.query} onChangeText={s.setQuery} placeholder={t('driver.searchByName')} accessibilityLabel={t('driver.searchByName')} returnKeyType="search" />
       )}
       <View style={styles.list}>
         {s.visible.map((d, index) => {
@@ -151,7 +152,7 @@ export function SendBody({ s }: { s: SendState }) {
               key={d.id}
               onPress={() => s.toggle(d.id)}
               disabled={s.sending}
-              accessibilityLabel={`${d.name}${note ? `, ${note}` : ''}, ${on ? 'נבחר' : 'לא נבחר'}`}
+              accessibilityLabel={`${d.name}${note ? `, ${note}` : ''}, ${on ? t('common.selected') : t('common.notSelected')}`}
               pressScale={0.985}
             >
               <View style={[styles.driver, index > 0 && styles.divider, on && styles.driverOn]}>
@@ -172,7 +173,7 @@ export function SendBody({ s }: { s: SendState }) {
         })}
         {!s.visible.length && (
           <DKText variant="caption" color={DK.muted} style={styles.none}>
-            לא נמצא נהג בשם הזה.
+            {t('driver.notFoundByName')}
           </DKText>
         )}
       </View>
@@ -181,13 +182,13 @@ export function SendBody({ s }: { s: SendState }) {
 }
 
 export function SendFooter({ s, onCancel, onDone }: { s: SendState; onCancel: () => void; onDone: () => void }) {
-  if (s.outcome) return <PrimaryAction label="סיום" onPress={onDone} />;
+  if (s.outcome) return <PrimaryAction label={t('common.done')} onPress={onDone} />;
   const count = s.picked.size;
   return (
     <SheetActions>
-      <PrimaryAction label="חזרה" tone="ghost" onPress={onCancel} disabled={s.sending} style={styles.flex} />
+      <PrimaryAction label={t('common.goBack')} tone="ghost" onPress={onCancel} disabled={s.sending} style={styles.flex} />
       <PrimaryAction
-        label={s.sending ? `שולח… ${s.progress!.done} מתוך ${s.progress!.total}` : count ? `שליחה ל-${driversCount(count)}` : 'בחרו נהגים'}
+        label={s.sending ? t('signing.sendingProgress', { done: s.progress!.done, total: s.progress!.total }) : count ? t('signing.sendToV1', { v1: driversCount(count) }) : t('signing.chooseDrivers')}
         icon={s.sending ? undefined : 'paper-plane'}
         onPress={() => void s.send()}
         disabled={!count || s.sending}

@@ -13,6 +13,7 @@ import {
   type NotificationGroup,
   type NotificationType,
   type NotificationTypeInfo,
+  withoutValidity,
 } from '../../lib/notificationPreferencesApi';
 import { isVehicleFolderNotification } from '../../lib/vehicleFolderAlerts';
 import { notificationTone } from '../../lib/notificationLook';
@@ -20,6 +21,7 @@ import type { NotificationPreferencesState } from '../../lib/useNotificationPref
 import { LiquidGlassSwitch } from '../ui/LiquidGlassSwitch';
 import { DText, HoverPressable, prefersReducedMotion } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, webOnly } from './desktopTheme';
+import { t, dirIcon, getLocale } from '../../lib/i18n';
 
 /**
  * Desktop "התראות" page, in two calm views behind one switch:
@@ -37,11 +39,11 @@ type Filter = 'all' | 'unread' | 'vehicles' | 'drivers' | 'signing';
 type IconName = keyof typeof Ionicons.glyphMap;
 
 const FILTER_LABEL: Record<Filter, string> = {
-  all: 'הכול',
-  unread: 'לא נקראו',
-  vehicles: 'רכבים',
-  drivers: 'נהגים',
-  signing: 'חתימות',
+  get all() { return t('common.all'); },
+  get unread() { return t('notifications.unread'); },
+  get vehicles() { return t('common.vehicles'); },
+  get drivers() { return t('common.drivers'); },
+  get signing() { return t('notifications.cat.signing'); },
 };
 
 function categoryOf(type: string | null): Filter | null {
@@ -56,11 +58,11 @@ const DAY_MS = 86_400_000;
 
 function dayGroupOf(iso: string, now: Date): string {
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const t = new Date(iso).getTime();
-  if (t >= startOfToday) return 'היום';
-  if (t >= startOfToday - DAY_MS) return 'אתמול';
-  if (t >= startOfToday - 6 * DAY_MS) return new Intl.DateTimeFormat('he-IL', { weekday: 'long' }).format(new Date(iso));
-  return new Intl.DateTimeFormat('he-IL', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso));
+  const ratio = new Date(iso).getTime();
+  if (ratio >= startOfToday) return t('common.today');
+  if (ratio >= startOfToday - DAY_MS) return t('time.yesterday');
+  if (ratio >= startOfToday - 6 * DAY_MS) return new Intl.DateTimeFormat(getLocale(), { weekday: 'long' }).format(new Date(iso));
+  return new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso));
 }
 
 const TYPE_ICON: Partial<Record<NotificationType, IconName>> = {
@@ -93,7 +95,7 @@ const TYPE_ICON: Partial<Record<NotificationType, IconName>> = {
 
 type SettingsGroup = NotificationGroup;
 
-const shortLabel = (label: string) => label.replace(/^תוקף /, '');
+const shortLabel = withoutValidity;
 
 export function NotificationsHubDesktopView({
   items,
@@ -133,9 +135,9 @@ export function NotificationsHubDesktopView({
   useEffect(() => setSection(initialSection), [initialSection]);
   useEffect(() => () => { if (undoTimer.current) clearTimeout(undoTimer.current); }, []);
 
-  const typeInfo = useMemo(() => new Map(prefs.visibleTypes.map((t) => [t.type, t])), [prefs.visibleTypes]);
+  const typeInfo = useMemo(() => new Map(prefs.visibleTypes.map((entry) => [entry.type, entry])), [prefs.visibleTypes]);
   const canEditLeads = !prefs.isDriver && !!prefs.leads;
-  const enabledCount = prefs.visibleTypes.filter((t) => prefs.prefs?.[t.type] ?? true).length;
+  const enabledCount = prefs.visibleTypes.filter((entry) => prefs.prefs?.[entry.type] ?? true).length;
 
   const counts = useMemo(() => {
     const result: Record<Filter, number> = { all: items.length, unread: unreadIds.size, vehicles: 0, drivers: 0, signing: 0 };
@@ -212,15 +214,15 @@ export function NotificationsHubDesktopView({
   const subtitle =
     section === 'settings'
       ? prefs.isDriver
-        ? 'בחר אילו עדכונים יגיעו אליך'
-        : 'מה יגיע אליך, ומתי כל התראה יוצאת'
+        ? t('notifications.chooseUpdates')
+        : t('notifications.whatAndWhen')
       : loading
-        ? 'טוען עדכונים…'
+        ? t('notifications.loadingUpdates')
         : unreadIds.size > 0
-          ? `${unreadIds.size} ${unreadIds.size === 1 ? 'התראה חדשה' : 'התראות חדשות'}`
+          ? `${unreadIds.size} ${unreadIds.size === 1 ? t('notifications.newOne') : t('notifications.newMany')}`
           : items.length > 0
-            ? 'קראת את כל העדכונים'
-            : 'כל העדכונים מהצי במקום אחד';
+            ? t('notifications.allRead')
+            : t('notifications.allInOnePlace');
 
   return (
     <View style={styles.root}>
@@ -228,7 +230,7 @@ export function NotificationsHubDesktopView({
         {/* Title on the right, the view switch on the left. */}
         <View style={styles.header}>
           <View style={styles.headingCopy}>
-            <DText weight="bold" style={styles.title} accessibilityRole="header">התראות</DText>
+            <DText weight="bold" style={styles.title} accessibilityRole="header">{t('notifications.title')}</DText>
             <DText style={styles.subtitle}>{subtitle}</DText>
           </View>
           <View style={styles.grow} />
@@ -270,13 +272,13 @@ export function NotificationsHubDesktopView({
                     {urgency.critical > 0 && (
                       <View style={styles.urgencyItem}>
                         <View style={[styles.urgencyDot, { backgroundColor: DESKTOP_TONES.bad.fg }]} />
-                        <DText weight="semiBold" style={styles.urgencyText}>{`${urgency.critical} דחופות`}</DText>
+                        <DText weight="semiBold" style={styles.urgencyText}>{t('notifications.urgentCount', { critical: urgency.critical })}</DText>
                       </View>
                     )}
                     {urgency.warning > 0 && (
                       <View style={styles.urgencyItem}>
                         <View style={[styles.urgencyDot, { backgroundColor: DESKTOP_TONES.warn.fg }]} />
-                        <DText weight="semiBold" style={styles.urgencyText}>{`${urgency.warning} לתשומת לב`}</DText>
+                        <DText weight="semiBold" style={styles.urgencyText}>{t('notifications.attentionCount', { warning: urgency.warning })}</DText>
                       </View>
                     )}
                   </View>
@@ -287,10 +289,10 @@ export function NotificationsHubDesktopView({
                     hoverStyle={styles.ghostButtonHover}
                     pressMotionStyle={styles.pressDown}
                     onPress={onMarkAllRead}
-                    accessibilityLabel="סימון כל ההתראות כנקראו"
+                    accessibilityLabel={t('notifications.markAllReadLabel')}
                   >
                     <Ionicons name="checkmark-done" size={18} color={DESKTOP_COLORS.brand} />
-                    <DText weight="semiBold" style={styles.ghostButtonText}>סימון הכול כנקרא</DText>
+                    <DText weight="semiBold" style={styles.ghostButtonText}>{t('notifications.markAllReadShort')}</DText>
                   </HoverPressable>
                 )}
               </View>
@@ -299,16 +301,16 @@ export function NotificationsHubDesktopView({
             {loading ? (
               <View style={styles.state}><BrandLoader color={DESKTOP_COLORS.brand} /></View>
             ) : error ? (
-              <StateCard icon="cloud-offline-outline" title="לא ניתן לטעון את ההתראות" hint={error} action={{ label: 'נסה שוב', onPress: onRetry }} />
+              <StateCard icon="cloud-offline-outline" title={t('notifications.cannotLoad')} hint={error} action={{ label: t('common.tryAgain'), onPress: onRetry }} />
             ) : items.length === 0 ? (
               <StateCard
                 icon="notifications-outline"
-                title="אין עדיין התראות"
-                hint="עדכונים יופיעו כאן ברגע שיקרו. בינתיים אפשר לבחור מה יגיע אליך."
-                action={{ label: 'להגדרות ההתראות', onPress: () => setSection('settings') }}
+                title={t('notifications.noneYet')}
+                hint={t('notifications.emptyHint')}
+                action={{ label: t('notifications.toSettings'), onPress: () => setSection('settings') }}
               />
             ) : visible.length === 0 ? (
-              <StateCard icon="checkmark-done-outline" title={filter === 'unread' ? 'אין התראות שלא נקראו' : 'אין התראות בסינון הזה'} />
+              <StateCard icon="checkmark-done-outline" title={filter === 'unread' ? t('notifications.noUnread') : t('notifications.noneInFilter')} />
             ) : (
               <View key={filter} style={[styles.days, !reduceMotion && styles.fadeIn]}>
                 {groups.map((group) => (
@@ -346,7 +348,7 @@ export function NotificationsHubDesktopView({
             {prefs.loading ? (
               <View style={styles.state}><BrandLoader color={DESKTOP_COLORS.brand} /></View>
             ) : prefs.error ? (
-              <StateCard icon="cloud-offline-outline" title="לא ניתן לטעון את ההגדרות" hint={prefs.error} action={{ label: 'נסה שוב', onPress: prefs.load }} />
+              <StateCard icon="cloud-offline-outline" title={t('notifications.cannotLoadSettings')} hint={prefs.error} action={{ label: t('common.tryAgain'), onPress: prefs.load }} />
             ) : (
               <>
                 {canEditLeads && <LeadTimeline prefs={prefs} onPick={revealCard} reduceMotion={reduceMotion} />}
@@ -365,8 +367,8 @@ export function NotificationsHubDesktopView({
                   <Ionicons name="checkmark-circle-outline" size={17} color={DESKTOP_COLORS.inkFaint} />
                   <DText style={styles.noteText}>
                     {prefs.isDriver
-                      ? 'כל שינוי נשמר מיד ומשפיע רק עליך.'
-                      : 'כל שינוי נשמר מיד. ההפעלה והכיבוי הם עבורך בלבד; מועדי ההתראה חלים על כל החברה.'}
+                      ? t('notifications.savedForYou')
+                      : t('notifications.savedCompanyTiming')}
                   </DText>
                 </View>
               </>
@@ -379,9 +381,9 @@ export function NotificationsHubDesktopView({
         <View style={styles.toastWrap} pointerEvents="box-none">
           <View style={[styles.toast, !reduceMotion && styles.toastIn]} accessibilityLiveRegion="polite">
             <Ionicons name="notifications-off" size={17} color="#FFFFFF" />
-            <DText style={styles.toastText} numberOfLines={1}>{`השתקת את "${undo.label}"`}</DText>
+            <DText style={styles.toastText} numberOfLines={1}>{t('notifications.muted', { label: undo.label })}</DText>
             <HoverPressable style={styles.toastButton} hoverStyle={styles.toastButtonHover} onPress={() => void undoMute()}>
-              <DText weight="bold" style={styles.toastButtonText}>ביטול</DText>
+              <DText weight="bold" style={styles.toastButtonText}>{t('common.cancel')}</DText>
             </HoverPressable>
           </View>
         </View>
@@ -403,8 +405,8 @@ function SectionSwitch({
   onChange: (section: Section) => void;
 }) {
   const options: { key: Section; label: string; icon: IconName; badge: string | null; hot: boolean }[] = [
-    { key: 'feed', label: 'עדכונים', icon: 'notifications-outline', badge: unread > 0 ? String(unread) : null, hot: unread > 0 },
-    { key: 'settings', label: 'הגדרות התראה', icon: 'options-outline', badge: settingsHint, hot: false },
+    { key: 'feed', label: t('notifications.updates'), icon: 'notifications-outline', badge: unread > 0 ? String(unread) : null, hot: unread > 0 },
+    { key: 'settings', label: t('notifications.settings'), icon: 'options-outline', badge: settingsHint, hot: false },
   ];
   return (
     <View style={styles.switch} accessibilityRole="tablist">
@@ -488,7 +490,7 @@ function FeedRow({
         style={[styles.row, unread && styles.rowUnread]}
         hoverStyle={styles.rowHover}
         onPress={() => onOpen(n)}
-        accessibilityLabel={`${unread ? 'חדש. ' : ''}${n.message}. ${timeAgo}${action ? `. ${action}` : ''}`}
+        accessibilityLabel={`${unread ? t('notifications.newPrefix') : ''}${n.message}. ${timeAgo}${action ? `. ${action}` : ''}`}
       >
         {unread && <View pointerEvents="none" style={styles.unreadEdge} />}
         <View style={[styles.rowIcon, { backgroundColor: colors.bg }]}>
@@ -504,7 +506,7 @@ function FeedRow({
             <DText style={styles.metaText}>{timeAgo}</DText>
             {!!action && <View style={styles.metaDot} />}
             {!!action && <DText weight="semiBold" style={styles.metaAction}>{action}</DText>}
-            {!!action && <Ionicons name="arrow-back" size={13} color={DESKTOP_COLORS.brand} />}
+            {!!action && <Ionicons name={dirIcon('arrow-back')} size={13} color={DESKTOP_COLORS.brand} />}
           </View>
         </View>
         {/* Room for the action buttons, which sit over the row as siblings (a button may not hold a button). */}
@@ -512,12 +514,12 @@ function FeedRow({
       </HoverPressable>
       <View style={styles.rowActions} pointerEvents="box-none">
         {hasLead && (
-          <IconAction icon="time-outline" label={`מועד ההתראה של ${shortLabel(info!.label)}`} onPress={() => onLead(type!)} />
+          <IconAction icon="time-outline" label={t('notifications.timingOf', { v1: shortLabel(info!.label) })} onPress={() => onLead(type!)} />
         )}
         {canMute && (
           <IconAction
             icon="notifications-off-outline"
-            label={`השתקת ${shortLabel(info!.label)}`}
+            label={t('notifications.muteV1', { v1: shortLabel(info!.label) })}
             disabled={muting}
             onPress={() => onMute(type!)}
           />
@@ -584,10 +586,10 @@ const LANE_HEIGHT = 34;
  * Clicking one brings its card into view.
  */
 const TIMELINE_LABEL: Partial<Record<NotificationType, string>> = {
-  driver_meeting_due: 'מפגש עם נהג',
-  vehicle_safety_check_due: 'בדיקת בטיחות',
-  driver_license_expiry: 'רישיון נהיגה',
-  company_carrier_license_expiry: 'רישיון מוביל',
+  get driver_meeting_due() { return t('prefs.type.driverMeeting'); },
+  get vehicle_safety_check_due() { return t('notifications.cat.safetyCheck'); },
+  get driver_license_expiry() { return t('driver.drivingLicense'); },
+  get company_carrier_license_expiry() { return t('notifications.cat.carrierLicense'); },
 };
 
 function LeadTimeline({ prefs, onPick, reduceMotion }: { prefs: NotificationPreferencesState; onPick: (type: NotificationType) => void; reduceMotion: boolean }) {
@@ -597,17 +599,17 @@ function LeadTimeline({ prefs, onPick, reduceMotion }: { prefs: NotificationPref
 
   // Types that share a lead time share one marker.
   const byDays = new Map<number, { type: NotificationType; label: string; on: boolean; meeting: boolean }[]>();
-  for (const t of prefs.visibleTypes) {
-    if (LEAD_RULES[t.type]?.unit !== 'days') continue;
-    const days = leads.values[t.type] ?? 0;
-    const entry = { type: t.type, label: TIMELINE_LABEL[t.type] ?? shortLabel(t.label), on: prefs.prefs?.[t.type] ?? true, meeting: t.type === 'driver_meeting_due' || t.type === 'vehicle_safety_check_due' };
+  for (const ratio of prefs.visibleTypes) {
+    if (LEAD_RULES[ratio.type]?.unit !== 'days') continue;
+    const days = leads.values[ratio.type] ?? 0;
+    const entry = { type: ratio.type, label: TIMELINE_LABEL[ratio.type] ?? shortLabel(ratio.label), on: prefs.prefs?.[ratio.type] ?? true, meeting: ratio.type === 'driver_meeting_due' || ratio.type === 'vehicle_safety_check_due' };
     byDays.set(days, [...(byDays.get(days) ?? []), entry]);
   }
   const clusters = Array.from(byDays.entries())
     .map(([days, members]) => ({
       days,
       members,
-      label: members.length === 1 ? members[0].label : `${members.length} התראות`,
+      label: members.length === 1 ? members[0].label : t('notifications.count', { length: members.length }),
       on: members.some((m) => m.on),
       meeting: members.every((m) => m.meeting),
     }))
@@ -643,19 +645,19 @@ function LeadTimeline({ prefs, onPick, reduceMotion }: { prefs: NotificationPref
     <View style={styles.timeline}>
       <View style={styles.timelineHead}>
         <View style={styles.headingCopy}>
-          <DText weight="bold" style={styles.timelineTitle}>ציר ההתראות</DText>
-          <DText style={styles.timelineSubtitle}>כמה ימים לפני שהתוקף פג יוצאת כל התראה. לחיצה על תווית פותחת את ההגדרה שלה.</DText>
+          <DText weight="bold" style={styles.timelineTitle}>{t('notifications.timeline')}</DText>
+          <DText style={styles.timelineSubtitle}>{t('notifications.timelineHint')}</DText>
         </View>
         <View style={styles.grow} />
         {!leads.perType && (
           <View style={styles.timelineBadge}>
-            <DText weight="semiBold" style={styles.timelineBadgeText}>מועד משותף לכל התיקיות</DText>
+            <DText weight="semiBold" style={styles.timelineBadgeText}>{t('notifications.sharedTiming')}</DText>
           </View>
         )}
         {service != null && (
-          <HoverPressable style={styles.timelineChip} hoverStyle={styles.timelineChipHover} onPress={() => onPick('vehicle_service_due')} accessibilityLabel="מועד התראת טיפול">
+          <HoverPressable style={styles.timelineChip} hoverStyle={styles.timelineChipHover} onPress={() => onPick('vehicle_service_due')} accessibilityLabel={t('notifications.serviceTiming')}>
             <Ionicons name="build-outline" size={15} color="#BFE6FA" />
-            <DText weight="semiBold" style={styles.timelineChipText}>{`טיפול: ${leadPhrase(service, serviceRule)}`}</DText>
+            <DText weight="semiBold" style={styles.timelineChipText}>{t('notifications.serviceV1', { v1: leadPhrase(service, serviceRule) })}</DText>
           </HoverPressable>
         )}
       </View>
@@ -669,20 +671,20 @@ function LeadTimeline({ prefs, onPick, reduceMotion }: { prefs: NotificationPref
               return (
                 <View key={c.days} pointerEvents="box-none" style={StyleSheet.absoluteFill}>
                   {/* The stem from the label down to the axis. */}
-                  <View pointerEvents="none" style={[styles.stem, { left: c.x - 0.5, top: top + 28, height: trackHeight - top - 28 + 3 }, !c.on && styles.stemOff]} />
+                  <View pointerEvents="none" style={[styles.stem, { start: c.x - 0.5, top: top + 28, height: trackHeight - top - 28 + 3 }, !c.on && styles.stemOff]} />
                   <HoverPressable
                     style={[
                       styles.marker,
                       c.meeting && styles.markerMeeting,
                       !c.on && styles.markerOff,
                       selected && styles.markerSelected,
-                      { top, ...(c.x > width - LABEL_PX / 2 ? { right: 0 } : c.x < LABEL_PX / 2 ? { left: 0 } : { left: c.x - LABEL_PX / 2 }) },
+                      { top, ...(c.x > width - LABEL_PX / 2 ? { end: 0 } : c.x < LABEL_PX / 2 ? { start: 0 } : { start: c.x - LABEL_PX / 2 }) },
                       !reduceMotion && styles.markerIn,
                       !reduceMotion && webOnly({ animationDelay: `${i * 30}ms` }),
                     ]}
                     hoverStyle={styles.markerHover}
                     onPress={() => pick(c)}
-                    accessibilityLabel={`${c.members.map((m) => m.label).join(', ')}: ${c.days} ימים לפני`}
+                    accessibilityLabel={t('notifications.daysBeforeLabel', { v1: c.members.map((m) => m.label).join(', '), days: c.days })}
                     accessibilityState={c.members.length > 1 ? { expanded: selected } : undefined}
                   >
                     <DText weight="semiBold" style={[styles.markerText, !c.on && styles.markerTextOff]} numberOfLines={1}>{c.label}</DText>
@@ -696,7 +698,7 @@ function LeadTimeline({ prefs, onPick, reduceMotion }: { prefs: NotificationPref
           <View style={styles.axisFill} />
           {width > 0 &&
             placed.map((c) => (
-              <View key={c.days} pointerEvents="none" style={[styles.axisDot, c.meeting && styles.axisDotMeeting, !c.on && styles.axisDotOff, { left: c.x - 5 }]} />
+              <View key={c.days} pointerEvents="none" style={[styles.axisDot, c.meeting && styles.axisDotMeeting, !c.on && styles.axisDotOff, { start: c.x - 5 }]} />
             ))}
         </View>
         <View style={styles.ticks}>
@@ -705,9 +707,9 @@ function LeadTimeline({ prefs, onPick, reduceMotion }: { prefs: NotificationPref
               <DText
                 key={tick}
                 weight={tick === 0 ? 'bold' : 'semiBold'}
-                style={[styles.tick, tick === 0 && styles.tickEnd, { left: Math.min(width - 72, Math.max(0, (tick / AXIS_MAX) * width - 36)) }]}
+                style={[styles.tick, tick === 0 && styles.tickEnd, { start: Math.min(width - 72, Math.max(0, (tick / AXIS_MAX) * width - 36)) }]}
               >
-                {tick === 0 ? 'יום התפוגה' : `${tick} יום`}
+                {tick === 0 ? t('notifications.expiryDay') : t('notifications.tickDays', { tick })}
               </DText>
             ))}
         </View>
@@ -715,7 +717,7 @@ function LeadTimeline({ prefs, onPick, reduceMotion }: { prefs: NotificationPref
 
       {open && (
         <View style={[styles.clusterRow, !reduceMotion && styles.fadeIn]}>
-          <DText weight="semiBold" style={styles.clusterTitle}>{`${open.days} ימים לפני:`}</DText>
+          <DText weight="semiBold" style={styles.clusterTitle}>{t('notifications.daysBeforeColon', { days: open.days })}</DText>
           {open.members.map((m) => (
             <HoverPressable key={m.type} style={[styles.clusterChip, !m.on && styles.markerOff]} hoverStyle={styles.timelineChipHover} onPress={() => onPick(m.type)}>
               <DText weight="semiBold" style={[styles.timelineChipText, !m.on && styles.markerTextOff]}>{m.label}</DText>
@@ -743,7 +745,7 @@ function SettingsSection({
   registerCard: (type: NotificationType, node: View | null) => void;
 }) {
   const [width, setWidth] = useState(0);
-  const on = group.items.filter((t) => prefs.prefs?.[t.type] ?? true).length;
+  const on = group.items.filter((entry) => prefs.prefs?.[entry.type] ?? true).length;
   const minCard = group.compact ? 300 : 380;
   const gap = 14;
   const columns = width > 0 ? Math.max(1, Math.min(group.items.length, Math.floor((width + gap) / (minCard + gap)))) : 1;
@@ -784,7 +786,7 @@ function SettingsSection({
         <View style={styles.grow} />
         {folderLeads && (
           <View style={styles.bulk}>
-            <DText weight="semiBold" style={styles.bulkLabel}>לכל התיקיות:</DText>
+            <DText weight="semiBold" style={styles.bulkLabel}>{t('notifications.allFolders')}</DText>
             {LEAD_RULES.vehicle_license_expiry!.presets.map((days) => (
               <HoverPressable
                 key={days}
@@ -793,16 +795,16 @@ function SettingsSection({
                 pressMotionStyle={styles.pressDown}
                 onPress={() => void setAll(days)}
                 disabled={prefs.savingLeadType != null}
-                accessibilityLabel={`${days} ימים לפני, לכל התיקיות`}
+                accessibilityLabel={t('notifications.daysBeforeAllFolders', { days })}
               >
-                <DText weight="semiBold" style={styles.bulkChipText}>{`${days} ימים`}</DText>
+                <DText weight="semiBold" style={styles.bulkChipText}>{t('common.daysValue', { days })}</DText>
               </HoverPressable>
             ))}
           </View>
         )}
         {group.items.length > 2 && (
           <HoverPressable style={styles.linkButton} hoverStyle={styles.linkButtonHover} onPress={() => void toggleAll()} disabled={prefs.savingType != null}>
-            <DText weight="semiBold" style={styles.linkButtonText}>{allOn ? 'כיבוי הכול' : 'הפעלת הכול'}</DText>
+            <DText weight="semiBold" style={styles.linkButtonText}>{allOn ? t('notifications.turnAllOff') : t('notifications.turnAllOn')}</DText>
           </HoverPressable>
         )}
       </View>
@@ -865,7 +867,7 @@ function TypeCard({
           <DText weight="bold" style={[styles.cardTitle, !value && styles.cardTitleOff]} numberOfLines={1}>{label}</DText>
           {!compact && !!item.description && <DText style={styles.cardDescription} numberOfLines={3}>{item.description}</DText>}
           {compact && !leadEditable && leadValue != null && rule && (
-            <DText style={styles.cardDescription}>{leadPhrase(leadValue, rule)}{rule.unit === 'days' ? ', ושוב ביום עצמו' : ''}</DText>
+            <DText style={styles.cardDescription}>{leadPhrase(leadValue, rule)}{rule.unit === 'days' ? t('notifications.andOnDay') : ''}</DText>
           )}
         </View>
         <LiquidGlassSwitch
@@ -946,7 +948,7 @@ function LeadControl({
     <View style={[styles.lead, dimmed && styles.leadDimmed]}>
       <View style={styles.leadRow}>
         <Ionicons name="time-outline" size={16} color={DESKTOP_COLORS.inkMuted} />
-        <DText weight="semiBold" style={styles.leadLabel}>התראה</DText>
+        <DText weight="semiBold" style={styles.leadLabel}>{t('notifications.alert')}</DText>
         <View style={styles.stepper}>
           <HoverPressable
             style={styles.stepBtn}
@@ -998,7 +1000,7 @@ function LeadControl({
               accessibilityState={{ selected: active }}
             >
               <DText weight="semiBold" style={[styles.presetText, active && styles.presetTextActive]}>
-                {rule.unit === 'km' ? preset.toLocaleString('he-IL') : preset}
+                {rule.unit === 'km' ? preset.toLocaleString(getLocale()) : preset}
               </DText>
             </HoverPressable>
           );
@@ -1132,7 +1134,7 @@ const styles = StyleSheet.create({
   },
   rowUnread: { backgroundColor: '#F5F9FD' },
   rowHover: { backgroundColor: '#EEF5FA' },
-  unreadEdge: { position: 'absolute', right: 0, top: 12, bottom: 12, width: 4, borderTopLeftRadius: 4, borderBottomLeftRadius: 4, backgroundColor: DESKTOP_COLORS.brand },
+  unreadEdge: { position: 'absolute', end: 0, top: 12, bottom: 12, width: 4, borderTopStartRadius: 4, borderBottomStartRadius: 4, backgroundColor: DESKTOP_COLORS.brand },
   rowIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   rowText: { flex: 1, minWidth: 0, gap: 6 },
   message: { fontSize: 16, lineHeight: 23, color: DESKTOP_COLORS.ink, maxWidth: 860 },
@@ -1143,7 +1145,7 @@ const styles = StyleSheet.create({
   metaAction: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
   metaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#B8C1C9' },
   rowActionSpace: { width: 84, flexShrink: 0 },
-  rowActions: { position: 'absolute', left: 18, top: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  rowActions: { position: 'absolute', start: 18, top: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 4 },
   iconActionWrap: { position: 'relative', alignItems: 'center' },
   iconAction: {
     width: 38,
@@ -1249,7 +1251,7 @@ const styles = StyleSheet.create({
   markerTextOff: { color: 'rgba(255,255,255,0.4)' },
   axis: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center' },
   axisFill: {
-    position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+    position: 'absolute', start: 0, end: 0, top: 0, bottom: 0,
     borderRadius: 3,
     ...webOnly({ backgroundImage: 'linear-gradient(to left, rgba(95,193,240,0.15), rgba(255,101,92,0.85))' }),
   },
@@ -1258,7 +1260,7 @@ const styles = StyleSheet.create({
   axisDotOff: { backgroundColor: 'rgba(255,255,255,0.25)' },
   ticks: { height: 20, marginTop: 8 },
   clusterRow: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
-  clusterTitle: { fontSize: 14, color: 'rgba(255,255,255,0.7)', marginLeft: 4 },
+  clusterTitle: { fontSize: 14, color: 'rgba(255,255,255,0.7)', marginStart: 4 },
   clusterChip: { height: 32, paddingHorizontal: 12, borderRadius: 16, justifyContent: 'center', backgroundColor: 'rgba(0,136,204,0.3)', borderWidth: 1, borderColor: 'rgba(95,193,240,0.4)', ...webOnly({ transition: 'background-color 150ms ease' }) },
   tick: { position: 'absolute', width: 72, textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.5)' },
   tickEnd: { color: '#FF8A82' },
@@ -1272,7 +1274,7 @@ const styles = StyleSheet.create({
   sectionCountText: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   sectionSubtitle: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
   bulk: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  bulkLabel: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted, marginLeft: 2 },
+  bulkLabel: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted, marginStart: 2 },
   bulkChip: {
     height: 32,
     paddingHorizontal: 11,
@@ -1346,8 +1348,8 @@ const styles = StyleSheet.create({
     fontFamily: DESKTOP_FONT.bold,
     color: DESKTOP_COLORS.ink,
     backgroundColor: DESKTOP_COLORS.surface,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
+    borderStartWidth: 1,
+    borderEndWidth: 1,
     borderColor: DESKTOP_COLORS.border,
     ...webOnly({ outlineStyle: 'none', fontVariantNumeric: 'tabular-nums' }),
   },
@@ -1374,14 +1376,14 @@ const styles = StyleSheet.create({
   noteText: { fontSize: 14, color: DESKTOP_COLORS.inkFaint, flexShrink: 1 },
 
   // Undo toast
-  toastWrap: { position: 'absolute', left: 0, right: 0, bottom: 28, alignItems: 'center' },
+  toastWrap: { position: 'absolute', start: 0, end: 0, bottom: 28, alignItems: 'center' },
   toast: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 12,
     height: 52,
-    paddingRight: 18,
-    paddingLeft: 8,
+    paddingEnd: 18,
+    paddingStart: 8,
     borderRadius: 16,
     backgroundColor: NAVY,
     maxWidth: 560,

@@ -23,6 +23,7 @@ import type { RootStackParamList } from '../../navigation/types';
 import { DK, DK_FONT } from './theme';
 // Runtime-only uses: this file is imported by index.tsx itself.
 import { DKText, useReducedMotion } from './index';
+import { t, dirSign } from '../../lib/i18n';
 
 /**
  * The phone's bottom bar: home and the menu, on every signed-in screen.
@@ -241,10 +242,10 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
     sync();
     const off = navigationRef.addListener('state', sync);
     // The container may not be ready on the first pass.
-    const t = setTimeout(sync, 0);
+    const timer = setTimeout(sync, 0);
     return () => {
       off();
-      clearTimeout(t);
+      clearTimeout(timer);
     };
   }, [navigationRef, resetScroll]);
 
@@ -356,7 +357,7 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
   const translateY = rise.interpolate({ inputRange: [0, 1], outputRange: [reduce ? 0 : travel, 0] });
   const barScale = rise.interpolate({ inputRange: [0, 1], outputRange: [reduce ? 1 : 0.9, 1] });
   // RTL: home sits on the right, the menu on the left.
-  const lensX = lensAt.interpolate({ inputRange: [0, 1], outputRange: [0, -slot] });
+  const lensX = lensAt.interpolate({ inputRange: [0, 1], outputRange: [0, -slot * dirSign()] });
   const lensScaleX = Animated.add(
     Animated.add(lensOn.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }), stretch.interpolate({ inputRange: [0, 1], outputRange: [0, 0.34] })),
     swell.interpolate({ inputRange: [0, 1], outputRange: [0, 0.08] })
@@ -371,7 +372,7 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
     <Animated.View
       pointerEvents={visible ? 'box-none' : 'none'}
       style={[styles.host, { bottom, opacity: shown, transform: [{ translateY }, { scale: barScale }] }]}
-      {...(Platform.OS === 'web' ? ({ role: 'navigation', 'aria-label': 'ניווט ראשי', 'aria-hidden': !visible } as object) : {})}
+      {...(Platform.OS === 'web' ? ({ role: 'navigation', 'aria-label': t('nav.mainNavigation'), 'aria-hidden': !visible } as object) : {})}
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
     >
@@ -400,8 +401,8 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
             />
             <Animated.View style={[StyleSheet.absoluteFill, styles.lensSheen, { opacity: sheen }]} />
           </Animated.View>
-          <TabButton icon="home" label="בית" selected={active === 'home'} onPress={goHome} onPressChange={press} reduce={reduce} />
-          <TabButton icon="grid" label="תפריט" selected={active === 'menu'} onPress={goMenu} onPressChange={press} reduce={reduce} />
+          <TabButton icon="home" label={t('nav.home')} selected={active === 'home'} onPress={goHome} onPressChange={press} reduce={reduce} />
+          <TabButton icon="grid" label={t('nav.menu')} selected={active === 'menu'} onPress={goMenu} onPressChange={press} reduce={reduce} />
         </View>
       </View>
     </Animated.View>
@@ -523,8 +524,8 @@ function isFocusVisible(event: unknown): boolean {
 const styles = StyleSheet.create({
   host: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    start: 0,
+    end: 0,
     alignItems: 'center',
     zIndex: 50,
     ...Platform.select({ web: { position: 'fixed' } as object, default: {} }),
@@ -571,7 +572,7 @@ const styles = StyleSheet.create({
   lens: {
     position: 'absolute',
     top: BAR_PAD,
-    right: BAR_PAD,
+    end: BAR_PAD,
     bottom: BAR_PAD,
     borderRadius: (BAR_HEIGHT - BAR_PAD * 2) / 2,
     overflow: 'hidden',

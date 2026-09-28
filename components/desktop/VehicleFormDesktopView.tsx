@@ -22,6 +22,7 @@ import {
   type ChoiceTile,
   type FormStep,
 } from './form/RecordFormKit';
+import { t, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../lib/i18n';
 
 type FormVehicleType = VehicleType | '';
 
@@ -138,16 +139,16 @@ export function VehicleFormDesktopView({
   const filled = [hasPlate, hasType, hasStatus].filter(Boolean).length;
 
   const steps: FormStep<StepKey>[] = [
-    { key: 'identity', label: 'זיהוי הרכב', total: 2, filled: Number(hasPlate) + Number(hasType) },
-    { key: 'details', label: 'פרטי הרכב', total: 0, filled: 0 },
-    { key: 'assign', label: 'סטטוס', total: 1, filled: Number(hasStatus) },
-    { key: 'drivers', label: 'נהגים', total: 0, filled: 0 },
+    { key: 'identity', label: t('vehicle.identification'), total: 2, filled: Number(hasPlate) + Number(hasType) },
+    { key: 'details', label: t('vehicle.details'), total: 0, filled: 0 },
+    { key: 'assign', label: t('common.status'), total: 1, filled: Number(hasStatus) },
+    { key: 'drivers', label: t('common.drivers'), total: 0, filled: 0 },
   ];
 
   const missing = [
-    !hasPlate && { label: 'מספר רישוי', onPress: () => jump('identity') },
-    !hasType && { label: 'סוג רכב', onPress: () => jump('identity') },
-    !hasStatus && { label: 'סטטוס', onPress: () => jump('assign') },
+    !hasPlate && { label: t('vehicle.plateNumber'), onPress: () => jump('identity') },
+    !hasType && { label: t('vehicle.typeLabel'), onPress: () => jump('identity') },
+    !hasStatus && { label: t('common.status'), onPress: () => jump('assign') },
   ].filter(Boolean) as { label: string; onPress: () => void }[];
 
   const typeTiles: ChoiceTile<VehicleType>[] = vehicleTypeOptions.map((o) => ({
@@ -177,16 +178,16 @@ export function VehicleFormDesktopView({
     >
       <RecordHero
         icon="car-sport"
-        eyebrow={isEdit ? 'עריכת רכב' : 'רכב חדש'}
+        eyebrow={isEdit ? t('vehicle.edit') : t('vehicle.new')}
         title={
           isEdit
-            ? [form.manufacturer, form.model].filter(Boolean).join(' ').trim() || formatPlate(form.plate_number) || 'פרטי הרכב'
-            : 'בואו נוסיף רכב לצי'
+            ? [form.manufacturer, form.model].filter(Boolean).join(' ').trim() || formatPlate(form.plate_number) || t('vehicle.details')
+            : t('vehicle.addToFleet')
         }
         subtitle={
           isEdit
-            ? 'כל שינוי כאן נשמר בתיק הרכב.'
-            : 'מקלידים מספר רישוי ובוחרים סוג — וזהו. את שאר הפרטים אפשר למלא אוטומטית ממשרד התחבורה.'
+            ? t('vehicle.editHint')
+            : t('vehicle.addHint')
         }
         steps={steps}
         onJump={jump}
@@ -195,13 +196,13 @@ export function VehicleFormDesktopView({
 
       <FormSection
         index={0}
-        title="זיהוי הרכב"
-        hint="מספר הרישוי וסוג הרכב — שני הפרטים היחידים שחובה למלא."
+        title={t('vehicle.identification')}
+        hint={t('vehicle.identificationHint')}
         done={hasPlate && hasType}
         onLayout={track('identity')}
       >
         <FormPanel>
-          <FormCell label="מספר רישוי" required error={errors.plate_number}>
+          <FormCell label={t('vehicle.plateNumber')} required error={errors.plate_number}>
             <View style={styles.plateRow}>
               <PlateInput
                 value={form.plate_number}
@@ -214,7 +215,7 @@ export function VehicleFormDesktopView({
                 pressMotionStyle={styles.lookupPress}
                 onPress={onLookupVehicle}
                 disabled={lookupLoading}
-                accessibilityLabel="מילוי פרטי הרכב ממשרד התחבורה"
+                accessibilityLabel={t('vehicle.autofillFromMot')}
               >
                 {lookupLoading ? (
                   <BrandLoader size="small" color={DESKTOP_COLORS.brand} />
@@ -222,8 +223,8 @@ export function VehicleFormDesktopView({
                   <Ionicons name="sparkles" size={18} color={DESKTOP_COLORS.brand} />
                 )}
                 <View>
-                  <DText weight="bold" style={styles.lookupTitle}>{lookupLoading ? 'מחפש…' : 'מילוי אוטומטי'}</DText>
-                  <DText style={styles.lookupSub}>ממשרד התחבורה</DText>
+                  <DText weight="bold" style={styles.lookupTitle}>{lookupLoading ? t('common.searching') : t('vehicle.autofill')}</DText>
+                  <DText style={styles.lookupSub}>{t('vehicle.fromMot')}</DText>
                 </View>
               </HoverPressable>
             </View>
@@ -234,9 +235,9 @@ export function VehicleFormDesktopView({
               </View>
             )}
           </FormCell>
-          <FormCell label="סוג רכב" required error={errors.vehicle_type}>
+          <FormCell label={t('vehicle.typeLabel')} required error={errors.vehicle_type}>
             <ChoiceTiles
-              label="סוג רכב"
+              label={t('vehicle.typeLabel')}
               value={form.vehicle_type || null}
               options={typeTiles}
               hasError={!!errors.vehicle_type}
@@ -248,37 +249,37 @@ export function VehicleFormDesktopView({
 
       <FormSection
         index={1}
-        title="פרטי הרכב"
-        hint="לא חובה. ״מילוי אוטומטי״ ממלא את רובם בשבילכם."
+        title={t('vehicle.details')}
+        hint={t('vehicle.detailsHint')}
         done={false}
         onLayout={track('details')}
       >
         <FormPanel>
-          <FormCell label="יצרן">
-            <DesktopInput large value={form.manufacturer} onChangeText={(v) => set('manufacturer', v)} placeholder="לדוגמה: טויוטה" />
+          <FormCell label={t('vehicle.manufacturer')}>
+            <DesktopInput large value={form.manufacturer} onChangeText={(v) => set('manufacturer', v)} placeholder={t('vehicle.manufacturerExample')} />
           </FormCell>
-          <FormCell label="דגם">
-            <DesktopInput large value={form.model} onChangeText={(v) => set('model', v)} placeholder="לדוגמה: קורולה" />
+          <FormCell label={t('vehicle.model')}>
+            <DesktopInput large value={form.model} onChangeText={(v) => set('model', v)} placeholder={t('vehicle.modelExample')} />
           </FormCell>
-          <FormCell label="צבע">
+          <FormCell label={t('vehicle.color')}>
             <View style={styles.colorRow}>
               <View
                 style={[styles.colorSwatch, !swatchFor(form.color) && styles.colorSwatchEmpty, { backgroundColor: swatchFor(form.color) ?? 'transparent' }]}
               />
-              <DesktopInput large value={form.color} onChangeText={(v) => set('color', v)} placeholder="לדוגמה: לבן" style={styles.flex} />
+              <DesktopInput large value={form.color} onChangeText={(v) => set('color', v)} placeholder={t('vehicle.colorExample')} style={styles.flex} />
             </View>
           </FormCell>
-          <FormCell label="שנת ייצור" error={errors.production_year || errors.production_month}>
+          <FormCell label={t('vehicle.productionYear')} error={errors.production_year || errors.production_month}>
             <View style={styles.pairRow}>
               <View style={styles.flex}>
-                <DesktopSelect large value={form.production_year || null} onChange={(v) => set('production_year', v ?? '')} options={yearOptions} placeholder="שנה" allowClear />
+                <DesktopSelect large value={form.production_year || null} onChange={(v) => set('production_year', v ?? '')} options={yearOptions} placeholder={t('date.year')} allowClear />
               </View>
               <View style={styles.flex}>
-                <DesktopSelect large value={form.production_month || null} onChange={(v) => set('production_month', v ?? '')} options={monthOptions} placeholder="חודש" allowClear />
+                <DesktopSelect large value={form.production_month || null} onChange={(v) => set('production_month', v ?? '')} options={monthOptions} placeholder={t('date.month')} allowClear />
               </View>
             </View>
           </FormCell>
-          <FormCell label="קילומטראז׳">
+          <FormCell label={t('vehicle.mileage')}>
             <DesktopInput
               large
               value={form.odometer.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
@@ -288,70 +289,70 @@ export function VehicleFormDesktopView({
               ltr
             />
           </FormCell>
-          <FormCell label="עלייה לכביש" error={errors.road_registration_date}>
+          <FormCell label={t('vehicle.onRoadDate')} error={errors.road_registration_date}>
             <DesktopDateField
               large
               value={form.road_registration_date || null}
               onChange={(iso) => set('road_registration_date', iso ?? '')}
-              placeholder="בחירת תאריך"
+              placeholder={t('date.chooseDateAction')}
               hasError={!!errors.road_registration_date}
             />
           </FormCell>
-          <FormCell label="תוקף רישיון רכב" hint="נזכיר לכם לפני שהרישיון פג">
+          <FormCell label={t('vehicle.licenseExpiry')} hint={t('vehicle.licenseExpiryHint')}>
             <DesktopDateField
               large
               value={form.vehicle_license_expiry || null}
               onChange={(iso) => set('vehicle_license_expiry', iso ?? '')}
-              placeholder="בחירת תאריך"
+              placeholder={t('date.chooseDateAction')}
             />
           </FormCell>
-          <FormCell label="מספר שלדה" error={errors.vin} hint="17 תווים באנגלית ומספרים (VIN)">
+          <FormCell label={t('vehicle.vin')} error={errors.vin} hint={t('vehicle.vinHintShort')}>
             <DesktopInput
               large
               value={form.vin}
               onChangeText={(v) => set('vin', v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17))}
-              placeholder="לא חובה"
+              placeholder={t('common.optionalShort')}
               ltr
               hasError={!!errors.vin}
             />
           </FormCell>
-          <FormCell label="קוד פנימי">
-            <DesktopInput large value={form.internal_code} onChangeText={(v) => set('internal_code', v)} placeholder="לא חובה" ltr />
+          <FormCell label={t('vehicle.internalCode')}>
+            <DesktopInput large value={form.internal_code} onChangeText={(v) => set('internal_code', v)} placeholder={t('common.optionalShort')} ltr />
           </FormCell>
         </FormPanel>
       </FormSection>
 
       <FormSection
         index={2}
-        title="שיוך וסטטוס"
-        hint="האם הרכב על הכביש, ולאיזו מחלקה הוא שייך."
+        title={t('vehicle.assignmentAndStatus')}
+        hint={t('vehicle.assignmentHint')}
         done={hasStatus}
         onLayout={track('assign')}
       >
         <FormPanel>
-          <FormCell label="סטטוס" required error={errors.status}>
-            <ChoiceTiles label="סטטוס" value={form.status} options={statusTiles} onChange={(v) => set('status', v)} />
+          <FormCell label={t('common.status')} required error={errors.status}>
+            <ChoiceTiles label={t('common.status')} value={form.status} options={statusTiles} onChange={(v) => set('status', v)} />
           </FormCell>
-          <FormCell label="מחלקה">
+          <FormCell label={t('common.department')}>
             <DesktopSelect
               large
               value={form.department_id}
               onChange={(v) => set('department_id', v)}
               options={departments}
-              placeholder={departments.length ? 'בחירת מחלקה' : 'לא הוגדרו מחלקות'}
+              placeholder={departments.length ? t('common.chooseDepartment') : t('common.noDepartmentsDefined')}
               allowClear
             />
           </FormCell>
-          <FormCell label="שימוש ברכב">
-            <DesktopInput large value={form.usage_type} onChangeText={(v) => set('usage_type', v)} placeholder="לדוגמה: הובלות" />
+          <FormCell label={t('vehicle.usage')}>
+            <DesktopInput large value={form.usage_type} onChangeText={(v) => set('usage_type', v)} placeholder={t('vehicle.usageExample')} />
           </FormCell>
-          <FormCell label="סוג עסקה">
+          <FormCell label={t('vehicle.dealType')}>
             <DesktopSelect
               large
               value={form.acquisition_type}
               onChange={(v) => set('acquisition_type', v)}
               options={dealTypeOptions}
-              placeholder="בחירת סוג עסקה"
+              placeholder={t('vehicle.chooseDealType')}
               allowClear
             />
           </FormCell>
@@ -360,8 +361,8 @@ export function VehicleFormDesktopView({
 
       <FormSection
         index={3}
-        title="נהגים"
-        hint="מי נוהג ברכב הזה."
+        title={t('common.drivers')}
+        hint={t('vehicle.whoDrives')}
         done={isEdit && vehicleDrivers.length > 0}
         onLayout={track('drivers')}
       >
@@ -378,8 +379,8 @@ export function VehicleFormDesktopView({
         ) : (
           <FormNote
             icon="people"
-            title="משייכים נהגים אחרי שהרכב נוצר"
-            text="לוחצים על ״צור רכב״ למטה, ובתיק הרכב שנפתח אפשר להוסיף נהגים ומסמכים."
+            title={t('vehicle.assignAfterCreate')}
+            text={t('vehicle.assignAfterCreateText')}
           />
         )}
       </FormSection>
@@ -390,7 +391,7 @@ export function VehicleFormDesktopView({
 /** The plate field drawn as an Israeli plate: yellow, the blue IL band, big black digits. */
 function PlateInput({ value, onChange, hasError }: { value: string; onChange: (v: string) => void; hasError?: boolean }) {
   return (
-    <View style={[styles.plate, hasError && styles.plateError]}>
+    <View {...fixedLayoutProps} style={[styles.plate, FIXED_LAYOUT_STYLE, hasError && styles.plateError]}>
       <View style={styles.plateBand}>
         <DText weight="extraBold" style={styles.plateBandText}>IL</DText>
       </View>
@@ -400,7 +401,7 @@ function PlateInput({ value, onChange, hasError }: { value: string; onChange: (v
         placeholder="12-345-67"
         placeholderTextColor="rgba(17,17,17,0.28)"
         keyboardType="number-pad"
-        accessibilityLabel="מספר רישוי"
+        accessibilityLabel={t('vehicle.plateNumber')}
         style={[styles.plateInput, webOnly({ outlineStyle: 'none', fontVariantNumeric: 'tabular-nums' })]}
       />
     </View>
@@ -416,9 +417,9 @@ function VehicleCard({ form, typeLabel, statusLabel }: { form: FormState; typeLa
   const art = form.vehicle_type ? TYPE_ART[form.vehicle_type] : null;
 
   return (
-    <LiveCard label={plate ? `כרטיס הרכב ${plate}` : 'כרטיס רכב חדש'}>
+    <LiveCard label={plate ? t('vehicle.cardOf', { plate }) : t('vehicle.newCard')}>
       <View style={styles.card}>
-        <View style={styles.cardPlate}>
+        <View {...fixedLayoutProps} style={[styles.cardPlate, FIXED_LAYOUT_STYLE]}>
           <View style={styles.cardPlateBand}>
             <DText weight="extraBold" style={styles.cardPlateBandText}>IL</DText>
           </View>
@@ -454,7 +455,7 @@ function VehicleCard({ form, typeLabel, statusLabel }: { form: FormState; typeLa
 
         <View style={styles.cardFoot}>
           <DText weight="semiBold" style={[styles.cardType, !typeLabel && styles.cardTypeEmpty]}>
-            {typeLabel ?? 'סוג לא נבחר'}
+            {typeLabel ?? t('vehicle.typeNotChosen')}
           </DText>
           {!!statusLabel && (
             <View style={styles.cardStatus}>

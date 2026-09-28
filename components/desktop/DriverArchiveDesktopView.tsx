@@ -5,6 +5,7 @@ import { DriverRow } from '../../lib/adminApi';
 import { formatDate } from '../../lib/theme';
 import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES } from './desktopTheme';
+import { t } from '../../lib/i18n';
 
 /**
  * Desktop body of the driver archive: a dense table (name, archived-at,
@@ -28,7 +29,7 @@ export function DriverArchiveDesktopView({
     return (
       <View style={styles.empty}>
         <Ionicons name="archive-outline" size={22} color={DESKTOP_COLORS.inkFaint} />
-        <DText style={styles.emptyText}>הארכיון ריק</DText>
+        <DText style={styles.emptyText}>{t('archive.empty')}</DText>
       </View>
     );
   }
@@ -43,10 +44,10 @@ export function DriverArchiveDesktopView({
                 <DText weight="bold" style={styles.avatarText}>{(item.full_name ?? '?').trim().charAt(0)}</DText>
               </View>
               <View style={styles.nameBlock}>
-                <DText weight="semiBold" style={styles.name} numberOfLines={1}>{item.full_name ?? 'ללא שם'}</DText>
+                <DText weight="semiBold" style={styles.name} numberOfLines={1}>{item.full_name ?? t('common.unnamed')}</DText>
                 <DText style={styles.meta} numberOfLines={1}>
-                  {item.archived_at ? `הועבר לארכיון ב-${formatDate(item.archived_at)}` : 'הועבר לארכיון'}
-                  {item.archived_by_name ? ` · על ידי ${item.archived_by_name}` : ''}
+                  {item.archived_at ? t('archive.movedOn', { v1: formatDate(item.archived_at) }) : t('archive.moved')}
+                  {item.archived_by_name ? t('archive.byName', { archived_by_name: item.archived_by_name }) : ''}
                 </DText>
               </View>
             </HoverPressable>
@@ -60,7 +61,7 @@ export function DriverArchiveDesktopView({
               >
                 <Ionicons name="arrow-undo-outline" size={14} color={DESKTOP_TONES.ok.fg} />
                 <DText weight="semiBold" style={[styles.actionText, { color: DESKTOP_TONES.ok.fg }]}>
-                  {restoringId === item.id ? 'משחזר…' : 'שחזור'}
+                  {restoringId === item.id ? t('common.restoring') : t('common.restore')}
                 </DText>
               </HoverPressable>
               <HoverPressable
@@ -69,7 +70,7 @@ export function DriverArchiveDesktopView({
                 onPress={() => onDelete(item)}
               >
                 <Ionicons name="trash-outline" size={14} color={DESKTOP_TONES.bad.fg} />
-                <DText weight="semiBold" style={[styles.actionText, { color: DESKTOP_TONES.bad.fg }]}>מחיקת נהג</DText>
+                <DText weight="semiBold" style={[styles.actionText, { color: DESKTOP_TONES.bad.fg }]}>{t('driver.deleteTitle')}</DText>
               </HoverPressable>
             </View>
           </View>

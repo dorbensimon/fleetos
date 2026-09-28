@@ -7,6 +7,7 @@ import { COLORS, FONT } from '../../lib/theme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { PICKER_FIELD_STYLES } from './pickerFieldStyles';
 import { DK } from '../driverKit/theme';
+import { t } from '../../lib/i18n';
 
 /**
  * Time input, mirroring DateField's per-platform behaviour: a native
@@ -40,7 +41,7 @@ function parseTypedTime(text: string): string | null {
 export function TimeField({
   value,
   onChange,
-  placeholder = 'בחר שעה',
+  placeholder = t('date.chooseTime'),
   hasError,
   disabled,
 }: {
@@ -77,13 +78,13 @@ export function TimeField({
         <Ionicons name="time-outline" size={17} color={COLORS.textFaint} />
         <TextInput
           value={webText}
-          onChangeText={(t) => {
-            setWebText(t);
-            if (t.trim() === '') {
+          onChangeText={(entry) => {
+            setWebText(entry);
+            if (entry.trim() === '') {
               onChange(null);
               return;
             }
-            const parsed = parseTypedTime(t);
+            const parsed = parseTypedTime(entry);
             onChange(parsed);
           }}
           placeholder="HH:MM"
@@ -149,7 +150,7 @@ export function TimeField({
               />
               <TouchableOpacity style={styles.iosDone} onPress={() => setShowPicker(false)}>
                 <AppText weight="bold" style={styles.iosDoneText}>
-                  סיום
+                  {t('common.done')}
                 </AppText>
               </TouchableOpacity>
             </Pressable>

@@ -24,12 +24,14 @@ import { useNextMeeting } from '../../checklist/useNextMeeting';
 import { NextMeetingCard } from '../../checklist/NextMeetingCard';
 import { showAlert } from '../../../lib/platformAlert';
 import { eraseSigningRequest, eraseWarning } from '../../../lib/signingSend';
+import { t, dirIcon, getLocale } from '../../../lib/i18n';
+import { errorMessage } from '../../../lib/requestError';
 
 type FolderStatus = ReturnType<typeof signingFolderStatus>;
-const STATUS_LABEL: Record<FolderStatus, string> = { pending: 'ממתין לחתימה', completed: 'נחתם', failed: 'דורש טיפול', empty: 'לא נשלח' };
+const STATUS_LABEL: Record<FolderStatus, string> = { get pending() { return t('signing.pendingSignature'); }, get completed() { return t('common.signedDone'); }, get failed() { return t('status.needsAttention'); }, get empty() { return t('signing.notSentShort'); } };
 
-const time = (date: string) => new Date(date).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
-const day = (date: string) => new Date(date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '/');
+const time = (date: string) => new Date(date).toLocaleString(getLocale(), { dateStyle: 'short', timeStyle: 'short' });
+const day = (date: string) => new Date(date).toLocaleDateString(getLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '/');
 
 /** When the folder's most recent signed copy was signed, or null if none was. */
 function lastSignedAt(folder: SigningFolder) {
@@ -60,7 +62,7 @@ export function useDriverSigningFolders(companyId: string | null | undefined, dr
       setFolders(buildSigningFolders(templates, requests));
       setError('');
     } catch (err: any) {
-      if (generation === request.current) setError(err?.message || 'טעינת הטפסים נכשלה');
+      if (generation === request.current) setError(errorMessage(err, t('signing.formsLoadFailed')));
     } finally {
       if (generation === request.current) setLoading(false);
     }
@@ -127,9 +129,9 @@ export function DriverSigningList({
 
   const openFolder = folders.find((folder) => folder.id === openId) ?? null;
 
-  if (loading) return <DText style={styles.message}>טוען טפסים…</DText>;
+  if (loading) return <DText style={styles.message}>{t('signing.loadingForms')}</DText>;
   if (error) return <DText style={styles.message}>{error}</DText>;
-  if (!folders.length) return <DText style={styles.message}>אין עדיין טפסים לחתימה בחברה</DText>;
+  if (!folders.length) return <DText style={styles.message}>{t('signing.noFormsYet')}</DText>;
 
   return (
     <>
@@ -139,12 +141,12 @@ export function DriverSigningList({
         const sentAt = lastSentAt(folder);
         const checklist = isChecklistTemplate(folder.template);
         const meta = status === 'pending' && sentAt
-          ? checklist ? `הקצין חתם ב־${day(sentAt)}` : `נשלח ב־${day(sentAt)}`
+          ? checklist ? t('signing.officerSignedOn', { sentAt: day(sentAt) }) : t('signing.sentOn', { sentAt: day(sentAt) })
           : signedAt
-            ? `נחתם ב־${day(signedAt)}`
+            ? t('signing.signedOn', { signedAt: day(signedAt) })
             : status === 'failed'
-              ? 'השליחה לא הצליחה'
-              : checklist ? 'עוד לא התקיים מפגש' : 'עוד לא נשלח לנהג';
+              ? t('signing.sendUnsuccessful')
+              : checklist ? t('meeting.notHeldYet') : t('signing.notSentToDriverYet');
         const color = STATUS_COLOR[status];
         return (
           <HoverPressable
@@ -152,7 +154,7 @@ export function DriverSigningList({
             style={[styles.listRow, index > 0 && styles.listDivider]}
             hoverStyle={recordStyles.rowHover}
             onPress={() => setOpenId(folder.id)}
-            accessibilityLabel={`${folder.title}, ${STATUS_LABEL[status]}. פתיחה`}
+            accessibilityLabel={t('signing.itemOpenLabel', { title: folder.title, v1: STATUS_LABEL[status] })}
           >
             <View style={[styles.listIcon, status === 'completed' && styles.listIconDone]}>
               <Ionicons name={checklist ? 'list-outline' : 'create-outline'} size={16} color={status === 'completed' ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkMuted} />
@@ -163,9 +165,9 @@ export function DriverSigningList({
             </View>
             <View style={styles.listStatus}>
               <View style={[styles.listDot, { backgroundColor: color }]} />
-              <DText weight="semiBold" style={[styles.listStatusText, { color }]}>{checklist && status === 'empty' ? 'אין מפגש' : STATUS_LABEL[status]}</DText>
+              <DText weight="semiBold" style={[styles.listStatusText, { color }]}>{checklist && status === 'empty' ? t('meeting.none') : STATUS_LABEL[status]}</DText>
             </View>
-            <Ionicons name="chevron-back" size={15} color={DESKTOP_COLORS.inkFaint} />
+            <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
           </HoverPressable>
         );
       })}
@@ -216,12 +218,12 @@ function SigningFolderModal({
   const askCancel = (meeting: MeetingRow) => {
     const draft = meeting.status === 'draft';
     showAlert(
-      draft ? 'למחוק את הטיוטה?' : 'למחוק את המפגש?',
-      draft ? 'מה שסומן בטיוטה יימחק.' : 'המפגש והמסמך שלו יימחקו לגמרי, גם אצל הנהג. אי אפשר לשחזר אותם.',
+      draft ? t('meeting.deleteDraftQuestion') : t('meeting.deleteQuestion'),
+      draft ? t('meeting.draftMarksDeleted') : t('meeting.deleteWarning'),
       [
-        { text: 'השארה', style: 'cancel' },
+        { text: t('common.keep'), style: 'cancel' },
         {
-          text: draft ? 'מחיקת הטיוטה' : 'מחיקת המפגש',
+          text: draft ? t('meeting.deleteDraft') : t('meeting.delete'),
           style: 'destructive',
           onPress: () => {
             setOpening(`cancel:${meeting.id}`);
@@ -230,7 +232,7 @@ function SigningFolderModal({
                 await Promise.all([meetings.reload(), next.reload()]);
                 await onChanged();
               })
-              .catch((err: Error) => setMessage(err?.message || 'המחיקה נכשלה. נסו שוב.'))
+              .catch((err: Error) => setMessage(errorMessage(err, t('common.deleteFailedRetry'))))
               .finally(() => setOpening(''));
           },
         },
@@ -239,16 +241,16 @@ function SigningFolderModal({
   };
 
   const askErase = (item: SignatureRequest) => {
-    showAlert('למחוק את המסמך?', eraseWarning(item.status, null), [
-      { text: 'השארה', style: 'cancel' },
+    showAlert(t('documents.deleteQuestion'), eraseWarning(item.status, null), [
+      { text: t('common.keep'), style: 'cancel' },
       {
-        text: 'מחיקת המסמך',
+        text: t('documents.deleteDocument'),
         style: 'destructive',
         onPress: () => {
           setOpening(`erase:${item.id}`);
           eraseSigningRequest(companyId, item.id)
             .then(onChanged)
-            .catch((err: Error) => setMessage(err?.message || 'המחיקה נכשלה. נסו שוב.'))
+            .catch((err: Error) => setMessage(errorMessage(err, t('common.deleteFailedRetry'))))
             .finally(() => setOpening(''));
         },
       },
@@ -263,7 +265,7 @@ function SigningFolderModal({
     let active = true;
     Promise.allSettled(toSync.map((item) => syncSigningRequest(item.id))).then(async (results) => {
       if (!active) return;
-      if (results.some((result) => result.status === 'rejected')) setMessage('לא ניתן לעדכן כרגע את כל מצבי החתימה. מוצג המידע האחרון שנשמר.');
+      if (results.some((result) => result.status === 'rejected')) setMessage(t('signing.statusRefreshFailed'));
       await onChanged();
     });
     return () => { active = false; };
@@ -282,7 +284,7 @@ function SigningFolderModal({
       // The document opens full screen; this window must not stay on top of it.
       onClose();
     } catch (err: any) {
-      setMessage(err?.message || 'פתיחת המסמך נכשלה');
+      setMessage(errorMessage(err, t('common.openDocumentFailed')));
     } finally {
       setOpening('');
     }
@@ -300,7 +302,7 @@ function SigningFolderModal({
       onOpenSession({ ...session, title: folder.title });
       onClose();
     } catch (err: any) {
-      setMessage(err?.message || 'פתיחת המסמך נכשלה. נסה שוב.');
+      setMessage(errorMessage(err, t('common.openDocumentFailedRetry')));
     } finally {
       setOpening('');
     }
@@ -314,9 +316,9 @@ function SigningFolderModal({
     try {
       const result = await assignSigningTemplate(companyId, folder.template.id, [driverId]);
       await onChanged();
-      if (!result.success || result.created !== 1) setMessage(result.message || 'השליחה לא אושרה. נסה שוב.');
+      if (!result.success || result.created !== 1) setMessage(result.message || t('signing.sendNotApprovedRetry'));
     } catch (err: any) {
-      setMessage(err?.message || 'השליחה נכשלה. נסה שוב.');
+      setMessage(errorMessage(err, t('signing.sendFailedRetry')));
     } finally {
       sendingLock.current = false;
       setSending(false);
@@ -335,14 +337,14 @@ function SigningFolderModal({
               pressStyle={recordStyles.pressDown}
               disabled={opening === 'preview'}
               onPress={preview}
-              accessibilityLabel="צפייה בטופס הריק"
+              accessibilityLabel={t('signing.viewBlankForm')}
             >
               <Ionicons name="eye-outline" size={16} color={DESKTOP_COLORS.ink} />
-              <DText weight="semiBold" style={styles.previewText}>{opening === 'preview' ? 'פותח…' : 'צפייה בטופס'}</DText>
+              <DText weight="semiBold" style={styles.previewText}>{opening === 'preview' ? t('common.opening') : t('signing.viewForm')}</DText>
             </HoverPressable>
             <HoverPressable style={styles.sendBtn} hoverStyle={recordStyles.rowHover} pressStyle={recordStyles.pressDown} onPress={() => startMeeting()}>
               <Ionicons name="add-circle-outline" size={16} color={DESKTOP_COLORS.brand} />
-              <DText weight="semiBold" style={styles.sendText}>מפגש חדש</DText>
+              <DText weight="semiBold" style={styles.sendText}>{t('meeting.new')}</DText>
             </HoverPressable>
           </View>
         )}
@@ -355,10 +357,10 @@ function SigningFolderModal({
               pressStyle={recordStyles.pressDown}
               disabled={opening === 'preview' || sending}
               onPress={preview}
-              accessibilityLabel="צפייה במסמך לפני השליחה"
+              accessibilityLabel={t('signing.viewBeforeSending')}
             >
               <Ionicons name="eye-outline" size={16} color={DESKTOP_COLORS.ink} />
-              <DText weight="semiBold" style={styles.previewText}>{opening === 'preview' ? 'פותח…' : 'צפייה במסמך'}</DText>
+              <DText weight="semiBold" style={styles.previewText}>{opening === 'preview' ? t('common.opening') : t('signing.viewDocument')}</DText>
             </HoverPressable>
           )}
           <HoverPressable
@@ -370,7 +372,7 @@ function SigningFolderModal({
           >
             <Ionicons name={completed && !pending ? 'document-text-outline' : 'send-outline'} size={14} color={DESKTOP_COLORS.brand} />
             <DText weight="semiBold" style={styles.sendText}>
-              {sending ? 'שולח…' : pending ? 'שליחה מחדש לחתימה' : completed ? 'צפייה במסמך החתום' : 'שליחה לחתימה'}
+              {sending ? t('common.sending') : pending ? t('signing.resendForSignature') : completed ? t('signing.viewSigned') : t('signing.sendForSignature')}
             </DText>
           </HoverPressable>
           </View>
@@ -383,22 +385,22 @@ function SigningFolderModal({
                 <Ionicons name="create-outline" size={16} color={DESKTOP_COLORS.brand} />
                 <View style={styles.rowText}>
                   <DText weight="semiBold" style={styles.rowTitle}>{draft.title}</DText>
-                  <DText style={styles.rowMeta}>טיוטה, עוד לא נחתם · {formatIsoDay(draft.updated_at.slice(0, 10))}</DText>
+                  <DText style={styles.rowMeta}>{t('signing.draftNotSignedSep')} {formatIsoDay(draft.updated_at.slice(0, 10))}</DText>
                 </View>
                 {canSend && (
-                  <HoverPressable onPress={() => askCancel(draft)} disabled={!!opening} accessibilityLabel="מחיקת הטיוטה" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
-                    <DText weight="semiBold" style={styles.rowDanger}>מחיקה</DText>
+                  <HoverPressable onPress={() => askCancel(draft)} disabled={!!opening} accessibilityLabel={t('meeting.deleteDraft')} style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
+                    <DText weight="semiBold" style={styles.rowDanger}>{t('common.deleteAction')}</DText>
                   </HoverPressable>
                 )}
-                <HoverPressable onPress={() => startMeeting(draft.id)} accessibilityLabel="המשך מילוי הטיוטה" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
-                  <DText weight="semiBold" style={styles.rowLink}>המשך</DText>
+                <HoverPressable onPress={() => startMeeting(draft.id)} accessibilityLabel={t('meeting.continueDraft')} style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
+                  <DText weight="semiBold" style={styles.rowLink}>{t('common.continue')}</DText>
                 </HoverPressable>
               </View>
             ))}
           </View>
         )}
         {folder.requests.length === 0 ? (
-          meetings.drafts.length ? null : <DText style={styles.message}>{meetings.checklist ? 'עוד לא התקיים מפגש עם הנהג' : 'הטופס עוד לא נשלח לנהג'}</DText>
+          meetings.drafts.length ? null : <DText style={styles.message}>{meetings.checklist ? t('meeting.noneWithDriverYet') : t('signing.formNotSentYet')}</DText>
         ) : (
           <View style={styles.list}>
             {folder.requests.map((item, index) => {
@@ -423,34 +425,34 @@ function SigningFolderModal({
                     <DText weight="semiBold" style={styles.rowTitle}>{item.template_title || folder.title}</DText>
                     <DText style={styles.rowMeta}>
                       {cancelled
-                        ? 'בוטל'
+                        ? t('common.cancelled')
                         : item.status === 'completed'
-                        ? `נחתם ${time(item.completed_at || item.created_at)}${meeting?.officer_name ? ` · ${meeting.officer_name}` : ''}`
+                        ? t('signing.signedWith', { v1: time(item.completed_at || item.created_at), v2: meeting?.officer_name ? ` · ${meeting.officer_name}` : '' })
                         : ready && meeting
-                        ? 'הקצין חתם · ממתין לחתימת הנהג'
+                        ? t('signing.officerSignedAwaitingDriver')
                         : ready
-                        ? `נשלח ${time(item.sent_at || item.created_at)}`
+                        ? t('signing.sentWhen', { v1: time(item.sent_at || item.created_at) })
                         : item.status === 'declined'
-                        ? 'החתימה נדחתה'
-                        : 'השליחה לא אושרה — ניתן לנסות שוב'}
+                        ? t('signing.declined')
+                        : t('signing.notApprovedCanRetry')}
                     </DText>
                   </View>
                   {meeting && canSend && (
-                    <HoverPressable onPress={() => askCancel(meeting)} disabled={!!opening} accessibilityLabel="מחיקת המפגש" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
-                      <DText weight="semiBold" style={styles.rowDanger}>מחיקה</DText>
+                    <HoverPressable onPress={() => askCancel(meeting)} disabled={!!opening} accessibilityLabel={t('meeting.delete')} style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
+                      <DText weight="semiBold" style={styles.rowDanger}>{t('common.deleteAction')}</DText>
                     </HoverPressable>
                   )}
                   {!meeting && canSend && (
-                    <HoverPressable onPress={() => askErase(item)} disabled={!!opening} accessibilityLabel="מחיקת המסמך" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
-                      <DText weight="semiBold" style={styles.rowDanger}>{opening === `erase:${item.id}` ? 'מוחק…' : 'מחיקה'}</DText>
+                    <HoverPressable onPress={() => askErase(item)} disabled={!!opening} accessibilityLabel={t('documents.deleteDocument')} style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
+                      <DText weight="semiBold" style={styles.rowDanger}>{opening === `erase:${item.id}` ? t('common.deleting') : t('common.deleteAction')}</DText>
                     </HoverPressable>
                   )}
                   {ready && meeting && canSend && (
-                    <HoverPressable onPress={() => startMeeting(meeting.id)} accessibilityLabel="הנהג חותם עכשיו, על המחשב הזה" style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
-                      <DText weight="semiBold" style={styles.rowLink}>חתימה עכשיו</DText>
+                    <HoverPressable onPress={() => startMeeting(meeting.id)} accessibilityLabel={t('signing.driverSignsNowHere')} style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
+                      <DText weight="semiBold" style={styles.rowLink}>{t('signing.signNow')}</DText>
                     </HoverPressable>
                   )}
-                  {openable && <DText weight="semiBold" style={styles.rowLink}>{opening === item.id ? 'פותח…' : 'צפייה'}</DText>}
+                  {openable && <DText weight="semiBold" style={styles.rowLink}>{opening === item.id ? t('common.opening') : t('common.view')}</DText>}
                 </HoverPressable>
               );
             })}

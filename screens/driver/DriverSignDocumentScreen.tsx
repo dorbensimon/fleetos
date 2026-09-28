@@ -10,6 +10,8 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { submitDriverSignature } from '../../lib/docuseal';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import type { RootStackParamList } from '../../navigation/types';
+import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverSignDocument'>;
 
@@ -40,10 +42,10 @@ export default function DriverSignDocumentScreen({ navigation, route }: Props) {
     setError('');
     try {
       await submitDriverSignature(requestId, signature);
-      showToast('המסמך נחתם ונשלח');
+      showToast(t('signing.signedAndSent'));
       navigation.reset({ index: 1, routes: [{ name: 'DriverHome' }, { name: 'DriverSigningDocuments' }] });
     } catch (err: any) {
-      setError(err?.message || 'שמירת החתימה נכשלה. נסו שוב.');
+      setError(errorMessage(err, t('common.saveSignatureFailedRetry')));
       setSending(false);
     }
   };
@@ -53,10 +55,10 @@ export default function DriverSignDocumentScreen({ navigation, route }: Props) {
       insetTop={isDesktop ? 0 : insets.top}
       insetBottom={isDesktop ? 0 : insets.bottom}
       scrollEnabled={!drawing}
-      hero={<HeroTitle title={title} subtitle="חתימה על המסמך" onBack={() => navigation.goBack()} />}
+      hero={<HeroTitle title={title} subtitle={t('signing.signTheDocument')} onBack={() => navigation.goBack()} />}
       footer={
         <PrimaryAction
-          label="חתימה ושליחה"
+          label={t('signing.signAndSend')}
           icon="checkmark"
           onPress={() => void send()}
           loading={sending}
@@ -73,21 +75,21 @@ export default function DriverSignDocumentScreen({ navigation, route }: Props) {
                 <Ionicons name="document-text" size={24} color={DK.accent} />
               </View>
               <View style={styles.flex}>
-                <DKText variant="label">קודם קוראים את המסמך</DKText>
+                <DKText variant="label">{t('signing.readFirst')}</DKText>
                 <DKText variant="caption" color={DK.muted}>
-                  אחר כך חוזרים לכאן וחותמים.
+                  {t('signing.thenReturnSign')}
                 </DKText>
               </View>
             </View>
-            <PrimaryAction label="קריאת המסמך" icon="eye-outline" tone="ghost" onPress={read} disabled={sending} />
+            <PrimaryAction label={t('signing.readDocument')} icon="eye-outline" tone="ghost" onPress={read} disabled={sending} />
           </Surface>
         </Reveal>
       )}
       <Reveal index={1}>
         <Surface style={styles.block}>
-          <SignaturePad title="החתימה שלך" onChange={setSignature} onDrawing={setDrawing} disabled={sending} />
+          <SignaturePad title={t('signing.yourSignature')} onChange={setSignature} onDrawing={setDrawing} disabled={sending} />
           <DKText variant="caption" color={DK.muted}>
-            החתימה נכנסת למסמך ונשלחת למנהל הצי. היא לא נשמרת במכשיר.
+            {t('signing.signatureGoesToManager')}
           </DKText>
         </Surface>
       </Reveal>
@@ -95,7 +97,7 @@ export default function DriverSignDocumentScreen({ navigation, route }: Props) {
   );
 
   return isDesktop ? (
-    <DesktopShell active="DriverSigningDocuments" breadcrumbs={['מסמכים לחתימה', title]}>
+    <DesktopShell active="DriverSigningDocuments" breadcrumbs={[t('nav.signingDocuments'), title]}>
       {page}
     </DesktopShell>
   ) : (

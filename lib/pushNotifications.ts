@@ -8,6 +8,7 @@ import { markNotificationRead, resolveNotificationVehicleId } from './adminApi/n
 import type { Notification } from './adminApi/types';
 import { notificationTarget, type NotificationTarget } from './notificationTargets';
 import { markOwnerNotificationRead } from './ownerNotifications';
+import { t } from './i18n';
 
 const STORED_TOKEN_KEY = 'fleetos_expo_push_token';
 
@@ -92,7 +93,7 @@ export async function registerForPushNotifications(): Promise<void> {
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
-      name: 'התראות כלליות',
+      name: t('push.generalChannel'),
       importance: Notifications.AndroidImportance.MAX,
     });
   }

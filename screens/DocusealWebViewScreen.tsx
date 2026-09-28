@@ -8,26 +8,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DK, HeroButton, NightBar } from '../components/driverKit';
 import { useCompany } from '../lib/CompanyContext';
 import { downloadSignedRequest, finalizeSigningTemplate, syncSigningRequest } from '../lib/docuseal';
-import { docusealEmbedHtml } from '../lib/docusealEmbed';
+import { docusealEmbedHtml, docusealHost, scriptJson, withSafeSrc } from '../lib/docusealEmbed';
 import { COLORS, SPACING } from '../lib/theme';
 import type { RootStackParamList } from '../navigation/types';
+import { t, textDirection } from '../lib/i18n';
+import { errorMessage } from '../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DocusealWebView'>;
-
-function scriptValue(value: string) {
-  return JSON.stringify(value).replace(/</g, '\\u003c');
-}
-
-function scriptJson(value: unknown) {
-  return JSON.stringify(value).replace(/</g, '\\u003c');
-}
 
 function buildHtml(params: RootStackParamList['DocusealWebView']) {
   const bridge = `<script>
     const send = (type, detail) => window.ReactNativeWebView.postMessage(JSON.stringify({ type, detail }));
     window.addEventListener('error', (event) => send('error', event.message));
   </script>`;
-  const base = `<!doctype html><html dir="rtl"><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+  const base = `<!doctype html><html dir="${textDirection()}"><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
     <style>html,body{margin:0;width:100%;height:100%;overflow-x:hidden;background:#cdd3db}docuseal-form,docuseal-builder{display:block;width:100%;max-width:100%;min-width:0;min-height:100dvh}</style>`;
 
   if (params.mode === 'document') {
@@ -38,7 +32,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
         (async () => {
           try {
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            const pdf = await pdfjsLib.getDocument({ url: ${scriptValue(params.src || '')}, withCredentials: false }).promise;
+            const pdf = await pdfjsLib.getDocument({ url: ${scriptJson(params.src || '')}, withCredentials: false }).promise;
             const root = document.getElementById('pages');
             const fields = ${scriptJson(params.previewFields || [])};
             const zeroIndexedPages = fields.some((field) => field.areas.some((area) => area.page === 0));
@@ -69,7 +63,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
                   marker.style.top = (area.y * 100) + '%';
                   marker.style.width = (area.w * 100) + '%';
                   marker.style.height = (area.h * 100) + '%';
-                  marker.textContent = field.type === 'stamp' ? 'חותמת' : 'חתימה';
+                  marker.textContent = field.type === 'stamp' ? ${scriptJson(t('company.stampShort'))} : ${scriptJson(t('field.signature'))};
                   pageWrap.appendChild(marker);
                 }
               }
@@ -88,7 +82,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
 export default function DocusealWebViewScreen({ navigation, route }: Props) {
   const { companyId } = useCompany();
   const insets = useSafeAreaInsets();
-  const params = route.params;
+  const params = withSafeSrc(route.params);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -96,7 +90,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
   if (params.mode === 'image') {
     return (
       <Screen style={styles.kitScreen}>
-        <NightBar insetTop={insets.top} title={params.title} subtitle="צפייה בתמונה" onBack={() => navigation.goBack()} />
+        <NightBar insetTop={insets.top} title={params.title} subtitle={t('docuseal.viewImage')} onBack={() => navigation.goBack()} />
         <View style={styles.imageWrap}>
           <Image
             source={{ uri: params.src }}
@@ -107,7 +101,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
             onLoadEnd={() => setLoading(false)}
             onError={() => {
               setLoading(false);
-              setError('טעינת התמונה נכשלה');
+              setError(t('docuseal.imageLoadFailed'));
             }}
           />
           {loading && <View style={styles.loading}><BrandLoader color={COLORS.accent} /></View>}
@@ -125,7 +119,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
       await finalizeSigningTemplate(companyId, params.templateId);
       navigation.goBack();
     } catch (err: any) {
-      setError(err?.message || 'אישור התבנית נכשל');
+      setError(errorMessage(err, t('docuseal.templateApproveFailed')));
     } finally {
       setSaving(false);
     }
@@ -137,7 +131,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
     try {
       await downloadSignedRequest({ id: params.requestId, template_title: params.title });
     } catch (err: any) {
-      setError(err?.message || 'הורדת המסמך נכשלה');
+      setError(errorMessage(err, t('signing.downloadFailed')));
     }
   };
 
@@ -156,13 +150,13 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
           navigation.goBack();
         }
       } else if (message.type === 'error') {
-        setError(params.mode === 'document' ? 'טעינת המסמך נכשלה' : 'טעינת התבנית נכשלה');
+        setError(params.mode === 'document' ? t('docuseal.docLoadFailed') : t('docuseal.templateLoadFailed'));
         setLoading(false);
       } else if (message.type === 'document-ready') {
         setLoading(false);
       }
     } catch (err: any) {
-      setError(err?.message || 'סנכרון החתימה נכשל');
+      setError(errorMessage(err, t('docuseal.syncFailed')));
       setSaving(false);
     }
   };
@@ -177,13 +171,13 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
       <NightBar
         insetTop={insets.top}
         title={params.title}
-        subtitle={params.mode === 'builder' ? 'מקמו את שדות החתימה ושמרו' : params.mode === 'document' ? 'צפייה במסמך' : 'מלא את השדות וחתום'}
+        subtitle={params.mode === 'builder' ? t('docuseal.placeFieldsSave') : params.mode === 'document' ? t('signing.viewDocument') : t('docuseal.fillAndSign')}
         onBack={() => navigation.goBack()}
-        right={params.allowDownload && params.mode === 'document' ? <HeroButton icon="download-outline" label="הורדת המסמך החתום" onPress={() => void download()} /> : undefined}
+        right={params.allowDownload && params.mode === 'document' ? <HeroButton icon="download-outline" label={t('signing.downloadSigned')} onPress={() => void download()} /> : undefined}
       />
       <View style={styles.webWrap}>
         <WebView
-          source={nativePdf ? { uri: params.src! } : { html: buildHtml(params), baseUrl: `https://${params.host || 'cdn.docuseal.com'}` }}
+          source={nativePdf ? { uri: params.src! } : { html: buildHtml(params), baseUrl: `https://${docusealHost(params.host)}` }}
           javaScriptEnabled
           domStorageEnabled
           thirdPartyCookiesEnabled
@@ -192,7 +186,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
           onLoadEnd={() => (nativePdf || params.mode !== 'document') && setLoading(false)}
           onError={() => {
             setLoading(false);
-            setError(params.mode === 'document' ? 'טעינת המסמך נכשלה' : 'טעינת התבנית נכשלה');
+            setError(params.mode === 'document' ? t('docuseal.docLoadFailed') : t('docuseal.templateLoadFailed'));
           }}
           originWhitelist={['https://*', 'about:*']}
           onShouldStartLoadWithRequest={({ url }) =>
@@ -210,11 +204,11 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
       {!!error && <AppText style={styles.error}>{error}</AppText>}
       {params.mode === 'builder' && (
         <View style={styles.footer}>
-          <PrimaryButton label="אשר ושמור כתבנית" icon="checkmark-circle-outline" loading={saving} onPress={finishBuilder} />
+          <PrimaryButton label={t('docuseal.approveSaveTemplate')} icon="checkmark-circle-outline" loading={saving} onPress={finishBuilder} />
         </View>
       )}
       {params.mode !== 'builder' && saving && (
-        <View style={styles.sync}><BrandLoader color={COLORS.accent} /><AppText>שומר את המסמך החתום...</AppText></View>
+        <View style={styles.sync}><BrandLoader color={COLORS.accent} /><AppText>{t('docuseal.savingSigned')}</AppText></View>
       )}
     </Screen>
   );

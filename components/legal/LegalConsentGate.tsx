@@ -11,6 +11,7 @@ import { supabase } from '../../lib/supabase';
 import { hasAcceptedCurrentTerms, recordTermsAcceptance } from '../../lib/legal/acceptance';
 import { LEGAL_DOCUMENTS, type LegalDocId } from '../../lib/legal/documents';
 import { requestErrorDetails, type RequestErrorDetails } from '../../lib/requestError';
+import { t, dirIcon } from '../../lib/i18n';
 
 type State = 'checking' | 'accepted' | 'required' | 'error';
 
@@ -41,7 +42,7 @@ export function LegalConsentGate({
     try {
       setState((await hasAcceptedCurrentTerms(id)) ? 'accepted' : 'required');
     } catch (error) {
-      setCheckError(requestErrorDetails(error, 'לא הצלחנו לבדוק את מצב האישור'));
+      setCheckError(requestErrorDetails(error, t('legal.consentCheckFailed')));
       setState('error');
     }
     setCheckedFor(id);
@@ -98,7 +99,7 @@ function ConsentScreen({ error, onRetry, onAccepted }: { error: RequestErrorDeta
     try {
       await recordTermsAcceptance();
     } catch (error) {
-      const details = requestErrorDetails(error, 'האישור לא נשמר');
+      const details = requestErrorDetails(error, t('legal.consentNotSaved'));
       setSaveError([details.message, details.hint].filter(Boolean).join(' '));
       setSaving(false);
       return;
@@ -118,8 +119,8 @@ function ConsentScreen({ error, onRetry, onAccepted }: { error: RequestErrorDeta
       <DriverPage
         insetTop={insets.top}
         insetBottom={insets.bottom}
-        hero={<HeroTitle title={doc.title} subtitle={`עודכן לאחרונה: ${doc.updated}`} onBack={() => setReading(null)} />}
-        footer={<PrimaryAction label="חזרה לאישור" icon="arrow-forward" onPress={() => setReading(null)} />}
+        hero={<HeroTitle title={doc.title} subtitle={t('legal.lastUpdated', { updated: doc.updated })} onBack={() => setReading(null)} />}
+        footer={<PrimaryAction label={t('legal.backToConsent')} icon={dirIcon('arrow-forward')} onPress={() => setReading(null)} />}
       >
         <LegalDocumentBody doc={doc} onOpenDoc={setReading} />
       </DriverPage>
@@ -136,20 +137,20 @@ function ConsentScreen({ error, onRetry, onAccepted }: { error: RequestErrorDeta
         <View style={styles.hero}>
           <BrandLogo height={22} onDark />
           <DKText variant="display" color={DK.onNight} accessibilityRole="header" style={styles.heroTitle}>
-            לפני שמתחילים
+            {t('legal.beforeWeStart')}
           </DKText>
           <DKText variant="body" color={DK.onNightMuted}>
-            כדי להשתמש ב־icar צריך לקרוא ולאשר את תנאי השימוש ואת מדיניות הפרטיות. עושים את זה פעם אחת בלבד.
+            {t('legal.consentIntro')}
           </DKText>
         </View>
       }
       footer={
         error ? undefined : (
           <View style={styles.footer}>
-            <PrimaryAction label="אישור והמשך" icon="checkmark" onPress={() => void accept()} loading={saving} disabled={!ready} />
+            <PrimaryAction label={t('legal.acceptAndContinue')} icon="checkmark" onPress={() => void accept()} loading={saving} disabled={!ready} />
             {!ready && (
               <DKText variant="caption" color={DK.muted} style={styles.center}>
-                כדי להמשיך צריך לסמן את שני האישורים
+                {t('legal.checkBoth')}
               </DKText>
             )}
           </View>
@@ -180,37 +181,37 @@ function ConsentScreen({ error, onRetry, onAccepted }: { error: RequestErrorDeta
               <ConsentCheck
                 value={terms}
                 onChange={setTerms}
-                label="קראתי את תנאי השימוש ואני מסכים/ה להם, ואני בן/בת 18 ומעלה"
+                label={t('legal.acceptTerms')}
               />
               <View style={styles.rule} />
               <ConsentCheck
                 value={privacy}
                 onChange={setPrivacy}
-                label="קראתי את מדיניות הפרטיות, ואני מסכים/ה שהמידע שלי יישמר וישמש כפי שמתואר בה"
+                label={t('legal.acceptPrivacy')}
               />
             </Surface>
           </Reveal>
 
           {!!saveError && (
-            <Banner tone="expired" icon="alert-circle" title="האישור לא נשמר">
+            <Banner tone="expired" icon="alert-circle" title={t('legal.consentNotSaved')}>
               {saveError}
             </Banner>
           )}
 
           <Reveal index={2}>
             <Surface>
-              <ListRow first icon={LEGAL_DOC_ICONS.cookies} title={LEGAL_DOCUMENTS.cookies.title} subtitle="בלי עוגיות פרסום או מעקב" onPress={() => setReading('cookies')} />
-              <ListRow icon={LEGAL_DOC_ICONS.accessibility} title={LEGAL_DOCUMENTS.accessibility.title} subtitle="ופרטי רכז הנגישות" onPress={() => setReading('accessibility')} />
+              <ListRow first icon={LEGAL_DOC_ICONS.cookies} title={LEGAL_DOCUMENTS.cookies.title} subtitle={t('legal.noAdCookies')} onPress={() => setReading('cookies')} />
+              <ListRow icon={LEGAL_DOC_ICONS.accessibility} title={LEGAL_DOCUMENTS.accessibility.title} subtitle={t('legal.accessibilityCoordinator')} onPress={() => setReading('accessibility')} />
             </Surface>
           </Reveal>
 
           <DKText variant="caption" color={DK.muted} style={styles.center}>
-            בלי האישור אי אפשר להיכנס למערכת. לא מסכים/ה?
+            {t('legal.cannotEnterWithout')}
           </DKText>
-          <PrimaryAction label="יציאה מהחשבון" icon="log-out-outline" tone="ghost" onPress={() => void signOut()} loading={signingOut} />
+          <PrimaryAction label={t('auth.signOutOfAccount')} icon="log-out-outline" tone="ghost" onPress={() => void signOut()} loading={signingOut} />
         </>
       )}
-      {error && <PrimaryAction label="יציאה מהחשבון" icon="log-out-outline" tone="ghost" onPress={() => void signOut()} loading={signingOut} />}
+      {error && <PrimaryAction label={t('auth.signOutOfAccount')} icon="log-out-outline" tone="ghost" onPress={() => void signOut()} loading={signingOut} />}
     </DriverPage>
   );
 }

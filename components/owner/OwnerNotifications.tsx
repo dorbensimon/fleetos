@@ -10,6 +10,7 @@ import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktop/desktopTheme'
 import { notificationGroups } from '../../lib/notificationPreferencesApi';
 import type { NotificationPreferencesState } from '../../lib/useNotificationPreferences';
 import { ownerActionLabel, type OwnerNotification, type OwnerNotificationType } from '../../lib/ownerNotifications';
+import { t, dirIcon } from '../../lib/i18n';
 
 /**
  * The owner's notifications: what happened across the customers (a company
@@ -45,10 +46,10 @@ function dayGroup(iso: string): string {
   const today = new Date();
   const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diff = Math.round((start(today) - start(d)) / 86400000);
-  if (diff <= 0) return 'היום';
-  if (diff === 1) return 'אתמול';
-  if (diff < 7) return 'השבוע';
-  return 'מוקדם יותר';
+  if (diff <= 0) return t('common.today');
+  if (diff === 1) return t('time.yesterday');
+  if (diff < 7) return t('time.thisWeek');
+  return t('time.earlier');
 }
 
 function grouped(items: OwnerNotification[]) {
@@ -88,8 +89,8 @@ export function OwnerNotificationsMobile(
       onRefresh={p.onRefresh}
       hero={
         <HeroTitle
-          title="התראות"
-          subtitle={p.loading ? 'טוען עדכונים…' : unread ? `${unread} ${unread === 1 ? 'עדכון חדש' : 'עדכונים חדשים'} מהחברות` : 'קראת את כל העדכונים'}
+          title={t('notifications.title')}
+          subtitle={p.loading ? t('notifications.loadingUpdates') : unread ? t('owner.notif.unreadFromCompanies', { unread, v1: unread === 1 ? t('owner.notif.newUpdate') : t('owner.notif.newUpdates') }) : t('notifications.allRead')}
           onBack={p.onBack}
         />
       }
@@ -109,14 +110,14 @@ export function OwnerNotificationsMobile(
               <Ionicons name="notifications-outline" size={30} color={DK.accent} />
             </View>
             <DKText variant="heading" style={styles.center}>
-              אין עדכונים חדשים
+              {t('owner.notif.noNew')}
             </DKText>
             <DKText variant="body" color={DK.muted} style={styles.center}>
-              כאן יופיעו עדכונים על החברות: חברה שהתחילה לעבוד, חברה שהפסיקה, ניסיון שמסתיים ומנוי שמתחדש.
+              {t('owner.notif.emptyHint')}
             </DKText>
           </Surface>
           <Surface style={styles.gapTop}>
-            <ListRow first icon="options" title="ניהול התראות" subtitle="בחירת העדכונים שיישלחו אליך" onPress={p.onSettings} />
+            <ListRow first icon="options" title={t('owner.notif.manage')} subtitle={t('owner.notif.manageHint')} onPress={p.onSettings} />
           </Surface>
         </Reveal>
       ) : (
@@ -129,10 +130,10 @@ export function OwnerNotificationsMobile(
                     {group.title}
                   </DKText>
                   {gi === 0 && unread > 0 && (
-                    <Pressy onPress={p.onMarkAllRead} accessibilityLabel="סימון כל ההתראות כנקראו" style={styles.markAll} pressScale={0.96}>
+                    <Pressy onPress={p.onMarkAllRead} accessibilityLabel={t('notifications.markAllReadLabel')} style={styles.markAll} pressScale={0.96}>
                       <Ionicons name="checkmark-done" size={16} color={DK.accent} />
                       <DKText variant="micro" color={DK.accent}>
-                        סימון הכול כנקרא
+                        {t('notifications.markAllReadShort')}
                       </DKText>
                     </Pressy>
                   )}
@@ -145,7 +146,7 @@ export function OwnerNotificationsMobile(
                     <Pressy
                       key={n.id}
                       onPress={() => p.onOpen(n)}
-                      accessibilityLabel={`${isUnread ? 'חדש. ' : ''}${n.title}. ${n.message}. ${p.timeAgo(n.created_at)}${action ? `. ${action}` : ''}`}
+                      accessibilityLabel={`${isUnread ? t('notifications.newPrefix') : ''}${n.title}. ${n.message}. ${p.timeAgo(n.created_at)}${action ? `. ${action}` : ''}`}
                       pressScale={0.985}
                     >
                       <View style={[styles.row, styles.divider, isUnread && styles.rowUnread]}>
@@ -173,7 +174,7 @@ export function OwnerNotificationsMobile(
                             )}
                           </View>
                         </View>
-                        {isUnread ? <View style={styles.unreadDot} /> : <Ionicons name="chevron-back" size={18} color={DK.faint} />}
+                        {isUnread ? <View style={styles.unreadDot} /> : <Ionicons name={dirIcon('chevron-back')} size={18} color={DK.faint} />}
                       </View>
                     </Pressy>
                   );
@@ -182,7 +183,7 @@ export function OwnerNotificationsMobile(
             </Reveal>
           ))}
           <Surface>
-            <ListRow first icon="options" title="ניהול התראות" subtitle="בחירת העדכונים שיישלחו אליך" onPress={p.onSettings} />
+            <ListRow first icon="options" title={t('owner.notif.manage')} subtitle={t('owner.notif.manageHint')} onPress={p.onSettings} />
           </Surface>
         </>
       )}
@@ -194,10 +195,10 @@ export function OwnerNotificationsMobile(
 
 type Filter = 'all' | 'unread' | 'customers' | 'billing';
 const FILTERS: { value: Filter; label: string }[] = [
-  { value: 'all', label: 'הכול' },
-  { value: 'unread', label: 'לא נקראו' },
-  { value: 'customers', label: 'חברות' },
-  { value: 'billing', label: 'מנויים' },
+  { value: 'all', get label() { return t('common.all'); } },
+  { value: 'unread', get label() { return t('notifications.unread'); } },
+  { value: 'customers', get label() { return t('owner.notif.companies'); } },
+  { value: 'billing', get label() { return t('owner.notif.subscriptions'); } },
 ];
 
 function matches(n: OwnerNotification, filter: Filter, unreadIds: Set<string>): boolean {
@@ -225,15 +226,15 @@ export function OwnerNotificationsDesktop(p: FeedProps & { prefs: NotificationPr
       <View style={d.header}>
         <View style={d.headerText}>
           <DText weight="extraBold" style={d.title} accessibilityRole="header">
-            התראות
+            {t('notifications.title')}
           </DText>
-          <DText style={d.subtitle}>עדכונים על החברות והמנויים. לא על נהגים.</DText>
+          <DText style={d.subtitle}>{t('owner.notif.aboutCompanies')}</DText>
         </View>
         {unread > 0 && (
           <HoverPressable style={d.secondary} hoverStyle={d.secondaryHover} onPress={p.onMarkAllRead}>
             <Ionicons name="checkmark-done" size={16} color={DESKTOP_COLORS.ink} />
             <DText weight="semiBold" style={d.secondaryText}>
-              סימון הכול כנקרא ({unread})
+              {t('notifications.markAllReadOpen')}{unread})
             </DText>
           </HoverPressable>
         )}
@@ -278,9 +279,9 @@ export function OwnerNotificationsDesktop(p: FeedProps & { prefs: NotificationPr
                 <Ionicons name="notifications-outline" size={26} color={DESKTOP_COLORS.brand} />
               </View>
               <DText weight="bold" style={d.emptyTitle}>
-                {p.items.length ? 'אין עדכונים בסינון הזה' : 'אין עדכונים חדשים'}
+                {p.items.length ? t('notifications.noneInFilterUpdates') : t('owner.notif.noNew')}
               </DText>
-              <DText style={d.emptyBody}>כאן יופיעו עדכונים על החברות: חברה שהתחילה לעבוד, חברה שהפסיקה, ניסיון שמסתיים ומנוי שמתחדש.</DText>
+              <DText style={d.emptyBody}>{t('owner.notif.emptyHint')}</DText>
             </View>
           ) : (
             groups.map((g) => (
@@ -299,7 +300,7 @@ export function OwnerNotificationsDesktop(p: FeedProps & { prefs: NotificationPr
                       hoverStyle={d.itemHover}
                       onPress={() => p.onOpen(n)}
                       accessibilityRole="link"
-                      accessibilityLabel={`${isUnread ? 'חדש. ' : ''}${n.title}. ${n.message}`}
+                      accessibilityLabel={`${isUnread ? t('notifications.newPrefix') : ''}${n.title}. ${n.message}`}
                     >
                       <View style={[d.itemIcon, { backgroundColor: tone.bg }]}>
                         <Ionicons name={TYPE_ICON[n.notification_type] ?? 'business'} size={18} color={tone.fg} />
@@ -330,9 +331,9 @@ export function OwnerNotificationsDesktop(p: FeedProps & { prefs: NotificationPr
 
         <View style={[d.panel, d.settings]}>
           <DText weight="bold" style={d.panelTitle} accessibilityRole="header">
-            מה יגיע אליך
+            {t('notifications.whatReachesYou')}
           </DText>
-          <DText style={d.panelSub}>כל מתג נשמר מיד. התראות שכבית לא יופיעו כאן ולא יישלחו לטלפון.</DText>
+          <DText style={d.panelSub}>{t('owner.notif.toggleHint')}</DText>
           {p.prefs.loading ? (
             <View style={d.center}>
               <BrandLoader color={DESKTOP_COLORS.brand} />
@@ -345,21 +346,21 @@ export function OwnerNotificationsDesktop(p: FeedProps & { prefs: NotificationPr
                 <DText weight="bold" style={d.prefGroupTitle}>
                   {group.title}
                 </DText>
-                {group.items.map((t) => {
-                  const on = p.prefs.prefs?.[t.type] ?? true;
+                {group.items.map((entry) => {
+                  const on = p.prefs.prefs?.[entry.type] ?? true;
                   return (
-                    <View key={t.type} style={d.prefRow}>
+                    <View key={entry.type} style={d.prefRow}>
                       <View style={d.itemText}>
                         <DText weight="semiBold" style={d.prefLabel}>
-                          {t.label}
+                          {entry.label}
                         </DText>
-                        <DText style={d.prefDesc}>{t.description}</DText>
+                        <DText style={d.prefDesc}>{entry.description}</DText>
                       </View>
                       <LiquidGlassSwitch
                         value={on}
-                        onValueChange={(v) => void p.prefs.toggle(t.type, v)}
-                        disabled={p.prefs.savingType === t.type}
-                        accessibilityLabel={t.label}
+                        onValueChange={(v) => void p.prefs.toggle(entry.type, v)}
+                        disabled={p.prefs.savingType === entry.type}
+                        accessibilityLabel={entry.label}
                       />
                     </View>
                   );
@@ -381,7 +382,7 @@ const styles = StyleSheet.create({
   gapTop: { marginTop: 18 },
   list: { overflow: 'hidden' },
   row: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 12, paddingHorizontal: DK_SPACE.md, paddingVertical: 14, minHeight: 72 },
-  rowUnread: { backgroundColor: '#F5F8FF', borderRightWidth: 3, borderRightColor: DK.accent },
+  rowUnread: { backgroundColor: '#F5F8FF', borderEndWidth: 3, borderEndColor: DK.accent },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },
   icon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   text: { flex: 1, gap: 3 },

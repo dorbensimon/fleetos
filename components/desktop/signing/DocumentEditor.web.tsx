@@ -5,6 +5,7 @@ import { useCompany } from '../../../lib/CompanyContext';
 import { AUTO_FIELDS, DRIVER_FIELDS, FIELD_META } from './fieldMeta';
 import { FIELD_DRAG_TYPE, FieldBox, FieldInspector, trackPointer } from './FieldBox.web';
 import { GUIDES_CSS, GuideLines, GuidesToggle, PageGrid, snapMove, snapResize, useGuidesToggle, type Guide, type SnapRect } from './snapGuides.web';
+import { t, getLocale } from '../../../lib/i18n';
 
 /**
  * The "write it here" document editor: a Word-like A4 page (contentEditable)
@@ -52,7 +53,7 @@ const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
 const PX_PER_CM = PAGE_W / 21;
 /** How close, in page pixels, a dragged field has to come to a line to snap to it. */
 const SNAP_PX = 6;
-const cm = (px: number) => (Math.round((px / PX_PER_CM) * 10) / 10).toLocaleString('he-IL');
+const cm = (px: number) => (Math.round((px / PX_PER_CM) * 10) / 10).toLocaleString(getLocale());
 type Rect = { l: number; t: number; r: number; b: number };
 
 const escapeHtml = (value: string) =>
@@ -75,11 +76,11 @@ function sizeOf(kind: SigningFieldKind) {
 }
 
 /** The lines the "ready signing area" writes, each followed by its field. */
-const SIGNING_AREA: [SigningFieldKind, string][] = [
-  ['driver_full_name', 'שם הנהג:'],
-  ['driver_national_id', 'תעודת זהות:'],
-  ['date', 'תאריך:'],
-  ['signature', 'חתימת הנהג:'],
+const signingArea = (): [SigningFieldKind, string][] => [
+  ['driver_full_name', t('editor.block.driverName')],
+  ['driver_national_id', t('editor.block.nationalId')],
+  ['date', t('editor.block.date')],
+  ['signature', t('editor.block.driverSignature')],
 ];
 
 type Marks = { bold?: boolean; italic?: boolean; underline?: boolean; size?: number; color?: string; highlight?: boolean };
@@ -330,10 +331,10 @@ export function letterheadDate(date = new Date()) {
 export function Letterhead() {
   const { company } = useCompany();
   const [logoFailed, setLogoFailed] = useState(false);
-  const name = company?.name?.trim() || 'שם החברה';
+  const name = company?.name?.trim() || t('company.name');
   const logo = company?.logo_url && !logoFailed ? company.logo_url : null;
   return (
-    <div className="sd-lh" contentEditable={false} aria-label={`כותרת המסמך: ${name}`}>
+    <div className="sd-lh" contentEditable={false} aria-label={t('editor.documentTitle', { name })}>
       <div className="sd-lh-brand">
         {logo ? (
           <span className="sd-lh-logo">
@@ -345,7 +346,7 @@ export function Letterhead() {
         <span className="sd-lh-name">{name}</span>
       </div>
       <div className="sd-lh-date">
-        <span className="sd-lh-label">תאריך</span>
+        <span className="sd-lh-label">{t('field.date')}</span>
         <span className="sd-lh-value">{letterheadDate()}</span>
       </div>
     </div>
@@ -739,7 +740,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
     const taken = fieldsRef.current.map((f) => ({ top: topOf(f), bottom: topOf(f) + f.h, left: f.x, right: f.x + f.w }));
     let y = lastLine ? lastLine.offsetTop + lastLine.offsetHeight + 12 : doc.offsetTop;
     for (let tries = 0; tries < 200; tries += 1) {
-      const clash = taken.find((t) => y < t.bottom + 8 && y + size.h > t.top - 8 && x < t.right && x + size.w > t.left);
+      const clash = taken.find((entry) => y < entry.bottom + 8 && y + size.h > entry.top - 8 && x < entry.right && x + size.w > entry.left);
       if (!clash) break;
       y = clash.bottom + 12;
     }
@@ -766,7 +767,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
     const node = window.getSelection()?.anchorNode;
     const line = node instanceof HTMLElement ? node : node?.parentElement;
     if (line?.closest('p, h1, h2, li, div:not(.sd-doc)')?.textContent?.trim()) document.execCommand('insertParagraph');
-    const html = SIGNING_AREA.map(([kind, text]) => `<p>${text} <span data-slot="${kind}">​</span></p>`).join('') + '<p><br></p><p><br></p>';
+    const html = signingArea().map(([kind, text]) => `<p>${text} <span data-slot="${kind}">​</span></p>`).join('') + '<p><br></p><p><br></p>';
     document.execCommand('insertHTML', false, html);
 
     // Each label is followed by its field: measure where the label ends, then drop the marker.
@@ -894,28 +895,28 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
   return (
     <div className="sd-work">
       <style>{GUIDES_CSS}</style>
-      <aside className="sd-panel" aria-label="הוספת שדות">
-        <h3 className="sd-b">הוספת שדה למסמך</h3>
-        <p className="sd-panel-sub">לחצו על שדה והוא ייכנס לשורה, מיד אחרי המילה האחרונה שכתבתם, ואפשר להמשיך לכתוב אחריו. אפשר גם לגרור שדה ישר למקום הרצוי.</p>
+      <aside className="sd-panel" aria-label={t('editor.addFields')}>
+        <h3 className="sd-b">{t('editor.addFieldToDoc')}</h3>
+        <p className="sd-panel-sub">{t('editor.addFieldHelp')}</p>
 
         <button type="button" className="sd-area-btn" onMouseDown={keepSelection} onClick={insertSigningArea}>
           <span className="sd-tool-icon" style={{ background: 'linear-gradient(160deg,#35B8F0,#0075B3)' }}>
             <Ionicons name="sparkles" size={18} color="#fff" />
           </span>
           <span className="sd-tool-text">
-            <strong className="sd-sb">אזור חתימה מוכן</strong>
-            <small>שם, ת״ז, תאריך וחתימה בלחיצה אחת</small>
+            <strong className="sd-sb">{t('editor.signatureBlock')}</strong>
+            <small>{t('editor.signatureBlockHint')}</small>
           </span>
         </button>
 
-        <div className="sd-group-label sd-sb">הנהג ימלא</div>
+        <div className="sd-group-label sd-sb">{t('editor.driverFills')}</div>
         <div className="sd-tiles">
           {DRIVER_FIELDS.map((kind) => (
             <FieldTool key={kind} kind={kind} onMouseDown={keepSelection} draggable onDragStart={dragStart(kind)} onPress={() => addInView(kind)} />
           ))}
         </div>
 
-        <div className="sd-group-label sd-sb">יתמלא אוטומטית מתיק הנהג</div>
+        <div className="sd-group-label sd-sb">{t('editor.autoFromDriverFile')}</div>
         <div className="sd-tiles">
           {AUTO_FIELDS.map((kind) => (
             <FieldTool key={kind} kind={kind} onMouseDown={keepSelection} draggable onDragStart={dragStart(kind)} onPress={() => addInView(kind)} />
@@ -929,7 +930,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
             key={selected.id}
             kind={selected.kind}
             label={selected.label}
-            size={`${cm(selected.w)} × ${cm(selected.h)} ס״מ`}
+            size={t('editor.sizeCm', { v1: cm(selected.w), v2: cm(selected.h) })}
             covers={coversText(selected)}
             onEditStart={remember}
             onLabelChange={(label) => change({ ...selected, label })}
@@ -939,23 +940,23 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
       </aside>
 
       <div className="sd-canvas">
-        <div className="sd-toolbar" role="toolbar" aria-label="עיצוב הטקסט">
-          <Tb label="כותרת ראשית" on={tools.block === 'h1'} onPress={() => run('formatBlock', 'h1')}>
-            <span className="sd-b">כותרת</span>
+        <div className="sd-toolbar" role="toolbar" aria-label={t('editor.textFormatting')}>
+          <Tb label={t('editor.mainHeading')} on={tools.block === 'h1'} onPress={() => run('formatBlock', 'h1')}>
+            <span className="sd-b">{t('editor.heading')}</span>
           </Tb>
-          <Tb label="כותרת משנה" on={tools.block === 'h2'} onPress={() => run('formatBlock', 'h2')}>
-            <span className="sd-sb">כותרת משנה</span>
+          <Tb label={t('editor.subheading')} on={tools.block === 'h2'} onPress={() => run('formatBlock', 'h2')}>
+            <span className="sd-sb">{t('editor.subheading')}</span>
           </Tb>
-          <Tb label="טקסט רגיל" on={tools.block === 'p' || tools.block === 'div'} onPress={() => run('formatBlock', 'p')}>
-            טקסט רגיל
+          <Tb label={t('editor.normalText')} on={tools.block === 'p' || tools.block === 'div'} onPress={() => run('formatBlock', 'p')}>
+            {t('editor.normalText')}
           </Tb>
           <span className="sd-tb-sep" />
           <TbMenu
-            label="גודל הטקסט"
+            label={t('editor.textSize')}
             open={menu === 'size'}
             onToggle={() => setMenu(menu === 'size' ? null : 'size')}
             onClose={closeMenu}
-            button={<span className="sd-sb sd-tb-size">{EDITOR_TEXT_SIZES.find((s) => s.px === tools.size)?.label ?? 'גודל'}</span>}
+            button={<span className="sd-sb sd-tb-size">{EDITOR_TEXT_SIZES.find((s) => s.px === tools.size)?.label ?? t('editor.sizeLabel')}</span>}
           >
             {EDITOR_TEXT_SIZES.map((s) => (
               <MenuItem key={s.px} on={tools.size === s.px} onPress={() => applyStyle('size', String(s.px))}>
@@ -964,23 +965,23 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
             ))}
           </TbMenu>
           <span className="sd-tb-sep" />
-          <Tb label="מודגש" on={tools.bold} onPress={() => run('bold')}>
+          <Tb label={t('editor.bold')} on={tools.bold} onPress={() => run('bold')}>
             <span className="sd-xb" style={{ fontSize: 16 }}>B</span>
           </Tb>
-          <Tb label="נטוי" on={tools.italic} onPress={() => run('italic')}>
+          <Tb label={t('editor.italic')} on={tools.italic} onPress={() => run('italic')}>
             <span style={{ fontStyle: 'italic', fontSize: 16 }}>I</span>
           </Tb>
-          <Tb label="קו תחתון" on={tools.underline} onPress={() => run('underline')}>
+          <Tb label={t('editor.underline')} on={tools.underline} onPress={() => run('underline')}>
             <span style={{ textDecoration: 'underline', fontSize: 16 }}>U</span>
           </Tb>
           <TbMenu
-            label="צבע הטקסט"
+            label={t('editor.textColor')}
             open={menu === 'color'}
             onToggle={() => setMenu(menu === 'color' ? null : 'color')}
             onClose={closeMenu}
             button={
               <span className="sd-color-a sd-b">
-                א
+                {t('date.weekdayShort.sun')}
                 <i style={{ background: tools.color }} />
               </span>
             }
@@ -992,35 +993,35 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
               </MenuItem>
             ))}
           </TbMenu>
-          <Tb label="סימון בצהוב" on={tools.highlight} onPress={() => applyStyle('hl', tools.highlight ? '0' : '1')}>
-            <span className="sd-hl-a sd-b">א</span>
+          <Tb label={t('editor.highlight')} on={tools.highlight} onPress={() => applyStyle('hl', tools.highlight ? '0' : '1')}>
+            <span className="sd-hl-a sd-b">{t('date.weekdayShort.sun')}</span>
           </Tb>
           <span className="sd-tb-sep" />
-          <Tb label="רשימה עם נקודות" on={tools.ul} onPress={() => run('insertUnorderedList')}>
+          <Tb label={t('editor.bulletList')} on={tools.ul} onPress={() => run('insertUnorderedList')}>
             <Ionicons name="list" size={19} color="currentColor" />
           </Tb>
-          <Tb label="רשימה ממוספרת" on={tools.ol} onPress={() => run('insertOrderedList')}>
+          <Tb label={t('editor.numberedList')} on={tools.ol} onPress={() => run('insertOrderedList')}>
             <span className="sd-sb">1.</span>
           </Tb>
           <span className="sd-tb-sep" />
-          <Tb label="יישור לימין" on={tools.align === 'right'} onPress={() => run('justifyRight')}>
+          <Tb label={t('editor.alignStart')} on={tools.align === 'right'} onPress={() => run('justifyRight')}>
             <Ionicons name="reorder-three" size={21} color="currentColor" style={{ transform: [{ scaleX: -1 }] }} />
           </Tb>
-          <Tb label="מרכוז" on={tools.align === 'center'} onPress={() => run('justifyCenter')}>
+          <Tb label={t('editor.alignCenter')} on={tools.align === 'center'} onPress={() => run('justifyCenter')}>
             <Ionicons name="menu" size={19} color="currentColor" />
           </Tb>
-          <Tb label="יישור לשני הצדדים" on={tools.align === 'justify'} onPress={() => run('justifyFull')}>
+          <Tb label={t('editor.justify')} on={tools.align === 'justify'} onPress={() => run('justifyFull')}>
             <Ionicons name="reorder-four" size={19} color="currentColor" />
           </Tb>
           <span className="sd-tb-sep" />
-          <Tb label="קו מפריד" onPress={insertDivider}>
+          <Tb label={t('editor.divider')} onPress={insertDivider}>
             <span className="sd-hr-icon" />
           </Tb>
           <span className="sd-tb-sep" />
-          <Tb label="ביטול הפעולה האחרונה" onPress={() => run('undo')}>
+          <Tb label={t('editor.undo')} onPress={() => run('undo')}>
             <Ionicons name="arrow-redo" size={18} color="currentColor" />
           </Tb>
-          <Tb label="החזרת הפעולה" onPress={() => run('redo')}>
+          <Tb label={t('editor.redo')} onPress={() => run('redo')}>
             <Ionicons name="arrow-undo" size={18} color="currentColor" />
           </Tb>
         </div>
@@ -1057,8 +1058,8 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
             suppressContentEditableWarning
             role="textbox"
             aria-multiline="true"
-            aria-label="תוכן המסמך"
-            data-placeholder="כתבו כאן את תוכן המסמך…"
+            aria-label={t('editor.content')}
+            data-placeholder={t('editor.contentPlaceholder')}
             spellCheck
             onInput={measure}
             onKeyUp={refreshTools}
@@ -1069,7 +1070,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
           <GuideLines guides={guides} unit="px" />
           {Array.from({ length: pages - 1 }, (_, i) => (
             <div key={i} className="sd-page-break" style={{ top: (i + 1) * PAGE_H }} aria-hidden="true">
-              <span>סוף עמוד {i + 1}</span>
+              <span>{t('editor.pageEnd')} {i + 1}</span>
             </div>
           ))}
           {fields.map((field) => (
@@ -1079,7 +1080,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
               label={field.label}
               box={{ left: `${field.x}px`, top: `${topOf(field)}px`, width: `${field.w}px`, height: `${field.h}px` }}
               selected={field.id === selectedId}
-              sizeLabel={`${cm(field.w)} × ${cm(field.h)} ס״מ`}
+              sizeLabel={t('editor.sizeCm', { v1: cm(field.w), v2: cm(field.h) })}
               covers={coversText(field)}
               onMovePointer={gesture(field, 'move')}
               onResizePointer={gesture(field, 'resize')}
@@ -1135,8 +1136,8 @@ export function FieldTool({
       onDragStart={onDragStart}
       onMouseDown={onMouseDown}
       onClick={onPress}
-      title={`${meta.hint}. אפשר לגרור אל הדף`}
-      aria-label={`הוספת ${meta.label}`}
+      title={t('editor.dragToPage', { hint: meta.hint })}
+      aria-label={t('common.addLabel', { label: meta.label })}
     >
       <span className="sd-tile-icon" style={{ background: meta.color }}>
         <Ionicons name={meta.icon} size={17} color="#fff" />
