@@ -7,6 +7,7 @@ import { formatIsoDay, repeatLabel, todayIso } from '../../lib/checklistForms';
 import { dueState, type PlanRow } from '../../lib/meetingPlan';
 import { DuePill } from './DuePill';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * "המפגש הבא" in a driver's folder on a repeating form: the date, how far off
@@ -39,7 +40,7 @@ export function NextMeetingCard({
     try {
       await onMove(value);
     } catch (e) {
-      setError((e as Error)?.message || t('common.saveDateFailedRetry'));
+      setError(errorMessage(e, t('common.saveDateFailedRetry')));
     } finally {
       setSaving(false);
     }

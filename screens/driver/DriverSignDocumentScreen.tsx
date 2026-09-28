@@ -11,6 +11,7 @@ import { submitDriverSignature } from '../../lib/docuseal';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import type { RootStackParamList } from '../../navigation/types';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverSignDocument'>;
 
@@ -44,7 +45,7 @@ export default function DriverSignDocumentScreen({ navigation, route }: Props) {
       showToast(t('signing.signedAndSent'));
       navigation.reset({ index: 1, routes: [{ name: 'DriverHome' }, { name: 'DriverSigningDocuments' }] });
     } catch (err: any) {
-      setError(err?.message || t('common.saveSignatureFailedRetry'));
+      setError(errorMessage(err, t('common.saveSignatureFailedRetry')));
       setSending(false);
     }
   };

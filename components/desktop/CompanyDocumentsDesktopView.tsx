@@ -16,7 +16,8 @@ import { t, textStart } from '../../lib/i18n';
 
 export type CompanyDocumentDraft = { title: string; date: string; description: string; file: PickedFile };
 
-const titleOf = (doc: DocumentRow) => doc.title?.trim() || doc.file_name || t('documents.untitled');
+/** A company document's name: its title, else its file name. */
+export const titleOf = (doc: DocumentRow) => doc.title?.trim() || doc.file_name || t('documents.untitled');
 const kindOf = (mime: string | null | undefined) => (mime?.includes('pdf') ? 'PDF' : mime?.startsWith('image/') ? t('common.image') : t('common.file'));
 const countLabel = (count: number) => (count === 1 ? t('documents.oneDocument') : t('documents.countN', { count }));
 const withoutExtension = (name: string) => name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();

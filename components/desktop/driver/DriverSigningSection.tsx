@@ -25,6 +25,7 @@ import { NextMeetingCard } from '../../checklist/NextMeetingCard';
 import { showAlert } from '../../../lib/platformAlert';
 import { eraseSigningRequest, eraseWarning } from '../../../lib/signingSend';
 import { t, dirIcon, getLocale } from '../../../lib/i18n';
+import { errorMessage } from '../../../lib/requestError';
 
 type FolderStatus = ReturnType<typeof signingFolderStatus>;
 const STATUS_LABEL: Record<FolderStatus, string> = { get pending() { return t('signing.pendingSignature'); }, get completed() { return t('common.signedDone'); }, get failed() { return t('status.needsAttention'); }, get empty() { return t('signing.notSentShort'); } };
@@ -61,7 +62,7 @@ export function useDriverSigningFolders(companyId: string | null | undefined, dr
       setFolders(buildSigningFolders(templates, requests));
       setError('');
     } catch (err: any) {
-      if (generation === request.current) setError(err?.message || t('signing.formsLoadFailed'));
+      if (generation === request.current) setError(errorMessage(err, t('signing.formsLoadFailed')));
     } finally {
       if (generation === request.current) setLoading(false);
     }
@@ -231,7 +232,7 @@ function SigningFolderModal({
                 await Promise.all([meetings.reload(), next.reload()]);
                 await onChanged();
               })
-              .catch((err: Error) => setMessage(err?.message || t('common.deleteFailedRetry')))
+              .catch((err: Error) => setMessage(errorMessage(err, t('common.deleteFailedRetry'))))
               .finally(() => setOpening(''));
           },
         },
@@ -249,7 +250,7 @@ function SigningFolderModal({
           setOpening(`erase:${item.id}`);
           eraseSigningRequest(companyId, item.id)
             .then(onChanged)
-            .catch((err: Error) => setMessage(err?.message || t('common.deleteFailedRetry')))
+            .catch((err: Error) => setMessage(errorMessage(err, t('common.deleteFailedRetry'))))
             .finally(() => setOpening(''));
         },
       },
@@ -283,7 +284,7 @@ function SigningFolderModal({
       // The document opens full screen; this window must not stay on top of it.
       onClose();
     } catch (err: any) {
-      setMessage(err?.message || t('common.openDocumentFailed'));
+      setMessage(errorMessage(err, t('common.openDocumentFailed')));
     } finally {
       setOpening('');
     }
@@ -301,7 +302,7 @@ function SigningFolderModal({
       onOpenSession({ ...session, title: folder.title });
       onClose();
     } catch (err: any) {
-      setMessage(err?.message || t('common.openDocumentFailedRetry'));
+      setMessage(errorMessage(err, t('common.openDocumentFailedRetry')));
     } finally {
       setOpening('');
     }
@@ -317,7 +318,7 @@ function SigningFolderModal({
       await onChanged();
       if (!result.success || result.created !== 1) setMessage(result.message || t('signing.sendNotApprovedRetry'));
     } catch (err: any) {
-      setMessage(err?.message || t('signing.sendFailedRetry'));
+      setMessage(errorMessage(err, t('signing.sendFailedRetry')));
     } finally {
       sendingLock.current = false;
       setSending(false);

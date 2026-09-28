@@ -27,7 +27,7 @@ import {
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
 import { FORM_PAGE_STYLES, heroEnter, useReducedMotion } from './form/RecordFormKit';
 import { t, getLocale } from '../../lib/i18n';
-import { companyTypeLabel } from '../../lib/companyType';
+import { COMPANY_TYPE_OPTIONS, companyTypeLabel, type CompanyType } from '../../lib/companyType';
 
 /**
  * Desktop body of the company settings page. Three zones fill the width:
@@ -38,7 +38,6 @@ import { companyTypeLabel } from '../../lib/companyType';
  * Purely presentational — CompanySettingsScreen owns state and saving.
  */
 
-export type CompanyType = 'בע״מ' | 'עוסק מורשה';
 
 export interface CompanyContactForm {
   name: string;
@@ -117,11 +116,6 @@ const SECTIONS: {
     get hint() { return t('settings.section.logoStampHint'); },
     icon: 'image-outline',
   },
-];
-
-const COMPANY_TYPE_OPTIONS: { value: CompanyType; label: string }[] = [
-  { value: 'בע״מ', get label() { return t('company.typeLtd'); } },
-  { value: 'עוסק מורשה', get label() { return t('company.typeLicensedDealer'); } },
 ];
 
 // The grouped background is the app's own canvas, so the page flows with the rest of the site.

@@ -36,7 +36,6 @@ import {
   INSPECTION_LIMITS,
   INSPECTION_STATE_META,
   INSPECTION_STATUS_META,
-  INSPECTION_TITLE,
   answeredCount,
   cancelInspection,
   closeInspection,
@@ -66,6 +65,7 @@ import {
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import type { RootStackParamList } from '../../navigation/types';
 import { t, dirIcon, getLocale } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * One safety inspection of one vehicle, from the first mark to the last
@@ -210,7 +210,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
           setStep('fill');
         }
       } catch (err) {
-        if (active) setLoadError((err as Error)?.message || t('inspection.loadOneFailed'));
+        if (active) setLoadError(errorMessage(err, t('inspection.loadOneFailed')));
       }
     })();
     return () => {
@@ -295,7 +295,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
     try {
       await task();
     } catch (err) {
-      setError((err as Error)?.message || t('common.actionFailedRetryPlural'));
+      setError(errorMessage(err, t('common.actionFailedRetryPlural')));
       toTop();
     } finally {
       setBusy('');
@@ -419,7 +419,8 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
     const left = items.length - marked;
     const needOdometer = showErrors && odometerValue == null;
     const needDriver = showErrors && !driverId;
-    let number = 0;
+    // Items are numbered straight through, across groups.
+    const firstNumber = form.groups.map((_, i) => form.groups.slice(0, i).reduce((sum, g) => sum + g.items.length, 1));
     return inShell(
       <DriverPage
         key={step}
@@ -671,10 +672,9 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
                   </DKText>
                 </Pressy>
               )}
-              {group.items.map((item) => {
-                number += 1;
-                return <InspectionItemCard key={item.id} number={number} item={item} answer={answers[item.id]} onStatus={setStatus} onNote={setNote} />;
-              })}
+              {group.items.map((item, itemIndex) => (
+                <InspectionItemCard key={item.id} number={firstNumber[groupIndex] + itemIndex} item={item} answer={answers[item.id]} onStatus={setStatus} onNote={setNote} />
+              ))}
             </View>
           );
         })}

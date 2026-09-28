@@ -28,6 +28,7 @@ import { DesktopShell } from '../components/desktop/DesktopShell';
 import { OwnerConsoleDesktop } from '../components/owner/OwnerConsoleDesktop';
 import { OwnerConsoleMobile } from '../components/owner/OwnerConsoleMobile';
 import { t } from '../lib/i18n';
+import { errorMessage } from '../lib/requestError';
 
 /**
  * The owner's (super-admin) control room: every company as a customer — its
@@ -72,7 +73,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         setForm((f) => ({ ...f, logoUrl: url }));
       }
     } catch (err: any) {
-      setLogoError(err?.message || t('company.logoUploadFailed'));
+      setLogoError(errorMessage(err, t('company.logoUploadFailed')));
     } finally {
       setUploadingLogo(false);
     }
@@ -94,7 +95,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       const rows = await loadPlatformRows();
       if (requestId === loadRequest.current) setOverview(buildPlatformOverview(rows));
     } catch (err: any) {
-      if (requestId === loadRequest.current) setLoadError(err?.message ?? t('owner.systemLoadFailed'));
+      if (requestId === loadRequest.current) setLoadError(errorMessage(err, t('owner.systemLoadFailed')));
     }
   }, []);
 

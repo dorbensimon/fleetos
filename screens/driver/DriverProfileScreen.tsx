@@ -34,6 +34,7 @@ import { DesktopFieldRow, DesktopInput, DesktopSelect, DText, HoverPressable } f
 import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
 import { t, textStart } from '../../lib/i18n';
 import { LanguageRows, LanguageSection } from '../../components/LanguagePicker';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverProfile'>;
 
@@ -176,7 +177,7 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
       setDepartments(deps);
       hasLoadedOnce.current = true;
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message ?? t('profile.loadFailed'));
+      if (requestId === loadRequest.current) setError(errorMessage(err, t('profile.loadFailed')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -234,7 +235,7 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
       setEditMode(false);
       showToast(t('common.savedSuccessfully'));
     } catch (err: any) {
-      showAlert(t('common.saveFailedF'), err?.message ?? t('common.tryAgain'));
+      showAlert(t('common.saveFailedF'), errorMessage(err, t('common.tryAgain')));
     } finally {
       setSaving(false);
     }

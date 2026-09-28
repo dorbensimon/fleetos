@@ -21,7 +21,8 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES } from '../../components/desktop/desktopTheme';
 import { t, textEnd } from '../../lib/i18n';
-import { LICENSE_SIDE_STORED_TITLE } from '../../components/desktop/driver/DriverLicenseModal';
+import { LICENSE_SIDE_STORED_TITLE } from '../../lib/licenseSides';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * Dedicated license-photos screen — replaces the generic DocumentCategory
@@ -103,7 +104,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       setDocs({ front, back });
       setImageUrl({ front: frontUrl, back: backUrl });
     } catch (err: any) {
-      if (requestId === loadRequest.current) setLoadError(err?.message ?? t('documents.loadFailedShort'));
+      if (requestId === loadRequest.current) setLoadError(errorMessage(err, t('documents.loadFailedShort')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -204,7 +205,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       }
     } catch (err: any) {
       setFailedSide(side);
-      showAlert(t('common.uploadFailedFem'), err?.message ?? t('common.tryAgain'));
+      showAlert(t('common.uploadFailedFem'), errorMessage(err, t('common.tryAgain')));
     } finally {
       setProcessingSide(null);
       setUploadingSide(null);
@@ -241,7 +242,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       setEditMode(false);
       showToast(t('common.detailsSaved'), 1800);
     } catch (err: any) {
-      showAlert(t('common.saveFailedF'), err?.message ?? t('common.tryAgain'));
+      showAlert(t('common.saveFailedF'), errorMessage(err, t('common.tryAgain')));
     } finally {
       setSaving(false);
     }
@@ -253,7 +254,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
     try {
       await downloadDocument(doc);
     } catch (err: any) {
-      showAlert(t('common.downloadFailed'), err?.message ?? t('common.tryAgain'));
+      showAlert(t('common.downloadFailed'), errorMessage(err, t('common.tryAgain')));
     }
   };
 

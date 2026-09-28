@@ -54,6 +54,7 @@ import { getSigningSession, syncSigningRequest } from '../../lib/docuseal';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import type { RootStackParamList } from '../../navigation/types';
 import { t, dirIcon } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * A meeting on a "רשימת סעיפים" form, from the first answer to the last
@@ -161,7 +162,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
         setStep(nextStep);
         setRecent(names);
       } catch (err) {
-        if (active) setLoadError((err as Error)?.message || t('meeting.loadFailed'));
+        if (active) setLoadError(errorMessage(err, t('meeting.loadFailed')));
       }
     })();
     return () => {
@@ -237,7 +238,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
     try {
       await task();
     } catch (err) {
-      setError((err as Error)?.message || t('common.actionFailedRetryPlural'));
+      setError(errorMessage(err, t('common.actionFailedRetryPlural')));
       toTop();
     } finally {
       setBusy('');

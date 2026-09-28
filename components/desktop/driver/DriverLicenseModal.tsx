@@ -10,17 +10,17 @@ import { scanLicenseImage } from '../../../lib/documentScanner';
 import { showAlert } from '../../../lib/platformAlert';
 import { expiryState, formatDate } from '../../../lib/theme';
 import { DesktopModal } from '../DesktopModal';
+import { LICENSE_SIDE_STORED_TITLE, type LicenseSide } from '../../../lib/licenseSides';
 import { DText, HoverPressable } from '../primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
 import { EditableDateField, EXPIRY_TONE_MAP, recordStyles, STATE_LABEL } from '../record/RecordKit';
 import { t } from '../../../lib/i18n';
+import { errorMessage } from '../../../lib/requestError';
 
-type Side = 'front' | 'back';
+type Side = LicenseSide;
 const SIDES: Side[] = ['front', 'back'];
 /** The document titles the license photos are stored under — shared with DriverLicenseDocumentsScreen. */
 export const LICENSE_SIDE_TITLE: Record<Side, string> = { get front() { return t('documents.frontSide'); }, get back() { return t('documents.backSide'); } };
-/** The title each side's photo is saved under and found by. Stored data, so it stays the same in every UI language. */
-export const LICENSE_SIDE_STORED_TITLE: Record<Side, string> = { front: 'צד קדמי', back: 'צד אחורי' };
 
 /**
  * Desktop "מסמכי רישיון נהיגה" folder as a centered modal, replacing the
@@ -100,7 +100,7 @@ export function DriverLicenseModal({
           }
         }
       } catch (err: any) {
-        showAlert(t('common.uploadFailedFem'), err?.message ?? t('common.tryAgain'));
+        showAlert(t('common.uploadFailedFem'), errorMessage(err, t('common.tryAgain')));
       } finally {
         setBusySide(null);
       }

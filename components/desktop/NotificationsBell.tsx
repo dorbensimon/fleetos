@@ -257,7 +257,7 @@ function Bell<T extends { id: string }>({ feed, refreshKey }: { feed: Feed<T>; r
               <DText style={styles.stateText}>{t('notifications.loadFailed')}</DText>
               <HoverPressable style={styles.retry} hoverStyle={headerMenuStyles.rowHover} onPress={() => void load()}>
                 <DText weight="semiBold" style={styles.readAllText}>
-                  {t('common.retry')}
+                  {t('common.tryAgain')}
                 </DText>
               </HoverPressable>
             </View>

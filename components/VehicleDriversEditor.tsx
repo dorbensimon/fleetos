@@ -16,6 +16,7 @@ import {
   isPendingAssignmentSyncError,
 } from '../lib/adminApi';
 import { t } from '../lib/i18n';
+import { errorMessage } from '../lib/requestError';
 
 /**
  * Active driver assignments for one vehicle, with add/remove/promote actions
@@ -65,7 +66,7 @@ export function VehicleDriversEditor({
       showToast(t('vehicle.driverAssigned'));
     } catch (err: any) {
       if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-      showAlert(t('vehicle.assignDriverFailed'), String(err?.message ?? t('common.tryAgain')));
+      showAlert(t('vehicle.assignDriverFailed'), String(errorMessage(err, t('common.tryAgain'))));
     } finally {
       setBusyId(null);
     }
@@ -79,7 +80,7 @@ export function VehicleDriversEditor({
       showToast(t('vehicle.setAsPrimary'));
     } catch (err: any) {
       if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-      showAlert(t('common.actionFailed'), String(err?.message ?? t('common.tryAgain')));
+      showAlert(t('common.actionFailed'), String(errorMessage(err, t('common.tryAgain'))));
     } finally {
       setBusyId(null);
     }
@@ -99,7 +100,7 @@ export function VehicleDriversEditor({
             showToast(t('vehicle.assignmentRemoved'));
           } catch (err: any) {
             if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-            showAlert(t('vehicle.removeAssignmentFailed'), String(err?.message ?? t('common.tryAgain')));
+            showAlert(t('vehicle.removeAssignmentFailed'), String(errorMessage(err, t('common.tryAgain'))));
           } finally {
             setBusyId(null);
           }

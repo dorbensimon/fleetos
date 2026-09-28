@@ -6,6 +6,44 @@ export function attr(value: string) {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
+/** A value as a script literal, safe inside an HTML <script> (no "</script>" can end it early). */
+export function scriptJson(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, '\\u003c');
+}
+
+/**
+ * The DocuSeal host whose scripts the page loads. It arrives in the screen's
+ * params, which a link can set, so only DocuSeal's own hosts are accepted.
+ */
+export function docusealHost(host: string | null | undefined): string {
+  return host && DOCUSEAL_HOST.test(host) ? host : 'cdn.docuseal.com';
+}
+
+const DOCUSEAL_HOST = /^([a-z0-9-]+\.)*docuseal\.(com|eu)$/i;
+
+/**
+ * The screen's params with a document address the page may open: a link can
+ * set it, so only https, blob and data addresses are kept (never javascript:).
+ */
+export function withSafeSrc<T extends { src?: string }>(params: T): T {
+  if (!params.src) return params;
+  try {
+    return ['https:', 'blob:', 'data:'].includes(new URL(params.src).protocol) ? params : { ...params, src: undefined };
+  } catch {
+    return { ...params, src: undefined };
+  }
+}
+
+/** A signing form's address, only when it is on DocuSeal: it too can come from a link. */
+export function docusealFormSrc(src: string | null | undefined): string {
+  try {
+    const url = new URL(src ?? '');
+    return url.protocol === 'https:' && DOCUSEAL_HOST.test(url.hostname) ? url.href : '';
+  } catch {
+    return '';
+  }
+}
+
 /**
  * Documents with more than a signature to fill stay in DocuSeal's form; its
  * signature box is drawn like the app's own pad (components/checklist/
@@ -30,7 +68,7 @@ export function docusealFormLanguage(): string {
  * (`base`) and the message bridge of the platform that shows it.
  */
 export function docusealEmbedHtml(params: RootStackParamList['DocusealWebView'], base: string, bridge: string): string {
-  const host = params.host || 'cdn.docuseal.com';
+  const host = docusealHost(params.host);
   const hostAttribute = host.includes('.eu') ? ` data-host="${host}"` : '';
 
   if (params.mode === 'builder') {
@@ -45,7 +83,7 @@ export function docusealEmbedHtml(params: RootStackParamList['DocusealWebView'],
 
   const source = params.token
     ? `data-token="${attr(params.token)}" data-preview="true"`
-    : `data-src="${attr(params.src || '')}"`;
+    : `data-src="${attr(docusealFormSrc(params.src))}"`;
   return `${base}<script src="https://${host}/js/form.js"></script>${bridge}</head><body>
     <docuseal-form id="form" ${source}${hostAttribute} data-language="${docusealFormLanguage()}" data-send-copy-email="false"
       data-with-send-copy-button="false" data-allow-to-resubmit="false"

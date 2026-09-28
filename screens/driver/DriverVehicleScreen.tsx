@@ -17,6 +17,7 @@ import { DText, HoverPressable, StatusPill } from '../../components/desktop/prim
 import { DESKTOP_COLORS, DesktopTone } from '../../components/desktop/desktopTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { t, getLocale } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * U2 — the driver's own vehicles. A driver can be actively assigned to
@@ -59,7 +60,7 @@ export default function DriverVehicleScreen({ navigation, route }: Props) {
       setAssignments(data);
       setCompliance(loadedCompliance);
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message ?? t('fleet.vehiclesLoadFailed'));
+      if (requestId === loadRequest.current) setError(errorMessage(err, t('fleet.vehiclesLoadFailed')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }

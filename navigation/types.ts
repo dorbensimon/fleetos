@@ -58,11 +58,11 @@ export type RootStackParamList = {
     allowDownload?: boolean;
     /** When the document was signed, shown by the desktop viewer. */
     signedAt?: string;
-    previewFields?: Array<{
+    previewFields?: {
       name: string;
       type: 'signature' | 'stamp';
-      areas: Array<{ page: number; x: number; y: number; w: number; h: number }>;
-    }>;
+      areas: { page: number; x: number; y: number; w: number; h: number }[];
+    }[];
   };
   NotificationPreferences: undefined;
   DocumentCategory: {

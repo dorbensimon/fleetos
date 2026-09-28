@@ -24,6 +24,7 @@ import { cancelMeeting, formatIsoDay, type MeetingRow } from '../../lib/checklis
 import { useNextMeeting } from '../../components/checklist/useNextMeeting';
 import { NextMeetingCard } from '../../components/checklist/NextMeetingCard';
 import { t, dirIcon, getLocale } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverSigningDocuments'>;
 const time = (date: string) => new Date(date).toLocaleString(getLocale(), { dateStyle: 'short', timeStyle: 'short' });
@@ -81,7 +82,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
       // The driver's own list shows only folders with something sent to them.
       setFolders(built.filter(item => item.requests.length > 0));
       setError(results.some(result => result.status === 'rejected') ? t('signing.statusRefreshFailed') : '');
-    } catch (err: any) { if (generation === loadRequest.current) setError(err?.message || t('documents.loadFailedShort')); }
+    } catch (err: any) { if (generation === loadRequest.current) setError(errorMessage(err, t('documents.loadFailedShort'))); }
     finally { if (generation === loadRequest.current) setLoading(false); }
   }, [driverId, folderId, profileLoading]);
   useFocusEffect(useCallback(() => {
@@ -114,7 +115,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
         returnToDriverDocuments: profile?.role === 'driver',
         allowDownload: item.status === 'completed',
       });
-    } catch (err: any) { setError(err?.message || t('common.openDocumentFailed')); }
+    } catch (err: any) { setError(errorMessage(err, t('common.openDocumentFailed'))); }
     finally { setOpening(''); }
   };
   const send = async () => {
@@ -124,7 +125,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
       const result = await assignSigningTemplate(driver.company_id, folder.template.id, [driver.id]);
       await load();
       if (!result.success || result.created !== 1) setError(result.message || t('signing.sendNotApprovedRetry'));
-    } catch (err: any) { setError(err?.message || t('signing.sendFailedRetry')); }
+    } catch (err: any) { setError(errorMessage(err, t('signing.sendFailedRetry'))); }
     finally { sendingLock.current = false; setSending(false); }
   };
   // The blank form as the driver will get it, so the manager can check it before sending.
@@ -136,7 +137,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
         ? await checklistPreviewTarget(folder.template, folder.title)
         : await getSigningTemplatePreviewSession(folder.template.id);
       navigation.navigate('DocusealWebView', { ...session, title: folder.title });
-    } catch (err: any) { setError(err?.message || t('common.openDocumentFailedRetry')); }
+    } catch (err: any) { setError(errorMessage(err, t('common.openDocumentFailedRetry'))); }
     finally { setOpening(''); }
   };
   // Opened from a notification or a task about one request: a driver goes
@@ -158,7 +159,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
   const download = async (item: SignatureRequest) => {
     setOpening(`download:${item.id}`); setError('');
     try { await downloadSignedRequest(item); }
-    catch (err: any) { setError(err?.message || t('signing.downloadFailed')); }
+    catch (err: any) { setError(errorMessage(err, t('signing.downloadFailed'))); }
     finally { setOpening(''); }
   };
   const cancel = async () => {
@@ -170,7 +171,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
       await Promise.all([reloadMeetings(), reloadNext()]);
       setCancelOpen(false);
       await load();
-    } catch (err: any) { setCancelOpen(false); setError(err?.message || t('common.deleteFailedRetry')); }
+    } catch (err: any) { setCancelOpen(false); setError(errorMessage(err, t('common.deleteFailedRetry'))); }
     finally { setCancelling(false); }
   };
   const askErase = (item: SignatureRequest) => {
@@ -185,7 +186,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
           setOpening(`erase:${item.id}`); setError('');
           eraseSigningRequest(companyId, item.id)
             .then(load)
-            .catch((err: Error) => setError(err?.message || t('common.deleteFailedRetry')))
+            .catch((err: Error) => setError(errorMessage(err, t('common.deleteFailedRetry'))))
             .finally(() => setOpening(''));
         },
       },
@@ -208,7 +209,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
             setOpening(`cancel:${meeting.id}`); setError('');
             cancelMeeting(companyId, meeting.id)
               .then(async () => { await Promise.all([reloadMeetings(), reloadNext()]); await load(); })
-              .catch((err: Error) => setError(err?.message || t('common.deleteFailedRetry')))
+              .catch((err: Error) => setError(errorMessage(err, t('common.deleteFailedRetry'))))
               .finally(() => setOpening(''));
           },
         },

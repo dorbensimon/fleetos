@@ -21,6 +21,7 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { VehicleFormDesktopView, type FormState } from '../../components/desktop/VehicleFormDesktopView';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleForm'>;
 const EMPTY: FormState = {
@@ -256,7 +257,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         ]
       );
     } catch (err: any) {
-      setLookupMessage(err?.message || t('vehicle.lookupUnavailable'));
+      setLookupMessage(errorMessage(err, t('vehicle.lookupUnavailable')));
     } finally {
       setLookupLoading(false);
     }

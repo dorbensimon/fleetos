@@ -13,6 +13,7 @@ import type { RootStackParamList } from '../../navigation/types';
 import { useVehicleInspections } from './useVehicleInspections';
 import { defectsText, latestNextDue } from './VehicleInspectionsCard';
 import { t, dirIcon } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 const HISTORY_SHOWN = 6;
 const STATE_TONE: Record<string, DesktopTone> = { ok: 'ok', soon: 'warn', expired: 'bad', missing: 'neutral', info: 'neutral' };
@@ -38,7 +39,7 @@ export function VehicleInspectionsDesktopSection({ companyId, vehicleId, archive
     try {
       await move(value);
     } catch (e) {
-      setMoveError((e as Error)?.message || t('common.saveDateFailedRetry'));
+      setMoveError(errorMessage(e, t('common.saveDateFailedRetry')));
     } finally {
       setSaving(false);
     }

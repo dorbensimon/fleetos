@@ -17,10 +17,12 @@ import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { HoverPressable } from '../../components/desktop/primitives';
-import { DriverLicenseModal, LICENSE_SIDE_STORED_TITLE } from '../../components/desktop/driver/DriverLicenseModal';
+import { DriverLicenseModal } from '../../components/desktop/driver/DriverLicenseModal';
+import { hasBothLicenseSides } from '../../lib/licenseSides';
 import { DriverDocumentsMobile } from './DriverDocumentsMobile';
 import { dateOnlyIsoFromLocalDate } from '../../lib/driverFormValidation';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * The driver's self-service dossier intentionally uses the same card
@@ -28,10 +30,6 @@ import { t } from '../../lib/i18n';
  * screens, while manager-only actions are omitted rather than merely hidden.
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverDocuments'>;
-
-function hasBothLicenseSides(docs: { title: string | null }[]): boolean {
-  return docs.some((doc) => doc.title === LICENSE_SIDE_STORED_TITLE.front) && docs.some((doc) => doc.title === LICENSE_SIDE_STORED_TITLE.back);
-}
 
 export default function DriverDocumentsScreen({ navigation }: Props) {
   const { companyId, profile, loading: profileLoading } = useCompany();
@@ -65,7 +63,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
       setDriver(loadedDriver);
       setLicensePhotosComplete(hasBothLicenseSides(licenseDocs));
     } catch (loadError: any) {
-      if (requestId === loadRequest.current) setError(loadError?.message ?? t('documents.loadFailedShort'));
+      if (requestId === loadRequest.current) setError(errorMessage(loadError, t('documents.loadFailedShort')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -86,7 +84,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
       setDriver((current) => (current ? { ...current, license_expiry: date } : current));
       return null;
     } catch (err: any) {
-      return err?.message || t('common.saveFailedRetryShort');
+      return errorMessage(err, t('common.saveFailedRetryShort'));
     }
   };
 

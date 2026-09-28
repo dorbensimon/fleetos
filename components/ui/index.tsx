@@ -44,7 +44,7 @@ export { ToastProvider, useToast } from './Toast';
 /** The single compact back affordance used in app navigation headers. */
 export function BackButton({
   onPress,
-  accessibilityLabel = t('common.back'),
+  accessibilityLabel = t('common.goBack'),
   style,
 }: {
   onPress: () => void;

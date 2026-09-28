@@ -15,6 +15,7 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DriverArchiveDesktopView } from '../../components/desktop/DriverArchiveDesktopView';
 import { t, dirIcon } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * The driver archive — the only screen that shows archived drivers, and
@@ -54,7 +55,7 @@ export default function DriverArchiveScreen({ navigation }: Props) {
     try {
       setRows(await listArchivedDrivers(companyId));
     } catch (e: any) {
-      setError(e?.message ?? t('archive.loadFailed'));
+      setError(errorMessage(e, t('archive.loadFailed')));
     } finally {
       setLoading(false);
     }

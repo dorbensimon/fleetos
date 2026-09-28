@@ -12,6 +12,7 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DesktopInput, DText, HoverPressable } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
 import { t, getLocale } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverOdometer'>;
 export default function DriverOdometerScreen({ navigation, route }: Props) {
@@ -25,7 +26,7 @@ export default function DriverOdometerScreen({ navigation, route }: Props) {
     if (invalid) { showAlert(t('odometer.invalidNumber'), t('odometer.mustBeAtLeast', { v1: route.params.currentOdometer.toLocaleString(getLocale()) })); return; }
     setSaving(true);
     try { await updateOwnVehicleOdometer(route.params.vehicleId, next); showAlert(t('odometer.updated'), t('odometer.managerWillSee'), [{ text: t('common.done'), onPress: () => navigation.goBack() }]); }
-    catch (error: any) { showAlert(t('common.updateFailed'), error?.message ?? t('common.tryAgain')); }
+    catch (error: any) { showAlert(t('common.updateFailed'), errorMessage(error, t('common.tryAgain'))); }
     finally { setSaving(false); }
   };
 

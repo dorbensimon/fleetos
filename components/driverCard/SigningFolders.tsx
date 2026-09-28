@@ -11,6 +11,7 @@ import { isChecklistTemplate } from '../../lib/checklistForms';
 import { DText, HoverPressable, StatusPill } from '../desktop/primitives';
 import { DESKTOP_COLORS, webOnly } from '../desktop/desktopTheme';
 import { t, dirIcon, textStart } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 export function SigningFolders({ driverId, onOpen, desktop = false, title = t('signing.formsAndDocsToSign') }: { driverId: string; onOpen: (folder: SigningFolder) => void; desktop?: boolean; /** Phone section heading; none when the list opens a page. */ title?: string | null }) {
   const [folders, setFolders] = useState<SigningFolder[]>([]);
@@ -30,7 +31,7 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = t('s
         const [templates, requests] = await Promise.all([listSigningTemplates(driver.company_id), listDriverSigningRequests(driverId)]);
         const all = buildSigningFolders(templates, requests);
         if (active) { setFolders(driverView ? all.filter(folder => folder.requests.length > 0) : all); setError(''); }
-      } catch (err: any) { if (active) setError(err?.message || t('signing.foldersLoadFailed')); }
+      } catch (err: any) { if (active) setError(errorMessage(err, t('signing.foldersLoadFailed'))); }
       finally { if (active) setLoading(false); }
     })();
     return () => { active = false; };

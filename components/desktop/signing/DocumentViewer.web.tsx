@@ -5,6 +5,7 @@ import { downloadSignedRequest } from '../../../lib/docuseal';
 import { downloadRemoteFileOnWeb } from '../../../lib/webDownload';
 import { loadPdf, renderPage, type LoadedPdf } from './pdf.web';
 import { t, getLocale } from '../../../lib/i18n';
+import { errorMessage } from '../../../lib/requestError';
 
 /**
  * Desktop document viewer (web only). The phone viewer squeezes a PDF into a
@@ -147,7 +148,7 @@ export function DocumentViewer({
       if (requestId) await downloadSignedRequest({ id: requestId, template_title: title, template: null });
       else await downloadRemoteFileOnWeb(src, `${title}.pdf`);
     } catch (err) {
-      setError((err as Error)?.message || t('common.downloadFailed'));
+      setError(errorMessage(err, t('common.downloadFailed')));
     } finally {
       setBusy('');
     }

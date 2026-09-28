@@ -8,20 +8,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DK, HeroButton, NightBar } from '../components/driverKit';
 import { useCompany } from '../lib/CompanyContext';
 import { downloadSignedRequest, finalizeSigningTemplate, syncSigningRequest } from '../lib/docuseal';
-import { docusealEmbedHtml } from '../lib/docusealEmbed';
+import { docusealEmbedHtml, docusealHost, scriptJson, withSafeSrc } from '../lib/docusealEmbed';
 import { COLORS, SPACING } from '../lib/theme';
 import type { RootStackParamList } from '../navigation/types';
 import { t, textDirection } from '../lib/i18n';
+import { errorMessage } from '../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DocusealWebView'>;
-
-function scriptValue(value: string) {
-  return JSON.stringify(value).replace(/</g, '\\u003c');
-}
-
-function scriptJson(value: unknown) {
-  return JSON.stringify(value).replace(/</g, '\\u003c');
-}
 
 function buildHtml(params: RootStackParamList['DocusealWebView']) {
   const bridge = `<script>
@@ -39,7 +32,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
         (async () => {
           try {
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            const pdf = await pdfjsLib.getDocument({ url: ${scriptValue(params.src || '')}, withCredentials: false }).promise;
+            const pdf = await pdfjsLib.getDocument({ url: ${scriptJson(params.src || '')}, withCredentials: false }).promise;
             const root = document.getElementById('pages');
             const fields = ${scriptJson(params.previewFields || [])};
             const zeroIndexedPages = fields.some((field) => field.areas.some((area) => area.page === 0));
@@ -70,7 +63,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
                   marker.style.top = (area.y * 100) + '%';
                   marker.style.width = (area.w * 100) + '%';
                   marker.style.height = (area.h * 100) + '%';
-                  marker.textContent = field.type === 'stamp' ? ${scriptValue(t('company.stampShort'))} : ${scriptValue(t('field.signature'))};
+                  marker.textContent = field.type === 'stamp' ? ${scriptJson(t('company.stampShort'))} : ${scriptJson(t('field.signature'))};
                   pageWrap.appendChild(marker);
                 }
               }
@@ -89,7 +82,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
 export default function DocusealWebViewScreen({ navigation, route }: Props) {
   const { companyId } = useCompany();
   const insets = useSafeAreaInsets();
-  const params = route.params;
+  const params = withSafeSrc(route.params);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -126,7 +119,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
       await finalizeSigningTemplate(companyId, params.templateId);
       navigation.goBack();
     } catch (err: any) {
-      setError(err?.message || t('docuseal.templateApproveFailed'));
+      setError(errorMessage(err, t('docuseal.templateApproveFailed')));
     } finally {
       setSaving(false);
     }
@@ -138,7 +131,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
     try {
       await downloadSignedRequest({ id: params.requestId, template_title: params.title });
     } catch (err: any) {
-      setError(err?.message || t('signing.downloadFailed'));
+      setError(errorMessage(err, t('signing.downloadFailed')));
     }
   };
 
@@ -163,7 +156,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
         setLoading(false);
       }
     } catch (err: any) {
-      setError(err?.message || t('docuseal.syncFailed'));
+      setError(errorMessage(err, t('docuseal.syncFailed')));
       setSaving(false);
     }
   };
@@ -184,7 +177,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
       />
       <View style={styles.webWrap}>
         <WebView
-          source={nativePdf ? { uri: params.src! } : { html: buildHtml(params), baseUrl: `https://${params.host || 'cdn.docuseal.com'}` }}
+          source={nativePdf ? { uri: params.src! } : { html: buildHtml(params), baseUrl: `https://${docusealHost(params.host)}` }}
           javaScriptEnabled
           domStorageEnabled
           thirdPartyCookiesEnabled

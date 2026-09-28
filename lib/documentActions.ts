@@ -11,6 +11,7 @@ import {
 } from './documents';
 import { showAlert } from './platformAlert';
 import { t } from './i18n';
+import { errorMessage } from './requestError';
 
 export type DocumentSource = 'camera' | 'gallery' | 'file';
 
@@ -84,7 +85,7 @@ export async function downloadDocumentWithAlert(doc: DocumentRow) {
   try {
     await downloadDocument(doc);
   } catch (err: any) {
-    showAlert(t('common.downloadFailed'), err?.message ?? t('common.tryAgain'));
+    showAlert(t('common.downloadFailed'), errorMessage(err, t('common.tryAgain')));
   }
 }
 
@@ -92,7 +93,7 @@ export function confirmDeleteDocument(doc: DocumentRow, onDeleted: () => void | 
   showAlert(t('documents.deleteTitle'), t('documents.deleteConfirm', { doc: documentDisplayName(doc) }), [
     { text: t('common.cancel'), style: 'cancel' },
     {
-      text: t('common.delete'),
+      text: t('common.deleteAction'),
       style: 'destructive',
       onPress: async () => {
         try {

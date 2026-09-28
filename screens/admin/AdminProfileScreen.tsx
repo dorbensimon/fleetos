@@ -38,6 +38,7 @@ import { AdminProfileDesktopView } from '../../components/desktop/AdminProfileDe
 import { LanguageSection } from '../../components/LanguagePicker';
 import { t, textStart } from '../../lib/i18n';
 import { companyTypeLabel } from '../../lib/companyType';
+import { errorMessage } from '../../lib/requestError';
 
 /** The logged-in admin's own details, reached from the hamburger menu. */
 type Props = NativeStackScreenProps<RootStackParamList, 'AdminProfile'>;
@@ -67,7 +68,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
         setEmail(data.user?.email ?? null);
       }
     } catch (err: any) {
-      if (requestId === loadRequest.current) setLoadError(err?.message ?? t('profile.loadFailed'));
+      if (requestId === loadRequest.current) setLoadError(errorMessage(err, t('profile.loadFailed')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }

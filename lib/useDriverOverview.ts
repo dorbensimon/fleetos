@@ -6,6 +6,7 @@ import { complianceTargetDate, findComplianceDef, isRetiredVehicleComplianceItem
 import { listSignatureRequests, type SignatureRequest } from './docuseal';
 import { expiryState, formatDate, type ExpiryState } from './theme';
 import { t } from './i18n';
+import { errorMessage } from './requestError';
 
 export type Severity = 'danger' | 'warning' | 'success';
 export type OverviewItem = { title: string; detail: string; severity: Severity; item: ComplianceItem; target: string | null };
@@ -65,7 +66,7 @@ export function useDriverOverview() {
       setPendingRequests(signatures.filter(isAwaitingSignature));
       setUnreadNotifications(unread);
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message || t('common.screenLoadFailed'));
+      if (requestId === loadRequest.current) setError(errorMessage(err, t('common.screenLoadFailed')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
