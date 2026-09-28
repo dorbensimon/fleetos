@@ -629,7 +629,8 @@
     "newDocExpiry": "صلاحية المستند الجديد",
     "nextInspection": "الفحص القادم",
     "nextInspectionOptional": "الفحص القادم (اختياري)",
-    "saveDateFailed": "لم نتمكن من حفظ التاريخ. حاول مجددًا."
+    "saveDateFailed": "لم نتمكن من حفظ التاريخ. حاول مجددًا.",
+    "newDocHint": "مستند جديد: اختر تاريخ الصلاحية ثم ارفع"
   },
   "confirm": {
     "typeToConfirm": "للتأكيد، اكتب: {{expected}}"

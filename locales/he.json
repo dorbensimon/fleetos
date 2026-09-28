@@ -629,7 +629,8 @@
     "newDocExpiry": "תוקף המסמך החדש",
     "nextInspection": "בדיקה הבאה",
     "nextInspectionOptional": "בדיקה הבאה (אופציונלי)",
-    "saveDateFailed": "לא הצלחנו לשמור את התאריך. נסה שוב."
+    "saveDateFailed": "לא הצלחנו לשמור את התאריך. נסה שוב.",
+    "newDocHint": "מסמך חדש: בחר תוקף ואז העלה"
   },
   "confirm": {
     "typeToConfirm": "לאישור, הקלד: {{expected}}"

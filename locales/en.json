@@ -629,7 +629,8 @@
     "newDocExpiry": "New document expiry",
     "nextInspection": "Next inspection",
     "nextInspectionOptional": "Next inspection (optional)",
-    "saveDateFailed": "We couldn't save the date. Try again."
+    "saveDateFailed": "We couldn't save the date. Try again.",
+    "newDocHint": "New document: pick the expiry date, then upload"
   },
   "confirm": {
     "typeToConfirm": "To confirm, type: {{expected}}"
