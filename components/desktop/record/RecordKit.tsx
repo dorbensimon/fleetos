@@ -12,6 +12,7 @@ import { showAlert } from '../../../lib/platformAlert';
 import { ExpiryState } from '../../../lib/theme';
 import { DesktopDateField, DesktopInput, DesktopSelect, DesktopSelectOption, DLtrText, DText, HoverPressable, popoverEnterStyle } from '../primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from '../desktopTheme';
+import { t, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../../lib/i18n';
 
 /**
  * Shared building blocks of the desktop record pages ("תיק רכב" and
@@ -27,7 +28,7 @@ export const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
 
 export const EXPIRY_TONE_MAP: Record<ExpiryState, DesktopTone> = { ok: 'ok', soon: 'warn', expired: 'bad', missing: 'neutral', optional: 'neutral' };
 
-export const STATE_LABEL: Record<ExpiryState, string> = { ok: 'בתוקף', soon: 'קרוב לפוג', expired: 'פג תוקף', missing: 'חסר', optional: 'תקין' };
+export const STATE_LABEL: Record<ExpiryState, string> = { get ok() { return t('status.valid'); }, get soon() { return t('status.aboutToExpire'); }, get expired() { return t('status.expiredLong'); }, get missing() { return t('status.missing'); }, get optional() { return t('status.ok'); } };
 
 export type RecordMenuItem = {
   label: string;
@@ -53,14 +54,14 @@ export function OverflowMenu({ items }: { items: RecordMenuItem[] }) {
         hoverStyle={styles.rowHover}
         pressStyle={styles.pressDown}
         onPress={() => (anchor ? setAnchor(null) : open())}
-        accessibilityLabel="פעולות נוספות"
+        accessibilityLabel={t('common.moreActions')}
       >
         <Ionicons name="ellipsis-horizontal" size={20} color={DESKTOP_COLORS.ink} />
       </HoverPressable>
       {anchor && (
         <Modal transparent visible animationType="none" onRequestClose={() => setAnchor(null)}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setAnchor(null)} />
-          <View style={[styles.menu, { top: anchor.top, left: anchor.left }, popoverEnterStyle(), styles.menuOrigin]}>
+          <View style={[styles.menu, { top: anchor.top, start: anchor.left }, popoverEnterStyle(), styles.menuOrigin]}>
             {items.map((item) => (
               <HoverPressable
                 key={item.label}
@@ -125,7 +126,7 @@ export function StatusPicker<T extends string>({
         pressStyle={styles.pressDown}
         disabled={saving}
         onPress={() => (anchor ? setAnchor(null) : open())}
-        accessibilityLabel={`סטטוס: ${current?.label ?? value}. לחיצה לשינוי`}
+        accessibilityLabel={t('record.statusChange', { v1: current?.label ?? value })}
       >
         <DText weight="bold" style={[styles.statusTriggerText, { color: tone.fg }]} numberOfLines={1}>
           {current?.label ?? value}
@@ -139,7 +140,7 @@ export function StatusPicker<T extends string>({
       {anchor && (
         <Modal transparent visible animationType="none" onRequestClose={() => setAnchor(null)}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setAnchor(null)} />
-          <View style={[styles.menu, { top: anchor.top, left: anchor.left }, popoverEnterStyle(), styles.menuOrigin]}>
+          <View style={[styles.menu, { top: anchor.top, start: anchor.left }, popoverEnterStyle(), styles.menuOrigin]}>
             {options.map((option) => {
               const selected = option.value === value;
               return (
@@ -168,7 +169,7 @@ export function StatusPicker<T extends string>({
 
 export function PlateBadge({ plate }: { plate: string }) {
   return (
-    <View style={styles.plateBadge}>
+    <View {...fixedLayoutProps} style={[styles.plateBadge, FIXED_LAYOUT_STYLE]}>
       <View style={styles.plateBadgeFlag}>
         <DText weight="bold" style={styles.plateBadgeFlagText}>IL</DText>
       </View>
@@ -246,7 +247,7 @@ export function EditableFieldShell({
           ) : (
             <ValueText weight="semiBold" style={styles.fieldGridValue} numberOfLines={1}>{displayValue}</ValueText>
           )}
-          <HoverPressable hoverStyle={styles.rowHover} onPress={onStartEdit} accessibilityLabel={`עריכת ${label}`}>
+          <HoverPressable hoverStyle={styles.rowHover} onPress={onStartEdit} accessibilityLabel={t('common.editLabel', { label })}>
             <Ionicons name="create-outline" size={12} color={DESKTOP_COLORS.inkFaint} />
           </HoverPressable>
         </View>
@@ -557,7 +558,7 @@ export function DocumentFolderUploadModal({
   /** Uploads one file into the folder; resolves to whether it uploaded. */
   const uploadFile = async (file: PickedFile): Promise<boolean> => {
     if (folder.requiresExpiry && !expiryDate) {
-      showAlert('חסר תוקף', 'יש לבחור תאריך תוקף למסמך לפני ההעלאה');
+      showAlert(t('documents.expiryMissing'), t('documents.chooseExpiryBeforeUpload'));
       return false;
     }
     setUploading(true);
@@ -575,7 +576,7 @@ export function DocumentFolderUploadModal({
       await onChanged();
       return true;
     } catch (err: any) {
-      showAlert('העלאה נכשלה', err?.message ?? 'נסה שוב');
+      showAlert(t('common.uploadFailedShort'), err?.message ?? t('common.tryAgain'));
       return false;
     } finally {
       setUploading(false);
@@ -584,7 +585,7 @@ export function DocumentFolderUploadModal({
 
   const addDocument = () => {
     if (folder.requiresExpiry && !expiryDate) {
-      showAlert('חסר תוקף', 'יש לבחור תאריך תוקף למסמך לפני ההעלאה');
+      showAlert(t('documents.expiryMissing'), t('documents.chooseExpiryBeforeUpload'));
       return;
     }
     chooseDocumentSource(folder.title, async (source: DocumentSource) => {
@@ -628,12 +629,12 @@ export function DocumentFolderUploadModal({
         <View style={styles.folderUploadRow}>
           {folder.requiresExpiry && (
             <View style={styles.folderExpiryField}>
-              <DesktopDateField value={expiryDate} onChange={setExpiryDate} placeholder="תוקף המסמך" />
+              <DesktopDateField value={expiryDate} onChange={setExpiryDate} placeholder={t('documents.documentExpiry')} />
             </View>
           )}
           <HoverPressable style={styles.folderUploadBtn} hoverStyle={styles.folderUploadBtnHover} pressStyle={styles.pressDown} onPress={addDocument} disabled={uploading}>
             <Ionicons name="cloud-upload-outline" size={13} color={DESKTOP_COLORS.brand} />
-            <DText weight="semiBold" style={styles.folderUploadText}>{uploading ? 'מעלה…' : 'העלה מסמך'}</DText>
+            <DText weight="semiBold" style={styles.folderUploadText}>{uploading ? t('common.uploading') : t('documents.uploadDocument')}</DText>
           </HoverPressable>
         </View>
       }
@@ -811,7 +812,7 @@ export const recordStyles = StyleSheet.create({
   folderTilePreviewImageSigned: { width: '78%', height: '84%', borderRadius: 5, backgroundColor: DESKTOP_COLORS.surface, ...webOnly({ boxShadow: '0 6px 16px rgba(16,34,50,0.14)' }) },
   folderTilePreviewImageHover: webOnly({ transform: 'scale(1.02)' }),
   folderTilePreviewScrim: {
-    position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
+    position: 'absolute', top: 0, end: 0, bottom: 0, start: 0,
     backgroundColor: '#FFFFFF',
     opacity: 0,
     ...webOnly({ transition: 'opacity 150ms ease' }),

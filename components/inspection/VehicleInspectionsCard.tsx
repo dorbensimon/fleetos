@@ -10,6 +10,7 @@ import { dueState } from '../../lib/meetingPlan';
 import { INSPECTION_STATE_META, formatIsoDay, inspectionRepeatLabel, todayIso } from '../../lib/inspections';
 import type { RootStackParamList } from '../../navigation/types';
 import { useVehicleInspections } from './useVehicleInspections';
+import { t } from '../../lib/i18n';
 
 const HISTORY_SHOWN = 5;
 
@@ -20,7 +21,7 @@ export function latestNextDue(today = todayIso()): string {
 }
 
 export function defectsText(count: number): string {
-  return count === 1 ? 'ליקוי אחד' : `${count} ליקויים`;
+  return count === 1 ? t('inspection.oneDefect') : t('inspection.defectsCount', { count });
 }
 
 /**
@@ -37,7 +38,7 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived }: { com
   const change = async (value: string | null) => {
     if (!value || value === plan?.nextDue || saving) return;
     if (value < todayIso() || value > latestNextDue()) {
-      setMoveError('בחרו תאריך מהיום ועד שלוש שנים קדימה');
+      setMoveError(t('inspection.dateRange'));
       return;
     }
     setSaving(true);
@@ -45,7 +46,7 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived }: { com
     try {
       await move(value);
     } catch (e) {
-      setMoveError((e as Error)?.message || 'שמירת התאריך נכשלה. נסו שוב.');
+      setMoveError((e as Error)?.message || t('common.saveDateFailedRetry'));
     } finally {
       setSaving(false);
     }
@@ -57,7 +58,7 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived }: { com
 
   return (
     <View style={styles.wrap}>
-      <KitSection title="בדיקות בטיחות" surfaceStyle={styles.card}>
+      <KitSection title={t('nav.safetyInspections')} surfaceStyle={styles.card}>
         {!!error && <DKText variant="caption" color={STATUS.expired.fg}>{error}</DKText>}
         {!archived && (
           <View style={styles.top}>
@@ -65,35 +66,35 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived }: { com
               <Ionicons name={state === 'late' ? 'alert-circle' : 'shield-checkmark'} size={24} color={tone?.fg ?? DK.accent} />
             </View>
             <View style={styles.flex}>
-              <DKText variant="caption" color={DK.muted}>{plan?.firstInspection ? 'הבדיקה הראשונה' : 'הבדיקה הבאה'}</DKText>
-              <DKText variant="heading">{plan?.nextDue ? formatIsoDay(plan.nextDue) : 'לא נקבע מועד'}</DKText>
+              <DKText variant="caption" color={DK.muted}>{plan?.firstInspection ? t('inspection.first') : t('inspection.next')}</DKText>
+              <DKText variant="heading">{plan?.nextDue ? formatIsoDay(plan.nextDue) : t('inspection.noDateSet')}</DKText>
             </View>
             {plan?.nextDue && state !== 'later' && <DuePill nextDue={plan.nextDue} />}
           </View>
         )}
         <DKText variant="caption" color={DK.muted}>
-          {repeatMonths > 0 ? `בדיקה ${inspectionRepeatLabel(repeatMonths)}` : 'בלי תזכורות קבועות'}
-          {plan?.lastInspection ? ` · האחרונה ב-${formatIsoDay(plan.lastInspection)}` : ' · עוד לא נעשתה בדיקה'}
+          {repeatMonths > 0 ? t('inspection.repeatLabel', { repeatMonths: inspectionRepeatLabel(repeatMonths) }) : t('inspection.noFixedReminders')}
+          {plan?.lastInspection ? t('inspection.lastOn', { v1: formatIsoDay(plan.lastInspection) }) : t('inspection.noneYetSuffix')}
         </DKText>
         {!!plan?.lastDefects && (
           <View style={styles.defects}>
             <Ionicons name="warning" size={16} color={STATUS.expired.fg} />
             <DKText variant="label" color={STATUS.expired.fg} style={styles.flex}>
-              יש ליקויים: {defectsText(plan.lastDefects)} בבדיקה האחרונה
+              {t('inspection.hasDefectsColon')} {defectsText(plan.lastDefects)} {t('inspection.inLast')}
             </DKText>
           </View>
         )}
         {!archived && plan && (
           <View style={styles.move}>
-            <DKText variant="label">שינוי מועד הבדיקה הבאה</DKText>
-            <DateField value={plan.nextDue} onChange={(value) => void change(value)} placeholder="בחירת תאריך" disabled={saving} hasError={!!moveError} />
+            <DKText variant="label">{t('inspection.changeNextDate')}</DKText>
+            <DateField value={plan.nextDue} onChange={(value) => void change(value)} placeholder={t('date.chooseDateAction')} disabled={saving} hasError={!!moveError} />
             {!!moveError && <DKText variant="caption" color={STATUS.expired.fg} accessibilityRole="alert">{moveError}</DKText>}
-            {saving && <DKText variant="caption" color={DK.muted}>שומר…</DKText>}
+            {saving && <DKText variant="caption" color={DK.muted}>{t('common.savingEllipsis')}</DKText>}
           </View>
         )}
         {!archived && (
           <PrimaryAction
-            label={draft ? 'המשך הבדיקה שהתחלתם' : 'בדיקה חדשה'}
+            label={draft ? t('inspection.continueStarted') : t('inspection.new')}
             icon={draft ? 'play-outline' : 'add-circle-outline'}
             onPress={() => navigation.navigate('SafetyInspection', draft ? { vehicleId, inspectionId: draft.id } : { vehicleId })}
           />
@@ -122,7 +123,7 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived }: { com
             );
           })}
           {(entries?.length ?? 0) > HISTORY_SHOWN && (
-            <ListRow icon="list-outline" title="כל בדיקות הבטיחות" subtitle={`${entries!.length} בדיקות`} onPress={() => navigation.navigate('SafetyInspections')} />
+            <ListRow icon="list-outline" title={t('inspection.all')} subtitle={t('inspection.countLength', { length: entries!.length })} onPress={() => navigation.navigate('SafetyInspections')} />
           )}
         </Surface>
       )}

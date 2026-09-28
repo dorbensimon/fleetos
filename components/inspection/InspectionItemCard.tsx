@@ -10,6 +10,7 @@ import {
   type InspectionItem,
   type InspectionStatus,
 } from '../../lib/inspections';
+import { t } from '../../lib/i18n';
 
 /**
  * One item of a vehicle inspection: its text, three big buttons (icon, word
@@ -60,7 +61,7 @@ export const InspectionItemCard = memo(function InspectionItemCard({
         </DKText>
       </View>
 
-      <View style={styles.options} accessibilityRole="radiogroup" accessibilityLabel={`מצב סעיף ${number}: ${item.text}`}>
+      <View style={styles.options} accessibilityRole="radiogroup" accessibilityLabel={t('inspection.itemState', { number, text: item.text })}>
         {INSPECTION_STATUSES.map((key) => {
           const on = status === key;
           const m = INSPECTION_STATUS_META[key];
@@ -70,7 +71,7 @@ export const InspectionItemCard = memo(function InspectionItemCard({
               onPress={() => onStatus(item.id, key)}
               haptic
               pressScale={0.96}
-              accessibilityLabel={`${m.label}${on ? ', נבחר' : ''}, ${item.text}`}
+              accessibilityLabel={`${m.label}${on ? t('common.selectedSuffix') : ''}, ${item.text}`}
               style={[styles.option, on ? { backgroundColor: m.soft, borderColor: m.fg } : styles.optionOff]}
             >
               <View style={[styles.optionIcon, on ? { backgroundColor: m.fg } : styles.optionIconOff]}>
@@ -88,14 +89,14 @@ export const InspectionItemCard = memo(function InspectionItemCard({
         <View style={styles.noteEdit}>
           {defect && (
             <DKText variant="label" color={STATUS.expired.fg} nativeID={`defect-${item.id}`}>
-              מה הבעיה? (חובה)
+              {t('inspection.whatsProblemRequired')}
             </DKText>
           )}
           <KitInput
             value={note}
             onChangeText={(text) => onNote(item.id, text)}
-            placeholder={defect ? 'לדוגמה: נורת מנוע דולקת, להעביר למוסך' : 'מה חשוב לרשום על הסעיף הזה?'}
-            accessibilityLabel={defect ? `מה הבעיה ב${item.text}` : `הערה ל${item.text}`}
+            placeholder={defect ? t('inspection.problemExample') : t('checklist.notePlaceholder')}
+            accessibilityLabel={defect ? t('inspection.problemIn', { text: item.text }) : t('inspection.noteFor', { text: item.text })}
             multiline
             autoFocus={!defect || !note}
             hasError={missing}
@@ -103,32 +104,32 @@ export const InspectionItemCard = memo(function InspectionItemCard({
             style={styles.noteInput}
           />
           {!missing && (
-            <Pressy onPress={() => setEditing(false)} accessibilityLabel="סיום" style={styles.noteDone} pressScale={0.95}>
+            <Pressy onPress={() => setEditing(false)} accessibilityLabel={t('common.done')} style={styles.noteDone} pressScale={0.95}>
               <Ionicons name="checkmark" size={18} color={DK.accent} />
               <DKText variant="label" color={DK.accent}>
-                סיום
+                {t('common.done')}
               </DKText>
             </Pressy>
           )}
         </View>
       ) : note ? (
-        <Pressy onPress={() => setEditing(true)} accessibilityLabel={`${defect ? 'הבעיה' : 'הערה'}: ${note}. עריכה`} style={[styles.noteSaved, defect && styles.noteDefect]} pressScale={0.985}>
+        <Pressy onPress={() => setEditing(true)} accessibilityLabel={t('inspection.noteEdit', { v1: defect ? t('inspection.problem') : t('common.note'), note })} style={[styles.noteSaved, defect && styles.noteDefect]} pressScale={0.985}>
           <Ionicons name={defect ? 'alert-circle' : 'chatbox-ellipses-outline'} size={18} color={defect ? STATUS.expired.fg : DK.inkSoft} style={styles.noteIcon} />
           <DKText variant="caption" color={defect ? STATUS.expired.fg : DK.inkSoft} style={styles.flex}>
             {note}
           </DKText>
           <DKText variant="micro" color={DK.accent}>
-            עריכה
+            {t('common.edit')}
           </DKText>
         </Pressy>
       ) : (
-        <Pressy onPress={() => setEditing(true)} accessibilityLabel={`הוספת הערה ל${item.text}, לא חובה`} style={styles.noteAdd} pressScale={0.97}>
+        <Pressy onPress={() => setEditing(true)} accessibilityLabel={t('inspection.addNoteFor', { text: item.text })} style={styles.noteAdd} pressScale={0.97}>
           <Ionicons name="add" size={19} color={DK.accent} />
           <DKText variant="label" color={DK.accent}>
-            הערה
+            {t('common.note')}
           </DKText>
           <DKText variant="caption" color={DK.muted}>
-            (לא חובה)
+            {t('common.optionalParenShort')}
           </DKText>
         </Pressy>
       )}

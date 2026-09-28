@@ -1,6 +1,7 @@
 import type { Ionicons } from '@expo/vector-icons';
 import type { Notification } from './adminApi/types';
 import { isVehicleFolderNotification } from './vehicleFolderAlerts';
+import { t } from './i18n';
 
 /**
  * How a notification looks on the desktop — its icon, urgency and age — in
@@ -10,12 +11,12 @@ import { isVehicleFolderNotification } from './vehicleFolderAlerts';
 export function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'עכשיו';
-  if (mins < 60) return `לפני ${mins} דק׳`;
+  if (mins < 1) return t('time.now');
+  if (mins < 60) return t('time.minutesAgo', { mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `לפני ${hours} שע׳`;
+  if (hours < 24) return t('time.hoursAgo', { hours });
   const days = Math.floor(hours / 24);
-  return days === 1 ? 'אתמול' : `לפני ${days} ימים`;
+  return days === 1 ? t('time.yesterday') : t('time.daysAgo', { days });
 }
 
 export function notificationIcon(type: string | null): keyof typeof Ionicons.glyphMap {

@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DK, DKText, STATUS } from '../driverKit';
 import { dueState, dueText } from '../../lib/meetingPlan';
+import { t } from '../../lib/i18n';
 
 /**
  * When a driver's next meeting is due, as a small pill: red when late,
@@ -15,7 +16,7 @@ export function DuePill({ nextDue, firstMeeting }: { nextDue: string; firstMeeti
     <View style={styles.wrap}>
       {firstMeeting ? (
         <View style={[styles.pill, styles.first]}>
-          <DKText variant="caption" color="#0B7B87">מפגש ראשון</DKText>
+          <DKText variant="caption" color="#0B7B87">{t('meeting.first')}</DKText>
         </View>
       ) : null}
       <View style={[styles.pill, { backgroundColor: tone?.soft ?? DK.surfaceSunk }]}>

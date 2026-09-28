@@ -1,4 +1,5 @@
 import { daysUntilExpiry } from './theme';
+import { t, getLocale } from './i18n';
 
 /**
  * A company as the owner's customer (table company_accounts, migration 102):
@@ -31,25 +32,25 @@ export type CompanyAccount = {
 export type AccountTone = 'ok' | 'warn' | 'bad' | 'off';
 
 export const ACCOUNT_STATUSES: { value: AccountStatus; label: string; tone: AccountTone }[] = [
-  { value: 'trial', label: 'ניסיון', tone: 'warn' },
-  { value: 'active', label: 'משלם', tone: 'ok' },
-  { value: 'overdue', label: 'בפיגור', tone: 'bad' },
-  { value: 'cancelled', label: 'בוטל', tone: 'off' },
+  { value: 'trial', get label() { return t('account.status.trial'); }, tone: 'warn' },
+  { value: 'active', get label() { return t('account.status.paying'); }, tone: 'ok' },
+  { value: 'overdue', get label() { return t('account.status.overdue'); }, tone: 'bad' },
+  { value: 'cancelled', get label() { return t('common.cancelled'); }, tone: 'off' },
 ];
 
 export const ACCOUNT_PLANS: { value: AccountPlan; label: string }[] = [
-  { value: 'basic', label: 'בסיסי' },
-  { value: 'pro', label: 'מקצועי' },
-  { value: 'enterprise', label: 'ארגוני' },
+  { value: 'basic', get label() { return t('account.plan.basic'); } },
+  { value: 'pro', get label() { return t('account.plan.pro'); } },
+  { value: 'enterprise', get label() { return t('account.plan.enterprise'); } },
 ];
 
 export const BILLING_CYCLES: { value: BillingCycle; label: string }[] = [
-  { value: 'monthly', label: 'חודשי' },
-  { value: 'yearly', label: 'שנתי' },
+  { value: 'monthly', get label() { return t('account.billing.monthly'); } },
+  { value: 'yearly', get label() { return t('account.billing.yearly'); } },
 ];
 
 export function statusLabel(status: AccountStatus | null | undefined): string {
-  return ACCOUNT_STATUSES.find((s) => s.value === status)?.label ?? 'לא הוגדר';
+  return ACCOUNT_STATUSES.find((s) => s.value === status)?.label ?? t('common.notSet');
 }
 
 export function statusTone(status: AccountStatus | null | undefined): AccountTone {
@@ -57,13 +58,13 @@ export function statusTone(status: AccountStatus | null | undefined): AccountTon
 }
 
 export function planLabel(plan: AccountPlan | null | undefined): string {
-  return ACCOUNT_PLANS.find((p) => p.value === plan)?.label ?? 'ללא מסלול';
+  return ACCOUNT_PLANS.find((p) => p.value === plan)?.label ?? t('account.noPlan');
 }
 
 /** ₪1,250, or "—" when no price was entered. */
 export function formatMoney(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return '—';
-  return `₪${Math.round(value).toLocaleString('he-IL')}`;
+  return `₪${Math.round(value).toLocaleString(getLocale())}`;
 }
 
 /** ₪1.7K / ₪12K: the same money in a tile that has room for five characters. */
@@ -86,16 +87,16 @@ export function accountNextStep(account: CompanyAccount | null | undefined): { l
   if (account.status === 'trial' && account.trial_ends_at) {
     const d = daysUntilExpiry(account.trial_ends_at);
     if (d == null) return null;
-    if (d < 0) return { label: 'הניסיון הסתיים', tone: 'bad' };
-    if (d === 0) return { label: 'הניסיון מסתיים היום', tone: 'bad' };
-    return { label: d === 1 ? 'יום אחרון לניסיון מחר' : `עוד ${d} ימי ניסיון`, tone: d <= 7 ? 'warn' : 'ok' };
+    if (d < 0) return { label: t('account.trialEnded'), tone: 'bad' };
+    if (d === 0) return { label: t('account.trialEndsToday'), tone: 'bad' };
+    return { label: d === 1 ? t('account.trialLastDayTomorrow') : t('account.trialDaysLeft', { d }), tone: d <= 7 ? 'warn' : 'ok' };
   }
   if ((account.status === 'active' || account.status === 'overdue') && account.renewal_date) {
     const d = daysUntilExpiry(account.renewal_date);
     if (d == null) return null;
-    if (d < 0) return { label: 'מועד החידוש עבר', tone: 'bad' };
-    if (d === 0) return { label: 'חידוש היום', tone: 'warn' };
-    return { label: d === 1 ? 'חידוש מחר' : `חידוש בעוד ${d} ימים`, tone: d <= 14 ? 'warn' : 'ok' };
+    if (d < 0) return { label: t('account.renewalPassed'), tone: 'bad' };
+    if (d === 0) return { label: t('account.renewalToday'), tone: 'warn' };
+    return { label: d === 1 ? t('account.renewalTomorrow') : t('account.renewalInDays', { d }), tone: d <= 14 ? 'warn' : 'ok' };
   }
   return null;
 }
@@ -163,13 +164,13 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export function validateAccountForm(form: AccountForm): Partial<Record<keyof AccountForm, string>> {
   const errors: Partial<Record<keyof AccountForm, string>> = {};
   const price = form.monthlyPrice.trim();
-  if (price && !(Number(price) >= 0)) errors.monthlyPrice = 'סכום לא תקין';
+  if (price && !(Number(price) >= 0)) errors.monthlyPrice = t('validation.invalidAmount');
   const limit = form.vehicleLimit.trim();
-  if (limit && !(Number.isInteger(Number(limit)) && Number(limit) > 0)) errors.vehicleLimit = 'מספר שלם גדול מ-0';
-  if (form.trialEndsAt && !DATE_RE.test(form.trialEndsAt)) errors.trialEndsAt = 'תאריך לא תקין';
-  if (form.renewalDate && !DATE_RE.test(form.renewalDate)) errors.renewalDate = 'תאריך לא תקין';
-  if (form.contactEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail.trim())) errors.contactEmail = 'כתובת מייל לא תקינה';
-  if (form.notes.length > 2000) errors.notes = 'עד 2000 תווים';
+  if (limit && !(Number.isInteger(Number(limit)) && Number(limit) > 0)) errors.vehicleLimit = t('validation.positiveInteger');
+  if (form.trialEndsAt && !DATE_RE.test(form.trialEndsAt)) errors.trialEndsAt = t('validation.invalidDate');
+  if (form.renewalDate && !DATE_RE.test(form.renewalDate)) errors.renewalDate = t('validation.invalidDate');
+  if (form.contactEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail.trim())) errors.contactEmail = t('validation.invalidEmail');
+  if (form.notes.length > 2000) errors.notes = t('validation.max2000Chars');
   return errors;
 }
 

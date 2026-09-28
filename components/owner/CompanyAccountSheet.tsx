@@ -15,6 +15,7 @@ import {
 } from '../../lib/companyAccount';
 import { saveCompanyAccount } from '../../lib/companyAccountApi';
 import { ChoiceChips } from './ownerKit';
+import { t } from '../../lib/i18n';
 
 /**
  * The commercial side of one company, as the owner keeps it: where the
@@ -39,75 +40,75 @@ export function AccountFields({
   const set = <K extends keyof AccountForm>(key: K, value: AccountForm[K]) => onChange((f) => ({ ...f, [key]: value }));
   return (
     <View style={styles.stack}>
-      <KitSection title="מצב הלקוח">
+      <KitSection title={t('account.customerStatus')}>
         <View style={styles.block}>
-          <ChoiceChips label="מצב הלקוח" options={ACCOUNT_STATUSES} value={form.status} onChange={(v) => v && set('status', v)} />
+          <ChoiceChips label={t('account.customerStatus')} options={ACCOUNT_STATUSES} value={form.status} onChange={(v) => v && set('status', v)} />
           <DKText variant="caption" color={DK.muted}>
             {form.status === 'trial'
-              ? 'בתקופת ניסיון. תקבל התראה שבוע לפני שהיא מסתיימת.'
+              ? t('account.trialHint')
               : form.status === 'active'
-                ? 'לקוח משלם. נספר בהכנסה החודשית, ותקבל התראה לפני מועד החידוש.'
+                ? t('account.payingHint')
                 : form.status === 'overdue'
-                  ? 'לקוח שלא שילם בזמן. נספר בהכנסה ומופיע ב"דורש את תשומת לבך".'
-                  : 'המנוי בוטל. לא נספר בהכנסה. כדי לחסום כניסה השבת את החברה.'}
+                  ? t('account.overdueHint')
+                  : t('account.cancelledHint')}
           </DKText>
         </View>
         {form.status === 'trial' ? (
           <EditField
-            label="סוף תקופת הניסיון"
+            label={t('account.trialEnd')}
             error={errors.trialEndsAt}
-            editor={<DateField value={form.trialEndsAt || null} onChange={(v) => set('trialEndsAt', v ?? '')} placeholder="לא נקבע" />}
+            editor={<DateField value={form.trialEndsAt || null} onChange={(v) => set('trialEndsAt', v ?? '')} placeholder={t('account.notSet')} />}
           />
         ) : form.status !== 'cancelled' ? (
           <EditField
-            label="מועד החידוש הבא"
+            label={t('account.nextRenewal')}
             error={errors.renewalDate}
-            hint="תקבל התראה שבועיים לפני."
-            editor={<DateField value={form.renewalDate || null} onChange={(v) => set('renewalDate', v ?? '')} placeholder="לא נקבע" />}
+            hint={t('account.renewalAlertHint')}
+            editor={<DateField value={form.renewalDate || null} onChange={(v) => set('renewalDate', v ?? '')} placeholder={t('account.notSet')} />}
           />
         ) : null}
       </KitSection>
 
-      <KitSection title="מסלול ומחיר">
+      <KitSection title={t('account.planAndPrice')}>
         <View style={styles.block}>
           <DKText variant="caption" color={DK.inkSoft}>
-            מסלול
+            {t('account.planLabel')}
           </DKText>
-          <ChoiceChips label="מסלול" options={ACCOUNT_PLANS} value={form.plan} onChange={(v) => set('plan', v)} clearable />
+          <ChoiceChips label={t('account.planLabel')} options={ACCOUNT_PLANS} value={form.plan} onChange={(v) => set('plan', v)} clearable />
         </View>
         <View style={[styles.block, styles.divider]}>
           <DKText variant="caption" color={DK.inkSoft}>
-            חיוב
+            {t('account.billingLabel')}
           </DKText>
-          <ChoiceChips label="חיוב" options={BILLING_CYCLES} value={form.billingCycle} onChange={(v) => v && set('billingCycle', v)} />
+          <ChoiceChips label={t('account.billingLabel')} options={BILLING_CYCLES} value={form.billingCycle} onChange={(v) => v && set('billingCycle', v)} />
         </View>
         <EditField
-          label="מחיר לחודש (₪, לפני מע״מ)"
+          label={t('account.monthlyPrice')}
           value={form.monthlyPrice}
           onChangeText={(v) => set('monthlyPrice', v.replace(/[^\d.]/g, ''))}
           keyboardType="decimal-pad"
           ltr
           placeholder="0"
           error={errors.monthlyPrice}
-          hint={form.billingCycle === 'yearly' ? 'גם בחיוב שנתי, הזן כמה זה יוצא לחודש.' : undefined}
+          hint={form.billingCycle === 'yearly' ? t('account.yearlyPriceHint') : undefined}
         />
         <EditField
-          label="מכסת רכבים במנוי"
+          label={t('account.vehicleQuota')}
           value={form.vehicleLimit}
           onChangeText={(v) => set('vehicleLimit', v.replace(/\D/g, ''))}
           keyboardType="number-pad"
           ltr
-          placeholder="ללא הגבלה"
+          placeholder={t('account.unlimited')}
           error={errors.vehicleLimit}
-          hint="כשהחברה תגיע למכסה תקבל התראה."
+          hint={t('account.quotaHint')}
         />
       </KitSection>
 
       {showContact && (
-        <KitSection title="איש קשר לחיוב">
-          <EditField first label="שם" value={form.contactName} onChangeText={(v) => set('contactName', v)} placeholder="לדוגמה: מנהלת החשבונות" />
+        <KitSection title={t('account.billingContact')}>
+          <EditField first label={t('common.name')} value={form.contactName} onChangeText={(v) => set('contactName', v)} placeholder={t('account.billingContactExample')} />
           <EditField
-            label="טלפון"
+            label={t('common.phone')}
             value={formatPhone(form.contactPhone)}
             onChangeText={(v) => set('contactPhone', v.replace(/\D/g, ''))}
             keyboardType="phone-pad"
@@ -115,7 +116,7 @@ export function AccountFields({
             placeholder="050-0000000"
           />
           <EditField
-            label="מייל"
+            label={t('common.emailShort')}
             value={form.contactEmail}
             onChangeText={(v) => set('contactEmail', v)}
             keyboardType="email-address"
@@ -124,10 +125,10 @@ export function AccountFields({
             error={errors.contactEmail}
           />
           <EditField
-            label="הערות פנימיות"
+            label={t('account.internalNotes')}
             value={form.notes}
             onChangeText={(v) => set('notes', v)}
-            placeholder="רק אתה רואה אותן"
+            placeholder={t('account.onlyYouSee')}
             error={errors.notes}
             maxLength={2000}
           />
@@ -176,7 +177,7 @@ export function CompanyAccountSheet({
       onSaved();
       onClose();
     } catch {
-      setSaveError('השמירה נכשלה. נסה שוב.');
+      setSaveError(t('common.saveFailedTryAgain'));
     } finally {
       setSaving(false);
     }
@@ -188,8 +189,8 @@ export function CompanyAccountSheet({
       onClose={onClose}
       dismissable={!saving}
       icon="card"
-      title="מנוי ותשלום"
-      subtitle={`${companyName}. רק אתה רואה את הפרטים האלה, לא החברה.`}
+      title={t('owner.subscriptionAndPayment')}
+      subtitle={t('account.onlyYouSeeDetails', { companyName })}
       footer={
         <View style={styles.footer}>
           {!!saveError && (
@@ -200,8 +201,8 @@ export function CompanyAccountSheet({
             </Surface>
           )}
           <SheetActions>
-            <PrimaryAction label="ביטול" tone="ghost" onPress={onClose} disabled={saving} style={styles.grow} />
-            <PrimaryAction label="שמירה" icon="checkmark" onPress={() => void save()} loading={saving} style={styles.grow} />
+            <PrimaryAction label={t('common.cancel')} tone="ghost" onPress={onClose} disabled={saving} style={styles.grow} />
+            <PrimaryAction label={t('common.save')} icon="checkmark" onPress={() => void save()} loading={saving} style={styles.grow} />
           </SheetActions>
         </View>
       }

@@ -47,6 +47,7 @@ import {
 import { expiryStatusText, FolderListRow, folderStatus } from './record/FolderDocuments';
 import { DetailRow, Fact, FieldEditDialog, GroupLabel, digitsOnly, pageStyles, type FieldEditor } from './record/RecordPage';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
+import { t, dirIcon, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../lib/i18n';
 
 /** Statuses an admin can pick from the header pill; archiving has its own action. */
 const STATUS_OPTIONS: { value: VehicleStatus; label: string; tone: DesktopTone }[] = [
@@ -85,22 +86,22 @@ export type VehicleDocumentFolder = {
   requiresExpiry: boolean;
 };
 
-const VEHICLE_TYPE_OPTIONS: DesktopSelectOption<VehicleType>[] = Object.entries(VEHICLE_TYPE_LABELS).map(([value, label]) => ({
+const VEHICLE_TYPE_OPTIONS = (): DesktopSelectOption<VehicleType>[] => Object.entries(VEHICLE_TYPE_LABELS).map(([value, label]) => ({
   value: value as VehicleType,
   label,
 }));
 
-const ACQUISITION_TYPE_OPTIONS: DesktopSelectOption<AcquisitionType>[] = Object.entries(ACQUISITION_TYPE_LABELS).map(([value, label]) => ({
+const ACQUISITION_TYPE_OPTIONS = (): DesktopSelectOption<AcquisitionType>[] => Object.entries(ACQUISITION_TYPE_LABELS).map(([value, label]) => ({
   value: value as AcquisitionType,
   label,
 }));
 
 /** Compliance items that can raise the attention notice. */
 const ALERT_COMPLIANCE_TYPES = [
-  { itemType: 'vehicle_license', label: 'רישיון רכב' },
-  { itemType: 'operating_license', label: 'רישיון הפעלה' },
-  { itemType: 'insurance_mandatory', label: 'ביטוח חובה' },
-  { itemType: 'insurance_comprehensive', label: 'ביטוח מקיף' },
+  { itemType: 'vehicle_license', get label() { return t('folder.vehicleLicense'); } },
+  { itemType: 'operating_license', get label() { return t('folder.operatingLicense'); } },
+  { itemType: 'insurance_mandatory', get label() { return t('folder.mandatoryInsurance'); } },
+  { itemType: 'insurance_comprehensive', get label() { return t('folder.comprehensiveInsurance'); } },
 ];
 
 const km = (n: number) => n.toLocaleString();
@@ -122,9 +123,10 @@ function LicensePlate({ plate }: { plate: string }) {
       focusable={false}
     >
       <View
-        style={[styles.plate, tiltable && (hovered ? styles.plateFlat : styles.plateTilted)]}
+        {...fixedLayoutProps}
+        style={[styles.plate, FIXED_LAYOUT_STYLE, tiltable && (hovered ? styles.plateFlat : styles.plateTilted)]}
         accessibilityRole="image"
-        accessibilityLabel={`מספר רכב ${plate}`}
+        accessibilityLabel={t('vehicle.numberLabel', { plate })}
       >
         <View style={styles.plateBand}>
           <View style={styles.plateFlag}>
@@ -279,13 +281,13 @@ export function VehicleDetailDesktopView({
   const subParts = [
     VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type,
     department,
-    vehicle.production_year ? `שנת ${vehicle.production_year}` : null,
+    vehicle.production_year ? t('vehicle.yearLabel', { production_year: vehicle.production_year }) : null,
     vehicle.color,
   ].filter(Boolean) as string[];
 
   const menuItems = [
-    ...(isArchived ? [] : [{ label: 'העברה לארכיון', icon: 'archive-outline' as const, onPress: onArchive }]),
-    { label: 'מחיקת הרכב', icon: 'trash-outline' as const, onPress: onDelete, danger: true },
+    ...(isArchived ? [] : [{ label: t('common.moveToArchive'), icon: 'archive-outline' as const, onPress: onArchive }]),
+    { label: t('vehicle.delete'), icon: 'trash-outline' as const, onPress: onDelete, danger: true },
   ];
 
   const reduceMotion = prefersReducedMotion();
@@ -314,15 +316,15 @@ export function VehicleDetailDesktopView({
         </View>
 
         <View style={styles.facts}>
-          <Fact label="מד אוץ" value={km(vehicle.odometer)} unit="ק״מ" />
+          <Fact label={t('vehicle.odometer')} value={km(vehicle.odometer)} unit={t('unit.km')} />
           <Fact
-            label="טיפול הבא בעוד"
-            value={serviceRemaining == null ? 'לא הוגדר' : serviceRemaining <= 0 ? `חריגה ${km(Math.abs(serviceRemaining))}` : km(serviceRemaining)}
-            unit={serviceRemaining == null ? undefined : 'ק״מ'}
+            label={t('vehicle.nextServiceIn')}
+            value={serviceRemaining == null ? t('common.notSet') : serviceRemaining <= 0 ? t('vehicle.overBy', { v1: km(Math.abs(serviceRemaining)) }) : km(serviceRemaining)}
+            unit={serviceRemaining == null ? undefined : t('unit.km')}
             color={serviceState === 'expired' ? DESKTOP_TONES.bad.fg : serviceState === 'soon' ? DESKTOP_TONES.warn.fg : undefined}
             muted={serviceRemaining == null}
           />
-          <Fact label="נהגים משויכים" value={String(drivers.length)} />
+          <Fact label={t('vehicle.assignedDrivers')} value={String(drivers.length)} />
         </View>
 
         <LicensePlate plate={formatPlate(vehicle.plate_number)} />
@@ -335,12 +337,12 @@ export function VehicleDetailDesktopView({
         <View style={styles.archivedBanner}>
           <Ionicons name="archive-outline" size={18} color={DESKTOP_COLORS.inkMuted} />
           <View style={styles.flex}>
-            <DText weight="bold" style={styles.archivedTitle}>הרכב נמצא בארכיון</DText>
-            <DText style={styles.archivedText}>הוא לא מופיע ברשימת הרכבים, אבל כל הנתונים והמסמכים שמורים.</DText>
+            <DText weight="bold" style={styles.archivedTitle}>{t('vehicle.inArchive')}</DText>
+            <DText style={styles.archivedText}>{t('vehicle.inArchiveDetail')}</DText>
           </View>
           <HoverPressable style={styles.softBtn} hoverStyle={styles.softBtnHover} pressStyle={styles.pressDown} onPress={onRestore}>
             <Ionicons name="arrow-undo-outline" size={16} color={DESKTOP_COLORS.brand} />
-            <DText weight="semiBold" style={styles.softBtnText}>החזרה מהארכיון</DText>
+            <DText weight="semiBold" style={styles.softBtnText}>{t('common.restoreFromArchive')}</DText>
           </HoverPressable>
         </View>
       )}
@@ -351,7 +353,7 @@ export function VehicleDetailDesktopView({
           <Ionicons name="warning-outline" size={18} color={DESKTOP_TONES.warn.fg} style={styles.attentionIcon} />
           <View style={styles.flex}>
             <DText weight="bold" style={styles.attentionTitle}>
-              {alerts.length === 1 ? 'מסמך אחד דורש טיפול' : `${alerts.length} מסמכים דורשים טיפול`}
+              {alerts.length === 1 ? t('documents.oneNeedsAttention') : t('documents.needAttentionCount', { length: alerts.length })}
             </DText>
             {alerts.map((alert) => (
               <View key={alert.key} style={styles.attentionRow}>
@@ -363,13 +365,13 @@ export function VehicleDetailDesktopView({
                 <DText style={styles.attentionText}>{alert.label}</DText>
                 {!!alert.date && (
                   <>
-                    <DText style={styles.attentionText}>{alert.state === 'expired' ? ', מאז ' : ', עד '}</DText>
+                    <DText style={styles.attentionText}>{alert.state === 'expired' ? t('documents.sinceComma') : t('documents.untilComma')}</DText>
                     <DLtrText style={styles.attentionText}>{formatDate(alert.date)}</DLtrText>
                   </>
                 )}
-                <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={alert.open} accessibilityLabel={`פתיחת ${alert.label}`}>
-                  <DText weight="semiBold" style={styles.linkText}>פתיחה</DText>
-                  <Ionicons name="chevron-back" size={14} color={DESKTOP_COLORS.brand} />
+                <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={alert.open} accessibilityLabel={t('common.openLabel', { label: alert.label })}>
+                  <DText weight="semiBold" style={styles.linkText}>{t('common.open')}</DText>
+                  <Ionicons name={dirIcon('chevron-back')} size={14} color={DESKTOP_COLORS.brand} />
                 </HoverPressable>
               </View>
             ))}
@@ -380,23 +382,23 @@ export function VehicleDetailDesktopView({
       {/* Details + maintenance, then usage + drivers — two rows whose cells line up */}
       <View style={styles.gridRow}>
         <View style={styles.mainCell}>
-          <GroupLabel>רכב</GroupLabel>
+          <GroupLabel>{t('vehicle.vehicle')}</GroupLabel>
           <View style={styles.card}>
             <DetailRow
               first
-              label="מספר רישוי"
+              label={t('vehicle.plateNumber')}
               value={formatPlate(vehicle.plate_number)}
               ltr
               onPress={() => setEditor({
                 kind: 'text',
-                label: 'מספר רישוי',
+                label: t('vehicle.plateNumber'),
                 raw: vehicle.plate_number,
                 ltr: true,
                 numeric: true,
-                hint: '7 או 8 ספרות. המקפים נוספים לבד.',
+                hint: t('vehicle.plateHint'),
                 parse: (v) => digitsOnly(v).slice(0, 8),
                 format: formatPlate,
-                validate: (v) => (/^\d{7,8}$/.test(v) ? null : 'מספר רישוי צריך 7 או 8 ספרות'),
+                validate: (v) => (/^\d{7,8}$/.test(v) ? null : t('vehicle.plateInvalid')),
                 onSave: (v) => onSaveField({ plate_number: v }),
               })}
               accessory={
@@ -406,10 +408,10 @@ export function VehicleDetailDesktopView({
                   pressStyle={styles.pressDown}
                   onPress={onLookupPlate}
                   disabled={lookupLoading}
-                  accessibilityLabel="מילוי אוטומטי של יצרן, דגם, צבע ושנת ייצור לפי מספר הרכב"
+                  accessibilityLabel={t('vehicle.autofillLabel')}
                 >
                   {lookupLoading ? <BrandLoader size="small" color={DESKTOP_COLORS.brand} style={styles.lookupSpinner} /> : <Ionicons name="search-outline" size={13} color={DESKTOP_COLORS.brand} />}
-                  <DText weight="semiBold" style={styles.lookupText}>{lookupLoading ? 'מחפש…' : 'מילוי אוטומטי'}</DText>
+                  <DText weight="semiBold" style={styles.lookupText}>{lookupLoading ? t('common.searching') : t('vehicle.autofill')}</DText>
                 </HoverPressable>
               }
             />
@@ -418,35 +420,35 @@ export function VehicleDetailDesktopView({
                 <DText style={styles.lookupNoteText}>{lookupMessage}</DText>
               </View>
             )}
-            <DetailRow first={!!lookupMessage} label="יצרן" value={vehicle.manufacturer} onPress={() => setEditor({ kind: 'select', label: 'יצרן', raw: vehicle.manufacturer, options: manufacturerOptions, allowClear: true, placeholder: 'בחירת יצרן', onSave: (v) => onSaveField({ manufacturer: v }) })} />
-            <DetailRow label="דגם" value={vehicle.model} onPress={() => setEditor({ kind: 'text', label: 'דגם', raw: vehicle.model ?? '', onSave: (v) => onSaveField({ model: v.trim() || null }) })} />
-            <DetailRow label="סוג רכב" value={VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type} onPress={() => setEditor({ kind: 'select', label: 'סוג רכב', raw: vehicle.vehicle_type, options: VEHICLE_TYPE_OPTIONS, onSave: (v) => onSaveField({ vehicle_type: (v ?? vehicle.vehicle_type) as VehicleType }) })} />
+            <DetailRow first={!!lookupMessage} label={t('vehicle.manufacturer')} value={vehicle.manufacturer} onPress={() => setEditor({ kind: 'select', label: t('vehicle.manufacturer'), raw: vehicle.manufacturer, options: manufacturerOptions, allowClear: true, placeholder: t('vehicle.chooseManufacturer'), onSave: (v) => onSaveField({ manufacturer: v }) })} />
+            <DetailRow label={t('vehicle.model')} value={vehicle.model} onPress={() => setEditor({ kind: 'text', label: t('vehicle.model'), raw: vehicle.model ?? '', onSave: (v) => onSaveField({ model: v.trim() || null }) })} />
+            <DetailRow label={t('vehicle.typeLabel')} value={VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type} onPress={() => setEditor({ kind: 'select', label: t('vehicle.typeLabel'), raw: vehicle.vehicle_type, options: VEHICLE_TYPE_OPTIONS(), onSave: (v) => onSaveField({ vehicle_type: (v ?? vehicle.vehicle_type) as VehicleType }) })} />
             <DetailRow
-              label="שנת ייצור"
+              label={t('vehicle.productionYear')}
               value={productionLabel}
               ltr
               onPress={() => setEditor({
                 kind: 'monthYear',
-                label: 'שנת ייצור',
+                label: t('vehicle.productionYear'),
                 month: vehicle.production_month ? String(vehicle.production_month) : '',
                 year: vehicle.production_year ? String(vehicle.production_year) : '',
                 onSave: (month, year) => onSaveField({ production_month: month ? Number(month) : null, production_year: year ? Number(year) : null }),
               })}
             />
-            <DetailRow label="צבע" value={vehicle.color} onPress={() => setEditor({ kind: 'text', label: 'צבע', raw: vehicle.color ?? '', onSave: (v) => onSaveField({ color: v.trim() || null }) })} />
-            <DetailRow label="עלייה לכביש" value={vehicle.road_registration_date ? formatDate(vehicle.road_registration_date) : null} ltr onPress={() => setEditor({ kind: 'date', label: 'עלייה לכביש', raw: vehicle.road_registration_date, onSave: (v) => onSaveField({ road_registration_date: v }) })} />
+            <DetailRow label={t('vehicle.color')} value={vehicle.color} onPress={() => setEditor({ kind: 'text', label: t('vehicle.color'), raw: vehicle.color ?? '', onSave: (v) => onSaveField({ color: v.trim() || null }) })} />
+            <DetailRow label={t('vehicle.onRoadDate')} value={vehicle.road_registration_date ? formatDate(vehicle.road_registration_date) : null} ltr onPress={() => setEditor({ kind: 'date', label: t('vehicle.onRoadDate'), raw: vehicle.road_registration_date, onSave: (v) => onSaveField({ road_registration_date: v }) })} />
             <DetailRow
-              label="מספר שלדה"
+              label={t('vehicle.vin')}
               value={vehicle.vin}
               ltr
               onPress={() => setEditor({
                 kind: 'text',
-                label: 'מספר שלדה',
+                label: t('vehicle.vin'),
                 raw: vehicle.vin ?? '',
                 ltr: true,
-                hint: '17 תווים: אותיות באנגלית ומספרים.',
+                hint: t('vehicle.vinHint'),
                 parse: (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17),
-                validate: (v) => (!v || /^[A-HJ-NPR-Z0-9]{17}$/.test(v) ? null : 'מספר שלדה צריך 17 תווים, בלי האותיות I, O, Q'),
+                validate: (v) => (!v || /^[A-HJ-NPR-Z0-9]{17}$/.test(v) ? null : t('vehicle.vinInvalid')),
                 onSave: (v) => onSaveField({ vin: v || null }),
               })}
             />
@@ -454,16 +456,16 @@ export function VehicleDetailDesktopView({
         </View>
 
         <View style={styles.sideCell}>
-          <GroupLabel>תחזוקה</GroupLabel>
+          <GroupLabel>{t('vehicle.maintenance')}</GroupLabel>
           <FocusTarget id="odometer,service" radius={8} tint={DESKTOP_COLORS.brand}>
           <View style={[styles.card, styles.maintCard]}>
             <View style={styles.maintTop}>
               <View style={styles.odoRow}>
                 <DLtrText weight="bold" style={styles.odoValue}>{km(vehicle.odometer)}</DLtrText>
-                <DText style={styles.odoUnit}>ק״מ</DText>
+                <DText style={styles.odoUnit}>{t('unit.km')}</DText>
               </View>
               <View style={styles.inlineMeta}>
-                <DText style={styles.mutedText}>{vehicle.odometer_updated_at ? 'מד אוץ, עודכן ב־' : 'מד אוץ · עוד לא עודכן'}</DText>
+                <DText style={styles.mutedText}>{vehicle.odometer_updated_at ? t('vehicle.odometerUpdatedOn') : t('vehicle.odometerNotUpdated')}</DText>
                 {!!vehicle.odometer_updated_at && <DLtrText style={styles.mutedText}>{formatDate(vehicle.odometer_updated_at)}</DLtrText>}
               </View>
 
@@ -471,22 +473,22 @@ export function VehicleDetailDesktopView({
                 <View style={styles.serviceHint}>
                   <Ionicons name="construct-outline" size={16} color={DESKTOP_COLORS.inkMuted} style={styles.serviceHintIcon} />
                   <DText style={[styles.mutedText, styles.flex]}>
-                    כדי לדעת מתי הטיפול הבא, מזינים למטה את הק״מ בטיפול האחרון ואת טווח הק״מ בין טיפולים. החישוב נעשה לבד.
+                    {t('vehicle.serviceExplainer')}
                   </DText>
                 </View>
               )}
               {serviceSpan != null && (
                 <View style={styles.progressBlock}>
                   <View style={styles.progressLabels}>
-                    <DText style={styles.mutedText}>מאז הטיפול האחרון</DText>
-                    <DText weight="semiBold" style={styles.progressValue}>{km(serviceUsed)} מתוך {km(serviceSpan)}</DText>
+                    <DText style={styles.mutedText}>{t('vehicle.sinceLastService')}</DText>
+                    <DText weight="semiBold" style={styles.progressValue}>{km(serviceUsed)} {t('common.of')} {km(serviceSpan)}</DText>
                   </View>
                   <View style={styles.progressTrack}>
                     <View style={[styles.progressFill, { backgroundColor: serviceColor, transform: [{ scaleX: servicePct / 100 }] }, !reduceMotion && styles.progressFillEnter]} />
                   </View>
                   {serviceRemaining != null && (
                     <DText style={[styles.mutedText, serviceState !== 'ok' && { color: serviceColor }]}>
-                      {serviceRemaining <= 0 ? `חריגה של ${km(Math.abs(serviceRemaining))} ק״מ מהטיפול` : `נותרו ${km(serviceRemaining)} ק״מ לטיפול`}
+                      {serviceRemaining <= 0 ? t('vehicle.overServiceKm', { v1: km(Math.abs(serviceRemaining)) }) : t('vehicle.kmToService', { serviceRemaining: km(serviceRemaining) })}
                     </DText>
                   )}
                 </View>
@@ -497,28 +499,28 @@ export function VehicleDetailDesktopView({
               <DetailRow
                 first
                 compact
-                label="בטיפול האחרון"
-                value={`${km(vehicle.last_service_km)} ק״מ`}
-                onPress={() => setEditor(kmEditor('ק״מ בטיפול האחרון', vehicle.last_service_km, (value) => {
+                label={t('vehicle.atLastService')}
+                value={t('unit.kmValue', { v1: km(vehicle.last_service_km) })}
+                onPress={() => setEditor(kmEditor(t('vehicle.kmAtLastService'), vehicle.last_service_km, (value) => {
                   const last = value ?? 0;
                   const next = deriveNextServiceKm(last, vehicle.service_interval_km);
                   return onSaveField(next != null ? { last_service_km: last, next_service_km: next } : { last_service_km: last });
-                }, 'מה הראה מד האוץ בטיפול האחרון? הטיפול הבא יחושב לבד.'))}
+                }, t('vehicle.kmAtLastServiceHint')))}
               />
               <DetailRow
                 compact
-                label="טיפול כל"
-                value={vehicle.service_interval_km ? `${km(vehicle.service_interval_km)} ק״מ` : null}
-                onPress={() => setEditor(kmEditor('טווח ק״מ בין טיפולים', vehicle.service_interval_km, (interval) => {
+                label={t('vehicle.serviceEvery')}
+                value={vehicle.service_interval_km ? t('unit.kmValue', { v1: km(vehicle.service_interval_km) }) : null}
+                onPress={() => setEditor(kmEditor(t('vehicle.serviceInterval'), vehicle.service_interval_km, (interval) => {
                   const next = deriveNextServiceKm(vehicle.last_service_km, interval);
                   return onSaveField(next != null ? { service_interval_km: interval, next_service_km: next } : { service_interval_km: interval });
-                }, 'כל כמה ק״מ הרכב צריך טיפול? הטיפול הבא יחושב לבד.'))}
+                }, t('vehicle.serviceIntervalHint')))}
               />
               <DetailRow
                 compact
-                label="הטיפול הבא ב־"
-                value={nextServiceKm != null ? `${km(nextServiceKm)} ק״מ` : null}
-                onPress={derivedNextServiceKm != null ? undefined : () => setEditor(kmEditor('ק״מ לטיפול הבא', vehicle.next_service_km, (v) => onSaveField({ next_service_km: v })))}
+                label={t('vehicle.nextServiceAt')}
+                value={nextServiceKm != null ? t('unit.kmNext', { nextServiceKm: km(nextServiceKm) }) : null}
+                onPress={derivedNextServiceKm != null ? undefined : () => setEditor(kmEditor(t('vehicle.kmToNextService'), vehicle.next_service_km, (v) => onSaveField({ next_service_km: v })))}
               />
             </View>
 
@@ -526,10 +528,10 @@ export function VehicleDetailDesktopView({
               style={[styles.primaryBtn, styles.maintButton]}
               hoverStyle={styles.primaryBtnHover}
               pressStyle={styles.pressDown}
-              onPress={() => setEditor(kmEditor('מד אוץ נוכחי', vehicle.odometer, (v) => onSaveField({ odometer: v ?? 0 }), 'כמה ק״מ מראה מד האוץ עכשיו?'))}
+              onPress={() => setEditor(kmEditor(t('vehicle.currentOdometer'), vehicle.odometer, (v) => onSaveField({ odometer: v ?? 0 }), t('vehicle.currentOdometerHint')))}
             >
               <Ionicons name="add" size={16} color="#FFFFFF" />
-              <DText weight="semiBold" style={styles.primaryBtnText}>עדכון מד אוץ</DText>
+              <DText weight="semiBold" style={styles.primaryBtnText}>{t('vehicle.updateOdometer')}</DText>
             </HoverPressable>
           </View>
           </FocusTarget>
@@ -538,36 +540,36 @@ export function VehicleDetailDesktopView({
 
       <View style={styles.gridRow}>
         <View style={styles.mainCell}>
-          <GroupLabel>שימוש בחברה</GroupLabel>
+          <GroupLabel>{t('vehicle.companyUse')}</GroupLabel>
           <View style={styles.card}>
-            <DetailRow first label="מחלקה" value={department} onPress={() => setEditor({ kind: 'select', label: 'מחלקה', raw: vehicle.department_id, options: departmentOptions, allowClear: true, placeholder: 'ללא מחלקה', onSave: (v) => onSaveField({ department_id: v }) })} />
-            <DetailRow label="ייעוד לשימוש" value={vehicle.usage_type} onPress={() => setEditor({ kind: 'text', label: 'ייעוד לשימוש', raw: vehicle.usage_type ?? '', onSave: (v) => onSaveField({ usage_type: v.trim() || null }) })} />
+            <DetailRow first label={t('common.department')} value={department} onPress={() => setEditor({ kind: 'select', label: t('common.department'), raw: vehicle.department_id, options: departmentOptions, allowClear: true, placeholder: t('common.noDepartment'), onSave: (v) => onSaveField({ department_id: v }) })} />
+            <DetailRow label={t('vehicle.purpose')} value={vehicle.usage_type} onPress={() => setEditor({ kind: 'text', label: t('vehicle.purpose'), raw: vehicle.usage_type ?? '', onSave: (v) => onSaveField({ usage_type: v.trim() || null }) })} />
             <DetailRow
-              label="סוג עסקה"
+              label={t('vehicle.dealType')}
               value={vehicle.acquisition_type ? ACQUISITION_TYPE_LABELS[vehicle.acquisition_type] ?? vehicle.acquisition_type : null}
-              onPress={() => setEditor({ kind: 'select', label: 'סוג עסקה', raw: vehicle.acquisition_type, options: ACQUISITION_TYPE_OPTIONS, allowClear: true, placeholder: 'לא נבחר', onSave: (v) => onSaveField({ acquisition_type: v as AcquisitionType | null }) })}
+              onPress={() => setEditor({ kind: 'select', label: t('vehicle.dealType'), raw: vehicle.acquisition_type, options: ACQUISITION_TYPE_OPTIONS(), allowClear: true, placeholder: t('common.notSelected'), onSave: (v) => onSaveField({ acquisition_type: v as AcquisitionType | null }) })}
             />
-            <DetailRow label="קוד פנימי" value={vehicle.internal_code} ltr onPress={() => setEditor({ kind: 'text', label: 'קוד פנימי', raw: vehicle.internal_code ?? '', ltr: true, onSave: (v) => onSaveField({ internal_code: v.trim() || null }) })} />
+            <DetailRow label={t('vehicle.internalCode')} value={vehicle.internal_code} ltr onPress={() => setEditor({ kind: 'text', label: t('vehicle.internalCode'), raw: vehicle.internal_code ?? '', ltr: true, onSave: (v) => onSaveField({ internal_code: v.trim() || null }) })} />
           </View>
         </View>
 
         <View style={styles.sideCell}>
           <GroupLabel
             action={
-              <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={() => setDriversModalOpen(true)} accessibilityLabel="שינוי הנהגים המשויכים">
-                <DText weight="semiBold" style={styles.linkText}>שינוי</DText>
+              <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={() => setDriversModalOpen(true)} accessibilityLabel={t('vehicle.changeAssignedDrivers')}>
+                <DText weight="semiBold" style={styles.linkText}>{t('common.change')}</DText>
               </HoverPressable>
             }
           >
-            נהגים משויכים
+            {t('vehicle.assignedDrivers')}
           </GroupLabel>
           <View style={[styles.card, styles.driversCard]}>
             {drivers.length === 0 ? (
               <View style={styles.driversEmpty}>
-                <DText style={styles.mutedText}>אין נהגים משויכים לרכב הזה</DText>
+                <DText style={styles.mutedText}>{t('vehicle.noAssignedDrivers')}</DText>
                 <HoverPressable style={styles.softBtn} hoverStyle={styles.softBtnHover} pressStyle={styles.pressDown} onPress={() => setDriversModalOpen(true)}>
                   <Ionicons name="person-add-outline" size={16} color={DESKTOP_COLORS.brand} />
-                  <DText weight="semiBold" style={styles.softBtnText}>שיוך נהג</DText>
+                  <DText weight="semiBold" style={styles.softBtnText}>{t('attention.assignDriver')}</DText>
                 </HoverPressable>
               </View>
             ) : (
@@ -579,12 +581,12 @@ export function VehicleDetailDesktopView({
 
       {/* Documents */}
       <View style={styles.docsHead}>
-        <DText weight="bold" style={styles.docsTitle}>מסמכים ותוקפים</DText>
-        <DText style={styles.mutedText}>לחיצה על מסמך פותחת אותו, ושם אפשר להעלות גרסה חדשה</DText>
+        <DText weight="bold" style={styles.docsTitle}>{t('documents.documentsAndExpiry')}</DText>
+        <DText style={styles.mutedText}>{t('documents.clickToOpenUpload')}</DText>
       </View>
       <View style={styles.gridRow}>
         <View style={styles.halfCell}>
-          <GroupLabel>רישוי וביטוח</GroupLabel>
+          <GroupLabel>{t('vehicle.licensingAndInsurance')}</GroupLabel>
           <View style={[styles.card, styles.listCard]}>
             <ComplianceSection
               companyId={companyId}
@@ -598,7 +600,7 @@ export function VehicleDetailDesktopView({
           </View>
         </View>
         <View style={styles.halfCell}>
-          <GroupLabel>בדיקות ובטיחות</GroupLabel>
+          <GroupLabel>{t('compliance.cat.inspection')}</GroupLabel>
           <View style={[styles.card, styles.listCard]}>
             {documentFolders.map((folder, index) => (
               <FolderListRow
@@ -631,7 +633,7 @@ export function VehicleDetailDesktopView({
 
       <FieldEditDialog editor={editor} onClose={() => setEditor(null)} />
 
-      <DesktopModal visible={driversModalOpen} title="נהגים משויכים" onClose={() => setDriversModalOpen(false)} maxWidth={480}>
+      <DesktopModal visible={driversModalOpen} title={t('vehicle.assignedDrivers')} onClose={() => setDriversModalOpen(false)} maxWidth={480}>
         <View style={styles.driversModalContent}>
           <VehicleDriversEditor
             vehicleId={vehicleId}
@@ -648,13 +650,13 @@ export function VehicleDetailDesktopView({
 }
 
 function DriverRow({ driver, first, onPress }: { driver: VehicleDriverWithProfile; first: boolean; onPress: () => void }) {
-  const fullName = driver.full_name ?? 'ללא שם';
+  const fullName = driver.full_name ?? t('common.unnamed');
   const initials = fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('');
   const license = driver.license_expiry ? expiryState(driver.license_expiry) : null;
   const licenseColor = license === 'expired' ? DESKTOP_TONES.bad.fg : license === 'soon' ? DESKTOP_TONES.warn.fg : DESKTOP_COLORS.inkMuted;
 
   return (
-    <HoverPressable style={[styles.driverRow, !first && styles.rowDivider]} hoverStyle={styles.rowHover} onPress={onPress} accessibilityLabel={`פתיחת כרטיס הנהג ${fullName}`}>
+    <HoverPressable style={[styles.driverRow, !first && styles.rowDivider]} hoverStyle={styles.rowHover} onPress={onPress} accessibilityLabel={t('driver.openCard', { fullName })}>
       <View style={styles.avatar}>
         <DText weight="bold" style={styles.avatarText}>{initials}</DText>
       </View>
@@ -664,13 +666,13 @@ function DriverRow({ driver, first, onPress }: { driver: VehicleDriverWithProfil
         {license && (
           <View style={styles.inlineMeta}>
             <DText style={[styles.driverLicense, { color: licenseColor }]} weight={license === 'ok' ? 'regular' : 'semiBold'}>
-              {license === 'expired' ? 'רישיון נהיגה פג ב־' : license === 'soon' ? 'רישיון נהיגה יפוג ב־' : 'רישיון נהיגה בתוקף עד '}
+              {license === 'expired' ? t('driver.licenseExpiredOn') : license === 'soon' ? t('driver.licenseExpiresOn') : t('driver.licenseValidUntil')}
             </DText>
             <DLtrText style={[styles.driverLicense, { color: licenseColor }]} weight={license === 'ok' ? 'regular' : 'semiBold'}>{formatDate(driver.license_expiry)}</DLtrText>
           </View>
         )}
       </View>
-      <Ionicons name="chevron-back" size={15} color={DESKTOP_COLORS.inkFaint} />
+      <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
     </HoverPressable>
   );
 }

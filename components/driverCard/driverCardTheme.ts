@@ -1,3 +1,4 @@
+import { fontStack } from '../../lib/fontStack';
 /**
  * Design tokens for the new "כרטיס נהג" (Driver Card) screen.
  *
@@ -34,11 +35,11 @@ export type DriverCardTint = keyof Pick<
 >;
 
 export const DC_FONT = {
-  extraBold: 'Heebo_800ExtraBold',
-  bold: 'Heebo_700Bold',
-  semiBold: 'Heebo_600SemiBold',
-  medium: 'Heebo_500Medium',
-  regular: 'Heebo_400Regular',
+  extraBold: fontStack('Heebo_800ExtraBold'),
+  bold: fontStack('Heebo_700Bold'),
+  semiBold: fontStack('Heebo_600SemiBold'),
+  medium: fontStack('Heebo_500Medium'),
+  regular: fontStack('Heebo_400Regular'),
 } as const;
 
 export const DC_TYPO = {

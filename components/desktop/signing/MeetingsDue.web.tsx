@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { formatIsoDay } from '../../../lib/checklistForms';
 import { dueState, dueText, type DueState, type PlanRow } from '../../../lib/meetingPlan';
+import { t } from '../../../lib/i18n';
 
 const COLLAPSED = 5;
 
@@ -36,10 +37,10 @@ export function MeetingsDue({ rows, onStart }: { rows: PlanRow[]; onStart: (row:
   return (
     <section className="sd-section" aria-labelledby="sd-due">
       <div className="sd-section-head">
-        <h2 id="sd-due" className="sd-b">מפגשים שצריך לקיים</h2>
+        <h2 id="sd-due" className="sd-b">{t('meeting.dueList')}</h2>
         <span>
-          {late ? `${late === 1 ? 'אחד באיחור' : `${late} באיחור`} · ` : ''}
-          {rows.length === 1 ? 'נהג אחד' : `${rows.length} נהגים`} בשבועיים הקרובים
+          {late ? `${late === 1 ? t('meeting.oneLate') : t('meeting.lateCount', { late })} · ` : ''}
+          {rows.length === 1 ? t('common.oneDriver') : t('common.driversLength', { length: rows.length })} {t('meeting.nextTwoWeeks')}
         </span>
       </div>
       <div className="sd-due" role="list">
@@ -54,21 +55,21 @@ export function MeetingsDue({ rows, onStart }: { rows: PlanRow[]; onStart: (row:
                 <span className="sd-due-name sd-sb">{row.driverName}</span>
                 <span className="sd-due-form">
                   {row.title}
-                  {row.lastMeeting ? ` · מפגש אחרון ${formatIsoDay(row.lastMeeting)}` : ''}
+                  {row.lastMeeting ? t('meeting.lastMeetingSuffix', { v1: formatIsoDay(row.lastMeeting) }) : ''}
                 </span>
               </span>
-              {row.firstMeeting ? <span className="sd-first sd-sb">מפגש ראשון</span> : null}
+              {row.firstMeeting ? <span className="sd-first sd-sb">{t('meeting.first')}</span> : null}
               <WhenPill nextDue={row.nextDue} />
-              <button type="button" className="sd-btn sd-btn-tinted" onClick={() => onStart(row)} aria-label={`מפגש עם ${row.driverName}`}>
+              <button type="button" className="sd-btn sd-btn-tinted" onClick={() => onStart(row)} aria-label={t('meeting.withDriver', { driverName: row.driverName })}>
                 <Ionicons name="add-circle" size={19} color="currentColor" />
-                למפגש
+                {t('meeting.toMeeting')}
               </button>
             </div>
           );
         })}
         {rows.length > COLLAPSED ? (
           <button type="button" className="sd-due-more sd-sb" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
-            {expanded ? 'הצגת פחות' : `הצגת כל ${rows.length} הנהגים`}
+            {expanded ? t('common.showLess') : t('meeting.showAllDrivers', { length: rows.length })}
             <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={17} color="currentColor" />
           </button>
         ) : null}

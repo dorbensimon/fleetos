@@ -11,6 +11,7 @@ import { countUnreadOwnerNotifications } from '../lib/ownerNotifications';
 import { listSignatureRequests } from '../lib/docuseal';
 import { STATUS } from '../components/driverKit/theme';
 import { MenuMobile, type MenuGroup } from './MenuMobile';
+import { t } from '../lib/i18n';
 
 /**
  * Full-screen menu reached from the home screen's menu button. The same
@@ -19,9 +20,9 @@ import { MenuMobile, type MenuGroup } from './MenuMobile';
 type Props = NativeStackScreenProps<RootStackParamList, 'Menu'>;
 
 const ROLE_LABEL: Record<string, string> = {
-  owner: 'סופר אדמין',
-  admin: 'מנהל צי',
-  driver: 'נהג',
+  get owner() { return t('role.owner'); },
+  get admin() { return t('role.fleetManager'); },
+  get driver() { return t('role.driver'); },
 };
 
 export default function MenuScreen({ navigation }: Props) {
@@ -64,45 +65,45 @@ export default function MenuScreen({ navigation }: Props) {
       await signOut();
       navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
     } catch {
-      showAlert('ההתנתקות נכשלה', 'נסה שוב בעוד רגע.');
+      showAlert(t('auth.signOutFailed'), t('common.tryAgainShortly'));
     }
   };
 
   const logout = () => {
-    showAlert('התנתקות', 'האם אתה בטוח שברצונך להתנתק מהחשבון?', [
-      { text: 'ביטול', style: 'cancel' },
-      { text: 'התנתק', style: 'destructive', onPress: completeLogout },
+    showAlert(t('auth.signOut'), t('auth.signOutConfirmLong'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('auth.signOutAction'), style: 'destructive', onPress: completeLogout },
     ]);
   };
 
   const notifications: MenuGroup = {
-    title: 'התראות',
+    title: t('notifications.title'),
     rows: [
       {
         key: 'notifications',
         icon: 'notifications',
-        title: 'כל ההתראות',
-        subtitle: counts.unread ? `${counts.unread} חדשות` : 'אין התראות חדשות',
+        title: t('menu.allNotifications'),
+        subtitle: counts.unread ? t('menu.newCount', { unread: counts.unread }) : t('menu.noNew'),
         count: counts.unread,
         onPress: () => navigation.navigate('Notifications'),
       },
       {
         key: 'prefs',
         icon: 'options',
-        title: 'ניהול התראות',
-        subtitle: 'בחירת העדכונים שיישלחו אליך',
+        title: t('owner.notif.manage'),
+        subtitle: t('owner.notif.manageHint'),
         onPress: () => navigation.navigate('NotificationPreferences'),
       },
     ],
   };
 
   const legal: MenuGroup = {
-    title: 'מידע משפטי ונגישות',
+    title: t('menu.legal'),
     rows: [
-      { key: 'terms', icon: 'document-text', title: 'תנאי שימוש', onPress: () => navigation.navigate('Legal', { doc: 'terms' }) },
-      { key: 'privacy', icon: 'lock-closed', title: 'מדיניות פרטיות', onPress: () => navigation.navigate('Legal', { doc: 'privacy' }) },
-      { key: 'cookies', icon: 'server', title: 'מדיניות עוגיות', onPress: () => navigation.navigate('Legal', { doc: 'cookies' }) },
-      { key: 'accessibility', icon: 'accessibility', title: 'הצהרת נגישות', onPress: () => navigation.navigate('Legal', { doc: 'accessibility' }) },
+      { key: 'terms', icon: 'document-text', title: t('legal.terms'), onPress: () => navigation.navigate('Legal', { doc: 'terms' }) },
+      { key: 'privacy', icon: 'lock-closed', title: t('legal.privacyPolicyShort'), onPress: () => navigation.navigate('Legal', { doc: 'privacy' }) },
+      { key: 'cookies', icon: 'server', title: t('legal.cookiePolicy'), onPress: () => navigation.navigate('Legal', { doc: 'cookies' }) },
+      { key: 'accessibility', icon: 'accessibility', title: t('legal.accessibilityStatement'), onPress: () => navigation.navigate('Legal', { doc: 'accessibility' }) },
     ],
   };
 
@@ -111,13 +112,13 @@ export default function MenuScreen({ navigation }: Props) {
       ? [
           {
             rows: [
-              { key: 'profile', icon: 'person', title: 'הפרטים שלי', subtitle: 'טלפון, כתובת ורישיון נהיגה', onPress: () => navigation.navigate('DriverProfile') },
-              { key: 'docs', icon: 'folder-open', title: 'המסמכים שלי', subtitle: 'רישיון, תיק נהג והדרכות', onPress: () => navigation.navigate('DriverDocuments') },
+              { key: 'profile', icon: 'person', title: t('nav.myDetails'), subtitle: t('menu.driverDetailsSubtitle'), onPress: () => navigation.navigate('DriverProfile') },
+              { key: 'docs', icon: 'folder-open', title: t('nav.myDocuments'), subtitle: t('driver.licenseFileTraining'), onPress: () => navigation.navigate('DriverDocuments') },
               {
                 key: 'signing',
                 icon: 'create',
-                title: 'מסמכים לחתימה',
-                subtitle: counts.signatures ? 'מחכים לחתימה שלך' : 'אין כרגע מה לחתום',
+                title: t('nav.signingDocuments'),
+                subtitle: counts.signatures ? t('signing.waitingForYou') : t('menu.nothingToSign'),
                 count: counts.signatures,
                 countTone: 'soon',
                 onPress: () => navigation.navigate('DriverSigningDocuments'),
@@ -130,25 +131,25 @@ export default function MenuScreen({ navigation }: Props) {
         ? [
             {
               rows: [
-                { key: 'profile', icon: 'person', title: 'הפרטים שלי', subtitle: 'שם, טלפון, מייל וסיסמה', onPress: () => navigation.navigate('AdminProfile') },
-                { key: 'attention', icon: 'alert-circle', tint: STATUS.expired.fg, title: 'דורש טיפול', subtitle: 'רישיונות, ביטוחים ורכבים בלי נהג', onPress: () => navigation.navigate('Attention') },
+                { key: 'profile', icon: 'person', title: t('nav.myDetails'), subtitle: t('menu.profileSubtitle'), onPress: () => navigation.navigate('AdminProfile') },
+                { key: 'attention', icon: 'alert-circle', tint: STATUS.expired.fg, title: t('status.needsAttention'), subtitle: t('menu.attentionSubtitle'), onPress: () => navigation.navigate('Attention') },
               ],
             },
             {
-              title: 'ניהול הצי',
+              title: t('menu.fleetManagement'),
               rows: [
-                { key: 'inspections', icon: 'shield-checkmark', title: 'בדיקות בטיחות', subtitle: 'בדיקת קצין בטיחות לרכבים', onPress: () => navigation.navigate('SafetyInspections') },
-                { key: 'departments', icon: 'business', title: 'מחלקות', subtitle: 'חלוקת הנהגים והרכבים', onPress: () => navigation.navigate('Departments') },
-                { key: 'archive', icon: 'archive', title: 'ארכיון נהגים', subtitle: 'שחזור או מחיקה לצמיתות', onPress: () => navigation.navigate('DriverArchive') },
-                { key: 'reports', icon: 'stats-chart', title: 'ייצוא דוחות', subtitle: 'דוחות נהגים ורכבים לאקסל', onPress: () => navigation.navigate('Reports') },
+                { key: 'inspections', icon: 'shield-checkmark', title: t('nav.safetyInspections'), subtitle: t('menu.inspectionsSubtitle'), onPress: () => navigation.navigate('SafetyInspections') },
+                { key: 'departments', icon: 'business', title: t('departments.title'), subtitle: t('menu.departmentsSubtitle'), onPress: () => navigation.navigate('Departments') },
+                { key: 'archive', icon: 'archive', title: t('fleet.driverArchive'), subtitle: t('menu.archiveSubtitle'), onPress: () => navigation.navigate('DriverArchive') },
+                { key: 'reports', icon: 'stats-chart', title: t('reports.export'), subtitle: t('menu.reportsSubtitle'), onPress: () => navigation.navigate('Reports') },
               ],
             },
             {
-              title: 'החברה',
+              title: t('owner.theCompany'),
               rows: [
-                { key: 'companyDocs', icon: 'folder-open', title: 'מסמכי חברה', subtitle: 'רישיון מוביל, ביטוחים ונהלים', onPress: () => navigation.navigate('CompanyDocuments') },
-                { key: 'signedDocs', icon: 'create', title: 'מסמכים חתומים', subtitle: 'צפייה, שליחה לנהגים ומחיקה', onPress: () => navigation.navigate('SignedDocuments') },
-                { key: 'settings', icon: 'settings', title: 'הגדרות החברה', subtitle: 'פרטים, אנשי קשר, לוגו וחותמת', onPress: () => navigation.navigate('CompanySettings') },
+                { key: 'companyDocs', icon: 'folder-open', title: t('nav.companyDocuments'), subtitle: t('menu.companyDocsSubtitle'), onPress: () => navigation.navigate('CompanyDocuments') },
+                { key: 'signedDocs', icon: 'create', title: t('nav.signedDocuments'), subtitle: t('menu.signedDocsSubtitle'), onPress: () => navigation.navigate('SignedDocuments') },
+                { key: 'settings', icon: 'settings', title: t('nav.companySettings'), subtitle: t('settings.companySettingsSubtitle'), onPress: () => navigation.navigate('CompanySettings') },
               ],
             },
             notifications,
@@ -158,14 +159,14 @@ export default function MenuScreen({ navigation }: Props) {
             // drivers here, only the companies and their own feed.
             {
               rows: [
-                { key: 'profile', icon: 'person', title: 'הפרטים שלי', subtitle: 'שם, טלפון, מייל וסיסמה', onPress: () => navigation.navigate('AdminProfile') },
-                { key: 'console', icon: 'business', title: 'מרכז הבקרה', subtitle: 'כל החברות, מנויים והכנסות', onPress: () => navigation.navigate('OwnerHome') },
+                { key: 'profile', icon: 'person', title: t('nav.myDetails'), subtitle: t('menu.profileSubtitle'), onPress: () => navigation.navigate('AdminProfile') },
+                { key: 'console', icon: 'business', title: t('nav.controlCenter'), subtitle: t('menu.consoleSubtitle'), onPress: () => navigation.navigate('OwnerHome') },
               ],
             },
             {
               ...notifications,
               rows: notifications.rows.map((row) =>
-                row.key === 'notifications' ? { ...row, subtitle: counts.unread ? `${counts.unread} עדכונים חדשים מהחברות` : 'עדכונים על החברות והמנויים' } : row,
+                row.key === 'notifications' ? { ...row, subtitle: counts.unread ? t('menu.ownerNewUpdates', { unread: counts.unread }) : t('menu.ownerUpdatesSubtitle') } : row,
               ),
             },
           ];

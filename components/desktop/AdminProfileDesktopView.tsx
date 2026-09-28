@@ -7,6 +7,8 @@ import { formatDate } from '../../lib/theme';
 import { formatPhone } from '../../lib/phone';
 import { DLtrText, DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
+import { t, dirIcon, textStart } from '../../lib/i18n';
+import { LanguageRows } from '../LanguagePicker';
 
 /**
  * Desktop body of the admin's own profile: an identity card plus grouped
@@ -49,8 +51,8 @@ export function AdminProfileDesktopView({
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       <View style={styles.pageHeading}>
         <View>
-          <DText weight="bold" style={styles.pageTitle}>הפרטים שלי</DText>
-          <DText style={styles.pageSubtitle}>ניהול פרטי החשבון וההגדרות האישיות שלך</DText>
+          <DText weight="bold" style={styles.pageTitle}>{t('nav.myDetails')}</DText>
+          <DText style={styles.pageSubtitle}>{t('profile.manageIntro')}</DText>
         </View>
       </View>
 
@@ -63,56 +65,59 @@ export function AdminProfileDesktopView({
           <DText style={styles.role}>{role} · {company?.name || 'icar'}</DText>
         </View>
         <View style={styles.identityMeta}>
-          <DText style={styles.identityMetaLabel}>חשבון פעיל</DText>
+          <DText style={styles.identityMetaLabel}>{t('profile.activeAccount')}</DText>
           <View style={styles.activeDot} />
         </View>
         <HoverPressable style={styles.editButton} hoverStyle={styles.editButtonHover} pressMotionStyle={styles.pressDown} onPress={onToggleEdit} disabled={saving}>
           {saving ? <BrandLoader size={13} color="#fff" /> : <Ionicons name={editing ? 'checkmark' : 'pencil-outline'} size={15} color="#fff" />}
-          <DText weight="semiBold" style={styles.editButtonText}>{editing ? 'שמור שינויים' : 'עריכת פרטים'}</DText>
+          <DText weight="semiBold" style={styles.editButtonText}>{editing ? t('common.saveChanges') : t('profile.editDetails')}</DText>
         </HoverPressable>
       </View>
 
       <View style={styles.workspace}>
         <View style={styles.primaryColumn}>
-          <Group title="פרטים אישיים" icon="person-outline">
+          <Group title={t('driver.personalDetails')} icon="person-outline">
             <View style={styles.detailGrid}>
-              <StaticRow icon="mail-outline" label="אימייל" value={email} />
-              <EditableRow icon="call-outline" label="טלפון" editing={editing} value={form.phone ? formatPhone(form.phone) : null} inputValue={form.phone} onChangeText={(v) => onChangeField('phone', v.replace(/\D/g, ''))} error={errors.phone} keyboardType="phone-pad" />
-              <EditableRow icon="person-outline" label="שם מלא" editing={editing} value={form.fullName} inputValue={form.fullName} onChangeText={(v) => onChangeField('fullName', v)} error={errors.fullName} />
-              <StaticRow icon="star-outline" label="תפקיד" value="אדמין" last />
+              <StaticRow icon="mail-outline" label={t('common.emailAddress')} value={email} />
+              <EditableRow icon="call-outline" label={t('common.phone')} editing={editing} value={form.phone ? formatPhone(form.phone) : null} inputValue={form.phone} onChangeText={(v) => onChangeField('phone', v.replace(/\D/g, ''))} error={errors.phone} keyboardType="phone-pad" />
+              <EditableRow icon="person-outline" label={t('common.fullName')} editing={editing} value={form.fullName} inputValue={form.fullName} onChangeText={(v) => onChangeField('fullName', v)} error={errors.fullName} />
+              <StaticRow icon="star-outline" label={t('common.role')} value={t('role.adminShort')} last />
             </View>
           </Group>
 
-          <Group title="החברה שלי" icon="business-outline">
+          <Group title={t('profile.myCompany')} icon="business-outline">
             <View style={styles.detailGrid}>
-              <StaticRow icon="business-outline" label="שם החברה" value={company?.name} />
-              <StaticRow icon="pricetag-outline" label="סוג חברה" value={company?.company_type} />
-              <StaticRow icon="card-outline" label="ח.פ / ע.מ" value={company?.business_id} />
-              <StaticRow icon="location-outline" label="כתובת החברה" value={company?.address} />
-              <StaticRow icon="call-outline" label="טלפון החברה" value={company?.phone ? formatPhone(company.phone) : null} last />
+              <StaticRow icon="business-outline" label={t('company.name')} value={company?.name} />
+              <StaticRow icon="pricetag-outline" label={t('company.type')} value={company?.company_type} />
+              <StaticRow icon="card-outline" label={t('company.businessId')} value={company?.business_id} />
+              <StaticRow icon="location-outline" label={t('company.address')} value={company?.address} />
+              <StaticRow icon="call-outline" label={t('company.phone')} value={company?.phone ? formatPhone(company.phone) : null} last />
               <HoverPressable style={[styles.row, styles.settingsRow]} hoverStyle={styles.rowHover} pressMotionStyle={styles.pressDown} onPress={onOpenCompanySettings}>
-                <DText weight="semiBold" style={styles.settingsText}>לניהול הגדרות החברה</DText>
-                <Ionicons name="arrow-back" size={15} color={DESKTOP_COLORS.brand} />
+                <DText weight="semiBold" style={styles.settingsText}>{t('profile.toCompanySettings')}</DText>
+                <Ionicons name={dirIcon('arrow-back')} size={15} color={DESKTOP_COLORS.brand} />
               </HoverPressable>
             </View>
           </Group>
         </View>
 
         <View style={styles.sideColumn}>
-          <Group title="אבטחה" icon="shield-checkmark-outline">
+          <Group title={t('profile.security')} icon="shield-checkmark-outline">
             <View style={styles.securityState}>
               <View style={styles.securityIcon}><Ionicons name="shield-checkmark-outline" size={20} color={DESKTOP_TONES.ok.fg} /></View>
-              <View style={styles.securityCopy}><DText weight="bold" style={styles.securityTitle}>אבטחת החשבון</DText><DText style={styles.securityDescription}>שמרו על סיסמה עדכנית וייחודית.</DText></View>
+              <View style={styles.securityCopy}><DText weight="bold" style={styles.securityTitle}>{t('password.accountSecurity')}</DText><DText style={styles.securityDescription}>{t('profile.keepPasswordFresh')}</DText></View>
             </View>
             <HoverPressable style={styles.actionRow} hoverStyle={styles.rowHover} pressMotionStyle={styles.pressDown} onPress={onChangePassword}>
               <Ionicons name="key-outline" size={17} color={DESKTOP_COLORS.brand} />
-              <DText weight="semiBold" style={styles.actionText}>שינוי סיסמה</DText>
-              <Ionicons name="chevron-back" size={15} color={DESKTOP_COLORS.inkFaint} />
+              <DText weight="semiBold" style={styles.actionText}>{t('password.change')}</DText>
+              <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
             </HoverPressable>
+          </Group>
+          <Group title={t('settings.language')} icon="language-outline">
+            <LanguageRows />
           </Group>
           <View style={styles.memberCard}>
             <Ionicons name="calendar-outline" size={17} color={DESKTOP_COLORS.inkMuted} />
-            <View><DText style={styles.memberLabel}>חבר/ה במערכת מאז</DText><DText weight="semiBold" style={styles.memberValue}>{createdAt ? formatDate(createdAt) : '—'}</DText></View>
+            <View><DText style={styles.memberLabel}>{t('profile.memberSince')}</DText><DText weight="semiBold" style={styles.memberValue}>{createdAt ? formatDate(createdAt) : '—'}</DText></View>
           </View>
         </View>
       </View>
@@ -216,7 +221,7 @@ const styles = StyleSheet.create({
   identityText: { flex: 1, gap: 2 },
   name: { fontSize: 20, color: DESKTOP_COLORS.ink },
   role: { fontSize: 13, color: DESKTOP_COLORS.inkMuted },
-  identityMeta: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, paddingHorizontal: 18, borderLeftWidth: 1, borderLeftColor: DESKTOP_COLORS.borderSoft },
+  identityMeta: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, paddingHorizontal: 18, borderStartWidth: 1, borderStartColor: DESKTOP_COLORS.borderSoft },
   identityMetaLabel: { fontSize: 12, color: DESKTOP_COLORS.inkMuted },
   activeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: DESKTOP_TONES.ok.fg },
   editButton: {
@@ -266,7 +271,7 @@ const styles = StyleSheet.create({
     borderBottomColor: DESKTOP_COLORS.borderInput,
     paddingVertical: 4,
     minWidth: 160,
-    textAlign: 'right',
+    textAlign: textStart(),
   },
   inputError: { borderBottomColor: DESKTOP_TONES.bad.fg },
   errorText: { fontSize: 11, color: DESKTOP_TONES.bad.fg, marginTop: 2 },

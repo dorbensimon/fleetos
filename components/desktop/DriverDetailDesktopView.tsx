@@ -11,6 +11,7 @@ import { isValidIsraeliNationalId } from '../../lib/driverFormValidation';
 import { isValidEmail } from '../../lib/validation';
 import {
   EDUCATION_OPTIONS,
+  storedValueLabel,
   joinLicenseClasses,
   LICENSE_CLASS_OPTIONS,
   MARITAL_STATUS_OPTIONS,
@@ -26,6 +27,7 @@ import { DriverLicenseModal, LICENSE_SIDE_TITLE } from './driver/DriverLicenseMo
 import { DRIVER_DOCUMENT_GROUPS } from '../../lib/driverDocumentFolders';
 import { DriverVehiclesCard } from './driver/DriverVehiclesCard';
 import { DriverSigningList, useDriverSigningFolders, type SigningSessionTarget } from './driver/DriverSigningSection';
+import { t, dirIcon } from '../../lib/i18n';
 
 /**
  * Desktop body of the driver card ("תיק נהג"), built like the vehicle card
@@ -49,14 +51,14 @@ type DriverPatch = Partial<DriverDetails> & { full_name?: string | null; phone?:
 const LICENSE_FOLDER = 'license_docs';
 
 /** Driver folders take uploads without an expiry date, as on the phone. */
-const DOCUMENT_FOLDERS: RecordDocumentFolder[] = DRIVER_DOCUMENT_GROUPS.flatMap((group) =>
+const DOCUMENT_FOLDERS = (): RecordDocumentFolder[] => DRIVER_DOCUMENT_GROUPS.flatMap((group) =>
   group.folders.map((folder) => ({ ...folder, requiresExpiry: false })),
 );
 // The two short groups sit last, so the three columns end as evenly as possible.
 const DOCUMENT_GROUPS = [...DRIVER_DOCUMENT_GROUPS].sort((a, b) => b.folders.length - a.folders.length);
 
 // The form's labels carry full weight/passenger limits; the edit window shows only the class and its name.
-const LICENSE_CLASS_SELECT = LICENSE_CLASS_OPTIONS.map((option) => ({ value: option.value, label: option.label.split(',')[0].trim() }));
+const LICENSE_CLASS_SELECT = () => LICENSE_CLASS_OPTIONS.map((option) => ({ value: option.value, label: option.label.split(',')[0].trim() }));
 
 const EXPIRY_COLOR: Partial<Record<ExpiryState, string>> = {
   expired: DESKTOP_TONES.bad.fg,
@@ -76,9 +78,9 @@ function monthsSince(date: string): number {
 function tenure(date: string | null | undefined): { value: string; unit: string } | null {
   if (!date) return null;
   const months = monthsSince(date);
-  if (months < 12) return { value: String(months), unit: months === 1 ? 'חודש' : 'חודשים' };
+  if (months < 12) return { value: String(months), unit: months === 1 ? t('date.month') : t('common.months') };
   const years = Math.floor((months / 12) * 2) / 2;
-  return { value: Number.isInteger(years) ? String(years) : years.toFixed(1), unit: years === 1 ? 'שנה' : 'שנים' };
+  return { value: Number.isInteger(years) ? String(years) : years.toFixed(1), unit: years === 1 ? t('date.year') : t('common.years') };
 }
 
 const initialsOf = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('') || '?';
@@ -146,9 +148,9 @@ export function DriverDetailDesktopView({
   onArchive: () => void;
   onRestore: () => void;
 }) {
-  const name = driver?.full_name?.trim() || 'ללא שם';
+  const name = driver?.full_name?.trim() || t('common.unnamed');
   const statusTone: DesktopTone = isArchived ? 'neutral' : pendingActivation ? 'warn' : 'ok';
-  const statusLabel = isArchived ? 'בארכיון' : pendingActivation ? 'ממתין לכניסה ראשונה' : 'פעיל באפליקציה';
+  const statusLabel = isArchived ? t('common.archived') : pendingActivation ? t('driver.awaitingFirstLogin') : t('driver.activeInApp');
 
   const { docs, reload: reloadDocs } = useOwnerDocuments('driver', driverId);
   const signing = useDriverSigningFolders(companyId, driverId);
@@ -162,7 +164,7 @@ export function DriverDetailDesktopView({
     if (!openFolderRequest) return;
     if (openFolderRequest === LICENSE_FOLDER) setLicenseOpen(true);
     else {
-      const folder = DOCUMENT_FOLDERS.find((f) => f.category === openFolderRequest);
+      const folder = DOCUMENT_FOLDERS().find((f) => f.category === openFolderRequest);
       if (folder) setOpenFolder(folder);
     }
     onFolderOpened?.();
@@ -188,20 +190,20 @@ export function DriverDetailDesktopView({
       key: 'license',
       tag: expiryStatusText(licenseState, licenseExpiry),
       tone: licenseState === 'expired' ? 'bad' : 'warn',
-      text: licenseState === 'expired' ? 'רישיון הנהיגה פג ב־' : 'רישיון הנהיגה יפוג ב־',
+      text: licenseState === 'expired' ? t('driver.licenseExpiredOnPrefix') : t('driver.licenseWillExpireOn'),
       date: licenseExpiry,
       open: () => setLicenseOpen(true),
     });
   }
   if (pendingLicenseRequest) {
-    alerts.push({ key: 'license-request', tag: 'ממתין לאישור', tone: 'warn', text: 'הנהג שלח רישיון מחודש לאישור', open: () => setLicenseOpen(true) });
+    alerts.push({ key: 'license-request', tag: t('common.awaitingApproval'), tone: 'warn', text: t('driver.sentRenewedLicense'), open: () => setLicenseOpen(true) });
   }
   for (const folder of signing.folders) {
     const status = signingFolderStatus(folder);
     if (status !== 'pending' && status !== 'failed') continue;
     alerts.push({
       key: `signing-${folder.id}`,
-      tag: status === 'pending' ? 'ממתין לחתימה' : 'השליחה נכשלה',
+      tag: status === 'pending' ? t('signing.pendingSignature') : t('signing.sendFailed'),
       tone: status === 'pending' ? 'warn' : 'bad',
       text: folder.title,
       open: () => setSigningRequest(folder.id),
@@ -210,14 +212,14 @@ export function DriverDetailDesktopView({
 
   const subParts = [
     departmentName,
-    driver?.employee_number ? `מס׳ עובד ${driver.employee_number}` : null,
+    driver?.employee_number ? t('driver.employeeNo', { employee_number: driver.employee_number }) : null,
     driver?.phone ?? null,
   ].filter(Boolean) as string[];
 
   const menuItems = [
-    { label: 'סיסמה חדשה לנהג', icon: 'key-outline' as const, onPress: onResetPassword },
-    { label: exportingReport ? 'מכין את הדוח…' : 'הורדת דוח על הנהג', icon: 'download-outline' as const, onPress: onExportReport, disabled: exportingReport },
-    ...(isArchived ? [] : [{ label: archiving ? 'מעביר לארכיון…' : 'העברה לארכיון', icon: 'archive-outline' as const, onPress: onArchive, disabled: archiving }]),
+    { label: t('driver.newPassword'), icon: 'key-outline' as const, onPress: onResetPassword },
+    { label: exportingReport ? t('driver.preparingReport') : t('driver.downloadReport'), icon: 'download-outline' as const, onPress: onExportReport, disabled: exportingReport },
+    ...(isArchived ? [] : [{ label: archiving ? t('common.archiving') : t('common.moveToArchive'), icon: 'archive-outline' as const, onPress: onArchive, disabled: archiving }]),
   ];
 
   const textEditor = (label: string, raw: string | null | undefined, onSave: (v: string) => Promise<string | null>, extra?: Partial<Extract<FieldEditor, { kind: 'text' }>>): FieldEditor => ({
@@ -259,9 +261,9 @@ export function DriverDetailDesktopView({
         </View>
 
         <View style={styles.facts}>
-          <Fact label="רישיון בתוקף עד" value={licenseExpiry ? formatDate(licenseExpiry) : 'לא הוזן'} color={licenseColor} muted={!licenseExpiry} />
-          <Fact label="דרגות" value={classesLabel ? classesLabel.replace(',', ', ') : 'לא הוזנו'} muted={!classesLabel} />
-          <Fact label="ותק בחברה" value={inCompany?.value ?? 'לא הוזן'} unit={inCompany?.unit} muted={!inCompany} />
+          <Fact label={t('driver.licenseValidUntilLabel')} value={licenseExpiry ? formatDate(licenseExpiry) : t('common.notEntered')} color={licenseColor} muted={!licenseExpiry} />
+          <Fact label={t('driver.classes')} value={classesLabel ? classesLabel.replace(',', ', ') : t('common.notEnteredPl')} muted={!classesLabel} />
+          <Fact label={t('driver.tenure')} value={inCompany?.value ?? t('common.notEntered')} unit={inCompany?.unit} muted={!inCompany} />
         </View>
 
         <View style={styles.heroMenu}>
@@ -273,12 +275,12 @@ export function DriverDetailDesktopView({
         <View style={styles.archivedBanner}>
           <Ionicons name="archive-outline" size={18} color={DESKTOP_COLORS.inkMuted} />
           <View style={styles.flex}>
-            <DText weight="bold" style={styles.archivedTitle}>הנהג נמצא בארכיון</DText>
-            <DText style={styles.archivedText}>הוא לא יכול להיכנס לאפליקציה, אבל כל הפרטים והמסמכים שמורים.</DText>
+            <DText weight="bold" style={styles.archivedTitle}>{t('driver.inArchive')}</DText>
+            <DText style={styles.archivedText}>{t('driver.inArchiveDetail')}</DText>
           </View>
           <HoverPressable style={[styles.softBtn, restoring && styles.disabled]} hoverStyle={styles.softBtnHover} pressStyle={styles.pressDown} onPress={onRestore} disabled={restoring}>
             <Ionicons name="arrow-undo-outline" size={16} color={DESKTOP_COLORS.brand} />
-            <DText weight="semiBold" style={styles.softBtnText}>{restoring ? 'מחזיר…' : 'החזרה מהארכיון'}</DText>
+            <DText weight="semiBold" style={styles.softBtnText}>{restoring ? t('common.restoringBack') : t('common.restoreFromArchive')}</DText>
           </HoverPressable>
         </View>
       )}
@@ -287,12 +289,12 @@ export function DriverDetailDesktopView({
         <View style={styles.archivedBanner}>
           <Ionicons name="time-outline" size={18} color={DESKTOP_COLORS.inkMuted} />
           <DText style={[styles.archivedText, styles.flex]}>
-            {'הנהג עוד לא נכנס לאפליקציה עם סיסמה משלו. בכניסה הבאה הוא יתבקש לבחור סיסמה' +
+            {t('driver.notActivated') +
               (pendingActivationDays === null
                 ? '.'
                 : pendingActivationDays === 0
-                ? ' (הסיסמה הזמנית נשלחה היום).'
-                : ` (הסיסמה הזמנית נשלחה לפני ${pendingActivationDays === 1 ? 'יום' : `${pendingActivationDays} ימים`}).`)}
+                ? t('driver.tempSentToday')
+                : t('driver.tempSentAgo', { v1: pendingActivationDays === 1 ? t('common.dayWord') : t('driver.pendingDays', { pendingActivationDays }) }))}
           </DText>
         </View>
       )}
@@ -303,7 +305,7 @@ export function DriverDetailDesktopView({
           <Ionicons name="warning-outline" size={18} color={DESKTOP_TONES.warn.fg} style={styles.attentionIcon} />
           <View style={styles.flex}>
             <DText weight="bold" style={styles.attentionTitle}>
-              {alerts.length === 1 ? 'דבר אחד דורש טיפול' : `${alerts.length} דברים דורשים טיפול`}
+              {alerts.length === 1 ? t('driver.oneThingNeedsAttention') : t('driver.thingsNeedAttention', { length: alerts.length })}
             </DText>
             {alerts.map((alert) => (
               <View key={alert.key} style={styles.attentionRow}>
@@ -312,9 +314,9 @@ export function DriverDetailDesktopView({
                 </View>
                 <DText style={styles.attentionText}>{alert.text}</DText>
                 {!!alert.date && <DLtrText style={styles.attentionText}>{formatDate(alert.date)}</DLtrText>}
-                <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={alert.open} accessibilityLabel={`פתיחת ${alert.text}`}>
-                  <DText weight="semiBold" style={styles.linkText}>פתיחה</DText>
-                  <Ionicons name="chevron-back" size={14} color={DESKTOP_COLORS.brand} />
+                <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={alert.open} accessibilityLabel={t('common.openText', { text: alert.text })}>
+                  <DText weight="semiBold" style={styles.linkText}>{t('common.open')}</DText>
+                  <Ionicons name={dirIcon('chevron-back')} size={14} color={DESKTOP_COLORS.brand} />
                 </HoverPressable>
               </View>
             ))}
@@ -325,37 +327,37 @@ export function DriverDetailDesktopView({
       {/* Personal details + licence, then work + vehicles */}
       <View style={styles.gridRow}>
         <View style={styles.mainCell}>
-          <GroupLabel>פרטים אישיים</GroupLabel>
+          <GroupLabel>{t('driver.personalDetails')}</GroupLabel>
           <View style={styles.card}>
             <DetailRow
               first
-              label="שם מלא" focusId="full_name"
+              label={t('common.fullName')} focusId="full_name"
               value={driver?.full_name?.trim() || null}
-              onPress={() => setEditor(textEditor('שם מלא', driver?.full_name, (v) => onSaveField({ full_name: v.trim() }), { validate: (v) => (v.trim() ? null : 'זה שדה חובה') }))}
+              onPress={() => setEditor(textEditor(t('common.fullName'), driver?.full_name, (v) => onSaveField({ full_name: v.trim() }), { validate: (v) => (v.trim() ? null : t('validation.thisRequired')) }))}
             />
             <DetailRow
-              label="טלפון נייד" focusId="phone"
+              label={t('common.mobilePhone')} focusId="phone"
               value={driver?.phone || null}
               ltr
-              accessory={driver?.phone ? <DText style={styles.rowNote} numberOfLines={1}>גם שם המשתמש לאפליקציה</DText> : undefined}
-              onPress={() => setEditor(textEditor('טלפון נייד', driver?.phone, (v) => onSaveField({ phone: v.trim() }), {
+              accessory={driver?.phone ? <DText style={styles.rowNote} numberOfLines={1}>{t('driver.alsoUsername')}</DText> : undefined}
+              onPress={() => setEditor(textEditor(t('common.mobilePhone'), driver?.phone, (v) => onSaveField({ phone: v.trim() }), {
                 ltr: true,
                 numeric: true,
-                hint: 'הנהג נכנס לאפליקציה עם המספר הזה.',
-                validate: (v) => (!v.trim() ? 'זה שדה חובה' : isValidIsraeliPhone(v) ? null : 'מספר טלפון לא תקין'),
+                hint: t('driver.signsInWithNumber'),
+                validate: (v) => (!v.trim() ? t('validation.thisRequired') : isValidIsraeliPhone(v) ? null : t('validation.invalidPhone')),
               }))}
             />
             <DetailRow
-              label="אימייל"
+              label={t('common.emailAddress')}
               value={driver?.email || null}
               ltr
-              onPress={() => setEditor(textEditor('אימייל', driver?.email, (v) => onSaveEmail(v.trim().toLowerCase()), {
+              onPress={() => setEditor(textEditor(t('common.emailAddress'), driver?.email, (v) => onSaveEmail(v.trim().toLowerCase()), {
                 ltr: true,
-                validate: (v) => (isValidEmail(v.trim()) ? null : 'כתובת מייל לא תקינה'),
+                validate: (v) => (isValidEmail(v.trim()) ? null : t('validation.invalidEmail')),
               }))}
             />
             <DetailRow
-              label="תעודת זהות" focusId="national_id"
+              label={t('field.nationalId')} focusId="national_id"
               value={driver?.national_id ? (showNationalId ? driver.national_id : maskNationalId(driver.national_id)) : null}
               ltr
               accessory={driver?.national_id ? (
@@ -363,52 +365,52 @@ export function DriverDetailDesktopView({
                   style={styles.revealPill}
                   hoverStyle={styles.softBtnHover}
                   onPress={() => setShowNationalId((v) => !v)}
-                  accessibilityLabel={showNationalId ? 'הסתרת מספר תעודת הזהות' : 'הצגת מספר תעודת הזהות'}
+                  accessibilityLabel={showNationalId ? t('driver.hideNationalId') : t('driver.showNationalId')}
                 >
-                  <DText weight="semiBold" style={styles.revealText}>{showNationalId ? 'הסתרה' : 'הצגה'}</DText>
+                  <DText weight="semiBold" style={styles.revealText}>{showNationalId ? t('common.hide') : t('common.show')}</DText>
                 </HoverPressable>
               ) : undefined}
-              onPress={() => setEditor(textEditor('תעודת זהות', driver?.national_id, (v) => onSaveField({ national_id: v || null }), {
+              onPress={() => setEditor(textEditor(t('field.nationalId'), driver?.national_id, (v) => onSaveField({ national_id: v || null }), {
                 ltr: true,
                 numeric: true,
-                hint: '9 ספרות, כולל ספרת ביקורת.',
+                hint: t('driver.nationalIdHintDot'),
                 parse: (v) => v.replace(/\D/g, '').slice(0, 9),
-                validate: (v) => (!v || isValidIsraeliNationalId(v) ? null : 'תעודת זהות לא תקינה'),
+                validate: (v) => (!v || isValidIsraeliNationalId(v) ? null : t('validation.invalidNationalId')),
               }))}
             />
             <DetailRow
-              label="תאריך לידה" focusId="birth_date"
+              label={t('driver.birthDate')} focusId="birth_date"
               value={driver?.birth_date ? formatDate(driver.birth_date) : null}
               ltr
-              accessory={age != null ? <DText style={styles.rowNote}>בן {age}</DText> : undefined}
-              onPress={() => setEditor(dateEditor('תאריך לידה', driver?.birth_date, (v) => onSaveField({ birth_date: v })))}
+              accessory={age != null ? <DText style={styles.rowNote}>{t('driver.age')} {age}</DText> : undefined}
+              onPress={() => setEditor(dateEditor(t('driver.birthDate'), driver?.birth_date, (v) => onSaveField({ birth_date: v })))}
             />
-            <DetailRow label="כתובת" focusId="address" value={driver?.address || null} onPress={() => setEditor(textEditor('כתובת', driver?.address, (v) => onSaveField({ address: v.trim() || null })))} />
+            <DetailRow label={t('common.address')} focusId="address" value={driver?.address || null} onPress={() => setEditor(textEditor(t('common.address'), driver?.address, (v) => onSaveField({ address: v.trim() || null })))} />
             <DetailRow
-              label="טלפון בבית" focusId="home_phone"
+              label={t('driver.homePhone')} focusId="home_phone"
               value={driver?.home_phone || null}
               ltr
-              onPress={() => setEditor(textEditor('טלפון בבית', driver?.home_phone, (v) => onSaveField({ home_phone: v.trim() || null }), {
+              onPress={() => setEditor(textEditor(t('driver.homePhone'), driver?.home_phone, (v) => onSaveField({ home_phone: v.trim() || null }), {
                 ltr: true,
                 numeric: true,
-                validate: (v) => (!v.trim() || isValidIsraeliPhone(v) ? null : 'מספר טלפון לא תקין'),
+                validate: (v) => (!v.trim() || isValidIsraeliPhone(v) ? null : t('validation.invalidPhone')),
               }))}
             />
             <DetailRow
-              label="מצב משפחתי" focusId="marital_status"
-              value={driver?.marital_status || null}
-              onPress={() => setEditor({ kind: 'select', label: 'מצב משפחתי', raw: driver?.marital_status || null, options: optionsWithCurrent(MARITAL_STATUS_OPTIONS, driver?.marital_status), allowClear: true, placeholder: 'לא נבחר', onSave: (v) => onSaveField({ marital_status: v }) })}
+              label={t('driver.maritalStatus')} focusId="marital_status"
+              value={storedValueLabel(driver?.marital_status)}
+              onPress={() => setEditor({ kind: 'select', label: t('driver.maritalStatus'), raw: driver?.marital_status || null, options: optionsWithCurrent(MARITAL_STATUS_OPTIONS, driver?.marital_status), allowClear: true, placeholder: t('common.notSelected'), onSave: (v) => onSaveField({ marital_status: v }) })}
             />
             <DetailRow
-              label="השכלה" focusId="education"
-              value={driver?.education || null}
-              onPress={() => setEditor({ kind: 'select', label: 'השכלה', raw: driver?.education || null, options: optionsWithCurrent(EDUCATION_OPTIONS, driver?.education), allowClear: true, placeholder: 'לא נבחרה', onSave: (v) => onSaveField({ education: v }) })}
+              label={t('driver.education')} focusId="education"
+              value={storedValueLabel(driver?.education)}
+              onPress={() => setEditor({ kind: 'select', label: t('driver.education'), raw: driver?.education || null, options: optionsWithCurrent(EDUCATION_OPTIONS, driver?.education), allowClear: true, placeholder: t('common.notSelectedF'), onSave: (v) => onSaveField({ education: v }) })}
             />
           </View>
         </View>
 
         <View style={styles.sideCell}>
-          <GroupLabel>רישיון נהיגה</GroupLabel>
+          <GroupLabel>{t('driver.drivingLicense')}</GroupLabel>
           <View style={styles.card}>
             <View style={styles.licenceArea}>
               <LicenceCard
@@ -421,68 +423,68 @@ export function DriverDetailDesktopView({
                 onPress={() => setLicenseOpen(true)}
               />
             </View>
-            <HoverPressable style={[styles.photosRow, styles.rowDivider]} hoverStyle={styles.rowHover} onPress={() => setLicenseOpen(true)} accessibilityLabel="צילומי הרישיון: צפייה והעלאה">
-              <DText style={[styles.rowLabel, styles.rowLabelCompact]}>צילומי הרישיון</DText>
+            <HoverPressable style={[styles.photosRow, styles.rowDivider]} hoverStyle={styles.rowHover} onPress={() => setLicenseOpen(true)} accessibilityLabel={t('driver.licensePhotosLabel')}>
+              <DText style={[styles.rowLabel, styles.rowLabelCompact]}>{t('driver.licensePhotos')}</DText>
               {(['front', 'back'] as const).map((side) => (
                 <View key={side} style={[styles.sideChip, !hasSide(side) && styles.sideChipMissing]}>
                   <Ionicons name={hasSide(side) ? 'checkmark' : 'remove'} size={12} color={hasSide(side) ? DESKTOP_TONES.ok.fg : DESKTOP_COLORS.inkMuted} />
-                  <DText weight="semiBold" style={[styles.sideChipText, !hasSide(side) && styles.sideChipTextMissing]}>{side === 'front' ? 'קדמי' : 'אחורי'}</DText>
+                  <DText weight="semiBold" style={[styles.sideChipText, !hasSide(side) && styles.sideChipTextMissing]}>{side === 'front' ? t('driver.front') : t('driver.back')}</DText>
                 </View>
               ))}
-              <Ionicons name="chevron-back" size={13} color={DESKTOP_COLORS.inkFaint} />
+              <Ionicons name={dirIcon('chevron-back')} size={13} color={DESKTOP_COLORS.inkFaint} />
             </HoverPressable>
             <DetailRow
               compact
-              label="מספר רישיון" focusId="license_number"
+              label={t('field.licenseNumber')} focusId="license_number"
               value={driver?.license_number || null}
               ltr
-              onPress={() => setEditor(textEditor('מספר רישיון', driver?.license_number, (v) => onSaveField({ license_number: v.trim() || null }), { ltr: true, numeric: true }))}
+              onPress={() => setEditor(textEditor(t('field.licenseNumber'), driver?.license_number, (v) => onSaveField({ license_number: v.trim() || null }), { ltr: true, numeric: true }))}
             />
             <DetailRow
               compact
-              label="דרגות" focusId="license_classes"
+              label={t('driver.classes')} focusId="license_classes"
               value={classesLabel ? classesLabel.replace(',', ', ') : null}
               ltr
               onPress={() => setEditor({
                 kind: 'selectPair',
-                label: 'דרגות רישיון',
-                hint: 'אפשר לבחור עד שתי דרגות.',
-                labels: ['דרגה ראשית', 'דרגה נוספת'],
+                label: t('driver.licenseClasses'),
+                hint: t('driver.upToTwoClasses'),
+                labels: [t('driver.mainClass'), t('driver.additionalClass')],
                 raw: [license.primary || null, license.secondary || null],
-                options: LICENSE_CLASS_SELECT,
-                placeholders: ['בחירת דרגה', 'אין'],
-                validate: (first, second) => (first && second && first === second ? 'בוחרים שתי דרגות שונות' : null),
+                options: LICENSE_CLASS_SELECT(),
+                placeholders: [t('driver.chooseClass'), t('common.noneShort')],
+                validate: (first, second) => (first && second && first === second ? t('driver.chooseTwoDifferent') : null),
                 onSave: (first, second) => onSaveField({ license_classes: joinLicenseClasses(first ?? '', second ?? '') || null }),
               })}
             />
-            <DetailRow compact label="תאריך הנפקה" focusId="license_issue_date" value={driver?.license_issue_date ? formatDate(driver.license_issue_date) : null} ltr onPress={() => setEditor(dateEditor('תאריך הנפקה', driver?.license_issue_date, (v) => onSaveField({ license_issue_date: v })))} />
-            <DetailRow compact label="בתוקף עד" focusId="license_expiry" value={licenseExpiry ? formatDate(licenseExpiry) : null} ltr valueColor={licenseColor} onPress={() => setEditor(dateEditor('תוקף הרישיון', licenseExpiry, (v) => onSaveField({ license_expiry: v })))} />
+            <DetailRow compact label={t('driver.issueDate')} focusId="license_issue_date" value={driver?.license_issue_date ? formatDate(driver.license_issue_date) : null} ltr onPress={() => setEditor(dateEditor(t('driver.issueDate'), driver?.license_issue_date, (v) => onSaveField({ license_issue_date: v })))} />
+            <DetailRow compact label={t('documents.validUntil')} focusId="license_expiry" value={licenseExpiry ? formatDate(licenseExpiry) : null} ltr valueColor={licenseColor} onPress={() => setEditor(dateEditor(t('license.expiry'), licenseExpiry, (v) => onSaveField({ license_expiry: v })))} />
           </View>
         </View>
       </View>
 
       <View style={styles.gridRow}>
         <View style={styles.mainCell}>
-          <GroupLabel>עבודה בחברה</GroupLabel>
+          <GroupLabel>{t('driver.work')}</GroupLabel>
           <View style={styles.card}>
-            <DetailRow first label="מספר עובד" focusId="employee_number" value={driver?.employee_number || null} ltr onPress={() => setEditor(textEditor('מספר עובד', driver?.employee_number, (v) => onSaveField({ employee_number: v.trim() || null }), { ltr: true }))} />
+            <DetailRow first label={t('driver.employeeNumber')} focusId="employee_number" value={driver?.employee_number || null} ltr onPress={() => setEditor(textEditor(t('driver.employeeNumber'), driver?.employee_number, (v) => onSaveField({ employee_number: v.trim() || null }), { ltr: true }))} />
             <DetailRow
-              label="מחלקה" focusId="department_id"
+              label={t('common.department')} focusId="department_id"
               value={departmentName}
-              onPress={() => setEditor({ kind: 'select', label: 'מחלקה', raw: driver?.department_id ?? null, options: departmentOptions, allowClear: true, placeholder: 'ללא מחלקה', onSave: (v) => onSaveField({ department_id: v }) })}
+              onPress={() => setEditor({ kind: 'select', label: t('common.department'), raw: driver?.department_id ?? null, options: departmentOptions, allowClear: true, placeholder: t('common.noDepartment'), onSave: (v) => onSaveField({ department_id: v }) })}
             />
             <DetailRow
-              label="תחילת העסקה" focusId="employment_start_date"
+              label={t('driver.employmentStart')} focusId="employment_start_date"
               value={driver?.employment_start_date ? formatDate(driver.employment_start_date) : null}
               ltr
               accessory={inCompany ? <DText style={styles.rowNote}>{`${inCompany.value} ${inCompany.unit}`}</DText> : undefined}
-              onPress={() => setEditor(dateEditor('תחילת העסקה', driver?.employment_start_date, (v) => onSaveField({ employment_start_date: v })))}
+              onPress={() => setEditor(dateEditor(t('driver.employmentStart'), driver?.employment_start_date, (v) => onSaveField({ employment_start_date: v })))}
             />
           </View>
         </View>
 
         <View style={styles.sideCell}>
-          <GroupLabel>רכבים משויכים</GroupLabel>
+          <GroupLabel>{t('driver.assignedVehicles')}</GroupLabel>
           <DriverVehiclesCard
             companyId={companyId}
             driverId={driverId}
@@ -496,8 +498,8 @@ export function DriverDetailDesktopView({
 
       {/* Forms to sign */}
       <View style={styles.docsHead}>
-        <DText weight="bold" style={styles.docsTitle}>טפסים לחתימה</DText>
-        <DText style={styles.mutedText}>לחיצה על טופס פותחת אותו, ושם שולחים אותו לנהג לחתימה בטלפון</DText>
+        <DText weight="bold" style={styles.docsTitle}>{t('signing.formsToSign')}</DText>
+        <DText style={styles.mutedText}>{t('driver.formsHint')}</DText>
       </View>
       <View style={[styles.card, styles.listCard]}>
         <DriverSigningList
@@ -516,8 +518,8 @@ export function DriverDetailDesktopView({
 
       {/* Documents */}
       <View style={styles.docsHead}>
-        <DText weight="bold" style={styles.docsTitle}>מסמכים</DText>
-        <DText style={styles.mutedText}>לחיצה על תיקייה פותחת אותה, ושם אפשר לצפות בקבצים ולהעלות חדשים</DText>
+        <DText weight="bold" style={styles.docsTitle}>{t('common.documents')}</DText>
+        <DText style={styles.mutedText}>{t('driver.foldersHint')}</DText>
       </View>
       <View style={[styles.gridRow, styles.docsGrid]}>
         {DOCUMENT_GROUPS.map((group) => (
@@ -542,11 +544,11 @@ export function DriverDetailDesktopView({
 
       {!!driver?.created_at && (
         <View style={styles.footer}>
-          <DText style={styles.footerText}>הצטרף לאפליקציה ב־</DText>
+          <DText style={styles.footerText}>{t('driver.joinedAppOn')}</DText>
           <DLtrText style={styles.footerText}>{formatDate(driver.created_at)}</DLtrText>
           {!!driver.updated_at && (
             <>
-              <DText style={styles.footerText}> · עודכן לאחרונה ב־</DText>
+              <DText style={styles.footerText}> {t('driver.lastUpdatedOn')}</DText>
               <DLtrText style={styles.footerText}>{formatDate(driver.updated_at)}</DLtrText>
             </>
           )}
@@ -612,10 +614,10 @@ function LicenceCard({
       hoverMotionStyle={styles.licenceHover}
       pressStyle={styles.pressDown}
       onPress={onPress}
-      accessibilityLabel="רישיון הנהיגה. פתיחת הצילומים והתוקף"
+      accessibilityLabel={t('driver.licenseOpenPhotos')}
     >
       <View style={styles.licenceTop}>
-        <DText weight="bold" style={styles.licenceTitle}>רישיון נהיגה</DText>
+        <DText weight="bold" style={styles.licenceTitle}>{t('driver.drivingLicense')}</DText>
         <DText weight="bold" style={styles.licenceCountry}>ISRAEL</DText>
       </View>
       <View style={styles.licenceBody}>
@@ -625,11 +627,11 @@ function LicenceCard({
         <View style={styles.flex}>
           <DText weight="bold" style={styles.licenceName} numberOfLines={1}>{name}</DText>
           <View style={styles.inlineMeta}>
-            <DText style={styles.licenceLine}>מספר </DText>
+            <DText style={styles.licenceLine}>{t('common.number')} </DText>
             <DLtrText weight="semiBold" style={[styles.licenceLine, styles.licenceLineStrong]}>{number || '—'}</DLtrText>
           </View>
           <View style={styles.inlineMeta}>
-            <DText style={styles.licenceLine}>הונפק </DText>
+            <DText style={styles.licenceLine}>{t('driver.issued')} </DText>
             <DLtrText weight="semiBold" style={[styles.licenceLine, styles.licenceLineStrong]}>{issued ? formatDate(issued) : '—'}</DLtrText>
           </View>
         </View>
@@ -643,7 +645,7 @@ function LicenceCard({
           ))}
         </View>
         <View style={styles.licenceExpiry}>
-          <DText weight="bold" style={[styles.licenceExpiryText, { color: expiryColor }]}>{expiry ? 'עד ' : 'אין תוקף'}</DText>
+          <DText weight="bold" style={[styles.licenceExpiryText, { color: expiryColor }]}>{expiry ? t('documents.untilPrefix') : t('driver.noExpiry')}</DText>
           {!!expiry && <DLtrText weight="bold" style={[styles.licenceExpiryText, { color: expiryColor }]}>{formatDate(expiry)}</DLtrText>}
         </View>
       </View>
@@ -678,7 +680,7 @@ const styles = StyleSheet.create({
     ...webOnly({ backgroundImage: 'linear-gradient(160deg, #F2F9FD, #DCEFF9)' }),
   },
   portraitText: { fontSize: 21, color: '#0072AD', letterSpacing: -0.3 },
-  portraitDot: { position: 'absolute', bottom: 1, left: 1, width: 15, height: 15, borderRadius: 8, borderWidth: 3, borderColor: '#FFFFFF' },
+  portraitDot: { position: 'absolute', bottom: 1, start: 1, width: 15, height: 15, borderRadius: 8, borderWidth: 3, borderColor: '#FFFFFF' },
 
   // Rows
   revealPill: { height: 22, paddingHorizontal: 8, borderRadius: 11, justifyContent: 'center', backgroundColor: 'rgba(0,136,204,0.09)', ...webOnly({ transition: 'background-color 150ms ease' }) },
@@ -723,7 +725,7 @@ const styles = StyleSheet.create({
   licenceName: { fontSize: 14, color: '#2A2230', marginBottom: 1 },
   licenceLine: { fontSize: 11.5, lineHeight: 16, color: '#5D4A5B', ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   licenceLineStrong: { color: '#2A2230' },
-  licenceFoot: { position: 'absolute', right: 12, left: 12, bottom: 9, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
+  licenceFoot: { position: 'absolute', end: 12, start: 12, bottom: 9, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
   licenceClasses: { flexDirection: 'row-reverse', gap: 5 },
   licenceClass: { paddingHorizontal: 7, paddingVertical: 1, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.75)' },
   licenceClassText: { fontSize: 11.5, color: LICENCE_INK },

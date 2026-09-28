@@ -1,5 +1,6 @@
 import type { ComplianceItem } from './adminApi';
 import { daysUntilExpiry, expiryState, ExpiryState, formatDate, parseDateValue } from './theme';
+import { t } from './i18n';
 
 /**
  * The catalogue of tracked expiry items ("compliance items").
@@ -82,7 +83,7 @@ export function complianceBadgeLabel(
 ): string {
   if (item?.expiry_date) return formatDate(item.expiry_date);
   if (def.tracksLastDate && item?.last_date) return formatDate(item.last_date);
-  return 'חסר';
+  return t('status.missing');
 }
 
 export function complianceRemainingDays(
@@ -96,12 +97,12 @@ export function complianceRemainingDays(
 }
 
 export const CATEGORY_LABELS: Record<ComplianceCategory, string> = {
-  licensing: 'רישוי',
-  insurance: 'ביטוחים',
-  inspection: 'בדיקות ובטיחות',
-  training: 'הכשרות והסמכות',
-  health: 'בריאות',
-  general: 'מסמכים כלליים',
+  get licensing() { return t('common.licensing'); },
+  get insurance() { return t('compliance.cat.insurance'); },
+  get inspection() { return t('compliance.cat.inspection'); },
+  get training() { return t('compliance.cat.training'); },
+  get health() { return t('compliance.cat.health'); },
+  get general() { return t('folder.generalDocs'); },
 };
 
 /** Ionicons name per category — no emoji anywhere in the UI. */
@@ -115,13 +116,13 @@ export const CATEGORY_ICONS: Record<ComplianceCategory, string> = {
 };
 
 export const VEHICLE_COMPLIANCE: ComplianceItemDef[] = [
-  { itemType: 'vehicle_license', category: 'licensing', label: 'רישיון רכב', requiresExpiryOnUpload: true },
-  { itemType: 'operating_license', category: 'licensing', label: 'רישיון הפעלה', requiresExpiryOnUpload: true },
+  { itemType: 'vehicle_license', category: 'licensing', get label() { return t('folder.vehicleLicense'); }, requiresExpiryOnUpload: true },
+  { itemType: 'operating_license', category: 'licensing', get label() { return t('folder.operatingLicense'); }, requiresExpiryOnUpload: true },
 
-  { itemType: 'insurance_mandatory', category: 'insurance', label: 'ביטוח חובה', requiresExpiryOnUpload: true },
-  { itemType: 'insurance_comprehensive', category: 'insurance', label: 'ביטוח מקיף', requiresExpiryOnUpload: true },
+  { itemType: 'insurance_mandatory', category: 'insurance', get label() { return t('folder.mandatoryInsurance'); }, requiresExpiryOnUpload: true },
+  { itemType: 'insurance_comprehensive', category: 'insurance', get label() { return t('folder.comprehensiveInsurance'); }, requiresExpiryOnUpload: true },
 
-  { itemType: 'annual_test', category: 'inspection', label: 'טסט שנתי', tracksLastDate: true, validityDays: 365, requiresExpiryOnUpload: true },
+  { itemType: 'annual_test', category: 'inspection', get label() { return t('folder.annualTest'); }, tracksLastDate: true, validityDays: 365, requiresExpiryOnUpload: true },
 ];
 
 /**
@@ -142,12 +143,12 @@ export function isRetiredVehicleComplianceItem(itemType: string): boolean {
 }
 
 export const DRIVER_COMPLIANCE: ComplianceItemDef[] = [
-  { itemType: 'health_declaration', category: 'health', label: 'הצהרת בריאות' },
+  { itemType: 'health_declaration', category: 'health', get label() { return t('compliance.item.healthDeclaration'); } },
 
-  { itemType: 'periodic_training', category: 'training', label: 'הדרכות תקופתיות', tracksLastDate: true, validityDays: 365 },
-  { itemType: 'procedure_6', category: 'training', label: 'נוהל 6 (הסעת ילדים)' },
-  { itemType: 'crane_license', category: 'training', label: 'רישיון מנוף' },
-  { itemType: 'rp_certificate', category: 'training', label: 'תוקף ר.פ' },
+  { itemType: 'periodic_training', category: 'training', get label() { return t('compliance.item.periodicTraining'); }, tracksLastDate: true, validityDays: 365 },
+  { itemType: 'procedure_6', category: 'training', get label() { return t('compliance.item.procedure6'); } },
+  { itemType: 'crane_license', category: 'training', get label() { return t('compliance.item.craneLicense'); } },
+  { itemType: 'rp_certificate', category: 'training', get label() { return t('compliance.item.publicServiceLicense'); } },
 ];
 
 export function complianceCatalog(ownerType: 'vehicle' | 'driver'): ComplianceItemDef[] {
@@ -188,21 +189,21 @@ export function groupByCategory(defs: ComplianceItemDef[]) {
 }
 
 export const VEHICLE_TYPE_LABELS: Record<string, string> = {
-  car: 'פרטי',
-  minibus: 'מיניבוס',
-  bus: 'אוטובוס',
-  truck: 'משאית',
+  get car() { return t('vehicle.type.car'); },
+  get minibus() { return t('vehicle.type.minibus'); },
+  get bus() { return t('vehicle.type.bus'); },
+  get truck() { return t('vehicle.type.truck'); },
 };
 
 export const VEHICLE_STATUS_LABELS: Record<string, string> = {
-  active: 'פעיל',
-  maintenance: 'בטיפול',
-  disabled: 'מושבת',
-  archived: 'בארכיון',
+  get active() { return t('vehicle.status.active'); },
+  get maintenance() { return t('vehicle.status.maintenance'); },
+  get disabled() { return t('vehicle.status.disabled'); },
+  get archived() { return t('common.archived'); },
 };
 
 export const ACQUISITION_TYPE_LABELS: Record<string, string> = {
-  purchase: 'רכישה',
-  leasing: 'ליסינג',
-  rental: 'השכרה',
+  get purchase() { return t('vehicle.ownership.purchase'); },
+  get leasing() { return t('vehicle.ownership.leasing'); },
+  get rental() { return t('vehicle.ownership.rental'); },
 };

@@ -1,5 +1,7 @@
 import { Platform, type ViewStyle } from 'react-native';
 import { daysUntilExpiry, expiryState, type ExpiryState } from '../../lib/theme';
+import { t, getLocale } from '../../lib/i18n';
+import { fontStack } from '../../lib/fontStack';
 
 /**
  * The icar phone kit's design tokens — the brand carried into every screen
@@ -45,13 +47,13 @@ export const DK_SPACE = { xs: 6, sm: 10, md: 16, lg: 20, xl: 28 } as const;
 
 /** Heebo for display and numbers (geometric, like the wordmark), Assistant for reading. */
 export const DK_FONT = {
-  display: 'Heebo_800ExtraBold',
-  title: 'Heebo_700Bold',
-  numeric: 'Heebo_600SemiBold',
-  regular: 'Assistant_400Regular',
-  medium: 'Assistant_500Medium',
-  semibold: 'Assistant_600SemiBold',
-  bold: 'Assistant_700Bold',
+  display: fontStack('Heebo_800ExtraBold'),
+  title: fontStack('Heebo_700Bold'),
+  numeric: fontStack('Heebo_600SemiBold'),
+  regular: fontStack('Assistant_400Regular'),
+  medium: fontStack('Assistant_500Medium'),
+  semibold: fontStack('Assistant_600SemiBold'),
+  bold: fontStack('Assistant_700Bold'),
 } as const;
 
 /** One light source, above: shadows are tinted with the brand ink, never black. */
@@ -70,10 +72,10 @@ export type Status = 'ok' | 'soon' | 'expired' | 'missing';
 
 /** Status colours: `fg` is text-safe on white and on `soft`; `fill` is for bars and dots. */
 export const STATUS: Record<Status, { fg: string; fill: string; soft: string; label: string; icon: 'checkmark-circle' | 'time' | 'alert-circle' | 'help-circle' }> = {
-  ok: { fg: '#0B7D57', fill: '#22C48A', soft: '#E4F7EF', label: 'בתוקף', icon: 'checkmark-circle' },
-  soon: { fg: '#9A5300', fill: '#FFAE1A', soft: '#FFF3DB', label: 'מתקרב', icon: 'time' },
-  expired: { fg: '#C21F37', fill: '#FF4D5E', soft: '#FFE8EB', label: 'פג תוקף', icon: 'alert-circle' },
-  missing: { fg: '#56657A', fill: '#C9D2DE', soft: '#EEF1F6', label: 'חסר', icon: 'help-circle' },
+  ok: { fg: '#0B7D57', fill: '#22C48A', soft: '#E4F7EF', get label() { return t('status.valid'); }, icon: 'checkmark-circle' },
+  soon: { fg: '#9A5300', fill: '#FFAE1A', soft: '#FFF3DB', get label() { return t('status.approaching'); }, icon: 'time' },
+  expired: { fg: '#C21F37', fill: '#FF4D5E', soft: '#FFE8EB', get label() { return t('status.expiredLong'); }, icon: 'alert-circle' },
+  missing: { fg: '#56657A', fill: '#C9D2DE', soft: '#EEF1F6', get label() { return t('status.missing'); }, icon: 'help-circle' },
 };
 
 export function statusOf(state: ExpiryState): Status {
@@ -100,9 +102,9 @@ export function validityProgress(date: string | null | undefined): number {
 export function relativeDays(date: string | null | undefined): string | null {
   const days = daysUntilExpiry(date);
   if (days == null) return null;
-  if (days === 0) return 'היום';
-  if (days === 1) return 'מחר';
-  if (days === -1) return 'אתמול';
-  if (days > 0) return `בעוד ${days.toLocaleString('he-IL')} ימים`;
-  return `לפני ${Math.abs(days).toLocaleString('he-IL')} ימים`;
+  if (days === 0) return t('common.today');
+  if (days === 1) return t('common.tomorrow');
+  if (days === -1) return t('time.yesterday');
+  if (days > 0) return t('time.inDaysShort', { v1: days.toLocaleString(getLocale()) });
+  return t('time.daysAgoShort', { v1: Math.abs(days).toLocaleString(getLocale()) });
 }

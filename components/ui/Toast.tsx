@@ -75,7 +75,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  wrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  wrap: { position: 'absolute', start: 0, end: 0, alignItems: 'center' },
   toast: {
     backgroundColor: '#3A3A3C',
     paddingHorizontal: SPACING.lg,

@@ -16,6 +16,7 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable, StatusPill } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS, DesktopTone } from '../../components/desktop/desktopTheme';
 import { Ionicons } from '@expo/vector-icons';
+import { t, getLocale } from '../../lib/i18n';
 
 /**
  * U2 — the driver's own vehicles. A driver can be actively assigned to
@@ -46,7 +47,7 @@ export default function DriverVehicleScreen({ navigation, route }: Props) {
       // Right after a refresh the profile is still on its way: keep loading.
       if (profileLoading) return;
       if (requestId === loadRequest.current) {
-        setError('פרופיל הנהג אינו זמין');
+        setError(t('driver.profileUnavailable'));
         setLoading(false);
       }
       return;
@@ -58,7 +59,7 @@ export default function DriverVehicleScreen({ navigation, route }: Props) {
       setAssignments(data);
       setCompliance(loadedCompliance);
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message ?? 'טעינת הרכבים נכשלה');
+      if (requestId === loadRequest.current) setError(err?.message ?? t('fleet.vehiclesLoadFailed'));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -83,13 +84,13 @@ export default function DriverVehicleScreen({ navigation, route }: Props) {
   if (isDesktop) {
     return (
       <FocusTargetProvider focus={focus}>
-      <DesktopShell active="DriverHome" breadcrumbs={['הרכב שלי']}>
+      <DesktopShell active="DriverHome" breadcrumbs={[t('driver.myVehicle')]}>
         {loading ? (
           <LoadingState />
         ) : error ? (
           <ErrorState message={error} onRetry={load} />
         ) : assignments.length === 0 ? (
-          <EmptyState icon="car-outline" title="אין רכב משויך" hint="פנה למנהל הצי שלך לשיוך רכב" />
+          <EmptyState icon="car-outline" title={t('driver.noAssignedVehicleTitle')} hint={t('driver.askManagerForVehicle')} />
         ) : (
           <View style={ds.wrap}>
             {assignments.map((a) => (
@@ -147,41 +148,41 @@ function DesktopVehicleCard({
   const testItem = compliance.find((c) => c.item_type === 'annual_test') ?? null;
   const testDef = findComplianceDef('vehicle', 'annual_test');
   const testState = testDef ? complianceBadgeState(testDef, testItem) : expiryState(testItem?.expiry_date);
-  const testLabel = testDef ? complianceBadgeLabel(testDef, testItem) : testItem?.expiry_date ? formatDate(testItem.expiry_date) : 'חסר';
+  const testLabel = testDef ? complianceBadgeLabel(testDef, testItem) : testItem?.expiry_date ? formatDate(testItem.expiry_date) : t('status.missing');
 
   return (
     <View style={ds.card}>
       <View style={ds.headRow}>
         <View>
-          <DText weight="bold" style={ds.vehicleTitle}>{[vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || 'ללא דגם'}</DText>
+          <DText weight="bold" style={ds.vehicleTitle}>{[vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || t('vehicle.noModelShort')}</DText>
           <DText style={ds.vehicleSub}>
             {VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type}
-            {showPrimaryBadge ? (isPrimary ? ' · הרכב הראשי שלי' : ' · רכב משני') : ''}
+            {showPrimaryBadge ? (isPrimary ? t('driver.myPrimarySuffix') : t('driver.secondarySuffix')) : ''}
           </DText>
         </View>
         <DText weight="bold" style={ds.plateText}>{vehicle.plate_number}</DText>
       </View>
       <FocusTarget id="insurance_mandatory" radius={6} tint={DESKTOP_COLORS.brand}>
         <View style={ds.metaRow}>
-          <DText style={ds.metaLabel}>ביטוח חובה</DText>
-          <StatusPill tone={toneFor(expiryState(insurance))} label={insurance ? formatDate(insurance) : 'חסר'} />
+          <DText style={ds.metaLabel}>{t('folder.mandatoryInsurance')}</DText>
+          <StatusPill tone={toneFor(expiryState(insurance))} label={insurance ? formatDate(insurance) : t('status.missing')} />
         </View>
       </FocusTarget>
       <FocusTarget id="annual_test" radius={6} tint={DESKTOP_COLORS.brand}>
         <View style={ds.metaRow}>
-          <DText style={ds.metaLabel}>טסט שנתי</DText>
+          <DText style={ds.metaLabel}>{t('folder.annualTest')}</DText>
           <StatusPill tone={toneFor(testState)} label={testLabel} />
         </View>
       </FocusTarget>
       <FocusTarget id="odometer,service" radius={6} tint={DESKTOP_COLORS.brand}>
         <View style={[ds.metaRow, ds.metaRowLast]}>
-          <DText style={ds.metaLabel}>קילומטראז׳</DText>
-          <DText weight="semiBold" style={ds.metaValue}>{vehicle.odometer.toLocaleString('he-IL')} ק״מ</DText>
+          <DText style={ds.metaLabel}>{t('vehicle.mileage')}</DText>
+          <DText weight="semiBold" style={ds.metaValue}>{vehicle.odometer.toLocaleString(getLocale())} {t('unit.km')}</DText>
         </View>
       </FocusTarget>
       <HoverPressable style={ds.odometerButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.brandHover }} onPress={onOdometer}>
         <Ionicons name="speedometer-outline" size={14} color="#FFFFFF" />
-        <DText weight="semiBold" style={ds.odometerButtonText}>עדכון קילומטרים</DText>
+        <DText weight="semiBold" style={ds.odometerButtonText}>{t('odometer.updateKm')}</DText>
       </HoverPressable>
     </View>
   );

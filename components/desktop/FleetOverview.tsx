@@ -8,6 +8,7 @@ import { DLtrText, DText, HoverPressable, prefersReducedMotion } from './primiti
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { DepartmentsQuickAction, ReportsQuickAction } from './DashboardWidgets';
 import { HeaderMenuBackdrop, headerMenuEnter, headerMenuStyles, useHeaderMenu } from './headerMenu';
+import { t, dirIcon, getLocale } from '../../lib/i18n';
 
 /**
  * Building blocks of the desktop dashboard, one control per job:
@@ -48,10 +49,10 @@ const TONE_FILL: Record<DesktopTone | 'brand', string> = {
 };
 
 function greetingFor(hour: number): string {
-  if (hour >= 5 && hour < 12) return 'בוקר טוב';
-  if (hour >= 12 && hour < 17) return 'צהריים טובים';
-  if (hour >= 17 && hour < 22) return 'ערב טוב';
-  return 'לילה טוב';
+  if (hour >= 5 && hour < 12) return t('greeting.morning');
+  if (hour >= 12 && hour < 17) return t('greeting.afternoon');
+  if (hour >= 17 && hour < 22) return t('greeting.evening');
+  return t('greeting.night');
 }
 
 /* ------------------------------------------------------------------ */
@@ -63,7 +64,7 @@ export function FleetHeader() {
   const now = new Date();
   const firstName = profile?.full_name?.trim().split(/\s+/)[0] ?? '';
   const greeting = firstName ? `${greetingFor(now.getHours())}, ${firstName}` : greetingFor(now.getHours());
-  const dateLine = now.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
+  const dateLine = now.toLocaleDateString(getLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <View style={[styles.header, enter(0)]}>
@@ -100,8 +101,8 @@ function frameOf<T extends string>(order: T[], widths: Partial<Record<T, number>
 }
 
 const MODES: { value: FleetMode; label: string; icon: IconName }[] = [
-  { value: 'drivers', label: 'נהגים', icon: 'people' },
-  { value: 'vehicles', label: 'רכבים', icon: 'car-sport' },
+  { value: 'drivers', get label() { return t('common.drivers'); }, icon: 'people' },
+  { value: 'vehicles', get label() { return t('common.vehicles'); }, icon: 'car-sport' },
 ];
 
 /** Segmented control: a dark thumb glides to the chosen segment on a critically damped spring. */
@@ -152,7 +153,7 @@ export function ModeSwitch({
 
   return (
     <View style={styles.segmented} accessibilityRole="tablist">
-      <Animated.View pointerEvents="none" style={[styles.segmentThumb, { right: Animated.add(x, 3), width }]} />
+      <Animated.View pointerEvents="none" style={[styles.segmentThumb, { end: Animated.add(x, 3), width }]} />
       {MODES.map((item) => {
         const on = item.value === mode;
         return (
@@ -220,7 +221,7 @@ function TileRow<T extends string>({ cards, selected, loading, onSelect }: Filte
   const [rowWidth, setRowWidth] = useState(0);
   const showHints = rowWidth === 0 || rowWidth >= TILE_HINT_MIN_ROW;
   return (
-    <View style={styles.tiles} accessibilityRole="tablist" aria-label="סינון לפי מצב" onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}>
+    <View style={styles.tiles} accessibilityRole="tablist" aria-label={t('fleet.filterByStatus')} onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}>
       {cards.map((card, index) => (
         <FilterTile key={card.value} card={card} index={index} on={card.value === selected} loading={loading} showHint={showHints} onPress={() => onSelect(card.value)} />
       ))}
@@ -352,8 +353,8 @@ export function AttentionMenu({
 
   if (loading || totals.vehicles === 0) return null;
 
-  const pillLabel = totals.vehicles === 1 ? 'רכב אחד דורש טיפול' : `${totals.vehicles} רכבים דורשים טיפול`;
-  const issuesLabel = totals.issues === 1 ? 'בעיה אחת פתוחה' : `${totals.issues} בעיות פתוחות`;
+  const pillLabel = totals.vehicles === 1 ? t('fleet.oneVehicleNeedsAttention') : t('fleet.vehiclesNeedAttention', { vehicles: totals.vehicles });
+  const issuesLabel = totals.issues === 1 ? t('fleet.oneOpenIssue') : t('fleet.openIssues', { issues: totals.issues });
   const open = (item: VehicleAttentionItem) => {
     menu.close();
     onOpenVehicle(item.vehicleId, item.target);
@@ -384,14 +385,14 @@ export function AttentionMenu({
         />
       </HoverPressable>
       {menu.open && (
-        <View style={[headerMenuStyles.menu, headerMenuEnter()]} role="dialog" aria-label="דורש טיפול">
+        <View style={[headerMenuStyles.menu, headerMenuEnter()]} role="dialog" aria-label={t('status.needsAttention')}>
           <View style={headerMenuStyles.head}>
             <View style={headerMenuStyles.headText}>
               <DText weight="bold" style={headerMenuStyles.title}>
-                דורש טיפול
+                {t('status.needsAttention')}
               </DText>
               <DText style={[headerMenuStyles.hint, TABULAR]}>
-                {totals.issues > totals.vehicles ? `${issuesLabel} ב-${totals.vehicles} רכבים` : issuesLabel} · לחיצה פותחת את מה שצריך לתקן
+                {totals.issues > totals.vehicles ? t('fleet.issuesInVehicles', { issuesLabel, vehicles: totals.vehicles }) : issuesLabel} {t('fleet.clickOpensFix')}
               </DText>
             </View>
           </View>
@@ -459,7 +460,7 @@ function AttentionGroupSection({
               <DText weight="semiBold" style={styles.issueActionText}>
                 {group.action}
               </DText>
-              <Ionicons name="chevron-back" size={13} color={DESKTOP_COLORS.brand} />
+              <Ionicons name={dirIcon('chevron-back')} size={13} color={DESKTOP_COLORS.brand} />
             </View>
           </HoverPressable>
         ))}
@@ -608,7 +609,7 @@ const styles = StyleSheet.create({
   tileCheck: {
     position: 'absolute',
     top: -5,
-    left: -5,
+    start: -5,
     width: 17,
     height: 17,
     borderRadius: 9,

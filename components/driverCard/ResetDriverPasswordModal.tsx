@@ -4,6 +4,7 @@ import { COLORS } from '../../lib/theme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { modalKit as kit, modalStyles as styles } from './driverModalStyles';
 import { EditField, FieldMessage, KitSheet, PrimaryAction, SheetActions } from '../driverKit';
+import { t } from '../../lib/i18n';
 
 export function ResetDriverPasswordModal({
   visible,
@@ -36,18 +37,18 @@ export function ResetDriverPasswordModal({
         onClose={onClose}
         dismissable={!loading}
         icon="key"
-        title="איפוס סיסמה"
-        subtitle={`סיסמה זמנית חדשה עבור ${driverName ?? 'הנהג'}. בכניסה הבאה הוא יתבקש לקבוע סיסמה קבועה משלו.`}
+        title={t('password.reset')}
+        subtitle={t('password.resetDescription', { v1: driverName ?? t('common.theDriver') })}
         footer={
           <SheetActions>
-            <PrimaryAction label="ביטול" tone="ghost" onPress={onClose} disabled={loading} style={kit.cancel} />
-            <PrimaryAction label="איפוס הסיסמה" icon="key" onPress={onSubmit} loading={loading} style={kit.confirm} />
+            <PrimaryAction label={t('common.cancel')} tone="ghost" onPress={onClose} disabled={loading} style={kit.cancel} />
+            <PrimaryAction label={t('password.resetAction')} icon="key" onPress={onSubmit} loading={loading} style={kit.confirm} />
           </SheetActions>
         }
       >
         <View style={kit.fields}>
-          <EditField first label="סיסמה חדשה" value={password} onChangeText={onPasswordChange} keyboardType="number-pad" ltr secureTextEntry hint="לפחות 4 ספרות" placeholder="••••" />
-          <EditField label="אימות הסיסמה" value={confirmPassword} onChangeText={onConfirmPasswordChange} keyboardType="number-pad" ltr secureTextEntry placeholder="••••" />
+          <EditField first label={t('password.new')} value={password} onChangeText={onPasswordChange} keyboardType="number-pad" ltr secureTextEntry hint={t('validation.min4DigitsPlaceholder')} placeholder="••••" />
+          <EditField label={t('password.confirmThe')} value={confirmPassword} onChangeText={onConfirmPasswordChange} keyboardType="number-pad" ltr secureTextEntry placeholder="••••" />
           <View style={{ paddingHorizontal: 16 }}>
             <FieldMessage error={error || undefined} />
           </View>
@@ -60,18 +61,17 @@ export function ResetDriverPasswordModal({
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.modal} onPress={(event) => event.stopPropagation()}>
           <AppText weight="bold" style={styles.title}>
-            איפוס סיסמה
+            {t('password.reset')}
           </AppText>
           <AppText style={styles.subtitle}>
-            קביעת סיסמה חדשה עבור {driverName ?? 'הנהג'}. הוא יתבקש לקבוע סיסמה קבועה משלו בכניסה הבאה,
-            ולא יוכל להתחבר לפני כן.
+            {t('password.setNewFor')} {driverName ?? t('common.theDriver')}{t('password.setNewForSuffix')}
           </AppText>
 
           <TextInput
             style={styles.input}
             value={password}
             onChangeText={onPasswordChange}
-            placeholder="סיסמה חדשה (לפחות 4 ספרות)"
+            placeholder={t('password.newMin4')}
             keyboardType="number-pad"
             placeholderTextColor={COLORS.textFaint}
             secureTextEntry
@@ -82,7 +82,7 @@ export function ResetDriverPasswordModal({
             style={styles.input}
             value={confirmPassword}
             onChangeText={onConfirmPasswordChange}
-            placeholder="אימות סיסמה"
+            placeholder={t('password.confirm')}
             keyboardType="number-pad"
             placeholderTextColor={COLORS.textFaint}
             secureTextEntry
@@ -95,10 +95,10 @@ export function ResetDriverPasswordModal({
           <View style={styles.actions}>
             <TouchableOpacity style={styles.cancel} onPress={onClose} disabled={loading}>
               <AppText weight="bold" style={styles.cancelText}>
-                ביטול
+                {t('common.cancel')}
               </AppText>
             </TouchableOpacity>
-            <PrimaryButton label="אפס סיסמה" onPress={onSubmit} loading={loading} style={styles.confirmBtn} />
+            <PrimaryButton label={t('password.resetShort')} onPress={onSubmit} loading={loading} style={styles.confirmBtn} />
           </View>
         </Pressable>
       </Pressable>

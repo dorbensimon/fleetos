@@ -6,6 +6,7 @@ import { useDriverOverview } from '../../lib/useDriverOverview';
 import { statusOfDate } from '../../components/driverKit';
 import { formatDate } from '../../lib/theme';
 import type { RootStackParamList } from '../../navigation/types';
+import { t, getLocale } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverAttention'>;
 
@@ -30,9 +31,9 @@ export default function DriverAttentionScreen({ navigation }: Props) {
         title: item.title,
         detail: `${status === 'expired' ? expiredDetail(item.target) : soonDetail(item.target)} · ${item.target ? formatDate(item.target) : ''}`,
         hint: status === 'expired'
-          ? `${item.title} של ${plate ? `הרכב ${plate}` : 'הרכב'} כבר לא בתוקף. תאם חידוש מול מנהל הצי.`
-          : 'כדאי לתאם את החידוש כבר עכשיו, לפני שהתוקף פג.',
-        action: 'לפרטי הרכב',
+          ? t('driver.attention.expiredTitle', { title: item.title, v1: plate ? t('driver.attention.vehiclePlate', { plate }) : t('common.theVehicle') })
+          : t('driver.attention.renewSoon'),
+        action: t('driver.attention.toVehicleDetails'),
         onPress: () => openVehicle(item.item.item_type),
       };
       (status === 'expired' ? expiredTasks : soonTasks).push(task);
@@ -43,26 +44,26 @@ export default function DriverAttentionScreen({ navigation }: Props) {
         key: 'license',
         status: licenseStatus,
         icon: 'id-card',
-        title: 'רישיון נהיגה',
+        title: t('driver.drivingLicense'),
         detail: `${licenseStatus === 'expired' ? expiredDetail(license) : soonDetail(license)} · ${license ? formatDate(license) : ''}`,
         hint: licenseStatus === 'expired'
-          ? 'אחרי שחידשת, עדכן את התוקף החדש ואת צילום הרישיון.'
-          : 'אחרי החידוש, עדכן כאן את התוקף החדש.',
-        action: 'לעדכון הרישיון',
+          ? t('driver.attention.afterRenewPhoto')
+          : t('driver.attention.afterRenewExpiry'),
+        action: t('driver.attention.toLicenseUpdate'),
         onPress: () => navigation.navigate('DriverProfile', { focus: 'license_expiry', edit: true }),
       });
     }
     const signatureTasks: AttentionTask[] = pendingRequests.map((request) => {
-      const title = request.template?.title || request.template_title || 'מסמך לחתימה';
+      const title = request.template?.title || request.template_title || t('signing.docToSign');
       const sent = request.sent_at || request.created_at;
       return {
         key: `sign-${request.id}`,
         status: 'soon',
         icon: 'create',
         title,
-        detail: `נשלח אליך ${new Date(sent).toLocaleDateString('he-IL')}`,
-        hint: 'מנהל הצי מחכה לחתימה שלך. זה לוקח דקה.',
-        action: 'לחתימה על המסמך',
+        detail: t('driver.attention.sentToYou', { v1: new Date(sent).toLocaleDateString(getLocale()) }),
+        hint: t('driver.attention.managerWaiting'),
+        action: t('notifications.action.signDocument'),
         onPress: () => navigation.navigate('DriverSigningDocuments', { requestId: request.id }),
       };
     });

@@ -11,6 +11,7 @@ import { SignedDocumentsMobile } from './mobile/SignedDocumentsMobile';
 import { loadMeetingPlan, type PlanRow } from '../../lib/meetingPlan';
 import { requestErrorDetails } from '../../lib/requestError';
 import { useFocusEffect } from '@react-navigation/native';
+import { t } from '../../lib/i18n';
 
 /**
  * The company's signing documents. The desktop page (reached from the
@@ -27,7 +28,7 @@ export default function SignedDocumentsScreen({ navigation, route }: Props) {
 
   if (isDesktop) {
     return (
-      <DesktopShell active="SignedDocuments" breadcrumbs={['ניהול', 'מסמכים חתומים']}>
+      <DesktopShell active="SignedDocuments" breadcrumbs={[t('nav.management'), t('nav.signedDocuments')]}>
         {company ? <SignedDocumentsDesktopView companyId={company.id} openMeetingTemplateId={openMeeting} onMeetingOpened={meetingOpened} /> : null}
       </DesktopShell>
     );
@@ -62,7 +63,7 @@ function SignedDocumentsPhone({
       setError('');
     } catch (err) {
       if (generation === request.current) {
-        const details = requestErrorDetails(err, 'לא הצלחנו לטעון את המסמכים');
+        const details = requestErrorDetails(err, t('documents.loadFailed'));
         setError([details.message, details.hint].filter(Boolean).join(' '));
       }
     }
@@ -83,7 +84,7 @@ function SignedDocumentsPhone({
       templates={templates}
       // Right after a refresh the company is still on its way: keep loading.
       loading={!templates && !error && (!!companyId || companyLoading)}
-      error={error || (!companyId && !companyLoading ? 'לא נמצאה חברה משויכת לחשבון' : '')}
+      error={error || (!companyId && !companyLoading ? t('company.noLinkedToAccount') : '')}
       refreshing={refreshing}
       onRefresh={async () => {
         setRefreshing(true);
@@ -97,7 +98,7 @@ function SignedDocumentsPhone({
       onBack={() => navigation.goBack()}
       viewTarget={async (template) => ({ ...(await getSigningTemplatePreviewSession(template.id)), title: template.title })}
       onOpenViewer={(target) => navigation.navigate('DocusealWebView', target)}
-      onDeleted={(template) => setTemplates((prev) => (prev ?? []).filter((t) => t.id !== template.id))}
+      onDeleted={(template) => setTemplates((prev) => (prev ?? []).filter((entry) => entry.id !== template.id))}
       onStartMeeting={(templateId, driverId) => navigation.navigate('ChecklistMeeting', { driverId, templateId })}
       plan={plan}
       openMeeting={openMeeting}

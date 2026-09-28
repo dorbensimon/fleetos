@@ -11,6 +11,7 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DesktopInput, DText, HoverPressable } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
+import { t, getLocale } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverOdometer'>;
 export default function DriverOdometerScreen({ navigation, route }: Props) {
@@ -21,22 +22,22 @@ export default function DriverOdometerScreen({ navigation, route }: Props) {
   const next = Number(value);
   const invalid = value.trim() === '' || !Number.isSafeInteger(next) || next < route.params.currentOdometer;
   const save = async () => {
-    if (invalid) { showAlert('המספר לא תקין', `הקילומטראז׳ החדש חייב להיות ${route.params.currentOdometer.toLocaleString('he-IL')} ומעלה`); return; }
+    if (invalid) { showAlert(t('odometer.invalidNumber'), t('odometer.mustBeAtLeast', { v1: route.params.currentOdometer.toLocaleString(getLocale()) })); return; }
     setSaving(true);
-    try { await updateOwnVehicleOdometer(route.params.vehicleId, next); showAlert('הקילומטראז׳ עודכן', 'מנהל הצי יוכל לראות את המספר החדש.', [{ text: 'סיום', onPress: () => navigation.goBack() }]); }
-    catch (error: any) { showAlert('העדכון נכשל', error?.message ?? 'נסה שוב'); }
+    try { await updateOwnVehicleOdometer(route.params.vehicleId, next); showAlert(t('odometer.updated'), t('odometer.managerWillSee'), [{ text: t('common.done'), onPress: () => navigation.goBack() }]); }
+    catch (error: any) { showAlert(t('common.updateFailed'), error?.message ?? t('common.tryAgain')); }
     finally { setSaving(false); }
   };
 
   if (isDesktop) {
     return (
-      <DesktopShell active="DriverHome" breadcrumbs={['הרכב שלי', 'עדכון קילומטראז׳']}>
+      <DesktopShell active="DriverHome" breadcrumbs={[t('driver.myVehicle'), t('odometer.update')]}>
         <View style={ds.wrap}>
           <View style={ds.card}>
-            <DText style={ds.explain}>המספר הקיים הוא {route.params.currentOdometer.toLocaleString('he-IL')} ק״מ. אפשר להעלות אותו, אך לא להוריד.</DText>
+            <DText style={ds.explain}>{t('odometer.currentIs')} {route.params.currentOdometer.toLocaleString(getLocale())} {t('odometer.canRaiseNotLower')}</DText>
             <DesktopInput value={value} onChangeText={(text) => setValue(text.replace(/\D/g, ''))} placeholder="0" keyboardType="number-pad" ltr />
             <HoverPressable style={[ds.button, invalid && ds.buttonDisabled]} hoverStyle={!invalid ? { backgroundColor: DESKTOP_COLORS.brandHover } : undefined} onPress={save} disabled={saving}>
-              <DText weight="semiBold" style={[ds.buttonText, saving && { opacity: 0 }]}>שמור קילומטראז׳</DText>
+              <DText weight="semiBold" style={[ds.buttonText, saving && { opacity: 0 }]}>{t('odometer.save')}</DText>
               {saving && <BrandLoader size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
             </HoverPressable>
           </View>

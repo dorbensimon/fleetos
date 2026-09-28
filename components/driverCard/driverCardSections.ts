@@ -1,4 +1,5 @@
 import type { DriverCardBadgeTone, DriverCardTint } from './driverCardTheme';
+import { t } from '../../lib/i18n';
 
 /** Row content for the driver card's list groups, per DriverCard-spec.md §6. */
 
@@ -75,50 +76,50 @@ export interface DriverCardGroup {
 
 export const DRIVER_CARD_GROUPS: DriverCardGroup[] = [
   {
-    title: 'פרטי קשר ורכב',
+    get title() { return t('driverCard.contactAndVehicle'); },
     rows: [
-      { key: 'phone', kind: 'value', label: 'טלפון', icon: 'phone', tint: 'green', value: '050-0001101', ltr: true, pressable: true },
-      { key: 'email', kind: 'value', label: 'אימייל', icon: 'message', tint: 'blue', value: '—', ltr: true, pressable: true },
-      { key: 'national-id', kind: 'value', label: 'ת״ז', icon: 'id', tint: 'gray', value: '204•••118', ltr: true },
+      { key: 'phone', kind: 'value', get label() { return t('common.phone'); }, icon: 'phone', tint: 'green', value: '050-0001101', ltr: true, pressable: true },
+      { key: 'email', kind: 'value', get label() { return t('common.emailAddress'); }, icon: 'message', tint: 'blue', value: '—', ltr: true, pressable: true },
+      { key: 'national-id', kind: 'value', get label() { return t('field.nationalIdShort'); }, icon: 'id', tint: 'gray', value: '204•••118', ltr: true },
     ],
   },
   {
-    title: 'מסמכים ורישוי',
+    get title() { return t('driverCard.documentsAndLicensing'); },
     rows: [
-      { key: 'license-documents', kind: 'nav', label: 'מסמכי רישיון נהיגה', icon: 'id', tint: 'blue', badge: 'בתוקף', tone: 'muted' },
-      { key: 'signing-documents', kind: 'nav', label: 'מסמכים לחתימה', icon: 'sign', tint: 'orange', badge: '2 ממתינים', tone: 'warn' },
-      { key: 'general-documents', kind: 'nav', label: 'מסמכים כלליים', icon: 'doc', tint: 'gray' },
-      { key: 'traffic-info-documents', kind: 'nav', label: 'מסמכי מידע תעבורתי', icon: 'info', tint: 'teal' },
+      { key: 'license-documents', kind: 'nav', get label() { return t('license.documents'); }, icon: 'id', tint: 'blue', get badge() { return t('status.valid'); }, tone: 'muted' },
+      { key: 'signing-documents', kind: 'nav', get label() { return t('nav.signingDocuments'); }, icon: 'sign', tint: 'orange', get badge() { return t('driverCard.twoPending'); }, tone: 'warn' },
+      { key: 'general-documents', kind: 'nav', get label() { return t('folder.generalDocs'); }, icon: 'doc', tint: 'gray' },
+      { key: 'traffic-info-documents', kind: 'nav', get label() { return t('folder.trafficInfoDocs'); }, icon: 'info', tint: 'teal' },
     ],
   },
   {
-    title: 'תיק נהג ותקשורת',
+    get title() { return t('driverCard.fileAndCommunication'); },
     rows: [
-      { key: 'driver-file', kind: 'nav', label: 'תיק נהג', icon: 'folder', tint: 'teal' },
-      { key: 'notes-comments', kind: 'nav', label: 'הערות ותגובות', icon: 'chat', tint: 'purple' },
-      { key: 'traffic-reports', kind: 'nav', label: 'דוחות תעבורה', icon: 'alert', tint: 'red' },
-      { key: 'companion-drivers', kind: 'nav', label: 'נהגים נלווים', icon: 'users', tint: 'blue' },
+      { key: 'driver-file', kind: 'nav', get label() { return t('folder.driverFile'); }, icon: 'folder', tint: 'teal' },
+      { key: 'notes-comments', kind: 'nav', get label() { return t('folder.notesAndResponses'); }, icon: 'chat', tint: 'purple' },
+      { key: 'traffic-reports', kind: 'nav', get label() { return t('folder.trafficReports'); }, icon: 'alert', tint: 'red' },
+      { key: 'companion-drivers', kind: 'nav', get label() { return t('folder.companionDrivers'); }, icon: 'users', tint: 'blue' },
     ],
   },
   {
-    title: 'בטיחות והדרכות',
+    get title() { return t('folder.safetyAndTraining'); },
     rows: [
-      { key: 'procedure-6', kind: 'nav', label: 'נוהל 6', icon: 'shield', tint: 'green' },
-      { key: 'certifications', kind: 'nav', label: 'הסמכות והכשרות', icon: 'award', tint: 'orange' },
-      { key: 'hazmat', kind: 'nav', label: 'חומרים מסוכנים', icon: 'hazard', tint: 'red' },
-      { key: 'training', kind: 'nav', label: 'הדרכות והכשרות', icon: 'cap', tint: 'indigo' },
+      { key: 'procedure-6', kind: 'nav', get label() { return t('folder.procedure6'); }, icon: 'shield', tint: 'green' },
+      { key: 'certifications', kind: 'nav', get label() { return t('folder.certifications'); }, icon: 'award', tint: 'orange' },
+      { key: 'hazmat', kind: 'nav', get label() { return t('folder.hazmat'); }, icon: 'hazard', tint: 'red' },
+      { key: 'training', kind: 'nav', get label() { return t('folder.trainings'); }, icon: 'cap', tint: 'indigo' },
     ],
   },
   {
-    title: 'דוחות',
+    get title() { return t('reports.title'); },
     rows: [
-      { key: 'export-driver-report', kind: 'nav', label: 'ייצוא דוח תמונת מצב', icon: 'doc', tint: 'blue' },
+      { key: 'export-driver-report', kind: 'nav', get label() { return t('driverCard.exportSnapshot'); }, icon: 'doc', tint: 'blue' },
     ],
   },
   {
-    title: 'ניהול החשבון',
+    get title() { return t('driverCard.accountManagement'); },
     rows: [
-      { key: 'reset-driver-password', kind: 'nav', label: 'איפוס סיסמה לנהג', icon: 'key', tint: 'orange' },
+      { key: 'reset-driver-password', kind: 'nav', get label() { return t('driverCard.resetPassword'); }, icon: 'key', tint: 'orange' },
     ],
   },
 ];

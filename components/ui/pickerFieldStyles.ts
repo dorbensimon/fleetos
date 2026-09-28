@@ -1,5 +1,6 @@
 import type { TextStyle, ViewStyle } from 'react-native';
 import { COLORS, RADIUS } from '../../lib/theme';
+import { textEnd } from '../../lib/i18n';
 
 /** The field box and the iOS picker sheet, shared by DateField, TimeField and Select. */
 export const PICKER_FIELD_STYLES = {
@@ -16,7 +17,7 @@ export const PICKER_FIELD_STYLES = {
   },
   boxError: { borderColor: COLORS.dangerText },
   boxDisabled: { opacity: 0.55 },
-  value: { flex: 1, fontSize: 15, textAlign: 'left' },
+  value: { flex: 1, fontSize: 15, textAlign: textEnd() },
   placeholder: { color: COLORS.textFaint },
   iosDone: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 24 },
   iosDoneText: { color: COLORS.accent, fontSize: 15 },

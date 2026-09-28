@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text as RNText, TextProps, StyleSheet } from 'react-native';
 import { COLORS, FONT } from '../../lib/theme';
+import { textStart, textDirection } from '../../lib/i18n';
 
 /**
  * React Native has no global font setting, so every piece of text in the
@@ -18,7 +19,7 @@ export function AppText({ weight = 'regular', style, ...rest }: AppTextProps) {
       {...rest}
       style={[
         styles.base,
-        { fontFamily: weight === 'regular' ? FONT.regular : FONT.bold },
+        { fontFamily: weight === 'regular' ? FONT.regular : FONT.bold, textAlign: textStart(), writingDirection: textDirection() },
         style,
       ]}
     />
@@ -29,7 +30,5 @@ const styles = StyleSheet.create({
   base: {
     color: COLORS.text,
     fontSize: 14,
-    textAlign: 'right',
-    writingDirection: 'rtl',
   },
 });

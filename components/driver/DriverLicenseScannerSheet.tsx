@@ -6,6 +6,7 @@ import { AppText, Card, Field, Input, PrimaryButton } from '../ui';
 import { COLORS, SPACING } from '../../lib/theme';
 import { pickImage } from '../../lib/documents';
 import { scanLicenseImage, type ScanResult } from '../../lib/documentScanner';
+import { t } from '../../lib/i18n';
 
 type Props = {
   visible: boolean;
@@ -67,7 +68,7 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
       }
     } catch (err: any) {
       if (sessionRef.current === session) {
-        setErrors({ front: err?.message || 'צילום קדימה נכשל' });
+        setErrors({ front: err?.message || t('license.frontPhotoFailed') });
       }
     }
   };
@@ -95,17 +96,17 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
       }
     } catch (err: any) {
       if (sessionRef.current === session) {
-        setErrors({ back: err?.message || 'צילום אחורה נכשל' });
+        setErrors({ back: err?.message || t('license.backPhotoFailed') });
       }
     }
   };
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!licenseNumber.trim()) e.licenseNumber = 'שדה חובה';
-    if (!licenseExpiry.trim()) e.licenseExpiry = 'שדה חובה';
-    else if (!/^\d{4}-\d{2}-\d{2}$/.test(licenseExpiry.trim())) e.licenseExpiry = 'פורמט תאריך שגוי, יש להזין YYYY-MM-DD';
-    if (!licenseClasses.trim()) e.licenseClasses = 'שדה חובה';
+    if (!licenseNumber.trim()) e.licenseNumber = t('validation.required');
+    if (!licenseExpiry.trim()) e.licenseExpiry = t('validation.required');
+    else if (!/^\d{4}-\d{2}-\d{2}$/.test(licenseExpiry.trim())) e.licenseExpiry = t('validation.dateFormat');
+    if (!licenseClasses.trim()) e.licenseClasses = t('validation.required');
     return e;
   };
 
@@ -123,7 +124,7 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
       });
       close();
     } catch (err: any) {
-      setErrors({ general: err?.message || 'שמירה נכשלה' });
+      setErrors({ general: err?.message || t('common.saveFailed') });
     } finally {
       setSaving(false);
     }
@@ -134,12 +135,12 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
       return (
         <View style={styles.centerContent}>
           <Ionicons name="card-outline" size={60} color={COLORS.accent} />
-          <AppText weight="bold" style={styles.title}>סריקת רישיון נהיגה</AppText>
+          <AppText weight="bold" style={styles.title}>{t('license.scanTitle')}</AppText>
           <AppText style={styles.subtitle}>
-            צלם או בחר תמונה של קדימה ואחורה של הרישיון שלך. המערכת תחלץ בעצמה את תאריך התוקף.
+            {t('license.scanIntro')}
           </AppText>
           <PrimaryButton
-            label="התחל סריקה"
+            label={t('license.startScan')}
             icon="camera-outline"
             onPress={pickPhotoFront}
             style={styles.button}
@@ -153,7 +154,7 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
       return (
         <View style={styles.centerContent}>
           <BrandLoader size="large" color={COLORS.accent} />
-          <AppText style={styles.subtitle}>מחליץ נתונים...</AppText>
+          <AppText style={styles.subtitle}>{t('license.extracting')}</AppText>
         </View>
       );
     }
@@ -162,10 +163,10 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
       return (
         <View style={styles.centerContent}>
           <AppText weight="bold" style={styles.title}>
-            {phase === 'photo-front' ? 'בחר תמונת קדימה' : 'בחר תמונת אחורה'}
+            {phase === 'photo-front' ? t('license.chooseFront') : t('license.chooseBack')}
           </AppText>
           <PrimaryButton
-            label="בחר תמונה"
+            label={t('documents.choosePhoto')}
             icon="image-outline"
             onPress={phase === 'photo-front' ? pickPhotoFront : pickPhotoBack}
             style={styles.button}
@@ -180,15 +181,15 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
     if (phase === 'editing') {
       return (
         <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollPadding}>
-          <AppText weight="bold" style={styles.sectionTitle}>תמונות שנסרקו</AppText>
+          <AppText weight="bold" style={styles.sectionTitle}>{t('license.scannedImages')}</AppText>
           <View style={styles.photosRow}>
-            {frontPhoto && <Image source={{ uri: frontPhoto }} accessibilityLabel="צילום הצד הקדמי של הרישיון" style={styles.photo} />}
-            {backPhoto && <Image source={{ uri: backPhoto }} accessibilityLabel="צילום הצד האחורי של הרישיון" style={styles.photo} />}
+            {frontPhoto && <Image source={{ uri: frontPhoto }} accessibilityLabel={t('license.frontPhoto')} style={styles.photo} />}
+            {backPhoto && <Image source={{ uri: backPhoto }} accessibilityLabel={t('license.backPhoto')} style={styles.photo} />}
           </View>
 
           {frontScan && (
             <Card style={styles.scanCard}>
-              <AppText weight="bold" style={styles.label}>טקסט שחולץ (קדימה)</AppText>
+              <AppText weight="bold" style={styles.label}>{t('license.extractedFront')}</AppText>
               <AppText style={styles.extractedText} numberOfLines={6}>
                 {frontScan.rawText}
               </AppText>
@@ -197,18 +198,18 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
 
           {backScan && (
             <Card style={styles.scanCard}>
-              <AppText weight="bold" style={styles.label}>טקסט שחולץ (אחורה)</AppText>
+              <AppText weight="bold" style={styles.label}>{t('license.extractedBack')}</AppText>
               <AppText style={styles.extractedText} numberOfLines={6}>
                 {backScan.rawText}
               </AppText>
             </Card>
           )}
 
-          <AppText weight="bold" style={styles.sectionTitle}>עריכה ידנית</AppText>
+          <AppText weight="bold" style={styles.sectionTitle}>{t('license.manualEdit')}</AppText>
 
-          <Field label="מספר רישיון" error={errors.licenseNumber}>
+          <Field label={t('field.licenseNumber')} error={errors.licenseNumber}>
             <Input
-              placeholder="מספר הרישיון"
+              placeholder={t('license.number')}
               value={licenseNumber}
               onChangeText={setLicenseNumber}
               editable={!saving}
@@ -217,7 +218,7 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
             />
           </Field>
 
-          <Field label="תוקף עד" error={errors.licenseExpiry}>
+          <Field label={t('license.validUntil')} error={errors.licenseExpiry}>
             <Input
               placeholder="YYYY-MM-DD"
               value={licenseExpiry}
@@ -227,7 +228,7 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
             />
           </Field>
 
-          <Field label="דרגות רישיון" error={errors.licenseClasses}>
+          <Field label={t('driver.licenseClasses')} error={errors.licenseClasses}>
             <Input
               placeholder="B, C1, D"
               value={licenseClasses}
@@ -240,7 +241,7 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
           {errors.general && <AppText style={styles.error}>{errors.general}</AppText>}
 
           <PrimaryButton
-            label="שמור"
+            label={t('common.saveShort')}
             icon="checkmark-circle-outline"
             onPress={submit}
             loading={saving}
@@ -258,9 +259,9 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={close} disabled={saving}>
-            <AppText weight="bold" style={styles.cancelText}>ביטול</AppText>
+            <AppText weight="bold" style={styles.cancelText}>{t('common.cancel')}</AppText>
           </TouchableOpacity>
-          <AppText weight="bold" style={styles.headerTitle}>רישיון נהיגה</AppText>
+          <AppText weight="bold" style={styles.headerTitle}>{t('driver.drivingLicense')}</AppText>
           <View style={styles.placeholder} />
         </View>
 

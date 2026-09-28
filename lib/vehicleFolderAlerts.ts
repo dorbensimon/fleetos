@@ -7,6 +7,8 @@
  * compliance item type for the compliance folders, a document category for
  * the document folders. Tapping a notification opens that folder.
  */
+import { t } from './i18n';
+
 export type VehicleFolderSource = 'compliance' | 'document';
 
 export interface VehicleFolderAlert {
@@ -17,17 +19,17 @@ export interface VehicleFolderAlert {
 }
 
 export const VEHICLE_FOLDER_ALERTS: VehicleFolderAlert[] = [
-  { folderKey: 'vehicle_license', notificationType: 'vehicle_license_expiry', label: 'רישיון רכב', source: 'compliance' },
-  { folderKey: 'operating_license', notificationType: 'vehicle_operating_license_expiry', label: 'רישיון הפעלה', source: 'compliance' },
-  { folderKey: 'insurance_mandatory', notificationType: 'vehicle_insurance_mandatory_expiry', label: 'ביטוח חובה', source: 'compliance' },
-  { folderKey: 'insurance_comprehensive', notificationType: 'vehicle_insurance_comprehensive_expiry', label: 'ביטוח מקיף', source: 'compliance' },
-  { folderKey: 'annual_test', notificationType: 'vehicle_annual_test_expiry', label: 'טסט שנתי', source: 'compliance' },
-  { folderKey: 'safety_officer_approval', notificationType: 'vehicle_safety_officer_approval_expiry', label: 'אישור קצין בטיחות', source: 'document' },
-  { folderKey: 'tachograph_calibration', notificationType: 'vehicle_tachograph_calibration_expiry', label: 'תוקף טכוגרף', source: 'document' },
-  { folderKey: 'brakes_semiannual', notificationType: 'vehicle_brakes_semiannual_expiry', label: 'בלמים חצי-שנתי', source: 'document' },
-  { folderKey: 'brakes_annual', notificationType: 'vehicle_brakes_annual_expiry', label: 'בלמים שנתי', source: 'document' },
-  { folderKey: 'winter_inspection', notificationType: 'vehicle_winter_inspection_expiry', label: 'בדיקת חורף', source: 'document' },
-  { folderKey: 'child_detection', notificationType: 'vehicle_child_detection_expiry', label: 'שכחת ילדים', source: 'document' },
+  { folderKey: 'vehicle_license', notificationType: 'vehicle_license_expiry', get label() { return t('folder.vehicleLicense'); }, source: 'compliance' },
+  { folderKey: 'operating_license', notificationType: 'vehicle_operating_license_expiry', get label() { return t('folder.operatingLicense'); }, source: 'compliance' },
+  { folderKey: 'insurance_mandatory', notificationType: 'vehicle_insurance_mandatory_expiry', get label() { return t('folder.mandatoryInsurance'); }, source: 'compliance' },
+  { folderKey: 'insurance_comprehensive', notificationType: 'vehicle_insurance_comprehensive_expiry', get label() { return t('folder.comprehensiveInsurance'); }, source: 'compliance' },
+  { folderKey: 'annual_test', notificationType: 'vehicle_annual_test_expiry', get label() { return t('folder.annualTest'); }, source: 'compliance' },
+  { folderKey: 'safety_officer_approval', notificationType: 'vehicle_safety_officer_approval_expiry', get label() { return t('folder.safetyOfficerApproval'); }, source: 'document' },
+  { folderKey: 'tachograph_calibration', notificationType: 'vehicle_tachograph_calibration_expiry', get label() { return t('folder.tachographValidity'); }, source: 'document' },
+  { folderKey: 'brakes_semiannual', notificationType: 'vehicle_brakes_semiannual_expiry', get label() { return t('folder.brakesSemiAnnual'); }, source: 'document' },
+  { folderKey: 'brakes_annual', notificationType: 'vehicle_brakes_annual_expiry', get label() { return t('folder.brakesAnnual'); }, source: 'document' },
+  { folderKey: 'winter_inspection', notificationType: 'vehicle_winter_inspection_expiry', get label() { return t('folder.winterCheck'); }, source: 'document' },
+  { folderKey: 'child_detection', notificationType: 'vehicle_child_detection_expiry', get label() { return t('folder.childLeftBehind'); }, source: 'document' },
 ];
 
 const BY_TYPE = new Map(VEHICLE_FOLDER_ALERTS.map((alert) => [alert.notificationType, alert]));

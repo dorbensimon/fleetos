@@ -27,6 +27,7 @@ import { buildPlatformOverview, type CompanyHealth, type PlatformOverview } from
 import { DesktopShell } from '../components/desktop/DesktopShell';
 import { OwnerConsoleDesktop } from '../components/owner/OwnerConsoleDesktop';
 import { OwnerConsoleMobile } from '../components/owner/OwnerConsoleMobile';
+import { t } from '../lib/i18n';
 
 /**
  * The owner's (super-admin) control room: every company as a customer — its
@@ -71,7 +72,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         setForm((f) => ({ ...f, logoUrl: url }));
       }
     } catch (err: any) {
-      setLogoError(err?.message || 'העלאת הלוגו נכשלה');
+      setLogoError(err?.message || t('company.logoUploadFailed'));
     } finally {
       setUploadingLogo(false);
     }
@@ -93,7 +94,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       const rows = await loadPlatformRows();
       if (requestId === loadRequest.current) setOverview(buildPlatformOverview(rows));
     } catch (err: any) {
-      if (requestId === loadRequest.current) setLoadError(err?.message ?? 'טעינת נתוני המערכת נכשלה');
+      if (requestId === loadRequest.current) setLoadError(err?.message ?? t('owner.systemLoadFailed'));
     }
   }, []);
 
@@ -154,14 +155,14 @@ export default function OwnerHomeScreen({ navigation }: Props) {
     try {
       await exportPlatformReport(overview);
     } catch {
-      showAlert('הפקת הדוח נכשלה', 'נסה שוב בעוד רגע.');
+      showAlert(t('owner.reportFailed'), t('common.tryAgainShortly'));
     }
   };
 
   const setStatus = async (company: CompanyRow, status: CompanyRow['status']) => {
     const { error } = await updateCompanyStatus(company.id, status);
     if (error) {
-      showAlert('העדכון נכשל', 'לא הצלחנו לעדכן את סטטוס החברה. נסה שוב.');
+      showAlert(t('common.updateFailed'), t('owner.statusUpdateFailedRetry'));
       return;
     }
     await loadCompanies();
@@ -174,9 +175,9 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       void setStatus(company, 'active');
       return;
     }
-    showAlert('השבתת החברה', `המנהלים והנהגים של ${company.name} לא יוכלו להיכנס עד שתפעיל אותה מחדש. הנתונים נשמרים.`, [
-      { text: 'ביטול', style: 'cancel' },
-      { text: 'השבתה', style: 'destructive', onPress: () => void setStatus(company, 'disabled') },
+    showAlert(t('owner.disableCompany'), t('company.disableConfirm', { name: company.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('company.disableAction'), style: 'destructive', onPress: () => void setStatus(company, 'disabled') },
     ]);
   };
 
@@ -190,7 +191,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
     const { data, error } = await deleteOwnedCompany(menuCompany.id, deleteConfirmText.trim());
     setDeleting(false);
     if (error || !data?.success) {
-      showAlert('מחיקת החברה נכשלה', await functionErrorMessage(error, data, 'נסה שוב', false));
+      showAlert(t('company.deleteFailed'), await functionErrorMessage(error, data, t('common.tryAgain'), false));
       return;
     }
     closeAll();
@@ -215,7 +216,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       });
 
       if (error || !data?.success) {
-        setCreateError(await functionErrorMessage(error, data, 'יצירת החברה נכשלה', false));
+        setCreateError(await functionErrorMessage(error, data, t('owner.createCompanyFailed'), false));
         return;
       }
 
@@ -228,7 +229,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       setAddOpen(false);
       await loadCompanies();
     } catch {
-      setCreateError('אירעה שגיאה. נסה שוב');
+      setCreateError(t('common.errorTryAgain'));
     } finally {
       setCreating(false);
     }
@@ -289,7 +290,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   if (isDesktop) {
     return (
       <>
-        <DesktopShell active="OwnerHome" breadcrumbs={['מרכז הבקרה']}>
+        <DesktopShell active="OwnerHome" breadcrumbs={[t('nav.controlCenter')]}>
           <OwnerConsoleDesktop
             firstName={firstName}
             overview={overview}

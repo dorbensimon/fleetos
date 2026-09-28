@@ -3,6 +3,7 @@ import { Linking, StyleSheet, View } from 'react-native';
 import { ActionRow, DK, DKText, KitSection, ListRow, Reveal, Surface } from '../driverKit';
 import { BUSINESS, businessLine } from '../../lib/legal/business';
 import { LEGAL_DOC_ORDER, LEGAL_DOCUMENTS, type LegalDocId, type LegalDocument } from '../../lib/legal/documents';
+import { t } from '../../lib/i18n';
 
 const DOC_ICONS: Record<LegalDocId, React.ComponentProps<typeof ListRow>['icon']> = {
   terms: 'document-text',
@@ -60,13 +61,13 @@ export function LegalDocumentBody({
         </Reveal>
       ))}
 
-      <KitSection title="יצירת קשר">
-        <ActionRow icon="call" label={`התקשרות · ${BUSINESS.phone}`} onPress={() => void Linking.openURL(BUSINESS.phoneHref)} />
-        <ActionRow first={false} icon="mail" label={`שליחת מייל · ${BUSINESS.email}`} onPress={() => void Linking.openURL(`mailto:${BUSINESS.email}`)} />
+      <KitSection title={t('legal.contact')}>
+        <ActionRow icon="call" label={t('legal.call', { phone: BUSINESS.phone })} onPress={() => void Linking.openURL(BUSINESS.phoneHref)} />
+        <ActionRow first={false} icon="mail" label={t('legal.email', { email: BUSINESS.email })} onPress={() => void Linking.openURL(`mailto:${BUSINESS.email}`)} />
       </KitSection>
 
       {!!onOpenDoc && (
-        <KitSection title="מסמכים נוספים">
+        <KitSection title={t('legal.moreDocuments')}>
           {LEGAL_DOC_ORDER.filter((id) => id !== doc.id).map((id, i) => (
             <ListRow key={id} first={i === 0} icon={DOC_ICONS[id]} title={LEGAL_DOCUMENTS[id].title} subtitle={LEGAL_DOCUMENTS[id].summary} onPress={() => onOpenDoc(id)} />
           ))}

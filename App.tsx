@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, AppState } from 'react-native';
+import { View, AppState, Platform } from 'react-native';
 import { BrandLoader } from './components/ui/BrandLoader';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
@@ -78,6 +78,8 @@ import {
   unregisterPushNotifications,
 } from './lib/pushNotifications';
 import { navigateToNotificationTarget } from './lib/notificationTargets';
+import { getLanguage, layoutDirection, onLanguageChange, type Language } from './lib/i18n';
+import { syncLanguageFromUser } from './lib/i18n/userLanguage';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
@@ -158,6 +160,9 @@ export default function App() {
   // The navigation is rebuilt after the first-use consent screen; the stack
   // saved before it (often the login screen) must not come back then.
   const [resumeSavedState, setResumeSavedState] = useState(true);
+  const [language, setLanguage] = useState<Language>(getLanguage);
+  // Native keeps the screen the user was on when the language changes.
+  const [languageNavigationState, setLanguageNavigationState] = useState<object | undefined>();
 
   const [fontsLoaded] = useFonts({
     Assistant_400Regular,
@@ -190,6 +195,7 @@ export default function App() {
           return;
         }
 
+        await syncLanguageFromUser(data.session?.user).catch(() => undefined);
         const result = await resolveRouteForUser(userId);
         if (active) setInitialRoute(result.ok ? result.route : 'Login');
       } catch {
@@ -209,7 +215,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // The account's saved language follows the user to every device.
+      // Deferred: supabase calls made inside this callback would deadlock.
+      if (event === 'SIGNED_IN') setTimeout(() => void syncLanguageFromUser(session?.user).catch(() => undefined), 0);
       if (event === 'SIGNED_OUT') {
         void unregisterPushNotifications().catch(() => undefined);
         if (typeof window !== 'undefined') window.sessionStorage.removeItem(WEB_NAVIGATION_STATE_KEY);
@@ -224,6 +233,18 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // A new language re-renders every screen. On web the page reloads: modules
+  // build some strings and styles when they load, and the browser restores
+  // the same page from its URL. Native rebuilds the tree on the same screen.
+  useEffect(() => onLanguageChange((next) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.reload();
+      return;
+    }
+    setLanguageNavigationState(navigationRef.isReady() ? navigationRef.getRootState() : undefined);
+    setLanguage(next);
+  }), []);
 
   useEffect(() => {
     if (!initialRoute || initialRoute === 'Login') return;
@@ -248,8 +269,14 @@ export default function App() {
     );
   }
 
+  // Layout is authored for Hebrew; a left-to-right language runs the layout
+  // engine right-to-left, which mirrors every screen (see layoutDirection).
+  const direction = layoutDirection(language);
+  const directionProps = Platform.OS === 'web' ? ({ dir: direction } as object) : {};
+
   return (
     <SafeAreaProvider>
+      <View key={language} style={{ flex: 1, direction }} {...directionProps}>
       <ToastProvider>
         <CompanyProvider>
           <FirstProfileGate signedIn={initialRoute !== 'Login'}>
@@ -269,7 +296,7 @@ export default function App() {
             // the browser tab shows the brand instead; a legal page adds its
             // own name, so a bookmarked or shared link says what it is.
             documentTitle={{ formatter: (_options, route) => legalPageTitle(route) ?? 'icar' }}
-            initialState={initialRoute === 'Login' || !resumeSavedState ? undefined : webInitialNavigationState}
+            initialState={languageNavigationState ?? (initialRoute === 'Login' || !resumeSavedState ? undefined : webInitialNavigationState)}
             onReady={syncWebThemeColor}
             onStateChange={(state) => {
               syncWebThemeColor();
@@ -346,6 +373,7 @@ export default function App() {
           </FirstProfileGate>
         </CompanyProvider>
       </ToastProvider>
+      </View>
     </SafeAreaProvider>
   );
 }

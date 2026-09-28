@@ -28,6 +28,8 @@ import {
 } from '../../lib/compliance';
 import { expiryState, formatDate } from '../../lib/theme';
 import type { ComplianceItem, DriverVehicleAssignment } from '../../lib/adminApi';
+import { t, getLocale } from '../../lib/i18n';
+import { fontStack } from '../../lib/fontStack';
 
 type Props = {
   insetTop: number;
@@ -49,7 +51,7 @@ const ALWAYS = ['insurance_mandatory', 'annual_test'];
 function rowsFor(compliance: ComplianceItem[]) {
   const types = [
     ...ALWAYS,
-    ...compliance.map((c) => c.item_type).filter((t) => !ALWAYS.includes(t) && !isRetiredVehicleComplianceItem(t)),
+    ...compliance.map((c) => c.item_type).filter((entry) => !ALWAYS.includes(entry) && !isRetiredVehicleComplianceItem(entry)),
   ];
   return [...new Set(types)].map((type) => {
     const item = compliance.find((c) => c.item_type === type) ?? null;
@@ -59,7 +61,7 @@ function rowsFor(compliance: ComplianceItem[]) {
     return {
       type,
       label: def?.label ?? type,
-      value: def ? complianceBadgeLabel(def, item) : item?.expiry_date ? formatDate(item.expiry_date) : 'חסר',
+      value: def ? complianceBadgeLabel(def, item) : item?.expiry_date ? formatDate(item.expiry_date) : t('status.missing'),
       target,
       status: state === 'optional' ? ('ok' as const) : statusOf(state),
     };
@@ -77,8 +79,8 @@ export function DriverVehicleMobile(p: Props) {
       scrollRef={scrollRef}
       hero={
         <HeroTitle
-          title={many ? 'הרכבים שלי' : 'הרכב שלי'}
-          subtitle={many ? `${p.assignments.length} רכבים משויכים אליך` : 'תוקף, טיפולים וקילומטראז׳'}
+          title={many ? t('driver.myVehicles') : t('driver.myVehicle')}
+          subtitle={many ? t('driver.vehiclesAssignedToYou', { length: p.assignments.length }) : t('driver.expiryServicesMileage')}
           onBack={p.onBack}
         />
       }
@@ -98,10 +100,10 @@ export function DriverVehicleMobile(p: Props) {
               <Ionicons name="car-sport-outline" size={30} color={DK.accent} />
             </View>
             <DKText variant="heading" style={styles.center}>
-              עוד אין רכב משויך
+              {t('driver.noVehicleYet')}
             </DKText>
             <DKText variant="body" color={DK.muted} style={styles.center}>
-              מנהל הצי משייך רכבים לנהגים. כשזה יקרה, הרכב יופיע כאן עם כל התוקפים שלו.
+              {t('driver.noVehicleYetHint')}
             </DKText>
           </Surface>
         </Reveal>
@@ -117,12 +119,12 @@ export function DriverVehicleMobile(p: Props) {
                     {many && (
                       <View style={[styles.rolePill, a.is_primary && styles.rolePrimary]}>
                         <DKText variant="micro" color={a.is_primary ? DK.accent : DK.muted}>
-                          {a.is_primary ? 'הרכב הראשי שלי' : 'רכב משני'}
+                          {a.is_primary ? t('driver.myPrimaryVehicle') : t('driver.secondaryVehicle')}
                         </DKText>
                       </View>
                     )}
                     <DKText variant="title" numberOfLines={2}>
-                      {[v.manufacturer, v.model].filter(Boolean).join(' ') || 'ללא דגם'}
+                      {[v.manufacturer, v.model].filter(Boolean).join(' ') || t('vehicle.noModelShort')}
                     </DKText>
                     <DKText variant="caption" color={DK.muted}>
                       {VEHICLE_TYPE_LABELS[v.vehicle_type] ?? v.vehicle_type}
@@ -151,12 +153,12 @@ export function DriverVehicleMobile(p: Props) {
                 <View style={styles.odometer}>
                   <View style={styles.odometerText}>
                     <DKText variant="caption" color={DK.muted}>
-                      קילומטראז׳ נוכחי
+                      {t('vehicle.currentMileage')}
                     </DKText>
                     <View style={styles.odometerValue}>
-                      <DKText style={styles.km}>{v.odometer.toLocaleString('he-IL')}</DKText>
+                      <DKText style={styles.km}>{v.odometer.toLocaleString(getLocale())}</DKText>
                       <DKText variant="label" color={DK.muted}>
-                        ק״מ
+                        {t('unit.km')}
                       </DKText>
                     </View>
                   </View>
@@ -164,7 +166,7 @@ export function DriverVehicleMobile(p: Props) {
                     <Ionicons name="speedometer" size={24} color={DK.accent} />
                   </View>
                 </View>
-                <PrimaryAction label="עדכון קילומטרים" icon="create-outline" onPress={() => p.onOdometer(a)} style={styles.cta} />
+                <PrimaryAction label={t('odometer.updateKm')} icon="create-outline" onPress={() => p.onOdometer(a)} style={styles.cta} />
                 </FocusTarget>
               </Surface>
             </Reveal>
@@ -196,7 +198,7 @@ const styles = StyleSheet.create({
   },
   odometerText: { flex: 1, gap: 2 },
   odometerValue: { flexDirection: 'row-reverse', alignItems: 'baseline', gap: 6 },
-  km: { fontFamily: 'Heebo_800ExtraBold', fontSize: 30, lineHeight: 36, letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
+  km: { fontFamily: fontStack('Heebo_800ExtraBold'), fontSize: 30, lineHeight: 36, letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
   speedIcon: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: DK.accentSoft },
   cta: { marginHorizontal: DK_SPACE.lg, marginTop: 14 },
   empty: { alignItems: 'center', gap: 10, paddingVertical: 34, paddingHorizontal: 26 },

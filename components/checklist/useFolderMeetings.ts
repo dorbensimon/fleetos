@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSigningTemplateSourceUrl, type SignatureRequest, type SigningTemplate } from '../../lib/docuseal';
 import { isChecklistTemplate, listDriverMeetings, type MeetingRow } from '../../lib/checklistForms';
+import { t } from '../../lib/i18n';
 
 /**
  * A driver's meetings on one "רשימת סעיפים" folder: drafts still being
@@ -50,6 +51,6 @@ export function useFolderMeetings(driverId: string | null | undefined, template:
 /** The blank form as a PDF, for "צפייה" on a checklist folder. */
 export async function checklistPreviewTarget(template: SigningTemplate, title: string) {
   const src = await getSigningTemplateSourceUrl(template);
-  if (!src) throw new Error('לא הצלחנו לפתוח את הטופס. נסו שוב.');
+  if (!src) throw new Error(t('meeting.openFormFailed'));
   return { mode: 'document' as const, src, title };
 }

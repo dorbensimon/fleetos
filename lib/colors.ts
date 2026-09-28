@@ -1,3 +1,4 @@
+import { fontStack } from './fontStack';
 /**
  * The shared color system for the app. Originated as the fleet-home-only
  * palette (`FleetOS Admin Home.dc.html`'s bell/colors spec) — now promoted
@@ -99,9 +100,9 @@ export const FLEET_SHADOWS = {
 // the fleet-home screen family, not app-wide, despite this file's new
 // shared location: re-fonting the whole app is a separate decision.
 export const FLEET_FONT = {
-  regular: 'Heebo_500Medium',
-  bold: 'Heebo_700Bold',
-  black: 'Heebo_800ExtraBold',
+  regular: fontStack('Heebo_500Medium'),
+  bold: fontStack('Heebo_700Bold'),
+  black: fontStack('Heebo_800ExtraBold'),
 } as const;
 
 export function severityFor(state: 'ok' | 'soon' | 'expired' | 'missing' | 'optional') {

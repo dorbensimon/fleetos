@@ -10,6 +10,7 @@ import {
   type InspectionPlanRow,
   type InspectionState,
 } from '../../lib/inspections';
+import { t } from '../../lib/i18n';
 
 export type VehicleInspectionEntry = { row: InspectionListRow; state: InspectionState };
 
@@ -39,7 +40,7 @@ export function useVehicleInspections(companyId: string | null | undefined, vehi
       setRepeatMonths(settings.repeatMonths);
       setError('');
     } catch (e) {
-      if (current === generation.current) setError((e as Error)?.message || 'טעינת בדיקות הבטיחות נכשלה');
+      if (current === generation.current) setError((e as Error)?.message || t('inspection.loadFailed'));
     }
   }, [companyId, vehicleId]);
 

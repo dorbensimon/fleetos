@@ -9,6 +9,7 @@ import { DocumentRow, OwnerType } from './adminApi';
 import { safeFileName } from './fileNames';
 import { extensionForMimeType, isAllowedDocumentMimeType } from './fileTypes';
 import { downloadRemoteFileOnWeb, readBlobUrlAsBase64 } from './webDownload';
+import { t } from './i18n';
 
 /**
  * Documents live in a PRIVATE storage bucket, unlike company logos.
@@ -46,7 +47,7 @@ export async function readPickedFileBase64(file: PickedFile): Promise<string> {
 export async function pickImage(): Promise<PickedFile | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
-    throw new Error('נדרשת הרשאת גישה לתמונות');
+    throw new Error(t('permission.photos'));
   }
 
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -71,7 +72,7 @@ export async function pickImage(): Promise<PickedFile | null> {
 export async function captureImage(): Promise<PickedFile | null> {
   const permission = await ImagePicker.requestCameraPermissionsAsync();
   if (!permission.granted) {
-    throw new Error('נדרשת הרשאת גישה למצלמה');
+    throw new Error(t('permission.camera'));
   }
 
   const result = await ImagePicker.launchCameraAsync({ quality: 0.85 });
@@ -190,13 +191,13 @@ export async function uploadDocument(params: {
 }): Promise<DocumentRow> {
   const { file } = params;
   if (!isAllowedDocumentMimeType(file.mimeType)) {
-    throw new Error('סוג הקובץ אינו נתמך. ניתן להעלות PDF או תמונה בפורמט JPG, PNG, WEBP או HEIC');
+    throw new Error(t('documents.unsupportedType'));
   }
 
   const base64 = await readPickedFileBase64(file);
   const bytes = decode(base64);
   if (bytes.byteLength > MAX_DOCUMENT_BYTES) {
-    throw new Error('הקובץ גדול מדי. ניתן להעלות קובץ עד 20MB');
+    throw new Error(t('documents.tooLarge'));
   }
 
   return storeDocumentBytes({
@@ -231,7 +232,7 @@ export async function uploadGeneratedDocument(params: {
 }): Promise<DocumentRow> {
   const bytes = decode(rawBase64(params.base64));
   if (bytes.byteLength > MAX_DOCUMENT_BYTES) {
-    throw new Error('הקובץ שנוצר גדול מדי');
+    throw new Error(t('documents.generatedTooLarge'));
   }
 
   return storeDocumentBytes({
@@ -289,7 +290,7 @@ export async function getDocumentUrl(doc: DocumentRow): Promise<string | null> {
  */
 export async function downloadDocument(doc: DocumentRow): Promise<void> {
   const url = await getDocumentUrl(doc);
-  if (!url) throw new Error('לא ניתן להוריד את המסמך כרגע');
+  if (!url) throw new Error(t('documents.downloadUnavailable'));
 
   if (await downloadRemoteFileOnWeb(url, safeFileName(doc.file_name ?? doc.title, 'document'))) return;
 

@@ -6,6 +6,7 @@ import { listActiveVehicleDriversForVehicles } from './assignments';
 import { expiryState } from '../theme';
 import { fetchAllPages } from './paging';
 import type { DriverRow, Vehicle } from './types';
+import { t } from '../i18n';
 
 export type AttentionSummary = { license: number; insurance: number; unassignedVehicles: number; missingLicenseDocuments: number };
 
@@ -47,9 +48,9 @@ export async function getAttentionDetails(companyId: string): Promise<AttentionD
   const missingLicenseDocuments = drivers.flatMap((driver) => {
     const driverSides = sides.get(driver.id);
     const missing = [
-      !driverSides?.has('צד קדמי') && 'צד קדמי',
-      !driverSides?.has('צד אחורי') && 'צד אחורי',
-      !driver.license_expiry && 'תוקף',
+      !driverSides?.has('צד קדמי') && t('documents.frontSide'),
+      !driverSides?.has('צד אחורי') && t('documents.backSide'),
+      !driver.license_expiry && t('common.validity'),
     ].filter((x): x is string => !!x);
     return missing.length ? [{ driver, missing }] : [];
   });

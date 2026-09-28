@@ -1,5 +1,6 @@
 import { StyleSheet, type TextStyle, type ViewStyle } from 'react-native';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
+import { textStart } from '../../lib/i18n';
 
 /** The centred modal of the driver card's confirm, edit-email and reset-password dialogs. */
 export const DRIVER_MODAL_BASE = {
@@ -18,8 +19,8 @@ export const DRIVER_MODAL_BASE = {
     padding: SPACING.lg,
     gap: SPACING.sm,
   },
-  title: { fontSize: 16.5, color: COLORS.text, textAlign: 'right' },
-  subtitle: { fontSize: 12.5, color: COLORS.textMuted, textAlign: 'right', lineHeight: 18 },
+  title: { fontSize: 16.5, color: COLORS.text, textAlign: textStart() },
+  subtitle: { fontSize: 12.5, color: COLORS.textMuted, textAlign: textStart(), lineHeight: 18 },
   actions: { flexDirection: 'row-reverse', gap: SPACING.sm, marginTop: SPACING.xs },
   cancel: {
     flex: 1,

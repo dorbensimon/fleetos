@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { functionErrorMessage } from './functionError';
 import { formatIsoDay, todayIso } from './checklistForms';
+import { t } from './i18n';
 
 /**
  * Recurring meetings: which active driver needs a meeting on which repeating
@@ -44,12 +45,12 @@ export function dueState(nextDue: string, today = todayIso()): DueState {
 /** One short line for a list: "באיחור של 5 ימים", "היום", "בעוד 3 ימים", "עד 26/12/2026". */
 export function dueText(nextDue: string, today = todayIso()): string {
   const days = daysBetween(today, nextDue);
-  if (days < -1) return `באיחור של ${-days} ימים`;
-  if (days === -1) return 'באיחור של יום';
-  if (days === 0) return 'היום';
-  if (days === 1) return 'מחר';
-  if (days <= SOON_DAYS) return `בעוד ${days} ימים`;
-  return `עד ${formatIsoDay(nextDue)}`;
+  if (days < -1) return t('meeting.overdueDays', { v1: -days });
+  if (days === -1) return t('meeting.overdueOneDay');
+  if (days === 0) return t('common.today');
+  if (days === 1) return t('common.tomorrow');
+  if (days <= SOON_DAYS) return t('time.inDays', { days });
+  return t('meeting.until', { nextDue: formatIsoDay(nextDue) });
 }
 
 /** Needs attention now: late, today, or within the next two weeks. */
@@ -94,10 +95,10 @@ async function invoke(body: Record<string, unknown>, fallback: string): Promise<
 
 /** Moves one driver's next meeting on one form to another day. */
 export async function setNextMeetingDate(companyId: string, templateId: string, driverId: string, nextDue: string): Promise<void> {
-  await invoke({ action: 'set-next', companyId, templateId, driverId, nextDue }, 'שמירת התאריך נכשלה');
+  await invoke({ action: 'set-next', companyId, templateId, driverId, nextDue }, t('common.saveDateFailed'));
 }
 
 /** How often every driver needs this form: 0 for a one-time form. */
 export async function setFormRepeat(companyId: string, templateId: string, repeatMonths: number): Promise<void> {
-  await invoke({ action: 'set-repeat', companyId, templateId, repeatMonths }, 'שמירת התדירות נכשלה');
+  await invoke({ action: 'set-repeat', companyId, templateId, repeatMonths }, t('meeting.saveFrequencyFailed'));
 }

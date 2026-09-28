@@ -13,6 +13,7 @@ import { DocumentViewer } from '../components/desktop/signing/DocumentViewer.web
 import type { RootStackParamList } from '../navigation/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DK, NightBar, HeroButton } from '../components/driverKit';
+import { t } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DocusealWebView'>;
 type IframeMessage = { type?: 'completed' | 'declined' | 'saved' | 'error' };
@@ -92,7 +93,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
         navigation.goBack();
       }
     } catch (err: any) {
-      setError(err?.message || 'סנכרון החתימה נכשל');
+      setError(err?.message || t('docuseal.syncFailed'));
     } finally {
       setSaving(false);
     }
@@ -105,10 +106,10 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
         if (event.data.type === 'completed' || event.data.type === 'declined') {
           await finishSigning(event.data.type);
         } else if (event.data.type === 'error') {
-          setError(params.mode === 'document' ? 'טעינת המסמך נכשלה' : 'טעינת DocuSeal נכשלה');
+          setError(params.mode === 'document' ? t('docuseal.docLoadFailed') : t('docuseal.loadFailed'));
         }
       } catch (err: any) {
-        setError(err?.message || 'סנכרון החתימה נכשל');
+        setError(err?.message || t('docuseal.syncFailed'));
       } finally {
         setSaving(false);
       }
@@ -135,7 +136,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
     const ready = () => setLoading(false);
     const failed = () => {
       setLoading(false);
-      setError('טעינת DocuSeal נכשלה');
+      setError(t('docuseal.loadFailed'));
     };
     if (window.customElements?.get('docuseal-form')) {
       ready();
@@ -182,7 +183,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
       await finalizeSigningTemplate(companyId, params.templateId);
       navigation.goBack();
     } catch (err: any) {
-      setError(err?.message || 'אישור התבנית נכשל');
+      setError(err?.message || t('docuseal.templateApproveFailed'));
     } finally {
       setSaving(false);
     }
@@ -194,7 +195,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
     try {
       await downloadSignedRequest({ id: params.requestId, template_title: params.title });
     } catch (err: any) {
-      setError(err?.message || 'הורדת המסמך נכשלה');
+      setError(err?.message || t('signing.downloadFailed'));
     }
   };
 
@@ -213,16 +214,16 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
         <NightBar
           insetTop={insets.top}
           title={params.title}
-          subtitle={params.mode === 'builder' ? 'מקמו את שדות החתימה ושמרו' : isSigningForm ? (isDriver ? 'מלא את השדות וחתום' : 'תצוגה מקדימה') : params.mode === 'document' ? 'צפייה במסמך' : undefined}
+          subtitle={params.mode === 'builder' ? t('docuseal.placeFieldsSave') : isSigningForm ? (isDriver ? t('docuseal.fillAndSign') : t('docuseal.preview')) : params.mode === 'document' ? t('signing.viewDocument') : undefined}
           onBack={() => navigation.goBack()}
-          right={downloadAction ? <HeroButton icon="download-outline" label="הורדת המסמך החתום" onPress={() => void download()} /> : undefined}
+          right={downloadAction ? <HeroButton icon="download-outline" label={t('signing.downloadSigned')} onPress={() => void download()} /> : undefined}
         />
       ) : (
         <ScreenHeader
           title={params.title}
           onBack={() => navigation.goBack()}
           right={downloadAction ? (
-            <TouchableOpacity style={styles.downloadButton} onPress={() => void download()} accessibilityRole="button" accessibilityLabel="הורדת המסמך החתום">
+            <TouchableOpacity style={styles.downloadButton} onPress={() => void download()} accessibilityRole="button" accessibilityLabel={t('signing.downloadSigned')}>
               <Ionicons name="download-outline" size={20} color={COLORS.accent} />
             </TouchableOpacity>
           ) : undefined}
@@ -250,8 +251,8 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
         {loading && <View style={styles.loading}><BrandLoader color={COLORS.accent} /></View>}
       </View>
       {!!error && <AppText style={styles.error}>{error}</AppText>}
-      {params.mode === 'builder' && <View style={styles.footer}><PrimaryButton label="אשר ושמור כתבנית" icon="checkmark-circle-outline" loading={saving} onPress={finishBuilder} /></View>}
-      {params.mode !== 'builder' && saving && <View style={styles.sync}><BrandLoader color={COLORS.accent} /><AppText>שומר את המסמך החתום...</AppText></View>}
+      {params.mode === 'builder' && <View style={styles.footer}><PrimaryButton label={t('docuseal.approveSaveTemplate')} icon="checkmark-circle-outline" loading={saving} onPress={finishBuilder} /></View>}
+      {params.mode !== 'builder' && saving && <View style={styles.sync}><BrandLoader color={COLORS.accent} /><AppText>{t('docuseal.savingSigned')}</AppText></View>}
     </Screen>
   );
 }

@@ -7,6 +7,7 @@ import { supabase } from './supabase';
 import { functionErrorMessage } from './functionError';
 import { safeFileName } from './fileNames';
 import { downloadRemoteFileOnWeb, readBlobUrlAsBase64 } from './webDownload';
+import { t } from './i18n';
 
 export type SigningTemplate = {
   id: string;
@@ -106,7 +107,7 @@ async function readFileBase64(file: SigningFile): Promise<string> {
 async function invoke<T>(name: string, body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(name, { body });
   if (error || data?.error) {
-    throw new Error(await functionErrorMessage(error, data, 'הפעולה נכשלה'));
+    throw new Error(await functionErrorMessage(error, data, t('common.actionFailed')));
   }
   return data as T;
 }
@@ -116,7 +117,7 @@ async function getImageSize(uri: string): Promise<{ width: number; height: numbe
     Image.getSize(
       uri,
       (width, height) => resolve({ width, height }),
-      () => reject(new Error('לא הצלחנו לקרוא את גודל התמונה'))
+      () => reject(new Error(t('docuseal.imageSizeUnreadable')))
     );
   });
 }
@@ -232,7 +233,7 @@ async function imageToPdf(file: SigningFile): Promise<SigningFile> {
     margins: { top: 0, right: 0, bottom: 0, left: 0 },
   });
   if (result.numberOfPages !== 1) {
-    throw new Error('לא ניתן להתאים את התמונה לעמוד יחיד. נסה לבחור את התמונה מחדש.');
+    throw new Error(t('docuseal.imageNotFit'));
   }
   return { uri: result.uri, name: `${file.name.replace(/\.[^.]+$/, '')}.pdf`, mimeType: 'application/pdf' };
 }
@@ -317,7 +318,7 @@ export async function getSigningTemplatePreviewSession(templateId: string): Prom
 
 export async function downloadSigningTemplate(template: SigningTemplate): Promise<void> {
   const url = await getSigningTemplateSourceUrl(template);
-  if (!url) throw new Error('לא ניתן להוריד את התבנית כרגע');
+  if (!url) throw new Error(t('docuseal.templateDownloadUnavailable'));
 
   if (await downloadRemoteFileOnWeb(url, safeFileName(template.source_file_name ?? `${template.title}.pdf`, 'template.pdf'))) return;
 
@@ -334,7 +335,7 @@ export async function downloadSigningTemplate(template: SigningTemplate): Promis
 export async function downloadSignedRequest(request: Pick<SignatureRequest, 'id' | 'template_title' | 'template'>): Promise<void> {
   const session = await getSigningSession(request.id);
   if (session.mode !== 'document') {
-    throw new Error('המסמך החתום עדיין לא זמין להורדה');
+    throw new Error(t('docuseal.signedNotReady'));
   }
 
   const fileName = safeFileName(`${request.template_title || request.template?.title || 'signed-document'}.pdf`, 'signed-document.pdf');

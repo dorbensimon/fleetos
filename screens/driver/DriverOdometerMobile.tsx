@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DK, DK_FONT, DK_SPACE, DKText, DriverPage, HeroTitle, PrimaryAction, Reveal, STATUS, Surface } from '../../components/driverKit';
+import { t, getLocale } from '../../lib/i18n';
 
 type Props = {
   insetTop: number;
@@ -26,16 +27,16 @@ export function DriverOdometerMobile(p: Props) {
   const empty = p.value.trim() === '';
   const tooLow = !empty && Number.isSafeInteger(next) && next < p.current;
   const delta = !empty && Number.isSafeInteger(next) ? next - p.current : 0;
-  const formatted = empty ? '' : next.toLocaleString('he-IL');
+  const formatted = empty ? '' : next.toLocaleString(getLocale());
 
   return (
     <DriverPage
       insetTop={p.insetTop}
       insetBottom={p.insetBottom}
-      hero={<HeroTitle title="עדכון קילומטרים" subtitle="המספר שמופיע עכשיו בלוח המחוונים" onBack={p.onBack} />}
+      hero={<HeroTitle title={t('odometer.updateKm')} subtitle={t('odometer.dashboardNumber')} onBack={p.onBack} />}
       footer={
         <PrimaryAction
-          label="שמירת הקילומטראז׳"
+          label={t('odometer.saveMileage')}
           icon="checkmark"
           onPress={p.onSave}
           loading={p.saving}
@@ -46,7 +47,7 @@ export function DriverOdometerMobile(p: Props) {
       <Reveal>
         <Surface style={styles.card}>
           <DKText variant="caption" color={DK.muted} style={styles.center}>
-            עדכון קודם: {p.current.toLocaleString('he-IL')} ק״מ
+            {t('odometer.previousUpdate')} {p.current.toLocaleString(getLocale())} {t('unit.km')}
           </DKText>
 
           <Pressable onPress={() => input.current?.focus()} accessible={false} style={[styles.field, focused && styles.fieldFocused, tooLow && styles.fieldError]}>
@@ -61,12 +62,12 @@ export function DriverOdometerMobile(p: Props) {
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               selectTextOnFocus
-              accessibilityLabel="הקילומטראז׳ עכשיו"
-              accessibilityHint={`מספר של ${p.current.toLocaleString('he-IL')} ומעלה`}
+              accessibilityLabel={t('odometer.mileageNow')}
+              accessibilityHint={t('odometer.numberFrom', { v1: p.current.toLocaleString(getLocale()) })}
               style={styles.input}
             />
             <DKText variant="label" color={DK.muted} style={styles.center}>
-              ק״מ
+              {t('unit.km')}
             </DKText>
           </Pressable>
 
@@ -75,19 +76,19 @@ export function DriverOdometerMobile(p: Props) {
               <View style={[styles.note, { backgroundColor: STATUS.expired.soft }]}>
                 <Ionicons name="alert-circle" size={16} color={STATUS.expired.fg} />
                 <DKText variant="caption" color={STATUS.expired.fg}>
-                  אי אפשר להוריד — המספר צריך להיות {p.current.toLocaleString('he-IL')} ומעלה
+                  {t('odometer.cantLowerPrefix')} {p.current.toLocaleString(getLocale())} {t('odometer.orMore')}
                 </DKText>
               </View>
             ) : delta > 0 ? (
               <View style={[styles.note, { backgroundColor: STATUS.ok.soft }]}>
                 <Ionicons name="trending-up" size={16} color={STATUS.ok.fg} />
                 <DKText variant="caption" color={STATUS.ok.fg}>
-                  +{delta.toLocaleString('he-IL')} ק״מ מהעדכון הקודם
+                  +{delta.toLocaleString(getLocale())} {t('odometer.kmSinceLast')}
                 </DKText>
               </View>
             ) : (
               <DKText variant="caption" color={DK.muted} style={styles.center}>
-                אפשר רק להעלות את המספר. מנהל הצי יראה אותו מיד.
+                {t('odometer.onlyRaise')}
               </DKText>
             )}
           </View>

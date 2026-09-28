@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { Pressable, StyleSheet } from 'react-native';
 import { prefersReducedMotion } from './primitives';
 import { DESKTOP_COLORS, webOnly } from './desktopTheme';
+import { t } from '../../lib/i18n';
 
 /**
  * The top bar's dropdowns (notifications, "needs attention") share one open
@@ -38,7 +39,7 @@ export function useHeaderMenu(id: string) {
 
 /** Transparent full-window layer under an open dropdown: a click outside closes it. */
 export function HeaderMenuBackdrop({ onClose }: { onClose: () => void }) {
-  return <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="סגירה" />;
+  return <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={t('common.close')} />;
 }
 
 /** Dropdown drops from its trigger: short fade + slight scale, opacity only when motion is reduced. */
@@ -64,7 +65,7 @@ export const headerMenuStyles = StyleSheet.create({
   menu: {
     position: 'absolute',
     top: 40,
-    left: 0,
+    start: 0,
     width: 380,
     backgroundColor: DESKTOP_COLORS.surface,
     borderRadius: 16,
@@ -99,5 +100,5 @@ export const headerMenuStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  backdrop: { ...webOnly({ position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, cursor: 'default' }) },
+  backdrop: { ...webOnly({ position: 'fixed', top: 0, end: 0, bottom: 0, start: 0, cursor: 'default' }) },
 });

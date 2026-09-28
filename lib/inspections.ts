@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { functionErrorMessage } from './functionError';
+import { t } from './i18n';
 
 /**
  * "בדיקות בטיחות": the safety officer walks around a vehicle, marks every item
@@ -88,9 +89,9 @@ export const DEFAULT_INSPECTION_FORM: InspectionForm = {
  * answer is also spelled out and has its own icon.
  */
 export const INSPECTION_STATUS_META: Record<InspectionStatus, { label: string; icon: 'checkmark' | 'close' | 'remove'; fg: string; soft: string; fill: string }> = {
-  ok: { label: 'תקין', icon: 'checkmark', fg: '#0B7D57', soft: '#E4F7EF', fill: '#22C48A' },
-  not_ok: { label: 'לא תקין', icon: 'close', fg: '#C21F37', soft: '#FFE8EB', fill: '#FF4D5E' },
-  na: { label: 'לא רלוונטי', icon: 'remove', fg: '#56657A', soft: '#EEF1F6', fill: '#8593A6' },
+  ok: { get label() { return t('status.ok'); }, icon: 'checkmark', fg: '#0B7D57', soft: '#E4F7EF', fill: '#22C48A' },
+  not_ok: { get label() { return t('status.notOk'); }, icon: 'close', fg: '#C21F37', soft: '#FFE8EB', fill: '#FF4D5E' },
+  na: { get label() { return t('status.notRelevant'); }, icon: 'remove', fg: '#56657A', soft: '#EEF1F6', fill: '#8593A6' },
 };
 
 export const INSPECTION_STATUSES: InspectionStatus[] = ['ok', 'not_ok', 'na'];
@@ -111,9 +112,9 @@ export function missingDefectNotes(form: InspectionForm, answers: InspectionAnsw
 /** Why the officer cannot sign yet, in plain words, or null. The server checks the same. */
 export function inspectionProblem(form: InspectionForm, answers: InspectionAnswers): string | null {
   const open = formItems(form).length - answeredCount(form, answers);
-  if (open > 0) return open === 1 ? 'נשאר סעיף אחד לסימון' : `נשארו ${open} סעיפים לסימון`;
+  if (open > 0) return open === 1 ? t('inspection.oneItemLeft') : t('inspection.itemsLeft', { open });
   const notes = missingDefectNotes(form, answers).length;
-  if (notes > 0) return notes === 1 ? 'בסעיף "לא תקין" אחד חסר תיאור של הבעיה' : `ב-${notes} סעיפים "לא תקין" חסר תיאור של הבעיה`;
+  if (notes > 0) return notes === 1 ? t('inspection.oneNoteMissing') : t('inspection.notesMissing', { notes });
   return null;
 }
 
@@ -154,12 +155,12 @@ export function newListId(prefix: string): string {
 /** Why an edited list cannot be saved yet, or null. */
 export function listProblem(form: InspectionForm): string | null {
   const groups = form.groups.filter((group) => group.title.trim() || group.items.some((item) => item.text.trim()));
-  if (!groups.length) return 'צריך לפחות קבוצה אחת עם סעיף';
-  if (groups.length > INSPECTION_LIMITS.groups) return `אפשר עד ${INSPECTION_LIMITS.groups} קבוצות`;
-  if (groups.some((group) => !group.title.trim())) return 'לכל קבוצה צריך שם';
-  if (groups.some((group) => !group.items.some((item) => item.text.trim()))) return 'בכל קבוצה צריך לפחות סעיף אחד';
+  if (!groups.length) return t('inspection.needGroupWithItem');
+  if (groups.length > INSPECTION_LIMITS.groups) return t('inspection.maxGroups', { groups: INSPECTION_LIMITS.groups });
+  if (groups.some((group) => !group.title.trim())) return t('inspection.groupNeedsName');
+  if (groups.some((group) => !group.items.some((item) => item.text.trim()))) return t('inspection.groupNeedsItem');
   const count = groups.reduce((sum, group) => sum + group.items.filter((item) => item.text.trim()).length, 0);
-  if (count > INSPECTION_LIMITS.items) return `אפשר עד ${INSPECTION_LIMITS.items} סעיפים ברשימה`;
+  if (count > INSPECTION_LIMITS.items) return t('inspection.maxItems', { items: INSPECTION_LIMITS.items });
   return null;
 }
 
@@ -231,12 +232,12 @@ export function inspectionState(inspection: Pick<InspectionRow, 'status' | 'sign
 }
 
 export const INSPECTION_STATE_META: Record<InspectionState, { label: string; tone: 'ok' | 'soon' | 'expired' | 'missing' | 'info' }> = {
-  draft: { label: 'טיוטה', tone: 'missing' },
-  awaiting_driver: { label: 'ממתין לחתימת נהג', tone: 'soon' },
-  completed: { label: 'חתום', tone: 'ok' },
-  closed: { label: 'נסגר בלי חתימת נהג', tone: 'info' },
-  requires_attention: { label: 'דורש טיפול', tone: 'expired' },
-  cancelled: { label: 'בוטל', tone: 'missing' },
+  draft: { get label() { return t('status.draft'); }, tone: 'missing' },
+  awaiting_driver: { get label() { return t('inspection.awaitingDriverSignature'); }, tone: 'soon' },
+  completed: { get label() { return t('status.signed'); }, tone: 'ok' },
+  closed: { get label() { return t('inspection.closedWithoutDriver'); }, tone: 'info' },
+  requires_attention: { get label() { return t('status.needsAttention'); }, tone: 'expired' },
+  cancelled: { get label() { return t('common.cancelled'); }, tone: 'missing' },
 };
 
 /**
@@ -322,16 +323,16 @@ export async function recentInspectorNames(companyId: string): Promise<string[]>
 export type InspectionSettings = { repeatMonths: number; form: InspectionForm | null };
 
 export const INSPECTION_REPEAT_OPTIONS = [
-  { months: 1, label: 'כל חודש' },
-  { months: 2, label: 'כל חודשיים' },
-  { months: 3, label: 'כל 3 חודשים' },
-  { months: 6, label: 'כל חצי שנה' },
-  { months: 12, label: 'כל שנה' },
-  { months: 0, label: 'בלי תזכורות' },
+  { months: 1, get label() { return t('frequency.monthly'); } },
+  { months: 2, get label() { return t('frequency.every2Months'); } },
+  { months: 3, get label() { return t('frequency.every3Months'); } },
+  { months: 6, get label() { return t('frequency.every6Months'); } },
+  { months: 12, get label() { return t('frequency.yearly'); } },
+  { months: 0, get label() { return t('frequency.noReminders'); } },
 ] as const;
 
 export function inspectionRepeatLabel(months: number): string {
-  return INSPECTION_REPEAT_OPTIONS.find((o) => o.months === months)?.label ?? `כל ${months} חודשים`;
+  return INSPECTION_REPEAT_OPTIONS.find((o) => o.months === months)?.label ?? t('frequency.everyNMonths', { months });
 }
 
 export async function getInspectionSettings(companyId: string): Promise<InspectionSettings> {
@@ -406,7 +407,7 @@ export async function saveInspectionDraft(
   target: { inspectionId: string } | { vehicleId: string },
   input: InspectionInput,
 ): Promise<InspectionRow> {
-  const { inspection } = await invoke<{ inspection: InspectionRow }>({ action: 'save', companyId, ...target, ...input }, 'שמירת הטיוטה נכשלה');
+  const { inspection } = await invoke<{ inspection: InspectionRow }>({ action: 'save', companyId, ...target, ...input }, t('common.saveDraftFailed'));
   return inspection;
 }
 
@@ -416,35 +417,35 @@ export async function signInspection(
   inspectionId: string,
   input: InspectionInput & { officerSignature: string; notifyDriver: boolean },
 ): Promise<{ inspection: InspectionRow; requestId: string; nextDue: string | null }> {
-  return invoke({ action: 'sign', companyId, inspectionId, ...input }, 'שמירת החתימה נכשלה');
+  return invoke({ action: 'sign', companyId, inspectionId, ...input }, t('common.saveSignatureFailed'));
 }
 
 export async function driverSignInspection(companyId: string, inspectionId: string, driverSignature: string): Promise<{ status: 'completed'; filePending: boolean }> {
-  return invoke({ action: 'driver-sign', companyId, inspectionId, driverSignature }, 'שמירת החתימה של הנהג נכשלה');
+  return invoke({ action: 'driver-sign', companyId, inspectionId, driverSignature }, t('common.saveDriverSignatureFailed'));
 }
 
 export async function notifyInspectionDriver(companyId: string, inspectionId: string): Promise<void> {
-  await invoke({ action: 'notify', companyId, inspectionId }, 'השליחה לנהג נכשלה');
+  await invoke({ action: 'notify', companyId, inspectionId }, t('common.sendToDriverFailed'));
 }
 
 /** The driver never signed: the document is issued with the officer's signature and this note. */
 export async function closeInspection(companyId: string, inspectionId: string, note: string): Promise<InspectionRow> {
-  const { inspection } = await invoke<{ inspection: InspectionRow }>({ action: 'close', companyId, inspectionId, note }, 'סגירת הבדיקה נכשלה');
+  const { inspection } = await invoke<{ inspection: InspectionRow }>({ action: 'close', companyId, inspectionId, note }, t('inspection.closeFailed'));
   return inspection;
 }
 
 /** A draft is thrown away; a signed inspection stays, marked "בוטל". */
 export async function cancelInspection(companyId: string, inspectionId: string): Promise<{ removed?: boolean }> {
-  return invoke({ action: 'cancel', companyId, inspectionId }, 'ביטול הבדיקה נכשל');
+  return invoke({ action: 'cancel', companyId, inspectionId }, t('inspection.cancelFailed'));
 }
 
 /** A short-lived link to the finished PDF. */
 export async function inspectionDocument(companyId: string, inspectionId: string): Promise<{ url: string; fileName: string }> {
-  return invoke({ action: 'document', companyId, inspectionId }, 'פתיחת המסמך נכשלה');
+  return invoke({ action: 'document', companyId, inspectionId }, t('common.openDocumentFailed'));
 }
 
 export async function setNextInspectionDate(companyId: string, vehicleId: string, nextDue: string): Promise<void> {
-  await invoke({ action: 'set-next', companyId, vehicleId, nextDue }, 'שמירת התאריך נכשלה');
+  await invoke({ action: 'set-next', companyId, vehicleId, nextDue }, t('common.saveDateFailed'));
 }
 
 /** How often vehicles are checked, and/or the company's own list (null brings back the ready-made one). */
@@ -454,7 +455,7 @@ export async function saveInspectionSettings(
 ): Promise<InspectionSettings> {
   const { settings } = await invoke<{ settings: { repeat_months: number; form: unknown } }>(
     { action: 'settings', companyId, ...patch, ...(patch.form ? { form: cleanList(patch.form) } : {}) },
-    'שמירת ההגדרות נכשלה',
+    t('common.saveSettingsFailed'),
   );
   return { repeatMonths: settings.repeat_months, form: settings.form ? readInspectionForm(settings.form) : null };
 }

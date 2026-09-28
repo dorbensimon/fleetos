@@ -1,6 +1,7 @@
 import { isValidIsraeliPhone } from './phone';
 import { parseDateValue } from './theme';
 import { isValidEmail, isValidTemporaryPassword } from './validation';
+import { t } from './i18n';
 
 export type DriverFormValidationState = {
   full_name: string;
@@ -93,26 +94,26 @@ export function validateDriverForm(
 ): Record<string, string> {
   const errors: Record<string, string> = {};
 
-  if (!form.full_name.trim()) errors.full_name = 'שדה חובה';
-  if (!form.phone.trim()) errors.phone = 'שדה חובה';
-  else if (!isValidIsraeliPhone(form.phone)) errors.phone = 'מספר טלפון לא תקין';
+  if (!form.full_name.trim()) errors.full_name = t('validation.required');
+  if (!form.phone.trim()) errors.phone = t('validation.required');
+  else if (!isValidIsraeliPhone(form.phone)) errors.phone = t('validation.invalidPhone');
 
   // Editing an existing driver must not get stuck behind fields a legacy
   // record never had filled in (e.g. imported drivers missing a national
   // ID) — those are only required when creating a new driver. A value
   // that IS present still has to be valid, in both modes.
-  if (!isEdit && !form.national_id.trim()) errors.national_id = 'שדה חובה';
-  else if (form.national_id.trim() && !isValidIsraeliNationalId(form.national_id)) errors.national_id = 'תעודת זהות לא תקינה';
+  if (!isEdit && !form.national_id.trim()) errors.national_id = t('validation.required');
+  else if (form.national_id.trim() && !isValidIsraeliNationalId(form.national_id)) errors.national_id = t('validation.invalidNationalId');
 
-  if (!isEdit && !form.license_classes.trim()) errors.license_classes = 'שדה חובה';
-  if (!isEdit && !form.license_expiry.trim()) errors.license_expiry = 'שדה חובה';
-  else if (form.license_expiry.trim() && !isFutureDateOnly(form.license_expiry)) errors.license_expiry = 'תוקף הרישיון חייב להיות עתידי';
+  if (!isEdit && !form.license_classes.trim()) errors.license_classes = t('validation.required');
+  if (!isEdit && !form.license_expiry.trim()) errors.license_expiry = t('validation.required');
+  else if (form.license_expiry.trim() && !isFutureDateOnly(form.license_expiry)) errors.license_expiry = t('validation.licenseExpiryFuture');
 
   if (!isEdit) {
-    if (!form.email.trim()) errors.email = 'שדה חובה';
-    else if (!isValidEmail(form.email)) errors.email = 'כתובת מייל לא תקינה';
-    if (!form.password) errors.password = 'שדה חובה';
-    else if (!isValidTemporaryPassword(form.password)) errors.password = 'לפחות 4 ספרות בלבד';
+    if (!form.email.trim()) errors.email = t('validation.required');
+    else if (!isValidEmail(form.email)) errors.email = t('validation.invalidEmail');
+    if (!form.password) errors.password = t('validation.required');
+    else if (!isValidTemporaryPassword(form.password)) errors.password = t('validation.min4DigitsOnly');
   }
 
   return errors;

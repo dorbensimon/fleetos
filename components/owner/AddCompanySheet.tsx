@@ -7,6 +7,7 @@ import { formatPhone } from '../../lib/phone';
 import { validateCompanyStep, type CompanyStep, type OwnerCompanyForm } from '../../lib/newCompanyForm';
 import { AccountFields } from './CompanyAccountSheet';
 import { ChoiceChips } from './ownerKit';
+import { t, dirIcon, textEnd } from '../../lib/i18n';
 
 /**
  * Opening a new customer, in three short steps on one sheet (a dialog on
@@ -21,9 +22,9 @@ export { emptyOwnerCompanyForm, type OwnerCompanyForm } from '../../lib/newCompa
 type FieldErrors = Record<string, string>;
 
 const STEPS: { title: string; subtitle: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
-  { title: 'החברה', subtitle: 'השם שיופיע לכל המשתמשים שלה', icon: 'business' },
-  { title: 'המנהל', subtitle: 'מי ינהל את הצי ויקבל את פרטי הכניסה', icon: 'person' },
-  { title: 'המנוי', subtitle: 'רק אתה רואה את זה, לא החברה', icon: 'card' },
+  { get title() { return t('owner.theCompany'); }, get subtitle() { return t('addCompany.step.companyHint'); }, icon: 'business' },
+  { get title() { return t('addCompany.step.manager'); }, get subtitle() { return t('addCompany.step.managerHint'); }, icon: 'person' },
+  { get title() { return t('addCompany.step.subscription'); }, get subtitle() { return t('addCompany.step.subscriptionHint'); }, icon: 'card' },
 ];
 
 function randomDigits(length: number): string {
@@ -92,9 +93,9 @@ export function AddCompanySheet({
       visible={visible}
       onClose={onClose}
       dismissable={!creating}
-      title="חברה חדשה"
+      title={t('owner.newCompany')}
       scrollKey={step}
-      subtitle={`שלב ${step + 1} מתוך 3 · ${STEPS[step].subtitle}`}
+      subtitle={t('addCompany.stepOf3', { v1: step + 1, subtitle: STEPS[step].subtitle })}
       footer={
         <View style={styles.footer}>
           {!!createError && (
@@ -106,10 +107,10 @@ export function AddCompanySheet({
             </View>
           )}
           <SheetActions>
-            <PrimaryAction label={step === 0 ? 'ביטול' : 'חזרה'} tone="ghost" onPress={back} disabled={creating} style={styles.grow} />
+            <PrimaryAction label={step === 0 ? t('common.cancel') : t('common.goBack')} tone="ghost" onPress={back} disabled={creating} style={styles.grow} />
             <PrimaryAction
-              label={step < 2 ? 'המשך' : 'יצירת החברה'}
-              icon={step < 2 ? 'arrow-back' : 'checkmark'}
+              label={step < 2 ? t('common.continue') : t('addCompany.create')}
+              icon={step < 2 ? dirIcon('arrow-back') : 'checkmark'}
               onPress={next}
               loading={creating}
               style={styles.grow}
@@ -122,13 +123,13 @@ export function AddCompanySheet({
 
       {step === 0 && (
         <View style={styles.stack}>
-          <Pressy onPress={onPickLogo} disabled={uploadingLogo} accessibilityLabel={form.logoUrl ? 'החלפת הלוגו' : 'העלאת לוגו'} pressScale={0.98}>
+          <Pressy onPress={onPickLogo} disabled={uploadingLogo} accessibilityLabel={form.logoUrl ? t('company.replaceLogo') : t('company.uploadLogo')} pressScale={0.98}>
             <Surface style={styles.logoCard}>
               <View style={styles.logoBox}>
                 {uploadingLogo ? (
                   <BrandLoader size={26} />
                 ) : form.logoUrl ? (
-                  <Image source={{ uri: form.logoUrl }} accessibilityLabel="לוגו החברה" style={styles.logoImage} resizeMode="contain" />
+                  <Image source={{ uri: form.logoUrl }} accessibilityLabel={t('company.logo')} style={styles.logoImage} resizeMode="contain" />
                 ) : (
                   <DKText variant="title" color={DK.accent}>
                     {form.name.trim().charAt(0) || <Ionicons name="image-outline" size={26} color={DK.accent} />}
@@ -136,9 +137,9 @@ export function AddCompanySheet({
                 )}
               </View>
               <View style={styles.flex}>
-                <DKText variant="label">{form.logoUrl ? 'הלוגו הועלה' : 'לוגו החברה'}</DKText>
+                <DKText variant="label">{form.logoUrl ? t('company.logoUploaded') : t('company.logo')}</DKText>
                 <DKText variant="caption" color={logoError ? STATUS.expired.fg : DK.muted}>
-                  {logoError || (form.logoUrl ? 'לחיצה מחליפה אותו' : 'לא חובה · PNG או JPG')}
+                  {logoError || (form.logoUrl ? t('company.clickToReplace') : t('company.logoOptional'))}
                 </DKText>
               </View>
               <Ionicons name={form.logoUrl ? 'swap-horizontal' : 'cloud-upload-outline'} size={20} color={DK.accent} />
@@ -146,13 +147,13 @@ export function AddCompanySheet({
           </Pressy>
 
           <KitSection>
-            <EditField first label="שם החברה" required value={form.name} onChangeText={(v) => set('name', v)} placeholder="לדוגמה: אלמוג הובלות" error={errors.name} />
+            <EditField first label={t('company.name')} required value={form.name} onChangeText={(v) => set('name', v)} placeholder={t('company.nameExample')} error={errors.name} />
             <View style={styles.block}>
               <DKText variant="caption" color={DK.inkSoft}>
-                סוג החברה
+                {t('company.typeOf')}
               </DKText>
               <ChoiceChips
-                label="סוג החברה"
+                label={t('company.typeOf')}
                 clearable
                 options={[
                   { value: 'בע״מ', label: 'בע״מ' },
@@ -163,7 +164,7 @@ export function AddCompanySheet({
               />
             </View>
             <EditField
-              label={form.companyType === 'עוסק מורשה' ? 'מספר עוסק' : 'ח.פ.'}
+              label={form.companyType === 'עוסק מורשה' ? t('company.dealerNumber') : t('company.regNumber')}
               value={form.businessId}
               onChangeText={(v) => set('businessId', v.replace(/\D/g, ''))}
               keyboardType="number-pad"
@@ -171,7 +172,7 @@ export function AddCompanySheet({
               placeholder="512345678"
               maxLength={9}
               error={errors.businessId}
-              hint="לא חובה. אפשר להשלים אחר כך בדף החברה."
+              hint={t('company.completeLaterHint')}
             />
           </KitSection>
         </View>
@@ -179,17 +180,17 @@ export function AddCompanySheet({
 
       {step === 1 && (
         <View style={styles.stack}>
-          <KitSection title="פרטי המנהל">
+          <KitSection title={t('addCompany.managerDetails')}>
             <View style={styles.pairRow}>
               <View style={styles.flex}>
-                <EditField first label="שם פרטי" required value={form.adminFirstName} onChangeText={(v) => set('adminFirstName', v)} placeholder="דוד" error={errors.adminFirstName} />
+                <EditField first label={t('common.firstName')} required value={form.adminFirstName} onChangeText={(v) => set('adminFirstName', v)} placeholder={t('common.firstNameExample')} error={errors.adminFirstName} />
               </View>
               <View style={styles.flex}>
-                <EditField first label="שם משפחה" required value={form.adminLastName} onChangeText={(v) => set('adminLastName', v)} placeholder="כהן" error={errors.adminLastName} />
+                <EditField first label={t('common.lastName')} required value={form.adminLastName} onChangeText={(v) => set('adminLastName', v)} placeholder={t('common.lastNameExample')} error={errors.adminLastName} />
               </View>
             </View>
             <EditField
-              label="מייל"
+              label={t('common.emailShort')}
               required
               value={form.email}
               onChangeText={(v) => set('email', v.trim())}
@@ -198,10 +199,10 @@ export function AddCompanySheet({
               ltr
               placeholder="admin@company.co.il"
               error={errors.email}
-              hint="איתו המנהל נכנס למערכת."
+              hint={t('addCompany.managerSignsInWith')}
             />
             <EditField
-              label="טלפון נייד"
+              label={t('common.mobilePhone')}
               required
               value={formatPhone(form.phone)}
               onChangeText={(v) => set('phone', v.replace(/\D/g, ''))}
@@ -213,19 +214,19 @@ export function AddCompanySheet({
           </KitSection>
 
           <KitSection
-            title="סיסמה זמנית"
+            title={t('password.temporary')}
             trailing={
-              <Pressy onPress={() => set('password', randomDigits(6))} accessibilityLabel="יצירת סיסמה אקראית" style={styles.linkChip} pressScale={0.95}>
+              <Pressy onPress={() => set('password', randomDigits(6))} accessibilityLabel={t('password.generateRandom')} style={styles.linkChip} pressScale={0.95}>
                 <Ionicons name="sparkles" size={14} color={DK.accent} />
                 <DKText variant="micro" color={DK.accent}>
-                  יצירה אוטומטית
+                  {t('password.autoGenerate')}
                 </DKText>
               </Pressy>
             }
           >
             <EditField
               first
-              label="סיסמה"
+              label={t('common.password')}
               required
               value={form.password}
               onChangeText={(v) => set('password', v.replace(/\D/g, ''))}
@@ -233,13 +234,13 @@ export function AddCompanySheet({
               secureTextEntry={!showPassword}
               autoComplete="off"
               ltr
-              placeholder="לפחות 4 ספרות"
+              placeholder={t('validation.min4DigitsPlaceholder')}
               error={errors.password}
             />
-            <Pressy onPress={() => setShowPassword((v) => !v)} accessibilityLabel={showPassword ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'} style={styles.showRow} pressScale={0.98}>
+            <Pressy onPress={() => setShowPassword((v) => !v)} accessibilityLabel={showPassword ? t('password.hideThe') : t('password.showThe')} style={styles.showRow} pressScale={0.98}>
               <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={17} color={DK.muted} />
               <DKText variant="caption" color={DK.muted}>
-                {showPassword ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'}
+                {showPassword ? t('password.hideThe') : t('password.showThe')}
               </DKText>
             </Pressy>
           </KitSection>
@@ -247,7 +248,7 @@ export function AddCompanySheet({
           <View style={styles.note}>
             <Ionicons name="shield-checkmark" size={16} color={DK.accent} />
             <DKText variant="caption" color={DK.inkSoft} style={styles.flex}>
-              בכניסה הראשונה המנהל יתבקש לבחור סיסמה קבועה משלו. הסיסמה הזמנית לא נשמרת אצלנו.
+              {t('addCompany.tempPasswordNote')}
             </DKText>
           </View>
         </View>
@@ -265,7 +266,7 @@ export function AddCompanySheet({
 
 function Stepper({ step, onJump }: { step: CompanyStep; onJump: (s: CompanyStep) => void }) {
   return (
-    <View style={styles.stepper} accessibilityLabel={`שלב ${step + 1} מתוך 3: ${STEPS[step].title}`}>
+    <View style={styles.stepper} accessibilityLabel={t('addCompany.stepTitle', { v1: step + 1, title: STEPS[step].title })}>
       {STEPS.map((s, i) => {
         const done = i < step;
         const on = i === step;
@@ -286,7 +287,7 @@ function Stepper({ step, onJump }: { step: CompanyStep; onJump: (s: CompanyStep)
         );
         // Only a finished step can be gone back to.
         return done ? (
-          <Pressy key={s.title} onPress={() => onJump(i as CompanyStep)} accessibilityLabel={`חזרה לשלב ${i + 1}: ${s.title}`} style={styles.stepItem} pressScale={0.97}>
+          <Pressy key={s.title} onPress={() => onJump(i as CompanyStep)} accessibilityLabel={t('addCompany.backToStep', { v1: i + 1, title: s.title })} style={styles.stepItem} pressScale={0.97}>
             {body}
           </Pressy>
         ) : (
@@ -301,12 +302,12 @@ function Stepper({ step, onJump }: { step: CompanyStep; onJump: (s: CompanyStep)
 
 function Summary({ form }: { form: OwnerCompanyForm }) {
   const lines: [string, string][] = [
-    ['חברה', [form.name.trim(), form.companyType].filter(Boolean).join(' ')],
-    ['מנהל', `${form.adminFirstName.trim()} ${form.adminLastName.trim()}`.trim()],
-    ['כניסה', form.email.trim()],
+    [t('owner.col.company'), [form.name.trim(), form.companyType].filter(Boolean).join(' ')],
+    [t('role.manager'), `${form.adminFirstName.trim()} ${form.adminLastName.trim()}`.trim()],
+    [t('addCompany.signIn'), form.email.trim()],
   ];
   return (
-    <KitSection title="לפני היצירה">
+    <KitSection title={t('addCompany.beforeCreating')}>
       {lines.map(([label, value], i) => (
         <View key={label} style={[styles.sumRow, i > 0 && styles.divider]}>
           <DKText variant="caption" color={DK.muted}>
@@ -334,20 +335,20 @@ export function CompanyCreatedSheet({
   onOpenCompany: (id: string) => void;
 }) {
   const message = details
-    ? `שלום, נפתח עבורכם חשבון ב-icar.\nחברה: ${details.companyName}\nמייל לכניסה: ${details.email}\nסיסמה זמנית: ${details.password}\nבכניסה הראשונה תתבקשו לבחור סיסמה קבועה.\nhttps://icar-app.com`
+    ? t('addCompany.shareMessage', { companyName: details.companyName, email: details.email, password: details.password })
     : '';
   return (
     <KitSheet
       visible={visible}
       onClose={onClose}
       icon="checkmark-circle"
-      title="החברה נפתחה"
-      subtitle={details ? `${details.companyName} מוכנה. העבר למנהל את פרטי הכניסה.` : undefined}
+      title={t('addCompany.created')}
+      subtitle={details ? t('addCompany.readyShare', { companyName: details.companyName }) : undefined}
       footer={
         <SheetActions>
           {details?.companyId ? (
             <PrimaryAction
-              label="לדף החברה"
+              label={t('owner.notif.toCompany')}
               tone="ghost"
               onPress={() => {
                 const id = details.companyId!;
@@ -357,9 +358,9 @@ export function CompanyCreatedSheet({
               style={styles.grow}
             />
           ) : (
-            <PrimaryAction label="סגירה" tone="ghost" onPress={onClose} style={styles.grow} />
+            <PrimaryAction label={t('common.close')} tone="ghost" onPress={onClose} style={styles.grow} />
           )}
-          <PrimaryAction label="שליחת הפרטים" icon="share-outline" onPress={() => void Share.share({ message }).catch(() => {})} style={styles.grow} />
+          <PrimaryAction label={t('addCompany.sendDetails')} icon="share-outline" onPress={() => void Share.share({ message }).catch(() => {})} style={styles.grow} />
         </SheetActions>
       }
     >
@@ -367,7 +368,7 @@ export function CompanyCreatedSheet({
         <KitSection>
           <View style={styles.sumRow}>
             <DKText variant="caption" color={DK.muted}>
-              מייל לכניסה
+              {t('addCompany.signInEmail')}
             </DKText>
             <DKText variant="label" ltr selectable style={styles.sumValue}>
               {details.email}
@@ -375,7 +376,7 @@ export function CompanyCreatedSheet({
           </View>
           <View style={[styles.sumRow, styles.divider]}>
             <DKText variant="caption" color={DK.muted}>
-              סיסמה זמנית
+              {t('password.temporary')}
             </DKText>
             <DKText variant="number" ltr selectable style={styles.sumValue}>
               {details.password}
@@ -412,5 +413,5 @@ const styles = StyleSheet.create({
   note: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 8, padding: 14, borderRadius: 16, backgroundColor: DK.accentSoft },
 
   sumRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 16, minHeight: 52 },
-  sumValue: { flexShrink: 1, textAlign: 'left' },
+  sumValue: { flexShrink: 1, textAlign: textEnd() },
 });

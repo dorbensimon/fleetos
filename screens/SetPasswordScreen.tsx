@@ -13,6 +13,7 @@ import { functionErrorMessage } from '../lib/functionError';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import { SetPasswordDesktopView } from '../components/desktop/SetPasswordDesktopView';
 import { BrandLogo } from '../components/ui/Brand';
+import { t, dirIcon } from '../lib/i18n';
 
 /**
  * Shown once, right after a first login with an owner/admin-assigned
@@ -35,18 +36,18 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
   const [saving, setSaving] = useState(false);
 
   const signOut = () => {
-    showAlert('התנתקות', 'להתנתק ולחזור למסך ההתחברות?', [
-      { text: 'ביטול', style: 'cancel' },
-      { text: 'התנתק', style: 'destructive', onPress: () => { void supabase.auth.signOut(); } },
+    showAlert(t('auth.signOut'), t('password.signOutToLogin'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('auth.signOutAction'), style: 'destructive', onPress: () => { void supabase.auth.signOut(); } },
     ]);
   };
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!password) e.password = 'שדה חובה';
-    else if (password.length < MIN_PASSWORD_LENGTH) e.password = 'לפחות 8 תווים';
-    if (!confirmPassword) e.confirmPassword = 'שדה חובה';
-    else if (confirmPassword !== password) e.confirmPassword = 'הסיסמאות אינן תואמות';
+    if (!password) e.password = t('validation.required');
+    else if (password.length < MIN_PASSWORD_LENGTH) e.password = t('password.min8');
+    if (!confirmPassword) e.confirmPassword = t('validation.required');
+    else if (confirmPassword !== password) e.confirmPassword = t('password.mismatch');
     return e;
   };
 
@@ -66,13 +67,13 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
         body: { newPassword: password },
       });
       if (error || !data?.success) {
-        setGeneralError(await functionErrorMessage(error, data, 'עדכון הסיסמה נכשל'));
+        setGeneralError(await functionErrorMessage(error, data, t('password.updateFailed')));
         return;
       }
 
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user) {
-        setGeneralError('הסיסמה עודכנה אך טעינת המשתמש נכשלה. נסה להתחבר שוב');
+        setGeneralError(t('password.updatedUserLoadFailed'));
         return;
       }
 
@@ -84,15 +85,15 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
 
       if (!voluntary && result.route === 'DriverHome') {
         showAlert(
-          'ברוך הבא',
-          'במסך הבית תראה קודם מה דחוף. אפשר לעדכן קילומטרים, לחתום על מסמכים ולצפות במסמכים שלך. פרטים רשמיים ושיוך רכב נשארים באחריות המנהל.',
-          [{ text: 'הבנתי', onPress: () => navigation.reset({ index: 0, routes: [{ name: result.route }] }) }]
+          t('password.welcome'),
+          t('password.driverWelcomeBody'),
+          [{ text: t('common.gotIt'), onPress: () => navigation.reset({ index: 0, routes: [{ name: result.route }] }) }]
         );
       } else {
         navigation.reset({ index: 0, routes: [{ name: result.route }] });
       }
     } catch {
-      setGeneralError('אירעה שגיאה. נסה שוב');
+      setGeneralError(t('common.errorTryAgain'));
     } finally {
       setSaving(false);
     }
@@ -121,23 +122,23 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
         hero={
           <View>
             <View style={styles.bar}>
-              {voluntary ? <HeroButton icon="chevron-forward" label="חזרה" onPress={() => navigation.goBack()} /> : <View />}
+              {voluntary ? <HeroButton icon={dirIcon('chevron-forward')} label={t('common.goBack')} onPress={() => navigation.goBack()} /> : <View />}
               <BrandLogo height={22} onDark />
             </View>
             <DKText variant="display" color={DK.onNight} accessibilityRole="header">
-              {voluntary ? 'שינוי סיסמה' : 'ברוכים הבאים'}
+              {voluntary ? t('password.change') : t('password.welcomePlural')}
             </DKText>
             <DKText variant="body" color={DK.onNightMuted} style={styles.subtitle}>
-              {voluntary ? 'בחרו סיסמה חדשה לחשבון.' : 'זו הכניסה הראשונה שלך. בחר סיסמה קבועה משלך — היא תחליף את הסיסמה הזמנית.'}
+              {voluntary ? t('password.chooseNewForAccount') : t('password.firstSignInChoose')}
             </DKText>
           </View>
         }
         footer={
           <View style={styles.footer}>
-            <PrimaryAction label={voluntary ? 'שמירת הסיסמה' : 'המשך'} icon={voluntary ? 'checkmark' : 'arrow-back'} onPress={() => void submit()} loading={saving} />
-            <Pressy onPress={voluntary ? () => navigation.goBack() : signOut} accessibilityLabel={voluntary ? 'ביטול' : 'זה לא אני, התנתקות'} style={styles.secondary}>
+            <PrimaryAction label={voluntary ? t('password.save') : t('common.continue')} icon={voluntary ? 'checkmark' : dirIcon('arrow-back')} onPress={() => void submit()} loading={saving} />
+            <Pressy onPress={voluntary ? () => navigation.goBack() : signOut} accessibilityLabel={voluntary ? t('common.cancel') : t('password.notMeSignOutComma')} style={styles.secondary}>
               <DKText variant="label" color={DK.muted}>
-                {voluntary ? 'ביטול' : 'זה לא אני · התנתקות'}
+                {voluntary ? t('common.cancel') : t('password.notMeSignOutDot')}
               </DKText>
             </Pressy>
           </View>
@@ -147,7 +148,7 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
           <KitSection>
             <EditField
               first
-              label="סיסמה חדשה"
+              label={t('password.new')}
               error={errors.password}
               editor={
                 <View style={styles.row}>
@@ -155,34 +156,34 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
-                    placeholder="לפחות 8 תווים"
+                    placeholder={t('password.min8')}
                     autoCapitalize="none"
                     autoComplete="new-password"
                     ltr
                     hasError={!!errors.password}
-                    accessibilityLabel="סיסמה חדשה"
+                    accessibilityLabel={t('password.new')}
                     style={styles.flex}
                   />
-                  <Pressy onPress={() => setShowPassword((v) => !v)} accessibilityLabel={showPassword ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'} style={styles.eye} pressScale={0.92}>
+                  <Pressy onPress={() => setShowPassword((v) => !v)} accessibilityLabel={showPassword ? t('password.hideThe') : t('password.showThe')} style={styles.eye} pressScale={0.92}>
                     <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={DK.accent} />
                   </Pressy>
                 </View>
               }
             />
             <EditField
-              label="אימות הסיסמה"
+              label={t('password.confirmThe')}
               error={errors.confirmPassword}
               editor={
                 <KitInput
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showPassword}
-                  placeholder="הקלד שוב את הסיסמה"
+                  placeholder={t('password.typeAgain')}
                   autoCapitalize="none"
                   autoComplete="new-password"
                   ltr
                   hasError={!!errors.confirmPassword}
-                  accessibilityLabel="אימות הסיסמה"
+                  accessibilityLabel={t('password.confirmThe')}
                 />
               }
             />
@@ -190,8 +191,8 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
         </Reveal>
         <Reveal index={1}>
           <View style={styles.checks} accessibilityLiveRegion="polite">
-            <Check ok={password.length >= MIN_PASSWORD_LENGTH} label={`לפחות ${MIN_PASSWORD_LENGTH} תווים`} />
-            <Check ok={!!confirmPassword && confirmPassword === password} label="שתי הסיסמאות זהות" />
+            <Check ok={password.length >= MIN_PASSWORD_LENGTH} label={t('password.minChars', { MIN_PASSWORD_LENGTH })} />
+            <Check ok={!!confirmPassword && confirmPassword === password} label={t('password.bothMatch')} />
           </View>
         </Reveal>
         {!!generalError && <Banner tone="expired">{generalError}</Banner>}

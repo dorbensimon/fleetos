@@ -7,6 +7,7 @@ import { LEGAL_DOCUMENTS, isLegalDocId } from '../lib/legal/documents';
 import { resolveRouteForUser } from '../lib/session';
 import { supabase } from '../lib/supabase';
 import type { RootStackParamList } from '../navigation/types';
+import { t } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Legal'>;
 
@@ -36,7 +37,7 @@ export default function LegalScreen({ navigation, route }: Props) {
     <DriverPage
       insetTop={insets.top}
       insetBottom={insets.bottom}
-      hero={<HeroTitle title={doc.title} subtitle={`${doc.summary}\nעודכן לאחרונה: ${doc.updated}`} onBack={() => void back()} />}
+      hero={<HeroTitle title={doc.title} subtitle={t('legal.summaryUpdated', { summary: doc.summary, updated: doc.updated })} onBack={() => void back()} />}
     >
       <LegalDocumentBody doc={doc} onOpenDoc={(id) => navigation.push('Legal', { doc: id })} />
     </DriverPage>

@@ -19,6 +19,7 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DesktopFieldRow, DesktopInput, DText, HoverPressable } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
+import { t } from '../../lib/i18n';
 
 /**
  * Read-only view of exactly the fields DriverFormScreen collects -
@@ -78,7 +79,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
         try {
           await load();
         } catch (err: any) {
-          if (active) setLoadError(err?.message ?? 'טעינת פרטי הנהג נכשלה');
+          if (active) setLoadError(err?.message ?? t('driver.detailsLoadFailed'));
         } finally {
           if (active) setLoading(false);
         }
@@ -109,7 +110,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
     // Belt-and-suspenders against an unintended duplicate: the API/DB also
     // reject this, but checking here first avoids even issuing the request.
     if (assignedVehicleIds.has(addingVehicleId)) {
-      showToast('הנהג כבר משויך לרכב זה');
+      showToast(t('assignment.alreadyAssigned'));
       setAddingVehicleId(null);
       return;
     }
@@ -121,10 +122,10 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
       await assignDriverToVehicle(addingVehicleId, driverId, targetVehicleAssignments.length === 0);
       setAddingVehicleId(null);
       await load();
-      showToast('הרכב שויך לנהג');
+      showToast(t('driver.vehicleAssigned'));
     } catch (err: any) {
       if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-      showAlert('שיוך הרכב נכשל', String(err?.message ?? 'נסה שוב'));
+      showAlert(t('driver.assignFailed'), String(err?.message ?? t('common.tryAgain')));
     } finally {
       setBusyId(null);
     }
@@ -136,10 +137,10 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
       try {
         await unassignVehicleDriver(assignment.id);
         await load();
-        showToast('השיוך הוסר');
+        showToast(t('vehicle.assignmentRemoved'));
       } catch (err: any) {
         if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-        showAlert('הסרת השיוך נכשלה', String(err?.message ?? 'נסה שוב'));
+        showAlert(t('vehicle.removeAssignmentFailed'), String(err?.message ?? t('common.tryAgain')));
       } finally {
         setBusyId(null);
       }
@@ -149,7 +150,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
   if (isDesktop) {
     return (
       <FocusTargetProvider focus={focus}>
-      <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', driver?.full_name ?? 'פרטי נהג']}>
+      <DesktopShell active="AdminHome" breadcrumbs={[t('nav.management'), t('common.drivers'), driver?.full_name ?? t('driver.detailsTitle')]}>
         {loading ? (
           <LoadingState />
         ) : loadError ? (
@@ -159,28 +160,28 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
               setLoading(true);
               setLoadError(null);
               load()
-                .catch((err: any) => setLoadError(err?.message ?? 'טעינת פרטי הנהג נכשלה'))
+                .catch((err: any) => setLoadError(err?.message ?? t('driver.detailsLoadFailed')))
                 .finally(() => setLoading(false));
             }}
           />
         ) : (
           <View style={desktopStyles.wrap}>
             <HoverPressable style={desktopStyles.editButton} onPress={() => navigation.navigate('DriverForm', { driverId })}>
-              <DText weight="semiBold" style={desktopStyles.editButtonText}>עריכה</DText>
+              <DText weight="semiBold" style={desktopStyles.editButtonText}>{t('common.edit')}</DText>
             </HoverPressable>
             <View style={desktopStyles.card}>
-              <DesktopFieldRow label="שם מלא" focusId="full_name"><DesktopInput value={driver?.full_name ?? ''} editable={false} /></DesktopFieldRow>
-              <DesktopFieldRow label="חברה"><DesktopInput value={company?.name ?? ''} editable={false} /></DesktopFieldRow>
-              <DesktopFieldRow label="מייל להתחברות"><DesktopInput value={email ?? ''} editable={false} ltr /></DesktopFieldRow>
-              <DesktopFieldRow label="טלפון" focusId="phone"><DesktopInput value={driver?.phone ? formatPhone(driver.phone) : ''} editable={false} ltr /></DesktopFieldRow>
-              <DesktopFieldRow label="תעודת זהות" focusId="national_id"><DesktopInput value={driver?.national_id ?? ''} editable={false} ltr /></DesktopFieldRow>
-              <DesktopFieldRow label="מספר עובד" focusId="employee_number"><DesktopInput value={driver?.employee_number ?? ''} editable={false} /></DesktopFieldRow>
-              <DesktopFieldRow label="מחלקה" focusId="department_id"><DesktopInput value={departmentName ?? ''} editable={false} /></DesktopFieldRow>
-              <DesktopFieldRow label="דרגת רישיון" focusId="license_classes"><DesktopInput value={driver?.license_classes ?? ''} editable={false} /></DesktopFieldRow>
-              <DesktopFieldRow label="תוקף רישיון" focusId="license_expiry" last><DesktopInput value={driver?.license_expiry ?? ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label={t('common.fullName')} focusId="full_name"><DesktopInput value={driver?.full_name ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label={t('owner.col.company')}><DesktopInput value={company?.name ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label={t('driver.signInEmail')}><DesktopInput value={email ?? ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label={t('common.phone')} focusId="phone"><DesktopInput value={driver?.phone ? formatPhone(driver.phone) : ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label={t('field.nationalId')} focusId="national_id"><DesktopInput value={driver?.national_id ?? ''} editable={false} ltr /></DesktopFieldRow>
+              <DesktopFieldRow label={t('driver.employeeNumber')} focusId="employee_number"><DesktopInput value={driver?.employee_number ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label={t('common.department')} focusId="department_id"><DesktopInput value={departmentName ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label={t('driver.licenseClass')} focusId="license_classes"><DesktopInput value={driver?.license_classes ?? ''} editable={false} /></DesktopFieldRow>
+              <DesktopFieldRow label={t('driver.licenseExpiry')} focusId="license_expiry" last><DesktopInput value={driver?.license_expiry ?? ''} editable={false} ltr /></DesktopFieldRow>
             </View>
 
-            <DText weight="bold" style={desktopStyles.sectionTitle}>רכבים משויכים</DText>
+            <DText weight="bold" style={desktopStyles.sectionTitle}>{t('driver.assignedVehicles')}</DText>
             <View style={desktopStyles.card}>
               <DriverVehicleAssignmentsCard
                 driverVehicles={driverVehicles}
@@ -195,7 +196,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
             </View>
 
             <DText style={desktopStyles.footNote}>
-              הצטרף לאפליקציה ב-{driver?.created_at ? formatDate(driver.created_at) : '—'}
+              {t('driver.joinedAppOnDash')}{driver?.created_at ? formatDate(driver.created_at) : '—'}
             </DText>
           </View>
         )}
@@ -208,7 +209,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
     setLoading(true);
     setLoadError(null);
     load()
-      .catch((err: any) => setLoadError(err?.message ?? 'טעינת פרטי הנהג נכשלה'))
+      .catch((err: any) => setLoadError(err?.message ?? t('driver.detailsLoadFailed')))
       .finally(() => setLoading(false));
   };
   return (
@@ -219,38 +220,38 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
       scrollRef={scrollRef}
       hero={
         <HeroTitle
-          title="פרטי נהג"
+          title={t('driver.detailsTitle')}
           subtitle={driver?.full_name ?? ' '}
           onBack={() => navigation.goBack()}
-          right={<HeroButton icon="create-outline" label="עריכת פרטי הנהג" onPress={() => navigation.navigate('DriverForm', { driverId })} />}
+          right={<HeroButton icon="create-outline" label={t('driver.editDetails')} onPress={() => navigation.navigate('DriverForm', { driverId })} />}
         />
       }
     >
       {loading ? (
         <LoadingPanel />
       ) : loadError ? (
-        <ErrorPanel message="טעינת פרטי הנהג נכשלה" hint={loadError} onRetry={retry} />
+        <ErrorPanel message={t('driver.detailsLoadFailed')} hint={loadError} onRetry={retry} />
       ) : (
         <>
           <Reveal index={0}>
             <KitSection>
-              <InfoLine first icon="person" label="שם מלא" focusId="full_name" value={driver?.full_name} />
-              <InfoLine icon="mail" label="מייל להתחברות" value={email} ltr />
-              <InfoLine icon="call" label="טלפון" focusId="phone" value={driver?.phone ? formatPhone(driver.phone) : null} ltr />
-              <InfoLine icon="card" label="תעודת זהות" focusId="national_id" value={driver?.national_id} ltr />
+              <InfoLine first icon="person" label={t('common.fullName')} focusId="full_name" value={driver?.full_name} />
+              <InfoLine icon="mail" label={t('driver.signInEmail')} value={email} ltr />
+              <InfoLine icon="call" label={t('common.phone')} focusId="phone" value={driver?.phone ? formatPhone(driver.phone) : null} ltr />
+              <InfoLine icon="card" label={t('field.nationalId')} focusId="national_id" value={driver?.national_id} ltr />
             </KitSection>
           </Reveal>
           <Reveal index={1}>
-            <KitSection title="עבודה ורישיון">
-              <InfoLine first icon="business" label="חברה" value={company?.name} />
-              <InfoLine icon="briefcase" label="מספר עובד" focusId="employee_number" value={driver?.employee_number} />
-              <InfoLine icon="people" label="מחלקה" focusId="department_id" value={departmentName} />
-              <InfoLine icon="ribbon" label="דרגת רישיון" focusId="license_classes" value={driver?.license_classes} />
-              <InfoLine icon="calendar" label="תוקף רישיון" focusId="license_expiry" value={driver?.license_expiry ? formatDate(driver.license_expiry) : null} />
+            <KitSection title={t('driver.workAndLicense')}>
+              <InfoLine first icon="business" label={t('owner.col.company')} value={company?.name} />
+              <InfoLine icon="briefcase" label={t('driver.employeeNumber')} focusId="employee_number" value={driver?.employee_number} />
+              <InfoLine icon="people" label={t('common.department')} focusId="department_id" value={departmentName} />
+              <InfoLine icon="ribbon" label={t('driver.licenseClass')} focusId="license_classes" value={driver?.license_classes} />
+              <InfoLine icon="calendar" label={t('driver.licenseExpiry')} focusId="license_expiry" value={driver?.license_expiry ? formatDate(driver.license_expiry) : null} />
             </KitSection>
           </Reveal>
           <Reveal index={2}>
-            <KitSection title="רכבים משויכים" surfaceStyle={styles.pad}>
+            <KitSection title={t('driver.assignedVehicles')} surfaceStyle={styles.pad}>
               <DriverVehicleAssignmentsCard
                 driverVehicles={driverVehicles}
                 availableVehicles={availableVehicles}
@@ -265,7 +266,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
           </Reveal>
           {!!driver?.created_at && (
             <DKText variant="caption" color={DK.faint} style={styles.footer}>
-              {`הצטרף לאפליקציה ב־${formatDate(driver.created_at)}`}
+              {t('driver.joinedAppOnV1', { v1: formatDate(driver.created_at) })}
             </DKText>
           )}
         </>

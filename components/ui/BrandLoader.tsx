@@ -9,6 +9,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { t } from '../../lib/i18n';
 
 /**
  * The icar loader — the logo symbol itself, in motion.
@@ -154,8 +155,8 @@ function useReduceMotion(enabled: boolean) {
   return reduce;
 }
 
-function track(t: Animated.Value, pick: (f: Frame) => number, scale = 1) {
-  return t.interpolate({ inputRange: TIMELINE, outputRange: FRAMES.map((f) => pick(f) * scale) });
+function track(entry: Animated.Value, pick: (f: Frame) => number, scale = 1) {
+  return entry.interpolate({ inputRange: TIMELINE, outputRange: FRAMES.map((f) => pick(f) * scale) });
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -198,22 +199,22 @@ export function BrandLoader({
   animating = true,
   hidesWhenStopped = true,
   style,
-  accessibilityLabel = 'טוען',
+  accessibilityLabel = t('common.loading'),
   testID,
 }: Props) {
   const px = typeof size === 'number' ? size : size === 'large' ? 36 : 20;
   const mono = isLight(color);
   const reduce = useReduceMotion(!IS_WEB);
-  const t = useRef(new Animated.Value(0)).current;
+  const ratio = useRef(new Animated.Value(0)).current;
   const phase = useRef(IS_WEB ? webPhaseDelay() : '0ms').current;
 
   if (IS_WEB) injectCss();
 
   useEffect(() => {
     if (IS_WEB || !animating) return;
-    t.setValue(0);
+    ratio.setValue(0);
     const loop = Animated.loop(
-      Animated.timing(t, {
+      Animated.timing(ratio, {
         toValue: 1,
         duration: reduce ? 1400 : CYCLE_MS,
         easing: Easing.linear,
@@ -222,7 +223,7 @@ export function BrandLoader({
     );
     loop.start();
     return () => loop.stop();
-  }, [animating, reduce, t]);
+  }, [animating, reduce, ratio]);
 
   if (!animating && hidesWhenStopped) return null;
 
@@ -253,7 +254,7 @@ export function BrandLoader({
     ring = <View style={ringBox}>{ringImage}</View>;
     dot = (
       <Animated.View
-        style={[dotBox, { opacity: t.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.45, 1] }) }]}
+        style={[dotBox, { opacity: ratio.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.45, 1] }) }]}
       />
     );
   } else {
@@ -263,11 +264,11 @@ export function BrandLoader({
           ringBox,
           {
             transform: [
-              { translateX: track(t, (f) => f.tx, px) },
-              { translateY: track(t, (f) => f.ty, px) },
-              { scale: track(t, (f) => f.s) },
+              { translateX: track(ratio, (f) => f.tx, px) },
+              { translateY: track(ratio, (f) => f.ty, px) },
+              { scale: track(ratio, (f) => f.s) },
               {
-                rotate: t.interpolate({ inputRange: TIMELINE, outputRange: FRAMES.map((f) => `${r4(f.rot)}deg`) }),
+                rotate: ratio.interpolate({ inputRange: TIMELINE, outputRange: FRAMES.map((f) => `${r4(f.rot)}deg`) }),
               },
             ],
           },
@@ -280,7 +281,7 @@ export function BrandLoader({
       <Animated.View
         style={[
           dotBox,
-          { transform: [{ translateY: track(t, (f) => f.hop, px) }, { scale: track(t, (f) => f.dotS) }] },
+          { transform: [{ translateY: track(ratio, (f) => f.hop, px) }, { scale: track(ratio, (f) => f.dotS) }] },
         ]}
       />
     );

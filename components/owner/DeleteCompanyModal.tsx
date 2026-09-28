@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { DK, DKText, KitInput, KitSheet, PrimaryAction, SheetActions, STATUS } from '../driverKit';
 import { CompanyRow } from './CompanyCard';
+import { t } from '../../lib/i18n';
 
 /**
  * Deleting a company for good. The owner types the company's name to
@@ -32,30 +33,30 @@ export function DeleteCompanyModal({
       dismissable={!deleting}
       icon="trash"
       tone="danger"
-      title={`למחוק את ${company?.name ?? 'החברה'}?`}
-      subtitle="כל המנהלים, הנהגים, הרכבים והמסמכים שלה יימחקו לצמיתות. אי אפשר לשחזר. אם רק צריך לעצור גישה, עדיף להשבית."
+      title={t('owner.deleteQuestion', { v1: company?.name ?? t('owner.theCompany') })}
+      subtitle={t('owner.deleteWarning')}
       footer={
         <SheetActions>
-          <PrimaryAction label="השארה" tone="ghost" onPress={onClose} disabled={deleting} style={styles.grow} />
-          <PrimaryAction label="מחיקה לצמיתות" tone="destructive" onPress={onConfirm} disabled={!matches} loading={deleting} style={styles.grow} />
+          <PrimaryAction label={t('common.keep')} tone="ghost" onPress={onClose} disabled={deleting} style={styles.grow} />
+          <PrimaryAction label={t('common.deletePermanently')} tone="destructive" onPress={onConfirm} disabled={!matches} loading={deleting} style={styles.grow} />
         </SheetActions>
       }
     >
       <View style={styles.field}>
         <DKText variant="caption" color={DK.inkSoft}>
-          כדי לאשר, הקלד את שם החברה: <DKText variant="label">{company?.name}</DKText>
+          {t('owner.typeNameToConfirm')} <DKText variant="label">{company?.name}</DKText>
         </DKText>
         <KitInput
           value={confirmText}
           onChangeText={onChangeConfirmText}
           placeholder={company?.name}
-          accessibilityLabel="שם החברה לאישור המחיקה"
+          accessibilityLabel={t('owner.nameToConfirmLabel')}
           autoCorrect={false}
           style={matches ? styles.match : undefined}
         />
         {matches && (
           <DKText variant="caption" color={STATUS.expired.fg}>
-            השם תואם. המחיקה תתבצע מיד.
+            {t('owner.nameMatches')}
           </DKText>
         )}
       </View>

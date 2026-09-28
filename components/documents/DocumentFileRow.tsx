@@ -5,6 +5,7 @@ import type { DocumentRow } from '../../lib/adminApi';
 import { expiryState, formatDate } from '../../lib/theme';
 import { documentDisplayName, documentIconName } from '../../lib/documentActions';
 import { DK, DK_SHADOW, DKText, Pressy, STATUS, StatusChip, statusOf } from '../driverKit';
+import { t } from '../../lib/i18n';
 
 type Props = {
   doc: DocumentRow;
@@ -22,11 +23,11 @@ export function DocumentFileRow({ doc, variant = 'compact', showDate = false, sh
   const state = doc.expiry_date ? expiryState(doc.expiry_date) : null;
   const flagged = state === 'expired' || state === 'soon';
   const name = documentDisplayName(doc);
-  const meta = showDate ? (showExpiry ? (doc.expiry_date ? `תוקף עד ${formatDate(doc.expiry_date)}` : 'לא הוזן תוקף') : `הועלה ${formatDate(doc.created_at)}`) : null;
+  const meta = showDate ? (showExpiry ? (doc.expiry_date ? t('documents.validUntilV1', { v1: formatDate(doc.expiry_date) }) : t('license.noExpiry')) : t('documents.uploadedV1', { v1: formatDate(doc.created_at) })) : null;
 
   return (
     <View style={[styles.base, isCard ? styles.card : styles.compact]}>
-      <Pressy onPress={() => onOpen(doc)} accessibilityLabel={`פתיחת ${name}`} style={styles.info} pressScale={0.98}>
+      <Pressy onPress={() => onOpen(doc)} accessibilityLabel={t('common.openName', { name })} style={styles.info} pressScale={0.98}>
         <View style={styles.infoRow}>
           <View style={[styles.icon, !isCard && styles.iconCompact]}>
             <Ionicons name={documentIconName(doc)} size={18} color={DK.accent} />
@@ -48,11 +49,11 @@ export function DocumentFileRow({ doc, variant = 'compact', showDate = false, sh
           </View>
         </View>
       </Pressy>
-      <Pressy onPress={() => onDownload(doc)} accessibilityLabel={`הורדת ${name}`} style={styles.action} pressScale={0.9}>
+      <Pressy onPress={() => onDownload(doc)} accessibilityLabel={t('common.downloadName', { name })} style={styles.action} pressScale={0.9}>
         <Ionicons name="download-outline" size={18} color={DK.accent} />
       </Pressy>
       {onDelete && (
-        <Pressy onPress={() => onDelete(doc)} accessibilityLabel={`מחיקת ${name}`} style={[styles.action, styles.actionDanger]} pressScale={0.9}>
+        <Pressy onPress={() => onDelete(doc)} accessibilityLabel={t('common.deleteName', { name })} style={[styles.action, styles.actionDanger]} pressScale={0.9}>
           <Ionicons name="trash-outline" size={18} color={STATUS.expired.fg} />
         </Pressy>
       )}

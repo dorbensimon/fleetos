@@ -10,6 +10,7 @@ import {
   type PickedFile,
 } from './documents';
 import { showAlert } from './platformAlert';
+import { t } from './i18n';
 
 export type DocumentSource = 'camera' | 'gallery' | 'file';
 
@@ -44,17 +45,17 @@ export function chooseDocumentSource(
     return;
   }
 
-  showAlert('הוספת מסמך', title, [
-    { text: 'צלם מסמך', onPress: () => choose('camera') },
-    { text: 'בחר תמונה', onPress: () => choose('gallery') },
-    { text: 'בחר קובץ', onPress: () => choose('file') },
-    { text: 'ביטול', style: 'cancel' },
+  showAlert(t('documents.addDocument'), title, [
+    { text: t('documents.scanDocument'), onPress: () => choose('camera') },
+    { text: t('documents.choosePhoto'), onPress: () => choose('gallery') },
+    { text: t('documents.chooseFile'), onPress: () => choose('file') },
+    { text: t('common.cancel'), style: 'cancel' },
   ]);
 }
 
 export async function getDocumentViewUrl(doc: DocumentRow): Promise<string | null> {
   const url = await getDocumentUrl(doc);
-  if (!url) showAlert('שגיאה', 'לא ניתן לפתוח את המסמך כרגע');
+  if (!url) showAlert(t('common.error'), t('documents.cannotOpen'));
   return url;
 }
 
@@ -76,29 +77,29 @@ export async function openDocumentExternally(doc: DocumentRow): Promise<void> {
     tab.location.href = url;
     return;
   }
-  Linking.openURL(url).catch(() => showAlert('שגיאה', 'לא ניתן לפתוח את המסמך כרגע'));
+  Linking.openURL(url).catch(() => showAlert(t('common.error'), t('documents.cannotOpen')));
 }
 
 export async function downloadDocumentWithAlert(doc: DocumentRow) {
   try {
     await downloadDocument(doc);
   } catch (err: any) {
-    showAlert('ההורדה נכשלה', err?.message ?? 'נסה שוב');
+    showAlert(t('common.downloadFailed'), err?.message ?? t('common.tryAgain'));
   }
 }
 
 export function confirmDeleteDocument(doc: DocumentRow, onDeleted: () => void | Promise<void>) {
-  showAlert('מחיקת מסמך', `למחוק את "${documentDisplayName(doc)}"? הפעולה אינה הפיכה.`, [
-    { text: 'ביטול', style: 'cancel' },
+  showAlert(t('documents.deleteTitle'), t('documents.deleteConfirm', { doc: documentDisplayName(doc) }), [
+    { text: t('common.cancel'), style: 'cancel' },
     {
-      text: 'מחק',
+      text: t('common.delete'),
       style: 'destructive',
       onPress: async () => {
         try {
           await deleteDocument(doc);
           await onDeleted();
         } catch {
-          showAlert('מחיקה נכשלה', 'נסה שוב');
+          showAlert(t('common.deleteFailed'), t('common.tryAgain'));
         }
       },
     },

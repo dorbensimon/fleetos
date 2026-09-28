@@ -1,6 +1,7 @@
 import type { ComplianceItem, Vehicle, VehicleDriverWithProfile } from './adminApi';
 import { formatPlate } from './plate';
 import { daysUntilExpiry, formatDate } from './theme';
+import { t } from './i18n';
 
 /**
  * The vehicle problems behind the desktop "דורש טיפול" menu, grouped by
@@ -32,13 +33,13 @@ export type VehicleAttentionGroup = {
 
 /** "טויוטה קורולה", or "רכב ללא דגם" when neither is known. */
 export function vehicleName(vehicle: Vehicle): string {
-  return [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || 'רכב ללא דגם';
+  return [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || t('vehicle.noModel');
 }
 
 /** "פג היום", "פג אתמול", "פג לפני 12 ימים" — then the date itself. */
 function expiredWords(date: string): string {
   const days = Math.abs(daysUntilExpiry(date) ?? 0);
-  const when = days === 0 ? 'פג היום' : days === 1 ? 'פג אתמול' : `פג לפני ${days} ימים`;
+  const when = days === 0 ? t('expiry.expiredToday') : days === 1 ? t('expiry.expiredYesterday') : t('expiry.expiredDaysAgo', { days });
   return `${when} · ${formatDate(date)}`;
 }
 
@@ -68,7 +69,7 @@ export function vehicleAttentionGroups(
     const insuranceExpiry = expiryOf(items, 'insurance_mandatory');
     const insuranceDays = daysUntilExpiry(insuranceExpiry);
     // Mandatory insurance is required by law: never entered counts as missing.
-    if (insuranceDays == null) insurance.push(item(v, 'לא הוזן ביטוח חובה', { openFolder: 'insurance_mandatory' }));
+    if (insuranceDays == null) insurance.push(item(v, t('attention.noMandatoryInsurance'), { openFolder: 'insurance_mandatory' }));
     else if (insuranceDays < 0) insurance.push(item(v, expiredWords(insuranceExpiry!), { openFolder: 'insurance_mandatory' }));
 
     // Registration only once it lapsed: many fleets never enter it, and an empty folder isn't a fault.
@@ -76,13 +77,13 @@ export function vehicleAttentionGroups(
     const registrationDays = daysUntilExpiry(registrationExpiry);
     if (registrationDays != null && registrationDays < 0) registration.push(item(v, expiredWords(registrationExpiry!), { openFolder: 'vehicle_license' }));
 
-    if (!vehicleDrivers.get(v.id)?.length) unassigned.push(item(v, 'אין נהג משויך לרכב', { openDrivers: true }));
+    if (!vehicleDrivers.get(v.id)?.length) unassigned.push(item(v, t('attention.noDriverAssigned'), { openDrivers: true }));
   }
 
   const groups: VehicleAttentionGroup[] = [
-    { kind: 'insurance', title: 'ללא ביטוח חובה בתוקף', action: 'לביטוח', tone: 'bad', items: insurance },
-    { kind: 'registration', title: 'רישיון רכב פג', action: 'לרישיון', tone: 'bad', items: registration },
-    { kind: 'unassigned', title: 'רכבים ללא נהג', action: 'שיוך נהג', tone: 'warn', items: unassigned },
+    { kind: 'insurance', title: t('attention.noValidMandatoryInsurance'), action: t('attention.toInsurance'), tone: 'bad', items: insurance },
+    { kind: 'registration', title: t('attention.vehicleLicenseExpired'), action: t('attention.toLicense'), tone: 'bad', items: registration },
+    { kind: 'unassigned', title: t('attention.vehiclesWithoutDriver'), action: t('attention.assignDriver'), tone: 'warn', items: unassigned },
   ];
   return groups.filter((g) => g.items.length > 0);
 }

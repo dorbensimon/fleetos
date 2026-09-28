@@ -65,6 +65,7 @@ import {
 } from '../../lib/inspections';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import type { RootStackParamList } from '../../navigation/types';
+import { t, dirIcon, getLocale } from '../../lib/i18n';
 
 /**
  * One safety inspection of one vehicle, from the first mark to the last
@@ -147,7 +148,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
   const problem = form ? inspectionProblem(form, answers) : null;
   const odometerValue = /^\d{1,7}$/.test(odometer.replace(/[,\s]/g, '')) ? Number(odometer.replace(/[,\s]/g, '')) : null;
   const driver = drivers.find((d) => d.id === driverId) ?? null;
-  const driverName = driver?.full_name?.trim() || inspection?.facts?.driverName || 'הנהג';
+  const driverName = driver?.full_name?.trim() || inspection?.facts?.driverName || t('common.theDriver');
   const vehicleDrivers = useMemo(
     () =>
       drivers
@@ -161,9 +162,9 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
   // ── load ──────────────────────────────────────────────────────────────
   const loadInspection = useCallback(async (id: string) => {
     const row = await getInspection(id);
-    if (!row || row.vehicle_id !== vehicleId) throw new Error('הבדיקה לא נמצאה');
+    if (!row || row.vehicle_id !== vehicleId) throw new Error(t('inspection.notFound'));
     const loadedForm = readInspectionForm(row.form);
-    if (!loadedForm) throw new Error('רשימת הסעיפים של הבדיקה אינה תקינה');
+    if (!loadedForm) throw new Error(t('inspection.itemListInvalid'));
     setInspection(row);
     setRequestStatus(row.request?.status ?? null);
     setForm(loadedForm);
@@ -181,7 +182,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
     (async () => {
       try {
         const target = await getVehicle(vehicleId);
-        if (!target) throw new Error('הרכב לא נמצא');
+        if (!target) throw new Error(t('vehicle.notFound'));
         const [companyDrivers, items, names] = await Promise.all([
           listDrivers(target.company_id),
           listCompliance('vehicle', vehicleId),
@@ -197,7 +198,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
           if (!active) return;
           setStep(row.status === 'draft' ? 'fill' : 'view');
         } else {
-          if (target.status === 'archived') throw new Error('אי אפשר לבדוק רכב שנמצא בארכיון');
+          if (target.status === 'archived') throw new Error(t('inspection.archivedVehicle'));
           const settings = await getInspectionSettings(target.company_id).catch(() => null);
           if (!active) return;
           setForm(settings?.form ?? DEFAULT_INSPECTION_FORM);
@@ -209,7 +210,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
           setStep('fill');
         }
       } catch (err) {
-        if (active) setLoadError((err as Error)?.message || 'טעינת הבדיקה נכשלה');
+        if (active) setLoadError((err as Error)?.message || t('inspection.loadOneFailed'));
       }
     })();
     return () => {
@@ -294,7 +295,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
     try {
       await task();
     } catch (err) {
-      setError((err as Error)?.message || 'הפעולה נכשלה. נסו שוב.');
+      setError((err as Error)?.message || t('common.actionFailedRetryPlural'));
       toTop();
     } finally {
       setBusy('');
@@ -305,13 +306,13 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
   const saveDraft = () =>
     run('save', async () => {
       await persist();
-      setNotice('נשמר. אפשר להמשיך אחר כך מאותה נקודה, מתוך "בדיקות בטיחות" או מכרטיס הרכב.');
+      setNotice(t('inspection.savedContinueLater'));
       toTop();
     });
   const toOfficer = () => {
     if (!fillReady) {
       setShowErrors(true);
-      setError(odometerValue == null ? 'יש להקליד את הקילומטראז׳ של הרכב' : !driverId ? 'יש לבחור את הנהג שחותם על הבדיקה' : problem ?? '');
+      setError(odometerValue == null ? t('inspection.enterMileage') : !driverId ? t('inspection.chooseSigningDriver') : problem ?? '');
       toTop();
       return;
     }
@@ -353,7 +354,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
       await loadInspection(inspection!.id);
       setClosing(false);
       setCloseNote('');
-      setNotice('הבדיקה נסגרה. המסמך יצא עם חתימת קצין הבטיחות וההערה שלך במקום חתימת הנהג.');
+      setNotice(t('inspection.closedWithNote'));
       setStep('view');
     });
   const cancel = () =>
@@ -366,14 +367,14 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
         return;
       }
       await loadInspection(inspection!.id);
-      setNotice('הבדיקה בוטלה. היא נשארת ברשימה, מסומנת "בוטל".');
+      setNotice(t('inspection.cancelledKept'));
       setStep('view');
     });
 
   // ── frames ────────────────────────────────────────────────────────────
   const inShell = (content: React.ReactNode) =>
     isDesktop ? (
-      <DesktopShell active="SafetyInspections" breadcrumbs={['ניהול', 'בדיקות בטיחות', plate || 'בדיקה']}>
+      <DesktopShell active="SafetyInspections" breadcrumbs={[t('nav.management'), t('nav.safetyInspections'), plate || t('inspection.inspection')]}>
         {content}
       </DesktopShell>
     ) : (
@@ -384,7 +385,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
 
   if (loadError || !form || !vehicle) {
     return inShell(
-      <DriverPage insetTop={topInset} insetBottom={bottomInset} hero={<HeroTitle title="בדיקת בטיחות" onBack={leave} />}>
+      <DriverPage insetTop={topInset} insetBottom={bottomInset} hero={<HeroTitle title={t('notifications.cat.safetyCheck')} onBack={leave} />}>
         {loadError ? <ErrorPanel message={loadError} /> : <LoadingPanel />}
       </DriverPage>,
     );
@@ -428,13 +429,13 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
         hero={
           <View>
             <HeroTitle
-              title="בדיקת בטיחות"
+              title={t('notifications.cat.safetyCheck')}
               onBack={leave}
               right={
-                <Pressy onPress={() => void saveDraft()} disabled={!!busy} accessibilityLabel="שמירה והמשך אחר כך" style={styles.glassPill} pressScale={0.94}>
+                <Pressy onPress={() => void saveDraft()} disabled={!!busy} accessibilityLabel={t('common.saveAndContinueLater')} style={styles.glassPill} pressScale={0.94}>
                   <Ionicons name={busy === 'save' ? 'hourglass-outline' : 'bookmark-outline'} size={17} color={DK.onNight} />
                   <DKText variant="label" color={DK.onNight}>
-                    שמירה
+                    {t('common.save')}
                   </DKText>
                 </Pressy>
               }
@@ -443,10 +444,10 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
               <Plate number={plate} />
               <View style={styles.flex}>
                 <DKText variant="heading" color={DK.onNight} numberOfLines={1}>
-                  {vehicleLabel || 'רכב'}
+                  {vehicleLabel || t('vehicle.vehicle')}
                 </DKText>
                 <DKText variant="caption" color={DK.onNightMuted}>
-                  הבדיקה היום, {formatIsoDay(today)}
+                  {t('inspection.todayComma')} {formatIsoDay(today)}
                 </DKText>
               </View>
             </View>
@@ -460,19 +461,19 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
                 <>
                   <Ionicons name="information-circle-outline" size={18} color={DK.muted} />
                   <DKText variant="caption" color={DK.muted}>
-                    {problem ?? (odometerValue == null ? 'חסר הקילומטראז׳' : 'חסר הנהג שחותם')}
+                    {problem ?? (odometerValue == null ? t('inspection.mileageMissing') : t('inspection.signerMissing'))}
                   </DKText>
                 </>
               ) : (
                 <>
                   <Ionicons name="checkmark-circle" size={18} color={STATUS.ok.fg} />
                   <DKText variant="label" color={STATUS.ok.fg}>
-                    הכול מסומן, אפשר לחתום
+                    {t('inspection.allMarkedSign')}
                   </DKText>
                 </>
               )}
             </View>
-            <PrimaryAction label="המשך לחתימה" icon="arrow-back" onPress={toOfficer} loading={busy === 'next'} disabled={!!busy && busy !== 'next'} />
+            <PrimaryAction label={t('common.continueToSign')} icon={dirIcon('arrow-back')} onPress={toOfficer} loading={busy === 'next'} disabled={!!busy && busy !== 'next'} />
           </View>
         }
         overlay={
@@ -481,12 +482,12 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
               visible={!!leaving}
               onClose={() => setLeaving(null)}
               icon="bookmark-outline"
-              title="לשמור את מה שסומן?"
-              subtitle="אם תשמרו, אפשר יהיה להמשיך את הבדיקה אחר כך מאותה נקודה."
+              title={t('common.saveMarkedQuestion')}
+              subtitle={t('inspection.saveHint')}
               footer={
                 <View style={styles.sheetStack}>
                   <PrimaryAction
-                    label="שמירה ויציאה"
+                    label={t('common.saveAndExit')}
                     icon="bookmark"
                     loading={busy === 'save'}
                     onPress={() =>
@@ -500,9 +501,9 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
                     }
                   />
                   <SheetActions>
-                    <PrimaryAction label="להמשיך למלא" tone="ghost" onPress={() => setLeaving(null)} style={styles.flex} />
+                    <PrimaryAction label={t('common.keepFilling')} tone="ghost" onPress={() => setLeaving(null)} style={styles.flex} />
                     <PrimaryAction
-                      label="יציאה בלי לשמור"
+                      label={t('common.exitWithoutSaving')}
                       tone="danger"
                       onPress={() => {
                         allowLeave.current = true;
@@ -520,11 +521,11 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
               visible={pickDriver}
               onClose={() => setPickDriver(false)}
               icon="person-outline"
-              title="מי הנהג?"
-              subtitle="הנהג שיחתום על הבדיקה."
-              footer={<PrimaryAction label="סגירה" tone="ghost" onPress={() => setPickDriver(false)} />}
+              title={t('inspection.whoIsDriver')}
+              subtitle={t('inspection.driverWhoSigns')}
+              footer={<PrimaryAction label={t('common.close')} tone="ghost" onPress={() => setPickDriver(false)} />}
             >
-              <KitInput value={driverQuery} onChangeText={setDriverQuery} placeholder="חיפוש לפי שם" accessibilityLabel="חיפוש נהג לפי שם" />
+              <KitInput value={driverQuery} onChangeText={setDriverQuery} placeholder={t('common.searchByName')} accessibilityLabel={t('driver.searchByName')} />
               <View style={styles.pickList}>
                 {drivers
                   .filter((d) => !driverQuery.trim() || (d.full_name ?? '').includes(driverQuery.trim()))
@@ -540,13 +541,13 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
                           setPickDriver(false);
                           setDriverQuery('');
                         }}
-                        accessibilityLabel={`${d.full_name ?? 'ללא שם'}${on ? ', נבחר' : ''}`}
+                        accessibilityLabel={`${d.full_name ?? t('common.unnamed')}${on ? t('common.selectedSuffix') : ''}`}
                         style={[styles.pickRow, on && styles.pickRowOn]}
                         pressScale={0.98}
                       >
                         <Ionicons name={on ? 'checkmark-circle' : 'person-circle-outline'} size={22} color={on ? DK.accent : DK.muted} />
                         <DKText variant="label" style={styles.flex}>
-                          {d.full_name ?? 'ללא שם'}
+                          {d.full_name ?? t('common.unnamed')}
                         </DKText>
                         {!!d.vehicle_plate && (
                           <DKText variant="caption" color={DK.muted} ltr>
@@ -558,7 +559,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
                   })}
                 {!drivers.length && (
                   <DKText variant="body" color={DK.muted}>
-                    אין עדיין נהגים פעילים בחברה.
+                    {t('driver.noActiveDriversDot')}
                   </DKText>
                 )}
               </View>
@@ -569,44 +570,44 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
         {messages}
         <Reveal>
           <Surface style={styles.block}>
-            <DKText variant="heading">פרטי הבדיקה</DKText>
+            <DKText variant="heading">{t('inspection.details')}</DKText>
             <View style={styles.field}>
               <DKText variant="label" color={DK.inkSoft} nativeID="odometer-label">
-                קילומטראז׳ היום
+                {t('inspection.mileageToday')}
               </DKText>
               <KitInput
                 value={odometer}
                 onChangeText={(text) => edit(setOdometer)(text.replace(/[^\d]/g, '').slice(0, 7))}
-                placeholder={vehicle.odometer ? `רשום כעת: ${vehicle.odometer.toLocaleString('he-IL')}` : 'לדוגמה: 125000'}
+                placeholder={vehicle.odometer ? t('inspection.currentlyRecorded', { v1: vehicle.odometer.toLocaleString(getLocale()) }) : t('inspection.mileageExample')}
                 keyboardType="number-pad"
                 inputMode="numeric"
                 ltr
                 hasError={needOdometer}
-                accessibilityLabel="קילומטראז׳ היום"
+                accessibilityLabel={t('inspection.mileageToday')}
                 accessibilityLabelledBy="odometer-label"
               />
               {odometerValue != null && vehicle.odometer > odometerValue ? (
                 <DKText variant="caption" color={STATUS.soon.fg}>
-                  נמוך ממה שרשום ברכב ({vehicle.odometer.toLocaleString('he-IL')}). בכרטיס הרכב יישאר הרשום.
+                  {t('inspection.lowerThanRecorded')}{vehicle.odometer.toLocaleString(getLocale())}{t('inspection.recordedStays')}
                 </DKText>
               ) : (
                 <DKText variant="caption" color={DK.muted}>
-                  אם הוא גבוה ממה שרשום, הוא יתעדכן גם בכרטיס הרכב.
+                  {t('inspection.higherUpdates')}
                 </DKText>
               )}
             </View>
             <View style={styles.field}>
               <DKText variant="label" color={DK.inkSoft}>
-                הנהג שחותם
+                {t('inspection.signingDriver')}
               </DKText>
               <View style={styles.chips}>
                 {vehicleDrivers.map((d) => {
                   const on = d.id === driverId;
                   return (
-                    <Pressy key={d.id} onPress={() => edit(setDriverId)(d.id)} accessibilityLabel={`${d.full_name ?? 'ללא שם'}${on ? ', נבחר' : ''}`} style={[styles.chip, on && styles.chipOn]} pressScale={0.95}>
+                    <Pressy key={d.id} onPress={() => edit(setDriverId)(d.id)} accessibilityLabel={`${d.full_name ?? t('common.unnamed')}${on ? t('common.selectedSuffix') : ''}`} style={[styles.chip, on && styles.chipOn]} pressScale={0.95}>
                       <Ionicons name={on ? 'checkmark' : 'person-outline'} size={16} color={on ? '#FFFFFF' : DK.accent} />
                       <DKText variant="label" color={on ? '#FFFFFF' : DK.accent}>
-                        {d.full_name ?? 'ללא שם'}
+                        {d.full_name ?? t('common.unnamed')}
                       </DKText>
                     </Pressy>
                   );
@@ -615,21 +616,21 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
                   <View style={[styles.chip, styles.chipOn]}>
                     <Ionicons name="checkmark" size={16} color="#FFFFFF" />
                     <DKText variant="label" color="#FFFFFF">
-                      {driver.full_name ?? 'ללא שם'}
+                      {driver.full_name ?? t('common.unnamed')}
                     </DKText>
                   </View>
                 )}
-                <Pressy onPress={() => setPickDriver(true)} accessibilityLabel="בחירת נהג אחר" style={[styles.chip, styles.chipGhost, needDriver && styles.chipError]} pressScale={0.95}>
+                <Pressy onPress={() => setPickDriver(true)} accessibilityLabel={t('inspection.chooseOtherDriver')} style={[styles.chip, styles.chipGhost, needDriver && styles.chipError]} pressScale={0.95}>
                   <Ionicons name="people-outline" size={16} color={DK.inkSoft} />
                   <DKText variant="label" color={DK.inkSoft}>
-                    {vehicleDrivers.length ? 'נהג אחר' : 'בחירת נהג'}
+                    {vehicleDrivers.length ? t('inspection.otherDriver') : t('inspection.chooseDriver')}
                   </DKText>
                 </Pressy>
               </View>
             </View>
             <View style={styles.validity}>
-              <Validity label="טסט בתוקף עד" date={live.test} />
-              <Validity label="ביטוח חובה בתוקף עד" date={live.insurance} />
+              <Validity label={t('inspection.testValidUntil')} date={live.test} />
+              <Validity label={t('inspection.insuranceValidUntil')} date={live.insurance} />
             </View>
           </Surface>
         </Reveal>
@@ -651,22 +652,22 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
                 {defects > 0 ? (
                   <View style={[styles.countPill, { backgroundColor: STATUS.expired.soft }]}>
                     <DKText variant="micro" color={STATUS.expired.fg}>
-                      {defects === 1 ? 'ליקוי אחד' : `${defects} ליקויים`}
+                      {defects === 1 ? t('inspection.oneDefect') : t('inspection.defectsCountN', { defects })}
                     </DKText>
                   </View>
                 ) : open === 0 ? (
                   <View style={[styles.countPill, { backgroundColor: STATUS.ok.soft }]}>
                     <DKText variant="micro" color={STATUS.ok.fg}>
-                      הכול סומן
+                      {t('inspection.allMarkedShort')}
                     </DKText>
                   </View>
                 ) : null}
               </View>
               {open > 0 && (
-                <Pressy onPress={() => markGroupOk(group.id)} haptic accessibilityLabel={`סימון כל השאר ב${group.title} כתקין`} style={styles.markAll} pressScale={0.97}>
+                <Pressy onPress={() => markGroupOk(group.id)} haptic accessibilityLabel={t('inspection.markRestOk', { title: group.title })} style={styles.markAll} pressScale={0.97}>
                   <Ionicons name="checkmark-done" size={20} color={DK.accent} />
                   <DKText variant="label" color={DK.accent}>
-                    {open === group.items.length ? 'הכול תקין' : 'כל השאר תקין'}
+                    {open === group.items.length ? t('common.allOk') : t('inspection.restOk')}
                   </DKText>
                 </Pressy>
               )}
@@ -679,38 +680,38 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
         })}
 
         <Surface style={styles.block}>
-          <DKText variant="heading">ליקוי שלא ברשימה</DKText>
+          <DKText variant="heading">{t('inspection.unlistedDefect')}</DKText>
           <DKText variant="caption" color={DK.muted}>
-            מצאתם משהו שאין לו סעיף? כתבו אותו כאן והוא יופיע ברשימת הליקויים.
+            {t('inspection.unlistedHint')}
           </DKText>
           {extra.map((line, index) => (
             <View key={index} style={styles.extraRow}>
               <KitInput
                 value={line}
                 onChangeText={(text) => edit(setExtra)(extra.map((l, i) => (i === index ? text.slice(0, INSPECTION_LIMITS.note) : l)))}
-                placeholder="מה נמצא?"
-                accessibilityLabel={`ליקוי נוסף ${index + 1}`}
+                placeholder={t('inspection.whatFound')}
+                accessibilityLabel={t('inspection.extraDefectN', { v1: index + 1 })}
                 style={styles.flex}
               />
-              <Pressy onPress={() => edit(setExtra)(extra.filter((_, i) => i !== index))} accessibilityLabel={`מחיקת ליקוי נוסף ${index + 1}`} style={styles.iconButton} pressScale={0.9}>
+              <Pressy onPress={() => edit(setExtra)(extra.filter((_, i) => i !== index))} accessibilityLabel={t('inspection.deleteExtraDefect', { v1: index + 1 })} style={styles.iconButton} pressScale={0.9}>
                 <Ionicons name="trash-outline" size={20} color={STATUS.expired.fg} />
               </Pressy>
             </View>
           ))}
           {extra.length < INSPECTION_LIMITS.extraDefects && (
-            <Pressy onPress={() => setExtra((prev) => [...prev, ''])} accessibilityLabel="הוספת ליקוי" style={styles.noteAdd} pressScale={0.97}>
+            <Pressy onPress={() => setExtra((prev) => [...prev, ''])} accessibilityLabel={t('inspection.addDefect')} style={styles.noteAdd} pressScale={0.97}>
               <Ionicons name="add" size={19} color={DK.accent} />
               <DKText variant="label" color={DK.accent}>
-                הוספת ליקוי
+                {t('inspection.addDefect')}
               </DKText>
             </Pressy>
           )}
         </Surface>
 
         {inspection && (
-          <Pressy onPress={() => setCancelling(true)} accessibilityLabel="מחיקת הטיוטה" style={styles.quietLinkDark} pressScale={0.96}>
+          <Pressy onPress={() => setCancelling(true)} accessibilityLabel={t('meeting.deleteDraft')} style={styles.quietLinkDark} pressScale={0.96}>
             <DKText variant="label" color={STATUS.expired.fg}>
-              מחיקת הטיוטה
+              {t('meeting.deleteDraft')}
             </DKText>
           </Pressy>
         )}
@@ -736,10 +737,10 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
             <View style={styles.need}>
               <Ionicons name="lock-closed-outline" size={17} color={DK.muted} />
               <DKText variant="caption" color={DK.muted}>
-                אחרי החתימה אי אפשר לשנות את הסימונים
+                {t('inspection.cantChangeAfterSign')}
               </DKText>
             </View>
-            <PrimaryAction label="שמירת החתימה והמשך" icon="checkmark-circle" onPress={() => void officerSigns()} disabled={!canSign} loading={busy === 'sign'} />
+            <PrimaryAction label={t('common.saveSignatureContinue')} icon="checkmark-circle" onPress={() => void officerSigns()} disabled={!canSign} loading={busy === 'sign'} />
           </View>
         }
       >
@@ -750,28 +751,28 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
         <Reveal index={1}>
           <Surface style={styles.block}>
             <DKText variant="label" color={DK.inkSoft} nativeID="officer-name-label">
-              שם קצין הבטיחות
+              {t('inspection.officerName')}
             </DKText>
             <KitInput
               value={officerName}
               onChangeText={setOfficerName}
-              placeholder="לדוגמה: רונית שגיא"
+              placeholder={t('signature.nameExample')}
               autoComplete="name"
               textContentType="name"
               maxLength={INSPECTION_LIMITS.officerName}
-              accessibilityLabel="שם קצין הבטיחות"
+              accessibilityLabel={t('inspection.officerName')}
               accessibilityLabelledBy="officer-name-label"
             />
             {recent.length > 0 && (
               <>
                 <DKText variant="caption" color={DK.muted}>
-                  שמות שכבר חתמו:
+                  {t('signature.namesSigned')}
                 </DKText>
                 <View style={styles.chips}>
                   {recent.map((name) => {
                     const on = officerName.trim() === name;
                     return (
-                      <Pressy key={name} onPress={() => setOfficerName(name)} accessibilityLabel={`${name}${on ? ', נבחר' : ''}`} style={[styles.chip, on && styles.chipOn]} pressScale={0.95}>
+                      <Pressy key={name} onPress={() => setOfficerName(name)} accessibilityLabel={`${name}${on ? t('common.selectedSuffix') : ''}`} style={[styles.chip, on && styles.chipOn]} pressScale={0.95}>
                         <Ionicons name={on ? 'checkmark' : 'person-outline'} size={16} color={on ? '#FFFFFF' : DK.accent} />
                         <DKText variant="label" color={on ? '#FFFFFF' : DK.accent}>
                           {name}
@@ -788,7 +789,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
           <Surface style={styles.block}>
             <SignaturePad title="חתימת קצין הבטיחות" onChange={setOfficerSig} onDrawing={setDrawing} disabled={busy === 'sign'} />
             <DKText variant="caption" color={DK.muted}>
-              החתימה לא נשמרת במכשיר. בכל בדיקה חותמים מחדש.
+              {t('inspection.signatureNotStored')}
             </DKText>
           </Surface>
         </Reveal>
@@ -803,7 +804,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
   if (step === 'choose') {
     const first = firstName(driverName);
     return inShell(
-      <DriverPage key={step} insetTop={topInset} insetBottom={bottomInset} scrollRef={scrollRef} hero={<HeroTitle title={`החתימה של ${first}`} subtitle="בחרו אחת משתי הדרכים" onBack={() => setStep('view')} />}>
+      <DriverPage key={step} insetTop={topInset} insetBottom={bottomInset} scrollRef={scrollRef} hero={<HeroTitle title={t('signature.ofFirst', { first })} subtitle={t('signature.chooseWay')} onBack={() => setStep('view')} />}>
         {messages}
         <Reveal>
           <SignedBy image={officerSig} name={inspection?.officer_name ?? officerName} date={formatIsoDay(inspection?.inspection_date ?? today)} />
@@ -812,9 +813,9 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
           <Choice
             icon={isDesktop ? 'desktop-outline' : 'phone-portrait-outline'}
             tone="accent"
-            title={isDesktop ? 'עכשיו, על המחשב הזה' : 'עכשיו, על הטלפון הזה'}
-            body={`הנהג כאן? ${isDesktop ? 'מפנים אליו את המסך' : 'מעבירים לו את הטלפון'}, והחתימה נעשית במקום.`}
-            tag="הכי נפוץ"
+            title={isDesktop ? t('signature.nowComputer') : t('signature.nowPhone')}
+            body={t('signature.driverHere', { v1: isDesktop ? t('signature.turnScreen') : t('signature.handPhone') })}
+            tag={t('signature.mostCommon')}
             onPress={() => {
               setError('');
               setDriverSig(null);
@@ -827,8 +828,8 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
           <Choice
             icon="paper-plane-outline"
             tone="cyan"
-            title={`שליחה ל${first} לחתימה`}
-            body={`הבדיקה תגיע לאתר של ${first}, והחתימה תיעשה משם. בינתיים היא מופיעה כ״ממתין לחתימת נהג״.`}
+            title={t('signature.sendToFirst', { first })}
+            body={t('inspection.toSiteOfFirst', { first })}
             onPress={() => void sendToDriver()}
             loading={busy === 'notify'}
             disabled={!!busy}
@@ -854,33 +855,33 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
             </Reveal>
             <Reveal index={1}>
               <DKText variant="display" color={DK.onNight} style={styles.center}>
-                {isDesktop ? `עכשיו החתימה של ${driverName}` : `העבירו את הטלפון ל${driverName}`}
+                {isDesktop ? t('signature.nowDriver', { driverName }) : t('signature.passPhoneTo', { driverName })}
               </DKText>
             </Reveal>
             <Reveal index={2}>
               <DKText variant="body" color={DK.onNightMuted} style={styles.center}>
-                על המסך יופיעו רק תוצאות הבדיקה, לחתימה.
+                {t('inspection.onlyResults')}
               </DKText>
             </Reveal>
             <Reveal index={3}>
               <View style={styles.lockLine}>
                 <Ionicons name="lock-closed" size={15} color={DK.onNightMuted} />
                 <DKText variant="caption" color={DK.onNightMuted}>
-                  שאר המערכת סגורה עד סוף החתימה
+                  {t('signature.systemLocked')}
                 </DKText>
               </View>
             </Reveal>
           </View>
           <View style={styles.nightActions}>
-            <Pressy onPress={() => setStep('driver')} haptic accessibilityLabel={`אני ${first}, אפשר להתחיל`} style={styles.whiteCta}>
+            <Pressy onPress={() => setStep('driver')} haptic accessibilityLabel={t('signature.iAmReady', { first })} style={styles.whiteCta}>
               <DKText variant="heading" color={DK.nightInk}>
-                אני {first}, אפשר להתחיל
+                {t('signature.iAm')} {first}{t('signature.readyToStart')}
               </DKText>
-              <Ionicons name="arrow-back" size={21} color={DK.nightInk} />
+              <Ionicons name={dirIcon('arrow-back')} size={21} color={DK.nightInk} />
             </Pressy>
-            <Pressy onPress={() => setStep('choose')} accessibilityLabel="חזרה, הנהג לא חותם עכשיו" style={styles.quietLink} pressScale={0.96}>
+            <Pressy onPress={() => setStep('choose')} accessibilityLabel={t('signature.backDriverNotSigning')} style={styles.quietLink} pressScale={0.96}>
               <DKText variant="label" color={DK.onNightMuted}>
-                חזרה, החתימה לא עכשיו
+                {t('signature.backNotNow')}
               </DKText>
             </Pressy>
           </View>
@@ -904,9 +905,9 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
           {messages}
           <Reveal>
             <Surface style={styles.hello}>
-              <DKText variant="title">שלום {first}</DKText>
+              <DKText variant="title">{t('common.hello')} {first}</DKText>
               <DKText variant="body" color={DK.inkSoft}>
-                {inspection?.officer_name ?? officerName} בדק/ה היום את הרכב {plate}. עברו על התוצאות וחתמו למטה.
+                {inspection?.officer_name ?? officerName} {t('inspection.checkedTodayBy')} {plate}{t('inspection.reviewAndSign')}
               </DKText>
             </Surface>
           </Reveal>
@@ -927,14 +928,14 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
               <SignaturePad title="חתימת הנהג" onChange={setDriverSig} onDrawing={setDrawing} disabled={busy === 'driver'} />
             </Surface>
           </Reveal>
-          <Pressy onPress={() => setStep('choose')} accessibilityLabel="החזרה למנהל בלי לחתום" style={styles.quietLinkDark} pressScale={0.96}>
+          <Pressy onPress={() => setStep('choose')} accessibilityLabel={t('signature.returnWithoutSigning')} style={styles.quietLinkDark} pressScale={0.96}>
             <DKText variant="label" color={DK.muted}>
-              החזרה למנהל בלי לחתום
+              {t('signature.returnWithoutSigning')}
             </DKText>
           </Pressy>
         </ScrollView>
         <View style={[styles.pageFooter, { paddingBottom: insets.bottom + 12 }]}>
-          <PrimaryAction label="חתימה" icon="create-outline" onPress={() => void driverSigns()} disabled={!driverSig} loading={busy === 'driver'} />
+          <PrimaryAction label={t('field.signature')} icon="create-outline" onPress={() => void driverSigns()} disabled={!driverSig} loading={busy === 'driver'} />
         </View>
       </View>
     );
@@ -952,14 +953,14 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
           <SuccessTick tone={sent ? 'accent' : 'ok'} />
           <Reveal index={2}>
             <DKText variant="display" style={styles.center} accessibilityRole="header">
-              {sent ? `הבדיקה נשלחה ל${first}` : 'תודה, הבדיקה נחתמה'}
+              {sent ? t('inspection.sentTo', { first }) : t('inspection.thanksSigned')}
             </DKText>
           </Reveal>
           <Reveal index={3}>
             <DKText variant="body" color={DK.inkSoft} style={styles.center}>
               {sent
-                ? `החתימה של קצין הבטיחות כבר על המסמך. ${first} יקבל/תקבל התראה ויחתום/תחתום מהאתר. עד אז הבדיקה מופיעה כ״ממתין לחתימת נהג״.`
-                : `המסמך החתום נשמר בבדיקות הבטיחות של הרכב ובתיק של ${driverName}.`}
+                ? t('inspection.sentBody', { first })
+                : t('inspection.signedSavedIn', { driverName })}
             </DKText>
           </Reveal>
           {nextDue ? (
@@ -969,16 +970,16 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
                   <Ionicons name="calendar" size={22} color={DK.accent} />
                 </View>
                 <View style={styles.flex}>
-                  <DKText variant="caption" color={DK.muted}>הבדיקה הבאה של הרכב</DKText>
+                  <DKText variant="caption" color={DK.muted}>{t('inspection.vehicleNext')}</DKText>
                   <DKText variant="heading">{formatIsoDay(nextDue)}</DKText>
                 </View>
               </Surface>
-              <DKText variant="caption" color={DK.muted} style={styles.center}>נזכיר לכם לפני. אפשר לשנות את התאריך בעמוד "בדיקות בטיחות".</DKText>
+              <DKText variant="caption" color={DK.muted} style={styles.center}>{t('inspection.remindChangeDate')}</DKText>
             </Reveal>
           ) : null}
           <Reveal index={5} style={styles.doneActions}>
-            {!sent && <PrimaryAction label="הורדת המסמך החתום" icon="download-outline" onPress={() => void download()} loading={busy === 'download'} />}
-            <PrimaryAction label="סיום" tone={sent ? 'accent' : 'ghost'} onPress={leave} />
+            {!sent && <PrimaryAction label={t('signing.downloadSigned')} icon="download-outline" onPress={() => void download()} loading={busy === 'download'} />}
+            <PrimaryAction label={t('common.done')} tone={sent ? 'accent' : 'ghost'} onPress={leave} />
           </Reveal>
         </ScrollView>
       </View>,
@@ -991,12 +992,12 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
   const canClose = state === 'awaiting_driver' || state === 'requires_attention';
   const documentReady = !!inspection && hasDocument(inspection, requestStatus);
   const shownFacts = [
-    { label: 'מספר רכב', value: facts ? formatPlate(facts.plate) : plate },
-    { label: 'יצרן ודגם', value: facts?.vehicle || vehicleLabel || '—' },
-    { label: 'קילומטראז׳', value: (facts?.odometer ?? inspection?.odometer)?.toLocaleString('he-IL') ?? '—' },
-    { label: 'נהג', value: facts?.driverName ?? driverName },
-    { label: 'תאריך הבדיקה', value: formatIsoDay(inspection?.inspection_date) },
-    { label: 'קצין בטיחות', value: inspection?.officer_name ?? '—' },
+    { label: t('vehicle.number'), value: facts ? formatPlate(facts.plate) : plate },
+    { label: t('vehicle.makeAndModel'), value: facts?.vehicle || vehicleLabel || '—' },
+    { label: t('vehicle.mileage'), value: (facts?.odometer ?? inspection?.odometer)?.toLocaleString(getLocale()) ?? '—' },
+    { label: t('role.driver'), value: facts?.driverName ?? driverName },
+    { label: t('inspection.date'), value: formatIsoDay(inspection?.inspection_date) },
+    { label: t('company.safetyOfficer'), value: inspection?.officer_name ?? '—' },
   ];
   return inShell(
     <DriverPage
@@ -1006,7 +1007,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
       scrollRef={scrollRef}
       hero={
         <View>
-          <HeroTitle title="בדיקת בטיחות" subtitle={`${vehicleLabel ? `${vehicleLabel} · ` : ''}${formatIsoDay(inspection?.inspection_date)}`} onBack={leave} />
+          <HeroTitle title={t('notifications.cat.safetyCheck')} subtitle={`${vehicleLabel ? `${vehicleLabel} · ` : ''}${formatIsoDay(inspection?.inspection_date)}`} onBack={leave} />
           <View style={styles.heroChips}>
             <Plate number={plate} size="sm" />
             {meta && (
@@ -1025,20 +1026,20 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
             visible={closing}
             onClose={() => setClosing(false)}
             icon="lock-closed-outline"
-            title="סגירה בלי חתימת הנהג"
-            subtitle="המסמך יצא עם חתימת קצין הבטיחות, וההערה שלך תופיע במקום חתימת הנהג. הנהג כבר לא יוכל לחתום."
+            title={t('inspection.closeWithoutDriver')}
+            subtitle={t('inspection.closeWithoutDriverBody')}
             footer={
               <SheetActions>
-                <PrimaryAction label="חזרה" tone="ghost" onPress={() => setClosing(false)} style={styles.flex} />
-                <PrimaryAction label="סגירת הבדיקה" icon="lock-closed" onPress={() => void closeWithoutDriver()} disabled={!closeNote.trim()} loading={busy === 'close'} style={styles.flex} />
+                <PrimaryAction label={t('common.goBack')} tone="ghost" onPress={() => setClosing(false)} style={styles.flex} />
+                <PrimaryAction label={t('inspection.close')} icon="lock-closed" onPress={() => void closeWithoutDriver()} disabled={!closeNote.trim()} loading={busy === 'close'} style={styles.flex} />
               </SheetActions>
             }
           >
             <KitInput
               value={closeNote}
               onChangeText={(text) => setCloseNote(text.slice(0, INSPECTION_LIMITS.closedNote))}
-              placeholder="לדוגמה: הנהג לא הגיע לחתום / סירב לחתום"
-              accessibilityLabel="למה הנהג לא חתם"
+              placeholder={t('inspection.closeReasonExample')}
+              accessibilityLabel={t('inspection.whyNotSigned')}
               multiline
               style={styles.noteInput}
             />
@@ -1050,14 +1051,14 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
       {messages}
       {state === 'requires_attention' && (
         <Reveal>
-          <Banner tone="expired" title="הנהג לא יכול לחתום על המסמך הזה">
-            המסמך נדחה או הוסר מהתיק של הנהג. אפשר לסגור את הבדיקה בלי חתימת הנהג, או לבטל אותה ולפתוח בדיקה חדשה.
+          <Banner tone="expired" title={t('inspection.driverCannotSign')}>
+            {t('inspection.driverCannotSignBody')}
           </Banner>
         </Reveal>
       )}
       {state === 'closed' && !!inspection?.closed_note && (
         <Reveal>
-          <Banner tone="info" icon="lock-closed" title="נסגר בלי חתימת הנהג">
+          <Banner tone="info" icon="lock-closed" title={t('inspection.closedNoDriver')}>
             {inspection.closed_note}
           </Banner>
         </Reveal>
@@ -1077,10 +1078,10 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
       {(canDriverSign || canClose || documentReady) && (
         <Reveal index={1}>
           <Surface style={styles.block}>
-            {documentReady && <PrimaryAction label="הורדת המסמך" icon="download-outline" onPress={() => void download()} loading={busy === 'download'} />}
+            {documentReady && <PrimaryAction label={t('viewer.downloadDocument')} icon="download-outline" onPress={() => void download()} loading={busy === 'download'} />}
             {canDriverSign && (
               <PrimaryAction
-                label="הנהג חותם עכשיו, כאן"
+                label={t('inspection.driverSignsNowHere')}
                 icon={isDesktop ? 'desktop-outline' : 'phone-portrait-outline'}
                 onPress={() => {
                   setError('');
@@ -1091,8 +1092,8 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
                 disabled={!!busy}
               />
             )}
-            {canDriverSign && <PrimaryAction label="שליחת תזכורת לנהג" icon="paper-plane-outline" tone="ghost" onPress={() => void run('notify', async () => { await notifyInspectionDriver(companyId, inspection!.id); setNotice('נשלחה לנהג התראה לחתום.'); })} loading={busy === 'notify'} />}
-            {canClose && <PrimaryAction label="סגירה בלי חתימת הנהג" icon="lock-closed-outline" tone="ghost" onPress={() => setClosing(true)} disabled={!!busy} />}
+            {canDriverSign && <PrimaryAction label={t('inspection.sendReminder')} icon="paper-plane-outline" tone="ghost" onPress={() => void run('notify', async () => { await notifyInspectionDriver(companyId, inspection!.id); setNotice(t('inspection.reminderSent')); })} loading={busy === 'notify'} />}
+            {canClose && <PrimaryAction label={t('inspection.closeWithoutDriver')} icon="lock-closed-outline" tone="ghost" onPress={() => setClosing(true)} disabled={!!busy} />}
           </Surface>
         </Reveal>
       )}
@@ -1108,9 +1109,9 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
         </Reveal>
       )}
       {state !== 'cancelled' && (
-        <Pressy onPress={() => setCancelling(true)} accessibilityLabel="ביטול הבדיקה" style={styles.quietLinkDark} pressScale={0.96}>
+        <Pressy onPress={() => setCancelling(true)} accessibilityLabel={t('inspection.cancel')} style={styles.quietLinkDark} pressScale={0.96}>
           <DKText variant="label" color={STATUS.expired.fg}>
-            ביטול הבדיקה
+            {t('inspection.cancel')}
           </DKText>
         </Pressy>
       )}
@@ -1131,7 +1132,7 @@ function Validity({ label, date }: { label: string; date: string | null }) {
           {label}
         </DKText>
         <DKText variant="label" color={s.fg}>
-          {date ? formatIsoDay(date) : 'לא הוזן'}
+          {date ? formatIsoDay(date) : t('common.notEntered')}
         </DKText>
       </View>
     </View>
@@ -1145,7 +1146,7 @@ function DefectsCard({ lines }: { lines: string[] }) {
         <View style={styles.signedTitle}>
           <Ionicons name="checkmark-circle" size={20} color={STATUS.ok.fg} />
           <DKText variant="heading" color={STATUS.ok.fg}>
-            לא נמצאו ליקויים
+            {t('inspection.noDefects')}
           </DKText>
         </View>
       </Surface>
@@ -1156,7 +1157,7 @@ function DefectsCard({ lines }: { lines: string[] }) {
       <View style={styles.signedTitle}>
         <Ionicons name="alert-circle" size={20} color={STATUS.expired.fg} />
         <DKText variant="heading" color={STATUS.expired.fg}>
-          {lines.length === 1 ? 'נמצא ליקוי אחד' : `נמצאו ${lines.length} ליקויים`}
+          {lines.length === 1 ? t('inspection.oneDefectFound') : t('inspection.defectsFound', { length: lines.length })}
         </DKText>
       </View>
       {lines.map((line, index) => (
@@ -1191,7 +1192,7 @@ function ResultList({ form, answers }: { form: InspectionForm; answers: Inspecti
                 ) : (
                   <View style={[styles.pill, { backgroundColor: DK.surfaceSunk }]}>
                     <DKText variant="micro" color={DK.muted}>
-                      לא סומן
+                      {t('inspection.notMarked')}
                     </DKText>
                   </View>
                 )}
@@ -1218,7 +1219,7 @@ function Disclaimer() {
       <Ionicons name="information-circle-outline" size={18} color={DK.inkSoft} style={styles.noteIcon} />
       <DKText variant="caption" color={DK.inkSoft} style={styles.flex}>
         <DKText variant="caption" color={DK.ink} style={styles.bold}>
-          לתשומת לב:{' '}
+          {t('common.attention')}{' '}
         </DKText>
         {INSPECTION_DISCLAIMER}
       </DKText>
@@ -1233,16 +1234,16 @@ function CancelSheet({ visible, draft = false, onClose, onConfirm, loading }: { 
       onClose={onClose}
       tone="danger"
       icon={draft ? 'trash-outline' : 'close-circle-outline'}
-      title={draft ? 'למחוק את הטיוטה?' : 'לבטל את הבדיקה?'}
+      title={draft ? t('meeting.deleteDraftQuestion') : t('inspection.cancelQuestion')}
       subtitle={
         draft
-          ? 'הבדיקה עוד לא נחתמה. כל מה שסומן בה יימחק.'
-          : 'הבדיקה תישאר ברשימה, מסומנת "בוטל". אם הנהג עוד לא חתם, המסמך יוסר מהרשימה שלו. תאריך הבדיקה הבאה יחזור למה שהיה לפניה.'
+          ? t('inspection.cancelDraftBody')
+          : t('inspection.cancelSignedBody')
       }
       footer={
         <SheetActions>
-          <PrimaryAction label="חזרה" tone="ghost" onPress={onClose} style={styles.flex} />
-          <PrimaryAction label={draft ? 'מחיקה' : 'ביטול הבדיקה'} tone="destructive" onPress={onConfirm} loading={loading} style={styles.flex} />
+          <PrimaryAction label={t('common.goBack')} tone="ghost" onPress={onClose} style={styles.flex} />
+          <PrimaryAction label={draft ? t('common.deleteAction') : t('inspection.cancel')} tone="destructive" onPress={onConfirm} loading={loading} style={styles.flex} />
         </SheetActions>
       }
     />
@@ -1257,13 +1258,13 @@ function Progress({ marked, total }: { marked: number; total: number }) {
     Animated.timing(width, { toValue: value, duration: reduce ? 0 : 240, easing: EASE_OUT, useNativeDriver: false }).start();
   }, [reduce, value, width]);
   return (
-    <View style={styles.progress} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: marked }} accessibilityLabel={`סומנו ${marked} מתוך ${total}`}>
+    <View style={styles.progress} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: marked }} accessibilityLabel={t('common.markedOfTotal', { marked, total })}>
       <View style={styles.progressRow}>
         <DKText variant="caption" color={DK.onNightMuted}>
-          התקדמות
+          {t('common.progress')}
         </DKText>
         <DKText variant="label" color={DK.onNight}>
-          סומנו {marked} מתוך {total}
+          {t('common.marked')} {marked} {t('common.of')} {total}
         </DKText>
       </View>
       <View style={styles.progressTrack}>
@@ -1289,7 +1290,7 @@ function SignedBy({ image, name, date }: { image: string | null; name: string; d
           </DKText>
         </View>
         <DKText variant="caption" color={DK.inkSoft}>
-          נחתם על ידי {name}, {date}
+          {t('signature.signedBy')} {name}, {date}
         </DKText>
       </View>
     </Surface>
@@ -1334,7 +1335,7 @@ function Choice({
           </View>
         )}
       </View>
-      <Ionicons name="chevron-back" size={22} color={DK.faint} />
+      <Ionicons name={dirIcon('chevron-back')} size={22} color={DK.faint} />
     </Pressy>
   );
 }

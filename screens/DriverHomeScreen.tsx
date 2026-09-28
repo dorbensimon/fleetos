@@ -15,6 +15,7 @@ import { useIsDesktop } from '../lib/useDesktopLayout';
 import { DesktopShell } from '../components/desktop/DesktopShell';
 import { DText, HoverPressable, StatusPill } from '../components/desktop/primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES } from '../components/desktop/desktopTheme';
+import { t, textStart } from '../lib/i18n';
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverHome'>;
 
 export default function DriverHomeScreen({ navigation }: Props) {
@@ -27,7 +28,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
   const openManager = (kind: 'tel' | 'sms') => { if (managerPhone) Linking.openURL(`${kind}:${managerPhone}`).catch(() => undefined); };
   if (isDesktop) {
     return (
-      <DesktopShell active="DriverHome" breadcrumbs={['הבית שלי']}>
+      <DesktopShell active="DriverHome" breadcrumbs={[t('nav.myHome')]}>
         {loading ? (
           <LoadingState />
         ) : error && !driver ? (
@@ -37,10 +38,10 @@ export default function DriverHomeScreen({ navigation }: Props) {
             <View style={ds.columns}>
               <View style={ds.mainCol}>
                 <View style={ds.card}>
-                  <DText weight="bold" style={ds.cardTitle}>תוקף ותחזוקה</DText>
+                  <DText weight="bold" style={ds.cardTitle}>{t('driver.expiryAndMaintenance')}</DText>
                   {vehicle ? (
                     timelineItems.length === 0 ? (
-                      <DText style={ds.allGood}>הכול תקין כרגע</DText>
+                      <DText style={ds.allGood}>{t('driver.allGoodNow')}</DText>
                     ) : (
                       timelineItems.map((item, index) => (
                         <HoverPressable
@@ -56,7 +57,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
                     )
                   ) : (
                     <HoverPressable style={ds.noVehicleLine} onPress={() => navigation.navigate('Menu')}>
-                      <DText style={ds.noVehicleText}>פנה למנהל הצי לשיוך רכב</DText>
+                      <DText style={ds.noVehicleText}>{t('driver.askManagerVehicle')}</DText>
                     </HoverPressable>
                   )}
                 </View>
@@ -64,16 +65,16 @@ export default function DriverHomeScreen({ navigation }: Props) {
                 <View style={ds.tilesRow}>
                   <HoverPressable style={ds.tile} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={() => navigation.navigate('DriverSigningDocuments')}>
                     <DText weight="bold" style={ds.tileNumber}>{pendingSignatures}</DText>
-                    <DText weight="semiBold" style={ds.tileTitle}>טפסים ומסמכים</DText>
-                    <DText style={ds.tileDetail}>{pendingSignatures ? 'ממתינים לפעולה' : 'אין מסמכים ממתינים'}</DText>
+                    <DText weight="semiBold" style={ds.tileTitle}>{t('signing.formsAndDocs')}</DText>
+                    <DText style={ds.tileDetail}>{pendingSignatures ? t('driver.awaitingAction') : t('driver.noPendingDocs')}</DText>
                   </HoverPressable>
                   <HoverPressable style={ds.tile} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={() => navigation.navigate('DriverProfile')}>
                     <DText weight="bold" style={[ds.tileNumber, licenseState === 'ok' && { color: DESKTOP_TONES.ok.fg }, licenseState === 'expired' && { color: DESKTOP_TONES.bad.fg }]}>
                       {driver?.license_expiry ? formatDate(driver.license_expiry) : '—'}
                     </DText>
-                    <DText weight="semiBold" style={ds.tileTitle}>רישיון נהיגה</DText>
+                    <DText weight="semiBold" style={ds.tileTitle}>{t('driver.drivingLicense')}</DText>
                     <DText style={[ds.tileDetail, licenseState === 'expired' && { color: DESKTOP_TONES.bad.fg }]}>
-                      {driver?.license_classes ? `דרגה ${driver.license_classes} · ${licenseState === 'expired' ? 'לא בתוקף' : 'מאומת'}` : 'פרטים חסרים'}
+                      {driver?.license_classes ? t('driver.classAndStatus', { license_classes: driver.license_classes, v1: licenseState === 'expired' ? t('common.notValid') : t('common.verified') }) : t('common.detailsMissing')}
                     </DText>
                   </HoverPressable>
                 </View>
@@ -81,29 +82,29 @@ export default function DriverHomeScreen({ navigation }: Props) {
 
               <View style={ds.sideCol}>
                 <View style={ds.card}>
-                  <DText style={ds.sideLabel}>הרכב המשויך אליי</DText>
+                  <DText style={ds.sideLabel}>{t('driver.myAssignedVehicle')}</DText>
                   <DText weight="bold" style={ds.vehicleName}>
-                    {vehicle ? [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || VEHICLE_TYPE_LABELS[vehicle.vehicle_type] : 'לא שויך רכב'}
+                    {vehicle ? [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || VEHICLE_TYPE_LABELS[vehicle.vehicle_type] : t('driver.noVehicleAssignedShort')}
                   </DText>
                   {vehicle && (
                     <View style={ds.plateRow}>
                       <DText weight="bold" style={ds.plateText}>{vehicle.plate_number}</DText>
-                      <StatusPill tone="neutral" label={VEHICLE_TYPE_LABELS[vehicle.vehicle_type] || 'פרטי'} />
+                      <StatusPill tone="neutral" label={VEHICLE_TYPE_LABELS[vehicle.vehicle_type] || t('vehicle.type.car')} />
                     </View>
                   )}
                 </View>
 
                 <View style={ds.card}>
-                  <DText style={ds.sideLabel}>מנהל הצי</DText>
-                  <DText weight="semiBold" style={ds.managerName}>{managerName || 'לא הוגדר'}</DText>
+                  <DText style={ds.sideLabel}>{t('driver.fleetManager')}</DText>
+                  <DText weight="semiBold" style={ds.managerName}>{managerName || t('common.notSet')}</DText>
                   <View style={ds.managerActions}>
                     <HoverPressable style={ds.managerButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} disabled={!managerPhone} onPress={() => openManager('tel')}>
                       <Ionicons name="call-outline" size={13} color={managerPhone ? DESKTOP_TONES.ok.fg : DESKTOP_COLORS.inkFaint} />
-                      <DText weight="semiBold" style={[ds.managerButtonText, { color: managerPhone ? DESKTOP_TONES.ok.fg : DESKTOP_COLORS.inkFaint }]}>התקשר</DText>
+                      <DText weight="semiBold" style={[ds.managerButtonText, { color: managerPhone ? DESKTOP_TONES.ok.fg : DESKTOP_COLORS.inkFaint }]}>{t('common.call')}</DText>
                     </HoverPressable>
                     <HoverPressable style={ds.managerButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} disabled={!managerPhone} onPress={() => openManager('sms')}>
                       <Ionicons name="chatbubble-outline" size={13} color={managerPhone ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
-                      <DText weight="semiBold" style={[ds.managerButtonText, { color: managerPhone ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint }]}>הודעה</DText>
+                      <DText weight="semiBold" style={[ds.managerButtonText, { color: managerPhone ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint }]}>{t('common.message')}</DText>
                     </HoverPressable>
                   </View>
                 </View>
@@ -165,7 +166,7 @@ const ds = StyleSheet.create({
   allGood: { fontSize: 13, color: DESKTOP_TONES.ok.fg, paddingVertical: 12, textAlign: 'center' },
   timelineRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10, height: 42, borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft, borderRadius: 6, paddingHorizontal: 4 },
   rowLast: { borderBottomWidth: 0 },
-  timelineTitle: { fontSize: 13, flex: 1, textAlign: 'right' },
+  timelineTitle: { fontSize: 13, flex: 1, textAlign: textStart() },
   noVehicleLine: { paddingVertical: 24, alignItems: 'center' },
   noVehicleText: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
   tilesRow: { flexDirection: 'row-reverse', gap: 16 },

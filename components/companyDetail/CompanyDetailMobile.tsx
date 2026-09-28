@@ -27,6 +27,7 @@ import { accountNextStep, formatMoney, planLabel, statusLabel, statusTone, BILLI
 import { ChoiceChips, TonePill } from '../owner/ownerKit';
 import type { CompanyEditableFields } from './CompanyInfoCard';
 import type { CompanyUser } from './types';
+import { t, dirIcon } from '../../lib/i18n';
 
 /**
  * One company on the owner's phone: who it is and where it stands as a
@@ -80,25 +81,25 @@ export function CompanyDetailMobile(p: Props) {
       onRefresh={p.onRefresh}
       footer={
         p.hasChanges ? (
-          <PrimaryAction label="שמירת פרטי החברה" icon="checkmark" onPress={p.onSave} loading={p.saving} disabled={!p.fields.name.trim()} />
+          <PrimaryAction label={t('company.saveDetails')} icon="checkmark" onPress={p.onSave} loading={p.saving} disabled={!p.fields.name.trim()} />
         ) : undefined
       }
       hero={
         <View>
           <HeroTitle
             title={p.company.name}
-            subtitle={[active ? 'פעילה' : 'מושבתת', `הצטרפה ב-${formatDate(p.company.created_at)}`].join(' · ')}
+            subtitle={[active ? t('company.activeF') : t('owner.health.off'), t('owner.joinedOn', { v1: formatDate(p.company.created_at) })].join(' · ')}
             onBack={p.onBack}
             right={
               p.company.logo_url ? (
-                <Image source={{ uri: p.company.logo_url }} accessibilityLabel={`לוגו ${p.company.name}`} style={styles.heroLogo} resizeMode="contain" />
+                <Image source={{ uri: p.company.logo_url }} accessibilityLabel={t('company.logoOf', { name: p.company.name })} style={styles.heroLogo} resizeMode="contain" />
               ) : undefined
             }
           />
           <View style={styles.stats}>
-            <HeroStat value={p.admins.length} label="מנהלים" />
-            <HeroStat value={p.drivers.length} label="נהגים" />
-            <HeroStat value={a ? statusLabel(a.status) : '–'} label={a?.monthly_price ? `${formatMoney(a.monthly_price)} לחודש` : 'מנוי'} onPress={p.onEditAccount} />
+            <HeroStat value={p.admins.length} label={t('company.managers')} />
+            <HeroStat value={p.drivers.length} label={t('common.drivers')} />
+            <HeroStat value={a ? statusLabel(a.status) : '–'} label={a?.monthly_price ? t('company.perMonthV1', { v1: formatMoney(a.monthly_price) }) : t('owner.col.subscription')} onPress={p.onEditAccount} />
           </View>
         </View>
       }
@@ -108,7 +109,7 @@ export function CompanyDetailMobile(p: Props) {
           <Surface style={styles.banner}>
             <Ionicons name="pause-circle" size={20} color={STATUS.soon.fg} />
             <DKText variant="caption" color={DK.inkSoft} style={styles.flex}>
-              החברה מושבתת. המנהלים והנהגים שלה לא יכולים להיכנס עד שתפעיל אותה.
+              {t('company.disabledBanner')}
             </DKText>
           </Surface>
         </Reveal>
@@ -119,12 +120,12 @@ export function CompanyDetailMobile(p: Props) {
         <KitSection>
           <View style={styles.cardTitle}>
             <DKText variant="micro" color={DK.muted} accessibilityRole="header" style={styles.flex}>
-              מנוי ותשלום
+              {t('owner.subscriptionAndPayment')}
             </DKText>
-            <Pressy onPress={p.onEditAccount} accessibilityLabel="עריכת המנוי" style={styles.linkChip} pressScale={0.95}>
+            <Pressy onPress={p.onEditAccount} accessibilityLabel={t('company.editSubscription')} style={styles.linkChip} pressScale={0.95}>
               <Ionicons name="create-outline" size={14} color={DK.accent} />
               <DKText variant="micro" color={DK.accent}>
-                עריכה
+                {t('common.edit')}
               </DKText>
             </Pressy>
           </View>
@@ -133,11 +134,11 @@ export function CompanyDetailMobile(p: Props) {
               <DKText variant="title" style={styles.tabular}>
                 {a?.monthly_price != null ? formatMoney(a.monthly_price) : '—'}
                 <DKText variant="caption" color={DK.muted}>
-                  {a?.monthly_price != null ? ' לחודש' : ''}
+                  {a?.monthly_price != null ? t('company.perMonthSuffix') : ''}
                 </DKText>
               </DKText>
               <DKText variant="caption" color={DK.muted}>
-                {[planLabel(a?.plan), BILLING_CYCLES.find((c) => c.value === a?.billing_cycle)?.label ? `חיוב ${BILLING_CYCLES.find((c) => c.value === a?.billing_cycle)!.label}` : null]
+                {[planLabel(a?.plan), BILLING_CYCLES.find((c) => c.value === a?.billing_cycle)?.label ? t('company.billingLabel', { label: BILLING_CYCLES.find((c) => c.value === a?.billing_cycle)!.label }) : null]
                   .filter(Boolean)
                   .join(' · ')}
               </DKText>
@@ -148,37 +149,37 @@ export function CompanyDetailMobile(p: Props) {
             <InfoLine
               icon={a?.status === 'trial' ? 'timer-outline' : 'calendar-outline'}
               tint={next.tone === 'bad' ? STATUS.expired.fg : next.tone === 'warn' ? STATUS.soon.fg : DK.accent}
-              label={a?.status === 'trial' ? 'סוף הניסיון' : 'חידוש'}
+              label={a?.status === 'trial' ? t('company.trialEnd') : t('company.renewal')}
               value={`${next.label} · ${formatDate(a?.status === 'trial' ? a.trial_ends_at : a?.renewal_date)}`}
             />
           )}
-          {!!a?.vehicle_limit && <InfoLine icon="car-sport-outline" label="מכסת רכבים" value={`${a.vehicle_limit} רכבים`} />}
+          {!!a?.vehicle_limit && <InfoLine icon="car-sport-outline" label={t('company.vehicleQuota')} value={t('company.vehiclesLimit', { vehicle_limit: a.vehicle_limit })} />}
           {!!(a?.contact_name || a?.contact_phone || a?.contact_email) && (
             <InfoLine
               icon="person-circle-outline"
-              label="איש קשר לחיוב"
+              label={t('account.billingContact')}
               value={[a?.contact_name, a?.contact_phone ? formatPhone(a.contact_phone) : null, a?.contact_email].filter(Boolean).join(' · ')}
             />
           )}
-          {!!a?.notes && <InfoLine icon="document-text-outline" label="הערות" value={a.notes} />}
-          {!a && <InfoLine icon="card-outline" label="מנוי" value="עוד לא הוגדר" onPress={p.onEditAccount} />}
+          {!!a?.notes && <InfoLine icon="document-text-outline" label={t('common.notes')} value={a.notes} />}
+          {!a && <InfoLine icon="card-outline" label={t('owner.col.subscription')} value={t('common.notSetYet')} onPress={p.onEditAccount} />}
         </KitSection>
       </Reveal>
 
       <Reveal index={2}>
         <KitSection
-          title={pendingAdmins ? `מנהלים · ${pendingAdmins} עוד לא נכנסו` : 'מנהלים'}
+          title={pendingAdmins ? t('company.managersPending', { pendingAdmins }) : t('company.managers')}
           trailing={
-            <Pressy onPress={p.onAddAdmin} accessibilityLabel="הוספת מנהל" style={styles.linkChip} pressScale={0.95}>
+            <Pressy onPress={p.onAddAdmin} accessibilityLabel={t('company.addManager')} style={styles.linkChip} pressScale={0.95}>
               <Ionicons name="add" size={15} color={DK.accent} />
               <DKText variant="micro" color={DK.accent}>
-                מנהל נוסף
+                {t('users.additionalManager')}
               </DKText>
             </Pressy>
           }
         >
           {p.admins.length === 0 ? (
-            <ListRow first icon="alert-circle" tint={STATUS.expired.fg} title="אין מנהל לחברה" subtitle="בלי מנהל אף אחד לא יכול לנהל את הצי" onPress={p.onAddAdmin} />
+            <ListRow first icon="alert-circle" tint={STATUS.expired.fg} title={t('owner.health.noManager')} subtitle={t('company.noManagerWarning')} onPress={p.onAddAdmin} />
           ) : (
             p.admins.map((u, i) => <PersonRow key={u.id} user={u} first={i === 0} onPress={() => p.onUser(u)} />)
           )}
@@ -186,19 +187,19 @@ export function CompanyDetailMobile(p: Props) {
       </Reveal>
 
       <Reveal index={3}>
-        <KitSection title={`נהגים · ${p.drivers.length}`}>
+        <KitSection title={t('company.driversCount', { length: p.drivers.length })}>
           {p.drivers.length === 0 ? (
-            <ListRow first icon="people-outline" tint={DK.muted} title="אין עדיין נהגים" subtitle="מנהלי החברה מוסיפים את הנהגים שלהם" />
+            <ListRow first icon="people-outline" tint={DK.muted} title={t('company.noDriversYet')} subtitle={t('company.managersAddDrivers')} />
           ) : (
             <>
               {shownDrivers.map((u, i) => (
                 <PersonRow key={u.id} user={u} first={i === 0} onPress={() => p.onUser(u)} />
               ))}
               {p.drivers.length > DRIVERS_PREVIEW && (
-                <Pressy onPress={() => setAllDrivers((v) => !v)} accessibilityLabel={allDrivers ? 'הצגת פחות נהגים' : `הצגת כל ${p.drivers.length} הנהגים`} pressScale={0.98}>
+                <Pressy onPress={() => setAllDrivers((v) => !v)} accessibilityLabel={allDrivers ? t('company.showFewerDrivers') : t('meeting.showAllDrivers', { length: p.drivers.length })} pressScale={0.98}>
                   <View style={[styles.more, styles.divider]}>
                     <DKText variant="label" color={DK.accent}>
-                      {allDrivers ? 'הצגת פחות' : `הצגת כל ${p.drivers.length}`}
+                      {allDrivers ? t('common.showLess') : t('common.showAllN', { length: p.drivers.length })}
                     </DKText>
                   </View>
                 </Pressy>
@@ -209,34 +210,34 @@ export function CompanyDetailMobile(p: Props) {
       </Reveal>
 
       <Reveal index={4}>
-        <KitSection title="פרטי החברה">
-          <Pressy onPress={p.onPickLogo} disabled={p.uploadingLogo} accessibilityLabel={p.fields.logoUrl ? 'החלפת הלוגו' : 'העלאת לוגו'} pressScale={0.985}>
+        <KitSection title={t('settings.section.company')}>
+          <Pressy onPress={p.onPickLogo} disabled={p.uploadingLogo} accessibilityLabel={p.fields.logoUrl ? t('company.replaceLogo') : t('company.uploadLogo')} pressScale={0.985}>
             <View style={styles.logoRow}>
               <View style={styles.logoBox}>
                 {p.uploadingLogo ? (
                   <BrandLoader size={24} />
                 ) : p.fields.logoUrl ? (
-                  <Image source={{ uri: p.fields.logoUrl }} accessibilityLabel="לוגו החברה" style={styles.logoImage} resizeMode="contain" />
+                  <Image source={{ uri: p.fields.logoUrl }} accessibilityLabel={t('company.logo')} style={styles.logoImage} resizeMode="contain" />
                 ) : (
                   <Ionicons name="image-outline" size={24} color={DK.accent} />
                 )}
               </View>
               <View style={styles.flex}>
-                <DKText variant="label">לוגו</DKText>
+                <DKText variant="label">{t('company.logoShort')}</DKText>
                 <DKText variant="caption" color={p.logoError ? STATUS.expired.fg : DK.muted}>
-                  {p.logoError || (p.fields.logoUrl ? 'לחיצה מחליפה אותו' : 'PNG או JPG')}
+                  {p.logoError || (p.fields.logoUrl ? t('company.clickToReplace') : t('company.pngOrJpg'))}
                 </DKText>
               </View>
-              <Ionicons name="chevron-back" size={18} color={DK.faint} />
+              <Ionicons name={dirIcon('chevron-back')} size={18} color={DK.faint} />
             </View>
           </Pressy>
-          <EditField label="שם החברה" required value={p.fields.name} onChangeText={(v) => set('name', v)} error={p.fields.name.trim() ? undefined : 'שם החברה חובה'} />
+          <EditField label={t('company.name')} required value={p.fields.name} onChangeText={(v) => set('name', v)} error={p.fields.name.trim() ? undefined : t('validation.companyNameRequired')} />
           <View style={[styles.block, styles.divider]}>
             <DKText variant="caption" color={DK.inkSoft}>
-              סוג החברה
+              {t('company.typeOf')}
             </DKText>
             <ChoiceChips
-              label="סוג החברה"
+              label={t('company.typeOf')}
               clearable
               options={[
                 { value: 'בע״מ', label: 'בע״מ' },
@@ -246,12 +247,12 @@ export function CompanyDetailMobile(p: Props) {
               onChange={(v) => set('companyType', v as CompanyEditableFields['companyType'])}
             />
           </View>
-          <EditField label="ח.פ. / מספר עוסק" value={p.fields.businessId} onChangeText={(v) => set('businessId', v.replace(/\D/g, ''))} keyboardType="number-pad" ltr maxLength={9} />
-          <EditField label="כתובת" value={p.fields.address} onChangeText={(v) => set('address', v)} />
-          <EditField label="טלפון החברה" value={formatPhone(p.fields.phone)} onChangeText={(v) => set('phone', v.replace(/\D/g, ''))} keyboardType="phone-pad" ltr />
-          <EditField label="קצין בטיחות" value={p.fields.safetyOfficerName} onChangeText={(v) => set('safetyOfficerName', v)} />
+          <EditField label={t('company.regOrDealerNumber')} value={p.fields.businessId} onChangeText={(v) => set('businessId', v.replace(/\D/g, ''))} keyboardType="number-pad" ltr maxLength={9} />
+          <EditField label={t('common.address')} value={p.fields.address} onChangeText={(v) => set('address', v)} />
+          <EditField label={t('company.phone')} value={formatPhone(p.fields.phone)} onChangeText={(v) => set('phone', v.replace(/\D/g, ''))} keyboardType="phone-pad" ltr />
+          <EditField label={t('company.safetyOfficer')} value={p.fields.safetyOfficerName} onChangeText={(v) => set('safetyOfficerName', v)} />
           <EditField
-            label="טלפון קצין הבטיחות"
+            label={t('company.safetyOfficerPhone')}
             value={formatPhone(p.fields.safetyOfficerPhone)}
             onChangeText={(v) => set('safetyOfficerPhone', v.replace(/\D/g, ''))}
             keyboardType="phone-pad"
@@ -273,11 +274,11 @@ export function CompanyDetailMobile(p: Props) {
             first
             icon={active ? 'pause-circle-outline' : 'play-circle-outline'}
             tint={active ? STATUS.soon.fg : STATUS.ok.fg}
-            title={active ? 'השבתת החברה' : 'הפעלת החברה מחדש'}
-            subtitle={active ? 'עוצר את הכניסה של כל המשתמשים. הנתונים נשמרים.' : 'המשתמשים יוכלו להיכנס שוב'}
+            title={active ? t('owner.disableCompany') : t('owner.reactivateCompany')}
+            subtitle={active ? t('company.disableHintLong') : t('company.usersCanSignInAgain')}
             onPress={p.onToggleActive}
           />
-          <ListRow icon="trash-outline" tint={STATUS.expired.fg} title="מחיקת החברה" subtitle="מחיקה סופית של כל הנתונים" onPress={p.onDelete} />
+          <ListRow icon="trash-outline" tint={STATUS.expired.fg} title={t('owner.deleteCompany')} subtitle={t('owner.permanentDeleteAll')} onPress={p.onDelete} />
         </Surface>
       </Reveal>
     </DriverPage>
@@ -289,8 +290,8 @@ function PersonRow({ user, first, onPress }: { user: CompanyUser; first: boolean
     <ListRow
       first={first}
       leading={<Avatar name={user.full_name} size={40} tone={user.must_change_password ? 'muted' : 'soft'} />}
-      title={user.full_name || 'ללא שם'}
-      subtitle={user.must_change_password ? 'עוד לא נכנס · על סיסמה זמנית' : user.email || (user.phone ? formatPhone(user.phone) : null)}
+      title={user.full_name || t('common.unnamed')}
+      subtitle={user.must_change_password ? t('users.notSignedInTemp') : user.email || (user.phone ? formatPhone(user.phone) : null)}
       onPress={onPress}
     />
   );

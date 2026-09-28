@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { functionErrorMessage } from './functionError';
 import type { SigningTemplate } from './docuseal';
+import { t } from './i18n';
 
 /**
  * "רשימת סעיפים": a form the manager (or the safety officer) fills during a
@@ -47,15 +48,15 @@ export const CHECKLIST_LIMITS = {
 
 /** The choices offered for "how often"; the server accepts any 0-24. */
 export const REPEAT_OPTIONS = [
-  { months: 0, label: 'פעם אחת' },
-  { months: 1, label: 'כל חודש' },
-  { months: 3, label: 'כל 3 חודשים' },
-  { months: 6, label: 'כל חצי שנה' },
-  { months: 12, label: 'כל שנה' },
+  { months: 0, get label() { return t('frequency.once'); } },
+  { months: 1, get label() { return t('frequency.monthly'); } },
+  { months: 3, get label() { return t('frequency.every3Months'); } },
+  { months: 6, get label() { return t('frequency.every6Months'); } },
+  { months: 12, get label() { return t('frequency.yearly'); } },
 ] as const;
 
 export function repeatLabel(months: number): string {
-  return REPEAT_OPTIONS.find((o) => o.months === months)?.label ?? (months > 0 ? `כל ${months} חודשים` : 'פעם אחת');
+  return REPEAT_OPTIONS.find((o) => o.months === months)?.label ?? (months > 0 ? t('frequency.everyNMonths', { months }) : t('frequency.once'));
 }
 
 export const DEFAULT_LABELS = { officer: 'חתימת קצין הבטיחות', driver: 'חתימת הנהג' } as const;
@@ -108,9 +109,9 @@ export function statusOptions(form: Pick<ChecklistForm, 'allowNa'>): ChecklistSt
  * answer is also spelled out and has its own icon.
  */
 export const STATUS_META: Record<ChecklistStatus, { label: string; icon: 'checkmark' | 'close' | 'remove'; fg: string; soft: string; fill: string }> = {
-  done: { label: 'בוצע', icon: 'checkmark', fg: '#0B7D57', soft: '#E4F7EF', fill: '#22C48A' },
-  not_done: { label: 'לא בוצע', icon: 'close', fg: '#C21F37', soft: '#FFE8EB', fill: '#FF4D5E' },
-  na: { label: 'לא רלוונטי', icon: 'remove', fg: '#56657A', soft: '#EEF1F6', fill: '#8593A6' },
+  done: { get label() { return t('checklist.done'); }, icon: 'checkmark', fg: '#0B7D57', soft: '#E4F7EF', fill: '#22C48A' },
+  not_done: { get label() { return t('checklist.notDone'); }, icon: 'close', fg: '#C21F37', soft: '#FFE8EB', fill: '#FF4D5E' },
+  na: { get label() { return t('status.notRelevant'); }, icon: 'remove', fg: '#56657A', soft: '#EEF1F6', fill: '#8593A6' },
 };
 
 /** Items with text; an empty row the admin left in the builder is not part of the form. */
@@ -129,12 +130,12 @@ export function allAnswered(form: Pick<ChecklistForm, 'items'>, answers: Checkli
 
 /** Why the form cannot be saved yet, in plain words, or null when it can. */
 export function formProblem(title: string, form: ChecklistForm): string | null {
-  if (!title.trim()) return 'חסר שם לטופס';
+  if (!title.trim()) return t('checklist.formNameMissing');
   const items = filledItems(form);
-  if (!items.length) return 'כתבו לפחות סעיף אחד';
-  if (items.length > CHECKLIST_LIMITS.items) return `אפשר עד ${CHECKLIST_LIMITS.items} סעיפים בטופס אחד`;
-  if (items.some((item) => item.text.trim().length > CHECKLIST_LIMITS.itemText)) return `כל סעיף יכול להיות עד ${CHECKLIST_LIMITS.itemText} תווים`;
-  if (!form.labels.officer.trim() || !form.labels.driver.trim()) return 'חסרה כותרת לאחת החתימות';
+  if (!items.length) return t('checklist.writeOneItem');
+  if (items.length > CHECKLIST_LIMITS.items) return t('checklist.maxItems', { items: CHECKLIST_LIMITS.items });
+  if (items.some((item) => item.text.trim().length > CHECKLIST_LIMITS.itemText)) return t('checklist.maxItemText', { itemText: CHECKLIST_LIMITS.itemText });
+  if (!form.labels.officer.trim() || !form.labels.driver.trim()) return t('checklist.signatureTitleMissing');
   return null;
 }
 
@@ -211,11 +212,11 @@ export function meetingState(meeting: Pick<MeetingRow, 'status'>, requestStatus?
 }
 
 export const MEETING_STATE_LABEL: Record<MeetingState, string> = {
-  draft: 'טיוטה, עוד לא נחתם',
-  awaiting_driver: 'ממתין לחתימת הנהג',
-  completed: 'נחתם',
-  requires_attention: 'דורש טיפול',
-  cancelled: 'בוטל',
+  get draft() { return t('checklist.draftNotSigned'); },
+  get awaiting_driver() { return t('common.awaitingDriverSignature'); },
+  get completed() { return t('common.signedDone'); },
+  get requires_attention() { return t('status.needsAttention'); },
+  get cancelled() { return t('common.cancelled'); },
 };
 
 /** Today in the device's calendar, as YYYY-MM-DD. */
@@ -299,7 +300,7 @@ export async function saveMeetingDraft(
   target: { meetingId: string } | { templateId: string; driverId: string },
   input: MeetingInput,
 ): Promise<MeetingRow> {
-  const { meeting } = await invoke<{ meeting: MeetingRow }>({ action: 'save', companyId, ...target, ...input }, 'שמירת הטיוטה נכשלה');
+  const { meeting } = await invoke<{ meeting: MeetingRow }>({ action: 'save', companyId, ...target, ...input }, t('common.saveDraftFailed'));
   return meeting;
 }
 
@@ -313,28 +314,28 @@ export async function signMeeting(
   meetingId: string,
   input: MeetingInput & { officerSignature: string; notifyDriver: boolean },
 ): Promise<{ meeting: MeetingRow; requestId: string; /** The driver's next meeting, on a repeating form. */ nextDue?: string | null }> {
-  return invoke({ action: 'sign', companyId, meetingId, ...input }, 'שמירת החתימה נכשלה');
+  return invoke({ action: 'sign', companyId, meetingId, ...input }, t('common.saveSignatureFailed'));
 }
 
 /** The driver signs on the manager's device. */
 export async function driverSignMeeting(companyId: string, meetingId: string, driverSignature: string): Promise<{ status: 'completed'; filePending: boolean }> {
-  return invoke({ action: 'driver-sign', companyId, meetingId, driverSignature }, 'שמירת החתימה של הנהג נכשלה');
+  return invoke({ action: 'driver-sign', companyId, meetingId, driverSignature }, t('common.saveDriverSignatureFailed'));
 }
 
 /** Sends the driver a notice for a meeting the officer already signed. */
 export async function notifyMeetingDriver(companyId: string, meetingId: string): Promise<void> {
-  await invoke({ action: 'notify', companyId, meetingId }, 'השליחה לנהג נכשלה');
+  await invoke({ action: 'notify', companyId, meetingId }, t('common.sendToDriverFailed'));
 }
 
 /** Deletes a meeting at any stage, with its document, everywhere. */
 export async function cancelMeeting(companyId: string, meetingId: string): Promise<void> {
-  await invoke({ action: 'cancel', companyId, meetingId }, 'מחיקת המפגש נכשלה');
+  await invoke({ action: 'cancel', companyId, meetingId }, t('checklist.deleteMeetingFailed'));
 }
 
 export async function createChecklistTemplate(companyId: string, draftId: string, title: string, form: ChecklistForm): Promise<SigningTemplate> {
   const { data, error } = await supabase.functions.invoke('company-signing-template', {
     body: { action: 'create', kind: 'checklist', companyId, draftId, title, form: cleanForm(form) },
   });
-  if (error || data?.error) throw new Error(await functionErrorMessage(error, data, 'שמירת הטופס נכשלה', false));
+  if (error || data?.error) throw new Error(await functionErrorMessage(error, data, t('checklist.saveFormFailed'), false));
   return (data as { template: SigningTemplate }).template;
 }

@@ -16,6 +16,7 @@ import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { CompanySettingsDesktopView, CompanySettingsForm, CompanyContactForm, SafetyOfficerForm } from '../../components/desktop/CompanySettingsDesktopView';
+import { t } from '../../lib/i18n';
 
 /**
  * Company-wide settings (the desktop sidebar; the phone's menu).
@@ -58,15 +59,15 @@ function formFromCompany(company: Company | null): CompanySettingsForm {
 function validate(form: CompanySettingsForm): Record<string, string> {
   const e: Record<string, string> = {};
   const phone = (key: string, v: string) => {
-    if (v && !isValidIsraeliPhone(v)) e[key] = 'מספר טלפון לא תקין';
+    if (v && !isValidIsraeliPhone(v)) e[key] = t('validation.invalidPhone');
   };
   const email = (key: string, v: string) => {
-    if (v && !isValidEmail(v)) e[key] = 'כתובת מייל לא תקינה';
+    if (v && !isValidEmail(v)) e[key] = t('validation.invalidEmail');
   };
 
-  if (!form.name.trim()) e.name = 'שדה חובה';
-  if (!form.businessId.trim()) e.businessId = 'שדה חובה';
-  else if (form.businessId.length !== 9) e.businessId = 'ח.פ / ע.מ צריך להכיל 9 ספרות';
+  if (!form.name.trim()) e.name = t('validation.required');
+  if (!form.businessId.trim()) e.businessId = t('validation.required');
+  else if (form.businessId.length !== 9) e.businessId = t('company.businessId9');
 
   phone('landline', form.landline);
   phone('mobile', form.mobile);
@@ -75,7 +76,7 @@ function validate(form: CompanySettingsForm): Record<string, string> {
   email('filesEmail', form.filesEmail);
   email('filesEmail2', form.filesEmail2);
 
-  if (form.reportAuto && !form.reportEmail) e.reportEmail = 'כדי להפעיל שליחה צריך מייל';
+  if (form.reportAuto && !form.reportEmail) e.reportEmail = t('company.emailToEnableSend');
   else email('reportEmail', form.reportEmail);
 
   form.contacts.forEach((c, i) => {
@@ -171,17 +172,17 @@ export default function CompanySettingsScreen({ navigation }: Props) {
       const [logoUrl, stampUrl] = await Promise.all([upload('logo', form.logoUri), upload('stamp', form.stampUri)]);
 
       const { data, error } = await updateCompanySettings(company.id, { ...form, logoUrl, stampUrl });
-      if (error || !data?.company) throw new Error(await functionErrorMessage(error, data, 'שמירת הגדרות החברה נכשלה', false));
+      if (error || !data?.company) throw new Error(await functionErrorMessage(error, data, t('company.settingsSaveFailed'), false));
 
       pendingImages.current.clear();
       const saved = formFromCompany(data.company);
       setBaseline(saved);
       setForm(saved);
       setSavedNonce((n) => n + 1);
-      if (!isDesktop) showToast('הגדרות החברה נשמרו');
+      if (!isDesktop) showToast(t('company.settingsSaved'));
       void refresh();
     } catch (err) {
-      showAlert('שמירה נכשלה', err instanceof Error && err.message ? err.message : 'שמירת הגדרות החברה נכשלה');
+      showAlert(t('common.saveFailed'), err instanceof Error && err.message ? err.message : t('company.settingsSaveFailed'));
     } finally {
       setSaving(false);
     }
@@ -213,7 +214,7 @@ export default function CompanySettingsScreen({ navigation }: Props) {
   }
 
   return (
-    <DesktopShell active="CompanySettings" breadcrumbs={['חשבון', 'הגדרות החברה']}>
+    <DesktopShell active="CompanySettings" breadcrumbs={[t('nav.account'), t('nav.companySettings')]}>
       <CompanySettingsDesktopView
         form={form}
         errors={errors}

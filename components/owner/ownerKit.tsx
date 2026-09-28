@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DK, DKText, Pressy, STATUS } from '../driverKit';
 import type { AccountTone } from '../../lib/companyAccount';
+import { t } from '../../lib/i18n';
 
 /**
  * Small pieces the owner's screens share, in the app kit's look (DK tokens):
@@ -42,7 +43,7 @@ export function ChoiceChips<T extends string>({
           <Pressy
             key={o.value}
             onPress={() => onChange(on && clearable ? '' : o.value)}
-            accessibilityLabel={`${label}: ${o.label}${on ? ', נבחר' : ''}`}
+            accessibilityLabel={`${label}: ${o.label}${on ? t('common.selectedSuffix') : ''}`}
             pressScale={0.95}
             style={[styles.chip, on ? styles.chipOn : styles.chipIdle]}
           >
@@ -60,11 +61,11 @@ export function ChoiceChips<T extends string>({
 
 /** A soft pill that says where an account stands. */
 export function TonePill({ tone, label }: { tone: AccountTone; label: string }) {
-  const t = ACCOUNT_TONE[tone];
+  const toneKey = ACCOUNT_TONE[tone];
   return (
-    <View style={[styles.pill, { backgroundColor: t.soft }]}>
-      <View style={[styles.dot, { backgroundColor: t.fill }]} />
-      <DKText variant="micro" color={t.fg} numberOfLines={1}>
+    <View style={[styles.pill, { backgroundColor: toneKey.soft }]}>
+      <View style={[styles.dot, { backgroundColor: toneKey.fill }]} />
+      <DKText variant="micro" color={toneKey.fg} numberOfLines={1}>
         {label}
       </DKText>
     </View>

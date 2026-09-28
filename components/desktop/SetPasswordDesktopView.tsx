@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
 import { BrandLogo } from '../ui/Brand';
+import { t, dirIcon, textStart } from '../../lib/i18n';
 
 type Props = {
   voluntary: boolean;
@@ -38,8 +39,8 @@ export function SetPasswordDesktopView({
 }: Props) {
   const [focused, setFocused] = useState<'password' | 'confirmPassword' | null>(null);
   const requirements = [
-    { label: 'לפחות 8 תווים', met: password.length >= 8 },
-    { label: 'הסיסמאות תואמות', met: confirmPassword.length > 0 && password === confirmPassword },
+    { label: t('password.min8'), met: password.length >= 8 },
+    { label: t('password.match'), met: confirmPassword.length > 0 && password === confirmPassword },
   ];
 
   return (
@@ -51,31 +52,31 @@ export function SetPasswordDesktopView({
             <Ionicons name="lock-closed-outline" size={31} color={DESKTOP_COLORS.brand} />
           </View>
           <View style={styles.securityCopy}>
-            <DText weight="bold" style={styles.securityTitle}>אבטחת החשבון</DText>
+            <DText weight="bold" style={styles.securityTitle}>{t('password.accountSecurity')}</DText>
             <DText style={styles.securityDescription}>
-              סיסמה עדכנית וייחודית שומרת על המידע ועל הפעילות של החברה שלך.
+              {t('password.securityIntro')}
             </DText>
           </View>
           <View style={styles.assuranceList}>
-            <Assurance icon="shield-checkmark-outline" title="חיבור מוצפן" detail="הסיסמה נשלחת בחיבור מוצפן" />
-            <Assurance icon="eye-off-outline" title="רק שלך" detail="הסיסמה החדשה לא מוצגת למנהל הצי" />
-            <Assurance icon="key-outline" title="בשליטה שלך" detail="אפשר לעדכן את הסיסמה בכל עת" />
+            <Assurance icon="shield-checkmark-outline" title={t('password.encrypted')} detail={t('password.encryptedDetail')} />
+            <Assurance icon="eye-off-outline" title={t('password.onlyYours')} detail={t('password.onlyYoursDetail')} />
+            <Assurance icon="key-outline" title={t('password.inYourControl')} detail={t('password.inYourControlDetail')} />
           </View>
-          <DText style={styles.helpText}>טיפ: בחרו סיסמה שלא משמשת אתכם בשירותים אחרים.</DText>
+          <DText style={styles.helpText}>{t('password.tip')}</DText>
         </View>
 
         <View style={styles.formSurface}>
           <View style={styles.formHeading}>
-            <DText weight="bold" style={styles.title}>{voluntary ? 'שינוי סיסמה' : 'קביעת סיסמה קבועה'}</DText>
+            <DText weight="bold" style={styles.title}>{voluntary ? t('password.change') : t('password.setPermanent')}</DText>
             <DText style={styles.subtitle}>
-              {voluntary ? 'בחרו סיסמה חדשה לחשבון שלכם.' : 'ברוכים הבאים ל-icar. זו הכניסה הראשונה שלכם — בחרו סיסמה קבועה כדי להמשיך.'}
+              {voluntary ? t('password.chooseNew') : t('password.welcomeFirst')}
             </DText>
           </View>
 
           <PasswordField
-            label="סיסמה חדשה"
+            label={t('password.new')}
             value={password}
-            placeholder="לפחות 8 תווים"
+            placeholder={t('password.min8')}
             visible={showPassword}
             focused={focused === 'password'}
             error={errors.password}
@@ -85,9 +86,9 @@ export function SetPasswordDesktopView({
             onToggle={onTogglePassword}
           />
           <PasswordField
-            label="אימות סיסמה"
+            label={t('password.confirm')}
             value={confirmPassword}
-            placeholder="הזינו שוב את הסיסמה"
+            placeholder={t('password.reenter')}
             visible={showPassword}
             focused={focused === 'confirmPassword'}
             error={errors.confirmPassword}
@@ -115,10 +116,10 @@ export function SetPasswordDesktopView({
             onPress={onSubmit}
             disabled={saving}
           >
-            {saving ? <BrandLoader color="#fff" /> : <><DText weight="semiBold" style={styles.submitText}>עדכון סיסמה</DText><Ionicons name="arrow-back" size={17} color="#fff" /></>}
+            {saving ? <BrandLoader color="#fff" /> : <><DText weight="semiBold" style={styles.submitText}>{t('password.update')}</DText><Ionicons name={dirIcon('arrow-back')} size={17} color="#fff" /></>}
           </HoverPressable>
           <HoverPressable style={styles.cancelButton} hoverStyle={styles.cancelButtonHover} pressMotionStyle={styles.pressDown} onPress={onCancel} disabled={saving}>
-            <DText weight="semiBold" style={styles.cancelText}>{voluntary ? 'ביטול' : 'זה לא אני / התנתקות'}</DText>
+            <DText weight="semiBold" style={styles.cancelText}>{voluntary ? t('common.cancel') : t('password.notMeSignOut')}</DText>
           </HoverPressable>
         </View>
       </View>
@@ -134,7 +135,7 @@ function PasswordField({ label, value, placeholder, visible, focused, error, onC
   label: string; value: string; placeholder: string; visible: boolean; focused: boolean; error?: string;
   onChangeText: (value: string) => void; onFocus: () => void; onBlur: () => void; onToggle: () => void;
 }) {
-  return <View style={styles.field}><DText weight="semiBold" style={styles.label}>{label}</DText><View style={[styles.inputWrap, focused && styles.inputWrapFocused, !!error && styles.inputWrapError]}><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={DESKTOP_COLORS.inkFaint} secureTextEntry={!visible} autoCapitalize="none" textAlign="right" onFocus={onFocus} onBlur={onBlur} style={styles.input} /><HoverPressable style={styles.visibilityButton} hoverStyle={styles.visibilityButtonHover} onPress={onToggle} accessibilityLabel={visible ? 'הסתרת סיסמה' : 'הצגת סיסמה'}><Ionicons name={visible ? 'eye-outline' : 'eye-off-outline'} size={18} color={DESKTOP_COLORS.inkMuted} /></HoverPressable></View>{!!error && <DText style={styles.fieldError}>{error}</DText>}</View>;
+  return <View style={styles.field}><DText weight="semiBold" style={styles.label}>{label}</DText><View style={[styles.inputWrap, focused && styles.inputWrapFocused, !!error && styles.inputWrapError]}><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={DESKTOP_COLORS.inkFaint} secureTextEntry={!visible} autoCapitalize="none" textAlign="right" onFocus={onFocus} onBlur={onBlur} style={styles.input} /><HoverPressable style={styles.visibilityButton} hoverStyle={styles.visibilityButtonHover} onPress={onToggle} accessibilityLabel={visible ? t('password.hide') : t('password.show')}><Ionicons name={visible ? 'eye-outline' : 'eye-off-outline'} size={18} color={DESKTOP_COLORS.inkMuted} /></HoverPressable></View>{!!error && <DText style={styles.fieldError}>{error}</DText>}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
   workspace: { width: '100%', maxWidth: 1160, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'stretch', gap: 24 },
   securityPanel: { flex: 1, minHeight: 530, borderRadius: 16, backgroundColor: DESKTOP_COLORS.ink, padding: 38, justifyContent: 'center', ...webOnly({ boxShadow: '0 18px 42px rgba(22,34,46,0.16)' }) },
   // Pinned to the panel's top corner so the centred security copy doesn't move.
-  brand: { position: 'absolute', top: 34, right: 38 },
+  brand: { position: 'absolute', top: 34, end: 38 },
   lockTile: { width: 68, height: 68, borderRadius: 20, backgroundColor: 'rgba(95,193,240,0.14)', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   securityCopy: { maxWidth: 430 },
   securityTitle: { fontSize: 28, color: '#fff', letterSpacing: -0.45 },
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
   inputWrapFocused: { backgroundColor: '#fff', borderColor: DESKTOP_COLORS.brand, ...webOnly({ boxShadow: '0 0 0 3px rgba(0,136,204,0.14)' }) }, inputWrapError: { borderColor: DESKTOP_TONES.bad.fg },
   input: { flex: 1, height: '100%', paddingHorizontal: 8, fontSize: 14, color: DESKTOP_COLORS.ink, ...webOnly({ outlineStyle: 'none' }) }, visibilityButton: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }, visibilityButtonHover: { backgroundColor: DESKTOP_COLORS.canvas, ...webOnly({ outlineWidth: 2, outlineStyle: 'solid', outlineColor: DESKTOP_COLORS.brand, outlineOffset: 2 }) }, fieldError: { color: DESKTOP_TONES.bad.fg, fontSize: 11.5, marginTop: 6 },
   requirements: { flexDirection: 'row-reverse', gap: 18, marginTop: 1, marginBottom: 24 }, requirement: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 }, requirementText: { color: DESKTOP_COLORS.inkFaint, fontSize: 11.5 }, requirementTextMet: { color: DESKTOP_TONES.ok.fg },
-  errorCallout: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, borderRadius: 10, backgroundColor: DESKTOP_TONES.bad.bg, padding: 11, marginBottom: 16 }, generalError: { flex: 1, color: DESKTOP_TONES.bad.fg, fontSize: 12, textAlign: 'right' },
+  errorCallout: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, borderRadius: 10, backgroundColor: DESKTOP_TONES.bad.bg, padding: 11, marginBottom: 16 }, generalError: { flex: 1, color: DESKTOP_TONES.bad.fg, fontSize: 12, textAlign: textStart() },
   submitButton: { height: 50, borderRadius: 12, backgroundColor: DESKTOP_COLORS.brand, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8 }, submitButtonHover: { backgroundColor: DESKTOP_COLORS.brandHover }, submitButtonDisabled: { opacity: 0.72 }, submitText: { color: '#fff', fontSize: 14 },
   cancelButton: { alignSelf: 'center', marginTop: 14, paddingHorizontal: 10, minHeight: 36, justifyContent: 'center', borderRadius: 8 }, cancelButtonHover: { opacity: 0.68, ...webOnly({ outlineWidth: 2, outlineStyle: 'solid', outlineColor: DESKTOP_COLORS.brand, outlineOffset: 2 }) }, cancelText: { color: DESKTOP_COLORS.inkMuted, fontSize: 12.5 }, pressDown: webOnly({ transform: 'scale(0.97)' }),
 });

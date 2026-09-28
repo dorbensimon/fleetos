@@ -20,17 +20,18 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DriverFormDesktopView, type FormState } from '../../components/desktop/DriverFormDesktopView';
 import { ConsentCheck } from '../../components/legal/ConsentCheck';
 import { DRIVER_DATA_NOTICE } from '../../lib/legal/documents';
+import { t } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverForm'>;
 
 const NEW_DRIVER_LICENSE_OPTIONS = [
-  { value: 'B', label: 'B', description: 'רכב פרטי' },
-  { value: 'C1', label: 'C1', description: 'משא עד 12 טון' },
-  { value: 'C', label: 'C', description: 'משא כבד' },
-  { value: 'D', label: 'D', description: 'אוטובוס' },
-  { value: 'E', label: 'E', description: 'נגרר' },
-  { value: 'A', label: 'A', description: 'דו-גלגלי' },
-  { value: '1', label: '1', description: 'טרקטור' },
+  { value: 'B', label: 'B', get description() { return t('license.classDesc.private'); } },
+  { value: 'C1', label: 'C1', get description() { return t('license.classDesc.cargo12'); } },
+  { value: 'C', label: 'C', get description() { return t('license.classDesc.heavy'); } },
+  { value: 'D', label: 'D', get description() { return t('vehicle.type.bus'); } },
+  { value: 'E', label: 'E', get description() { return t('license.classDesc.trailer'); } },
+  { value: 'A', label: 'A', get description() { return t('license.classDesc.twoWheel'); } },
+  { value: '1', label: '1', get description() { return t('license.classDesc.tractor'); } },
 ] as const;
 
 const EMPTY: FormState = {
@@ -131,7 +132,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
     const e = validateDriverForm(form, isEdit);
     setErrors(e);
     if (Object.keys(e).length > 0) {
-      showAlert('לא ניתן לשמור', 'יש לתקן את השדות המסומנים באדום ולנסות שוב.');
+      showAlert(t('form.cannotSave'), t('form.fixRedFields'));
       return;
     }
 
@@ -161,7 +162,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           }
         }
         if (!activeCompanyId) {
-          showAlert('שמירה נכשלה', 'לא נמצאה חברה משויכת לחשבון שלך. נסה להתחבר מחדש');
+          showAlert(t('common.saveFailed'), t('driver.noCompanyReLogin'));
           return;
         }
         const result = await createDriverAccount({
@@ -182,24 +183,24 @@ export default function DriverFormScreen({ route, navigation }: Props) {
           if (isStaleDepartmentError(result.error)) {
             setForm((current) => ({ ...current, department_id: null }));
             void refreshDepartments().catch(() => {});
-            showAlert('שמירה נכשלה', 'המחלקה שנבחרה נמחקה בינתיים. בחר מחלקה אחרת ונסה שוב.');
+            showAlert(t('common.saveFailed'), t('common.departmentDeleted'));
             return;
           }
-          showAlert('יצירת הנהג נכשלה', result.error);
+          showAlert(t('driver.createFailed'), result.error);
           return;
         }
       }
-      showToast(isEdit ? 'השינויים נשמרו' : 'הנהג נוצר בהצלחה');
+      showToast(isEdit ? t('common.changesSaved') : t('driver.created'));
       if (!isEdit) navigation.goBack();
     } catch (err: any) {
       const message = String(err?.message ?? '');
       if (isStaleDepartmentError(message)) {
         setForm((current) => ({ ...current, department_id: null }));
         void refreshDepartments().catch(() => {});
-        showAlert('שמירה נכשלה', 'המחלקה שנבחרה נמחקה בינתיים. בחר מחלקה אחרת ונסה שוב.');
+        showAlert(t('common.saveFailed'), t('common.departmentDeleted'));
         return;
       }
-      showAlert('שמירה נכשלה', message || 'נסה שוב');
+      showAlert(t('common.saveFailed'), message || t('common.tryAgain'));
     } finally {
       setSaving(false);
     }
@@ -208,13 +209,13 @@ export default function DriverFormScreen({ route, navigation }: Props) {
   if (loading) {
     if (isDesktop) {
       return (
-        <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', driverId ? 'עריכת נהג' : 'נהג חדש']}>
+        <DesktopShell active="AdminHome" breadcrumbs={[t('nav.management'), t('common.drivers'), driverId ? t('driver.edit') : t('driver.new')]}>
           <LoadingState />
         </DesktopShell>
       );
     }
     return (
-      <DriverPage insetTop={insets.top} insetBottom={insets.bottom} hero={<HeroTitle title={isEdit ? 'עריכת נהג' : 'נהג חדש'} onBack={() => navigation.goBack()} />}>
+      <DriverPage insetTop={insets.top} insetBottom={insets.bottom} hero={<HeroTitle title={isEdit ? t('driver.edit') : t('driver.new')} onBack={() => navigation.goBack()} />}>
         <LoadingPanel />
       </DriverPage>
     );
@@ -228,10 +229,10 @@ export default function DriverFormScreen({ route, navigation }: Props) {
   const fieldsDone = filledCount === requiredFields.length;
   const canSubmit = fieldsDone && (isEdit || form.dataNotice);
   const liveErrors = validateDriverForm(form, isEdit);
-  const screenTitle = isEdit ? 'עריכת נהג' : 'נהג חדש';
+  const screenTitle = isEdit ? t('driver.edit') : t('driver.new');
   const isDriverSelfEdit = isEdit && profile?.role === 'driver';
-  const displayTitle = isDriverSelfEdit ? 'הפרטים שלי' : screenTitle;
-  const ctaLabel = isEdit ? 'שמור שינויים' : 'צור נהג';
+  const displayTitle = isDriverSelfEdit ? t('nav.myDetails') : screenTitle;
+  const ctaLabel = isEdit ? t('common.saveChanges') : t('driver.create');
   const selectedLicense =
     NEW_DRIVER_LICENSE_OPTIONS.find((option) => option.value === form.license_classes) ??
     LICENSE_CLASS_OPTIONS.map((option) => {
@@ -246,16 +247,16 @@ export default function DriverFormScreen({ route, navigation }: Props) {
     : [...NEW_DRIVER_LICENSE_OPTIONS];
 
   const remainingText = canSubmit
-    ? (isEdit ? 'השינויים יישמרו בפרטי הנהג' : 'הנהג יתווסף לצי ויקבל הרשאות מיד')
+    ? (isEdit ? t('driver.changesSavedToDetails') : t('driver.willJoinFleet'))
     : fieldsDone
-      ? 'נותר לאשר שהנהג יודע על שמירת הפרטים'
+      ? t('driver.confirmNotifyLeft')
       : remainingCount === 1
-      ? 'נותר שדה חובה אחד'
-      : `נותרו ${remainingCount} שדות חובה`;
+      ? t('form.oneRequiredLeft')
+      : t('form.requiredFieldsLeft', { remainingCount });
 
   if (isDesktop) {
     return (
-      <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', displayTitle]}>
+      <DesktopShell active="AdminHome" breadcrumbs={[t('nav.management'), t('common.drivers'), displayTitle]}>
         <DriverFormDesktopView
           isEdit={isEdit}
           form={form}
@@ -282,8 +283,8 @@ export default function DriverFormScreen({ route, navigation }: Props) {
       insetBottom={insets.bottom}
       hero={
         <View>
-          <HeroTitle title={displayTitle} subtitle={form.full_name.trim() || (isEdit ? 'עדכון פרטי הנהג' : 'שלושה צעדים והנהג בצי')} onBack={() => navigation.goBack()} />
-          <View style={styles.progress} accessible accessibilityLabel={`${filledCount} מתוך ${requiredFields.length} שדות חובה מולאו`}>
+          <HeroTitle title={displayTitle} subtitle={form.full_name.trim() || (isEdit ? t('driver.updateDetails') : t('driver.threeSteps'))} onBack={() => navigation.goBack()} />
+          <View style={styles.progress} accessible accessibilityLabel={t('form.requiredFilled', { filledCount, length: requiredFields.length })}>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${Math.max(4, progress * 100)}%` }]} />
             </View>
@@ -295,7 +296,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
       }
       footer={
         <View style={styles.footer}>
-          <PrimaryAction label={canSubmit ? ctaLabel : fieldsDone ? 'נותר לסמן את האישור' : 'השלמת שדות החובה'} icon={isEdit ? 'checkmark' : 'person-add'} onPress={() => void save()} loading={saving} disabled={!canSubmit} />
+          <PrimaryAction label={canSubmit ? ctaLabel : fieldsDone ? t('driver.checkConfirmLeft') : t('form.completeRequired')} icon={isEdit ? 'checkmark' : 'person-add'} onPress={() => void save()} loading={saving} disabled={!canSubmit} />
           <DKText variant="caption" color={canSubmit ? STATUS.ok.fg : DK.muted} style={styles.center}>
             {remainingText}
           </DKText>
@@ -304,22 +305,22 @@ export default function DriverFormScreen({ route, navigation }: Props) {
     >
       <Reveal index={0}>
         <KitSection>
-          <EditField first label="שם מלא" required value={form.full_name} onChangeText={(v) => set('full_name', v)} error={errors.full_name} placeholder="לדוגמה: דני לוי" />
-          <EditField label="טלפון" required value={formatPhone(form.phone)} onChangeText={(v) => set('phone', v.replace(/\D/g, ''))} error={errors.phone} placeholder="052-7898655" keyboardType="phone-pad" ltr />
-          <EditField label="תעודת זהות" required value={form.national_id} onChangeText={(v) => set('national_id', v.replace(/\D/g, '').slice(0, 9))} error={errors.national_id} placeholder="9 ספרות" keyboardType="number-pad" maxLength={9} ltr />
-          <EditField label="מספר עובד" value={form.employee_number} onChangeText={(v) => set('employee_number', v)} placeholder="לא חובה" ltr />
+          <EditField first label={t('common.fullName')} required value={form.full_name} onChangeText={(v) => set('full_name', v)} error={errors.full_name} placeholder={t('driver.namePlaceholder')} />
+          <EditField label={t('common.phone')} required value={formatPhone(form.phone)} onChangeText={(v) => set('phone', v.replace(/\D/g, ''))} error={errors.phone} placeholder="052-7898655" keyboardType="phone-pad" ltr />
+          <EditField label={t('field.nationalId')} required value={form.national_id} onChangeText={(v) => set('national_id', v.replace(/\D/g, '').slice(0, 9))} error={errors.national_id} placeholder={t('common.9digits')} keyboardType="number-pad" maxLength={9} ltr />
+          <EditField label={t('driver.employeeNumber')} value={form.employee_number} onChangeText={(v) => set('employee_number', v)} placeholder={t('common.optionalShort')} ltr />
           <EditField
-            label="מחלקה"
-            editor={<Select value={form.department_id} onChange={(v) => set('department_id', v)} options={departments} placeholder={departments.length ? 'בחירת מחלקה' : 'לא הוגדרו מחלקות'} allowClear />}
+            label={t('common.department')}
+            editor={<Select value={form.department_id} onChange={(v) => set('department_id', v)} options={departments} placeholder={departments.length ? t('common.chooseDepartment') : t('common.noDepartmentsDefined')} allowClear />}
           />
         </KitSection>
       </Reveal>
 
       <Reveal index={1}>
-        <KitSection title="רישיון נהיגה">
+        <KitSection title={t('driver.drivingLicense')}>
           <EditField
             first
-            label="דרגת רישיון"
+            label={t('driver.licenseClass')}
             required
             error={errors.license_classes}
             editor={
@@ -330,47 +331,47 @@ export default function DriverFormScreen({ route, navigation }: Props) {
                   if (!value || value === form.license_classes_2) set('license_classes_2', '');
                 }}
                 options={licenseSelectOptions}
-                placeholder="בחירת דרגה"
+                placeholder={t('driver.chooseClass')}
                 hasError={!!errors.license_classes}
               />
             }
           />
           {!!form.license_classes && (
             <EditField
-              label="דרגה נוספת"
+              label={t('driver.additionalClass')}
               editor={
                 <Select
                   value={form.license_classes_2 || null}
                   onChange={(value) => set('license_classes_2', value ?? '')}
                   options={licenseSelectOptions.filter((option) => option.value !== form.license_classes)}
-                  placeholder="אם יש"
+                  placeholder={t('common.ifAny')}
                   allowClear
                 />
               }
             />
           )}
           <EditField
-            label="תוקף רישיון"
+            label={t('driver.licenseExpiry')}
             required
             error={errors.license_expiry}
-            hint={form.license_expiry ? 'תקבל התראה לפני שהתוקף פג.' : undefined}
-            editor={<DateField value={form.license_expiry || null} onChange={(v) => set('license_expiry', v ?? '')} placeholder="בחירת תאריך" hasError={!!errors.license_expiry} />}
+            hint={form.license_expiry ? t('driver.expiryAlertHint') : undefined}
+            editor={<DateField value={form.license_expiry || null} onChange={(v) => set('license_expiry', v ?? '')} placeholder={t('date.chooseDateAction')} hasError={!!errors.license_expiry} />}
           />
         </KitSection>
       </Reveal>
 
       <Reveal index={2}>
-        <KitSection title="גישה לאפליקציה">
+        <KitSection title={t('driver.appAccess')}>
           {isEdit ? (
-            <InfoLine first icon="mail" label="מייל להתחברות" value={form.email || null} ltr locked />
+            <InfoLine first icon="mail" label={t('driver.signInEmail')} value={form.email || null} ltr locked />
           ) : (
             <>
-              <EditField first label="מייל" required value={form.email} onChangeText={(v) => set('email', v)} error={errors.email} placeholder="name@company.com" keyboardType="email-address" ltr autoComplete="off" />
+              <EditField first label={t('common.emailShort')} required value={form.email} onChangeText={(v) => set('email', v)} error={errors.email} placeholder="name@company.com" keyboardType="email-address" ltr autoComplete="off" />
               <EditField
-                label="סיסמה זמנית"
+                label={t('password.temporary')}
                 required
                 error={errors.password}
-                hint="לפחות 4 ספרות. בכניסה הראשונה הנהג יקבע סיסמה משלו."
+                hint={t('driver.passwordHint')}
                 editor={
                   <View style={styles.password}>
                     <KitInput
@@ -381,10 +382,10 @@ export default function DriverFormScreen({ route, navigation }: Props) {
                       keyboardType="number-pad"
                       ltr
                       hasError={!!errors.password}
-                      accessibilityLabel="סיסמה זמנית"
+                      accessibilityLabel={t('password.temporary')}
                       style={styles.flex}
                     />
-                    <Pressy onPress={() => set('showPassword', !form.showPassword)} accessibilityLabel={form.showPassword ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'} style={styles.eye} pressScale={0.92}>
+                    <Pressy onPress={() => set('showPassword', !form.showPassword)} accessibilityLabel={form.showPassword ? t('password.hideThe') : t('password.showThe')} style={styles.eye} pressScale={0.92}>
                       <Ionicons name={form.showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={DK.accent} />
                     </Pressy>
                   </View>
@@ -393,7 +394,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
               <View style={styles.noticeRule} />
               <ConsentCheck value={form.dataNotice} onChange={(v) => set('dataNotice', v)} label={DRIVER_DATA_NOTICE} />
               <DKText variant="caption" color={DK.accent} accessibilityRole="link" onPress={() => navigation.navigate('Legal', { doc: 'privacy' })} style={styles.noticeLink}>
-                מדיניות הפרטיות
+                {t('legal.privacyPolicy')}
               </DKText>
             </>
           )}
@@ -401,7 +402,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
       </Reveal>
       {isEdit && (
         <DKText variant="caption" color={DK.muted} style={styles.center}>
-          המייל משמש להתחברות. לשינוי — מתוך תיק הנהג.
+          {t('driver.emailChangeHint')}
         </DKText>
       )}
     </DriverPage>

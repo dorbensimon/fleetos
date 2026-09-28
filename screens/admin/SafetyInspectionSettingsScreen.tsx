@@ -36,6 +36,7 @@ import {
   type InspectionForm,
 } from '../../lib/inspections';
 import type { RootStackParamList } from '../../navigation/types';
+import { t } from '../../lib/i18n';
 
 /**
  * Settings of "בדיקות בטיחות": how often each vehicle is checked, and the
@@ -88,7 +89,7 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
       setLoadError('');
       setLoaded(true);
     } catch (e) {
-      setLoadError((e as Error)?.message || 'טעינת ההגדרות נכשלה');
+      setLoadError((e as Error)?.message || t('inspection.settingsLoadFailed'));
     }
   }, [companyId]);
   useEffect(() => {
@@ -128,9 +129,9 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
     try {
       const saved = await saveInspectionSettings(companyId, { repeatMonths: months });
       setRepeatMonths(saved.repeatMonths);
-      setNotice('התדירות נשמרה');
+      setNotice(t('inspection.frequencySaved'));
     } catch (e) {
-      setError((e as Error)?.message || 'שמירת התדירות נכשלה');
+      setError((e as Error)?.message || t('meeting.saveFrequencyFailed'));
     } finally {
       setBusy('');
     }
@@ -150,9 +151,9 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
       setList(copyForm(saved.form ?? DEFAULT_INSPECTION_FORM));
       setDirty(false);
       setShowErrors(false);
-      setNotice('הרשימה נשמרה. היא תשמש מהבדיקה הבאה.');
+      setNotice(t('inspection.listSaved'));
     } catch (e) {
-      setError((e as Error)?.message || 'שמירת הרשימה נכשלה');
+      setError((e as Error)?.message || t('inspection.listSaveFailed'));
     } finally {
       setBusy('');
     }
@@ -168,10 +169,10 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
       setDirty(false);
       setShowErrors(false);
       setResetting(false);
-      setNotice('חזרתם לרשימה המוכנה');
+      setNotice(t('inspection.backToReady'));
     } catch (e) {
       setResetting(false);
-      setError((e as Error)?.message || 'השחזור נכשל');
+      setError((e as Error)?.message || t('inspection.restoreFailed'));
     } finally {
       setBusy('');
     }
@@ -188,10 +189,10 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
     <DriverPage
       insetTop={isDesktop ? 0 : insets.top}
       insetBottom={isDesktop ? 0 : insets.bottom}
-      hero={<HeroTitle title="הגדרות בדיקות בטיחות" subtitle="כל כמה זמן בודקים, ומה בודקים" onBack={back} />}
+      hero={<HeroTitle title={t('inspection.settingsTitle')} subtitle={t('inspection.settingsSubtitle')} onBack={back} />}
       footer={
         loaded && dirty ? (
-          <PrimaryAction label="שמירת הרשימה" icon="checkmark" onPress={() => void saveList()} loading={busy === 'list'} disabled={!!busy} />
+          <PrimaryAction label={t('inspection.saveList')} icon="checkmark" onPress={() => void saveList()} loading={busy === 'list'} disabled={!!busy} />
         ) : undefined
       }
       overlay={
@@ -200,12 +201,12 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
             visible={resetting}
             onClose={() => setResetting(false)}
             icon="refresh"
-            title="לחזור לרשימה המוכנה?"
-            subtitle="הרשימה שערכתם תימחק, ובדיקות חדשות ייפתחו עם הרשימה המוכנה. בדיקות שכבר נעשו לא משתנות."
+            title={t('inspection.backToReadyQuestion')}
+            subtitle={t('inspection.backToReadyWarning')}
             footer={
               <SheetActions>
-                <PrimaryAction label="ביטול" tone="ghost" onPress={() => setResetting(false)} style={styles.flex} />
-                <PrimaryAction label="חזרה לרשימה המוכנה" tone="destructive" onPress={() => void resetList()} loading={busy === 'reset'} style={styles.flex} />
+                <PrimaryAction label={t('common.cancel')} tone="ghost" onPress={() => setResetting(false)} style={styles.flex} />
+                <PrimaryAction label={t('inspection.backToReadyAction')} tone="destructive" onPress={() => void resetList()} loading={busy === 'reset'} style={styles.flex} />
               </SheetActions>
             }
           />
@@ -213,12 +214,12 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
             visible={!!leaving}
             onClose={() => setLeaving(null)}
             icon="alert-circle-outline"
-            title="לצאת בלי לשמור?"
-            subtitle="השינויים ברשימה עוד לא נשמרו."
+            title={t('signing.leaveWithoutSaving')}
+            subtitle={t('inspection.listUnsaved')}
             footer={
               <SheetActions>
-                <PrimaryAction label="להישאר" tone="ghost" onPress={() => setLeaving(null)} style={styles.flex} />
-                <PrimaryAction label="יציאה בלי לשמור" tone="destructive" onPress={discardChanges} style={styles.flex} />
+                <PrimaryAction label={t('common.stay')} tone="ghost" onPress={() => setLeaving(null)} style={styles.flex} />
+                <PrimaryAction label={t('common.exitWithoutSaving')} tone="destructive" onPress={discardChanges} style={styles.flex} />
               </SheetActions>
             }
           />
@@ -234,7 +235,7 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
           {!!error && <Banner tone="expired" title={error} />}
           {!!notice && !error && <Banner tone="ok" title={notice} />}
 
-          <KitSection title="כל כמה זמן בודקים כל רכב">
+          <KitSection title={t('inspection.howOftenEach')}>
             <View style={styles.repeat}>
               {INSPECTION_REPEAT_OPTIONS.map((option) => {
                 const on = option.months === repeatMonths;
@@ -243,7 +244,7 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
                     key={option.months}
                     onPress={() => void chooseRepeat(option.months)}
                     disabled={!!busy}
-                    accessibilityLabel={`${option.label}${on ? ', נבחר' : ''}`}
+                    accessibilityLabel={`${option.label}${on ? t('common.selectedSuffix') : ''}`}
                     pressScale={0.95}
                     style={[styles.chip, on ? styles.chipOn : styles.chipOff]}
                   >
@@ -257,22 +258,22 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
             </View>
             <DKText variant="caption" color={DK.muted} style={styles.hint}>
               {repeatMonths === 0
-                ? 'לא יישלחו תזכורות. תאריך שתקבעו ידנית בכרטיס הרכב עדיין יזכיר.'
-                : 'המועד הבא של כל רכב נקבע כשקצין הבטיחות חותם על הבדיקה שלו. שינוי כאן חל מהבדיקה הבאה של כל רכב.'}
+                ? t('inspection.noRemindersHint')
+                : t('inspection.nextDateHint')}
             </DKText>
           </KitSection>
 
           <View>
             <View style={styles.listHead}>
               <DKText variant="heading" accessibilityRole="header" style={styles.flex}>
-                רשימת הסעיפים
+                {t('inspection.itemList')}
               </DKText>
               <DKText variant="caption" color={DK.muted}>
-                {custom ? 'רשימה של החברה' : 'הרשימה המוכנה'} · {itemCount} סעיפים
+                {custom ? t('inspection.companyList') : t('inspection.readyList')} · {itemCount} {t('checklist.itemsWord')}
               </DKText>
             </View>
             <DKText variant="caption" color={DK.muted} style={styles.listNote}>
-              בדיקה שכבר נפתחה שומרת את הרשימה שהייתה כשנפתחה. אפשר עד {INSPECTION_LIMITS.groups} קבוצות ו-{INSPECTION_LIMITS.items} סעיפים.
+              {t('inspection.listLimitsPrefix')} {INSPECTION_LIMITS.groups} {t('inspection.groupsAnd')}{INSPECTION_LIMITS.items} {t('inspection.itemsDot')}
             </DKText>
           </View>
 
@@ -284,15 +285,15 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
                   <KitInput
                     value={group.title}
                     onChangeText={(title) => updateGroup(gi, { title })}
-                    placeholder="שם הקבוצה, לדוגמה: מבחוץ"
-                    accessibilityLabel={`שם קבוצה ${gi + 1}`}
+                    placeholder={t('inspection.groupNamePlaceholder')}
+                    accessibilityLabel={t('inspection.groupNameN', { v1: gi + 1 })}
                     maxLength={INSPECTION_LIMITS.groupTitle}
                     hasError={titleMissing}
                     style={[styles.flex, styles.groupTitle]}
                   />
-                  <IconButton icon="arrow-up" label="הזזת הקבוצה למעלה" disabled={gi === 0} onPress={() => setGroups(move(list.groups, gi, gi - 1))} />
-                  <IconButton icon="arrow-down" label="הזזת הקבוצה למטה" disabled={gi === list.groups.length - 1} onPress={() => setGroups(move(list.groups, gi, gi + 1))} />
-                  <IconButton icon="trash-outline" label={`מחיקת הקבוצה ${group.title}`} danger disabled={list.groups.length === 1} onPress={() => setGroups(list.groups.filter((_, i) => i !== gi))} />
+                  <IconButton icon="arrow-up" label={t('inspection.moveGroupUp')} disabled={gi === 0} onPress={() => setGroups(move(list.groups, gi, gi - 1))} />
+                  <IconButton icon="arrow-down" label={t('inspection.moveGroupDown')} disabled={gi === list.groups.length - 1} onPress={() => setGroups(move(list.groups, gi, gi + 1))} />
+                  <IconButton icon="trash-outline" label={t('inspection.deleteGroup', { title: group.title })} danger disabled={list.groups.length === 1} onPress={() => setGroups(list.groups.filter((_, i) => i !== gi))} />
                 </View>
 
                 {group.items.map((item, ii) => (
@@ -303,27 +304,27 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
                     <KitInput
                       value={item.text}
                       onChangeText={(text) => updateItems(gi, group.items.map((it, i) => (i === ii ? { ...it, text } : it)))}
-                      placeholder="מה בודקים?"
-                      accessibilityLabel={`סעיף ${ii + 1} בקבוצה ${group.title || gi + 1}`}
+                      placeholder={t('inspection.whatToCheck')}
+                      accessibilityLabel={t('inspection.itemInGroup', { v1: ii + 1, v2: group.title || gi + 1 })}
                       maxLength={INSPECTION_LIMITS.itemText}
                       multiline
                       style={styles.flex}
                     />
-                    <IconButton icon="arrow-up" label="הזזת הסעיף למעלה" disabled={ii === 0} onPress={() => updateItems(gi, move(group.items, ii, ii - 1))} />
-                    <IconButton icon="close" label={`מחיקת הסעיף ${item.text}`} danger onPress={() => updateItems(gi, group.items.filter((_, i) => i !== ii))} />
+                    <IconButton icon="arrow-up" label={t('inspection.moveItemUp')} disabled={ii === 0} onPress={() => updateItems(gi, move(group.items, ii, ii - 1))} />
+                    <IconButton icon="close" label={t('inspection.deleteItem', { text: item.text })} danger onPress={() => updateItems(gi, group.items.filter((_, i) => i !== ii))} />
                   </View>
                 ))}
 
                 <Pressy
                   onPress={() => updateItems(gi, [...group.items, { id: newListId('i'), text: '' }])}
                   disabled={itemCount >= INSPECTION_LIMITS.items}
-                  accessibilityLabel={`הוספת סעיף לקבוצה ${group.title}`}
+                  accessibilityLabel={t('inspection.addItemToGroup', { title: group.title })}
                   style={styles.add}
                   pressScale={0.97}
                 >
                   <Ionicons name="add" size={19} color={DK.accent} />
                   <DKText variant="label" color={DK.accent}>
-                    הוספת סעיף
+                    {t('checklist.addItem')}
                   </DKText>
                 </Pressy>
               </Surface>
@@ -331,7 +332,7 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
           })}
 
           <PrimaryAction
-            label="הוספת קבוצה"
+            label={t('inspection.addGroup')}
             icon="add-circle-outline"
             tone="ghost"
             disabled={list.groups.length >= INSPECTION_LIMITS.groups}
@@ -348,9 +349,9 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
             <Surface>
               <ActionRow
                 icon="refresh"
-                label="חזרה לרשימה המוכנה"
+                label={t('inspection.backToReadyAction')}
                 tone="muted"
-                hint="מוחק את הרשימה שערכתם"
+                hint={t('inspection.deletesYourList')}
                 onPress={() => {
                   if (!custom) {
                     setList(copyForm(DEFAULT_INSPECTION_FORM));
@@ -371,7 +372,7 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
   );
 
   return isDesktop ? (
-    <DesktopShell active="SafetyInspections" breadcrumbs={['ניהול', 'בדיקות בטיחות', 'הגדרות']}>
+    <DesktopShell active="SafetyInspections" breadcrumbs={[t('nav.management'), t('nav.safetyInspections'), t('common.settings')]}>
       {body}
     </DesktopShell>
   ) : (
