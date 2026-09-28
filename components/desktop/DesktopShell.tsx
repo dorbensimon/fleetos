@@ -139,26 +139,26 @@ export function DesktopShell({
    */
   const breadcrumbAction = (label: string): (() => void) | undefined => {
     switch (label) {
-      case 'ניהול':
+      case t('nav.management'):
         return () => navigation.navigate('AdminHome');
-      case 'נהגים':
+      case t('common.drivers'):
         return () => navigation.navigate('AdminHome', { mode: 'drivers' });
-      case 'רכבים':
+      case t('common.vehicles'):
         return () => navigation.navigate('AdminHome', { mode: 'vehicles' });
-      case 'בדיקות בטיחות':
+      case t('nav.safetyInspections'):
         return () => navigation.navigate('SafetyInspections');
-      case 'חברות':
-      case 'מרכז הבקרה':
+      case t('owner.notif.companies'):
+      case t('nav.controlCenter'):
         return () => navigation.navigate('OwnerHome');
-      case 'חשבון':
+      case t('nav.account'):
         return () => navigation.navigate(isDriver ? 'DriverProfile' : 'AdminProfile');
-      case 'הבית שלי':
+      case t('nav.myHome'):
         return () => navigation.navigate('DriverHome');
-      case 'הרכב שלי':
+      case t('driver.myVehicle'):
         return () => navigation.navigate('DriverVehicle');
-      case 'המסמכים שלי':
+      case t('nav.myDocuments'):
         return () => navigation.navigate('DriverDocuments');
-      case 'מסמכים לחתימה':
+      case t('nav.signingDocuments'):
         return () => navigation.navigate('DriverSigningDocuments');
       default:
         return undefined;

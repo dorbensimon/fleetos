@@ -23,7 +23,7 @@ import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTh
 import { DocumentFolderUploadModal, EASE_OUT, OverflowMenu, useOwnerDocuments, type RecordDocumentFolder } from './record/RecordKit';
 import { expiryStatusText, FolderListRow } from './record/FolderDocuments';
 import { DetailRow, Fact, FieldEditDialog, GroupLabel, pageStyles, type FieldEditor } from './record/RecordPage';
-import { DriverLicenseModal, LICENSE_SIDE_TITLE } from './driver/DriverLicenseModal';
+import { DriverLicenseModal, LICENSE_SIDE_STORED_TITLE } from './driver/DriverLicenseModal';
 import { DRIVER_DOCUMENT_GROUPS } from '../../lib/driverDocumentFolders';
 import { DriverVehiclesCard } from './driver/DriverVehiclesCard';
 import { DriverSigningList, useDriverSigningFolders, type SigningSessionTarget } from './driver/DriverSigningSection';
@@ -174,7 +174,7 @@ export function DriverDetailDesktopView({
   const licenseState = expiryState(licenseExpiry);
   const licenseColor = EXPIRY_COLOR[licenseState];
   const licensePhotos = docs.filter((doc) => doc.category === LICENSE_FOLDER);
-  const hasSide = (side: 'front' | 'back') => licensePhotos.some((doc) => doc.title === LICENSE_SIDE_TITLE[side]);
+  const hasSide = (side: 'front' | 'back') => licensePhotos.some((doc) => doc.title === LICENSE_SIDE_STORED_TITLE[side]);
   const license = splitLicenseClasses(driver?.license_classes);
   const classesLabel = joinLicenseClasses(license.primary, license.secondary);
   const vehicles = driver?.vehicles ?? [];

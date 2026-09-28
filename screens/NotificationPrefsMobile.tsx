@@ -15,6 +15,7 @@ import {
   type NotificationGroup,
   type NotificationType,
   type NotificationTypeInfo,
+  withoutValidity,
 } from '../lib/notificationPreferencesApi';
 import type { NotificationPreferencesState } from '../lib/useNotificationPreferences';
 import { isVehicleFolderNotification } from '../lib/vehicleFolderAlerts';
@@ -57,7 +58,7 @@ const ICON: Partial<Record<NotificationType, IconName>> = {
   vehicle_safety_check_due: 'shield-checkmark',
 };
 
-const shortLabel = (label: string) => label.replace(/^תוקף /, '');
+const shortLabel = withoutValidity;
 
 const animateNext = () => {
   if (Platform.OS === 'ios') LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));

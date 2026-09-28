@@ -13,6 +13,7 @@ import {
   type NotificationGroup,
   type NotificationType,
   type NotificationTypeInfo,
+  withoutValidity,
 } from '../../lib/notificationPreferencesApi';
 import { isVehicleFolderNotification } from '../../lib/vehicleFolderAlerts';
 import { notificationTone } from '../../lib/notificationLook';
@@ -94,7 +95,7 @@ const TYPE_ICON: Partial<Record<NotificationType, IconName>> = {
 
 type SettingsGroup = NotificationGroup;
 
-const shortLabel = (label: string) => label.replace(/^תוקף /, '');
+const shortLabel = withoutValidity;
 
 export function NotificationsHubDesktopView({
   items,

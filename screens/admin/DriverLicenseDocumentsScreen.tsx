@@ -21,6 +21,7 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES } from '../../components/desktop/desktopTheme';
 import { t, textEnd } from '../../lib/i18n';
+import { LICENSE_SIDE_STORED_TITLE } from '../../components/desktop/driver/DriverLicenseModal';
 
 /**
  * Dedicated license-photos screen — replaces the generic DocumentCategory
@@ -90,8 +91,8 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
         getDriver(driverId),
         listDocuments('driver', driverId, 'license_docs'),
       ]);
-      const front = allDocs.find((d) => d.title === SIDE_TITLE.front) ?? null;
-      const back = allDocs.find((d) => d.title === SIDE_TITLE.back) ?? null;
+      const front = allDocs.find((d) => d.title === LICENSE_SIDE_STORED_TITLE.front) ?? null;
+      const back = allDocs.find((d) => d.title === LICENSE_SIDE_STORED_TITLE.back) ?? null;
 
       const [frontUrl, backUrl] = await Promise.all([
         front ? getDocumentUrl(front) : Promise.resolve(null),
@@ -181,7 +182,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
         ownerType: 'driver',
         ownerId: driverId,
         category: 'license_docs',
-        title: SIDE_TITLE[side],
+        title: LICENSE_SIDE_STORED_TITLE[side],
         file,
       });
       if (existing) await deleteDocument(existing);

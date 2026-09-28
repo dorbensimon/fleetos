@@ -12,6 +12,7 @@ import { ACTIVITY_DAYS, lastSeenLabel, type CompanyHealth, type CompanyIssue, ty
 import { accountNextStep, formatMoney, planLabel, statusLabel, statusTone, type AccountTone } from '../../lib/companyAccount';
 import { COMPANY_FILTERS, filterCompanies, type CompanyFilter, type CompanySort } from './ownerConsole';
 import { t, dirIcon, getLocale } from '../../lib/i18n';
+import { companyTypeLabel } from '../../lib/companyType';
 
 /**
  * The owner's control room on desktop. One band of business vitals on top
@@ -423,7 +424,7 @@ function CompanyRowView({
 }) {
   const c = row.company;
   const tone = DESKTOP_TONES[row.tone === 'off' ? 'neutral' : row.tone];
-  const idText = [c.company_type, c.business_id].filter(Boolean).join(' ');
+  const idText = [companyTypeLabel(c.company_type), c.business_id].filter(Boolean).join(' ');
   const issueLine = row.issues[0]?.title;
   return (
     <View style={[styles.row, !last && styles.rowDivider, enterRow(index)]}>

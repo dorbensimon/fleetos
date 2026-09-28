@@ -731,7 +731,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
         insetBottom={bottomInset}
         scrollRef={scrollRef}
         scrollEnabled={!drawing}
-        hero={<HeroTitle title="חתימת קצין הבטיחות" subtitle={`${plate}, ${formatIsoDay(today)}`} onBack={() => setStep('fill')} />}
+        hero={<HeroTitle title={t('inspection.officerSignature')} subtitle={`${plate}, ${formatIsoDay(today)}`} onBack={() => setStep('fill')} />}
         footer={
           <View style={styles.footer}>
             <View style={styles.need}>
@@ -787,7 +787,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
         </Reveal>
         <Reveal index={2}>
           <Surface style={styles.block}>
-            <SignaturePad title="חתימת קצין הבטיחות" onChange={setOfficerSig} onDrawing={setDrawing} disabled={busy === 'sign'} />
+            <SignaturePad title={t('inspection.officerSignature')} onChange={setOfficerSig} onDrawing={setDrawing} disabled={busy === 'sign'} />
             <DKText variant="caption" color={DK.muted}>
               {t('inspection.signatureNotStored')}
             </DKText>
@@ -925,7 +925,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
           </Reveal>
           <Reveal index={5}>
             <Surface style={styles.block}>
-              <SignaturePad title="חתימת הנהג" onChange={setDriverSig} onDrawing={setDrawing} disabled={busy === 'driver'} />
+              <SignaturePad title={t('inspection.driverSignature')} onChange={setDriverSig} onDrawing={setDrawing} disabled={busy === 'driver'} />
             </Surface>
           </Reveal>
           <Pressy onPress={() => setStep('choose')} accessibilityLabel={t('signature.returnWithoutSigning')} style={styles.quietLinkDark} pressScale={0.96}>
@@ -1286,7 +1286,7 @@ function SignedBy({ image, name, date }: { image: string | null; name: string; d
         <View style={styles.signedTitle}>
           <Ionicons name="checkmark-circle" size={19} color={STATUS.ok.fg} />
           <DKText variant="label" color={STATUS.ok.fg}>
-            חתימת קצין הבטיחות
+            {t('inspection.officerSignature')}
           </DKText>
         </View>
         <DKText variant="caption" color={DK.inkSoft}>

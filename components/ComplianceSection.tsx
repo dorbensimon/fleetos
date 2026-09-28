@@ -42,6 +42,9 @@ import { t, dirIcon } from '../lib/i18n';
 /** compliance_items only tracks driver/vehicle expiries — not company-level documents. */
 type ComplianceOwnerType = 'driver' | 'vehicle';
 
+/** Saved on the document row and matched on it, so it stays the same in every UI language. */
+const GENERAL_DOCUMENT_TITLE = 'מסמך כללי';
+
 const complianceFolderIcon = (itemType: string): keyof typeof Ionicons.glyphMap => ({
   vehicle_license: 'car-outline', operating_license: 'document-text-outline',
   insurance_mandatory: 'shield-checkmark-outline', insurance_comprehensive: 'shield-outline',
@@ -139,7 +142,7 @@ export function ComplianceSection({
     async (documentRows: DocumentRow[], complianceRows: ComplianceItem[]) => {
       const def = complianceCatalog(ownerType).find((d) => d.itemType === 'insurance_mandatory');
       if (!def) return;
-      const folderDocs = documentRows.filter((d) => d.title === def.label);
+      const folderDocs = documentRows.filter((d) => d.title === def.storedTitle);
       const latestDoc = folderDocs.reduce<DocumentRow | null>(
         (latest, d) => (!latest || d.created_at > latest.created_at ? d : latest),
         null
@@ -267,7 +270,7 @@ export function ComplianceSection({
           ownerType,
           ownerId,
           category: def.category,
-          title: def.label,
+          title: def.storedTitle,
           file,
           complianceItemId: items.get(def.itemType)?.id ?? null,
           expiryDate: uploadExpiryDate,
@@ -411,7 +414,7 @@ export function ComplianceSection({
   };
 
   const renderItemBody = (def: ComplianceItemDef) => {
-    const itemDocs = docs.filter((d) => d.title === def.label);
+    const itemDocs = docs.filter((d) => d.title === def.storedTitle);
 
     return (
       <View style={[styles.itemBody, spacious && styles.itemBodySpacious, folderAppearance && styles.folderItemBody]}>
@@ -467,13 +470,13 @@ export function ComplianceSection({
             key={def.itemType}
             title={def.label}
             icon={complianceFolderIcon(def.itemType)}
-            docs={docs.filter((d) => d.title === def.label)}
+            docs={docs.filter((d) => d.title === def.storedTitle)}
             onPress={() => setExpanded(def.itemType)}
             first={index === 0}
           />
         ))}
         {openDef && (() => {
-          const itemDocs = docs.filter((d) => d.title === openDef.label);
+          const itemDocs = docs.filter((d) => d.title === openDef.storedTitle);
           return (
             <FolderDocumentsModal
               title={openDef.label}
@@ -517,10 +520,10 @@ export function ComplianceSection({
           {folderAppearance && desktopModal ? (
             <View style={styles.folderGrid}>
               {group.items.map((def) => {
-                const itemDocs = docs.filter((d) => d.title === def.label);
+                const itemDocs = docs.filter((d) => d.title === def.storedTitle);
                 const latestDoc = latestDocument(itemDocs);
                 const latestExpiry = latestDoc?.expiry_date ?? null;
-                const thumbnail = thumbnails[def.label];
+                const thumbnail = thumbnails[def.storedTitle];
 
                 return (
                   <FolderTile
@@ -540,7 +543,7 @@ export function ComplianceSection({
             <>
               {group.items.map((def, index) => {
                 const isOpen = expanded === def.itemType;
-                const itemDocs = docs.filter((d) => d.title === def.label);
+                const itemDocs = docs.filter((d) => d.title === def.storedTitle);
                 const latestDoc = latestDocument(itemDocs);
                 const latestExpiry = latestDoc?.expiry_date ?? null;
                 return (
@@ -572,7 +575,7 @@ export function ComplianceSection({
           ) : (
             group.items.map((def) => {
               const item = items.get(def.itemType);
-              const itemDocs = docs.filter((d) => d.title === def.label);
+              const itemDocs = docs.filter((d) => d.title === def.storedTitle);
               const isOpen = expanded === def.itemType;
               const badgeState = complianceBadgeState(def, item);
               const derivedTargetDate = complianceTargetDate(def, item);
@@ -601,7 +604,7 @@ export function ComplianceSection({
       {folderAppearance && desktopModal && (() => {
         const openDef = displayedGroups.flatMap((group) => group.items).find((def) => def.itemType === expanded);
         if (!openDef) return null;
-        const itemDocs = docs.filter((d) => d.title === openDef.label);
+        const itemDocs = docs.filter((d) => d.title === openDef.storedTitle);
         return (
           <DocumentFolderModal
             visible
@@ -663,7 +666,7 @@ function GeneralDocuments({
           ownerType,
           ownerId,
           category: 'general',
-          title: t('documents.generalDocument'),
+          title: GENERAL_DOCUMENT_TITLE,
           file,
         });
         await onChanged();

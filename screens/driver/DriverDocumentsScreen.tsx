@@ -17,7 +17,7 @@ import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { HoverPressable } from '../../components/desktop/primitives';
-import { DriverLicenseModal, LICENSE_SIDE_TITLE } from '../../components/desktop/driver/DriverLicenseModal';
+import { DriverLicenseModal, LICENSE_SIDE_STORED_TITLE } from '../../components/desktop/driver/DriverLicenseModal';
 import { DriverDocumentsMobile } from './DriverDocumentsMobile';
 import { dateOnlyIsoFromLocalDate } from '../../lib/driverFormValidation';
 import { t } from '../../lib/i18n';
@@ -30,7 +30,7 @@ import { t } from '../../lib/i18n';
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverDocuments'>;
 
 function hasBothLicenseSides(docs: { title: string | null }[]): boolean {
-  return docs.some((doc) => doc.title === LICENSE_SIDE_TITLE.front) && docs.some((doc) => doc.title === LICENSE_SIDE_TITLE.back);
+  return docs.some((doc) => doc.title === LICENSE_SIDE_STORED_TITLE.front) && docs.some((doc) => doc.title === LICENSE_SIDE_STORED_TITLE.back);
 }
 
 export default function DriverDocumentsScreen({ navigation }: Props) {
@@ -106,7 +106,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
     ? 'verified'
     : 'pending';
   const groups = buildDriverDetailGroups(driver, licenseStatus).map(group => ({ ...group, rows: group.rows.filter(row => row.key !== 'signing-documents') })).filter(
-    (group) => group.title !== 'דוחות' && group.title !== 'ניהול החשבון'
+    (group) => group.title !== t('reports.title') && group.title !== t('driverCard.accountManagement')
   );
 
   const handleRowPress = (row: DriverCardRow) => {

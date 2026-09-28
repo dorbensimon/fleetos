@@ -59,12 +59,24 @@ export interface NotificationTypeInfo {
   description: string;
 }
 
+/** A label without its "validity" wording, for compact places ("תוקף ביטוח חובה" → "ביטוח חובה"). */
+export function withoutValidity(label: string): string {
+  const [prefix, suffix = ''] = t('prefs.validityOf', { label: '\u0000' }).split('\u0000');
+  let short = label;
+  if (prefix && short.startsWith(prefix)) short = short.slice(prefix.length);
+  if (suffix && short.endsWith(suffix)) short = short.slice(0, -suffix.length);
+  return short || label;
+}
+
 /** One toggle per vehicle folder (see lib/vehicleFolderAlerts.ts and migration 90). */
-const vehicleFolderTypes = (description: string): NotificationTypeInfo[] =>
+const vehicleFolderTypes = (descriptionKey: string): NotificationTypeInfo[] =>
   VEHICLE_FOLDER_ALERTS.map((folder) => ({
     type: folder.notificationType as NotificationType,
-    label: folder.label.startsWith('תוקף') ? folder.label : t('prefs.validityOf', { label: folder.label }),
-    description,
+    get label() {
+      // The tachograph folder's own name already says "validity".
+      return folder.folderKey === 'tachograph_calibration' ? folder.label : t('prefs.validityOf', { label: folder.label });
+    },
+    get description() { return t(descriptionKey); },
   }));
 
 /** Hebrew label + short explanation shown per toggle, in the PRD's table order. */
@@ -99,7 +111,7 @@ export const ADMIN_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     get label() { return t('prefs.type.carrierLicense'); },
     get description() { return t('prefs.type.carrierLicenseDesc'); },
   },
-  ...vehicleFolderTypes(t('prefs.type.vehicleFolderDesc')),
+  ...vehicleFolderTypes('prefs.type.vehicleFolderDesc'),
   {
     type: 'vehicle_service_due',
     get label() { return t('prefs.type.vehicleService'); },
@@ -153,7 +165,7 @@ export const DRIVER_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     get label() { return t('prefs.type.odometerReminder'); },
     get description() { return t('prefs.type.odometerReminderDesc'); },
   },
-  ...vehicleFolderTypes(t('prefs.type.myVehicleFolderDesc')),
+  ...vehicleFolderTypes('prefs.type.myVehicleFolderDesc'),
 ];
 
 /**

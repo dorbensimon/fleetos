@@ -28,6 +28,24 @@ function flatten(tree: Tree, prefix = ''): Record<string, string> {
 const locales = { he, ar, ru, en } as Record<string, Tree>;
 const flat = Object.fromEntries(Object.entries(locales).map(([lang, tree]) => [lang, flatten(tree)]));
 const placeholders = (s: string) => (s.match(/\{\{\w+\}\}/g) ?? []).sort().join();
+const ts: typeof import('typescript') = require('typescript'); // eslint-disable-line @typescript-eslint/no-require-imports
+const HEBREW = /[\u0590-\u05FF]/;
+
+/** The app's own .ts/.tsx files. */
+function sourceFiles(): string[] {
+  const root = process.cwd();
+  const files: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+      const file = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(file);
+      else if (/\.tsx?$/.test(entry.name)) files.push(file);
+    }
+  };
+  ['components', 'screens', 'lib'].forEach((dir) => walk(path.join(root, dir)));
+  return [path.join(root, 'App.tsx'), ...files];
+}
 
 describe('translations', () => {
   it('every language has exactly the same keys', () => {
@@ -45,25 +63,29 @@ describe('translations', () => {
   });
 
   it('every key used in the code exists', () => {
-    const root = process.cwd();
     const used = new Set<string>();
-    const walk = (dir: string) => {
-      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-        if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
-        const file = path.join(dir, entry.name);
-        if (entry.isDirectory()) walk(file);
-        else if (/\.tsx?$/.test(entry.name)) {
-          for (const match of fs.readFileSync(file, 'utf8').matchAll(/\bt\('([\w.]+)'/g)) used.add(match[1]);
-        }
-      }
-    };
-    ['App.tsx', 'components', 'screens', 'lib'].forEach((p) => {
-      const full = path.join(root, p);
-      if (fs.statSync(full).isDirectory()) walk(full);
-      else for (const match of fs.readFileSync(full, 'utf8').matchAll(/\bt\('([\w.]+)'/g)) used.add(match[1]);
-    });
+    for (const file of sourceFiles()) {
+      for (const match of fs.readFileSync(file, 'utf8').matchAll(/\bt\('([\w.]+)'/g)) used.add(match[1]);
+    }
     const missing = [...used].filter((key) => !(key in flat.he));
     expect(missing).toEqual([]);
+  });
+
+  it('no Hebrew is written straight into a screen', () => {
+    const found: string[] = [];
+    for (const file of sourceFiles().filter((f) => f.endsWith('.tsx') && !f.includes('__tests__'))) {
+      const text = fs.readFileSync(file, 'utf8');
+      if (!HEBREW.test(text)) continue;
+      const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+      const visit = (node: import('typescript').Node) => {
+        const literal = ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node);
+        const inJsx = ts.isJsxText(node) || (literal && (ts.isJsxAttribute(node.parent) || ts.isJsxExpression(node.parent)));
+        if (inJsx && HEBREW.test(node.getText())) found.push(`${file}: ${node.getText().trim()}`);
+        ts.forEachChild(node, visit);
+      };
+      visit(source);
+    }
+    expect(found).toEqual([]);
   });
 });
 

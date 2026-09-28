@@ -6,6 +6,7 @@ import { COLORS } from '../owner/ownerTheme';
 import { formatPhone } from '../../lib/phone';
 import { sharedStyles as s } from './sharedStyles';
 import { t } from '../../lib/i18n';
+import { COMPANY_TYPES, companyTypeLabel } from '../../lib/companyType';
 
 export type CompanyEditableFields = {
   name: string;
@@ -88,7 +89,7 @@ export function CompanyInfoCard({
       <View style={s.fieldGroup}>
         <Text style={s.fieldLabel}>{t('company.type')}</Text>
         <View style={s.companyTypeRow}>
-          {(['בע״מ', 'עוסק מורשה'] as const).map((type) => {
+          {COMPANY_TYPES.map((type) => {
             const typeActive = fields.companyType === type;
             return (
               <TouchableOpacity
@@ -96,7 +97,7 @@ export function CompanyInfoCard({
                 style={[s.companyTypeChip, typeActive && s.companyTypeChipActive]}
                 onPress={() => onChangeFields((f) => ({ ...f, companyType: typeActive ? '' : type }))}
               >
-                <Text style={[s.companyTypeChipText, typeActive && s.companyTypeChipTextActive]}>{type}</Text>
+                <Text style={[s.companyTypeChipText, typeActive && s.companyTypeChipTextActive]}>{companyTypeLabel(type)}</Text>
               </TouchableOpacity>
             );
           })}

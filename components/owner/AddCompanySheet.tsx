@@ -8,6 +8,7 @@ import { validateCompanyStep, type CompanyStep, type OwnerCompanyForm } from '..
 import { AccountFields } from './CompanyAccountSheet';
 import { ChoiceChips } from './ownerKit';
 import { t, dirIcon, textEnd } from '../../lib/i18n';
+import { COMPANY_TYPES, companyTypeLabel } from '../../lib/companyType';
 
 /**
  * Opening a new customer, in three short steps on one sheet (a dialog on
@@ -155,10 +156,7 @@ export function AddCompanySheet({
               <ChoiceChips
                 label={t('company.typeOf')}
                 clearable
-                options={[
-                  { value: 'בע״מ', label: 'בע״מ' },
-                  { value: 'עוסק מורשה', label: 'עוסק מורשה' },
-                ]}
+                options={COMPANY_TYPES.map((type) => ({ value: type, label: companyTypeLabel(type) }))}
                 value={form.companyType}
                 onChange={(v) => set('companyType', v as OwnerCompanyForm['companyType'])}
               />
@@ -302,7 +300,7 @@ function Stepper({ step, onJump }: { step: CompanyStep; onJump: (s: CompanyStep)
 
 function Summary({ form }: { form: OwnerCompanyForm }) {
   const lines: [string, string][] = [
-    [t('owner.col.company'), [form.name.trim(), form.companyType].filter(Boolean).join(' ')],
+    [t('owner.col.company'), [form.name.trim(), companyTypeLabel(form.companyType)].filter(Boolean).join(' ')],
     [t('role.manager'), `${form.adminFirstName.trim()} ${form.adminLastName.trim()}`.trim()],
     [t('addCompany.signIn'), form.email.trim()],
   ];

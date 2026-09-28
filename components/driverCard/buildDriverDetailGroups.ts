@@ -55,6 +55,6 @@ export function buildDriverDetailGroups(
       if (row.key === 'national-id') return [{ ...row, value: maskNationalId(driver?.national_id) }];
       return [row];
     }),
-  })).map((group) => (group.title === 'פרטי קשר ורכב' ? { ...group, rows: [...group.rows, ...vehicleRows] } : group))
+  })).map((group) => (group.title === t('driverCard.contactAndVehicle') ? { ...group, rows: [...group.rows, ...vehicleRows] } : group))
     .filter((group) => group.rows.length > 0);
 }

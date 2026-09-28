@@ -11,7 +11,7 @@ import { downloadSignedRequest, finalizeSigningTemplate, syncSigningRequest } fr
 import { docusealEmbedHtml } from '../lib/docusealEmbed';
 import { COLORS, SPACING } from '../lib/theme';
 import type { RootStackParamList } from '../navigation/types';
-import { t } from '../lib/i18n';
+import { t, textDirection } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DocusealWebView'>;
 
@@ -28,7 +28,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
     const send = (type, detail) => window.ReactNativeWebView.postMessage(JSON.stringify({ type, detail }));
     window.addEventListener('error', (event) => send('error', event.message));
   </script>`;
-  const base = `<!doctype html><html dir="rtl"><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+  const base = `<!doctype html><html dir="${textDirection()}"><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
     <style>html,body{margin:0;width:100%;height:100%;overflow-x:hidden;background:#cdd3db}docuseal-form,docuseal-builder{display:block;width:100%;max-width:100%;min-width:0;min-height:100dvh}</style>`;
 
   if (params.mode === 'document') {
@@ -70,7 +70,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
                   marker.style.top = (area.y * 100) + '%';
                   marker.style.width = (area.w * 100) + '%';
                   marker.style.height = (area.h * 100) + '%';
-                  marker.textContent = field.type === 'stamp' ? 'חותמת' : 'חתימה';
+                  marker.textContent = field.type === 'stamp' ? ${scriptValue(t('company.stampShort'))} : ${scriptValue(t('field.signature'))};
                   pageWrap.appendChild(marker);
                 }
               }

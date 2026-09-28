@@ -27,6 +27,7 @@ import {
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
 import { FORM_PAGE_STYLES, heroEnter, useReducedMotion } from './form/RecordFormKit';
 import { t, getLocale } from '../../lib/i18n';
+import { companyTypeLabel } from '../../lib/companyType';
 
 /**
  * Desktop body of the company settings page. Three zones fill the width:
@@ -120,7 +121,7 @@ const SECTIONS: {
 
 const COMPANY_TYPE_OPTIONS: { value: CompanyType; label: string }[] = [
   { value: 'בע״מ', get label() { return t('company.typeLtd'); } },
-  { value: 'עוסק מורשה', label: 'עוסק מורשה' },
+  { value: 'עוסק מורשה', get label() { return t('company.typeLicensedDealer'); } },
 ];
 
 // The grouped background is the app's own canvas, so the page flows with the rest of the site.
@@ -858,7 +859,7 @@ function CompanyOverview({ form, onJump }: { form: CompanySettingsForm; onJump: 
                 <DLtrText weight="semiBold" style={[styles.heroIdValue, styles.tabular]}>{form.businessId || '—'}</DLtrText>
                 {!!form.companyType && (
                   <View style={styles.heroTag}>
-                    <DText weight="semiBold" style={styles.heroTagText}>{form.companyType}</DText>
+                    <DText weight="semiBold" style={styles.heroTagText}>{companyTypeLabel(form.companyType)}</DText>
                   </View>
                 )}
               </View>

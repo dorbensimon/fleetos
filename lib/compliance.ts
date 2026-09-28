@@ -32,6 +32,11 @@ export interface ComplianceItemDef {
   itemType: string;
   category: ComplianceCategory;
   label: string;
+  /**
+   * The title its documents are saved under and found by. It is stored data,
+   * so it stays the same whatever the UI language is.
+   */
+  storedTitle: string;
   /** A new supporting document cannot be uploaded without its own expiry date. */
   requiresExpiryOnUpload?: boolean;
   /** Some items also record when the last check happened, not just the next one. */
@@ -116,13 +121,13 @@ export const CATEGORY_ICONS: Record<ComplianceCategory, string> = {
 };
 
 export const VEHICLE_COMPLIANCE: ComplianceItemDef[] = [
-  { itemType: 'vehicle_license', category: 'licensing', get label() { return t('folder.vehicleLicense'); }, requiresExpiryOnUpload: true },
-  { itemType: 'operating_license', category: 'licensing', get label() { return t('folder.operatingLicense'); }, requiresExpiryOnUpload: true },
+  { itemType: 'vehicle_license', category: 'licensing', storedTitle: 'רישיון רכב', get label() { return t('folder.vehicleLicense'); }, requiresExpiryOnUpload: true },
+  { itemType: 'operating_license', category: 'licensing', storedTitle: 'רישיון הפעלה', get label() { return t('folder.operatingLicense'); }, requiresExpiryOnUpload: true },
 
-  { itemType: 'insurance_mandatory', category: 'insurance', get label() { return t('folder.mandatoryInsurance'); }, requiresExpiryOnUpload: true },
-  { itemType: 'insurance_comprehensive', category: 'insurance', get label() { return t('folder.comprehensiveInsurance'); }, requiresExpiryOnUpload: true },
+  { itemType: 'insurance_mandatory', category: 'insurance', storedTitle: 'ביטוח חובה', get label() { return t('folder.mandatoryInsurance'); }, requiresExpiryOnUpload: true },
+  { itemType: 'insurance_comprehensive', category: 'insurance', storedTitle: 'ביטוח מקיף', get label() { return t('folder.comprehensiveInsurance'); }, requiresExpiryOnUpload: true },
 
-  { itemType: 'annual_test', category: 'inspection', get label() { return t('folder.annualTest'); }, tracksLastDate: true, validityDays: 365, requiresExpiryOnUpload: true },
+  { itemType: 'annual_test', category: 'inspection', storedTitle: 'טסט שנתי', get label() { return t('folder.annualTest'); }, tracksLastDate: true, validityDays: 365, requiresExpiryOnUpload: true },
 ];
 
 /**
@@ -143,12 +148,12 @@ export function isRetiredVehicleComplianceItem(itemType: string): boolean {
 }
 
 export const DRIVER_COMPLIANCE: ComplianceItemDef[] = [
-  { itemType: 'health_declaration', category: 'health', get label() { return t('compliance.item.healthDeclaration'); } },
+  { itemType: 'health_declaration', category: 'health', storedTitle: 'הצהרת בריאות', get label() { return t('compliance.item.healthDeclaration'); } },
 
-  { itemType: 'periodic_training', category: 'training', get label() { return t('compliance.item.periodicTraining'); }, tracksLastDate: true, validityDays: 365 },
-  { itemType: 'procedure_6', category: 'training', get label() { return t('compliance.item.procedure6'); } },
-  { itemType: 'crane_license', category: 'training', get label() { return t('compliance.item.craneLicense'); } },
-  { itemType: 'rp_certificate', category: 'training', get label() { return t('compliance.item.publicServiceLicense'); } },
+  { itemType: 'periodic_training', category: 'training', storedTitle: 'הדרכות תקופתיות', get label() { return t('compliance.item.periodicTraining'); }, tracksLastDate: true, validityDays: 365 },
+  { itemType: 'procedure_6', category: 'training', storedTitle: 'נוהל 6 (הסעת ילדים)', get label() { return t('compliance.item.procedure6'); } },
+  { itemType: 'crane_license', category: 'training', storedTitle: 'רישיון מנוף', get label() { return t('compliance.item.craneLicense'); } },
+  { itemType: 'rp_certificate', category: 'training', storedTitle: 'תוקף ר.פ', get label() { return t('compliance.item.publicServiceLicense'); } },
 ];
 
 export function complianceCatalog(ownerType: 'vehicle' | 'driver'): ComplianceItemDef[] {

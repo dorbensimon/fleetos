@@ -6,14 +6,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppText, PrimaryButton, Screen, ScreenHeader } from '../components/ui';
 import { useCompany } from '../lib/CompanyContext';
 import { downloadSignedRequest, finalizeSigningTemplate, syncSigningRequest } from '../lib/docuseal';
-import { attr, docusealEmbedHtml, SIGNATURE_PAD_CSS } from '../lib/docusealEmbed';
+import { attr, docusealEmbedHtml, docusealFormLanguage, SIGNATURE_PAD_CSS } from '../lib/docusealEmbed';
 import { COLORS, SPACING } from '../lib/theme';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import { DocumentViewer } from '../components/desktop/signing/DocumentViewer.web';
 import type { RootStackParamList } from '../navigation/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DK, NightBar, HeroButton } from '../components/driverKit';
-import { t } from '../lib/i18n';
+import { t, textDirection } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DocusealWebView'>;
 type IframeMessage = { type?: 'completed' | 'declined' | 'saved' | 'error' };
@@ -23,7 +23,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
     const send = (type, detail) => window.parent.postMessage({ source: 'fleetos-docuseal', type, detail }, window.location.origin);
     window.addEventListener('error', (event) => send('error', event.message));
   </script>`;
-  const base = `<!doctype html><html dir="rtl"><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+  const base = `<!doctype html><html dir="${textDirection()}"><head><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
     <style>html,body{margin:0;width:100%;height:100%;overflow-x:hidden;background:#f5f5f7}docuseal-form,docuseal-builder{display:block;width:100%;max-width:100%;min-width:0;min-height:100dvh}</style>`;
 
   if (params.mode === 'document') {
@@ -50,7 +50,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
             const page=await pdf.getPage(pageNumber); const initial=page.getViewport({scale:1});
             const cssScale=Math.max(.1,Math.min(1.25,(Math.min(window.innerWidth,760)-28)/initial.width)); const pixelRatio=Math.min((window.devicePixelRatio||1)*2,4,Math.sqrt(8e6/(initial.width*initial.height*cssScale*cssScale))); const viewport=page.getViewport({scale:cssScale*pixelRatio});
             const pageWrap=document.createElement('section'); pageWrap.className='page'; pageWrap.style.width=(viewport.width/pixelRatio)+'px'; const canvas=document.createElement('canvas'); canvas.width=viewport.width; canvas.height=viewport.height; pageWrap.appendChild(canvas); root.appendChild(pageWrap); await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
-            for(const field of fields) for(const area of field.areas){const fieldPage=zeroIndexedPages?area.page+1:area.page;if(fieldPage!==pageNumber)continue;const marker=document.createElement('div');marker.className='preview-field'+(field.type==='stamp'?' stamp':'');marker.style.left=(area.x*100)+'%';marker.style.top=(area.y*100)+'%';marker.style.width=(area.w*100)+'%';marker.style.height=(area.h*100)+'%';marker.textContent=field.type==='stamp'?'חותמת':'חתימה';pageWrap.appendChild(marker)}
+            for(const field of fields) for(const area of field.areas){const fieldPage=zeroIndexedPages?area.page+1:area.page;if(fieldPage!==pageNumber)continue;const marker=document.createElement('div');marker.className='preview-field'+(field.type==='stamp'?' stamp':'');marker.style.left=(area.x*100)+'%';marker.style.top=(area.y*100)+'%';marker.style.width=(area.w*100)+'%';marker.style.height=(area.h*100)+'%';marker.textContent=field.type==='stamp'?${JSON.stringify(t('company.stampShort'))}:${JSON.stringify(t('field.signature'))};pageWrap.appendChild(marker)}
           } send('document-ready',{pages:pdf.numPages});
         }catch(error){send('error',error&&error.message?error.message:'PDF load failed')}})();
       </script></body></html>`;
@@ -236,7 +236,9 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
           'data-token': params.token,
           'data-preview': params.token ? 'true' : undefined,
           'data-host': params.host?.includes('.eu') ? params.host : undefined,
-          'data-language': 'he',
+          'data-language': docusealFormLanguage(),
+          // Inside the app's layout, which is mirrored for left-to-right languages.
+          dir: textDirection(),
           'data-send-copy-email': 'false',
           'data-with-send-copy-button': 'false',
           'data-allow-to-resubmit': 'false',

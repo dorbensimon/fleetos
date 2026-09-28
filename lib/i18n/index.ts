@@ -111,7 +111,8 @@ export function applyDocumentLanguage(language: Language = getLanguage()) {
   if (document.body) document.body.style.direction = layoutDirection(language);
 }
 
-type Listener = (language: Language) => void;
+/** `saved`: the choice was stored on this device, so a fresh start reads it back. */
+type Listener = (language: Language, saved: boolean) => void;
 const listeners = new Set<Listener>();
 
 export function onLanguageChange(listener: Listener): () => void {
@@ -121,34 +122,57 @@ export function onLanguageChange(listener: Listener): () => void {
 
 // Loaded on first use, so importing translations never needs the native module.
 async function nativeStorage() {
-  return (await import('@react-native-async-storage/async-storage')).default;
+  type Storage = typeof import('@react-native-async-storage/async-storage').default;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const loaded: Storage | { default: Storage } = require('@react-native-async-storage/async-storage');
+  return 'default' in loaded ? loaded.default : loaded;
 }
 
-async function storeLocally(language: Language) {
+/**
+ * A small value kept on this device next to the language choice:
+ * localStorage on web, AsyncStorage on native. `null` removes it. Resolves
+ * whether it was stored; storage may be unavailable (private browsing).
+ */
+export async function storeOnDevice(key: string, value: string | null): Promise<boolean> {
   if (Platform.OS === 'web') {
     try {
-      window.localStorage.setItem(STORAGE_KEY, language);
+      if (value == null) window.localStorage.removeItem(key);
+      else window.localStorage.setItem(key, value);
+      return true;
     } catch {
-      // Storage may be unavailable (private browsing); the choice lasts for this visit.
+      return false;
     }
-    return;
   }
-  await nativeStorage().then((storage) => storage.setItem(STORAGE_KEY, language)).catch(() => undefined);
+  return nativeStorage()
+    .then((storage) => (value == null ? storage.removeItem(key) : storage.setItem(key, value)))
+    .then(() => true, () => false);
+}
+
+export async function readFromDevice(key: string): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+  return nativeStorage().then((storage) => storage.getItem(key)).catch(() => null);
 }
 
 /** Switches the app language on this device (no server write). */
 export async function applyLanguage(language: Language) {
-  await storeLocally(language);
+  // When it could not be stored, the choice lasts for this visit only.
+  const saved = await storeOnDevice(STORAGE_KEY, language);
   if (language === getLanguage()) return;
   await i18next.changeLanguage(language);
   applyDocumentLanguage(language);
-  listeners.forEach((listener) => listener(language));
+  listeners.forEach((listener) => listener(language, saved));
 }
 
 /** Native keeps its choice in async storage; read it before the first screen. */
 export async function loadStoredLanguage(): Promise<Language> {
   if (Platform.OS !== 'web') {
-    const saved = await nativeStorage().then((storage) => storage.getItem(STORAGE_KEY)).catch(() => null);
+    const saved = await readFromDevice(STORAGE_KEY);
     if (isLanguage(saved) && saved !== getLanguage()) await i18next.changeLanguage(saved);
   }
   applyDocumentLanguage();

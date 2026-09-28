@@ -78,19 +78,38 @@ import {
   unregisterPushNotifications,
 } from './lib/pushNotifications';
 import { navigateToNotificationTarget } from './lib/notificationTargets';
-import { getLanguage, layoutDirection, onLanguageChange, type Language } from './lib/i18n';
-import { syncLanguageFromUser } from './lib/i18n/userLanguage';
+import { reloadAppAsync } from 'expo';
+import { getLanguage, layoutDirection, onLanguageChange, readFromDevice, storeOnDevice, type Language } from './lib/i18n';
+import { resetLanguageSync, syncLanguageFromAccount } from './lib/i18n/userLanguage';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 const WEB_NAVIGATION_STATE_KEY = 'fleetos.web-navigation-state';
+// Native starts over after a language change and returns to the screen the
+// user was on: saved just before the restart, read once as it starts.
+const LANGUAGE_RESTART_STATE_KEY = 'fleetos.language-restart-state';
+
+async function takeLanguageRestartState(): Promise<object | undefined> {
+  const saved = await readFromDevice(LANGUAGE_RESTART_STATE_KEY);
+  if (!saved) return undefined;
+  await storeOnDevice(LANGUAGE_RESTART_STATE_KEY, null);
+  try {
+    const { at, state } = JSON.parse(saved) as { at: number; state: object };
+    // Only straight after that restart, never on a later launch.
+    return Date.now() - at < 60_000 ? state : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 // Web navigation normally restores from the URL. The development server can
 // retain the root URL, though, so also retain the in-app stack for a browser
 // refresh from that root. A non-root URL always takes precedence for direct
 // links and browser history.
+// React Native also defines `window`, without location or sessionStorage, so
+// these web-only paths check the platform itself.
 const getWebInitialNavigationState = () => {
-  if (typeof window === 'undefined' || window.location.pathname !== '/' || window.location.search) return undefined;
+  if (Platform.OS !== 'web' || window.location.pathname !== '/' || window.location.search) return undefined;
   try {
     const savedState = window.sessionStorage.getItem(WEB_NAVIGATION_STATE_KEY);
     return savedState ? JSON.parse(savedState) : undefined;
@@ -186,6 +205,7 @@ export default function App() {
     let active = true;
     (async () => {
       try {
+        const restartState = Platform.OS === 'web' ? undefined : await takeLanguageRestartState();
         const { data, error } = await supabase.auth.getSession();
         if (error) throw error;
         const userId = data.session?.user.id;
@@ -195,9 +215,11 @@ export default function App() {
           return;
         }
 
-        await syncLanguageFromUser(data.session?.user).catch(() => undefined);
-        const result = await resolveRouteForUser(userId);
-        if (active) setInitialRoute(result.ok ? result.route : 'Login');
+        // The account's language may have changed on another device.
+        const [result] = await Promise.all([resolveRouteForUser(userId), syncLanguageFromAccount(data.session?.user)]);
+        if (!active) return;
+        if (result.ok && restartState) setLanguageNavigationState(restartState);
+        setInitialRoute(result.ok ? result.route : 'Login');
       } catch {
         if (active) setInitialRoute('Login');
       }
@@ -218,10 +240,17 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // The account's saved language follows the user to every device.
       // Deferred: supabase calls made inside this callback would deadlock.
-      if (event === 'SIGNED_IN') setTimeout(() => void syncLanguageFromUser(session?.user).catch(() => undefined), 0);
+      if (event === 'SIGNED_IN') setTimeout(() => void syncLanguageFromAccount(session?.user), 0);
       if (event === 'SIGNED_OUT') {
+        resetLanguageSync();
         void unregisterPushNotifications().catch(() => undefined);
-        if (typeof window !== 'undefined') window.sessionStorage.removeItem(WEB_NAVIGATION_STATE_KEY);
+        if (Platform.OS === 'web') {
+          try {
+            window.sessionStorage.removeItem(WEB_NAVIGATION_STATE_KEY);
+          } catch {
+            // Storage may be unavailable in private browsing.
+          }
+        }
         setInitialRoute('Login');
         // A user who signed in during this visit already has 'Login' as the
         // initial route, so the line above changes nothing for them; take
@@ -234,16 +263,33 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // A new language re-renders every screen. On web the page reloads: modules
-  // build some strings and styles when they load, and the browser restores
-  // the same page from its URL. Native rebuilds the tree on the same screen.
-  useEffect(() => onLanguageChange((next) => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  // A new language starts the app over, since modules build some strings and
+  // styles when they load: the web page reloads (the browser restores the page
+  // from its URL) and native reloads its JavaScript, back on the same screen.
+  // The new language is read back as the app starts; when it could not be
+  // stored, a restart would lose it, so the screens are rebuilt in place.
+  useEffect(() => onLanguageChange((next, saved) => {
+    const state = navigationRef.isReady() ? navigationRef.getRootState() : undefined;
+    const rebuild = () => {
+      setLanguageNavigationState(state);
+      setLanguage(next);
+    };
+    if (!saved) {
+      rebuild();
+      return;
+    }
+    if (Platform.OS === 'web') {
       window.location.reload();
       return;
     }
-    setLanguageNavigationState(navigationRef.isReady() ? navigationRef.getRootState() : undefined);
-    setLanguage(next);
+    void storeOnDevice(LANGUAGE_RESTART_STATE_KEY, state ? JSON.stringify({ at: Date.now(), state }) : null)
+      .then(() => reloadAppAsync('Language changed'))
+      .catch(() => undefined)
+      // Still running, so the reload did not happen: rebuild in place.
+      .finally(() => setTimeout(() => {
+        void storeOnDevice(LANGUAGE_RESTART_STATE_KEY, null);
+        rebuild();
+      }, 3000));
   }), []);
 
   useEffect(() => {
@@ -300,7 +346,7 @@ export default function App() {
             onReady={syncWebThemeColor}
             onStateChange={(state) => {
               syncWebThemeColor();
-              if (typeof window === 'undefined') return;
+              if (Platform.OS !== 'web') return;
               try {
                 window.sessionStorage.setItem(WEB_NAVIGATION_STATE_KEY, JSON.stringify(state));
               } catch {

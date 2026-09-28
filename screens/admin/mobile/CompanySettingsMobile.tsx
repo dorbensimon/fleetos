@@ -28,7 +28,7 @@ type Props = {
 
 const TYPE_OPTIONS: { value: CompanyType; label: string }[] = [
   { value: 'בע״מ', get label() { return t('company.typeLtd'); } },
-  { value: 'עוסק מורשה', label: 'עוסק מורשה' },
+  { value: 'עוסק מורשה', get label() { return t('company.typeLicensedDealer'); } },
 ];
 
 const digits = (v: string, max = 10) => v.replace(/\D/g, '').slice(0, max);

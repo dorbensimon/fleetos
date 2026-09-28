@@ -8,6 +8,7 @@ import { formatPhone } from '../../lib/phone';
 import { DLtrText, DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
 import { t, dirIcon, textStart } from '../../lib/i18n';
+import { companyTypeLabel } from '../../lib/companyType';
 import { LanguageRows } from '../LanguagePicker';
 
 /**
@@ -88,7 +89,7 @@ export function AdminProfileDesktopView({
           <Group title={t('profile.myCompany')} icon="business-outline">
             <View style={styles.detailGrid}>
               <StaticRow icon="business-outline" label={t('company.name')} value={company?.name} />
-              <StaticRow icon="pricetag-outline" label={t('company.type')} value={company?.company_type} />
+              <StaticRow icon="pricetag-outline" label={t('company.type')} value={companyTypeLabel(company?.company_type)} />
               <StaticRow icon="card-outline" label={t('company.businessId')} value={company?.business_id} />
               <StaticRow icon="location-outline" label={t('company.address')} value={company?.address} />
               <StaticRow icon="call-outline" label={t('company.phone')} value={company?.phone ? formatPhone(company.phone) : null} last />

@@ -37,6 +37,7 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { AdminProfileDesktopView } from '../../components/desktop/AdminProfileDesktopView';
 import { LanguageSection } from '../../components/LanguagePicker';
 import { t, textStart } from '../../lib/i18n';
+import { companyTypeLabel } from '../../lib/companyType';
 
 /** The logged-in admin's own details, reached from the hamburger menu. */
 type Props = NativeStackScreenProps<RootStackParamList, 'AdminProfile'>;
@@ -238,7 +239,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
           <Reveal index={2}>
             <KitSection title={t('owner.theCompany')}>
               <InfoLine first icon="business" label={t('company.name')} value={company?.name} />
-              <InfoLine icon="pricetag" label={t('company.type')} value={company?.company_type} />
+              <InfoLine icon="pricetag" label={t('company.type')} value={companyTypeLabel(company?.company_type)} />
               <InfoLine icon="card" label={t('company.businessId')} value={company?.business_id} ltr />
               <InfoLine icon="location" label={t('common.address')} value={company?.address} />
               <InfoLine icon="call" label={t('company.phone')} value={company?.phone ? formatPhone(company.phone) : null} ltr />

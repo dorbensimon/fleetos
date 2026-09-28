@@ -132,8 +132,9 @@ function initialOf(name: string | null | undefined): string {
   return (name ?? '').trim().charAt(0) || '?';
 }
 
+/** "נהג אחד" / "12 נהגים": the count's wording comes whole from each language's file. */
 function countWords(n: number, one: string, many: string): string {
-  return n === 1 ? one : `${n} ${many}`;
+  return n === 1 ? one : many;
 }
 
 
@@ -344,7 +345,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
           </DText>
           {!loading && !error && (
             <DText style={styles.listCount}>
-              {isDrivers ? countWords(listCount, t('common.oneDriver'), t('common.drivers')) : countWords(listCount, 'רכב אחד', t('common.vehicles'))}
+              {isDrivers ? countWords(listCount, t('common.oneDriver'), t('common.driversCount', { count: listCount })) : countWords(listCount, t('common.oneVehicle'), t('common.vehiclesCount', { count: listCount }))}
             </DText>
           )}
           {!!query && (
@@ -482,7 +483,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                             </View>
                             <View style={[styles.cell, colStyle(DRIVER_COLUMNS[7])]}>
                               {pending > 0 ? (
-                                <Pill tone="warn" label={countWords(pending, t('documents.oneDocument'), t('common.documents'))} />
+                                <Pill tone="warn" label={countWords(pending, t('documents.oneDocument'), t('documents.countN', { count: pending }))} />
                               ) : (
                                 <DText style={[styles.cellText, styles.faint]}>—</DText>
                               )}
@@ -580,7 +581,7 @@ const DRIVER_COLUMNS: Column[] = [
   { get label() { return t('field.nationalId'); }, flex: 0.9, min: 104 },
   { get label() { return t('field.licenseNumber'); }, flex: 0.9, min: 96 },
   { get label() { return t('driver.licenseExpiry'); }, flex: 1.15, min: 146 },
-  { label: 'הצהרת בריאות', flex: 1.15, min: 150 },
+  { get label() { return t('compliance.item.healthDeclaration'); }, flex: 1.15, min: 150 },
   { get label() { return t('driver.assignedVehicles'); }, flex: 1, min: 116 },
   { get label() { return t('signing.pendingSignature'); }, flex: 0.9, min: 106 },
 ];

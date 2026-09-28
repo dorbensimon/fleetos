@@ -28,6 +28,7 @@ import { ChoiceChips, TonePill } from '../owner/ownerKit';
 import type { CompanyEditableFields } from './CompanyInfoCard';
 import type { CompanyUser } from './types';
 import { t, dirIcon } from '../../lib/i18n';
+import { COMPANY_TYPES, companyTypeLabel } from '../../lib/companyType';
 
 /**
  * One company on the owner's phone: who it is and where it stands as a
@@ -239,10 +240,7 @@ export function CompanyDetailMobile(p: Props) {
             <ChoiceChips
               label={t('company.typeOf')}
               clearable
-              options={[
-                { value: 'בע״מ', label: 'בע״מ' },
-                { value: 'עוסק מורשה', label: 'עוסק מורשה' },
-              ]}
+              options={COMPANY_TYPES.map((type) => ({ value: type, label: companyTypeLabel(type) }))}
               value={p.fields.companyType}
               onChange={(v) => set('companyType', v as CompanyEditableFields['companyType'])}
             />

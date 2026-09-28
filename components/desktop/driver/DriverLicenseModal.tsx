@@ -19,6 +19,8 @@ type Side = 'front' | 'back';
 const SIDES: Side[] = ['front', 'back'];
 /** The document titles the license photos are stored under — shared with DriverLicenseDocumentsScreen. */
 export const LICENSE_SIDE_TITLE: Record<Side, string> = { get front() { return t('documents.frontSide'); }, get back() { return t('documents.backSide'); } };
+/** The title each side's photo is saved under and found by. Stored data, so it stays the same in every UI language. */
+export const LICENSE_SIDE_STORED_TITLE: Record<Side, string> = { front: 'צד קדמי', back: 'צד אחורי' };
 
 /**
  * Desktop "מסמכי רישיון נהיגה" folder as a centered modal, replacing the
@@ -59,8 +61,8 @@ export function DriverLicenseModal({
 
   const load = useCallback(async () => {
     const all = await listDocuments('driver', driverId, 'license_docs').catch(() => []);
-    const front = all.find((d) => d.title === LICENSE_SIDE_TITLE.front) ?? null;
-    const back = all.find((d) => d.title === LICENSE_SIDE_TITLE.back) ?? null;
+    const front = all.find((d) => d.title === LICENSE_SIDE_STORED_TITLE.front) ?? null;
+    const back = all.find((d) => d.title === LICENSE_SIDE_STORED_TITLE.back) ?? null;
     const [frontUrl, backUrl] = await Promise.all([
       front ? getDocumentUrl(front).catch(() => null) : Promise.resolve(null),
       back ? getDocumentUrl(back).catch(() => null) : Promise.resolve(null),
@@ -84,7 +86,7 @@ export function DriverLicenseModal({
         const file = await pickDocumentSource(source);
         if (!file) return;
         const existing = docs[side];
-        await uploadDocument({ companyId, ownerType: 'driver', ownerId: driverId, category: 'license_docs', title: LICENSE_SIDE_TITLE[side], file });
+        await uploadDocument({ companyId, ownerType: 'driver', ownerId: driverId, category: 'license_docs', title: LICENSE_SIDE_STORED_TITLE[side], file });
         if (existing) await deleteDocument(existing);
         await load();
         onPhotosChanged();
