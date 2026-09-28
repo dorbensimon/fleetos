@@ -67,7 +67,8 @@ import MenuScreen from './screens/MenuScreen';
 import { RootStackParamList } from './navigation/types';
 import { refreshBackFallback } from './lib/refreshSafeBack';
 import { supabase } from './lib/supabase';
-import { resolveRouteForUser } from './lib/session';
+import { resolveRouteForUser, ROLE_ROUTES } from './lib/session';
+import { canOpenRoute, isPublicRoute } from './lib/routeAccess';
 import { CompanyProvider, useCompany } from './lib/CompanyContext';
 import { ToastProvider } from './components/ui';
 import { MobileTabBar, TabBarProvider } from './components/driverKit/tabBar';
@@ -413,6 +414,7 @@ export default function App() {
           </NavigationContainer>
           {/* Home and menu at the bottom of every signed-in phone screen. */}
           <MobileTabBar navigationRef={navigationRef} />
+          <RouteRoleGuard />
           </View>
           </TabBarProvider>
           </LegalConsentGate>
@@ -422,6 +424,48 @@ export default function App() {
       </View>
     </SafeAreaProvider>
   );
+}
+
+/**
+ * Keeps every account on its own screens. On web the browser's history
+ * outlives a sign-out, so after an admin signs out and a driver signs in on
+ * the same browser, "back" (or a typed / bookmarked URL) would open the
+ * admin's screens with the driver's data. Whenever the current screen is not
+ * one the signed-in role may open, go to that role's home; signed out, to
+ * the login page. `resetRoot` replaces the current history entry.
+ */
+function RouteRoleGuard() {
+  const { profile, loading, error } = useCompany();
+  useEffect(() => {
+    const check = () => {
+      if (!navigationRef.isReady()) return;
+      const route = navigationRef.getCurrentRoute();
+      if (!route || isPublicRoute(route.name)) return;
+      if (profile) {
+        if (!canOpenRoute(profile.role, route.name)) {
+          navigationRef.resetRoot({ index: 0, routes: [{ name: ROLE_ROUTES[profile.role] }] });
+        }
+        return;
+      }
+      // Still loading (e.g. mid account switch) or a failed load: wait.
+      if (loading || error) return;
+      void supabase.auth.getSession().then(({ data }) => {
+        if (data.session || !navigationRef.isReady()) return;
+        const current = navigationRef.getCurrentRoute();
+        if (current && !isPublicRoute(current.name)) {
+          navigationRef.resetRoot({ index: 0, routes: [{ name: 'Login' }] });
+        }
+      });
+    };
+    check();
+    const offReady = navigationRef.addListener('ready', check);
+    const offState = navigationRef.addListener('state', check);
+    return () => {
+      offReady();
+      offState();
+    };
+  }, [profile, loading, error]);
+  return null;
 }
 
 /**
