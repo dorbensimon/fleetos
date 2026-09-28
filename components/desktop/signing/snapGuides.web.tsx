@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { Guide } from './snapMath';
+import { t } from '../../../lib/i18n';
 
 /**
  * Canva-style smart guides for the document builders: while a field is
@@ -80,7 +81,7 @@ export function GuidesToggle({ on, onToggle }: { on: boolean; onToggle: () => vo
   return (
     <button type="button" className="sd-guides-toggle sd-sb" aria-pressed={on} onClick={onToggle} style={{ marginTop: 18 }}>
       <Ionicons name="grid-outline" size={18} color="currentColor" />
-      {on ? 'הסתרת קווי העזר' : 'הצגת קווי עזר'}
+      {on ? t('field.hideGuides') : t('field.showGuides')}
     </button>
   );
 }

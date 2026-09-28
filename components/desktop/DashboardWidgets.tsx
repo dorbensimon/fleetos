@@ -26,6 +26,7 @@ import { DESKTOP_COLORS, webOnly } from './desktopTheme';
 import { DesktopModal } from './DesktopModal';
 import { DepartmentsDesktopView } from './DepartmentsDesktopView';
 import { ReportsDesktopView } from './ReportsDesktopView';
+import { t } from '../../lib/i18n';
 
 /**
  * Dashboard header actions ("דוחות", "מחלקות") shown next to the greeting on
@@ -72,7 +73,7 @@ export function DepartmentsQuickAction() {
       setNewName('');
       await load();
     } catch (err: any) {
-      showAlert('הוספת מחלקה נכשלה', String(err?.message ?? 'נסה שוב'));
+      showAlert(t('departments.addFailed'), String(err?.message ?? t('common.tryAgain')));
     } finally {
       setAdding(false);
     }
@@ -85,7 +86,7 @@ export function DepartmentsQuickAction() {
       setEditingId(null);
       await load();
     } catch (err: any) {
-      showAlert('שינוי השם נכשל', String(err?.message ?? 'נסה שוב'));
+      showAlert(t('departments.renameFailed'), String(err?.message ?? t('common.tryAgain')));
     }
   };
 
@@ -94,11 +95,11 @@ export function DepartmentsQuickAction() {
     let usage = { vehicles: 0, drivers: 0 };
     try { usage = await countDepartmentUsage(dept.id); } catch { /* keep the warning generic */ }
     const message = departmentDeleteMessage(dept.name, usage);
-    showAlert('מחיקת מחלקה', message, [
-      { text: 'ביטול', style: 'cancel' },
+    showAlert(t('departments.deleteTitle'), message, [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'מחק', style: 'destructive', onPress: async () => {
-          try { await deleteDepartment(companyId, dept.id); await load(); } catch (err: any) { showAlert('מחיקה נכשלה', String(err?.message ?? 'נסה שוב')); }
+        text: t('common.delete'), style: 'destructive', onPress: async () => {
+          try { await deleteDepartment(companyId, dept.id); await load(); } catch (err: any) { showAlert(t('common.deleteFailed'), String(err?.message ?? t('common.tryAgain'))); }
         },
       },
     ]);
@@ -106,8 +107,8 @@ export function DepartmentsQuickAction() {
 
   return (
     <>
-      <HeaderAction icon="business-outline" label="מחלקות" onPress={openModal} />
-      <DesktopModal visible={open} title="מחלקות" onClose={() => setOpen(false)}>
+      <HeaderAction icon="business-outline" label={t('departments.title')} onPress={openModal} />
+      <DesktopModal visible={open} title={t('departments.title')} onClose={() => setOpen(false)}>
         {loading && departments.length === 0 ? (
           <View style={styles.state}><BrandLoader color={DESKTOP_COLORS.brand} /></View>
         ) : (
@@ -158,7 +159,7 @@ export function ReportsQuickAction() {
       ]);
       setDrivers(d); setVehicles(v); setCompliance(c); setAssignments(a); setLoaded(true);
     } catch (err: any) {
-      showAlert('טעינת נתוני הדוחות נכשלה', String(err?.message ?? 'נסה שוב'));
+      showAlert(t('reports.loadFailed'), String(err?.message ?? t('common.tryAgain')));
     } finally {
       setLoading(false);
     }
@@ -173,7 +174,7 @@ export function ReportsQuickAction() {
     if (!company) return;
     setExporting(category);
     try { await exportDriversReport(company, drivers, category); setKind(null); }
-    catch (err: any) { showAlert('ייצוא הדוח נכשל', String(err?.message ?? 'נסה שוב')); }
+    catch (err: any) { showAlert(t('reports.exportFailed'), String(err?.message ?? t('common.tryAgain'))); }
     finally { setExporting(null); }
   };
 
@@ -181,7 +182,7 @@ export function ReportsQuickAction() {
     if (!company) return;
     setExporting(category);
     try { await exportVehiclesReport(company, vehicles, compliance, assignments, category); setKind(null); }
-    catch (err: any) { showAlert('ייצוא הדוח נכשל', String(err?.message ?? 'נסה שוב')); }
+    catch (err: any) { showAlert(t('reports.exportFailed'), String(err?.message ?? t('common.tryAgain'))); }
     finally { setExporting(null); }
   };
 
@@ -189,7 +190,7 @@ export function ReportsQuickAction() {
     if (!company) return;
     setExporting(category);
     try { await exportMeetingsReport(company, drivers, category); setKind(null); }
-    catch (err: any) { showAlert('ייצוא הדוח נכשל', String(err?.message ?? 'נסה שוב')); }
+    catch (err: any) { showAlert(t('reports.exportFailed'), String(err?.message ?? t('common.tryAgain'))); }
     finally { setExporting(null); }
   };
 
@@ -197,14 +198,14 @@ export function ReportsQuickAction() {
     if (!company) return;
     setExporting(category);
     try { await exportInspectionsReport(company, category); setKind(null); }
-    catch (err: any) { showAlert('ייצוא הדוח נכשל', String(err?.message ?? 'נסה שוב')); }
+    catch (err: any) { showAlert(t('reports.exportFailed'), String(err?.message ?? t('common.tryAgain'))); }
     finally { setExporting(null); }
   };
 
   return (
     <>
-      <HeaderAction icon="document-text-outline" label="דוחות" onPress={openModal} />
-      <DesktopModal visible={open} title="ייצוא דוחות" onClose={() => setOpen(false)}>
+      <HeaderAction icon="document-text-outline" label={t('reports.title')} onPress={openModal} />
+      <DesktopModal visible={open} title={t('reports.export')} onClose={() => setOpen(false)}>
         {loading && !loaded ? (
           <View style={styles.state}><BrandLoader color={DESKTOP_COLORS.brand} /></View>
         ) : (

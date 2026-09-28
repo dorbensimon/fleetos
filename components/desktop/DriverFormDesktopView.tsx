@@ -9,6 +9,7 @@ import { DESKTOP_COLORS, webOnly } from './desktopTheme';
 import { ChoiceTiles, CreateDock, FormCell, FormPanel, FormSection, GhostBar, LiveCard, RecordFormPage, RecordHero, useSectionJump, type FormStep } from './form/RecordFormKit';
 import { ConsentCheck } from '../legal/ConsentCheck';
 import { DRIVER_DATA_NOTICE } from '../../lib/legal/documents';
+import { t } from '../../lib/i18n';
 
 export interface FormState {
   full_name: string;
@@ -29,13 +30,13 @@ export interface FormState {
 type StepKey = 'personal' | 'license' | 'access';
 
 const FIELD_META: Record<DriverFormField, { label: string; step: StepKey }> = {
-  full_name: { label: 'שם מלא', step: 'personal' },
-  phone: { label: 'טלפון', step: 'personal' },
-  national_id: { label: 'תעודת זהות', step: 'personal' },
-  license_classes: { label: 'דרגת רישיון', step: 'license' },
-  license_expiry: { label: 'תוקף רישיון', step: 'license' },
-  email: { label: 'מייל', step: 'access' },
-  password: { label: 'סיסמה', step: 'access' },
+  full_name: { get label() { return t('common.fullName'); }, step: 'personal' },
+  phone: { get label() { return t('common.phone'); }, step: 'personal' },
+  national_id: { get label() { return t('field.nationalId'); }, step: 'personal' },
+  license_classes: { get label() { return t('driver.licenseClass'); }, step: 'license' },
+  license_expiry: { get label() { return t('driver.licenseExpiry'); }, step: 'license' },
+  email: { get label() { return t('common.emailShort'); }, step: 'access' },
+  password: { get label() { return t('common.password'); }, step: 'access' },
 };
 
 /** Up to this many license classes show as tiles; the full legacy list stays a dropdown. */
@@ -84,13 +85,13 @@ export function DriverFormDesktopView({
     const fields = required.filter((f) => FIELD_META[f].step === key);
     return { key, label, total: fields.length, filled: fields.filter(isFilled).length };
   };
-  const steps = [stepOf('personal', 'פרטים אישיים'), stepOf('license', 'רישיון נהיגה'), stepOf('access', 'גישה לאפליקציה')];
+  const steps = [stepOf('personal', t('driver.personalDetails')), stepOf('license', t('driver.drivingLicense')), stepOf('access', t('driver.appAccess'))];
   const stepDone = (i: number) => steps[i].total > 0 && steps[i].filled === steps[i].total;
 
   const missing = required
     .filter((f) => !isFilled(f))
     .map((f) => ({ label: FIELD_META[f].label, onPress: () => jump(FIELD_META[f].step) }));
-  if (!isEdit && !form.dataNotice) missing.push({ label: 'אישור יידוע הנהג', onPress: () => jump('access') });
+  if (!isEdit && !form.dataNotice) missing.push({ label: t('driver.notifyConfirm'), onPress: () => jump('access') });
 
   const secondOptions = licenseOptions.filter((o) => o.value !== form.license_classes);
 
@@ -113,30 +114,30 @@ export function DriverFormDesktopView({
     >
       <RecordHero
         icon="person"
-        eyebrow={isEdit ? 'עריכת נהג' : 'נהג חדש'}
-        title={isEdit ? form.full_name.trim() || 'פרטי הנהג' : 'בואו נוסיף נהג לצי'}
+        eyebrow={isEdit ? t('driver.edit') : t('driver.new')}
+        title={isEdit ? form.full_name.trim() || t('driver.details') : t('driver.addToFleet')}
         subtitle={
           isEdit
-            ? 'כל שינוי כאן נשמר בתיק הנהג ומתעדכן גם באפליקציה שלו.'
-            : 'שלושה שלבים קצרים. כרטיס הנהג משמאל מתמלא תוך כדי — ובסוף הנהג מקבל גישה לאפליקציה.'
+            ? t('driver.editHint')
+            : t('driver.addHint')
         }
         steps={steps}
         onJump={jump}
         card={<DriverCard form={form} />}
       />
 
-      <FormSection index={0} title="פרטים אישיים" hint="מי הנהג ואיך משיגים אותו." done={stepDone(0)} onLayout={track('personal')}>
+      <FormSection index={0} title={t('driver.personalDetails')} hint={t('driver.whoAndHow')} done={stepDone(0)} onLayout={track('personal')}>
         <FormPanel>
-          <FormCell label="שם מלא" required={isRequired('full_name')} error={errors.full_name}>
+          <FormCell label={t('common.fullName')} required={isRequired('full_name')} error={errors.full_name}>
             <DesktopInput
               large
               value={form.full_name}
               onChangeText={(v) => set('full_name', v)}
-              placeholder="לדוגמה: דני לוי"
+              placeholder={t('driver.namePlaceholder')}
               hasError={!!errors.full_name}
             />
           </FormCell>
-          <FormCell label="טלפון נייד" required={isRequired('phone')} error={errors.phone}>
+          <FormCell label={t('common.mobilePhone')} required={isRequired('phone')} error={errors.phone}>
             <DesktopInput
               large
               value={formatPhone(form.phone)}
@@ -147,7 +148,7 @@ export function DriverFormDesktopView({
               hasError={!!errors.phone}
             />
           </FormCell>
-          <FormCell label="תעודת זהות" required={isRequired('national_id')} error={errors.national_id} hint="9 ספרות, כולל ספרת ביקורת">
+          <FormCell label={t('field.nationalId')} required={isRequired('national_id')} error={errors.national_id} hint={t('driver.nationalIdHint')}>
             <DesktopInput
               large
               value={form.national_id}
@@ -159,22 +160,22 @@ export function DriverFormDesktopView({
               hasError={!!errors.national_id}
             />
           </FormCell>
-          <FormCell label="מספר עובד">
+          <FormCell label={t('driver.employeeNumber')}>
             <DesktopInput
               large
               value={form.employee_number}
               onChangeText={(v) => set('employee_number', v)}
-              placeholder="לא חובה"
+              placeholder={t('common.optionalShort')}
               ltr
             />
           </FormCell>
-          <FormCell label="מחלקה">
+          <FormCell label={t('common.department')}>
             <DesktopSelect
               large
               value={form.department_id}
               onChange={(v) => set('department_id', v)}
               options={departments}
-              placeholder={departments.length ? 'בחירת מחלקה' : 'לא הוגדרו מחלקות'}
+              placeholder={departments.length ? t('common.chooseDepartment') : t('common.noDepartmentsDefined')}
               allowClear
             />
           </FormCell>
@@ -183,16 +184,16 @@ export function DriverFormDesktopView({
 
       <FormSection
         index={1}
-        title="רישיון נהיגה"
-        hint="הדרגה והתוקף. נזכיר לכם לפני שהרישיון פג."
+        title={t('driver.drivingLicense')}
+        hint={t('driver.licenseHint')}
         done={stepDone(1)}
         onLayout={track('license')}
       >
         <FormPanel>
-          <FormCell label="דרגת רישיון" required={isRequired('license_classes')} error={errors.license_classes}>
+          <FormCell label={t('driver.licenseClass')} required={isRequired('license_classes')} error={errors.license_classes}>
             {licenseOptions.length <= MAX_LICENSE_TILES ? (
               <ChoiceTiles
-                label="דרגת רישיון"
+                label={t('driver.licenseClass')}
                 value={form.license_classes || null}
                 options={licenseOptions}
                 hasError={!!errors.license_classes}
@@ -210,29 +211,29 @@ export function DriverFormDesktopView({
                   if (!value || value === form.license_classes_2) set('license_classes_2', '');
                 }}
                 options={licenseOptions}
-                placeholder="בחירת דרגת רישיון"
+                placeholder={t('driver.chooseLicenseClass')}
                 hasError={!!errors.license_classes}
               />
             )}
           </FormCell>
           {!!form.license_classes && (
-            <FormCell label="דרגה נוספת" hint="רק אם לנהג יש עוד דרגה ברישיון">
+            <FormCell label={t('driver.additionalClass')} hint={t('driver.additionalClassHint')}>
               <DesktopSelect
                 large
                 value={form.license_classes_2 || null}
                 onChange={(value) => set('license_classes_2', value ?? '')}
                 options={secondOptions}
-                placeholder="אין דרגה נוספת"
+                placeholder={t('driver.noAdditionalClass')}
                 allowClear
               />
             </FormCell>
           )}
-          <FormCell label="תוקף רישיון" required={isRequired('license_expiry')} error={errors.license_expiry}>
+          <FormCell label={t('driver.licenseExpiry')} required={isRequired('license_expiry')} error={errors.license_expiry}>
             <DesktopDateField
               large
               value={form.license_expiry || null}
               onChange={(iso) => set('license_expiry', iso ?? '')}
-              placeholder="בחירת תאריך"
+              placeholder={t('date.chooseDateAction')}
               hasError={!!errors.license_expiry}
               allowClear={false}
             />
@@ -242,19 +243,19 @@ export function DriverFormDesktopView({
 
       <FormSection
         index={2}
-        title="גישה לאפליקציה"
-        hint={isEdit ? 'המייל שאיתו הנהג נכנס לאפליקציה.' : 'עם המייל והסיסמה האלה הנהג נכנס לאפליקציה בטלפון.'}
+        title={t('driver.appAccess')}
+        hint={isEdit ? t('driver.appEmailHint') : t('driver.appCredentialsHint')}
         done={isEdit || stepDone(2)}
         onLayout={track('access')}
       >
         <FormPanel>
           {isEdit ? (
-            <FormCell label="מייל" hint="את המייל אי אפשר לשנות מכאן">
-              <DesktopInput large value={form.email || 'לא נמצא מייל'} editable={false} ltr />
+            <FormCell label={t('common.emailShort')} hint={t('driver.emailNotEditable')}>
+              <DesktopInput large value={form.email || t('driver.noEmailFound')} editable={false} ltr />
             </FormCell>
           ) : (
             <>
-              <FormCell label="מייל" required error={errors.email}>
+              <FormCell label={t('common.emailShort')} required error={errors.email}>
                 <DesktopInput
                   large
                   value={form.email}
@@ -265,13 +266,13 @@ export function DriverFormDesktopView({
                   hasError={!!errors.email}
                 />
               </FormCell>
-              <FormCell label="סיסמה ראשונה" required error={errors.password} hint="הנהג יתבקש להחליף אותה בכניסה הראשונה">
+              <FormCell label={t('driver.firstPassword')} required error={errors.password} hint={t('driver.firstPasswordHint')}>
                 <View style={styles.passwordRow}>
                   <DesktopInput
                     large
                     value={form.password}
                     onChangeText={(v) => set('password', v)}
-                    placeholder="לפחות 4 ספרות"
+                    placeholder={t('validation.min4DigitsPlaceholder')}
                     keyboardType="number-pad"
                     secureTextEntry={!form.showPassword}
                     ltr
@@ -282,11 +283,11 @@ export function DriverFormDesktopView({
                     style={styles.passwordToggle}
                     hoverStyle={styles.passwordToggleHover}
                     onPress={() => set('showPassword', !form.showPassword)}
-                    accessibilityLabel={form.showPassword ? 'הסתרת הסיסמה' : 'הצגת הסיסמה'}
+                    accessibilityLabel={form.showPassword ? t('password.hideThe') : t('password.showThe')}
                   >
                     <Ionicons name={form.showPassword ? 'eye-off-outline' : 'eye-outline'} size={19} color={DESKTOP_COLORS.brand} />
                     <DText weight="semiBold" style={styles.passwordToggleText}>
-                      {form.showPassword ? 'הסתרה' : 'הצגה'}
+                      {form.showPassword ? t('common.hide') : t('common.show')}
                     </DText>
                   </HoverPressable>
                 </View>
@@ -312,12 +313,12 @@ function DriverCard({ form }: { form: FormState }) {
   const classes = [form.license_classes, form.license_classes_2].filter(Boolean);
 
   return (
-    <LiveCard label={name ? `כרטיס הנהג ${name}` : 'כרטיס נהג חדש'}>
+    <LiveCard label={name ? t('driver.cardOf', { name }) : t('driver.newCard')}>
       <View style={styles.card}>
         <View style={styles.cardTop}>
           <View style={styles.cardBrand}>
             <View style={styles.cardBrandDot} />
-            <DText weight="bold" style={styles.cardBrandText}>כרטיס נהג</DText>
+            <DText weight="bold" style={styles.cardBrandText}>{t('driver.card')}</DText>
           </View>
           <View style={styles.cardClasses}>
             {classes.length ? (
@@ -362,7 +363,7 @@ function DriverCard({ form }: { form: FormState }) {
         </View>
 
         <View style={styles.cardFoot}>
-          <DText style={styles.cardFootLabel}>תוקף רישיון</DText>
+          <DText style={styles.cardFootLabel}>{t('driver.licenseExpiry')}</DText>
           {form.license_expiry ? (
             <DLtrText weight="bold" style={[styles.cardFootValue, styles.tabular]}>{formatDate(form.license_expiry)}</DLtrText>
           ) : (

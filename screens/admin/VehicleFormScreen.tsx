@@ -20,6 +20,7 @@ import { lookupVehicleRegistry, VehicleRegistryDetails } from '../../lib/vehicle
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { VehicleFormDesktopView, type FormState } from '../../components/desktop/VehicleFormDesktopView';
+import { t } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleForm'>;
 const EMPTY: FormState = {
@@ -44,36 +45,36 @@ const EMPTY: FormState = {
 const REQUIRED_FIELDS = ['plate_number', 'vehicle_type', 'status'] as const;
 
 const VEHICLE_TYPE_OPTIONS = [
-  { value: 'car', label: 'פרטי', description: 'רכב נוסעים' },
-  { value: 'minibus', label: 'מסחרי', description: 'עד 3.5 טון' },
-  { value: 'truck', label: 'משא', description: 'מעל 3.5 טון' },
-  { value: 'bus', label: 'אוטובוס', description: 'הסעת נוסעים' },
+  { value: 'car', get label() { return t('vehicle.type.car'); }, get description() { return t('vehicle.typeDesc.car'); } },
+  { value: 'minibus', get label() { return t('vehicle.typeOpt.commercial'); }, get description() { return t('vehicle.typeDesc.upTo35'); } },
+  { value: 'truck', get label() { return t('vehicle.typeOpt.cargo'); }, get description() { return t('vehicle.typeDesc.over35'); } },
+  { value: 'bus', get label() { return t('vehicle.type.bus'); }, get description() { return t('vehicle.typeDesc.passengers'); } },
 ] as const satisfies readonly { value: VehicleType; label: string; description: string }[];
 
 const STATUS_OPTIONS = [
-  { value: 'active', label: 'פעיל', color: COLORS.okText, bg: 'rgba(48,164,108,.12)' },
-  { value: 'maintenance', label: 'בטיפול', color: COLORS.warnText, bg: 'rgba(240,166,30,.14)' },
-  { value: 'disabled', label: 'מושבת', color: '#6B7A88', bg: 'rgba(107,122,136,.14)' },
+  { value: 'active', get label() { return t('vehicle.status.active'); }, color: COLORS.okText, bg: 'rgba(48,164,108,.12)' },
+  { value: 'maintenance', get label() { return t('vehicle.status.maintenance'); }, color: COLORS.warnText, bg: 'rgba(240,166,30,.14)' },
+  { value: 'disabled', get label() { return t('vehicle.status.disabled'); }, color: '#6B7A88', bg: 'rgba(107,122,136,.14)' },
 ] as const satisfies readonly { value: VehicleStatus; label: string; color: string; bg: string }[];
 
-const DEAL_TYPE_OPTIONS = Object.entries(ACQUISITION_TYPE_LABELS).map(([value, label]) => ({
+const DEAL_TYPE_OPTIONS = () => Object.entries(ACQUISITION_TYPE_LABELS).map(([value, label]) => ({
   value: value as AcquisitionType,
   label,
 }));
 
-const MONTH_OPTIONS = [
-  'ינואר',
-  'פברואר',
-  'מרץ',
-  'אפריל',
-  'מאי',
-  'יוני',
-  'יולי',
-  'אוגוסט',
-  'ספטמבר',
-  'אוקטובר',
-  'נובמבר',
-  'דצמבר',
+const MONTH_OPTIONS = () => [
+  t('date.months.1'),
+  t('date.months.2'),
+  t('date.months.3'),
+  t('date.months.4'),
+  t('date.months.5'),
+  t('date.months.6'),
+  t('date.months.7'),
+  t('date.months.8'),
+  t('date.months.9'),
+  t('date.months.10'),
+  t('date.months.11'),
+  t('date.months.12'),
 ].map((label, index) => ({ value: String(index + 1).padStart(2, '0'), label }));
 
 function yearOptions(): { value: string; label: string }[] {
@@ -101,32 +102,32 @@ function validateVehicleForm(form: FormState): Record<string, string> {
   const errors: Record<string, string> = {};
   const plateDigits = form.plate_number.replace(/\D/g, '');
 
-  if (!plateDigits) errors.plate_number = 'שדה חובה';
-  else if (!/^\d{7,8}$/.test(plateDigits)) errors.plate_number = 'מספר רישוי חייב להכיל 7-8 ספרות';
+  if (!plateDigits) errors.plate_number = t('validation.required');
+  else if (!/^\d{7,8}$/.test(plateDigits)) errors.plate_number = t('vehicle.plateInvalidDash');
 
-  if (!form.vehicle_type) errors.vehicle_type = 'שדה חובה';
-  if (!form.status) errors.status = 'שדה חובה';
+  if (!form.vehicle_type) errors.vehicle_type = t('validation.required');
+  if (!form.status) errors.status = t('validation.required');
 
   const vin = form.vin.trim().toUpperCase();
   if (vin && !/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) {
-    errors.vin = 'VIN חייב להכיל 17 תווים ללא I/O/Q';
+    errors.vin = t('vehicle.vinInvalidShort');
   }
 
   const productionYear = num(form.production_year);
   const currentYear = new Date().getFullYear();
   if (form.production_year.trim() && (!productionYear || productionYear < 1980 || productionYear > currentYear)) {
-    errors.production_year = 'שנת ייצור לא יכולה להיות עתידית';
+    errors.production_year = t('vehicle.yearNotFuture');
   }
 
   const productionMonth = num(form.production_month);
   if (form.production_month.trim() && (!productionMonth || productionMonth < 1 || productionMonth > 12)) {
-    errors.production_month = 'חודש ייצור לא תקין';
+    errors.production_month = t('vehicle.monthInvalid');
   }
 
   if (form.road_registration_date && productionYear) {
     const roadDate = parseDateValue(form.road_registration_date);
     if (!Number.isNaN(roadDate.getTime()) && roadDate.getFullYear() < productionYear) {
-      errors.road_registration_date = 'עליה לכביש לא יכולה להיות לפני שנת הייצור';
+      errors.road_registration_date = t('vehicle.roadBeforeYear');
     }
   }
 
@@ -162,7 +163,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
 
     const [deps, drvs] = await Promise.all([listDepartments(companyId), listDrivers(companyId)]);
     setDepartments(deps.map((department) => ({ value: department.id, label: department.name })));
-    setDrivers(drvs.map((driver) => ({ value: driver.id, label: driver.full_name ?? 'ללא שם' })));
+    setDrivers(drvs.map((driver) => ({ value: driver.id, label: driver.full_name ?? t('common.unnamed') })));
 
     if (vehicleId) {
       const [vehicle, assignments, compliance] = await Promise.all([
@@ -227,13 +228,13 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
       production_year: details.productionYear ? String(details.productionYear) : current.production_year,
       vehicle_license_expiry: details.licenseExpiry ?? current.vehicle_license_expiry,
     }));
-    setLookupMessage('פרטי הרכב מולאו לפי מאגר משרד התחבורה. בדוק ואשר לפני השמירה.');
+    setLookupMessage(t('vehicle.filledFromMot'));
   };
 
   const lookupVehicle = async () => {
     const plate = form.plate_number.replace(/\D/g, '');
     if (!/^\d{7,8}$/.test(plate)) {
-      setErrors((current) => ({ ...current, plate_number: 'מספר הרישוי חייב להכיל 7-8 ספרות' }));
+      setErrors((current) => ({ ...current, plate_number: t('vehicle.plateMust78') }));
       return;
     }
 
@@ -242,20 +243,20 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     try {
       const details = await lookupVehicleRegistry(plate);
       if (!details) {
-        setLookupMessage('לא נמצא רכב עם מספר הרישוי הזה. אפשר למלא את הפרטים ידנית.');
+        setLookupMessage(t('vehicle.notFoundManual'));
         return;
       }
 
       showAlert(
-        'נמצאו פרטי רכב',
-        'נמלא את היצרן, הדגם, השנה, הצבע ותוקף רישיון הרכב. תמיד אפשר לערוך את הפרטים לפני השמירה.',
+        t('vehicle.detailsFound'),
+        t('vehicle.detailsFoundBody'),
         [
-          { text: 'ביטול', style: 'cancel' },
-          { text: 'מלא פרטים', onPress: () => applyRegistryDetails(details) },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('vehicle.fillDetails'), onPress: () => applyRegistryDetails(details) },
         ]
       );
     } catch (err: any) {
-      setLookupMessage(err?.message || 'לא ניתן לחפש את פרטי הרכב כרגע. אפשר לנסות שוב או למלא ידנית.');
+      setLookupMessage(err?.message || t('vehicle.lookupUnavailable'));
     } finally {
       setLookupLoading(false);
     }
@@ -276,7 +277,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         (vehicle) => vehicle.plate_number === plateDigits && vehicle.id !== vehicleId
       );
       if (duplicate) {
-        setErrors((current) => ({ ...current, plate_number: 'קיים כבר רכב עם מספר הרישוי הזה בחברה' }));
+        setErrors((current) => ({ ...current, plate_number: t('vehicle.plateExists') }));
         return;
       }
 
@@ -323,27 +324,27 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             expiryDate: form.vehicle_license_expiry,
           });
         } catch {
-          showToast('הרכב נשמר, אך תוקף הרישיון לא נשמר. אפשר לעדכן אותו בתיק הרכב.');
+          showToast(t('vehicle.savedExpiryNot'));
           navigation.goBack();
           return;
         }
       }
 
-      showToast(isEdit ? 'השינויים נשמרו' : 'הרכב נוצר בהצלחה');
+      showToast(isEdit ? t('common.changesSaved') : t('vehicle.created'));
       navigation.goBack();
     } catch (err: any) {
       const message = String(err?.message ?? '');
       if (isStaleDepartmentError(message)) {
         set('department_id', null);
         void refreshDepartments().catch(() => {});
-        showAlert('שמירה נכשלה', 'המחלקה שנבחרה נמחקה בינתיים. בחר מחלקה אחרת ונסה שוב.');
+        showAlert(t('common.saveFailed'), t('common.departmentDeleted'));
         return;
       }
       showAlert(
-        'שמירה נכשלה',
+        t('common.saveFailed'),
         message.includes('duplicate') || message.includes('unique')
-          ? 'קיים כבר רכב עם מספר הרישוי הזה בחברה'
-          : message || 'נסה שוב'
+          ? t('vehicle.plateExists')
+          : message || t('common.tryAgain')
       );
     } finally {
       setSaving(false);
@@ -353,13 +354,13 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   if (loading) {
     if (isDesktop) {
       return (
-        <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'רכבים', vehicleId ? 'עריכת רכב' : 'רכב חדש']}>
+        <DesktopShell active="AdminHome" breadcrumbs={[t('nav.management'), t('common.vehicles'), vehicleId ? t('vehicle.edit') : t('vehicle.new')]}>
           <LoadingState />
         </DesktopShell>
       );
     }
     return (
-      <DriverPage insetTop={insets.top} insetBottom={insets.bottom} hero={<HeroTitle title={isEdit ? 'עריכת רכב' : 'רכב חדש'} onBack={() => navigation.goBack()} />}>
+      <DriverPage insetTop={insets.top} insetBottom={insets.bottom} hero={<HeroTitle title={isEdit ? t('vehicle.edit') : t('vehicle.new')} onBack={() => navigation.goBack()} />}>
         <LoadingPanel />
       </DriverPage>
     );
@@ -369,23 +370,23 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   const progress = filledCount / REQUIRED_FIELDS.length;
   const remainingCount = REQUIRED_FIELDS.length - filledCount;
   const canSubmit = filledCount === REQUIRED_FIELDS.length;
-  const screenTitle = isEdit ? 'עריכת רכב' : 'רכב חדש';
-  const ctaLabel = isEdit ? 'שמור שינויים' : 'צור רכב';
+  const screenTitle = isEdit ? t('vehicle.edit') : t('vehicle.new');
+  const ctaLabel = isEdit ? t('common.saveChanges') : t('vehicle.create');
   const selectedType = VEHICLE_TYPE_OPTIONS.find((option) => option.value === form.vehicle_type);
   const selectedStatus =
     STATUS_OPTIONS.find((option) => option.value === form.status) ??
-    { value: form.status, label: VEHICLE_STATUS_LABELS[form.status] ?? 'בארכיון', color: '#6B7A88', bg: 'rgba(107,122,136,.14)' };
+    { value: form.status, label: VEHICLE_STATUS_LABELS[form.status] ?? t('common.archived'), color: '#6B7A88', bg: 'rgba(107,122,136,.14)' };
   const heroTitle =
     [form.manufacturer, form.model].filter(Boolean).join(' ').trim() ||
-    (form.plate_number ? formatPlate(form.plate_number) : 'רכב ללא זיהוי');
+    (form.plate_number ? formatPlate(form.plate_number) : t('vehicle.unidentified'));
 
   const remainingText = canSubmit
-    ? (isEdit ? 'השינויים יישמרו בתיק הרכב' : 'אחרי היצירה תוכל לשייך נהגים ומסמכים')
-    : remainingCount === 1 ? 'נותר שדה חובה אחד' : `נותרו ${remainingCount} שדות חובה`;
+    ? (isEdit ? t('vehicle.changesSavedToFile') : t('vehicle.afterCreateAssign'))
+    : remainingCount === 1 ? t('form.oneRequiredLeft') : t('form.requiredFieldsLeft', { remainingCount });
 
   if (isDesktop) {
     return (
-      <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'רכבים', screenTitle]}>
+      <DesktopShell active="AdminHome" breadcrumbs={[t('nav.management'), t('common.vehicles'), screenTitle]}>
         <VehicleFormDesktopView
           isEdit={isEdit}
           vehicleId={vehicleId}
@@ -395,8 +396,8 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           departments={departments}
           vehicleTypeOptions={VEHICLE_TYPE_OPTIONS as unknown as { value: VehicleType; label: string; description: string }[]}
           statusOptions={STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-          dealTypeOptions={DEAL_TYPE_OPTIONS}
-          monthOptions={MONTH_OPTIONS}
+          dealTypeOptions={DEAL_TYPE_OPTIONS()}
+          monthOptions={MONTH_OPTIONS()}
           yearOptions={years}
           drivers={drivers}
           vehicleDrivers={vehicleDrivers}
@@ -426,7 +427,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             <Plate number={form.plate_number ? formatPlate(form.plate_number) : '00-000-00'} />
             <View style={styles.glassChip}>
               <DKText variant="micro" color={DK.onNight}>
-                {selectedType?.label ?? 'סוג לא נבחר'}
+                {selectedType?.label ?? t('vehicle.typeNotChosen')}
               </DKText>
             </View>
             <View style={styles.glassChip}>
@@ -436,7 +437,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
               </DKText>
             </View>
           </View>
-          <View style={styles.progress} accessible accessibilityLabel={`${filledCount} מתוך ${REQUIRED_FIELDS.length} שדות חובה מולאו`}>
+          <View style={styles.progress} accessible accessibilityLabel={t('form.requiredFilled', { filledCount, length: REQUIRED_FIELDS.length })}>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${Math.max(4, progress * 100)}%` }]} />
             </View>
@@ -448,7 +449,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
       }
       footer={
         <View style={styles.footer}>
-          <PrimaryAction label={canSubmit ? ctaLabel : 'השלמת שדות החובה'} icon={isEdit ? 'checkmark' : 'add'} onPress={() => void save()} loading={saving} disabled={!canSubmit} />
+          <PrimaryAction label={canSubmit ? ctaLabel : t('form.completeRequired')} icon={isEdit ? 'checkmark' : 'add'} onPress={() => void save()} loading={saving} disabled={!canSubmit} />
           <DKText variant="caption" color={canSubmit ? STATUS.ok.fg : DK.muted} style={styles.center}>
             {remainingText}
           </DKText>
@@ -459,7 +460,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         <KitSection>
           <EditField
             first
-            label="מספר רישוי"
+            label={t('vehicle.plateNumber')}
             required
             value={formatPlate(form.plate_number)}
             onChangeText={(value) => set('plate_number', value.replace(/\D/g, '').slice(0, 8))}
@@ -472,8 +473,8 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           <ActionRow
             first={false}
             icon="cloud-download-outline"
-            label={lookupLoading ? 'מחפש במאגר…' : 'מילוי אוטומטי לפי מספר הרישוי'}
-            hint="יצרן, דגם, שנה, צבע ותוקף הרישוי ממאגר משרד התחבורה"
+            label={lookupLoading ? t('vehicle.searchingDb') : t('vehicle.autofillByPlate')}
+            hint={t('vehicle.autofillByPlateHint')}
             onPress={() => void lookupVehicle()}
             disabled={lookupLoading}
           />
@@ -482,7 +483,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
       {!!lookupMessage && <Banner tone="info">{lookupMessage}</Banner>}
 
       <Reveal index={1}>
-        <KitSection title="סוג הרכב">
+        <KitSection title={t('vehicle.typeTitle')}>
           <View style={styles.types} accessibilityRole="radiogroup">
             {VEHICLE_TYPE_OPTIONS.map((option) => {
               const active = form.vehicle_type === option.value;
@@ -510,36 +511,36 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
       </Reveal>
 
       <Reveal index={2}>
-        <KitSection title="פרטי הרכב">
-          <EditField first label="יצרן" value={form.manufacturer} onChangeText={(value) => set('manufacturer', value)} placeholder="לא חובה" />
-          <EditField label="דגם" value={form.model} onChangeText={(value) => set('model', value)} placeholder="לא חובה" />
-          <EditField label="צבע" value={form.color} onChangeText={(value) => set('color', value)} placeholder="לא חובה" />
+        <KitSection title={t('vehicle.details')}>
+          <EditField first label={t('vehicle.manufacturer')} value={form.manufacturer} onChangeText={(value) => set('manufacturer', value)} placeholder={t('common.optionalShort')} />
+          <EditField label={t('vehicle.model')} value={form.model} onChangeText={(value) => set('model', value)} placeholder={t('common.optionalShort')} />
+          <EditField label={t('vehicle.color')} value={form.color} onChangeText={(value) => set('color', value)} placeholder={t('common.optionalShort')} />
           <EditField
-            label="שנת ייצור"
+            label={t('vehicle.productionYear')}
             error={errors.production_year || errors.production_month}
             editor={
               <View style={styles.pair}>
                 <View style={styles.flex}>
-                  <Select value={form.production_month || null} onChange={(value) => set('production_month', value ?? '')} options={MONTH_OPTIONS} placeholder="חודש" allowClear hasError={!!errors.production_month} />
+                  <Select value={form.production_month || null} onChange={(value) => set('production_month', value ?? '')} options={MONTH_OPTIONS()} placeholder={t('date.month')} allowClear hasError={!!errors.production_month} />
                 </View>
                 <View style={styles.flex}>
-                  <Select value={form.production_year || null} onChange={(value) => set('production_year', value ?? '')} options={years} placeholder="שנה" allowClear hasError={!!errors.production_year} />
+                  <Select value={form.production_year || null} onChange={(value) => set('production_year', value ?? '')} options={years} placeholder={t('date.year')} allowClear hasError={!!errors.production_year} />
                 </View>
               </View>
             }
           />
-          <EditField label="עלייה לכביש" error={errors.road_registration_date} editor={<DateField value={form.road_registration_date || null} onChange={(value) => set('road_registration_date', value ?? '')} placeholder="בחירת תאריך" hasError={!!errors.road_registration_date} />} />
-          <EditField label="תוקף רישיון הרכב" editor={<DateField value={form.vehicle_license_expiry || null} onChange={(value) => set('vehicle_license_expiry', value ?? '')} placeholder="בחירת תאריך" />} hint="תזכורת תישלח לפני שהתוקף פג" />
-          <EditField label="קילומטראז׳ נוכחי" value={formatKm(form.odometer)} onChangeText={(value) => set('odometer', value.replace(/\D/g, ''))} placeholder="לא חובה" keyboardType="number-pad" ltr />
+          <EditField label={t('vehicle.onRoadDate')} error={errors.road_registration_date} editor={<DateField value={form.road_registration_date || null} onChange={(value) => set('road_registration_date', value ?? '')} placeholder={t('date.chooseDateAction')} hasError={!!errors.road_registration_date} />} />
+          <EditField label={t('vehicle.licenseExpiryFull')} editor={<DateField value={form.vehicle_license_expiry || null} onChange={(value) => set('vehicle_license_expiry', value ?? '')} placeholder={t('date.chooseDateAction')} />} hint={t('vehicle.reminderBeforeExpiry')} />
+          <EditField label={t('vehicle.currentMileage')} value={formatKm(form.odometer)} onChangeText={(value) => set('odometer', value.replace(/\D/g, ''))} placeholder={t('common.optionalShort')} keyboardType="number-pad" ltr />
         </KitSection>
       </Reveal>
 
       <Reveal index={3}>
-        <KitSection title="זיהוי וארגון">
-          <EditField first label="מספר שלדה (VIN)" value={form.vin} onChangeText={(value) => set('vin', value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17))} error={errors.vin} placeholder="17 תווים" ltr />
-          <EditField label="קוד פנימי" value={form.internal_code} onChangeText={(value) => set('internal_code', value)} placeholder="לא חובה" ltr />
+        <KitSection title={t('vehicle.idAndOrganization')}>
+          <EditField first label={t('vehicle.vinFull')} value={form.vin} onChangeText={(value) => set('vin', value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17))} error={errors.vin} placeholder={t('vehicle.17chars')} ltr />
+          <EditField label={t('vehicle.internalCode')} value={form.internal_code} onChangeText={(value) => set('internal_code', value)} placeholder={t('common.optionalShort')} ltr />
           <EditField
-            label="סטטוס"
+            label={t('common.status')}
             required
             error={errors.status}
             editor={
@@ -550,20 +551,20 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
               />
             }
           />
-          <EditField label="מחלקה" editor={<Select value={form.department_id} onChange={(value) => set('department_id', value)} options={departments} placeholder={departments.length ? 'בחירת מחלקה' : 'לא הוגדרו מחלקות'} allowClear />} />
-          <EditField label="שימוש ברכב" value={form.usage_type} onChangeText={(value) => set('usage_type', value)} placeholder="לא חובה" />
-          <EditField label="סוג עסקה" editor={<Select<AcquisitionType> value={form.acquisition_type} onChange={(value) => set('acquisition_type', value)} options={DEAL_TYPE_OPTIONS} placeholder="בחירת סוג עסקה" allowClear />} />
+          <EditField label={t('common.department')} editor={<Select value={form.department_id} onChange={(value) => set('department_id', value)} options={departments} placeholder={departments.length ? t('common.chooseDepartment') : t('common.noDepartmentsDefined')} allowClear />} />
+          <EditField label={t('vehicle.usage')} value={form.usage_type} onChangeText={(value) => set('usage_type', value)} placeholder={t('common.optionalShort')} />
+          <EditField label={t('vehicle.dealType')} editor={<Select<AcquisitionType> value={form.acquisition_type} onChange={(value) => set('acquisition_type', value)} options={DEAL_TYPE_OPTIONS()} placeholder={t('vehicle.chooseDealType')} allowClear />} />
         </KitSection>
       </Reveal>
 
       <Reveal index={4}>
         {isEdit ? (
-          <KitSection title="נהגים משויכים" surfaceStyle={styles.pad}>
+          <KitSection title={t('vehicle.assignedDrivers')} surfaceStyle={styles.pad}>
             <VehicleDriversEditor vehicleId={vehicleId!} assignments={vehicleDrivers} driverOptions={drivers} onChanged={reloadVehicleDrivers} />
           </KitSection>
         ) : (
-          <Banner tone="info" icon="people" title="נהגים משויכים">
-            אחרי שמירת הרכב אפשר לשייך אליו נהגים מתוך תיק הרכב.
+          <Banner tone="info" icon="people" title={t('vehicle.assignedDrivers')}>
+            {t('vehicle.assignAfterSave')}
           </Banner>
         )}
       </Reveal>

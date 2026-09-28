@@ -17,6 +17,7 @@ import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { ReportsDesktopView } from '../../components/desktop/ReportsDesktopView';
+import { t } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reports'>;
 export default function ReportsScreen({ navigation }: Props) {
@@ -25,16 +26,16 @@ export default function ReportsScreen({ navigation }: Props) {
   const [drivers, setDrivers] = useState<DriverRow[]>([]); const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [compliance, setCompliance] = useState<Map<string, ComplianceItem[]>>(new Map()); const [assignments, setAssignments] = useState<Map<string, VehicleDriverWithProfile[]>>(new Map());
   const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [kind, setKind] = useState<'drivers' | 'vehicles' | 'meetings' | 'inspections' | null>(null); const [exporting, setExporting] = useState<string | null>(null);
-  const load = useCallback(async () => { if (!companyId) { setError('לא נמצאה חברה משויכת'); setLoading(false); return; } setLoading(true); setError(null); try { const [d, v] = await Promise.all([listDrivers(companyId), listVehicles(companyId, true)]); const [c, a] = await Promise.all([listComplianceForOwners('vehicle', v.map((x) => x.id)), listActiveVehicleDriversForVehicles(v.map((x) => x.id))]); setDrivers(d); setVehicles(v); setCompliance(c); setAssignments(a); } catch (e: any) { setError(e?.message ?? 'טעינת נתוני הדוחות נכשלה'); } finally { setLoading(false); } }, [companyId]);
+  const load = useCallback(async () => { if (!companyId) { setError(t('company.noLinkedCompany')); setLoading(false); return; } setLoading(true); setError(null); try { const [d, v] = await Promise.all([listDrivers(companyId), listVehicles(companyId, true)]); const [c, a] = await Promise.all([listComplianceForOwners('vehicle', v.map((x) => x.id)), listActiveVehicleDriversForVehicles(v.map((x) => x.id))]); setDrivers(d); setVehicles(v); setCompliance(c); setAssignments(a); } catch (e: any) { setError(e?.message ?? t('reports.loadFailed')); } finally { setLoading(false); } }, [companyId]);
   useEffect(() => { load(); }, [load]);
-  const exportDrivers = async (category: ReportCategory) => { if (!company) return; setExporting(category); try { await exportDriversReport(company, drivers, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert('ייצוא הדוח נכשל', String(e?.message ?? 'נסה שוב')); } finally { setExporting(null); } };
-  const exportMeetings = async (category: MeetingReportCategory) => { if (!company) return; setExporting(category); try { await exportMeetingsReport(company, drivers, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert('ייצוא הדוח נכשל', String(e?.message ?? 'נסה שוב')); } finally { setExporting(null); } };
-  const exportInspections = async (category: InspectionReportCategory) => { if (!company) return; setExporting(category); try { await exportInspectionsReport(company, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert('ייצוא הדוח נכשל', String(e?.message ?? 'נסה שוב')); } finally { setExporting(null); } };
-  const exportVehicles = async (category: VehicleReportCategory) => { if (!company) return; setExporting(category); try { await exportVehiclesReport(company, vehicles, compliance, assignments, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert('ייצוא הדוח נכשל', String(e?.message ?? 'נסה שוב')); } finally { setExporting(null); } };
+  const exportDrivers = async (category: ReportCategory) => { if (!company) return; setExporting(category); try { await exportDriversReport(company, drivers, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(e?.message ?? t('common.tryAgain'))); } finally { setExporting(null); } };
+  const exportMeetings = async (category: MeetingReportCategory) => { if (!company) return; setExporting(category); try { await exportMeetingsReport(company, drivers, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(e?.message ?? t('common.tryAgain'))); } finally { setExporting(null); } };
+  const exportInspections = async (category: InspectionReportCategory) => { if (!company) return; setExporting(category); try { await exportInspectionsReport(company, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(e?.message ?? t('common.tryAgain'))); } finally { setExporting(null); } };
+  const exportVehicles = async (category: VehicleReportCategory) => { if (!company) return; setExporting(category); try { await exportVehiclesReport(company, vehicles, compliance, assignments, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(e?.message ?? t('common.tryAgain'))); } finally { setExporting(null); } };
 
   if (isDesktop) {
     return (
-      <DesktopShell active="Reports" breadcrumbs={['ניהול', 'דוחות']}>
+      <DesktopShell active="Reports" breadcrumbs={[t('nav.management'), t('reports.title')]}>
         {loading ? null : error ? (
           <ErrorState message={error} onRetry={load} />
         ) : (
@@ -64,7 +65,7 @@ export default function ReportsScreen({ navigation }: Props) {
       insetBottom={insets.bottom}
       hero={
         <View>
-          <HeroTitle title="ייצוא דוחות" subtitle="קובץ אקסל מוכן לשליחה או להדפסה" onBack={() => navigation.goBack()} />
+          <HeroTitle title={t('reports.export')} subtitle={t('reports.excelReady')} onBack={() => navigation.goBack()} />
           <View style={s.segment}>
             <Segmented<'drivers' | 'vehicles' | 'meetings' | 'inspections'>
               onNight
@@ -72,10 +73,10 @@ export default function ReportsScreen({ navigation }: Props) {
               onChange={setKind}
               options={[
                 // Four tabs share a phone's width: words and icons, no counts.
-                { value: 'drivers', label: 'נהגים', icon: 'people' },
-                { value: 'vehicles', label: 'רכבים', icon: 'car-sport' },
-                { value: 'meetings', label: 'מפגשים', icon: 'chatbubbles' },
-                { value: 'inspections', label: 'בדיקות', icon: 'shield-checkmark' },
+                { value: 'drivers', label: t('common.drivers'), icon: 'people' },
+                { value: 'vehicles', label: t('common.vehicles'), icon: 'car-sport' },
+                { value: 'meetings', label: t('reports.meetingsShort'), icon: 'chatbubbles' },
+                { value: 'inspections', label: t('reports.inspectionsShort'), icon: 'shield-checkmark' },
               ]}
             />
           </View>
@@ -85,7 +86,7 @@ export default function ReportsScreen({ navigation }: Props) {
       {loading ? (
         <LoadingPanel />
       ) : error ? (
-        <ErrorPanel message="טעינת נתוני הדוחות נכשלה" hint={error} onRetry={load} />
+        <ErrorPanel message={t('reports.loadFailed')} hint={error} onRetry={load} />
       ) : (
         <Reveal key={mode}>
           <Surface>
@@ -98,7 +99,7 @@ export default function ReportsScreen({ navigation }: Props) {
                   icon={category.icon as React.ComponentProps<typeof Ionicons>['name']}
                   tint={category.value === 'expired' || category.value === 'issues' || category.value === 'due' || category.value === 'insp_due' || category.value === 'insp_defects' ? STATUS.expired.fg : DK.accent}
                   title={category.label}
-                  subtitle={busy ? 'מכין את הקובץ…' : 'ייצוא לאקסל'}
+                  subtitle={busy ? t('reports.preparingFile') : t('reports.exportExcel')}
                   trailing={
                     busy ? (
                       <BrandLoader size={22} />
@@ -114,7 +115,7 @@ export default function ReportsScreen({ navigation }: Props) {
             })}
           </Surface>
           <DKText variant="caption" color={DK.muted} style={s.note}>
-            הדוח כולל את כל הנתונים העדכניים ברגע הייצוא.
+            {t('reports.includesLatest')}
           </DKText>
         </Reveal>
       )}

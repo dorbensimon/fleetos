@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { VEHICLE_FOLDER_ALERTS, isVehicleFolderNotification } from './vehicleFolderAlerts';
+import { t, getLocale } from './i18n';
 
 /**
  * Per-user notification preferences (PRD: `.claude/prds/notification-settings.md`).
@@ -58,101 +59,113 @@ export interface NotificationTypeInfo {
   description: string;
 }
 
+/** A label without its "validity" wording, for compact places ("תוקף ביטוח חובה" → "ביטוח חובה"). */
+export function withoutValidity(label: string): string {
+  const [prefix, suffix = ''] = t('prefs.validityOf', { label: '\u0000' }).split('\u0000');
+  let short = label;
+  if (prefix && short.startsWith(prefix)) short = short.slice(prefix.length);
+  if (suffix && short.endsWith(suffix)) short = short.slice(0, -suffix.length);
+  return short || label;
+}
+
 /** One toggle per vehicle folder (see lib/vehicleFolderAlerts.ts and migration 90). */
-const vehicleFolderTypes = (description: string): NotificationTypeInfo[] =>
+const vehicleFolderTypes = (descriptionKey: string): NotificationTypeInfo[] =>
   VEHICLE_FOLDER_ALERTS.map((folder) => ({
     type: folder.notificationType as NotificationType,
-    label: folder.label.startsWith('תוקף') ? folder.label : `תוקף ${folder.label}`,
-    description,
+    get label() {
+      // The tachograph folder's own name already says "validity".
+      return folder.folderKey === 'tachograph_calibration' ? folder.label : t('prefs.validityOf', { label: folder.label });
+    },
+    get description() { return t(descriptionKey); },
   }));
 
 /** Hebrew label + short explanation shown per toggle, in the PRD's table order. */
 export const ADMIN_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
   {
     type: 'driver_profile_update',
-    label: 'עדכון פרטי נהג',
-    description: 'נהג עדכן פרטים אישיים — שם, טלפון, ת.ז, מספר עובד, דרגת/תוקף רישיון או מחלקה',
+    get label() { return t('prefs.type.driverDetailsUpdate'); },
+    get description() { return t('prefs.type.driverDetailsUpdateDesc'); },
   },
   {
     type: 'driver_document_upload',
-    label: 'העלאת מסמך נהג',
-    description: 'נהג העלה מסמך חדש לתיק האישי שלו',
+    get label() { return t('prefs.type.driverDocUpload'); },
+    get description() { return t('prefs.type.driverDocUploadDesc'); },
   },
   {
     type: 'license_update_requested',
-    label: 'בקשה לעדכון רישיון',
-    description: 'נהג ביקש לעדכן את פרטי רישיון הנהיגה שלו, והבקשה ממתינה לאישורך',
+    get label() { return t('prefs.type.licenseUpdateRequest'); },
+    get description() { return t('prefs.type.licenseUpdateRequestDesc'); },
   },
   {
     type: 'signature_request_completed',
-    label: 'מסמך נחתם',
-    description: 'נהג חתם על מסמך ששלחת לו',
+    get label() { return t('prefs.type.documentSigned'); },
+    get description() { return t('prefs.type.documentSignedDesc'); },
   },
   {
     type: 'driver_license_expiry',
-    label: 'רישיון נהיגה של נהג',
-    description: 'לפני שרישיון הנהיגה של נהג פג, וביום שהוא פג',
+    get label() { return t('prefs.type.driverLicense'); },
+    get description() { return t('prefs.type.driverLicenseDesc'); },
   },
   {
     type: 'company_carrier_license_expiry',
-    label: 'רישיון מוביל של החברה',
-    description: 'לפני שתוקף רישיון המוביל פג, וביום שהוא פג (לפי התאריך בהגדרות החברה)',
+    get label() { return t('prefs.type.carrierLicense'); },
+    get description() { return t('prefs.type.carrierLicenseDesc'); },
   },
-  ...vehicleFolderTypes('לפני שהתוקף פג (לפי זמן ההתראה של החברה) וביום שהוא פג'),
+  ...vehicleFolderTypes('prefs.type.vehicleFolderDesc'),
   {
     type: 'vehicle_service_due',
-    label: 'טיפול רכב',
-    description: 'לפני הטיפול התקופתי הבא, או כשהרכב עבר את מועד הטיפול',
+    get label() { return t('prefs.type.vehicleService'); },
+    get description() { return t('prefs.type.vehicleServiceDesc'); },
   },
   {
     type: 'vehicle_odometer_stale',
-    label: 'קילומטראז׳ לא עודכן',
-    description: 'אף אחד לא עדכן את הקילומטראז׳ של רכב זמן רב, ולכן התראת הטיפול בו לא מדויקת',
+    get label() { return t('prefs.type.odometerStale'); },
+    get description() { return t('prefs.type.odometerStaleDesc'); },
   },
   {
     type: 'driver_meeting_due',
-    label: 'מפגש עם נהג',
-    description: 'לפני מועד מפגש חוזר עם נהג (למשל מפגש שיחה עם נהג) וביום עצמו, וגם מפגש ראשון עם נהג חדש',
+    get label() { return t('prefs.type.driverMeeting'); },
+    get description() { return t('prefs.type.driverMeetingDesc'); },
   },
   {
     type: 'vehicle_safety_check_due',
-    label: 'בדיקת בטיחות לרכב',
-    description: 'לפני מועד בדיקת הבטיחות התקופתית של רכב וביום עצמו, וגם כשהמועד עבר',
+    get label() { return t('prefs.type.safetyInspection'); },
+    get description() { return t('prefs.type.safetyInspectionDesc'); },
   },
 ];
 
 export const DRIVER_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
   {
     type: 'signature_request_assigned',
-    label: 'מסמך חדש לחתימה',
-    description: 'המנהל שלח אליך מסמך חדש שממתין לחתימה',
+    get label() { return t('prefs.type.newSigningDoc'); },
+    get description() { return t('prefs.type.newSigningDocDesc'); },
   },
   {
     type: 'vehicle_assignment',
-    label: 'שיוך לרכב',
-    description: 'המנהל שייך אותך לרכב חדש',
+    get label() { return t('prefs.type.vehicleAssignment'); },
+    get description() { return t('prefs.type.vehicleAssignmentDesc'); },
   },
   {
     type: 'driver_profile_updated_by_manager',
-    label: 'עדכון הפרטים שלי',
-    description: 'המנהל עדכן פרטים אישיים או פרטי רישיון בתיק שלך',
+    get label() { return t('prefs.type.myDetailsUpdate'); },
+    get description() { return t('prefs.type.myDetailsUpdateDesc'); },
   },
   {
     type: 'license_update_reviewed',
-    label: 'תשובה לבקשת עדכון רישיון',
-    description: 'המנהל אישר או דחה את הבקשה שלך לעדכן את פרטי הרישיון',
+    get label() { return t('prefs.type.licenseRequestReply'); },
+    get description() { return t('prefs.type.licenseRequestReplyDesc'); },
   },
   {
     type: 'driver_license_expiry',
-    label: 'תוקף רישיון הנהיגה שלי',
-    description: 'לפני שרישיון הנהיגה שלך פג, וביום שהוא פג',
+    get label() { return t('prefs.type.myLicenseExpiry'); },
+    get description() { return t('prefs.type.myLicenseExpiryDesc'); },
   },
   {
     type: 'vehicle_odometer_stale',
-    label: 'תזכורת לעדכון קילומטראז׳',
-    description: 'כשהקילומטראז׳ ברכב שלך לא עודכן זמן רב',
+    get label() { return t('prefs.type.odometerReminder'); },
+    get description() { return t('prefs.type.odometerReminderDesc'); },
   },
-  ...vehicleFolderTypes('ברכב שלך — לפני שהתוקף פג וביום שהוא פג'),
+  ...vehicleFolderTypes('prefs.type.myVehicleFolderDesc'),
 ];
 
 /**
@@ -162,43 +175,43 @@ export const DRIVER_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
 export const OWNER_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
   {
     type: 'owner_company_activated',
-    label: 'חברה התחילה לעבוד',
-    description: 'מנהל בחברה נכנס בפעם הראשונה ובחר סיסמה משלו',
+    get label() { return t('prefs.type.companyStarted'); },
+    get description() { return t('prefs.type.companyStartedDesc'); },
   },
   {
     type: 'owner_company_not_activated',
-    label: 'חברה שעוד לא התחילה',
-    description: 'שלושה ימים אחרי פתיחת החברה אף מנהל עוד לא נכנס',
+    get label() { return t('prefs.type.companyNotStarted'); },
+    get description() { return t('prefs.type.companyNotStartedDesc'); },
   },
   {
     type: 'owner_admin_added',
-    label: 'מנהל חדש בחברה',
-    description: 'חברה הוסיפה לעצמה מנהל נוסף',
+    get label() { return t('prefs.type.newManager'); },
+    get description() { return t('prefs.type.newManagerDesc'); },
   },
   {
     type: 'owner_company_inactive',
-    label: 'חברה לא פעילה',
-    description: 'חברה פעילה לא ביצעה אף פעולה במשך 14 ימים',
+    get label() { return t('prefs.type.companyInactive'); },
+    get description() { return t('prefs.type.companyInactiveDesc'); },
   },
   {
     type: 'owner_trial_ending',
-    label: 'סוף תקופת ניסיון',
-    description: 'שבוע לפני שתקופת הניסיון של חברה מסתיימת, וביום שהיא הסתיימה',
+    get label() { return t('prefs.type.trialEnd'); },
+    get description() { return t('prefs.type.trialEndDesc'); },
   },
   {
     type: 'owner_renewal_due',
-    label: 'חידוש מנוי',
-    description: 'שבועיים לפני מועד החידוש של לקוח משלם, ואם המועד עבר',
+    get label() { return t('prefs.type.renewal'); },
+    get description() { return t('prefs.type.renewalDesc'); },
   },
   {
     type: 'owner_vehicle_limit',
-    label: 'מכסת רכבים מלאה',
-    description: 'חברה הגיעה למספר הרכבים שכלול במנוי שלה',
+    get label() { return t('prefs.type.vehicleQuota'); },
+    get description() { return t('prefs.type.vehicleQuotaDesc'); },
   },
   {
     type: 'owner_carrier_license_expiry',
-    label: 'רישיון מוביל של חברה',
-    description: '30 יום לפני שרישיון המוביל של חברה פג, וביום שהוא פג',
+    get label() { return t('prefs.type.companyCarrierLicense'); },
+    get description() { return t('prefs.type.companyCarrierLicenseDesc'); },
   },
 ];
 
@@ -233,7 +246,7 @@ interface NotificationPreferenceRow {
  */
 export async function getPreferences(userId: string): Promise<NotificationPreferencesMap> {
   const defaults = Object.fromEntries(
-    NOTIFICATION_TYPES.map((t) => [t.type, true])
+    NOTIFICATION_TYPES.map((entry) => [entry.type, true])
   ) as NotificationPreferencesMap;
 
   const { data, error } = await supabase
@@ -343,21 +356,21 @@ const FIXED_LEAD_DEFAULTS: Partial<Record<NotificationType, number>> = {
 
 /** "20 ימים לפני", "1,000 ק״מ לפני הטיפול", "30 ימים בלי עדכון". */
 export function leadPhrase(value: number, rule: LeadRule): string {
-  if (rule.unit === 'km') return `${value.toLocaleString('he-IL')} ק״מ לפני הטיפול`;
-  if (rule.unit === 'idle') return `${value} ימים בלי עדכון`;
-  return value === 1 ? 'יום אחד לפני' : `${value} ימים לפני`;
+  if (rule.unit === 'km') return t('prefs.timing.kmBefore', { v1: value.toLocaleString(getLocale()) });
+  if (rule.unit === 'idle') return t('prefs.timing.daysWithoutUpdate', { value });
+  return value === 1 ? t('prefs.timing.oneDayBefore') : t('prefs.timing.daysBefore', { value });
 }
 
 /** The words after the number in a lead editor. */
 export function leadUnitWord(value: number, rule: LeadRule): string {
-  if (rule.unit === 'km') return 'ק״מ לפני הטיפול';
-  if (rule.unit === 'idle') return 'ימים בלי עדכון';
-  return value === 1 ? 'יום לפני' : 'ימים לפני';
+  if (rule.unit === 'km') return t('prefs.timing.kmBeforeUnit');
+  if (rule.unit === 'idle') return t('prefs.timing.daysWithoutUpdateUnit');
+  return value === 1 ? t('prefs.timing.dayBeforeUnit') : t('prefs.timing.daysBeforeUnit');
 }
 
 /** Which way "+" moves the alert, for screen readers. */
 export function leadStepLabels(rule: LeadRule): { up: string; down: string } {
-  return rule.unit === 'idle' ? { up: 'לחכות יותר', down: 'לחכות פחות' } : { up: 'להקדים', down: 'לאחר' };
+  return rule.unit === 'idle' ? { up: t('prefs.timing.waitLonger'), down: t('prefs.timing.waitLess') } : { up: t('prefs.timing.earlier'), down: t('prefs.timing.later') };
 }
 
 export interface NotificationGroup {
@@ -386,35 +399,35 @@ const ADMIN_GROUP_OF: Partial<Record<NotificationType, NotificationGroup['key']>
 export function notificationGroups(types: NotificationTypeInfo[], isDriver: boolean, isOwner = false): NotificationGroup[] {
   if (isOwner) {
     const ownerGroups: NotificationGroup[] = [
-      { key: 'customers', title: 'החברות', subtitle: 'מתי חברה מתחילה לעבוד, מוסיפה מנהל או מפסיקה להשתמש.', items: types.filter((t) => OWNER_GROUP_OF[t.type] === 'customers') },
-      { key: 'billing', title: 'מנויים ותשלומים', subtitle: 'לפי פרטי המנוי שהזנת לכל חברה.', items: types.filter((t) => OWNER_GROUP_OF[t.type] === 'billing') },
-      { key: 'compliance', title: 'רישוי', items: types.filter((t) => OWNER_GROUP_OF[t.type] === 'compliance') },
+      { key: 'customers', title: t('prefs.group.companies'), subtitle: t('prefs.group.companiesDesc'), items: types.filter((entry) => OWNER_GROUP_OF[entry.type] === 'customers') },
+      { key: 'billing', title: t('prefs.group.billing'), subtitle: t('prefs.group.billingDesc'), items: types.filter((entry) => OWNER_GROUP_OF[entry.type] === 'billing') },
+      { key: 'compliance', title: t('common.licensing'), items: types.filter((entry) => OWNER_GROUP_OF[entry.type] === 'compliance') },
     ];
     return ownerGroups.filter((group) => group.items.length > 0);
   }
-  const folders = types.filter((t) => isVehicleFolderNotification(t.type));
-  const rest = types.filter((t) => !folders.includes(t));
+  const folders = types.filter((entry) => isVehicleFolderNotification(entry.type));
+  const rest = types.filter((entry) => !folders.includes(entry));
   const folderGroup: NotificationGroup = {
     key: 'folders',
-    title: isDriver ? 'תוקף מסמכי הרכב שלי' : 'תוקף מסמכי הרכב',
+    title: isDriver ? t('prefs.group.myVehicleDocs') : t('prefs.group.vehicleDocs'),
     subtitle: isDriver
-      ? 'התראה לפני שהתוקף פג, ושוב ביום עצמו. את מועד ההתראה קובע מנהל הצי.'
-      : 'התראה לפני שהתוקף פג, ושוב ביום עצמו. לכל תיקייה מועד משלה.',
+      ? t('prefs.group.myVehicleDocsDesc')
+      : t('prefs.group.vehicleDocsDesc'),
     items: folders,
     compact: true,
   };
   const groups: NotificationGroup[] = isDriver
-    ? [{ key: 'personal', title: 'עדכונים אליי', items: rest }, folderGroup]
+    ? [{ key: 'personal', title: t('prefs.group.updatesToMe'), items: rest }, folderGroup]
     : [
-        { key: 'drivers', title: 'עדכונים מהנהגים', items: rest.filter((t) => ADMIN_GROUP_OF[t.type] === 'drivers') },
+        { key: 'drivers', title: t('prefs.group.driverUpdates'), items: rest.filter((entry) => ADMIN_GROUP_OF[entry.type] === 'drivers') },
         {
           key: 'licenses',
-          title: 'רישיונות',
-          subtitle: 'רישיונות הנהיגה של הנהגים ורישיון המוביל של החברה.',
-          items: rest.filter((t) => ADMIN_GROUP_OF[t.type] === 'licenses'),
+          title: t('prefs.group.licenses'),
+          subtitle: t('prefs.group.licensesDesc'),
+          items: rest.filter((entry) => ADMIN_GROUP_OF[entry.type] === 'licenses'),
         },
         folderGroup,
-        { key: 'care', title: 'טיפולים ומפגשים', items: rest.filter((t) => ADMIN_GROUP_OF[t.type] === 'care') },
+        { key: 'care', title: t('prefs.group.serviceAndMeetings'), items: rest.filter((entry) => ADMIN_GROUP_OF[entry.type] === 'care') },
       ];
   return groups.filter((group) => group.items.length > 0);
 }

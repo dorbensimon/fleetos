@@ -28,7 +28,7 @@ export const SIGNING_CSS = `
   --sd-depth-3: 0 2px 4px rgba(0,0,0,0.04), 0 16px 40px rgba(16,34,50,0.12), 0 40px 80px -20px rgba(16,34,50,0.22);
   font-family: 'Heebo_400Regular', system-ui, sans-serif;
   color: var(--sd-ink);
-  direction: rtl;
+  direction: var(--app-dir, rtl);
   -webkit-font-smoothing: antialiased;
 }
 .sd-root *, .sd-root *::before, .sd-root *::after { box-sizing: border-box; }
@@ -92,8 +92,8 @@ export const SIGNING_CSS = `
 .sd-send-result p { color: var(--sd-ink-2); margin: 0 0 16px; }
 .sd-send-result-icon { display: inline-grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: #34C759; }
 .sd-send-result-icon.sd-bad { background: #FF9500; }
-.sd-send-failed { text-align: right; background: rgba(255,149,0,0.1); border-radius: 16px; padding: 14px 18px; color: #6B3A00; }
-.sd-send-failed ul { margin: 8px 0 0; padding-right: 20px; }
+.sd-send-failed { text-align: start; background: rgba(255,149,0,0.1); border-radius: 16px; padding: 14px 18px; color: #6B3A00; }
+.sd-send-failed ul { margin: 8px 0 0; padding-inline-start: 20px; }
 .sd-send-failed li { margin: 4px 0; }
 .sd-page { max-width: 1240px; margin: 0 auto; padding: 28px 32px 80px; }
 
@@ -107,9 +107,9 @@ export const SIGNING_CSS = `
 }
 .sd-aurora { position: absolute; inset: -30%; z-index: -1; filter: blur(60px) saturate(140%); opacity: 0.9; }
 .sd-aurora span { position: absolute; border-radius: 50%; animation: sd-drift 22s ease-in-out infinite alternate; }
-.sd-aurora span:nth-child(1) { width: 46%; height: 60%; top: 18%; right: 8%; background: radial-gradient(circle, rgba(53,184,240,0.45), transparent 65%); }
-.sd-aurora span:nth-child(2) { width: 42%; height: 56%; top: 30%; left: 12%; background: radial-gradient(circle, rgba(0,136,204,0.38), transparent 65%); animation-duration: 28s; animation-delay: -6s; }
-.sd-aurora span:nth-child(3) { width: 36%; height: 50%; bottom: 8%; left: 38%; background: radial-gradient(circle, rgba(52,199,89,0.16), transparent 65%); animation-duration: 32s; animation-delay: -12s; }
+.sd-aurora span:nth-child(1) { width: 46%; height: 60%; top: 18%; inset-inline-start: 8%; background: radial-gradient(circle, rgba(53,184,240,0.45), transparent 65%); }
+.sd-aurora span:nth-child(2) { width: 42%; height: 56%; top: 30%; inset-inline-end: 12%; background: radial-gradient(circle, rgba(0,136,204,0.38), transparent 65%); animation-duration: 28s; animation-delay: -6s; }
+.sd-aurora span:nth-child(3) { width: 36%; height: 50%; bottom: 8%; inset-inline-end: 38%; background: radial-gradient(circle, rgba(52,199,89,0.16), transparent 65%); animation-duration: 32s; animation-delay: -12s; }
 .sd-hero-grain { position: absolute; inset: 0; z-index: -1; opacity: 0.35; mix-blend-mode: soft-light;
   background-image: radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px); background-size: 3px 3px; }
 .sd-hero h1 { margin: 0; font-size: 44px; line-height: 1.08; letter-spacing: -0.02em; }
@@ -129,12 +129,12 @@ export const SIGNING_CSS = `
 .sd-paper i { display: block; height: 7px; border-radius: 4px; background: #E9EDF3; margin-bottom: 10px; }
 .sd-paper i.sd-t { width: 60%; height: 10px; background: #D5DEEA; margin-bottom: 16px; }
 .sd-paper i.sd-s { width: 72%; }
-.sd-paper-sign { position: absolute; left: 18px; right: 18px; bottom: 20px; height: 54px; border-radius: 10px; background: rgba(0,136,204,0.07); border: 1.5px dashed rgba(0,136,204,0.45); }
+.sd-paper-sign { position: absolute; inset-inline-end: 18px; inset-inline-start: 18px; bottom: 20px; height: 54px; border-radius: 10px; background: rgba(0,136,204,0.07); border: 1.5px dashed rgba(0,136,204,0.45); }
 .sd-paper-sign svg { position: absolute; inset: 6px 10px; width: calc(100% - 20px); height: calc(100% - 12px); }
 .sd-paper-sign path { fill: none; stroke: #0B4A6E; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
   stroke-dasharray: 320; stroke-dashoffset: 320; animation: sd-sign 1600ms cubic-bezier(0.65, 0, 0.35, 1) 900ms forwards; }
 .sd-paper-check {
-  position: absolute; top: -14px; left: -14px; width: 44px; height: 44px; border-radius: 50%;
+  position: absolute; top: -14px; inset-inline-end: -14px; width: 44px; height: 44px; border-radius: 50%;
   background: var(--sd-green); color: #fff; display: grid; place-items: center;
   box-shadow: 0 8px 18px -6px rgba(52,199,89,0.7), 0 0 0 4px #fff;
   transform: scale(0.6); opacity: 0; animation: sd-pop 520ms var(--sd-ease) 2400ms forwards;
@@ -156,7 +156,7 @@ export const SIGNING_CSS = `
 
 .sd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(214px, 1fr)); gap: 20px; }
 .sd-card {
-  position: relative; text-align: right; display: flex; flex-direction: column;
+  position: relative; text-align: start; display: flex; flex-direction: column;
   background: var(--sd-card); border-radius: 24px; padding: 10px 10px 16px;
   box-shadow: var(--sd-depth-1), inset 0 0 0 1px rgba(0,0,0,0.035);
   transition: transform 420ms var(--sd-ease), box-shadow 420ms var(--sd-ease);
@@ -235,7 +235,7 @@ export const SIGNING_CSS = `
 .sd-name {
   width: 100%; height: 64px; border-radius: 18px; border: 0; padding: 0 22px; font-size: 22px; font-family: 'Heebo_600SemiBold', system-ui, sans-serif;
   background: #fff; color: var(--sd-ink); box-shadow: var(--sd-depth-1), inset 0 0 0 1px rgba(0,0,0,0.06);
-  transition: box-shadow 200ms ease; outline: none; direction: rtl;
+  transition: box-shadow 200ms ease; outline: none; direction: var(--app-dir, rtl);
 }
 .sd-name:focus { box-shadow: var(--sd-depth-1), inset 0 0 0 2px var(--sd-tint), 0 0 0 5px rgba(0,136,204,0.14); }
 .sd-name::placeholder { color: rgba(22,34,46,0.35); }
@@ -246,7 +246,7 @@ export const SIGNING_CSS = `
 .sd-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 40px; }
 .sd-choice-badge { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; margin-inline-start: 10px; border-radius: 999px; background: rgba(18,128,92,0.12); color: #12805C; font-size: 13px; vertical-align: middle; }
 .sd-choice {
-  position: relative; text-align: right; border-radius: 26px; padding: 26px; background: #fff; min-height: 230px;
+  position: relative; text-align: start; border-radius: 26px; padding: 26px; background: #fff; min-height: 230px;
   box-shadow: var(--sd-depth-1), inset 0 0 0 1px rgba(0,0,0,0.05);
   transition: transform 380ms var(--sd-ease), box-shadow 380ms var(--sd-ease);
   display: flex; flex-direction: column; gap: 10px;
@@ -256,21 +256,21 @@ export const SIGNING_CSS = `
 .sd-choice-icon { width: 60px; height: 60px; border-radius: 18px; display: grid; place-items: center; color: #fff; margin-bottom: 8px; }
 .sd-choice h3 { margin: 0; font-size: 22px; }
 .sd-choice p { margin: 0; font-size: 16px; line-height: 1.55; color: var(--sd-ink-2); }
-.sd-choice-check { position: absolute; top: 20px; left: 20px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 2px rgba(22,34,46,0.2); color: #fff; transition: background-color 200ms ease, box-shadow 200ms ease, transform 300ms var(--sd-ease); }
+.sd-choice-check { position: absolute; top: 20px; inset-inline-end: 20px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 2px rgba(22,34,46,0.2); color: #fff; transition: background-color 200ms ease, box-shadow 200ms ease, transform 300ms var(--sd-ease); }
 .sd-choice.sd-selected .sd-choice-check { background: var(--sd-tint); box-shadow: none; transform: scale(1.05); }
 
 /* workspace (editor / placer) */
 .sd-work { display: grid; grid-template-columns: 316px minmax(0, 1fr); min-height: 100%; }
-.sd-panel { position: sticky; top: 0; align-self: start; max-height: calc(100vh - 150px); overflow: auto; padding: 18px 16px 24px; border-left: 1px solid var(--sd-sep); background: var(--sd-card); min-height: calc(100vh - 150px); }
+.sd-panel { position: sticky; top: 0; align-self: start; max-height: calc(100vh - 150px); overflow: auto; padding: 18px 16px 24px; border-inline-end: 1px solid var(--sd-sep); background: var(--sd-card); min-height: calc(100vh - 150px); }
 .sd-panel h3 { margin: 0 4px 4px; font-size: 18px; }
 .sd-panel-sub { margin: 0 4px 14px; font-size: 14.5px; line-height: 1.5; color: var(--sd-ink-2); }
 .sd-group-label { margin: 16px 4px 8px; font-size: 13px; color: var(--sd-ink-3); letter-spacing: 0.01em; }
 .sd-palette { background: #fff; border-radius: 18px; box-shadow: var(--sd-depth-1); overflow: hidden; }
 .sd-tool {
-  width: 100%; display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 8px 14px; text-align: right;
+  width: 100%; display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 8px 14px; text-align: start;
   transition: background-color 150ms ease; position: relative; user-select: none;
 }
-.sd-tool + .sd-tool::before { content: ''; position: absolute; top: 0; right: 62px; left: 0; height: 1px; background: var(--sd-sep); }
+.sd-tool + .sd-tool::before { content: ''; position: absolute; top: 0; inset-inline-start: 62px; inset-inline-end: 0; height: 1px; background: var(--sd-sep); }
 @media (hover: hover) and (pointer: fine) { .sd-tool:hover { background: rgba(92,103,115,0.07); } }
 .sd-tool:active { background: rgba(92,103,115,0.14); }
 .sd-tool[draggable="true"] { cursor: grab; }
@@ -280,14 +280,14 @@ export const SIGNING_CSS = `
 .sd-tool-text small { display: block; font-size: 13px; color: var(--sd-ink-3); }
 .sd-tool-plus { color: var(--sd-ink-3); }
 .sd-area-btn {
-  width: 100%; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 12px; text-align: right; border-radius: 14px;
+  width: 100%; display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 12px; text-align: start; border-radius: 14px;
   background: var(--sd-tint-soft) !important; box-shadow: inset 0 0 0 1px rgba(0,136,204,0.18); transition: background-color 150ms ease, transform 160ms var(--sd-ease);
 }
 .sd-area-btn:active { transform: scale(0.98); }
 @media (hover: hover) and (pointer: fine) { .sd-area-btn:hover { background: rgba(0,136,204,0.16) !important; } }
 .sd-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .sd-tile {
-  display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 6px 8px; border-radius: 12px; text-align: right; font-size: 14px; line-height: 1.2; white-space: nowrap;
+  display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 6px 8px; border-radius: 12px; text-align: start; font-size: 14px; line-height: 1.2; white-space: nowrap;
   background: var(--sd-bg) !important; box-shadow: inset 0 0 0 1px var(--sd-sep); cursor: grab; user-select: none;
   transition: box-shadow 150ms ease, background-color 150ms ease, transform 160ms var(--sd-ease);
 }
@@ -311,21 +311,21 @@ export const SIGNING_CSS = `
 .sd-tb.sd-on { background: var(--sd-tint-soft); color: var(--sd-tint-deep); }
 .sd-tb-sep { width: 1px; height: 24px; background: var(--sd-sep); margin: 0 4px; }
 .sd-tb-wrap { position: relative; display: inline-flex; }
-.sd-tb-size { min-width: 58px; text-align: right; }
+.sd-tb-size { min-width: 58px; text-align: start; }
 .sd-color-a { display: inline-flex; flex-direction: column; align-items: center; font-size: 17px; line-height: 1; }
 .sd-color-a i { display: block; width: 16px; height: 3px; border-radius: 2px; margin-top: 3px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08); }
 .sd-hl-a { padding: 2px 6px; border-radius: 5px; background: #FFF1A8; color: #16222E; font-size: 15px; line-height: 1.2; }
 .sd-hr-icon { display: block; width: 20px; height: 2px; border-radius: 1px; background: currentColor; }
 .sd-menu {
-  position: absolute; top: calc(100% + 8px); right: 0; z-index: 10; min-width: 190px; padding: 6px; border-radius: 14px; background: #fff;
+  position: absolute; top: calc(100% + 8px); inset-inline-start: 0; z-index: 10; min-width: 190px; padding: 6px; border-radius: 14px; background: #fff;
   box-shadow: var(--sd-depth-2), 0 0 0 1px rgba(0,0,0,0.06); transform-origin: top right; animation: sd-menu-in 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 @keyframes sd-menu-in { from { opacity: 0; transform: scale(0.96) translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) { .sd-menu { animation: none; } }
-.sd-menu-item { width: 100%; min-height: 44px; padding: 6px 12px; border-radius: 10px; display: flex; align-items: center; gap: 10px; font-size: 15px; line-height: 1.3; color: var(--sd-ink); text-align: right; transition: background-color 140ms ease; }
+.sd-menu-item { width: 100%; min-height: 44px; padding: 6px 12px; border-radius: 10px; display: flex; align-items: center; gap: 10px; font-size: 15px; line-height: 1.3; color: var(--sd-ink); text-align: start; transition: background-color 140ms ease; }
 @media (hover: hover) and (pointer: fine) { .sd-menu-item:hover { background: rgba(92,103,115,0.1); } }
 .sd-menu-item.sd-on { color: var(--sd-tint-deep); }
-.sd-menu-check { margin-right: auto; width: 18px; display: inline-flex; justify-content: center; color: var(--sd-tint-deep); }
+.sd-menu-check { margin-inline-start: auto; width: 18px; display: inline-flex; justify-content: center; color: var(--sd-tint-deep); }
 .sd-swatch { flex: none; width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12); }
 .sd-paper-page {
   /* An A4 sheet at 96dpi: the server renders the very same geometry (EDITOR_PAGE). */
@@ -333,23 +333,23 @@ export const SIGNING_CSS = `
   box-shadow: 0 1px 2px rgba(0,0,0,0.05), 0 12px 40px rgba(16,34,50,0.10); transition: box-shadow 200ms ease;
 }
 .sd-paper-page.sd-over { box-shadow: 0 0 0 3px var(--sd-tint), 0 12px 40px rgba(16,34,50,0.14); }
-.sd-lh { position: relative; height: 72px; margin-bottom: 32px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 16px; border-bottom: 1px solid #E1E6EA; direction: rtl; user-select: none; }
-.sd-lh::after { content: ''; position: absolute; right: 0; bottom: -2px; width: 56px; height: 3px; border-radius: 2px; background: #0088CC; }
+.sd-lh { position: relative; height: 72px; margin-bottom: 32px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 16px; border-bottom: 1px solid #E1E6EA; direction: var(--app-dir, rtl); user-select: none; }
+.sd-lh::after { content: ''; position: absolute; inset-inline-start: 0; bottom: -2px; width: 56px; height: 3px; border-radius: 2px; background: #0088CC; }
 .sd-lh-brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .sd-lh-logo { flex: none; width: 52px; height: 52px; border-radius: 13px; overflow: hidden; display: grid; place-items: center; background: #F4F6F8; box-shadow: inset 0 0 0 1px rgba(22,34,46,0.06); }
 .sd-lh-logo img { width: 100%; height: 100%; object-fit: contain; }
 .sd-lh-mono { background: linear-gradient(160deg, #35B8F0, #0088CC); color: #fff; font-family: 'Heebo_700Bold', system-ui, sans-serif; font-size: 24px; box-shadow: none; }
 .sd-lh-name { font-family: 'Heebo_700Bold', system-ui, sans-serif; font-size: 22px; line-height: 1.2; color: #16222E; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sd-lh-date { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: left; }
+.sd-lh-date { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: end; }
 .sd-lh-label { font-size: 12px; line-height: 1.2; color: #8B98A4; }
 .sd-lh-value { font-family: 'Heebo_600SemiBold', system-ui, sans-serif; font-size: 16px; line-height: 1.3; color: #16222E; font-variant-numeric: tabular-nums; direction: ltr; }
-.sd-page-break { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed rgba(22,34,46,0.14); pointer-events: none; }
-.sd-page-break span { position: absolute; top: -11px; left: 12px; padding: 0 8px; font-size: 12px; line-height: 20px; color: var(--sd-ink-3); background: #fff; border-radius: 6px; }
-.sd-doc, .sd-doc:focus-visible { outline: none; min-height: 600px; font-size: 16px; line-height: 1.8; color: #111; direction: rtl; text-align: right; caret-color: var(--sd-tint); }
+.sd-page-break { position: absolute; inset-inline-end: 0; inset-inline-start: 0; height: 0; border-top: 2px dashed rgba(22,34,46,0.14); pointer-events: none; }
+.sd-page-break span { position: absolute; top: -11px; inset-inline-end: 12px; padding: 0 8px; font-size: 12px; line-height: 20px; color: var(--sd-ink-3); background: #fff; border-radius: 6px; }
+.sd-doc, .sd-doc:focus-visible { outline: none; min-height: 600px; font-size: 16px; line-height: 1.8; color: #111; direction: var(--app-dir, rtl); text-align: start; caret-color: var(--sd-tint); }
 .sd-doc h1 { font-family: 'Heebo_700Bold', system-ui, sans-serif; font-weight: normal; font-size: 28px; line-height: 1.3; margin: 0 0 16px; }
 .sd-doc h2 { font-family: 'Heebo_700Bold', system-ui, sans-serif; font-weight: normal; font-size: 20px; line-height: 1.4; margin: 20px 0 8px; }
 .sd-doc p { margin: 0 0 8px; }
-.sd-doc ul, .sd-doc ol { margin: 0 0 8px; padding-right: 26px; padding-left: 0; }
+.sd-doc ul, .sd-doc ol { margin: 0 0 8px; padding-inline-start: 26px; padding-inline-end: 0; }
 .sd-doc hr { border: none; border-top: 1px solid #C9D1D8; margin: 12px 0; }
 .sd-doc b, .sd-doc strong { font-family: 'Heebo_700Bold', system-ui, sans-serif; font-weight: normal; }
 .sd-doc:empty::before, .sd-doc > p:only-child:has(br:only-child)::before { content: attr(data-placeholder); color: rgba(22,34,46,0.35); pointer-events: none; }
@@ -394,11 +394,11 @@ export const SIGNING_CSS = `
 .sd-insp-size { display: flex; align-items: center; gap: 6px; margin-top: 12px; font-size: 14px; color: var(--sd-ink-2); }
 .sd-insp-warn { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(255,149,0,0.12); color: #9A5200; font-size: 14px; line-height: 1.45; }
 .sd-field.sd-sel { box-shadow: inset 0 0 0 2px var(--c), 0 0 0 4px color-mix(in srgb, var(--c) 22%, transparent), 0 8px 18px -6px rgba(0,0,0,0.25); z-index: 2; }
-.sd-field-del { position: absolute; top: -13px; left: -13px; width: 26px; height: 26px; border-radius: 50%; background: #fff; color: var(--sd-red); display: grid; place-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); cursor: pointer; }
-.sd-field-grip { position: absolute; bottom: -7px; right: -7px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px var(--c), 0 2px 6px rgba(0,0,0,0.2); cursor: nwse-resize; }
+.sd-field-del { position: absolute; top: -13px; inset-inline-end: -13px; width: 26px; height: 26px; border-radius: 50%; background: #fff; color: var(--sd-red); display: grid; place-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); cursor: pointer; }
+.sd-field-grip { position: absolute; bottom: -7px; inset-inline-start: -7px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px var(--c), 0 2px 6px rgba(0,0,0,0.2); cursor: nwse-resize; }
 .sd-inspector { margin-top: 18px; background: #fff; border-radius: 18px; box-shadow: var(--sd-depth-1); padding: 16px; animation: sd-rise 360ms var(--sd-ease) both; }
 .sd-inspector label { display: block; font-size: 14px; color: var(--sd-ink-2); margin-bottom: 6px; }
-.sd-input { width: 100%; height: 48px; border-radius: 12px; border: 0; padding: 0 14px; font-size: 16px; background: var(--sd-bg); color: var(--sd-ink); outline: none; direction: rtl; font-family: inherit; }
+.sd-input { width: 100%; height: 48px; border-radius: 12px; border: 0; padding: 0 14px; font-size: 16px; background: var(--sd-bg); color: var(--sd-ink); outline: none; direction: var(--app-dir, rtl); font-family: inherit; }
 .sd-input:focus { box-shadow: inset 0 0 0 2px var(--sd-tint); background: #fff; }
 .sd-danger { color: var(--sd-red) !important; }
 
@@ -411,11 +411,11 @@ export const SIGNING_CSS = `
 .sd-mini-inner .sd-field { animation: none; }
 .sd-list { background: #fff; border-radius: 20px; box-shadow: var(--sd-depth-1); overflow: hidden; }
 .sd-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 10px 18px; position: relative; font-size: 16px; }
-.sd-row + .sd-row::before { content: ''; position: absolute; top: 0; right: 18px; left: 0; height: 1px; background: var(--sd-sep); }
+.sd-row + .sd-row::before { content: ''; position: absolute; top: 0; inset-inline-start: 18px; inset-inline-end: 0; height: 1px; background: var(--sd-sep); }
 .sd-row span:first-child { color: var(--sd-ink-2); }
 .sd-review h2 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.015em; }
 .sd-review-sub { margin: 0 0 20px; font-size: 16px; color: var(--sd-ink-2); line-height: 1.55; }
-.sd-dots { display: inline-flex; gap: 4px; margin-left: 2px; }
+.sd-dots { display: inline-flex; gap: 4px; margin-inline-end: 2px; }
 .sd-dots i { width: 9px; height: 9px; border-radius: 50%; }
 .sd-error { margin-top: 14px; padding: 14px 16px; border-radius: 16px; background: rgba(255,59,48,0.09); color: #C4271E; font-size: 15px; line-height: 1.5; display: flex; gap: 10px; align-items: flex-start; }
 .sd-success { max-width: 620px; margin: 0 auto; padding: 90px 24px; text-align: center; }
@@ -443,7 +443,7 @@ export const SIGNING_CSS = `
 .sd-alert p { margin: 0; padding: 0 22px 20px; font-size: 16px; line-height: 1.5; color: var(--sd-ink-2); }
 .sd-alert-actions { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--sd-sep); }
 .sd-alert-actions button { height: 56px; font-size: 17px; color: var(--sd-tint-deep); transition: background-color 140ms ease; }
-.sd-alert-actions button + button { border-right: 1px solid var(--sd-sep); }
+.sd-alert-actions button + button { border-inline-start: 1px solid var(--sd-sep); }
 .sd-alert-actions button:hover { background: rgba(92,103,115,0.1); }
 @keyframes sd-alert-in { from { opacity: 0; transform: translate(-50%, -50%) scale(1.12); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 

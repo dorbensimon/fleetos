@@ -1,5 +1,6 @@
 import { supabase, Profile, UserRole } from './supabase';
 import { RootStackParamList } from '../navigation/types';
+import { t } from './i18n';
 
 export const ROLE_ROUTES: Record<UserRole, keyof RootStackParamList> = {
   owner: 'OwnerHome',
@@ -24,17 +25,17 @@ export async function resolveRouteForUser(userId: string): Promise<RouteResult> 
 
   if (profileError || !profile) {
     await supabase.auth.signOut();
-    return { ok: false, error: 'שגיאה בטעינת פרופיל המשתמש' };
+    return { ok: false, error: t('session.profileLoadError') };
   }
 
   if (!isUserRole(profile.role)) {
     await supabase.auth.signOut();
-    return { ok: false, error: 'תפקיד המשתמש אינו תקין' };
+    return { ok: false, error: t('session.invalidRole') };
   }
 
   if (profile.role !== 'owner' && !profile.company_id) {
     await supabase.auth.signOut();
-    return { ok: false, error: 'המשתמש אינו משויך לחברה' };
+    return { ok: false, error: t('session.noCompany') };
   }
 
   // חשבון חדש שטרם קבע סיסמה קבועה - חייב לעשות זאת לפני כל בדיקה אחרת
@@ -51,12 +52,12 @@ export async function resolveRouteForUser(userId: string): Promise<RouteResult> 
 
     if (companyError || !company) {
       await supabase.auth.signOut();
-      return { ok: false, error: 'שגיאה בטעינת נתוני החברה' };
+      return { ok: false, error: t('session.companyLoadError') };
     }
 
     if (company.status === 'disabled') {
       await supabase.auth.signOut();
-      return { ok: false, error: 'החשבון מושבת זמנית' };
+      return { ok: false, error: t('session.accountDisabled') };
     }
   }
 

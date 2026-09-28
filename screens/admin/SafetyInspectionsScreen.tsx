@@ -38,6 +38,7 @@ import {
   type InspectionState,
 } from '../../lib/inspections';
 import type { RootStackParamList } from '../../navigation/types';
+import { t } from '../../lib/i18n';
 
 /**
  * "בדיקות בטיחות": vehicles due for an inspection on top, then every
@@ -68,7 +69,7 @@ export default function SafetyInspectionsScreen({ navigation }: Props) {
       setPlan(due);
       setError('');
     } catch (e) {
-      setError((e as Error)?.message || 'טעינת הבדיקות נכשלה');
+      setError((e as Error)?.message || t('inspection.listLoadFailed'));
     }
   }, [companyId]);
   useFocusEffect(useCallback(() => { void load(); }, [load]));
@@ -101,33 +102,33 @@ export default function SafetyInspectionsScreen({ navigation }: Props) {
       hero={
         <View style={styles.hero}>
           <HeroTitle
-            title="בדיקות בטיחות"
-            subtitle="בדיקת קצין בטיחות לרכבי החברה"
+            title={t('nav.safetyInspections')}
+            subtitle={t('inspection.listSubtitle')}
             onBack={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('AdminHome'))}
-            right={<HeroButton icon="settings-outline" label="הגדרות: תדירות ורשימת סעיפים" onPress={() => navigation.navigate('SafetyInspectionSettings')} />}
+            right={<HeroButton icon="settings-outline" label={t('inspection.settingsLink')} onPress={() => navigation.navigate('SafetyInspectionSettings')} />}
           />
-          <GlassSearch value={query} onChangeText={setQuery} placeholder="חיפוש לפי מספר רכב או נהג" />
+          <GlassSearch value={query} onChangeText={setQuery} placeholder={t('inspection.searchPlaceholder')} />
         </View>
       }
       overlay={
-        <KitSheet visible={picking} onClose={() => setPicking(false)} icon="car-outline" title="איזה רכב בודקים?" footer={<PrimaryAction label="סגירה" tone="ghost" onPress={() => setPicking(false)} />}>
+        <KitSheet visible={picking} onClose={() => setPicking(false)} icon="car-outline" title={t('inspection.whichVehicle')} footer={<PrimaryAction label={t('common.close')} tone="ghost" onPress={() => setPicking(false)} />}>
           <GlassSearchLight value={pickQuery} onChange={setPickQuery} />
           <Surface style={styles.list}>
             {plan
               .filter((p) => !pickQuery.trim() || p.plate.includes(pickQuery.replace(/\D/g, '') || '~') || p.vehicleLabel.includes(pickQuery.trim()))
               .map((p, i) => (
-                <ListRow key={p.vehicleId} first={i === 0} icon="car-outline" title={formatPlate(p.plate)} subtitle={[p.vehicleLabel, drafts.has(p.vehicleId) ? 'יש טיוטה פתוחה' : null].filter(Boolean).join(' · ')} onPress={() => open(p.vehicleId)} />
+                <ListRow key={p.vehicleId} first={i === 0} icon="car-outline" title={formatPlate(p.plate)} subtitle={[p.vehicleLabel, drafts.has(p.vehicleId) ? t('inspection.openDraft') : null].filter(Boolean).join(' · ')} onPress={() => open(p.vehicleId)} />
               ))}
           </Surface>
         </KitSheet>
       }
     >
-      <PrimaryAction label="בדיקה חדשה" icon="add-circle-outline" onPress={() => setPicking(true)} disabled={!plan.length} />
+      <PrimaryAction label={t('inspection.new')} icon="add-circle-outline" onPress={() => setPicking(true)} disabled={!plan.length} />
       {error ? <ErrorPanel message={error} onRetry={() => void load()} /> : !rows ? <LoadingPanel /> : (
         <>
           {due.length > 0 && (
             <View>
-              <SectionHeader title={`רכבים שצריך לבדוק (${due.length})`} />
+              <SectionHeader title={t('inspection.vehiclesToCheck', { length: due.length })} />
               <Surface style={styles.list}>
                 {due.map((p, i) => (
                   <ListRow
@@ -136,7 +137,7 @@ export default function SafetyInspectionsScreen({ navigation }: Props) {
                     icon={dueState(p.nextDue!) === 'late' ? 'alert-circle' : 'time-outline'}
                     tint={dueState(p.nextDue!) === 'late' ? STATUS.expired.fg : STATUS.soon.fg}
                     title={formatPlate(p.plate)}
-                    subtitle={[p.vehicleLabel, p.firstInspection ? 'בדיקה ראשונה' : p.lastInspection ? `האחרונה ב-${formatIsoDay(p.lastInspection)}` : null].filter(Boolean).join(' · ')}
+                    subtitle={[p.vehicleLabel, p.firstInspection ? t('inspection.firstShort') : p.lastInspection ? t('inspection.lastOnShort', { v1: formatIsoDay(p.lastInspection) }) : null].filter(Boolean).join(' · ')}
                     trailing={<DuePill nextDue={p.nextDue!} />}
                     onPress={() => open(p.vehicleId)}
                   />
@@ -148,15 +149,15 @@ export default function SafetyInspectionsScreen({ navigation }: Props) {
             value={filter}
             onChange={setFilter}
             options={[
-              { value: 'all', label: 'הכל', count: count('all') },
-              { value: 'awaiting', label: 'ממתין לחתימה', count: count('awaiting'), tone: 'soon' },
-              { value: 'defects', label: 'יש ליקויים', count: count('defects'), tone: 'expired' },
-              { value: 'draft', label: 'טיוטות', count: count('draft') },
-              { value: 'cancelled', label: 'בוטל', count: count('cancelled') },
+              { value: 'all', label: t('common.allShort'), count: count('all') },
+              { value: 'awaiting', label: t('signing.pendingSignature'), count: count('awaiting'), tone: 'soon' },
+              { value: 'defects', label: t('vehicle.hasDefects'), count: count('defects'), tone: 'expired' },
+              { value: 'draft', label: t('inspection.drafts'), count: count('draft') },
+              { value: 'cancelled', label: t('common.cancelled'), count: count('cancelled') },
             ]}
           />
           {shown.length === 0 ? (
-            <EmptyPanel icon="shield-checkmark-outline" title={rows.length ? 'אין בדיקות שמתאימות לחיפוש' : 'עוד אין בדיקות בטיחות'} body={rows.length ? undefined : 'לחצו "בדיקה חדשה", בחרו רכב ועברו על הסעיפים.'} />
+            <EmptyPanel icon="shield-checkmark-outline" title={rows.length ? t('inspection.noneMatchSearch') : t('inspection.noneYet')} body={rows.length ? undefined : t('inspection.emptyHint')} />
           ) : (
             <Surface style={styles.list}>
               {shown.map(({ row, state }, i) => {
@@ -168,7 +169,7 @@ export default function SafetyInspectionsScreen({ navigation }: Props) {
                     first={i === 0}
                     icon="shield-checkmark-outline"
                     title={`${formatPlate(row.vehicle?.plate_number)} · ${formatIsoDay(row.inspection_date)}`}
-                    subtitle={[row.driver?.full_name ?? row.facts?.driverName, row.defect_count > 0 && state !== 'draft' ? (row.defect_count === 1 ? 'ליקוי אחד' : `${row.defect_count} ליקויים`) : null].filter(Boolean).join(' · ')}
+                    subtitle={[row.driver?.full_name ?? row.facts?.driverName, row.defect_count > 0 && state !== 'draft' ? (row.defect_count === 1 ? t('inspection.oneDefect') : t('inspection.defectsN', { defect_count: row.defect_count })) : null].filter(Boolean).join(' · ')}
                     trailing={
                       <View style={[styles.pill, { backgroundColor: tone.soft }]}>
                         <DKText variant="micro" color={tone.fg}>{meta.label}</DKText>
@@ -185,13 +186,13 @@ export default function SafetyInspectionsScreen({ navigation }: Props) {
     </DriverPage>
   );
 
-  return isDesktop ? <DesktopShell active="SafetyInspections" breadcrumbs={['ניהול', 'בדיקות בטיחות']}>{body}</DesktopShell> : body;
+  return isDesktop ? <DesktopShell active="SafetyInspections" breadcrumbs={[t('nav.management'), t('nav.safetyInspections')]}>{body}</DesktopShell> : body;
 }
 
 function GlassSearchLight({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <View style={styles.pickSearch}>
-      <GlassSearch value={value} onChangeText={onChange} placeholder="חיפוש רכב" />
+      <GlassSearch value={value} onChangeText={onChange} placeholder={t('vehicle.search')} />
     </View>
   );
 }

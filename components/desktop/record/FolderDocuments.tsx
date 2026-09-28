@@ -17,6 +17,7 @@ import { DesktopModal } from '../DesktopModal';
 import { DesktopDateField, DLtrText, DText, HoverPressable, prefersReducedMotion } from '../primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
 import { DocumentPreview } from './DocumentPreview';
+import { t, dirIcon } from '../../../lib/i18n';
 
 /**
  * Document folders as a calm list (one row per folder: name, status, date,
@@ -45,13 +46,13 @@ function daysUntil(date: string): number {
 }
 
 export function expiryStatusText(state: ExpiryState, expiry: string | null): string {
-  if (state === 'expired') return 'פג תוקף';
+  if (state === 'expired') return t('status.expiredLong');
   if (state === 'soon' && expiry) {
     const days = daysUntil(expiry);
-    return days <= 0 ? 'פג היום' : days === 1 ? 'מחר' : `בעוד ${days} ימים`;
+    return days <= 0 ? t('expiry.expiredToday') : days === 1 ? t('common.tomorrow') : t('time.inDays', { days });
   }
-  if (state === 'ok') return 'בתוקף';
-  return 'לא הועלה';
+  if (state === 'ok') return t('status.valid');
+  return t('documents.notUploaded');
 }
 
 /** The status a folder shows: the expiry of its newest document. */
@@ -67,7 +68,7 @@ const STATE_COLOR: Partial<Record<ExpiryState, string>> = {
   expired: DESKTOP_TONES.bad.fg,
 };
 
-const countLabel = (count: number) => (count === 0 ? 'עדיין אין קובץ' : count === 1 ? 'קובץ אחד' : `${count} קבצים`);
+const countLabel = (count: number) => (count === 0 ? t('documents.noFileYet') : count === 1 ? t('documents.oneFile') : t('documents.filesCount', { count }));
 
 export function FolderListRow({
   title,
@@ -87,7 +88,7 @@ export function FolderListRow({
 }) {
   const { state, expiry, count } = folderStatus(docs);
   const color = STATE_COLOR[state] ?? DESKTOP_COLORS.inkFaint;
-  const datePrefix = state === 'expired' ? 'מאז ' : 'עד ';
+  const datePrefix = state === 'expired' ? t('documents.sincePrefix') : t('documents.untilPrefix');
   const showStatus = !plain && state !== 'optional';
   const latestUpload = plain ? newestFirst(docs)[0]?.created_at ?? null : null;
 
@@ -96,7 +97,7 @@ export function FolderListRow({
       style={[styles.row, !first && styles.rowDivider]}
       hoverStyle={styles.rowHover}
       onPress={onPress}
-      accessibilityLabel={`${title}. ${showStatus ? expiryStatusText(state, expiry) : ''}. פתיחת התיקייה`}
+      accessibilityLabel={t('documents.openFolderLabel', { title, v1: showStatus ? expiryStatusText(state, expiry) : '' })}
     >
       <View style={[styles.rowIcon, plain && count > 0 && styles.rowIconFilled]}>
         <Ionicons name={icon} size={16} color={plain && count > 0 ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkMuted} />
@@ -111,10 +112,10 @@ export function FolderListRow({
               <DText style={styles.rowMetaText}> · </DText>
             </>
           )}
-          <DText style={styles.rowMetaText}>{plain && count === 0 ? 'עדיין אין קבצים' : countLabel(count)}</DText>
+          <DText style={styles.rowMetaText}>{plain && count === 0 ? t('documents.noFilesYet') : countLabel(count)}</DText>
           {!!latestUpload && (
             <>
-              <DText style={styles.rowMetaText}> · עודכן ב־</DText>
+              <DText style={styles.rowMetaText}> {t('documents.updatedOnPrefix')}</DText>
               <DLtrText style={styles.rowMetaText}>{formatDate(latestUpload)}</DLtrText>
             </>
           )}
@@ -126,7 +127,7 @@ export function FolderListRow({
           <DText weight="semiBold" style={[styles.statusText, { color }]}>{expiryStatusText(state, expiry)}</DText>
         </View>
       )}
-      <Ionicons name="chevron-back" size={15} color={DESKTOP_COLORS.inkFaint} />
+      <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
     </HoverPressable>
   );
 }
@@ -203,14 +204,14 @@ export function FolderUploadBar({
   }, []);
 
   const browse = () =>
-    chooseDocumentSource('בחירת מסמך', async (source) => {
+    chooseDocumentSource(t('documents.chooseDocument'), async (source) => {
       const picked = await pickDocumentSource(source);
       if (picked) choose(picked);
     });
 
   const submit = async () => {
-    if (!file) return setError('קודם בוחרים קובץ: גוררים אותו לריבוע או לוחצים עליו.');
-    if (requiresExpiry && !extraFields && !expiryDate) return setError('בוחרים עד מתי המסמך בתוקף.');
+    if (!file) return setError(t('documents.chooseFileFirst'));
+    if (requiresExpiry && !extraFields && !expiryDate) return setError(t('documents.chooseExpiry'));
     setError(null);
     if (await onUpload(file)) setFile(null);
   };
@@ -224,28 +225,28 @@ export function FolderUploadBar({
           pressStyle={styles.pressDown}
           onPress={browse}
           disabled={uploading}
-          accessibilityLabel={file ? `נבחר הקובץ ${file.name}. לחיצה להחלפה` : 'בחירת קובץ מהמחשב'}
+          accessibilityLabel={file ? t('documents.fileChosen', { name: file.name }) : t('documents.chooseFromComputer')}
         >
           {file ? (
             <View style={styles.chosen}>
               <Ionicons name="document-attach-outline" size={20} color={DESKTOP_COLORS.brand} />
               <DText weight="semiBold" style={styles.chosenName} numberOfLines={1}>{file.name}</DText>
-              <DText weight="semiBold" style={styles.dropLink}>החלפה</DText>
+              <DText weight="semiBold" style={styles.dropLink}>{t('common.replace')}</DText>
             </View>
           ) : (
             <DText style={styles.dropText}>
-              {dragOver ? 'משחררים כאן את הקובץ' : 'גררו לכאן קובץ, או '}
-              {!dragOver && <DText weight="semiBold" style={styles.dropLink}>בחרו קובץ מהמחשב</DText>}
+              {dragOver ? t('documents.dropHere') : t('documents.dragOr')}
+              {!dragOver && <DText weight="semiBold" style={styles.dropLink}>{t('documents.chooseFromComputerLink')}</DText>}
             </DText>
           )}
-          {replacesCurrent && !file && <DText style={styles.dropNote}>{'המסמך החדש יהפוך לנוכחי, והנוכחי יעבור ל"מסמכים קודמים"'}</DText>}
+          {replacesCurrent && !file && <DText style={styles.dropNote}>{t('documents.newBecomesCurrent')}</DText>}
         </HoverPressable>
       </View>
 
       {extraFields ?? (requiresExpiry && (
         <View style={styles.uploadDate}>
-          <DText style={styles.uploadLabel}>בתוקף עד</DText>
-          <DesktopDateField value={expiryDate} onChange={(iso) => { onExpiryChange(iso); setError(null); }} placeholder="בחירת תאריך" large />
+          <DText style={styles.uploadLabel}>{t('documents.validUntil')}</DText>
+          <DesktopDateField value={expiryDate} onChange={(iso) => { onExpiryChange(iso); setError(null); }} placeholder={t('date.chooseDateAction')} large />
         </View>
       ))}
 
@@ -254,11 +255,11 @@ export function FolderUploadBar({
       <View style={styles.actions}>
         <HoverPressable style={[styles.primaryBtn, styles.actionBtn, uploading && styles.disabled]} hoverStyle={styles.primaryBtnHover} pressStyle={styles.pressDown} onPress={() => void submit()} disabled={uploading}>
           {uploading ? <BrandLoader size="small" color="#FFFFFF" /> : <Ionicons name="cloud-upload-outline" size={18} color="#FFFFFF" />}
-          <DText weight="semiBold" style={styles.primaryBtnText}>{uploading ? 'מעלה…' : 'העלאה'}</DText>
+          <DText weight="semiBold" style={styles.primaryBtnText}>{uploading ? t('common.uploading') : t('common.upload')}</DText>
         </HoverPressable>
         {onClose && (
           <HoverPressable style={[styles.closeBtn, styles.actionBtn]} hoverStyle={styles.closeBtnHover} pressStyle={styles.pressDown} onPress={onClose}>
-            <DText weight="semiBold" style={styles.closeBtnText}>סגירה</DText>
+            <DText weight="semiBold" style={styles.closeBtnText}>{t('common.close')}</DText>
           </HoverPressable>
         )}
       </View>
@@ -278,17 +279,17 @@ function GalleryTile({ doc, index, onDelete }: { doc: DocumentRow; index: number
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
       onPress={() => void openDocumentExternally(doc)}
-      accessibilityLabel={`פתיחת ${documentDisplayName(doc)}`}
+      accessibilityLabel={t('documents.openDoc', { doc: documentDisplayName(doc) })}
     >
       <View style={[styles.tilePreview, hovered && !reduceMotion && styles.tilePreviewHover]}>
         <DocumentPreview doc={doc} width={78} height={102} />
         <View style={[styles.tileActions, showActions && styles.tileActionsOn]} pointerEvents={showActions ? 'auto' : 'none'}>
-          <TileAction icon="download-outline" label="הורדה" onPress={() => void downloadDocumentWithAlert(doc)} />
-          <TileAction icon="trash-outline" label="מחיקה" danger onPress={onDelete} />
+          <TileAction icon="download-outline" label={t('common.download')} onPress={() => void downloadDocumentWithAlert(doc)} />
+          <TileAction icon="trash-outline" label={t('common.deleteAction')} danger onPress={onDelete} />
         </View>
       </View>
       <DText weight="semiBold" style={styles.tileName} numberOfLines={2}>{documentDisplayName(doc)}</DText>
-      <DText style={styles.tileMeta}>הועלה ב־</DText>
+      <DText style={styles.tileMeta}>{t('documents.uploadedOnPrefix')}</DText>
       <DLtrText style={styles.tileMeta}>{formatDate(doc.created_at)}</DLtrText>
     </HoverPressable>
   );
@@ -311,9 +312,9 @@ function SmallAction({ icon, label, onPress, danger }: { icon: keyof typeof Ioni
 }
 
 function docDateLine(doc: DocumentRow, current: boolean): { prefix: string; date: string } {
-  if (!doc.expiry_date) return { prefix: 'הועלה ב־', date: formatDate(doc.created_at) };
-  if (current) return { prefix: expiryState(doc.expiry_date) === 'expired' ? 'פג תוקף ב־' : 'בתוקף עד ', date: formatDate(doc.expiry_date) };
-  return { prefix: 'היה בתוקף עד ', date: formatDate(doc.expiry_date) };
+  if (!doc.expiry_date) return { prefix: t('documents.uploadedOnPrefix'), date: formatDate(doc.created_at) };
+  if (current) return { prefix: expiryState(doc.expiry_date) === 'expired' ? t('documents.expiredOnPrefix') : t('documents.validUntilPrefix'), date: formatDate(doc.expiry_date) };
+  return { prefix: t('documents.wasValidUntilPrefix'), date: formatDate(doc.expiry_date) };
 }
 
 function DateLine({ doc, current }: { doc: DocumentRow; current: boolean }) {
@@ -346,8 +347,8 @@ export function FolderDocumentsModal({
   const remove = (doc: DocumentRow) => confirmDeleteDocument(doc, onDeleted);
 
   const subtitle = layout === 'gallery'
-    ? (sorted.length ? `${countLabel(sorted.length)}. לחיצה על קובץ פותחת אותו.` : '')
-    : sorted.length > 1 ? 'המסמך האחרון קובע את התוקף. הקודמים נשמרים כהיסטוריה.' : sorted.length === 1 ? 'המסמך האחרון קובע את התוקף.' : '';
+    ? (sorted.length ? t('documents.clickFileOpens', { v1: countLabel(sorted.length) }) : '')
+    : sorted.length > 1 ? t('documents.latestSetsExpiryHistory') : sorted.length === 1 ? t('documents.latestSetsExpiry') : '';
 
   return (
     <DesktopModal visible title={title} onClose={onClose} maxWidth={layout === 'gallery' ? 640 : 560}>
@@ -355,7 +356,7 @@ export function FolderDocumentsModal({
         {!!subtitle && <DText style={styles.subtitle}>{subtitle}</DText>}
 
         {sorted.length === 0 ? (
-          <DText style={styles.subtitle}>עדיין לא הועלו קבצים לתיקייה הזו.</DText>
+          <DText style={styles.subtitle}>{t('documents.folderEmpty')}</DText>
         ) : layout === 'gallery' ? (
           <View style={styles.gallery}>
             {sorted.map((doc, index) => (
@@ -365,7 +366,7 @@ export function FolderDocumentsModal({
         ) : (
           <>
             <View style={styles.current}>
-              <HoverPressable hoverStyle={styles.previewHover} onPress={() => openDocumentExternally(sorted[0])} accessibilityLabel="צפייה במסמך הנוכחי">
+              <HoverPressable hoverStyle={styles.previewHover} onPress={() => openDocumentExternally(sorted[0])} accessibilityLabel={t('documents.viewCurrent')}>
                 <DocumentPreview doc={sorted[0]} width={76} height={98} />
               </HoverPressable>
               <View style={styles.currentText}>
@@ -375,13 +376,13 @@ export function FolderDocumentsModal({
                 <View style={styles.currentActions}>
                   <HoverPressable style={styles.softBtn} hoverStyle={styles.softBtnHover} pressStyle={styles.pressDown} onPress={() => void openDocumentExternally(sorted[0])}>
                     <Ionicons name="eye-outline" size={15} color={DESKTOP_COLORS.brand} />
-                    <DText weight="semiBold" style={styles.softBtnText}>צפייה</DText>
+                    <DText weight="semiBold" style={styles.softBtnText}>{t('common.view')}</DText>
                   </HoverPressable>
                   <HoverPressable style={styles.plainBtn} hoverStyle={styles.rowHover} pressStyle={styles.pressDown} onPress={() => void downloadDocumentWithAlert(sorted[0])}>
                     <Ionicons name="download-outline" size={15} color={DESKTOP_COLORS.inkMuted} />
-                    <DText weight="semiBold" style={styles.plainBtnText}>הורדה</DText>
+                    <DText weight="semiBold" style={styles.plainBtnText}>{t('common.download')}</DText>
                   </HoverPressable>
-                  <SmallAction icon="trash-outline" label="מחיקת המסמך" danger onPress={() => remove(sorted[0])} />
+                  <SmallAction icon="trash-outline" label={t('documents.deleteDocument')} danger onPress={() => remove(sorted[0])} />
                 </View>
               </View>
             </View>
@@ -395,7 +396,7 @@ export function FolderDocumentsModal({
                   accessibilityState={{ expanded: olderOpen }}
                   aria-expanded={olderOpen}
                 >
-                  <DText weight="semiBold" style={styles.olderLabel}>מסמכים קודמים</DText>
+                  <DText weight="semiBold" style={styles.olderLabel}>{t('documents.previousDocuments')}</DText>
                   <View style={styles.countPill}><DText weight="semiBold" style={styles.countPillText}>{sorted.length - 1}</DText></View>
                   <View style={styles.flex} />
                   <Ionicons name={olderOpen ? 'chevron-up' : 'chevron-down'} size={16} color={DESKTOP_COLORS.inkMuted} />
@@ -404,7 +405,7 @@ export function FolderDocumentsModal({
                   <View style={styles.olderList}>
                     {sorted.slice(1).map((doc, index) => (
                       <View key={doc.id} style={[styles.olderRow, index > 0 && styles.rowDivider]}>
-                        <HoverPressable hoverStyle={styles.previewHover} onPress={() => openDocumentExternally(doc)} accessibilityLabel={`צפייה ב${documentDisplayName(doc)}`}>
+                        <HoverPressable hoverStyle={styles.previewHover} onPress={() => openDocumentExternally(doc)} accessibilityLabel={t('documents.viewDoc', { doc: documentDisplayName(doc) })}>
                           <DocumentPreview doc={doc} width={40} height={52} />
                         </HoverPressable>
                         <View style={styles.rowText}>
@@ -412,10 +413,10 @@ export function FolderDocumentsModal({
                           <DateLine doc={doc} current={false} />
                         </View>
                         <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={() => void openDocumentExternally(doc)}>
-                          <DText weight="semiBold" style={styles.softBtnText}>צפייה</DText>
+                          <DText weight="semiBold" style={styles.softBtnText}>{t('common.view')}</DText>
                         </HoverPressable>
-                        <SmallAction icon="download-outline" label="הורדה" onPress={() => void downloadDocumentWithAlert(doc)} />
-                        <SmallAction icon="trash-outline" label="מחיקה" danger onPress={() => remove(doc)} />
+                        <SmallAction icon="download-outline" label={t('common.download')} onPress={() => void downloadDocumentWithAlert(doc)} />
+                        <SmallAction icon="trash-outline" label={t('common.deleteAction')} danger onPress={() => remove(doc)} />
                       </View>
                     ))}
                   </View>
@@ -434,7 +435,7 @@ export function FolderDocumentsModal({
 function CurrentTag({ doc }: { doc: DocumentRow }) {
   const state = doc.expiry_date ? expiryState(doc.expiry_date) : 'optional';
   const color = STATE_COLOR[state] ?? DESKTOP_COLORS.inkMuted;
-  const label = state === 'optional' ? 'המסמך הנוכחי' : state === 'expired' ? 'המסמך הנוכחי · פג תוקף' : `המסמך הנוכחי · ${expiryStatusText(state, doc.expiry_date)}`;
+  const label = state === 'optional' ? t('documents.current') : state === 'expired' ? t('documents.currentExpired') : t('documents.currentWith', { v1: expiryStatusText(state, doc.expiry_date) });
   return <DText weight="semiBold" style={[styles.currentTag, { color }]}>{label}</DText>;
 }
 
@@ -497,7 +498,7 @@ const styles = StyleSheet.create({
   }),
   tilePreview: { marginBottom: 8, ...webOnly({ transition: `transform 200ms ${EASE_OUT}` }) },
   tilePreviewHover: webOnly({ transform: 'scale(1.04)' }),
-  tileActions: { position: 'absolute', top: 4, left: 4, flexDirection: 'column', gap: 4, opacity: 0, ...webOnly({ transition: 'opacity 150ms ease' }) },
+  tileActions: { position: 'absolute', top: 4, start: 4, flexDirection: 'column', gap: 4, opacity: 0, ...webOnly({ transition: 'opacity 150ms ease' }) },
   tileActionsOn: { opacity: 1 },
   tileAction: {
     width: 28,

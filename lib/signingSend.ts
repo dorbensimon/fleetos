@@ -1,6 +1,7 @@
 import { assignSigningTemplate, deleteSigningRecord, listSignatureRequests } from './docuseal';
 import { listDrivers } from './adminApi/drivers';
 import { formatDate } from './theme';
+import { t } from './i18n';
 
 /**
  * Sending a signing document to drivers and deleting a company's own
@@ -23,23 +24,23 @@ export function sameDocumentTitle(a: string | null | undefined, b: string | null
   return !!key(a) && key(a) === key(b);
 }
 
-export const TAKEN_TITLE_MESSAGE = 'כבר יש מסמך בשם הזה. בחרו שם אחר.';
+export const TAKEN_TITLE_MESSAGE = () => t('signing.duplicateName');
 
-export const RECIPIENT_STATE_LABEL: Record<SendRecipient['state'], string> = { none: '', pending: 'ממתין לחתימה', signed: 'כבר חתם' };
+export const RECIPIENT_STATE_LABEL: Record<SendRecipient['state'], string> = { none: '', get pending() { return t('signing.pendingSignature'); }, get signed() { return t('signing.alreadySigned'); } };
 
 /** "נהג אחד" / "3 נהגים". */
 export function driversCount(count: number): string {
-  return count === 1 ? 'נהג אחד' : `${count} נהגים`;
+  return count === 1 ? t('common.oneDriver') : t('common.driversCount', { count });
 }
 
 /** Where a driver stands on this document, and what happens if picked: "חתם לאחרונה ב-23/09/2026 · יישלח שוב". */
 export function recipientNote(recipient: SendRecipient, picked: boolean): string {
   const label =
     recipient.state === 'signed' && recipient.lastSignedAt
-      ? `חתם לאחרונה ב-${formatDate(recipient.lastSignedAt)}`
+      ? t('signing.lastSignedOn', { v1: formatDate(recipient.lastSignedAt) })
       : RECIPIENT_STATE_LABEL[recipient.state];
   if (!label || !picked) return label;
-  return `${label} · ${recipient.state === 'pending' ? 'יוחלף במסמך חדש' : 'יישלח שוב'}`;
+  return `${label} · ${recipient.state === 'pending' ? t('signing.willBeReplaced') : t('signing.willResend')}`;
 }
 
 /** The company's active drivers, by name, each with where they stand on this document and when they last signed it. */
@@ -61,7 +62,7 @@ export async function loadSendRecipients(companyId: string, templateId: string):
         : 'none';
   return rows
     .filter((d) => d.status === 'active')
-    .map((d) => ({ id: d.id, name: d.full_name?.trim() || 'נהג ללא שם', state: stateOf(d.id), lastSignedAt: lastSignedAt(d.id) }))
+    .map((d) => ({ id: d.id, name: d.full_name?.trim() || t('common.unnamedDriver'), state: stateOf(d.id), lastSignedAt: lastSignedAt(d.id) }))
     .sort((a, b) => a.name.localeCompare(b.name, 'he'));
 }
 
@@ -80,9 +81,9 @@ export async function sendToRecipients(
     try {
       const response = await assignSigningTemplate(companyId, templateId, [driver.id]);
       if (response.success && response.created === 1) result.sent += 1;
-      else result.failed.push({ name: driver.name, reason: response.message || 'השליחה לא אושרה' });
+      else result.failed.push({ name: driver.name, reason: response.message || t('signing.sendNotApproved') });
     } catch (error) {
-      result.failed.push({ name: driver.name, reason: (error as Error)?.message || 'השליחה נכשלה' });
+      result.failed.push({ name: driver.name, reason: (error as Error)?.message || t('signing.sendFailed') });
     }
     onProgress?.(i + 1, targets.length);
   }
@@ -98,14 +99,14 @@ export async function countWaitingSigners(companyId: string, templateId: string)
 export function deleteTemplateMessage(waiting: number, checklist = false): string {
   if (checklist) {
     const pending = waiting
-      ? ` ${waiting === 1 ? 'מפגש אחד עוד מחכה לחתימת הנהג, והוא יימחק.' : `${waiting} מפגשים עוד מחכים לחתימת הנהג, והם יימחקו.`}`
+      ? ` ${waiting === 1 ? t('signing.oneMeetingWaiting') : t('signing.meetingsWaiting', { waiting })}`
       : '';
-    return `הטופס יימחק לצמיתות.${pending} טיוטות של מפגשים שעוד לא נחתמו יימחקו איתו. מפגשים שכבר נחתמו יישארו בתיק הנהג.`;
+    return t('signing.deleteChecklistMessage', { pending });
   }
   const pending = waiting
-    ? ` ${waiting === 1 ? 'נהג אחד עוד לא חתם עליו, והבקשה שלו תבוטל.' : `${waiting} נהגים עוד לא חתמו עליו, והבקשות שלהם יבוטלו.`}`
+    ? ` ${waiting === 1 ? t('signing.oneDriverNotSigned') : t('signing.driversNotSigned', { waiting })}`
     : '';
-  return `המסמך יימחק לצמיתות, גם מ-DocuSeal.${pending} מסמכים שנהגים כבר חתמו עליהם יישארו בתיק הנהג.`;
+  return t('signing.deleteTemplateMessage', { pending });
 }
 
 /** Deletes a company's own document in one step; the server cancels requests still waiting. */
@@ -128,8 +129,8 @@ export async function eraseSigningRequest(companyId: string, requestId: string):
 
 /** The warning shown before deleting, in plain words. */
 export function eraseWarning(status: string, driverName: string | null | undefined): string {
-  const who = driverName?.trim() || 'הנהג';
+  const who = driverName?.trim() || t('common.theDriver');
   return status === 'completed'
-    ? `המסמך החתום יימחק לגמרי, גם אצל ${who}. אי אפשר לשחזר אותו.`
-    : `המסמך יימחק, ו${who} לא יוכל לחתום עליו. אפשר לשלוח אותו שוב בכל רגע.`;
+    ? t('signing.deleteSignedMessage', { who })
+    : t('signing.deletePendingMessage', { who });
 }

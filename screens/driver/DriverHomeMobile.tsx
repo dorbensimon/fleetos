@@ -29,6 +29,8 @@ import {
 import { VEHICLE_TYPE_LABELS } from '../../lib/compliance';
 import { daysUntilExpiry, formatDate, timeGreeting } from '../../lib/theme';
 import type { ComplianceItem, Vehicle } from '../../lib/adminApi';
+import { t, dirIcon, getLocale } from '../../lib/i18n';
+import { fontStack } from '../../lib/fontStack';
 
 type Item = { title: string; detail: string; severity: 'danger' | 'warning' | 'success'; item: ComplianceItem; target: string | null };
 
@@ -84,7 +86,7 @@ export function DriverHomeMobile(p: Props) {
     () =>
       summarize([
         ...p.items.map((i) => ({ label: i.title, date: i.target })),
-        { label: 'רישיון נהיגה', date: p.licenseExpiry },
+        { label: t('driver.drivingLicense'), date: p.licenseExpiry },
       ], p.pendingSignatures),
     [p.items, p.licenseExpiry, p.pendingSignatures]
   );
@@ -111,12 +113,12 @@ export function DriverHomeMobile(p: Props) {
                 {timeGreeting()}
               </DKText>
               <DKText variant="heading" color={DK.onNight} style={styles.center} numberOfLines={1}>
-                {p.firstName || 'נהג'}
+                {p.firstName || t('role.driver')}
               </DKText>
             </View>
             <HeroButton
               icon="notifications-outline"
-              label={p.unreadNotifications ? `התראות, ${p.unreadNotifications} חדשות` : 'התראות'}
+              label={p.unreadNotifications ? t('notifications.newN', { unreadNotifications: p.unreadNotifications }) : t('notifications.title')}
               onPress={p.onNotifications}
               badge={p.unreadNotifications > 0}
             />
@@ -124,9 +126,9 @@ export function DriverHomeMobile(p: Props) {
 
           <Reveal index={0}>
             {p.vehicle ? (
-              <Pressy onPress={p.onVehicle} accessibilityLabel={`הרכב שלי, ${vehicleName}, ${p.vehicle.plate_number}`} pressScale={0.98}>
+              <Pressy onPress={p.onVehicle} accessibilityLabel={t('driver.myVehicleLabel', { vehicleName, plate_number: p.vehicle.plate_number })} pressScale={0.98}>
                 <DKText variant="micro" color={DK.onNightFaint}>
-                  הרכב שלי
+                  {t('driver.myVehicle')}
                 </DKText>
                 <DKText variant="display" color={DK.onNight} numberOfLines={1} style={styles.vehicleName}>
                   {vehicleName}
@@ -135,7 +137,7 @@ export function DriverHomeMobile(p: Props) {
                   <Plate number={p.vehicle.plate_number} />
                   <View style={styles.glassChip}>
                     <DKText variant="micro" color={DK.onNight}>
-                      {VEHICLE_TYPE_LABELS[p.vehicle.vehicle_type] || 'פרטי'}
+                      {VEHICLE_TYPE_LABELS[p.vehicle.vehicle_type] || t('vehicle.type.car')}
                     </DKText>
                   </View>
                 </View>
@@ -143,10 +145,10 @@ export function DriverHomeMobile(p: Props) {
             ) : (
               <View>
                 <DKText variant="display" color={DK.onNight}>
-                  עוד אין רכב
+                  {t('driver.noVehicleShort')}
                 </DKText>
                 <DKText variant="body" color={DK.onNightMuted} style={styles.noVehicleHint}>
-                  מנהל הצי ישייך אליך רכב, והוא יופיע כאן.
+                  {t('driver.managerWillAssign')}
                 </DKText>
               </View>
             )}
@@ -166,11 +168,11 @@ export function DriverHomeMobile(p: Props) {
               <Surface>
                 <View style={styles.cardHead}>
                   <DKText variant="heading" accessibilityRole="header">
-                    תוקף ותחזוקה
+                    {t('driver.expiryAndMaintenance')}
                   </DKText>
-                  <Pressy onPress={p.onVehicle} accessibilityRole="link" accessibilityLabel="לכל פרטי הרכב" style={styles.link}>
+                  <Pressy onPress={p.onVehicle} accessibilityRole="link" accessibilityLabel={t('driver.allVehicleDetails')} style={styles.link}>
                     <DKText variant="caption" color={DK.accent}>
-                      לכל הפרטים
+                      {t('driver.allDetails')}
                     </DKText>
                   </Pressy>
                 </View>
@@ -178,10 +180,10 @@ export function DriverHomeMobile(p: Props) {
                   <View style={styles.emptyBlock}>
                     <Ionicons name="shield-checkmark" size={28} color={STATUS.ok.fill} />
                     <DKText variant="label" style={styles.center}>
-                      אין פריטי תוקף לרכב הזה
+                      {t('driver.noExpiryItems')}
                     </DKText>
                     <DKText variant="caption" color={DK.muted} style={styles.center}>
-                      כשמנהל הצי יוסיף ביטוח, טסט או טיפול — הם יופיעו כאן.
+                      {t('driver.noExpiryItemsHint')}
                     </DKText>
                   </View>
                 ) : (
@@ -189,7 +191,7 @@ export function DriverHomeMobile(p: Props) {
                     <Gauge
                       key={`${item.title}-${index}`}
                       label={item.title}
-                      value={item.target ? formatDate(item.target) : 'תאריך חסר'}
+                      value={item.target ? formatDate(item.target) : t('common.dateMissing')}
                       detail={relativeDays(item.target)}
                       status={statusOfDate(item.target)}
                       progress={validityProgress(item.target)}
@@ -208,8 +210,8 @@ export function DriverHomeMobile(p: Props) {
               icon="create-outline"
               tint={p.pendingSignatures ? '#E07A00' : DK.accent}
               value={String(p.pendingSignatures)}
-              title="מסמכים לחתימה"
-              caption={p.pendingSignatures ? 'מחכים לחתימה שלך' : 'אין מה לחתום'}
+              title={t('nav.signingDocuments')}
+              caption={p.pendingSignatures ? t('signing.waitingForYou') : t('signing.nothingToSign')}
               highlight={p.pendingSignatures > 0}
               onPress={p.onSigning}
             />
@@ -217,28 +219,28 @@ export function DriverHomeMobile(p: Props) {
               icon="id-card-outline"
               tint={STATUS[licenseStatus].fg}
               value={p.licenseExpiry ? formatDate(p.licenseExpiry) : '—'}
-              title="רישיון נהיגה"
-              caption={p.licenseClasses ? `דרגה ${p.licenseClasses}` : 'חסרים פרטים'}
+              title={t('driver.drivingLicense')}
+              caption={p.licenseClasses ? t('driver.classV', { licenseClasses: p.licenseClasses }) : t('driver.detailsMissing')}
               chip={<StatusChip status={licenseStatus} />}
               onPress={p.onLicense}
             />
-            <Tile icon="folder-open-outline" tint={DK.accent} title="המסמכים שלי" caption="רישיון, תיק נהג והדרכות" onPress={p.onDocuments} />
+            <Tile icon="folder-open-outline" tint={DK.accent} title={t('nav.myDocuments')} caption={t('driver.licenseFileTraining')} onPress={p.onDocuments} />
             {p.vehicle ? (
               <Tile
                 icon="speedometer-outline"
                 tint={DK.accent}
-                value={`${p.vehicle.odometer.toLocaleString('he-IL')}`}
-                title="עדכון קילומטרים"
-                caption="ק״מ נוכחי ברכב"
+                value={`${p.vehicle.odometer.toLocaleString(getLocale())}`}
+                title={t('odometer.updateKm')}
+                caption={t('driver.currentKm')}
                 onPress={p.onOdometer}
               />
             ) : (
-              <Tile icon="person-circle-outline" tint={DK.accent} title="הפרטים שלי" caption="טלפון, כתובת ורישיון" onPress={p.onLicense} />
+              <Tile icon="person-circle-outline" tint={DK.accent} title={t('nav.myDetails')} caption={t('driver.phoneAddressLicense')} onPress={p.onLicense} />
             )}
           </Reveal>
 
           <Reveal index={4}>
-            <SectionHeader title="מנהל הצי" />
+            <SectionHeader title={t('driver.fleetManager')} />
             <Surface style={styles.manager}>
               <View style={styles.managerHead}>
                 <View style={styles.avatar}>
@@ -248,25 +250,25 @@ export function DriverHomeMobile(p: Props) {
                 </View>
                 <View style={styles.managerText}>
                   <DKText variant="label" numberOfLines={1}>
-                    {p.managerName || 'עוד לא הוגדר'}
+                    {p.managerName || t('common.notSetYet')}
                   </DKText>
                   <DKText variant="caption" color={DK.muted}>
-                    {p.managerPhone ? 'זמין לשאלות על הרכב והמסמכים' : 'פרטי הקשר יופיעו כאן כשיוגדרו'}
+                    {p.managerPhone ? t('driver.managerAvailable') : t('driver.contactWillAppear')}
                   </DKText>
                 </View>
               </View>
               {!!p.managerPhone && (
                 <View style={styles.managerActions}>
-                  <Pressy onPress={() => p.onManager('tel')} haptic accessibilityLabel={`התקשרות אל ${p.managerName || 'מנהל הצי'}`} style={[styles.managerBtn, styles.callBtn]}>
+                  <Pressy onPress={() => p.onManager('tel')} haptic accessibilityLabel={t('common.callV1', { v1: p.managerName || t('driver.fleetManager') })} style={[styles.managerBtn, styles.callBtn]}>
                     <Ionicons name="call" size={18} color="#FFFFFF" />
                     <DKText variant="label" color="#FFFFFF">
-                      התקשר
+                      {t('common.call')}
                     </DKText>
                   </Pressy>
-                  <Pressy onPress={() => p.onManager('sms')} haptic accessibilityLabel={`הודעה אל ${p.managerName || 'מנהל הצי'}`} style={[styles.managerBtn, styles.smsBtn]}>
+                  <Pressy onPress={() => p.onManager('sms')} haptic accessibilityLabel={t('common.messageV1', { v1: p.managerName || t('driver.fleetManager') })} style={[styles.managerBtn, styles.smsBtn]}>
                     <Ionicons name="chatbubble" size={17} color={DK.accent} />
                     <DKText variant="label" color={DK.accent}>
-                      הודעה
+                      {t('common.message')}
                     </DKText>
                   </Pressy>
                 </View>
@@ -281,11 +283,11 @@ export function DriverHomeMobile(p: Props) {
 }
 
 function attentionLine(expired: number, first: string | null, signatures: number) {
-  const docs = signatures === 1 ? 'מסמך אחד מחכה לחתימה שלך' : `${signatures} מסמכים מחכים לחתימה שלך`;
+  const docs = signatures === 1 ? t('driver.oneDocWaiting') : t('driver.docsWaiting', { signatures });
   if (!expired) return docs;
-  const lapsed = expired === 1 ? `${first} פג תוקף` : `${expired} פריטים פגי תוקף`;
-  if (!signatures) return expired === 1 ? `${lapsed} — כדאי לטפל עכשיו` : `${lapsed}, החל מ${first}`;
-  return `${lapsed}, ו${signatures === 1 ? 'מסמך אחד לחתימה' : `־${signatures} מסמכים לחתימה`}`;
+  const lapsed = expired === 1 ? t('driver.firstExpired', { first }) : t('driver.itemsExpired', { expired });
+  if (!signatures) return expired === 1 ? t('driver.lapsedActNow', { lapsed }) : t('driver.lapsedStartingFrom', { lapsed, first });
+  return t('driver.lapsedAnd', { lapsed, v1: signatures === 1 ? t('driver.oneDocToSign') : t('driver.docsToSignN', { signatures }) });
 }
 
 function SummaryPanel({ summary, onPress }: { summary: Summary; onPress?: () => void }) {
@@ -298,33 +300,33 @@ function SummaryPanel({ summary, onPress }: { summary: Summary; onPress?: () => 
   if (summary.kind === 'attention') {
     const total = summary.expired + summary.signatures;
     big = String(total);
-    unit = summary.expired ? (total === 1 ? 'פריט' : 'פריטים') : total === 1 ? 'מסמך' : 'מסמכים';
+    unit = summary.expired ? (total === 1 ? t('common.item') : t('common.items')) : total === 1 ? t('documents.document') : t('common.documents');
     line = attentionLine(summary.expired, summary.first, summary.signatures);
   } else if (summary.kind === 'next') {
-    big = summary.days === 0 ? 'היום' : summary.days.toLocaleString('he-IL');
-    unit = summary.days === 0 ? '' : summary.days === 1 ? 'יום' : 'ימים';
-    line = `עד ${summary.label}`;
+    big = summary.days === 0 ? t('common.today') : summary.days.toLocaleString(getLocale());
+    unit = summary.days === 0 ? '' : summary.days === 1 ? t('common.dayWord') : t('common.days');
+    line = t('common.untilLabel', { label: summary.label });
   } else {
-    line = 'הכול בתוקף';
+    line = t('driver.allValid');
   }
-  const label = summary.kind === 'clear' ? 'הכול בתוקף' : `${summary.kind === 'attention' ? 'דורש טיפול, ' : ''}${big} ${unit}, ${line}`;
+  const label = summary.kind === 'clear' ? t('driver.allValid') : `${summary.kind === 'attention' ? t('driver.needsAttentionPrefix') : ''}${big} ${unit}, ${line}`;
   const body = (
     <View style={styles.summary}>
       <View style={[styles.summaryDot, { backgroundColor: s.fill }]} />
       {summary.kind === 'clear' ? (
         <View style={styles.summaryText}>
           <DKText variant="title" color={DK.onNight}>
-            הכול בתוקף
+            {t('driver.allValid')}
           </DKText>
           <DKText variant="caption" color={DK.onNightMuted}>
-            אין כרגע שום דבר שמחכה לך
+            {t('driver.nothingWaiting')}
           </DKText>
         </View>
       ) : (
         <View style={styles.summaryRow}>
           <View style={styles.summaryText}>
             <DKText variant="micro" color={s.fill}>
-              {summary.kind === 'attention' ? 'דורש טיפול' : tone === 'soon' ? 'מתקרב' : 'התוקף הבא'}
+              {summary.kind === 'attention' ? t('status.needsAttention') : tone === 'soon' ? t('status.approaching') : t('driver.nextExpiry')}
             </DKText>
             <DKText variant="label" color={DK.onNight} numberOfLines={2}>
               {line}
@@ -340,7 +342,7 @@ function SummaryPanel({ summary, onPress }: { summary: Summary; onPress?: () => 
               </DKText>
             )}
           </View>
-          {!!onPress && <Ionicons name="chevron-back" size={18} color={DK.onNightFaint} />}
+          {!!onPress && <Ionicons name={dirIcon('chevron-back')} size={18} color={DK.onNightFaint} />}
         </View>
       )}
     </View>
@@ -397,7 +399,7 @@ const styles = StyleSheet.create({
   summaryRow: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   summaryText: { flex: 1, gap: 2 },
   bigNumber: { alignItems: 'center', minWidth: 64 },
-  bigValue: { fontFamily: 'Heebo_800ExtraBold', fontSize: 40, lineHeight: 44, letterSpacing: -1, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  bigValue: { fontFamily: fontStack('Heebo_800ExtraBold'), fontSize: 40, lineHeight: 44, letterSpacing: -1, textAlign: 'center', fontVariant: ['tabular-nums'] },
 
   body: { marginTop: -22, paddingHorizontal: DK_SPACE.md, gap: 22, width: '100%', maxWidth: 560, alignSelf: 'center' },
   link: { minHeight: 36, justifyContent: 'center', paddingHorizontal: 4 },

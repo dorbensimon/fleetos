@@ -3,6 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DK, DK_SPACE, DKText, DriverPage, HeroTitle, Pressy, Reveal, STATUS, Surface, relativeDays, type Status } from '../../components/driverKit';
 import { ErrorState, LoadingState } from '../../components/ui';
+import { t, dirIcon } from '../../lib/i18n';
+import { daysUntilExpiry } from '../../lib/theme';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -33,12 +35,18 @@ type Props = {
 };
 
 export function expiredDetail(date: string | null) {
-  return relativeDays(date)?.replace(/^לפני/, 'פג לפני') ?? 'פג תוקף';
+  const days = daysUntilExpiry(date);
+  if (days == null) return t('status.expiredLong');
+  return days < -1 ? t('expiry.expiredDaysAgo', { days: -days }) : relativeDays(date)!;
 }
 
 export function soonDetail(date: string | null) {
-  const rel = relativeDays(date);
-  return rel === 'היום' ? 'פג היום' : rel === 'מחר' ? 'פג מחר' : rel ? `פג ${rel}` : 'מתקרב';
+  const days = daysUntilExpiry(date);
+  if (days == null) return t('status.approaching');
+  if (days === 0) return t('expiry.expiredToday');
+  if (days === 1) return t('expiry.expiresTomorrow');
+  if (days === -1) return t('expiry.expiredYesterday');
+  return days > 1 ? t('driver.attention.expiresInDays', { days }) : t('expiry.expiredDaysAgo', { days: -days });
 }
 
 /**
@@ -49,12 +57,12 @@ export function soonDetail(date: string | null) {
 export function DriverAttentionMobile(p: Props) {
   const open = p.expired.length + p.signatures.length;
   const subtitle = p.loading
-    ? 'בודק מה מחכה לך…'
+    ? t('driver.attention.checking')
     : open
-      ? `${open} ${open === 1 ? 'דבר מחכה' : 'דברים מחכים'} לטיפול שלך`
+      ? t('driver.attention.forYou', { open, v1: open === 1 ? t('driver.attention.thingWaiting') : t('driver.attention.thingsWaiting') })
       : p.soon.length
-        ? 'אין כרגע משהו דחוף'
-        : 'הכול מטופל';
+        ? t('driver.attention.nothingUrgent')
+        : t('attention.allHandled');
 
   let index = 0;
   const section = (title: string, tone: Status, tasks: AttentionTask[]) =>
@@ -81,7 +89,7 @@ export function DriverAttentionMobile(p: Props) {
     );
 
   return (
-    <DriverPage insetTop={p.insetTop} insetBottom={p.insetBottom} hero={<HeroTitle title="דורש טיפול" subtitle={subtitle} onBack={p.onBack} />}>
+    <DriverPage insetTop={p.insetTop} insetBottom={p.insetBottom} hero={<HeroTitle title={t('status.needsAttention')} subtitle={subtitle} onBack={p.onBack} />}>
       {p.loading ? (
         <Surface>
           <LoadingState />
@@ -97,14 +105,14 @@ export function DriverAttentionMobile(p: Props) {
               <Ionicons name="checkmark-done" size={32} color={STATUS.ok.fg} />
             </View>
             <DKText variant="title" style={styles.center}>
-              הכול מטופל
+              {t('attention.allHandled')}
             </DKText>
             <DKText variant="body" color={DK.muted} style={styles.center}>
-              אין מסמכים לחתימה ושום דבר לא פג תוקף. כשמשהו ידרוש טיפול — הוא יופיע כאן.
+              {t('driver.attention.emptyBody')}
             </DKText>
-            <Pressy onPress={p.onHome} accessibilityLabel="חזרה למסך הבית" style={styles.doneAction}>
+            <Pressy onPress={p.onHome} accessibilityLabel={t('driver.attention.backHomeLabel')} style={styles.doneAction}>
               <DKText variant="label" color={DK.accent}>
-                חזרה לבית
+                {t('driver.attention.backHome')}
               </DKText>
             </Pressy>
           </Surface>
@@ -113,16 +121,16 @@ export function DriverAttentionMobile(p: Props) {
         <>
           <Reveal index={index++}>
             <Surface style={styles.tally}>
-              <Tally count={p.expired.length} label="פג תוקף" tone="expired" />
+              <Tally count={p.expired.length} label={t('status.expiredLong')} tone="expired" />
               <View style={styles.tallyRule} />
-              <Tally count={p.signatures.length} label="לחתימה" tone="soon" />
+              <Tally count={p.signatures.length} label={t('signing.toSign')} tone="soon" />
               <View style={styles.tallyRule} />
-              <Tally count={p.soon.length} label="פג בקרוב" tone="missing" />
+              <Tally count={p.soon.length} label={t('driver.attention.expiringSoon')} tone="missing" />
             </Surface>
           </Reveal>
-          {section('פג תוקף', 'expired', p.expired)}
-          {section('מחכים לחתימה שלך', 'soon', p.signatures)}
-          {section('פג בקרוב', 'soon', p.soon)}
+          {section(t('status.expiredLong'), 'expired', p.expired)}
+          {section(t('signing.waitingForYou'), 'soon', p.signatures)}
+          {section(t('driver.attention.expiringSoon'), 'soon', p.soon)}
         </>
       )}
     </DriverPage>
@@ -168,7 +176,7 @@ function TaskCard({ task }: { task: AttentionTask }) {
           <DKText variant="label" color={task.status === 'expired' ? STATUS.expired.fg : DK.accent}>
             {task.action}
           </DKText>
-          <Ionicons name="chevron-back" size={17} color={task.status === 'expired' ? STATUS.expired.fg : DK.accent} />
+          <Ionicons name={dirIcon('chevron-back')} size={17} color={task.status === 'expired' ? STATUS.expired.fg : DK.accent} />
         </View>
       </Surface>
     </Pressy>

@@ -31,6 +31,7 @@ import { DriverDetailDesktopView } from '../../components/desktop/DriverDetailDe
 import { departmentNameById, departmentOptions, isStaleDepartmentError } from '../../lib/driverFields';
 import { dateOnlyIsoFromLocalDate } from '../../lib/driverFormValidation';
 import { DRIVER_DOCUMENT_GROUPS, LICENSE_DOCS_CATEGORY } from '../../lib/driverDocumentFolders';
+import { t } from '../../lib/i18n';
 
 const APP_STARTED_AT_MS = Date.now();
 
@@ -89,16 +90,16 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       setDriver((current) => (current ? { ...current, ...patch } : current));
       return null;
     } catch (err: any) {
-      if (isStaleDepartmentError(err?.message)) return 'המחלקה שנבחרה נמחקה. יש לבחור מחלקה אחרת';
-      return err?.message || 'השמירה נכשלה, נסה שוב';
+      if (isStaleDepartmentError(err?.message)) return t('driver.departmentDeleted');
+      return err?.message || t('common.saveFailedRetryShort');
     }
   };
   const saveDriverEmail = async (email: string): Promise<string | null> => {
-    if (!companyId) return 'לא נמצאה חברה משויכת';
+    if (!companyId) return t('company.noLinkedCompany');
     const result = await updateUserEmail(driverId, companyId, email);
     if (!result.ok) return result.error;
     setDriver((current) => (current ? { ...current, email } : current));
-    showToast('כתובת המייל עודכנה');
+    showToast(t('driver.emailUpdated'));
     return null;
   };
 
@@ -112,9 +113,9 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
         const refreshed = await getDriver(driverId);
         setDriver(refreshed);
       }
-      showToast(approve ? 'עדכון הרישיון אושר' : 'עדכון הרישיון נדחה');
+      showToast(approve ? t('driver.licenseUpdateApproved') : t('driver.licenseUpdateRejected'));
     } catch (err: any) {
-      showToast(err?.message || 'הפעולה נכשלה, נסה שוב');
+      showToast(err?.message || t('common.actionFailedRetry'));
     } finally {
       setReviewingLicense(false);
     }
@@ -137,7 +138,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     if (!companyId) return;
     const normalized = emailValue.trim().toLowerCase();
     if (!normalized || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
-      setEmailError('כתובת מייל לא תקינה');
+      setEmailError(t('validation.invalidEmail'));
       return;
     }
     setEmailError('');
@@ -150,17 +151,17 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     }
     closeEmail();
     setDriver((current) => (current ? { ...current, email: normalized } : current));
-    showToast('כתובת המייל עודכנה');
+    showToast(t('driver.emailUpdated'));
   };
 
   const submitReset = async () => {
     if (!companyId) return;
     if (!isValidTemporaryPassword(resetPassword)) {
-      setResetError('הסיסמה חייבת להכיל לפחות 4 ספרות בלבד');
+      setResetError(t('password.min4DigitsOnly'));
       return;
     }
     if (resetPassword !== resetConfirm) {
-      setResetError('הסיסמאות אינן תואמות');
+      setResetError(t('password.mismatch'));
       return;
     }
     setResetError('');
@@ -172,7 +173,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       return;
     }
     closeReset();
-    showAlert('הסיסמה אופסה', 'הנהג יתבקש לקבוע סיסמה קבועה משלו בכניסה הבאה.');
+    showAlert(t('password.resetDone'), t('password.driverWillSet'));
   };
 
   const runArchive = async () => {
@@ -182,10 +183,10 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     setArchiving(false);
     setArchiveConfirmOpen(false);
     if (!result.ok) {
-      showAlert('ההעברה לארכיון נכשלה', result.error);
+      showAlert(t('driver.archiveFailed'), result.error);
       return;
     }
-    showToast('הנהג הועבר לארכיון וגישתו לאפליקציה נחסמה');
+    showToast(t('driver.archivedBlocked'));
     navigation.goBack();
   };
 
@@ -195,10 +196,10 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     const result = await restoreDriver(driverId, companyId);
     setRestoring(false);
     if (!result.ok) {
-      showAlert('שחזור הנהג נכשל', result.error);
+      showAlert(t('driver.restoreFailed'), result.error);
       return;
     }
-    showToast('הנהג שוחזר מהארכיון');
+    showToast(t('driver.restored'));
     await load();
   };
 
@@ -227,7 +228,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
         licenseDocs.some((doc) => doc.title === 'צד קדמי') && licenseDocs.some((doc) => doc.title === 'צד אחורי')
       );
     } catch (err: any) {
-      if (requestId === loadRequest.current) setLoadError(err?.message ?? 'טעינת הנהג נכשלה');
+      if (requestId === loadRequest.current) setLoadError(err?.message ?? t('driver.loadFailed'));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -284,7 +285,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       const driverSigningRequests = signatureRequests.filter((r) => r.driver_id === driverId);
       await exportDriverSnapshotReport(company, driver, departmentName, driverSigningRequests, documents);
     } catch (err: any) {
-      showToast(err?.message || 'ייצוא הדוח נכשל, נסה שוב');
+      showToast(err?.message || t('reports.exportFailedRetry'));
     } finally {
       setExportingReport(false);
     }
@@ -379,15 +380,15 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
 
       <ConfirmActionModal
         visible={archiveConfirmOpen}
-        title="העברה לארכיון"
+        title={t('common.moveToArchive')}
         message={
-          `${driver?.full_name ?? 'הנהג'} יאבד את הגישה לאפליקציה ויוסר מרשימת הנהגים.` +
+          t('driver.archiveLosesAccess', { v1: driver?.full_name ?? t('common.theDriver') }) +
           (assignedVehicleCount > 0
-            ? ` שיוך ${assignedVehicleCount === 1 ? 'הרכב' : `${assignedVehicleCount} הרכבים`} שלו יבוטל.`
+            ? t('driver.archiveAssignmentCancelled', { v1: assignedVehicleCount === 1 ? t('common.theVehicle') : t('driver.theVehiclesCount', { assignedVehicleCount }) })
             : '') +
-          ' אפשר לשחזר אותו ממסך הארכיון.'
+          t('driver.canRestoreFromArchive')
         }
-        confirmLabel="העבר לארכיון"
+        confirmLabel={t('common.moveToArchiveAction')}
         loading={archiving}
         onConfirm={runArchive}
         onClose={() => setArchiveConfirmOpen(false)}
@@ -397,7 +398,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
 
   if (isDesktop) {
     return (
-      <DesktopShell active="AdminHome" breadcrumbs={['ניהול', 'נהגים', driver?.full_name?.trim() || 'נהג']}>
+      <DesktopShell active="AdminHome" breadcrumbs={[t('nav.management'), t('common.drivers'), driver?.full_name?.trim() || t('role.driver')]}>
         {loading ? (
           <LoadingState />
         ) : loadError ? (

@@ -8,6 +8,7 @@ import type { DriverVehicleAssignment, Vehicle } from '../../lib/adminApi';
 import { formatPlate } from '../../lib/plate';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DK, DKText, Plate, Pressy, STATUS } from '../driverKit';
+import { t } from '../../lib/i18n';
 
 export function DriverVehicleAssignmentsCard({
   driverVehicles,
@@ -34,22 +35,22 @@ export function DriverVehicleAssignmentsCard({
       <View style={kit.wrap}>
         {driverVehicles.length === 0 ? (
           <DKText variant="body" color={DK.muted} style={kit.empty}>
-            לא משויכים רכבים לנהג הזה
+            {t('driver.noVehiclesAssigned')}
           </DKText>
         ) : (
           driverVehicles.map((assignment) => (
             <View key={assignment.id} style={kit.row}>
-              <Pressy onPress={() => onOpenVehicle(assignment.vehicle_id)} accessibilityLabel={`לתיק הרכב ${formatPlate(assignment.vehicle.plate_number)}`} style={kit.main} pressScale={0.97}>
+              <Pressy onPress={() => onOpenVehicle(assignment.vehicle_id)} accessibilityLabel={t('vehicle.toFile', { v1: formatPlate(assignment.vehicle.plate_number) })} style={kit.main} pressScale={0.97}>
                 <View style={kit.mainRow}>
                   <Plate number={formatPlate(assignment.vehicle.plate_number)} size="sm" />
                   <View style={[kit.badge, { backgroundColor: assignment.is_primary ? DK.accentSoft : DK.surfaceSunk }]}>
                     <DKText variant="micro" color={assignment.is_primary ? DK.accent : DK.muted}>
-                      {assignment.is_primary ? 'נהג ראשי' : 'נהג משני'}
+                      {assignment.is_primary ? t('vehicle.primaryDriver') : t('driver.secondary')}
                     </DKText>
                   </View>
                 </View>
               </Pressy>
-              <Pressy onPress={() => onRemoveVehicle(assignment)} disabled={busyId === assignment.id} accessibilityLabel="הסרת שיוך הרכב" style={kit.remove} pressScale={0.9}>
+              <Pressy onPress={() => onRemoveVehicle(assignment)} disabled={busyId === assignment.id} accessibilityLabel={t('driver.removeAssignmentLabel')} style={kit.remove} pressScale={0.9}>
                 <Ionicons name="trash-outline" size={18} color={STATUS.expired.fg} />
               </Pressy>
             </View>
@@ -61,12 +62,12 @@ export function DriverVehicleAssignmentsCard({
               value={addingVehicleId}
               onChange={onSelectVehicle}
               options={availableVehicles.map((vehicle) => ({ value: vehicle.id, label: formatPlate(vehicle.plate_number) }))}
-              placeholder={availableVehicles.length ? 'שיוך רכב נוסף' : 'אין רכבים פנויים לשיוך'}
+              placeholder={availableVehicles.length ? t('driver.assignAnother') : t('driver.noFreeToAssign')}
               allowClear
             />
           </View>
           {!!addingVehicleId && (
-            <Pressy onPress={onAddVehicle} disabled={busyId === '__new__'} haptic accessibilityLabel="אישור שיוך הרכב" style={kit.confirm} pressScale={0.92}>
+            <Pressy onPress={onAddVehicle} disabled={busyId === '__new__'} haptic accessibilityLabel={t('driver.confirmAssign')} style={kit.confirm} pressScale={0.92}>
               <Ionicons name="checkmark" size={22} color="#FFFFFF" />
             </Pressy>
           )}
@@ -76,10 +77,10 @@ export function DriverVehicleAssignmentsCard({
   }
   return (
     <Card style={styles.card}>
-      <AppText style={styles.infoLabel}>רכבים משויכים</AppText>
+      <AppText style={styles.infoLabel}>{t('driver.assignedVehicles')}</AppText>
 
       {driverVehicles.length === 0 ? (
-        <AppText style={styles.noVehicles}>לא משויכים רכבים לנהג זה</AppText>
+        <AppText style={styles.noVehicles}>{t('driver.noVehiclesAssignedAlt')}</AppText>
       ) : (
         driverVehicles.map((assignment) => (
           <View key={assignment.id} style={styles.vehicleRow}>
@@ -87,14 +88,14 @@ export function DriverVehicleAssignmentsCard({
               style={styles.vehicleRowMain}
               activeOpacity={0.7}
               onPress={() => onOpenVehicle(assignment.vehicle_id)}
-              accessibilityLabel={`פתח את תיק הרכב ${assignment.vehicle.plate_number}`}
+              accessibilityLabel={t('vehicle.openFilePlate', { plate_number: assignment.vehicle.plate_number })}
             >
               <AppText weight="bold" style={styles.vehicleValueText}>
                 {formatPlate(assignment.vehicle.plate_number)}
               </AppText>
               <View style={[styles.badge, assignment.is_primary ? styles.badgePrimary : styles.badgeSecondary]}>
                 <AppText weight="bold" style={[styles.badgeText, assignment.is_primary && styles.badgeTextPrimary]}>
-                  {assignment.is_primary ? 'ראשי' : 'משני'}
+                  {assignment.is_primary ? t('common.primary') : t('common.secondary')}
                 </AppText>
               </View>
             </TouchableOpacity>
@@ -102,7 +103,7 @@ export function DriverVehicleAssignmentsCard({
               onPress={() => onRemoveVehicle(assignment)}
               disabled={busyId === assignment.id}
               hitSlop={8}
-              accessibilityLabel="הסר שיוך רכב"
+              accessibilityLabel={t('driver.removeAssignment')}
             >
               <Ionicons name="trash-outline" size={17} color={COLORS.dangerText} />
             </TouchableOpacity>
@@ -116,13 +117,13 @@ export function DriverVehicleAssignmentsCard({
             value={addingVehicleId}
             onChange={onSelectVehicle}
             options={availableVehicles.map((vehicle) => ({ value: vehicle.id, label: formatPlate(vehicle.plate_number) }))}
-            placeholder={availableVehicles.length ? 'הוסף רכב' : 'אין רכבים זמינים להוספה'}
+            placeholder={availableVehicles.length ? t('driver.addVehicleShort') : t('driver.noAvailableVehicles')}
             allowClear
           />
         </View>
         {!!addingVehicleId && (
           <PrimaryButton
-            label="אישור"
+            label={t('common.ok')}
             icon="checkmark-outline"
             style={styles.confirmBtn}
             loading={busyId === '__new__'}
@@ -138,9 +139,9 @@ export function confirmVehicleRemoval(
   assignment: DriverVehicleAssignment,
   onConfirm: () => void,
 ) {
-  showAlert('הסרת שיוך רכב', `להסיר את הנהג מהרכב ${formatPlate(assignment.vehicle.plate_number)}?`, [
-    { text: 'ביטול', style: 'cancel' },
-    { text: 'הסר שיוך', style: 'destructive', onPress: onConfirm },
+  showAlert(t('driver.removeAssignmentTitle'), t('driver.removeFromVehicleConfirm', { v1: formatPlate(assignment.vehicle.plate_number) }), [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('driver.removeAssignmentAction'), style: 'destructive', onPress: onConfirm },
   ]);
 }
 

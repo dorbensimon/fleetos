@@ -22,6 +22,8 @@ import { supabase } from '../lib/supabase';
 import { resolveRouteForUser } from '../lib/session';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { webOnly } from '../components/desktop/desktopTheme';
+import { t, textStart } from '../lib/i18n';
+import { fontStack } from '../lib/fontStack';
 
 /**
  * Sign-in as starting the truck: a dark instrument cluster that runs its
@@ -51,11 +53,11 @@ const CLUSTER = {
 };
 
 const FONT = {
-  regular: 'Heebo_400Regular',
-  medium: 'Heebo_500Medium',
-  semiBold: 'Heebo_600SemiBold',
-  bold: 'Heebo_700Bold',
-  extraBold: 'Heebo_800ExtraBold',
+  regular: fontStack('Heebo_400Regular'),
+  medium: fontStack('Heebo_500Medium'),
+  semiBold: fontStack('Heebo_600SemiBold'),
+  bold: fontStack('Heebo_700Bold'),
+  extraBold: fontStack('Heebo_800ExtraBold'),
 };
 
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
@@ -69,10 +71,10 @@ const IDLE_REVS = 0.09;
 const WIDE_MIN_WIDTH = 1000;
 
 const LOGIN_LEGAL_LINKS = [
-  { doc: 'terms', label: 'תנאי שימוש' },
-  { doc: 'privacy', label: 'מדיניות פרטיות' },
-  { doc: 'cookies', label: 'עוגיות' },
-  { doc: 'accessibility', label: 'הצהרת נגישות' },
+  { doc: 'terms', get label() { return t('legal.terms'); } },
+  { doc: 'privacy', get label() { return t('legal.privacyPolicyShort'); } },
+  { doc: 'cookies', get label() { return t('legal.cookies'); } },
+  { doc: 'accessibility', get label() { return t('legal.accessibilityStatement'); } },
 ] as const;
 /** Smallest gauge (px) the phone layout will shrink to so the login fits the screen. */
 const GAUGE_MIN = 124;
@@ -156,14 +158,14 @@ function Gauge({
 
   const marks: React.ReactNode[] = [];
   for (let i = 0; i <= ticks; i += 1) {
-    const t = i / ticks;
+    const ratio = i / ticks;
     const major = i % majorEvery === 0;
     const width = major ? 3 : 2;
     const height = major ? size * 0.07 : size * 0.038;
-    const lit = value.interpolate({ inputRange: [t - 0.03, t], outputRange: [0, 1], extrapolate: 'clamp' });
+    const lit = value.interpolate({ inputRange: [ratio - 0.03, ratio], outputRange: [0, 1], extrapolate: 'clamp' });
     const tick = { left: center - width / 2, top: tickTop, width, height };
     marks.push(
-      <View key={i} pointerEvents="none" style={[StyleSheet.absoluteFill, { transform: [{ rotate: `${START_ANGLE + SWEEP * t}deg` }] }]}>
+      <View key={i} pointerEvents="none" style={[StyleSheet.absoluteFill, { transform: [{ rotate: `${START_ANGLE + SWEEP * ratio}deg` }] }]}>
         <View style={[styles.tick, tick, { backgroundColor: CLUSTER.tickIdle }]} />
         <Animated.View style={[styles.tick, tick, styles.tickLit, { opacity: lit }]} />
       </View>
@@ -182,12 +184,12 @@ function Gauge({
       accessible
       accessibilityLabel={`${label}: ${readout}`}
     >
-      <View pointerEvents="none" style={[styles.gaugeFace, { top: size * 0.03, left: size * 0.03, right: size * 0.03, bottom: size * 0.03, borderRadius: size / 2 }]} />
+      <View pointerEvents="none" style={[styles.gaugeFace, { top: size * 0.03, start: size * 0.03, end: size * 0.03, bottom: size * 0.03, borderRadius: size / 2 }]} />
       {marks}
       {showNumerals &&
         numerals!.map((numeral, index) => {
-          const t = index / (numerals!.length - 1);
-          const radians = ((START_ANGLE + SWEEP * t) * Math.PI) / 180;
+          const ratio = index / (numerals!.length - 1);
+          const radians = ((START_ANGLE + SWEEP * ratio) * Math.PI) / 180;
           return (
             <Text
               key={numeral + index}
@@ -195,7 +197,7 @@ function Gauge({
                 styles.numeral,
                 {
                   width: numeralBox,
-                  left: center + numeralRadius * Math.sin(radians) - numeralBox / 2,
+                  start: center + numeralRadius * Math.sin(radians) - numeralBox / 2,
                   top: center - numeralRadius * Math.cos(radians) - 9,
                   fontSize: Math.max(11, size * 0.052),
                 },
@@ -207,15 +209,15 @@ function Gauge({
         })}
 
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { transform: [{ rotate: needleAngle }] }]}>
-        <View style={[styles.needle, { left: center - 1.75, top: size * 0.115, height: size * 0.445 }]}>
+        <View style={[styles.needle, { start: center - 1.75, top: size * 0.115, height: size * 0.445 }]}>
           <View style={[styles.needleTip, { height: size * 0.1 }]} />
         </View>
       </Animated.View>
-      <View pointerEvents="none" style={[styles.hub, { width: size * 0.11, height: size * 0.11, borderRadius: size * 0.055, left: center - size * 0.055, top: center - size * 0.055 }]}>
+      <View pointerEvents="none" style={[styles.hub, { width: size * 0.11, height: size * 0.11, borderRadius: size * 0.055, start: center - size * 0.055, top: center - size * 0.055 }]}>
         <View style={styles.hubDot} />
       </View>
 
-      <View pointerEvents="none" style={[styles.readoutWindow, { top: size * 0.66, left: size * windowInset, right: size * windowInset }]}>
+      <View pointerEvents="none" style={[styles.readoutWindow, { top: size * 0.66, start: size * windowInset, end: size * windowInset }]}>
         <Text style={[styles.readoutLabel, { fontSize: Math.max(10, size * 0.042) }]} numberOfLines={1}>{label}</Text>
         <Text style={[styles.readoutValue, { fontSize: Math.max(12, size * 0.068) }, readoutTone ? { color: readoutTone } : null]} numberOfLines={1}>
           {readout}
@@ -235,7 +237,7 @@ function TellTale({ icon, lit, tone, label }: { icon: keyof typeof Ionicons.glyp
     <View
       style={[styles.lamp, lit && { backgroundColor: `${tone}1F`, borderColor: `${tone}55` }]}
       accessible
-      accessibilityLabel={`${label}${lit ? '' : ' (כבוי)'}`}
+      accessibilityLabel={`${label}${lit ? '' : t('login.off')}`}
     >
       <Ionicons name={icon} size={15} color={lit ? tone : CLUSTER.lampIdle} />
     </View>
@@ -352,7 +354,7 @@ function ClusterField({
           onPress={onToggleSecure}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel={secureTextEntry ? 'הצגת הסיסמה' : 'הסתרת הסיסמה'}
+          accessibilityLabel={secureTextEntry ? t('password.showThe') : t('password.hideThe')}
         >
           <Ionicons name={secureTextEntry ? 'eye-off-outline' : 'eye-outline'} size={19} color={CLUSTER.inkMuted} />
         </Pressable>
@@ -402,7 +404,7 @@ function StartButton({ onPress, loading, ready, size }: { onPress: () => void; l
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       accessibilityRole="button"
-      accessibilityLabel="התחברות"
+      accessibilityLabel={t('login.signIn')}
       accessibilityState={{ busy: loading, disabled: loading }}
       aria-busy={loading} aria-disabled={loading}
       style={webOnly({ outlineStyle: 'none', cursor: loading ? 'progress' : 'pointer' })}
@@ -417,7 +419,7 @@ function StartButton({ onPress, loading, ready, size }: { onPress: () => void; l
         />
         <View style={[styles.startCore, { width: size - 22, height: size - 22, borderRadius: (size - 22) / 2 }]}>
           <Ionicons name="power" size={Math.round(size * 0.24)} color={lit ? CLUSTER.backlight : CLUSTER.ink} />
-          <Text style={styles.startLabel}>{loading ? 'מתחבר…' : 'התחברות'}</Text>
+          <Text style={styles.startLabel}>{loading ? t('login.signingIn') : t('login.signIn')}</Text>
         </View>
       </Animated.View>
     </Pressable>
@@ -576,7 +578,7 @@ export default function LoginScreen({ navigation }: Props) {
     if (pass !== password) setPassword(pass);
 
     if (!email.trim() || !pass) {
-      setErrorMessage('נא למלא מייל וסיסמה');
+      setErrorMessage(t('login.fillEmailPassword'));
       return;
     }
 
@@ -591,12 +593,12 @@ export default function LoginScreen({ navigation }: Props) {
 
       if (authError || !authData.user) {
         settleRevs(IDLE_REVS, 700);
-        setErrorMessage('מייל או סיסמה שגויים');
+        setErrorMessage(t('login.wrongCredentials'));
         return;
       }
 
       settleRevs(1, 380);
-      setSuccessMessage('חשבון תקין');
+      setSuccessMessage(t('login.accountOk'));
 
       const result = await resolveRouteForUser(authData.user.id);
 
@@ -611,7 +613,7 @@ export default function LoginScreen({ navigation }: Props) {
     } catch {
       settleRevs(IDLE_REVS, 700);
       setSuccessMessage('');
-      setErrorMessage('אירעה שגיאה. נסה שוב מאוחר יותר');
+      setErrorMessage(t('login.errorLater'));
     } finally {
       setLoading(false);
     }
@@ -635,7 +637,7 @@ export default function LoginScreen({ navigation }: Props) {
       ticks={27}
       majorEvery={3}
       numerals={['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']}
-      label="סל״ד ×1000"
+      label={t('login.rpm')}
       readout={clock}
     />
   );
@@ -646,8 +648,8 @@ export default function LoginScreen({ navigation }: Props) {
       ticks={20}
       majorEvery={10}
       numerals={['0', '1', '2']}
-      label="שדות מוכנים"
-      readout={ready ? 'מוכן' : `${filled}/2`}
+      label={t('login.fieldsReady')}
+      readout={ready ? t('login.ready') : `${filled}/2`}
       readoutTone={ready ? CLUSTER.green : undefined}
     />
   );
@@ -660,11 +662,11 @@ export default function LoginScreen({ navigation }: Props) {
         resizeMode="contain"
         accessibilityLabel="icar"
       />
-      <Text style={styles.subtitle}>התחברו כדי להמשיך</Text>
+      <Text style={styles.subtitle}>{t('login.signInToContinue')}</Text>
 
       <View style={[styles.fields, short && styles.fieldsShort]}>
         <ClusterField
-          label="מייל"
+          label={t('common.emailShort')}
           value={identifier}
           onChangeText={(value) => {
             setIdentifier(value);
@@ -681,7 +683,7 @@ export default function LoginScreen({ navigation }: Props) {
           short={short}
         />
         <ClusterField
-          label="סיסמה"
+          label={t('common.password')}
           value={password}
           onChangeText={(value) => {
             setPassword(value);
@@ -716,10 +718,10 @@ export default function LoginScreen({ navigation }: Props) {
       </View>
 
       <View style={[styles.lampRow, short && styles.lampRowShort]}>
-        <TellTale icon="mail" label="מייל הוזן" lit={selfTest || !!identifier.trim()} tone={CLUSTER.backlight} />
-        <TellTale icon="lock-closed" label="סיסמה הוזנה" lit={selfTest || !!password} tone={CLUSTER.backlight} />
-        <TellTale icon="checkmark-circle" label="מוכן להתחברות" lit={selfTest || ready || !!successMessage} tone={CLUSTER.green} />
-        <TellTale icon="warning" label="שגיאה" lit={selfTest || !!errorMessage} tone={CLUSTER.amber} />
+        <TellTale icon="mail" label={t('login.emailEntered')} lit={selfTest || !!identifier.trim()} tone={CLUSTER.backlight} />
+        <TellTale icon="lock-closed" label={t('login.passwordEntered')} lit={selfTest || !!password} tone={CLUSTER.backlight} />
+        <TellTale icon="checkmark-circle" label={t('login.readyToSignIn')} lit={selfTest || ready || !!successMessage} tone={CLUSTER.green} />
+        <TellTale icon="warning" label={t('common.error')} lit={selfTest || !!errorMessage} tone={CLUSTER.amber} />
       </View>
     </Animated.View>
   );
@@ -734,11 +736,11 @@ export default function LoginScreen({ navigation }: Props) {
   const footer = (
     <View style={[styles.footer, short && styles.footerShort]}>
       <Text style={[styles.footerText, short && styles.footerTextShort]}>
-        הגישה למערכת מנוהלת על ידי מנהל הצי.{'\n'}
-        לפתיחת חשבון פנה למנהל המערכת שלך.
+        {t('login.accessManaged')}{'\n'}
+        {t('login.openAccount')}
       </Text>
       <Text style={styles.contactText}>
-        לפניות:{' '}
+        {t('login.contactColon')}{' '}
         <Text
           style={styles.contactEmail}
           onPress={() => void Linking.openURL('mailto:trytolvex@gmail.com')}
@@ -855,8 +857,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 44,
     paddingTop: 40,
     borderRadius: 56,
-    borderBottomLeftRadius: 36,
-    borderBottomRightRadius: 36,
+    borderBottomStartRadius: 36,
+    borderBottomEndRadius: 36,
     backgroundColor: CLUSTER.binnacle,
     borderWidth: 1,
     borderColor: CLUSTER.hairline,
@@ -995,7 +997,7 @@ const styles = StyleSheet.create({
   fieldFocused: { backgroundColor: CLUSTER.fieldFocus },
   fieldBody: { flex: 1, paddingVertical: 8 },
   fieldLabel: {
-    textAlign: 'right',
+    textAlign: textStart(),
     color: CLUSTER.inkMuted,
     fontFamily: FONT.medium,
     fontSize: 12,
@@ -1006,7 +1008,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingVertical: 2,
     paddingHorizontal: 0,
-    textAlign: 'right',
+    textAlign: textStart(),
   },
   messageSlot: { minHeight: 34, justifyContent: 'center' },
   messageSlotShort: { minHeight: 24 },
@@ -1046,8 +1048,8 @@ const styles = StyleSheet.create({
   startRing: {
     position: 'absolute',
     top: 5,
-    left: 5,
-    right: 5,
+    start: 5,
+    end: 5,
     bottom: 5,
     borderWidth: 2,
   },

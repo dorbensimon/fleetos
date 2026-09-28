@@ -25,6 +25,7 @@ import { DK, DK_FONT, DK_RADIUS, DK_SHADOW, DK_SPACE, STATUS, type Status } from
 // at module load, so the index <-> parts import cycle is safe.
 import { DKText, Pressy, Surface, useReducedMotion } from './index';
 import { useTabBarLift } from './tabBar';
+import { t, dirIcon, textStart, textDirection, dirSign, getLocale } from '../../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -91,7 +92,7 @@ export function InfoLine({
   focusId?: string;
 }) {
   const body = (
-    <View style={[styles.line, !first && styles.divider]} accessible={!onPress} accessibilityLabel={`${label}: ${value || 'לא הוזן'}`}>
+    <View style={[styles.line, !first && styles.divider]} accessible={!onPress} accessibilityLabel={`${label}: ${value || t('common.notEntered')}`}>
       <View style={[styles.lineIcon, { backgroundColor: `${tint}14` }]}>
         <Ionicons name={icon} size={18} color={tint} />
       </View>
@@ -100,16 +101,16 @@ export function InfoLine({
           {label}
         </DKText>
         <DKText variant="label" color={value ? DK.ink : DK.faint} ltr={!!value && ltr} style={ltr && value ? styles.ltrValue : undefined} numberOfLines={2}>
-          {value || 'לא הוזן'}
+          {value || t('common.notEntered')}
         </DKText>
       </View>
       {trailing}
-      {locked && <Ionicons name="lock-closed" size={14} color={DK.faint} accessibilityLabel="נעול לעריכה" />}
-      {!!onPress && <Ionicons name="chevron-back" size={18} color={DK.faint} />}
+      {locked && <Ionicons name="lock-closed" size={14} color={DK.faint} accessibilityLabel={t('common.lockedForEditing')} />}
+      {!!onPress && <Ionicons name={dirIcon('chevron-back')} size={18} color={DK.faint} />}
     </View>
   );
   const line = !onPress ? body : (
-    <Pressy onPress={onPress} accessibilityLabel={`${label}: ${value || 'לא הוזן'}`} pressScale={0.985}>
+    <Pressy onPress={onPress} accessibilityLabel={`${label}: ${value || t('common.notEntered')}`} pressScale={0.985}>
       {body}
     </Pressy>
   );
@@ -148,7 +149,7 @@ export function EditField({
   first,
   editor,
   hint,
-  placeholder = 'לא הוזן',
+  placeholder = t('common.notEntered'),
   required,
   secureTextEntry,
   autoComplete,
@@ -353,7 +354,7 @@ export function Banner({
       {!!action && (
         <Pressy onPress={action.onPress} disabled={action.loading} accessibilityLabel={action.label} style={styles.bannerAction}>
           <DKText variant="label" color={s.fg}>
-            {action.loading ? 'רגע…' : action.label}
+            {action.loading ? t('common.oneMoment') : action.label}
           </DKText>
         </Pressy>
       )}
@@ -493,7 +494,7 @@ export function GlassSearch({
         style={styles.searchInput}
       />
       {!!value && (
-        <Pressy onPress={() => onChangeText('')} accessibilityLabel="ניקוי החיפוש" style={styles.searchClear} pressScale={0.9}>
+        <Pressy onPress={() => onChangeText('')} accessibilityLabel={t('common.clearSearch')} style={styles.searchClear} pressScale={0.9}>
           <Ionicons name="close-circle" size={19} color={DK.onNightMuted} />
         </Pressy>
       )}
@@ -518,7 +519,7 @@ export function HeroStat({
   const body = (
     <View style={[styles.stat, active && styles.statActive]}>
       <DKText style={styles.statValue} color={DK.onNight}>
-        {typeof value === 'number' ? value.toLocaleString('he-IL') : value}
+        {typeof value === 'number' ? value.toLocaleString(getLocale()) : value}
       </DKText>
       <View style={styles.statLabelRow}>
         {!!dot && <View style={[styles.statDot, { backgroundColor: dot }]} />}
@@ -581,7 +582,7 @@ export function Segmented<T extends string>({
           style={[
             styles.segThumb,
             onNight ? styles.segThumbNight : styles.segThumbLight,
-            { width: segment, transform: [{ translateX: Animated.multiply(pos, -segment) }] },
+            { width: segment, transform: [{ translateX: Animated.multiply(pos, -segment * dirSign()) }] },
           ]}
         />
       )}
@@ -604,7 +605,7 @@ export function Segmented<T extends string>({
             </DKText>
             {o.count != null && (
               <DKText variant="micro" color={active ? DK.muted : onNight ? DK.onNightFaint : DK.faint} ltr>
-                {o.count.toLocaleString('he-IL')}
+                {o.count.toLocaleString(getLocale())}
               </DKText>
             )}
           </Pressable>
@@ -654,7 +655,7 @@ export function FilterPills<T extends string>({
               {o.count != null && (
                 <View style={[styles.filterCount, active && styles.filterCountActive]}>
                   <DKText variant="micro" color={active ? '#FFFFFF' : empty ? DK.faint : DK.muted} ltr style={styles.center}>
-                    {o.count.toLocaleString('he-IL')}
+                    {o.count.toLocaleString(getLocale())}
                   </DKText>
                 </View>
               )}
@@ -722,15 +723,15 @@ export function KitSheet({
   const desktop = useIsDesktop();
   const reduce = useReducedMotion();
   const [mounted, setMounted] = useState(visible);
-  const t = useRef(new Animated.Value(0)).current;
+  const ratio = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (visible) {
       setMounted(true);
-      Animated.timing(t, { toValue: 1, duration: 300, easing: EASE_DRAWER, useNativeDriver: NATIVE_DRIVER }).start();
+      Animated.timing(ratio, { toValue: 1, duration: 300, easing: EASE_DRAWER, useNativeDriver: NATIVE_DRIVER }).start();
     } else if (mounted) {
-      Animated.timing(t, { toValue: 0, duration: 220, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER }).start(({ finished }) => finished && setMounted(false));
+      Animated.timing(ratio, { toValue: 0, duration: 220, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER }).start(({ finished }) => finished && setMounted(false));
     }
-  }, [mounted, t, visible]);
+  }, [mounted, ratio, visible]);
   if (!mounted) return null;
   const travel = reduce ? 0 : desktop ? 12 : 420;
   const close = () => dismissable && onClose();
@@ -738,8 +739,8 @@ export function KitSheet({
   const iconBg = tone === 'danger' ? STATUS.expired.soft : DK.accentSoft;
   return (
     <Modal visible transparent animationType="none" onRequestClose={close} statusBarTranslucent>
-      <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, { opacity: t }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="סגירה" />
+      <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, { opacity: ratio }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel={t('common.close')} />
       </Animated.View>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.sheetHost, desktop && styles.sheetHostDesktop]} pointerEvents="box-none">
         <Animated.View
@@ -748,10 +749,10 @@ export function KitSheet({
             desktop ? styles.dialog : styles.sheet,
             !desktop && { paddingBottom: insets.bottom + 16 },
             {
-              opacity: desktop || reduce ? t : 1,
+              opacity: desktop || reduce ? ratio : 1,
               transform: [
-                { translateY: t.interpolate({ inputRange: [0, 1], outputRange: [travel, 0] }) },
-                ...(desktop && !reduce ? [{ scale: t.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) }] : []),
+                { translateY: ratio.interpolate({ inputRange: [0, 1], outputRange: [travel, 0] }) },
+                ...(desktop && !reduce ? [{ scale: ratio.interpolate({ inputRange: [0, 1], outputRange: [0.97, 1] }) }] : []),
               ],
             },
           ]}
@@ -798,7 +799,7 @@ const styles = StyleSheet.create({
   line: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 64, paddingHorizontal: DK_SPACE.md, paddingVertical: 10 },
   lineIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   lineText: { flex: 1, gap: 1 },
-  ltrValue: { textAlign: 'right' },
+  ltrValue: { textAlign: textStart() },
 
   field: { paddingHorizontal: DK_SPACE.md, paddingVertical: 12, gap: 8 },
   input: {
@@ -811,7 +812,7 @@ const styles = StyleSheet.create({
     fontFamily: DK_FONT.medium,
     fontSize: 16,
     color: DK.ink,
-    writingDirection: 'rtl',
+    writingDirection: textDirection(),
     outlineStyle: 'none',
   } as any,
   inputLtr: { writingDirection: 'ltr' },
@@ -872,7 +873,7 @@ const styles = StyleSheet.create({
     fontFamily: DK_FONT.medium,
     fontSize: 16,
     color: DK.onNight,
-    writingDirection: 'rtl',
+    writingDirection: textDirection(),
     outlineStyle: 'none',
   } as any,
   searchClear: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
@@ -895,7 +896,7 @@ const styles = StyleSheet.create({
   segmented: { flexDirection: 'row-reverse', padding: 4, borderRadius: 18, height: 52 },
   segmentedNight: { backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
   segmentedLight: { backgroundColor: '#E6EBF2' },
-  segThumb: { position: 'absolute', top: 4, bottom: 4, right: 4, borderRadius: 14 },
+  segThumb: { position: 'absolute', top: 4, bottom: 4, end: 4, borderRadius: 14 },
   segThumbNight: {
     backgroundColor: '#FFFFFF',
     ...Platform.select({
@@ -916,7 +917,7 @@ const styles = StyleSheet.create({
   filterCount: { minWidth: 22, height: 22, paddingHorizontal: 6, borderRadius: 11, backgroundColor: DK.surfaceSunk, alignItems: 'center', justifyContent: 'center' },
   filterCountActive: { backgroundColor: 'rgba(255,255,255,0.18)' },
 
-  fabHost: { position: 'absolute', left: 20, zIndex: 20 },
+  fabHost: { position: 'absolute', start: 20, zIndex: 20 },
   fab: {
     height: 56,
     paddingHorizontal: 20,
@@ -941,8 +942,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     maxHeight: '92%',
     backgroundColor: DK.surface,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopStartRadius: 32,
+    borderTopEndRadius: 32,
     paddingTop: 8,
   },
   dialog: {

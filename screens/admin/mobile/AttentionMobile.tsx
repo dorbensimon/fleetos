@@ -5,6 +5,7 @@ import { DK, DKText, DriverPage, EmptyPanel, ErrorPanel, HeroTitle, ListRow, Loa
 import type { AttentionDetails } from '../../../lib/adminApi';
 import { formatDate, expiryState } from '../../../lib/theme';
 import { formatPlate } from '../../../lib/plate';
+import { t } from '../../../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -42,15 +43,15 @@ export function AttentionMobile(p: Props) {
         {
           key: 'license',
           icon: 'id-card',
-          title: 'רישיונות נהיגה',
-          hint: 'פגו או יפוגו בתוך 30 יום',
+          title: t('attention.drivingLicenses'),
+          hint: t('attention.expiredOrWithin30'),
           status: d.licenseDrivers.some((x) => expiryState(x.license_expiry) === 'expired') ? 'expired' : 'soon',
           rows: d.licenseDrivers.map((x) => {
             const expired = expiryState(x.license_expiry) === 'expired';
             return {
               key: x.id,
-              title: x.full_name ?? 'ללא שם',
-              detail: `${expired ? 'פג' : 'יפוג'} ${formatDate(x.license_expiry)} · ${relativeDays(x.license_expiry) ?? ''}`,
+              title: x.full_name ?? t('common.unnamed'),
+              detail: `${expired ? t('status.expired') : t('attention.willExpire')} ${formatDate(x.license_expiry)} · ${relativeDays(x.license_expiry) ?? ''}`,
               status: expired ? 'expired' : 'soon',
               onPress: () => p.onOpenLicense(x.id),
             };
@@ -59,13 +60,13 @@ export function AttentionMobile(p: Props) {
         {
           key: 'insurance',
           icon: 'shield',
-          title: 'ביטוח חובה',
-          hint: 'חסר או שתוקפו פג — הרכב לא אמור לנסוע',
+          title: t('folder.mandatoryInsurance'),
+          hint: t('attention.missingInsuranceHint'),
           status: 'expired',
           rows: d.insuranceVehicles.map(({ vehicle, expiry }) => ({
             key: vehicle.id,
             title: `${formatPlate(vehicle.plate_number)}${vehicle.manufacturer || vehicle.model ? ` · ${[vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ')}` : ''}`,
-            detail: expiry ? `פג ${formatDate(expiry)} · ${relativeDays(expiry) ?? ''}` : 'לא הוזן ביטוח',
+            detail: expiry ? t('attention.expiredWhenDetail', { expiry: formatDate(expiry), v1: relativeDays(expiry) ?? '' }) : t('attention.noInsuranceEntered'),
             status: 'expired',
             onPress: () => p.onOpenInsurance(vehicle.id),
           })),
@@ -73,13 +74,13 @@ export function AttentionMobile(p: Props) {
         {
           key: 'unassigned',
           icon: 'car-sport',
-          title: 'רכבים ללא נהג',
-          hint: 'אין לרכב שיוך פעיל — כדאי לשייך נהג',
+          title: t('attention.vehiclesWithoutDriver'),
+          hint: t('attention.noActiveAssignmentHint'),
           status: 'soon',
           rows: d.unassignedVehicles.map((vehicle) => ({
             key: vehicle.id,
             title: formatPlate(vehicle.plate_number),
-            detail: [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || 'ללא דגם',
+            detail: [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || t('vehicle.noModelShort'),
             status: 'soon',
             onPress: () => p.onAssignDriver(vehicle.id),
           })),
@@ -87,13 +88,13 @@ export function AttentionMobile(p: Props) {
         {
           key: 'docs',
           icon: 'document-text',
-          title: 'רישיונות לא מאומתים',
-          hint: 'חסר צילום של הרישיון או תאריך התוקף',
+          title: t('attention.unverifiedLicenses'),
+          hint: t('attention.missingLicensePhoto'),
           status: 'missing',
           rows: d.missingLicenseDocuments.map(({ driver, missing }) => ({
             key: driver.id,
-            title: driver.full_name ?? 'ללא שם',
-            detail: `חסר: ${missing.join(', ')}`,
+            title: driver.full_name ?? t('common.unnamed'),
+            detail: t('attention.missingV1', { v1: missing.join(', ') }),
             status: 'missing',
             onPress: () => p.onOpenLicenseDocs(driver.id),
           })),
@@ -101,7 +102,7 @@ export function AttentionMobile(p: Props) {
       ].filter((g) => g.rows.length > 0) as Group[]
     : [];
   const total = groups.reduce((sum, g) => sum + g.rows.length, 0);
-  const subtitle = p.loading ? 'בודק את הצי…' : p.error ? 'הבדיקה לא הושלמה' : total ? `${total} ${total === 1 ? 'פריט מחכה' : 'פריטים מחכים'} לטיפול שלך` : 'הכול מטופל';
+  const subtitle = p.loading ? t('attention.checkingFleet') : p.error ? t('attention.checkIncomplete') : total ? t('attention.itemsForYou', { total, v1: total === 1 ? t('attention.itemWaiting') : t('attention.itemsWaiting') }) : t('attention.allHandled');
 
   return (
     <DriverPage
@@ -109,20 +110,20 @@ export function AttentionMobile(p: Props) {
       insetBottom={p.insetBottom}
       refreshing={p.refreshing}
       onRefresh={p.onRefresh}
-      hero={<HeroTitle title="דורש טיפול" subtitle={subtitle} onBack={p.onBack} />}
+      hero={<HeroTitle title={t('status.needsAttention')} subtitle={subtitle} onBack={p.onBack} />}
     >
       {p.loading ? (
         <LoadingPanel />
       ) : p.error ? (
-        <ErrorPanel message="טעינת המשימות נכשלה" hint={p.error} onRetry={p.onRetry} />
+        <ErrorPanel message={t('attention.loadFailed')} hint={p.error} onRetry={p.onRetry} />
       ) : total === 0 ? (
         <Reveal>
           <EmptyPanel
             icon="checkmark-done"
             tone="ok"
-            title="הכול מטופל"
-            body="כל הרישיונות והביטוחים בתוקף, ולכל רכב יש נהג. כשמשהו ידרוש טיפול — הוא יופיע כאן."
-            action={{ label: 'חזרה לצי', icon: 'home', onPress: p.onHome }}
+            title={t('attention.allHandled')}
+            body={t('attention.allGoodBody')}
+            action={{ label: t('attention.backToFleet'), icon: 'home', onPress: p.onHome }}
           />
         </Reveal>
       ) : (
@@ -191,9 +192,9 @@ function GroupCard({ group }: { group: Group }) {
         />
       ))}
       {more > 0 && (
-        <Pressy onPress={() => setOpen((v) => !v)} accessibilityLabel={open ? 'הצגת פחות' : `הצגת עוד ${more}`} style={styles.more}>
+        <Pressy onPress={() => setOpen((v) => !v)} accessibilityLabel={open ? t('common.showLess') : t('common.showMore', { more })} style={styles.more}>
           <DKText variant="label" color={DK.accent}>
-            {open ? 'הצגת פחות' : `הצגת עוד ${more}`}
+            {open ? t('common.showLess') : t('common.showMore', { more })}
           </DKText>
           <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={17} color={DK.accent} />
         </Pressy>

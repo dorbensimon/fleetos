@@ -20,6 +20,7 @@ import {
   markOwnerNotificationRead,
   type OwnerNotification,
 } from '../../lib/ownerNotifications';
+import { t } from '../../lib/i18n';
 
 /**
  * Logs every driver self-edit (name/phone/ID/license/department) so
@@ -68,7 +69,7 @@ function CompanyNotificationsScreen({ navigation, route }: Props) {
       setUnreadIds(new Set(rows.filter((r) => !r.read_at).map((r) => r.id)));
     } catch (err: any) {
       if (requestId === loadRequest.current) {
-        setError(err?.message ?? 'טעינת ההתראות נכשלה');
+        setError(err?.message ?? t('notifications.loadFailedShort'));
       }
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
@@ -114,23 +115,23 @@ function CompanyNotificationsScreen({ navigation, route }: Props) {
   };
 
   const actionLabel = (n: Notification) => {
-    if (n.notification_type === 'signature_request_assigned') return profile?.role === 'driver' ? 'לחתימה על המסמך' : 'פתח את המסמך';
-    if (n.notification_type === 'vehicle_assignment') return 'הצג רכב';
-    if (n.notification_type === 'driver_profile_updated_by_manager') return 'הצג מה השתנה';
-    if (n.notification_type?.startsWith('driver_document_')) return 'פתח את המסמך';
-    if (n.notification_type === 'driver_profile_update') return 'הצג מה השתנה';
-    if (n.notification_type === 'driver_odometer_update') return 'הצג מד אוץ';
-    if (n.notification_type === 'vehicle_service_due') return 'הצג טיפולים';
-    if (n.notification_type === 'license_update_requested') return 'לאישור הבקשה';
-    if (n.notification_type === 'license_update_reviewed') return 'הצג את הרישיון';
-    if (isVehicleFolderNotification(n.notification_type)) return profile?.role === 'driver' ? 'הצג רכב' : n.vehicle_id ? 'פתח תיקייה' : 'פתח צי רכבים';
-    if (n.notification_type?.startsWith('vehicle_')) return profile?.role === 'driver' ? 'בדוק מה נדרש' : 'פתח צי רכבים';
+    if (n.notification_type === 'signature_request_assigned') return profile?.role === 'driver' ? t('notifications.action.signDocument') : t('notifications.action.openDocument');
+    if (n.notification_type === 'vehicle_assignment') return t('notifications.action.showVehicle');
+    if (n.notification_type === 'driver_profile_updated_by_manager') return t('notifications.action.showChanges');
+    if (n.notification_type?.startsWith('driver_document_')) return t('notifications.action.openDocument');
+    if (n.notification_type === 'driver_profile_update') return t('notifications.action.showChanges');
+    if (n.notification_type === 'driver_odometer_update') return t('notifications.action.showOdometer');
+    if (n.notification_type === 'vehicle_service_due') return t('notifications.action.showServices');
+    if (n.notification_type === 'license_update_requested') return t('notifications.action.approveRequest');
+    if (n.notification_type === 'license_update_reviewed') return t('notifications.action.showLicense');
+    if (isVehicleFolderNotification(n.notification_type)) return profile?.role === 'driver' ? t('notifications.action.showVehicle') : n.vehicle_id ? t('notifications.action.openFolder') : t('notifications.action.openFleet');
+    if (n.notification_type?.startsWith('vehicle_')) return profile?.role === 'driver' ? t('notifications.action.checkNeeded') : t('notifications.action.openFleet');
     return null;
   };
 
   if (isDesktop) {
     return (
-      <DesktopShell active="Notifications" breadcrumbs={['התראות']}>
+      <DesktopShell active="Notifications" breadcrumbs={[t('notifications.title')]}>
         <NotificationsHubDesktopView
           items={items}
           unreadIds={unreadIds}
@@ -166,8 +167,8 @@ function CompanyNotificationsScreen({ navigation, route }: Props) {
       onRetry={load}
       emptyHint={
         profile?.role === 'driver'
-          ? 'כשמנהל הצי ישלח מסמך, ישייך רכב או כשתוקף יתקרב — העדכון יופיע כאן.'
-          : 'כשנהג יעדכן פרטים, יעלה מסמך או כשתוקף ברכב יתקרב — העדכון יופיע כאן.'
+          ? t('notifications.emptyDriver')
+          : t('notifications.emptyAdmin')
       }
     />
   );
@@ -193,7 +194,7 @@ function OwnerNotificationsScreen({ navigation }: Props) {
       setItems(rows);
       setUnreadIds(new Set(rows.filter((r) => !r.read_at).map((r) => r.id)));
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message ?? 'טעינת ההתראות נכשלה');
+      if (requestId === loadRequest.current) setError(err?.message ?? t('notifications.loadFailedShort'));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -233,7 +234,7 @@ function OwnerNotificationsScreen({ navigation }: Props) {
 
   if (isDesktop) {
     return (
-      <DesktopShell active="Notifications" breadcrumbs={['התראות']}>
+      <DesktopShell active="Notifications" breadcrumbs={[t('notifications.title')]}>
         <OwnerNotificationsDesktop
           items={items}
           unreadIds={unreadIds}

@@ -29,6 +29,8 @@ import { ACTIVITY_DAYS, lastSeenLabel, type CompanyHealth, type PlatformOverview
 import { accountNextStep, formatMoney, formatMoneyCompact, statusLabel, statusTone } from '../../lib/companyAccount';
 import { ACCOUNT_TONE, TonePill } from './ownerKit';
 import { COMPANY_FILTERS, filterCompanies, type CompanyFilter } from './ownerConsole';
+import { t, dirIcon, getLocale } from '../../lib/i18n';
+import { fontStack } from '../../lib/fontStack';
 
 /**
  * The owner's control room on the phone: the night carries the business at a
@@ -41,7 +43,7 @@ import { COMPANY_FILTERS, filterCompanies, type CompanyFilter } from './ownerCon
 const TONE_FILL: Record<Tone, string> = { ok: STATUS.ok.fill, warn: STATUS.soon.fill, bad: STATUS.expired.fill, off: STATUS.missing.fill };
 const TONE_FG: Record<Tone, string> = { ok: STATUS.ok.fg, warn: STATUS.soon.fg, bad: STATUS.expired.fg, off: STATUS.missing.fg };
 const TONE_SOFT: Record<Tone, string> = { ok: STATUS.ok.soft, warn: STATUS.soon.soft, bad: STATUS.expired.soft, off: STATUS.missing.soft };
-const TONE_LABEL: Record<Tone, string> = { ok: 'תקינה', warn: 'לבדיקה', bad: 'דורשת טיפול', off: 'מושבתת' };
+const TONE_LABEL: Record<Tone, string> = { get ok() { return t('owner.health.ok'); }, get warn() { return t('owner.health.warn'); }, get bad() { return t('owner.health.bad'); }, get off() { return t('owner.health.off'); } };
 
 type Props = {
   insetTop: number;
@@ -115,7 +117,7 @@ export function OwnerConsoleMobile(p: Props) {
       case 'error':
         return (
           <View style={styles.cell}>
-            <ErrorPanel message="לא ניתן לטעון את נתוני המערכת" hint={p.error ?? undefined} onRetry={p.onRetry} />
+            <ErrorPanel message={t('owner.cannotLoadSystem')} hint={p.error ?? undefined} onRetry={p.onRetry} />
           </View>
         );
       case 'empty':
@@ -126,10 +128,10 @@ export function OwnerConsoleMobile(p: Props) {
                 <EmptyPanel
                   icon="search"
                   tone="muted"
-                  title="לא נמצאו חברות"
-                  body={search ? `אין תוצאות עבור "${search}".` : 'אין חברות שמתאימות לסינון הזה.'}
+                  title={t('owner.noCompaniesFound')}
+                  body={search ? t('owner.noResultsFor', { search }) : t('owner.noCompaniesForFilter')}
                   action={{
-                    label: 'הצגת הכל',
+                    label: t('common.showAll'),
                     icon: 'refresh',
                     onPress: () => {
                       setSearch('');
@@ -140,9 +142,9 @@ export function OwnerConsoleMobile(p: Props) {
               ) : (
                 <EmptyPanel
                   icon="business"
-                  title="עדיין אין חברות"
-                  body="צור את החברה הראשונה יחד עם המנהל שלה. הוא יקבל סיסמה זמנית ויחליף אותה בכניסה הראשונה."
-                  action={{ label: 'חברה חדשה', icon: 'add', onPress: p.onAddCompany }}
+                  title={t('owner.noCompaniesYetShort')}
+                  body={t('owner.createFirstHint')}
+                  action={{ label: t('owner.newCompany'), icon: 'add', onPress: p.onAddCompany }}
                 />
               )}
             </Reveal>
@@ -181,13 +183,13 @@ export function OwnerConsoleMobile(p: Props) {
           refreshControl={<RefreshControl refreshing={p.refreshing} onRefresh={p.onRefresh} tintColor="#FFFFFF" colors={[DK.accent]} />}
         />
       </View>
-      <Fab label="חברה חדשה" onPress={p.onAddCompany} bottom={p.insetBottom + 18} />
+      <Fab label={t('owner.newCompany')} onPress={p.onAddCompany} bottom={p.insetBottom + 18} />
     </View>
   );
 }
 
 function Hero(p: Props & { search: string; onSearch: (v: string) => void; onAttention: () => void }) {
-  const t = p.overview?.totals;
+  const totals = p.overview?.totals;
   const issues = p.overview?.issues ?? [];
   const bad = issues.some((i) => i.tone === 'bad');
   const tone: Tone = !issues.length ? 'ok' : bad ? 'bad' : 'warn';
@@ -198,7 +200,7 @@ function Hero(p: Props & { search: string; onSearch: (v: string) => void; onAtte
         <BrandLogo height={20} onDark />
         <HeroButton
           icon="notifications-outline"
-          label={p.unread ? `התראות, ${p.unread} חדשות` : 'התראות'}
+          label={p.unread ? t('notifications.newCountLabel', { unread: p.unread }) : t('notifications.title')}
           badge={p.unread > 0}
           onPress={p.onNotifications}
         />
@@ -209,48 +211,48 @@ function Hero(p: Props & { search: string; onSearch: (v: string) => void; onAtte
           {[timeGreeting(), p.firstName].filter(Boolean).join(', ')}
         </DKText>
         <DKText variant="display" color={DK.onNight} accessibilityRole="header">
-          מרכז הבקרה
+          {t('nav.controlCenter')}
         </DKText>
       </Reveal>
 
-      {!!t && (
+      {!!totals && (
         <Reveal index={1}>
           <Pressy
             onPress={p.onAttention}
-            accessibilityLabel={issues.length ? `${t.needAttention} חברות דורשות טיפול, ${issues.length} נושאים` : 'הכול תקין בכל החברות'}
+            accessibilityLabel={issues.length ? t('owner.companiesNeedAttention', { needAttention: totals.needAttention, length: issues.length }) : t('owner.allCompaniesOk')}
             pressScale={0.98}
           >
             <View style={styles.attention}>
               <View style={[styles.attentionDot, { backgroundColor: TONE_FILL[tone] }]} />
               <View style={styles.flex}>
                 <DKText variant="micro" color={TONE_FILL[tone]}>
-                  {issues.length ? 'דורש את תשומת לבך' : 'הכול תקין'}
+                  {issues.length ? t('owner.needsYourAttention') : t('common.allOk')}
                 </DKText>
                 <DKText variant="label" color={DK.onNight} numberOfLines={2}>
                   {issues.length
-                    ? `${t.needAttention === 1 ? 'חברה אחת' : `${t.needAttention} חברות`} · ${issues[0].title}${issues.length > 1 ? ` ועוד ${issues.length - 1}` : ''}`
-                    : 'אין בעיות פתוחות באף חברה'}
+                    ? `${totals.needAttention === 1 ? t('owner.oneCompany') : t('owner.companiesCount', { needAttention: totals.needAttention })} · ${issues[0].title}${issues.length > 1 ? t('owner.andMore', { v1: issues.length - 1 }) : ''}`
+                    : t('owner.noOpenIssues')}
                 </DKText>
               </View>
               {issues.length > 0 && (
                 <DKText style={styles.attentionValue} color={DK.onNight}>
-                  {issues.length.toLocaleString('he-IL')}
+                  {issues.length.toLocaleString(getLocale())}
                 </DKText>
               )}
-              <Ionicons name="chevron-back" size={18} color={DK.onNightFaint} />
+              <Ionicons name={dirIcon('chevron-back')} size={18} color={DK.onNightFaint} />
             </View>
           </Pressy>
         </Reveal>
       )}
 
       <Reveal index={2} style={styles.stats}>
-        <HeroStat value={t ? `${t.activeCompanies}/${t.companies}` : '–'} label="חברות פעילות" />
-        <HeroStat value={t ? formatMoneyCompact(t.mrr) : '–'} label="הכנסה חודשית" />
-        <HeroStat value={t?.vehicles ?? '–'} label="רכבים" />
+        <HeroStat value={totals ? `${totals.activeCompanies}/${totals.companies}` : '–'} label={t('owner.activeCompanies')} />
+        <HeroStat value={totals ? formatMoneyCompact(totals.mrr) : '–'} label={t('owner.monthlyRevenue')} />
+        <HeroStat value={totals?.vehicles ?? '–'} label={t('common.vehicles')} />
       </Reveal>
 
       <Reveal index={3} style={styles.block}>
-        <GlassSearch value={p.search} onChangeText={p.onSearch} placeholder="חיפוש חברה או ח.פ." />
+        <GlassSearch value={p.search} onChangeText={p.onSearch} placeholder={t('owner.searchCompany')} />
       </Reveal>
     </NightHero>
   );
@@ -259,14 +261,14 @@ function Hero(p: Props & { search: string; onSearch: (v: string) => void; onAtte
 function CompanyCard({ row, onPress, onMenu }: { row: CompanyHealth; onPress: () => void; onMenu: () => void }) {
   const c = row.company;
   const issue = row.issues[0];
-  const meta = `${row.drivers} נהגים · ${row.vehicles}${row.account?.vehicle_limit ? `/${row.account.vehicle_limit}` : ''} רכבים`;
+  const meta = t('owner.driversVehicles', { drivers: row.drivers, vehicles: row.vehicles, v1: row.account?.vehicle_limit ? `/${row.account.vehicle_limit}` : '' });
   const next = accountNextStep(row.account);
   return (
     <Surface style={[styles.card, !row.active && styles.cardOff]}>
       <Pressy onPress={onPress} accessibilityLabel={`${c.name}, ${TONE_LABEL[row.tone]}${issue ? `: ${issue.title}` : ''}`} pressScale={0.985}>
         <View style={styles.cardTop}>
           {c.logo_url ? (
-            <Image source={{ uri: c.logo_url }} accessibilityLabel={`לוגו ${c.name}`} style={[styles.logo, !row.active && styles.faded]} resizeMode="contain" />
+            <Image source={{ uri: c.logo_url }} accessibilityLabel={t('company.logoOf', { name: c.name })} style={[styles.logo, !row.active && styles.faded]} resizeMode="contain" />
           ) : (
             <View style={[styles.logo, styles.initial, !row.active && styles.initialOff]}>
               <DKText variant="title" color={row.active ? DK.accent : DK.muted}>
@@ -295,7 +297,7 @@ function CompanyCard({ row, onPress, onMenu }: { row: CompanyHealth; onPress: ()
             <Ionicons name="alert-circle" size={16} color={TONE_FG[issue.tone]} />
             <DKText variant="caption" color={TONE_FG[issue.tone]} numberOfLines={2} style={styles.flex}>
               {issue.title}
-              {row.issues.length > 1 ? ` · ועוד ${row.issues.length - 1}` : ''}
+              {row.issues.length > 1 ? t('owner.andMoreDot', { v1: row.issues.length - 1 }) : ''}
             </DKText>
           </View>
         )}
@@ -311,10 +313,10 @@ function CompanyCard({ row, onPress, onMenu }: { row: CompanyHealth; onPress: ()
         <View style={styles.footItem}>
           <Ionicons name="pulse" size={14} color={DK.muted} />
           <DKText variant="caption" color={DK.muted} numberOfLines={1}>
-            {row.lastActivity ? lastSeenLabel(row.lastActivity) : 'לא פעילה החודש'}
+            {row.lastActivity ? lastSeenLabel(row.lastActivity) : t('owner.inactiveThisMonth')}
           </DKText>
         </View>
-        <Pressy onPress={onMenu} accessibilityLabel={`פעולות עבור ${c.name}`} style={styles.more} pressScale={0.9}>
+        <Pressy onPress={onMenu} accessibilityLabel={t('owner.actionsFor', { name: c.name })} style={styles.more} pressScale={0.9}>
           <Ionicons name="ellipsis-horizontal" size={20} color={DK.inkSoft} />
         </Pressy>
       </View>
@@ -332,14 +334,14 @@ function Footer({ overview, onOpen, onExport }: { overview: PlatformOverview; on
     <View style={styles.footer}>
       <Revenue overview={overview} onOpen={onOpen} onExport={onExport} />
 
-      <KitSection title="שימוש במערכת" style={styles.sectionGap}>
-        <View style={styles.chartBox} accessible accessibilityLabel={`${total} פעולות ב-${ACTIVITY_DAYS} הימים האחרונים`}>
+      <KitSection title={t('owner.systemUsage')} style={styles.sectionGap}>
+        <View style={styles.chartBox} accessible accessibilityLabel={t('owner.totalActions', { total, ACTIVITY_DAYS })}>
           <View style={styles.chartHead}>
             <DKText variant="title" style={styles.tabular}>
-              {total.toLocaleString('he-IL')}
+              {total.toLocaleString(getLocale())}
             </DKText>
             <DKText variant="caption" color={DK.muted}>
-              פעולות ב-{ACTIVITY_DAYS} הימים האחרונים
+              {t('owner.actionsInPrefix')}{ACTIVITY_DAYS} {t('owner.lastDays')}
             </DKText>
           </View>
           <View style={styles.chart}>
@@ -358,33 +360,33 @@ function Footer({ overview, onOpen, onExport }: { overview: PlatformOverview; on
           </View>
           <View style={styles.axis}>
             <DKText variant="micro" color={DK.faint}>
-              לפני {ACTIVITY_DAYS} יום
+              {t('common.ago')} {ACTIVITY_DAYS} {t('common.dayWord')}
             </DKText>
             <DKText variant="micro" color={DK.faint}>
-              היום
+              {t('common.today')}
             </DKText>
           </View>
         </View>
       </KitSection>
 
-      <KitSection title="אבטחה ופרטיות" style={styles.sectionGap}>
+      <KitSection title={t('owner.securityPrivacy')} style={styles.sectionGap}>
         <SecurityLine
           icon="key"
           tone={notActivated ? 'warn' : 'ok'}
-          title={!notActivated ? 'כל החשבונות הופעלו' : notActivated === 1 ? 'חשבון אחד על סיסמה זמנית' : `${notActivated} חשבונות על סיסמה זמנית`}
-          body={notActivated ? 'מנהלים ונהגים שעוד לא נכנסו ולא החליפו את הסיסמה שקיבלו.' : 'כולם כבר בחרו סיסמה משלהם.'}
+          title={!notActivated ? t('owner.allAccountsActivated') : notActivated === 1 ? t('owner.oneOnTempPassword') : t('owner.onTempPassword', { notActivated })}
+          body={notActivated ? t('owner.notActivatedHint') : t('owner.allChosePassword')}
         />
         <SecurityLine
           icon="pause-circle"
           tone="off"
           divider
-          title={!disabled ? 'אין חברות מושבתות' : disabled === 1 ? 'חברה אחת מושבתת' : `${disabled} חברות מושבתות`}
-          body={disabled === 1 ? 'המשתמשים שלה לא יכולים להיכנס עד שתפעיל אותה מחדש.' : disabled ? 'המשתמשים שלהן לא יכולים להיכנס עד שתפעיל אותן מחדש.' : 'לכל החברות יש גישה פעילה.'}
+          title={!disabled ? t('owner.noDisabledCompanies') : disabled === 1 ? t('owner.oneDisabledCompany') : t('owner.disabledCompanies', { disabled })}
+          body={disabled === 1 ? t('owner.disabledOneHint') : disabled ? t('owner.disabledManyHint') : t('owner.allHaveAccess')}
         />
         <View style={styles.privacy}>
           <Ionicons name="lock-closed" size={15} color={DK.muted} />
           <DKText variant="caption" color={DK.muted} style={styles.flex}>
-            המסך מציג רק מספרים ותאריכים. שמות, תעודות זהות וטלפונים נפתחים רק בתוך דף החברה.
+            {t('owner.privacyNote')}
           </DKText>
         </View>
       </KitSection>
@@ -393,11 +395,11 @@ function Footer({ overview, onOpen, onExport }: { overview: PlatformOverview; on
 }
 
 function Revenue({ overview, onOpen, onExport }: { overview: PlatformOverview; onOpen: (id: string) => void; onExport: () => void }) {
-  const t = overview.totals;
+  const totals = overview.totals;
   const segments = [
-    { label: 'משלמים', value: t.paying - t.overdue, color: ACCOUNT_TONE.ok.fill },
-    { label: 'בניסיון', value: t.trials, color: ACCOUNT_TONE.warn.fill },
-    { label: 'בפיגור', value: t.overdue, color: ACCOUNT_TONE.bad.fill },
+    { label: t('owner.paying'), value: totals.paying - totals.overdue, color: ACCOUNT_TONE.ok.fill },
+    { label: t('owner.trial'), value: totals.trials, color: ACCOUNT_TONE.warn.fill },
+    { label: t('account.status.overdue'), value: totals.overdue, color: ACCOUNT_TONE.bad.fill },
   ];
   const total = Math.max(1, segments.reduce((n, s) => n + s.value, 0));
   const upcoming = overview.companies
@@ -407,14 +409,14 @@ function Revenue({ overview, onOpen, onExport }: { overview: PlatformOverview; o
     .sort((a, b) => (a.date! < b.date! ? -1 : 1))
     .slice(0, 3);
   return (
-    <KitSection title="מנויים והכנסות">
-      <View style={styles.chartBox} accessible accessibilityLabel={`הכנסה חודשית ${formatMoney(t.mrr)}. ${segments.map((s) => `${s.label} ${s.value}`).join(', ')}`}>
+    <KitSection title={t('owner.subsAndRevenue')}>
+      <View style={styles.chartBox} accessible accessibilityLabel={t('owner.monthlyRevenueLabel', { v1: formatMoney(totals.mrr), v2: segments.map((s) => `${s.label} ${s.value}`).join(', ') })}>
         <View style={styles.chartHead}>
           <DKText variant="title" style={styles.tabular}>
-            {formatMoney(t.mrr)}
+            {formatMoney(totals.mrr)}
           </DKText>
           <DKText variant="caption" color={DK.muted}>
-            בחודש, לפני מע״מ · {formatMoney(t.mrr * 12)} בשנה
+            {t('owner.perMonthExVat')} {formatMoney(totals.mrr * 12)} {t('owner.perYear')}
           </DKText>
         </View>
         <View style={styles.stack}>
@@ -441,18 +443,18 @@ function Revenue({ overview, onOpen, onExport }: { overview: PlatformOverview; o
             <DKText variant="caption" color={ACCOUNT_TONE[next!.tone].fg}>
               {next!.label}
             </DKText>
-            <Ionicons name="chevron-back" size={16} color={DK.faint} />
+            <Ionicons name={dirIcon('chevron-back')} size={16} color={DK.faint} />
           </View>
         </Pressy>
       ))}
-      <Pressy onPress={onExport} accessibilityLabel="הפקת דוח לקוחות" pressScale={0.985}>
+      <Pressy onPress={onExport} accessibilityLabel={t('owner.generateCustomersReport')} pressScale={0.985}>
         <View style={[styles.upRow, styles.divider]}>
           <Ionicons name="document-text-outline" size={18} color={DK.accent} />
           <DKText variant="label" color={DK.accent} style={styles.flex}>
-            דוח לקוחות
+            {t('owner.customersReport')}
           </DKText>
           <DKText variant="caption" color={DK.muted}>
-            PDF לשיתוף או הדפסה
+            {t('owner.pdfShare')}
           </DKText>
         </View>
       </Pressy>
@@ -513,7 +515,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   attentionDot: { width: 10, height: 10, borderRadius: 5 },
-  attentionValue: { fontFamily: 'Heebo_800ExtraBold', fontSize: 34, lineHeight: 38, letterSpacing: -1, fontVariant: ['tabular-nums'] },
+  attentionValue: { fontFamily: fontStack('Heebo_800ExtraBold'), fontSize: 34, lineHeight: 38, letterSpacing: -1, fontVariant: ['tabular-nums'] },
 
   bar: { backgroundColor: DK.canvas, paddingTop: 14, paddingBottom: 12 },
   chartBar: { width: '100%', borderRadius: 3, backgroundColor: '#A9BCFF' },
@@ -538,7 +540,7 @@ const styles = StyleSheet.create({
     borderTopColor: DK.hairline,
   },
   footItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, flexShrink: 1 },
-  more: { marginRight: 'auto', width: 44, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: DK.surfaceSunk },
+  more: { marginEnd: 'auto', width: 44, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: DK.surfaceSunk },
 
   footer: { paddingHorizontal: DK_SPACE.md, paddingTop: 16 },
   sectionGap: { marginTop: 22 },

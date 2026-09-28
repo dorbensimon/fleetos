@@ -7,6 +7,7 @@ import type { ComplianceItem, DriverRow, Vehicle, VehicleDriverWithProfile } fro
 import { VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS, complianceBadgeLabel, complianceBadgeState, complianceRemainingDays, findComplianceDef } from '../../../lib/compliance';
 import { nextServiceKmOf } from '../../../lib/serviceSchedule';
 import { formatPlate } from '../../../lib/plate';
+import { t, getLocale } from '../../../lib/i18n';
 
 const APP_STARTED_AT_MS = Date.now();
 const SERVICE_WARN_KM = 1000;
@@ -20,11 +21,11 @@ function daysStatus(days: number | null): Status {
 }
 
 function daysNote(days: number | null) {
-  if (days == null) return 'חסר';
-  if (days === Number.POSITIVE_INFINITY) return 'לפי בדיקה אחרונה';
-  if (days < 0) return 'פג תוקף';
-  if (days === 0) return 'היום';
-  return `${days.toLocaleString('he-IL')} ימים`;
+  if (days == null) return t('status.missing');
+  if (days === Number.POSITIVE_INFINITY) return t('fleet.byLastInspection');
+  if (days < 0) return t('status.expiredLong');
+  if (days === 0) return t('common.today');
+  return t('common.daysV1', { v1: days.toLocaleString(getLocale()) });
 }
 
 /** Insurance, annual test and service for one vehicle, each as a status the card can draw. */
@@ -42,23 +43,23 @@ export function vehicleHealth(vehicle: Vehicle, items: ComplianceItem[] | undefi
 
   const rows: Health[] = [
     {
-      label: 'ביטוח',
-      value: insurance ? formatDate(insurance) : 'חסר',
+      label: t('fleet.insurance'),
+      value: insurance ? formatDate(insurance) : t('status.missing'),
       note: daysNote(insDays),
       status: statusFromExpiry(insurance),
       progress: validityProgress(insurance),
     },
     {
-      label: 'טסט',
-      value: testDef ? complianceBadgeLabel(testDef, testItem) : testItem?.expiry_date ? formatDate(testItem.expiry_date) : 'חסר',
+      label: t('fleet.test'),
+      value: testDef ? complianceBadgeLabel(testDef, testItem) : testItem?.expiry_date ? formatDate(testItem.expiry_date) : t('status.missing'),
       note: daysNote(testDays),
       status: testOptional ? 'ok' : daysStatus(testDays),
       progress: testDays == null ? 0.06 : testDays === Number.POSITIVE_INFINITY ? 1 : Math.max(0.06, Math.min(1, testDays / 365)),
     },
     {
-      label: 'טיפול',
-      value: nextKm != null ? `${nextKm.toLocaleString('he-IL')} ק״מ` : 'חסר',
-      note: kmLeft == null ? 'חסר' : kmLeft <= 0 ? `חריגה ${Math.abs(kmLeft).toLocaleString('he-IL')} ק״מ` : `עוד ${kmLeft.toLocaleString('he-IL')} ק״מ`,
+      label: t('fleet.service'),
+      value: nextKm != null ? t('unit.kmValue', { v1: nextKm.toLocaleString(getLocale()) }) : t('status.missing'),
+      note: kmLeft == null ? t('status.missing') : kmLeft <= 0 ? t('fleet.overKm', { v1: Math.abs(kmLeft).toLocaleString(getLocale()) }) : t('fleet.kmLeft', { v1: kmLeft.toLocaleString(getLocale()) }),
       status: serviceStatus,
       progress: kmLeft == null || kmLeft <= 0 ? 0.06 : Math.max(0.08, Math.min(1, kmLeft / interval)),
     },
@@ -76,10 +77,10 @@ function statusFromExpiry(date: string | null): Status {
 function licenseLine(expiry: string | null): { text: string; status: Status } {
   const status = statusFromExpiry(expiry);
   const days = daysUntilExpiry(expiry);
-  if (!expiry) return { text: 'אין תוקף רישיון', status: 'missing' };
-  if (status === 'expired') return { text: `הרישיון פג ב־${formatDate(expiry)}`, status };
-  if (status === 'soon') return { text: days === 0 ? 'הרישיון פג היום' : `הרישיון פג בעוד ${days} ${days === 1 ? 'יום' : 'ימים'}`, status };
-  return { text: `רישיון בתוקף עד ${formatDate(expiry)}`, status };
+  if (!expiry) return { text: t('driver.noLicenseExpiry'), status: 'missing' };
+  if (status === 'expired') return { text: t('driver.licenseExpiredOnV', { expiry: formatDate(expiry) }), status };
+  if (status === 'soon') return { text: days === 0 ? t('driver.licenseExpiresToday') : t('driver.licenseExpiresIn', { days, v1: days === 1 ? t('common.dayWord') : t('common.days') }), status };
+  return { text: t('driver.licenseValidUntilV', { expiry: formatDate(expiry) }), status };
 }
 
 /**
@@ -103,9 +104,9 @@ export function DriverFleetCard({
   const s = STATUS[license.status];
   const activationDays = item.password_set_at ? Math.max(0, Math.floor((APP_STARTED_AT_MS - new Date(item.password_set_at).getTime()) / 86400000)) : null;
   const vehicle = item.vehicles[0] ?? (item.vehicle_id && item.vehicle_plate ? { id: item.vehicle_id, plate_number: item.vehicle_plate, is_primary: true } : null);
-  const name = item.full_name ?? 'ללא שם';
+  const name = item.full_name ?? t('common.unnamed');
   return (
-    <Pressy onPress={onPress} accessibilityLabel={`${name}, ${license.text}${vehicle ? `, רכב ${formatPlate(vehicle.plate_number)}` : ', ללא רכב'}`} pressScale={0.985}>
+    <Pressy onPress={onPress} accessibilityLabel={`${name}, ${license.text}${vehicle ? t('fleet.vehicleSuffix', { v1: formatPlate(vehicle.plate_number) }) : t('fleet.noVehicleSuffix')}`} pressScale={0.985}>
       <Surface style={[styles.card, license.status === 'expired' && styles.cardAlert]}>
         <View style={styles.driverTop}>
           <View>
@@ -130,7 +131,7 @@ export function DriverFleetCard({
             </View>
           </View>
           {!!item.phone && (
-            <Pressy onPress={onCall} haptic accessibilityLabel={`התקשרות אל ${name}`} style={styles.call} pressScale={0.9}>
+            <Pressy onPress={onCall} haptic accessibilityLabel={t('common.callName', { name })} style={styles.call} pressScale={0.9}>
               <Ionicons name="call" size={19} color={STATUS.ok.fg} />
             </Pressy>
           )}
@@ -138,14 +139,14 @@ export function DriverFleetCard({
         {(!!vehicle || pendingSigning > 0 || !!item.must_change_password) && (
           <View style={styles.tags}>
             {vehicle ? (
-              <Pressy onPress={() => onPressVehicle(vehicle.id)} accessibilityRole="link" accessibilityLabel={`לרכב ${formatPlate(vehicle.plate_number)}`} style={styles.tag} pressScale={0.95}>
+              <Pressy onPress={() => onPressVehicle(vehicle.id)} accessibilityRole="link" accessibilityLabel={t('fleet.toVehicle', { v1: formatPlate(vehicle.plate_number) })} style={styles.tag} pressScale={0.95}>
                 <Ionicons name="car-sport" size={14} color={DK.accent} />
                 <DKText variant="micro" color={DK.accent} ltr>
                   {formatPlate(vehicle.plate_number)}
                 </DKText>
                 {item.vehicles.length > 1 && (
                   <DKText variant="micro" color={DK.muted}>
-                    {`ועוד ${item.vehicles.length - 1}`}
+                    {t('common.andMoreV1', { v1: item.vehicles.length - 1 })}
                   </DKText>
                 )}
               </Pressy>
@@ -153,7 +154,7 @@ export function DriverFleetCard({
               <View style={[styles.tag, styles.tagMuted]}>
                 <Ionicons name="car-outline" size={14} color={DK.muted} />
                 <DKText variant="micro" color={DK.muted}>
-                  ללא רכב
+                  {t('fleet.filter.noVehicle')}
                 </DKText>
               </View>
             )}
@@ -161,7 +162,7 @@ export function DriverFleetCard({
               <View style={[styles.tag, { backgroundColor: STATUS.soon.soft }]}>
                 <Ionicons name="create" size={14} color={STATUS.soon.fg} />
                 <DKText variant="micro" color={STATUS.soon.fg}>
-                  {pendingSigning === 1 ? 'מסמך לחתימה' : `${pendingSigning} מסמכים לחתימה`}
+                  {pendingSigning === 1 ? t('signing.docToSign') : t('signing.docsToSign', { pendingSigning })}
                 </DKText>
               </View>
             )}
@@ -169,7 +170,7 @@ export function DriverFleetCard({
               <View style={[styles.tag, styles.tagMuted]}>
                 <Ionicons name="hourglass-outline" size={14} color={DK.muted} />
                 <DKText variant="micro" color={DK.muted}>
-                  {activationDays == null || activationDays === 0 ? 'ממתין להפעלה' : `ממתין להפעלה · ${activationDays} ${activationDays === 1 ? 'יום' : 'ימים'}`}
+                  {activationDays == null || activationDays === 0 ? t('driver.awaitingActivation') : t('driver.awaitingActivationDays', { activationDays, v1: activationDays === 1 ? t('common.dayWord') : t('common.days') })}
                 </DKText>
               </View>
             )}
@@ -208,8 +209,8 @@ export function VehicleFleetCard({
   const health = vehicleHealth(item, compliance);
   const driverName = drivers?.find((d) => d.is_primary)?.full_name ?? drivers?.[0]?.full_name ?? null;
   const extra = Math.max(0, (drivers?.length ?? 0) - (driverName ? 1 : 0));
-  const title = [item.manufacturer, item.model].filter(Boolean).join(' ') || 'ללא דגם';
-  const meta = [driverName ? `${driverName}${extra ? ` +${extra}` : ''}` : 'ללא נהג', departmentName, VEHICLE_TYPE_LABELS[item.vehicle_type] ?? item.vehicle_type]
+  const title = [item.manufacturer, item.model].filter(Boolean).join(' ') || t('vehicle.noModelShort');
+  const meta = [driverName ? `${driverName}${extra ? ` +${extra}` : ''}` : t('vehicle.noDriver'), departmentName, VEHICLE_TYPE_LABELS[item.vehicle_type] ?? item.vehicle_type]
     .filter(Boolean)
     .join(' · ');
   const inactive = item.status === 'maintenance' || item.status === 'disabled';
@@ -220,13 +221,13 @@ export function VehicleFleetCard({
       : health.worst === 'expired'
         ? { label: health.bad.join(' · '), status: 'expired' }
         : health.worst === 'soon'
-          ? { label: 'מתקרב מועד', status: 'soon' }
+          ? { label: t('fleet.status.dueSoon'), status: 'soon' }
           : health.worst === 'missing'
-            ? { label: 'חסרים נתונים', status: 'missing' }
+            ? { label: t('fleet.missingData'), status: 'missing' }
             : null;
   const showDefects = !archived && defects > 0;
   return (
-    <Pressy onPress={onPress} accessibilityLabel={`${title}, ${formatPlate(item.plate_number)}, ${meta}${chip ? `, ${chip.label}` : ''}${showDefects ? ', יש ליקויים' : ''}`} pressScale={0.985}>
+    <Pressy onPress={onPress} accessibilityLabel={`${title}, ${formatPlate(item.plate_number)}, ${meta}${chip ? `, ${chip.label}` : ''}${showDefects ? t('fleet.hasDefectsSuffix') : ''}`} pressScale={0.985}>
       <Surface style={[styles.card, !archived && health.worst === 'expired' && styles.cardAlert, archived && styles.cardArchived]}>
         <View style={styles.vehicleTop}>
           <View style={styles.flex}>
@@ -249,7 +250,7 @@ export function VehicleFleetCard({
               <View style={[styles.statusChip, styles.defectChip, { backgroundColor: STATUS.expired.soft }]}>
                 <Ionicons name="warning" size={12} color={STATUS.expired.fg} />
                 <DKText variant="micro" color={STATUS.expired.fg} numberOfLines={1}>
-                  יש ליקויים
+                  {t('vehicle.hasDefects')}
                 </DKText>
               </View>
             )}
@@ -257,10 +258,10 @@ export function VehicleFleetCard({
           <Plate number={formatPlate(item.plate_number)} size="sm" />
         </View>
         {archived ? (
-          <Pressy onPress={onRestore} disabled={restoring} accessibilityLabel="שחזור הרכב מהארכיון" style={styles.restore}>
+          <Pressy onPress={onRestore} disabled={restoring} accessibilityLabel={t('fleet.restoreVehicle')} style={styles.restore}>
             <Ionicons name="arrow-undo" size={17} color={DK.accent} />
             <DKText variant="label" color={DK.accent}>
-              {restoring ? 'משחזר…' : 'שחזור מהארכיון'}
+              {restoring ? t('common.restoring') : t('common.restoreFromArchiveShort')}
             </DKText>
           </Pressy>
         ) : (
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
   grade: {
     position: 'absolute',
     bottom: -4,
-    left: -5,
+    start: -5,
     minWidth: 22,
     height: 20,
     paddingHorizontal: 5,
@@ -315,7 +316,7 @@ const styles = StyleSheet.create({
   },
   dot: { width: 7, height: 7, borderRadius: 4 },
   call: { width: 46, height: 46, borderRadius: 23, backgroundColor: STATUS.ok.soft, alignItems: 'center', justifyContent: 'center' },
-  tags: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, paddingRight: 62 },
+  tags: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, paddingEnd: 62 },
   tag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, minHeight: 30, paddingHorizontal: 10, borderRadius: 10, backgroundColor: DK.accentSoft },
   tagMuted: { backgroundColor: DK.surfaceSunk },
 
@@ -323,7 +324,7 @@ const styles = StyleSheet.create({
   statusChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, flexShrink: 0, maxWidth: '55%' },
   health: { flexDirection: 'row-reverse', backgroundColor: DK.surfaceSunk, borderRadius: 18, paddingVertical: 12 },
   healthCell: { flex: 1, paddingHorizontal: DK_SPACE.sm, gap: 3 },
-  healthDivider: { borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: 'rgba(10,22,38,0.1)' },
+  healthDivider: { borderEndWidth: StyleSheet.hairlineWidth, borderEndColor: 'rgba(10,22,38,0.1)' },
   healthValue: { fontSize: 14.5, lineHeight: 20 },
   track: { height: 4, borderRadius: 2, backgroundColor: '#E3E8EF', overflow: 'hidden', marginTop: 4, flexDirection: 'row-reverse' },
   trackFill: { height: '100%', borderRadius: 2 },

@@ -3,6 +3,7 @@ import { StyleProp, StyleSheet, TextInput, TextStyle, View, ViewStyle } from 're
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './Text';
 import { BRAND, COLORS, FONT, FONT_SIZE } from '../../lib/theme';
+import { textStart } from '../../lib/i18n';
 
 /**
  * Label + inline text input row shared by the admin driver and vehicle
@@ -88,8 +89,8 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    paddingRight: 6,
-    paddingLeft: 16,
+    paddingEnd: 6,
+    paddingStart: 16,
     minHeight: 56,
     borderBottomWidth: 0.5,
     borderBottomColor: 'rgba(14,30,43,.07)',
@@ -101,7 +102,7 @@ const styles = StyleSheet.create({
   focusRailActive: { backgroundColor: COLORS.accent },
   label: { fontSize: FONT_SIZE.lg, fontFamily: FONT.semibold, color: BRAND.ink },
   labelFocused: { color: COLORS.accent },
-  input: { flex: 1, fontSize: FONT_SIZE.xl, fontFamily: FONT.medium, padding: 0, color: BRAND.ink, textAlign: 'right' },
+  input: { flex: 1, fontSize: FONT_SIZE.xl, fontFamily: FONT.medium, padding: 0, color: BRAND.ink, textAlign: textStart() },
   ltrInput: { textAlign: 'left', writingDirection: 'ltr' },
   checkBadge: {
     width: 20,

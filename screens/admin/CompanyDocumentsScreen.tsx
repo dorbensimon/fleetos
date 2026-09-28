@@ -18,13 +18,14 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { CompanyDocumentsDesktopView, type CompanyDocumentDraft } from '../../components/desktop/CompanyDocumentsDesktopView';
 import { DText } from '../../components/desktop/primitives';
 import { showAlert } from '../../lib/platformAlert';
+import { t, textStart } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyDocuments'>;
 type Draft = { title: string; date: string | null; description: string; file: PickedFile | null };
 type DocumentPreview = { doc: DocumentRow; src: string };
 const CATEGORY = 'general';
 const emptyDraft = (): Draft => ({ title: '', date: null, description: '', file: null });
-const titleOf = (doc: DocumentRow) => doc.title?.trim() || doc.file_name || 'מסמך ללא שם';
+const titleOf = (doc: DocumentRow) => doc.title?.trim() || doc.file_name || t('documents.untitled');
 const isImage = (doc: DocumentRow) => Boolean(doc.mime_type?.startsWith('image/'));
 
 export default function CompanyDocumentsScreen({ navigation }: Props) {
@@ -48,9 +49,9 @@ export default function CompanyDocumentsScreen({ navigation }: Props) {
   const load = useCallback(async () => {
     const request = ++loadRequest.current;
     setLoading(true); setError(null);
-    if (!companyId) { setError('לא נמצאה חברה משויכת'); setLoading(false); return; }
+    if (!companyId) { setError(t('company.noLinkedCompany')); setLoading(false); return; }
     try { const rows = await listDocuments('company', companyId, CATEGORY); if (request === loadRequest.current) setDocs(rows); }
-    catch (err: any) { if (request === loadRequest.current) setError(err?.message ?? 'טעינת המסמכים נכשלה'); }
+    catch (err: any) { if (request === loadRequest.current) setError(err?.message ?? t('documents.loadFailedShort')); }
     finally { if (request === loadRequest.current) setLoading(false); }
   }, [companyId]);
   useFocusEffect(useCallback(() => { void load(); return () => { loadRequest.current += 1; }; }, [load]));
@@ -78,9 +79,9 @@ export default function CompanyDocumentsScreen({ navigation }: Props) {
 
   const openComposer = () => { setDraft(emptyDraft()); setErrors({ title: false, date: false, file: false }); setVisible(true); };
   const closeComposer = () => { if (!saving) setVisible(false); };
-  const chooseFile = () => chooseDocumentSource('בחרו את קובץ המסמך', async (source: DocumentSource) => {
+  const chooseFile = () => chooseDocumentSource(t('companyDocs.chooseDocFile'), async (source: DocumentSource) => {
     try { const file = await pickDocumentSource(source); if (file) { setDraft((current) => ({ ...current, file })); setErrors((current) => ({ ...current, file: false })); } }
-    catch (err: any) { showAlert('בחירת הקובץ נכשלה', err?.message ?? 'נסה שוב'); }
+    catch (err: any) { showAlert(t('companyDocs.chooseFileFailed'), err?.message ?? t('common.tryAgain')); }
   });
   const save = async () => {
     const next = { title: !draft.title.trim(), date: !draft.date, file: !draft.file };
@@ -90,7 +91,7 @@ export default function CompanyDocumentsScreen({ navigation }: Props) {
     try {
       await uploadDocument({ companyId, ownerType: 'company', ownerId: companyId, category: CATEGORY, title: draft.title.trim(), documentDate: draft.date, description: draft.description, file: draft.file });
       setVisible(false); await load();
-    } catch (err: any) { showAlert('העלאה נכשלה', err?.message ?? 'נסה שוב'); }
+    } catch (err: any) { showAlert(t('common.uploadFailedShort'), err?.message ?? t('common.tryAgain')); }
     finally { setSaving(false); }
   };
   const open = async (doc: DocumentRow) => {
@@ -106,32 +107,32 @@ export default function CompanyDocumentsScreen({ navigation }: Props) {
     try {
       await uploadDocument({ companyId, ownerType: 'company', ownerId: companyId, category: CATEGORY, title: d.title, documentDate: d.date, description: d.description, file: d.file });
       await load();
-      showToast('המסמך נשמר');
+      showToast(t('signing.documentSaved'));
       return true;
-    } catch (err: any) { showAlert('העלאה נכשלה', err?.message ?? 'נסה שוב'); return false; }
+    } catch (err: any) { showAlert(t('common.uploadFailedShort'), err?.message ?? t('common.tryAgain')); return false; }
   };
-  if (isDesktop) return <><DesktopShell active="CompanyDocuments" breadcrumbs={['ניהול', 'מסמכי חברה']}><CompanyDocumentsDesktopView docs={docs} loading={loading && docs.length === 0} error={error} onRetry={load} onOpen={(doc) => void open(doc)} onDownload={downloadDocumentWithAlert} onDelete={(doc) => confirmDeleteDocument(doc, load)} onUpload={uploadFromDesktop} /></DesktopShell>{documentOverlay}</>;
+  if (isDesktop) return <><DesktopShell active="CompanyDocuments" breadcrumbs={[t('nav.management'), t('nav.companyDocuments')]}><CompanyDocumentsDesktopView docs={docs} loading={loading && docs.length === 0} error={error} onRetry={load} onOpen={(doc) => void open(doc)} onDownload={downloadDocumentWithAlert} onDelete={(doc) => confirmDeleteDocument(doc, load)} onUpload={uploadFromDesktop} /></DesktopShell>{documentOverlay}</>;
   return (
     <DriverPage
       insetTop={insets.top}
       insetBottom={insets.bottom}
       hero={
         <HeroTitle
-          title="מסמכי חברה"
-          subtitle={loading ? 'טוען…' : docs.length ? `${docs.length} ${docs.length === 1 ? 'מסמך' : 'מסמכים'} · שמורים ונגישים גם במחשב` : 'רישיון מוביל, ביטוחים, נהלים — הכול במקום אחד'}
+          title={t('nav.companyDocuments')}
+          subtitle={loading ? t('common.loadingEllipsis') : docs.length ? t('companyDocs.countSaved', { length: docs.length, v1: docs.length === 1 ? t('documents.document') : t('common.documents') }) : t('companyDocs.subtitleEmpty')}
           onBack={() => navigation.goBack()}
         />
       }
-      footer={!loading && !error ? <PrimaryAction label="הוספת מסמך" icon="add" onPress={openComposer} /> : undefined}
+      footer={!loading && !error ? <PrimaryAction label={t('documents.addDocument')} icon="add" onPress={openComposer} /> : undefined}
       overlay={composer}
     >
       {loading ? (
         <LoadingPanel />
       ) : error ? (
-        <ErrorPanel message="טעינת המסמכים נכשלה" hint={error} onRetry={load} />
+        <ErrorPanel message={t('documents.loadFailedShort')} hint={error} onRetry={load} />
       ) : docs.length === 0 ? (
         <Reveal>
-          <EmptyPanel icon="folder-open" title="אין עדיין מסמכי חברה" body="הוסיפו את המסמך הראשון — עם שם, תאריך ותיאור, כדי שיהיה קל למצוא אותו." action={{ label: 'הוספת מסמך', icon: 'add', onPress: openComposer }} />
+          <EmptyPanel icon="folder-open" title={t('companyDocs.noneYet')} body={t('companyDocs.addFirstHint')} action={{ label: t('documents.addDocument'), icon: 'add', onPress: openComposer }} />
         </Reveal>
       ) : (
         docs.map((doc, index) => (
@@ -150,11 +151,11 @@ function DocumentCard({ doc, preview, onOpen, onDownload, onDelete }: { doc: Doc
   const name = titleOf(doc);
   return (
     <Surface style={styles.card}>
-      <Pressy onPress={() => onOpen(doc)} accessibilityLabel={`פתיחת ${name}`} pressScale={0.985}>
+      <Pressy onPress={() => onOpen(doc)} accessibilityLabel={t('common.openName', { name })} pressScale={0.985}>
         <View style={styles.cardRow}>
           <View style={styles.thumb}>
             {isImage(doc) && preview ? (
-              <Image source={{ uri: preview }} accessibilityLabel="תצוגה מקדימה של הקובץ שנבחר" style={styles.image} resizeMode="cover" accessibilityIgnoresInvertColors />
+              <Image source={{ uri: preview }} accessibilityLabel={t('companyDocs.previewSelected')} style={styles.image} resizeMode="cover" accessibilityIgnoresInvertColors />
             ) : (
               <>
                 <Ionicons name={pdf ? 'document-text' : 'document'} size={22} color={pdf ? STATUS.expired.fg : DK.accent} />
@@ -180,16 +181,16 @@ function DocumentCard({ doc, preview, onOpen, onDownload, onDelete }: { doc: Doc
         </View>
       </Pressy>
       <View style={styles.actions}>
-        <Pressy onPress={() => onDownload(doc)} accessibilityLabel={`הורדת ${name}`} style={styles.action} pressScale={0.94}>
+        <Pressy onPress={() => onDownload(doc)} accessibilityLabel={t('common.downloadName', { name })} style={styles.action} pressScale={0.94}>
           <Ionicons name="download-outline" size={18} color={DK.accent} />
           <DKText variant="label" color={DK.accent}>
-            הורדה
+            {t('common.download')}
           </DKText>
         </Pressy>
-        <Pressy onPress={() => onDelete(doc)} accessibilityLabel={`מחיקת ${name}`} style={[styles.action, styles.actionDanger]} pressScale={0.94}>
+        <Pressy onPress={() => onDelete(doc)} accessibilityLabel={t('common.deleteName', { name })} style={[styles.action, styles.actionDanger]} pressScale={0.94}>
           <Ionicons name="trash-outline" size={18} color={STATUS.expired.fg} />
           <DKText variant="label" color={STATUS.expired.fg}>
-            מחיקה
+            {t('common.deleteAction')}
           </DKText>
         </Pressy>
       </View>
@@ -204,37 +205,37 @@ function Composer({ visible, draft, errors, saving, onClose, onChange, onChooseF
       onClose={onClose}
       dismissable={!saving}
       icon="document-attach"
-      title="הוספת מסמך"
-      subtitle="השם, התאריך והתיאור נשמרים לצד הקובץ, כדי שיהיה קל למצוא אותו."
+      title={t('documents.addDocument')}
+      subtitle={t('companyDocs.metaHint')}
       footer={
         <SheetActions>
-          <PrimaryAction label="ביטול" tone="ghost" onPress={onClose} disabled={saving} style={styles.flex} />
-          <PrimaryAction label="שמירת המסמך" icon="cloud-upload-outline" onPress={onSave} loading={saving} style={styles.flex2} />
+          <PrimaryAction label={t('common.cancel')} tone="ghost" onPress={onClose} disabled={saving} style={styles.flex} />
+          <PrimaryAction label={t('signing.saveDocument')} icon="cloud-upload-outline" onPress={onSave} loading={saving} style={styles.flex2} />
         </SheetActions>
       }
     >
       <View style={styles.fields}>
-        <EditField first label="שם המסמך" required value={draft.title} onChangeText={(title) => onChange({ title })} placeholder="למשל: רישיון מוביל" editable={!saving} error={errors.title ? 'יש להזין שם למסמך' : undefined} />
-        <EditField label="תאריך המסמך" required editor={<DateField value={draft.date} onChange={(date) => onChange({ date })} placeholder="בחירת תאריך" hasError={errors.date} disabled={saving} />} error={errors.date ? 'יש לבחור תאריך' : undefined} />
+        <EditField first label={t('signing.documentName')} required value={draft.title} onChangeText={(title) => onChange({ title })} placeholder={t('companyDocs.nameExampleMobile')} editable={!saving} error={errors.title ? t('companyDocs.enterName') : undefined} />
+        <EditField label={t('companyDocs.date')} required editor={<DateField value={draft.date} onChange={(date) => onChange({ date })} placeholder={t('date.chooseDateAction')} hasError={errors.date} disabled={saving} />} error={errors.date ? t('companyDocs.dateRequired') : undefined} />
         <EditField
-          label="תיאור"
-          editor={<KitInput value={draft.description} onChangeText={(description) => onChange({ description })} placeholder="מה כולל המסמך? (לא חובה)" editable={!saving} multiline style={styles.textarea} accessibilityLabel="תיאור" />}
+          label={t('common.description')}
+          editor={<KitInput value={draft.description} onChangeText={(description) => onChange({ description })} placeholder={t('companyDocs.descriptionOptional')} editable={!saving} multiline style={styles.textarea} accessibilityLabel={t('common.description')} />}
         />
         <EditField
-          label="קובץ מצורף"
+          label={t('companyDocs.attachedFile')}
           required
-          error={errors.file ? 'יש לבחור קובץ להעלאה' : undefined}
+          error={errors.file ? t('companyDocs.chooseFileToUpload') : undefined}
           editor={
-            <Pressy onPress={onChooseFile} disabled={saving} accessibilityLabel={draft.file ? `הקובץ ${draft.file.name}, החלפה` : 'בחירת קובץ'} style={[styles.upload, errors.file && styles.uploadError]} pressScale={0.98}>
+            <Pressy onPress={onChooseFile} disabled={saving} accessibilityLabel={draft.file ? t('companyDocs.fileReplace', { name: draft.file.name }) : t('common.chooseFileAction')} style={[styles.upload, errors.file && styles.uploadError]} pressScale={0.98}>
               <View style={[styles.uploadMark, draft.file && { backgroundColor: STATUS.ok.soft }]}>
                 <Ionicons name={draft.file ? 'checkmark' : 'cloud-upload-outline'} size={22} color={draft.file ? STATUS.ok.fg : DK.accent} />
               </View>
               <View style={styles.flex}>
                 <DKText variant="label" numberOfLines={1}>
-                  {draft.file?.name || 'בחירת קובץ'}
+                  {draft.file?.name || t('common.chooseFileAction')}
                 </DKText>
                 <DKText variant="caption" color={DK.muted}>
-                  {draft.file ? 'מוכן להעלאה · אפשר להחליף' : 'PDF או תמונה · עד 20MB'}
+                  {draft.file ? t('companyDocs.readyReplaceable') : t('companyDocs.pdfOrImage20')}
                 </DKText>
               </View>
             </Pressy>
@@ -260,7 +261,7 @@ function DesktopDocumentPreview({ preview, progress, onClose }: { preview: Docum
         <Animated.View style={[previewStyles.panel, { opacity, transform }]}>
           <View style={previewStyles.header}>
             <View style={previewStyles.titleWrap}><View style={previewStyles.icon}><Ionicons name={isImage(preview.doc) ? 'image-outline' : 'document-text-outline'} size={18} color="#0B77B4" /></View><View><DText weight="bold" style={previewStyles.title} numberOfLines={1}>{titleOf(preview.doc)}</DText><DText style={previewStyles.subTitle}>{formatDate(preview.doc.document_date ?? preview.doc.created_at)}</DText></View></View>
-            <View style={previewStyles.tools}><TouchableOpacity onPress={() => void downloadDocumentWithAlert(preview.doc)} style={previewStyles.toolButton} accessibilityLabel="הורדת מסמך"><Ionicons name="download-outline" size={18} color="#0B77B4" /></TouchableOpacity><TouchableOpacity onPress={onClose} style={previewStyles.closeButton} accessibilityLabel="סגירת תצוגת מסמך"><Ionicons name="close" size={20} color="#273A49" /></TouchableOpacity></View>
+            <View style={previewStyles.tools}><TouchableOpacity onPress={() => void downloadDocumentWithAlert(preview.doc)} style={previewStyles.toolButton} accessibilityLabel={t('companyDocs.downloadDocument')}><Ionicons name="download-outline" size={18} color="#0B77B4" /></TouchableOpacity><TouchableOpacity onPress={onClose} style={previewStyles.closeButton} accessibilityLabel={t('companyDocs.closePreview')}><Ionicons name="close" size={20} color="#273A49" /></TouchableOpacity></View>
           </View>
           <View style={previewStyles.viewer}>{frame}</View>
         </Animated.View>
@@ -282,9 +283,9 @@ function DesktopImageViewer({ src, alt }: { src: string; alt: string }) {
 
   return <View style={previewStyles.imageViewer}>
     <View style={previewStyles.zoomBar}>
-      <TouchableOpacity onPress={zoomOut} disabled={zoom <= 1} style={[previewStyles.zoomButton, zoom <= 1 && previewStyles.zoomButtonDisabled]} accessibilityLabel="הקטנת תצוגת המסמך"><Ionicons name="remove" size={18} color="#27445A" /></TouchableOpacity>
+      <TouchableOpacity onPress={zoomOut} disabled={zoom <= 1} style={[previewStyles.zoomButton, zoom <= 1 && previewStyles.zoomButtonDisabled]} accessibilityLabel={t('companyDocs.zoomOut')}><Ionicons name="remove" size={18} color="#27445A" /></TouchableOpacity>
       <DText style={previewStyles.zoomLabel}>{Math.round(zoom * 100)}%</DText>
-      <TouchableOpacity onPress={zoomIn} disabled={zoom >= 2.2} style={[previewStyles.zoomButton, zoom >= 2.2 && previewStyles.zoomButtonDisabled]} accessibilityLabel="הגדלת תצוגת המסמך"><Ionicons name="add" size={18} color="#27445A" /></TouchableOpacity>
+      <TouchableOpacity onPress={zoomIn} disabled={zoom >= 2.2} style={[previewStyles.zoomButton, zoom >= 2.2 && previewStyles.zoomButtonDisabled]} accessibilityLabel={t('companyDocs.zoomIn')}><Ionicons name="add" size={18} color="#27445A" /></TouchableOpacity>
     </View>
     {React.createElement('div' as any, { style: { flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: 18, backgroundColor: '#DCE5EA' } }, image)}
   </View>;
@@ -315,9 +316,9 @@ const previewStyles = StyleSheet.create({
   header: { height: 66, paddingHorizontal: 18, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#DDE7ED', flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
   titleWrap: { flex: 1, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
   icon: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#E8F3FA', alignItems: 'center', justifyContent: 'center' },
-  title: { color: '#172B3A', fontSize: 15, textAlign: 'right' },
-  subTitle: { color: '#71808C', fontSize: 11.5, marginTop: 1, writingDirection: 'ltr', textAlign: 'right' },
-  tools: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, marginRight: 16 },
+  title: { color: '#172B3A', fontSize: 15, textAlign: textStart() },
+  subTitle: { color: '#71808C', fontSize: 11.5, marginTop: 1, writingDirection: 'ltr', textAlign: textStart() },
+  tools: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, marginEnd: 16 },
   toolButton: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#EFF7FC', alignItems: 'center', justifyContent: 'center' },
   closeButton: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F0F3F5', alignItems: 'center', justifyContent: 'center' },
   viewer: { flex: 1, padding: 14, backgroundColor: '#E8EEF2' },

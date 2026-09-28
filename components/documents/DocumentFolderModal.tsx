@@ -6,6 +6,7 @@ import type { DocumentRow } from '../../lib/adminApi';
 import { COLORS, RADIUS, SPACING, formatDate } from '../../lib/theme';
 import { getDocumentUrl } from '../../lib/documents';
 import { confirmDeleteDocument, documentIconName, downloadDocumentWithAlert, openDocumentExternally } from '../../lib/documentActions';
+import { t } from '../../lib/i18n';
 
 const webOnly = (style: Record<string, unknown>) => (Platform.OS === 'web' ? style : {});
 
@@ -97,7 +98,7 @@ export function DocumentFolderModal({
             {children}
 
             {docs.length === 0 ? (
-              <AppText style={styles.emptyText}>אין עדיין מסמכים בקטגוריה זו</AppText>
+              <AppText style={styles.emptyText}>{t('documents.noneInCategory')}</AppText>
             ) : (
               <View style={styles.thumbGrid}>
                 {docs.map((doc) => (
@@ -115,7 +116,7 @@ export function DocumentFolderModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,32,0.45)' },
+  backdrop: { position: 'absolute', top: 0, start: 0, end: 0, bottom: 0, backgroundColor: 'rgba(15,23,32,0.45)' },
   backdropIn: webOnly({
     animationKeyframes: { from: { opacity: 0 }, to: { opacity: 1 } },
     animationDuration: '180ms',
@@ -166,7 +167,7 @@ const styles = StyleSheet.create({
   thumbDelete: {
     position: 'absolute',
     top: 4,
-    left: 4,
+    start: 4,
     width: 22,
     height: 22,
     borderRadius: 11,
@@ -177,7 +178,7 @@ const styles = StyleSheet.create({
   thumbDownload: {
     position: 'absolute',
     top: 4,
-    right: 4,
+    end: 4,
     width: 22,
     height: 22,
     borderRadius: 11,

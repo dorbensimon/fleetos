@@ -17,9 +17,10 @@ import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { HoverPressable } from '../../components/desktop/primitives';
-import { DriverLicenseModal, LICENSE_SIDE_TITLE } from '../../components/desktop/driver/DriverLicenseModal';
+import { DriverLicenseModal, LICENSE_SIDE_STORED_TITLE } from '../../components/desktop/driver/DriverLicenseModal';
 import { DriverDocumentsMobile } from './DriverDocumentsMobile';
 import { dateOnlyIsoFromLocalDate } from '../../lib/driverFormValidation';
+import { t } from '../../lib/i18n';
 
 /**
  * The driver's self-service dossier intentionally uses the same card
@@ -29,7 +30,7 @@ import { dateOnlyIsoFromLocalDate } from '../../lib/driverFormValidation';
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverDocuments'>;
 
 function hasBothLicenseSides(docs: { title: string | null }[]): boolean {
-  return docs.some((doc) => doc.title === LICENSE_SIDE_TITLE.front) && docs.some((doc) => doc.title === LICENSE_SIDE_TITLE.back);
+  return docs.some((doc) => doc.title === LICENSE_SIDE_STORED_TITLE.front) && docs.some((doc) => doc.title === LICENSE_SIDE_STORED_TITLE.back);
 }
 
 export default function DriverDocumentsScreen({ navigation }: Props) {
@@ -51,7 +52,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
     if (!profileId) {
       // Right after a refresh the profile is still on its way: keep loading.
       if (profileLoading) return;
-      setError('פרופיל הנהג אינו זמין');
+      setError(t('driver.profileUnavailable'));
       setLoading(false);
       return;
     }
@@ -64,7 +65,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
       setDriver(loadedDriver);
       setLicensePhotosComplete(hasBothLicenseSides(licenseDocs));
     } catch (loadError: any) {
-      if (requestId === loadRequest.current) setError(loadError?.message ?? 'טעינת המסמכים נכשלה');
+      if (requestId === loadRequest.current) setError(loadError?.message ?? t('documents.loadFailedShort'));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -79,13 +80,13 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
   }, [profileId]);
 
   const saveLicenseExpiry = async (date: string | null): Promise<string | null> => {
-    if (!profileId) return 'פרופיל הנהג אינו זמין';
+    if (!profileId) return t('driver.profileUnavailable');
     try {
       await updateDriver(profileId, { license_expiry: date });
       setDriver((current) => (current ? { ...current, license_expiry: date } : current));
       return null;
     } catch (err: any) {
-      return err?.message || 'השמירה נכשלה, נסה שוב';
+      return err?.message || t('common.saveFailedRetryShort');
     }
   };
 
@@ -105,7 +106,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
     ? 'verified'
     : 'pending';
   const groups = buildDriverDetailGroups(driver, licenseStatus).map(group => ({ ...group, rows: group.rows.filter(row => row.key !== 'signing-documents') })).filter(
-    (group) => group.title !== 'דוחות' && group.title !== 'ניהול החשבון'
+    (group) => group.title !== t('reports.title') && group.title !== t('driverCard.accountManagement')
   );
 
   const handleRowPress = (row: DriverCardRow) => {
@@ -138,7 +139,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
 
   if (isDesktop) {
     return (
-      <DesktopShell active="DriverDocuments" breadcrumbs={['המסמכים שלי']}>
+      <DesktopShell active="DriverDocuments" breadcrumbs={[t('nav.myDocuments')]}>
         {loading ? (
           <LoadingState />
         ) : error ? (
@@ -147,8 +148,8 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
           <View style={desktopStyles.wrap}>
             <View style={desktopStyles.headRow}>
               <View>
-                <AppText weight="bold" style={desktopStyles.heading}>{driver?.full_name ?? profile?.full_name ?? 'ללא שם'}</AppText>
-                <AppText style={desktopStyles.subheading}>נהג פעיל</AppText>
+                <AppText weight="bold" style={desktopStyles.heading}>{driver?.full_name ?? profile?.full_name ?? t('common.unnamed')}</AppText>
+                <AppText style={desktopStyles.subheading}>{t('driver.active')}</AppText>
               </View>
               <HoverPressable style={desktopStyles.editButton} onPress={() => navigation.navigate('DriverProfile')}>
                 <Ionicons name="create-outline" size={14} color={DC_COLORS.blue} />
@@ -159,7 +160,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
               <ListGroup key={group.title} group={group} onRowPress={handleRowPress} />
             ))}
             <AppText style={desktopStyles.permissionHint}>
-              חלק מהפרטים מנוהלים על ידי מנהל הצי. ניתן לצפות במסמכים ולהעלות מסמכים לפי ההרשאות שלך.
+              {t('driver.someManagedAlt')}
             </AppText>
           </View>
         )}
@@ -187,7 +188,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
       insetBottom={insets.bottom}
       loading={loading}
       error={error}
-      name={driver?.full_name ?? profile?.full_name ?? 'ללא שם'}
+      name={driver?.full_name ?? profile?.full_name ?? t('common.unnamed')}
       groups={groups}
       isNavigable={(row) => row.kind === 'nav' || row.key === 'vehicle'}
       onRow={handleRowPress}

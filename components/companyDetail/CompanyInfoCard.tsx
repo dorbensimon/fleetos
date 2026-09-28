@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../owner/ownerTheme';
 import { formatPhone } from '../../lib/phone';
 import { sharedStyles as s } from './sharedStyles';
+import { t } from '../../lib/i18n';
+import { COMPANY_TYPES, companyTypeLabel } from '../../lib/companyType';
 
 export type CompanyEditableFields = {
   name: string;
@@ -47,10 +49,10 @@ export function CompanyInfoCard({
 }) {
   return (
     <View style={s.card}>
-      <Text style={s.sectionTitle}>פרטי חברה</Text>
+      <Text style={s.sectionTitle}>{t('company.detailsTitle')}</Text>
 
       <View style={s.fieldGroup}>
-        <Text style={s.fieldLabel}>שם החברה</Text>
+        <Text style={s.fieldLabel}>{t('company.name')}</Text>
         <TextInput
           style={s.fieldInput}
           value={fields.name}
@@ -60,24 +62,24 @@ export function CompanyInfoCard({
       </View>
 
       <View style={s.fieldGroup}>
-        <Text style={s.fieldLabel}>לוגו החברה</Text>
+        <Text style={s.fieldLabel}>{t('company.logo')}</Text>
         <TouchableOpacity style={s.logoPicker} onPress={onPickLogo} disabled={uploadingLogo}>
           {uploadingLogo ? (
             <BrandLoader color={COLORS.blue} />
           ) : fields.logoUrl ? (
             <>
               <View style={s.logoPreviewWrap}>
-                <Image source={{ uri: fields.logoUrl }} accessibilityLabel="לוגו החברה" style={s.logoPreview} resizeMode="cover" />
+                <Image source={{ uri: fields.logoUrl }} accessibilityLabel={t('company.logo')} style={s.logoPreview} resizeMode="cover" />
                 <View style={s.logoUploadedBadge}>
                   <Ionicons name="checkmark" size={11} color={COLORS.white} />
                 </View>
               </View>
-              <Text style={s.logoPickerChangeText}>שנה תמונה</Text>
+              <Text style={s.logoPickerChangeText}>{t('company.changeImage')}</Text>
             </>
           ) : (
             <>
               <Ionicons name="cloud-upload-outline" size={22} color={COLORS.grayLight} />
-              <Text style={s.logoPickerText}>העלאת לוגו</Text>
+              <Text style={s.logoPickerText}>{t('company.uploadLogo')}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -85,9 +87,9 @@ export function CompanyInfoCard({
       </View>
 
       <View style={s.fieldGroup}>
-        <Text style={s.fieldLabel}>סוג חברה</Text>
+        <Text style={s.fieldLabel}>{t('company.type')}</Text>
         <View style={s.companyTypeRow}>
-          {(['בע״מ', 'עוסק מורשה'] as const).map((type) => {
+          {COMPANY_TYPES.map((type) => {
             const typeActive = fields.companyType === type;
             return (
               <TouchableOpacity
@@ -95,7 +97,7 @@ export function CompanyInfoCard({
                 style={[s.companyTypeChip, typeActive && s.companyTypeChipActive]}
                 onPress={() => onChangeFields((f) => ({ ...f, companyType: typeActive ? '' : type }))}
               >
-                <Text style={[s.companyTypeChipText, typeActive && s.companyTypeChipTextActive]}>{type}</Text>
+                <Text style={[s.companyTypeChipText, typeActive && s.companyTypeChipTextActive]}>{companyTypeLabel(type)}</Text>
               </TouchableOpacity>
             );
           })}
@@ -103,7 +105,7 @@ export function CompanyInfoCard({
       </View>
 
       <View style={s.fieldGroup}>
-        <Text style={s.fieldLabel}>ח.פ / ע.מ</Text>
+        <Text style={s.fieldLabel}>{t('company.businessId')}</Text>
         <TextInput
           style={[s.fieldInput, s.fieldInputLtr]}
           value={fields.businessId}
@@ -114,7 +116,7 @@ export function CompanyInfoCard({
       </View>
 
       <View style={s.fieldGroup}>
-        <Text style={s.fieldLabel}>כתובת החברה</Text>
+        <Text style={s.fieldLabel}>{t('company.address')}</Text>
         <TextInput
           style={s.fieldInput}
           value={fields.address}
@@ -124,7 +126,7 @@ export function CompanyInfoCard({
       </View>
 
       <View style={s.fieldGroup}>
-        <Text style={s.fieldLabel}>טלפון החברה</Text>
+        <Text style={s.fieldLabel}>{t('company.phone')}</Text>
         <TextInput
           style={[s.fieldInput, s.fieldInputLtr]}
           value={formatPhone(fields.phone)}
@@ -135,7 +137,7 @@ export function CompanyInfoCard({
       </View>
 
       <View style={s.fieldGroup}>
-        <Text style={s.fieldLabel}>שם קצין הרכב</Text>
+        <Text style={s.fieldLabel}>{t('company.vehicleOfficerName')}</Text>
         <TextInput
           style={s.fieldInput}
           value={fields.safetyOfficerName}
@@ -145,7 +147,7 @@ export function CompanyInfoCard({
       </View>
 
       <View style={s.fieldGroup}>
-        <Text style={s.fieldLabel}>נייד קצין הרכב</Text>
+        <Text style={s.fieldLabel}>{t('company.vehicleOfficerMobile')}</Text>
         <TextInput
           style={[s.fieldInput, s.fieldInputLtr]}
           value={formatPhone(fields.safetyOfficerPhone)}
@@ -159,18 +161,18 @@ export function CompanyInfoCard({
 
       {hasChanges && (
         <TouchableOpacity style={[s.primaryButton, saving && s.buttonDisabled]} onPress={onSave} disabled={saving}>
-          {saving ? <BrandLoader color={COLORS.white} /> : <Text style={s.primaryButtonText}>שמור שינויים</Text>}
+          {saving ? <BrandLoader color={COLORS.white} /> : <Text style={s.primaryButtonText}>{t('common.saveChanges')}</Text>}
         </TouchableOpacity>
       )}
 
       <View style={cardStyles.actionsRow}>
         <TouchableOpacity style={cardStyles.secondaryButton} onPress={onToggleActive}>
           <Ionicons name="power-outline" size={17} color={COLORS.black} />
-          <Text style={cardStyles.secondaryButtonText}>{active ? 'השבת חברה' : 'הפעל חברה'}</Text>
+          <Text style={cardStyles.secondaryButtonText}>{active ? t('company.disable') : t('company.enable')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={cardStyles.dangerButton} onPress={onRequestDelete}>
           <Ionicons name="trash-outline" size={17} color={COLORS.red} />
-          <Text style={cardStyles.dangerButtonText}>מחק חברה</Text>
+          <Text style={cardStyles.dangerButtonText}>{t('company.delete')}</Text>
         </TouchableOpacity>
       </View>
     </View>

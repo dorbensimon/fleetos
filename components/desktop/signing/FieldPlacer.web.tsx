@@ -7,6 +7,7 @@ import { renderPage, type LoadedPdf } from './pdf.web';
 import { FIELD_DRAG_TYPE, FieldBox, FieldInspector, trackPointer } from './FieldBox.web';
 import { GUIDES_CSS, GuideLines, PageGrid, snapMove, snapResize, useGuidesToggle, GuidesToggle, type Guide } from './snapGuides.web';
 import { EDITOR_PAGE } from '../../../lib/companySigningTemplates';
+import { t, textStart } from '../../../lib/i18n';
 
 /**
  * Placing fields on an uploaded document: the pages in the middle, a palette
@@ -58,11 +59,11 @@ export function UploadDropzone({ onFile, error }: { onFile: (file: File) => void
         <div className="sd-drop-icon">
           <Ionicons name="cloud-upload" size={40} color="#fff" />
         </div>
-        <h3 className="sd-b">גררו את הקובץ לכאן</h3>
-        <p>או לחצו על הכפתור ובחרו קובץ מהמחשב. אפשר PDF, וורד או תמונה של המסמך.</p>
+        <h3 className="sd-b">{t('field.dropFileHere')}</h3>
+        <p>{t('field.orClickButton')}</p>
         <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={() => inputRef.current?.click()}>
           <Ionicons name="folder-open" size={20} color="#fff" />
-          בחירת קובץ מהמחשב
+          {t('documents.chooseFromComputer')}
         </button>
         <input
           ref={inputRef}
@@ -76,7 +77,7 @@ export function UploadDropzone({ onFile, error }: { onFile: (file: File) => void
           }}
         />
         {error ? (
-          <div className="sd-error" role="alert" style={{ textAlign: 'right' }}>
+          <div className="sd-error" role="alert" style={{ textAlign: textStart() }}>
             <Ionicons name="alert-circle" size={20} color="#C4271E" />
             <span>{error}</span>
           </div>
@@ -183,7 +184,7 @@ export function PdfPageView({ pdf, pageNumber, fields, selectedId, readOnly, onS
 
   return (
     <div className="sd-page-wrap">
-      {!readOnly && pdf.pages.length > 1 ? <div className="sd-page-label sd-sb">עמוד {pageNumber} מתוך {pdf.pages.length}</div> : null}
+      {!readOnly && pdf.pages.length > 1 ? <div className="sd-page-label sd-sb">{t('common.page')} {pageNumber} {t('common.of')} {pdf.pages.length}</div> : null}
       <div
         ref={wrapRef}
         className={`sd-pdf-page${over ? ' sd-over' : ''}`}
@@ -205,7 +206,7 @@ export function PdfPageView({ pdf, pageNumber, fields, selectedId, readOnly, onS
           onDropField?.(kind, pageNumber, (e.clientX - rect.left) / rect.width, (e.clientY - rect.top) / rect.height);
         }}
       >
-        <canvas ref={canvasRef} aria-label={`עמוד ${pageNumber}`} />
+        <canvas ref={canvasRef} aria-label={t('viewer.pageNumber', { pageNumber })} />
         {showGrid && !readOnly ? <PageGrid margins={MARGIN} cell={GRID_CELL} unit="%" /> : null}
         <GuideLines guides={guides} unit="%" />
         {fields.map((field) => (
@@ -327,18 +328,18 @@ export function FieldPlacer({
   return (
     <div className="sd-work">
       <style>{GUIDES_CSS}</style>
-      <aside className="sd-panel" aria-label="שדות">
-        <h3 className="sd-b">איפה הנהג ימלא?</h3>
-        <p className="sd-panel-sub">גררו שדה אל המקום הנכון בעמוד, או לחצו עליו והוא יופיע בעמוד שמוצג. אחר כך אפשר להזיז אותו עם העכבר.</p>
+      <aside className="sd-panel" aria-label={t('field.fields')}>
+        <h3 className="sd-b">{t('field.whereDriverFills')}</h3>
+        <p className="sd-panel-sub">{t('field.placerHelp')}</p>
 
-        <div className="sd-group-label sd-sb">הנהג ימלא</div>
+        <div className="sd-group-label sd-sb">{t('editor.driverFills')}</div>
         <div className="sd-palette">
           {DRIVER_FIELDS.map((kind) => (
             <FieldTool key={kind} kind={kind} draggable onDragStart={dragStart(kind)} onPress={() => addToVisiblePage(kind)} />
           ))}
         </div>
 
-        <div className="sd-group-label sd-sb">יתמלא אוטומטית מתיק הנהג</div>
+        <div className="sd-group-label sd-sb">{t('editor.autoFromDriverFile')}</div>
         <div className="sd-palette">
           {AUTO_FIELDS.map((kind) => (
             <FieldTool key={kind} kind={kind} draggable onDragStart={dragStart(kind)} onPress={() => addToVisiblePage(kind)} />
@@ -360,7 +361,7 @@ export function FieldPlacer({
 
         <button type="button" className="sd-btn sd-btn-link" style={{ marginTop: 18 }} onClick={onReplaceFile}>
           <Ionicons name="swap-horizontal" size={18} color="currentColor" />
-          החלפת הקובץ
+          {t('field.replaceFile')}
         </button>
       </aside>
 
@@ -368,7 +369,7 @@ export function FieldPlacer({
         {fields.length === 0 ? (
           <div className="sd-tip sd-stage">
             <Ionicons name="hand-left" size={22} color="#006A9E" />
-            <span>התחילו מ<b className="sd-b">חתימה</b>: גררו אותה אל המקום שבו הנהג צריך לחתום.</span>
+            <span>{t('field.startWith')}<b className="sd-b">{t('field.signature')}</b>{t('field.startWithSuffix')}</span>
           </div>
         ) : null}
         {pdf.pages.map((_, i) => (

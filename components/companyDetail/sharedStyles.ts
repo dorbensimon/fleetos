@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { COLORS } from '../owner/ownerTheme';
+import { textStart } from '../../lib/i18n';
 
 /** Field/button/modal/card styles shared across CompanyDetailScreen and its extracted pieces. */
 export const sharedStyles = StyleSheet.create({
@@ -9,7 +10,7 @@ export const sharedStyles = StyleSheet.create({
     padding: 16,
     gap: 14,
   },
-  sectionTitle: { fontSize: 15.5, fontWeight: '700', color: COLORS.black, textAlign: 'right' },
+  sectionTitle: { fontSize: 15.5, fontWeight: '700', color: COLORS.black, textAlign: textStart() },
   sectionHeaderRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
   addSmallButton: { flexDirection: 'row-reverse', alignItems: 'center', gap: 3 },
   addSmallButtonText: { fontSize: 13, fontWeight: '600', color: COLORS.blue },
@@ -37,7 +38,7 @@ export const sharedStyles = StyleSheet.create({
   logoUploadedBadge: {
     position: 'absolute',
     bottom: -4,
-    right: -4,
+    end: -4,
     width: 18,
     height: 18,
     borderRadius: 9,
@@ -63,7 +64,7 @@ export const sharedStyles = StyleSheet.create({
   companyTypeChipText: { fontSize: 13.5, fontWeight: '600', color: COLORS.gray },
   companyTypeChipTextActive: { color: COLORS.white },
   fieldGroup: { gap: 7 },
-  fieldLabel: { fontSize: 12.5, fontWeight: '600', color: COLORS.gray, textAlign: 'right' },
+  fieldLabel: { fontSize: 12.5, fontWeight: '600', color: COLORS.gray, textAlign: textStart() },
   fieldInput: {
     height: 46,
     borderRadius: 11,
@@ -77,7 +78,7 @@ export const sharedStyles = StyleSheet.create({
   fieldInputLtr: { textAlign: 'left' },
   fieldInputError: { borderColor: COLORS.red },
   fieldInputMatch: { borderColor: COLORS.activeText },
-  fieldErrorText: { fontSize: 11.5, color: COLORS.red, textAlign: 'right' },
+  fieldErrorText: { fontSize: 11.5, color: COLORS.red, textAlign: textStart() },
   fieldInputWithIcon: {
     height: 46,
     borderRadius: 11,
@@ -113,8 +114,8 @@ export const sharedStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteTitle: { fontSize: 17, fontWeight: '700', color: COLORS.black, textAlign: 'right' },
-  deleteDescription: { fontSize: 13.5, color: COLORS.gray, lineHeight: 21, textAlign: 'right' },
+  deleteTitle: { fontSize: 17, fontWeight: '700', color: COLORS.black, textAlign: textStart() },
+  deleteDescription: { fontSize: 13.5, color: COLORS.gray, lineHeight: 21, textAlign: textStart() },
   deleteBold: { color: COLORS.black, fontWeight: '600' },
   deleteButtonsRow: { flexDirection: 'row', gap: 9 },
   cancelButton: {

@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../supabase';
 import { VehicleDriverAssignment, VehicleDriverWithProfile, DriverVehicleAssignment } from './types';
 import { chunkIds } from './paging';
+import { t } from '../i18n';
 
 const PENDING_ASSIGNMENT_OPERATIONS_KEY = 'fleetos.pending-assignment-operations.v1';
 
@@ -30,7 +31,7 @@ type PendingAssignmentOperationInput =
 
 export class PendingAssignmentSyncError extends Error {
   constructor() {
-    super('הפעולה נשמרה ותסונכרן אוטומטית כשתחזור לרשת');
+    super(t('sync.savedOffline'));
     this.name = 'PendingAssignmentSyncError';
   }
 }
@@ -50,7 +51,7 @@ const isNetworkFailure = (error: any) =>
 
 async function currentUserId() {
   const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) throw error ?? new Error('אין משתמש מחובר');
+  if (error || !data.user) throw error ?? new Error(t('sync.noUser'));
   return data.user.id;
 }
 
@@ -211,10 +212,10 @@ export async function assignDriverToVehicle(
     const existing = await listActiveVehicleDrivers(vehicleId);
 
     if (existing.some((a) => a.driver_id === driverId)) {
-      throw new Error('הנהג כבר משויך לרכב זה');
+      throw new Error(t('assignment.alreadyAssigned'));
     }
     if (isPrimary && existing.some((a) => a.is_primary)) {
-      throw new Error('לרכב זה כבר יש נהג ראשי פעיל — יש להסיר אותו לפני קביעת נהג ראשי חדש');
+      throw new Error(t('assignment.primaryExists'));
     }
 
     const { data, error } = await supabase.rpc('assign_vehicle_driver', {

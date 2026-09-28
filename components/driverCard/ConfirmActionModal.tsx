@@ -5,6 +5,7 @@ import { COLORS, RADIUS, SPACING } from '../../lib/theme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DRIVER_MODAL_BASE, modalKit } from './driverModalStyles';
 import { EditField, KitSheet, PrimaryAction, SheetActions } from '../driverKit';
+import { t } from '../../lib/i18n';
 
 /**
  * Generic "are you sure?" confirmation modal — cancel + confirm side by side.
@@ -60,7 +61,7 @@ export function ConfirmActionModal({
         tone={destructive ? 'danger' : 'accent'}
         footer={
           <SheetActions>
-            <PrimaryAction label="ביטול" tone="ghost" onPress={onClose} disabled={loading} style={modalKit.cancel} />
+            <PrimaryAction label={t('common.cancel')} tone="ghost" onPress={onClose} disabled={loading} style={modalKit.cancel} />
             <PrimaryAction
               label={confirmLabel}
               tone={destructive ? 'destructive' : 'accent'}
@@ -74,7 +75,7 @@ export function ConfirmActionModal({
       >
         {!!expected && (
           <View style={modalKit.fields}>
-            <EditField first label={typedTextHint ?? `לאישור, הקלד: ${expected}`} value={typed} onChangeText={setTyped} placeholder={expected} editable={!loading} />
+            <EditField first label={typedTextHint ?? t('confirm.typeToConfirm', { expected })} value={typed} onChangeText={setTyped} placeholder={expected} editable={!loading} />
           </View>
         )}
       </KitSheet>
@@ -92,7 +93,7 @@ export function ConfirmActionModal({
 
           {!!expected && (
             <>
-              <AppText style={styles.subtitle}>{typedTextHint ?? `לאישור, הקלד: ${expected}`}</AppText>
+              <AppText style={styles.subtitle}>{typedTextHint ?? t('confirm.typeToConfirm', { expected })}</AppText>
               <TextInput
                 value={typed}
                 onChangeText={setTyped}
@@ -110,7 +111,7 @@ export function ConfirmActionModal({
           <View style={styles.actions}>
             <TouchableOpacity style={styles.cancel} onPress={onClose} disabled={loading}>
               <AppText weight="bold" style={styles.cancelText}>
-                ביטול
+                {t('common.cancel')}
               </AppText>
             </TouchableOpacity>
             <PrimaryButton

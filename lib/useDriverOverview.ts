@@ -5,6 +5,7 @@ import { countUnreadNotifications, getDriver, listActiveDriverVehicles, listComp
 import { complianceTargetDate, findComplianceDef, isRetiredVehicleComplianceItem } from './compliance';
 import { listSignatureRequests, type SignatureRequest } from './docuseal';
 import { expiryState, formatDate, type ExpiryState } from './theme';
+import { t } from './i18n';
 
 export type Severity = 'danger' | 'warning' | 'success';
 export type OverviewItem = { title: string; detail: string; severity: Severity; item: ComplianceItem; target: string | null };
@@ -41,7 +42,7 @@ export function useDriverOverview() {
     if (!profile) {
       // Right after a refresh the profile is still on its way: keep loading.
       if (profileLoading) return;
-      setError('פרופיל הנהג אינו זמין');
+      setError(t('driver.profileUnavailable'));
       setLoading(false);
       return;
     }
@@ -64,7 +65,7 @@ export function useDriverOverview() {
       setPendingRequests(signatures.filter(isAwaitingSignature));
       setUnreadNotifications(unread);
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message || 'טעינת נתוני המסך נכשלה');
+      if (requestId === loadRequest.current) setError(err?.message || t('common.screenLoadFailed'));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -90,7 +91,7 @@ export function useDriverOverview() {
         if (!def && !target) return null;
         return {
           title: def?.label || item.item_type,
-          detail: target ? formatDate(target) : 'תאריך חסר',
+          detail: target ? formatDate(target) : t('common.dateMissing'),
           severity: severityFor(expiryState(target)),
           item,
           target: target ?? null,

@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DText } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone } from './desktopTheme';
+import { t } from '../../lib/i18n';
 
 /**
  * Desktop body of the "attention" screen: same four counters as the phone
@@ -29,14 +30,14 @@ export function AttentionDesktopView({ rows, total }: { rows: AttentionRow[]; to
       <View style={[styles.summary, { backgroundColor: toneColors.bg }]}>
         <DText weight="extraBold" style={[styles.summaryNumber, { color: toneColors.fg }]}>{total}</DText>
         <DText weight="semiBold" style={[styles.summaryText, { color: toneColors.fg }]}>
-          {total === 0 ? 'אין משימות פתוחות בצי' : 'משימות דורשות את תשומת לבך היום'}
+          {total === 0 ? t('attention.noOpenTasks') : t('attention.tasksNeedYou')}
         </DText>
       </View>
 
       {total === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="checkmark-circle-outline" size={32} color={DESKTOP_COLORS.inkFaint} />
-          <DText weight="semiBold" style={styles.emptyTitle}>הכול מטופל</DText>
+          <DText weight="semiBold" style={styles.emptyTitle}>{t('attention.allHandled')}</DText>
         </View>
       ) : (
         <View style={styles.grid}>

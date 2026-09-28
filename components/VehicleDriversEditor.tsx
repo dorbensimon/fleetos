@@ -15,6 +15,7 @@ import {
   setPrimaryVehicleDriver,
   isPendingAssignmentSyncError,
 } from '../lib/adminApi';
+import { t } from '../lib/i18n';
 
 /**
  * Active driver assignments for one vehicle, with add/remove/promote actions
@@ -61,10 +62,10 @@ export function VehicleDriversEditor({
       await assignDriverToVehicle(vehicleId, addingDriverId, assignments.length === 0);
       setAddingDriverId(null);
       await onChanged();
-      showToast('הנהג שויך לרכב');
+      showToast(t('vehicle.driverAssigned'));
     } catch (err: any) {
       if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-      showAlert('שיוך הנהג נכשל', String(err?.message ?? 'נסה שוב'));
+      showAlert(t('vehicle.assignDriverFailed'), String(err?.message ?? t('common.tryAgain')));
     } finally {
       setBusyId(null);
     }
@@ -75,30 +76,30 @@ export function VehicleDriversEditor({
     try {
       await setPrimaryVehicleDriver(vehicleId, a.id);
       await onChanged();
-      showToast('נקבע כנהג ראשי');
+      showToast(t('vehicle.setAsPrimary'));
     } catch (err: any) {
       if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-      showAlert('הפעולה נכשלה', String(err?.message ?? 'נסה שוב'));
+      showAlert(t('common.actionFailed'), String(err?.message ?? t('common.tryAgain')));
     } finally {
       setBusyId(null);
     }
   };
 
   const confirmRemove = (a: VehicleDriverWithProfile) => {
-    showAlert('הסרת שיוך נהג', `להסיר את ${a.full_name ?? 'הנהג'} מהרכב?`, [
-      { text: 'ביטול', style: 'cancel' },
+    showAlert(t('vehicle.removeDriverTitle'), t('vehicle.removeDriverConfirm', { v1: a.full_name ?? t('common.theDriver') }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'הסר שיוך',
+        text: t('driver.removeAssignmentAction'),
         style: 'destructive',
         onPress: async () => {
           setBusyId(a.id);
           try {
             await unassignVehicleDriver(a.id);
             await onChanged();
-            showToast('השיוך הוסר');
+            showToast(t('vehicle.assignmentRemoved'));
           } catch (err: any) {
             if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-            showAlert('הסרת השיוך נכשלה', String(err?.message ?? 'נסה שוב'));
+            showAlert(t('vehicle.removeAssignmentFailed'), String(err?.message ?? t('common.tryAgain')));
           } finally {
             setBusyId(null);
           }
@@ -110,7 +111,7 @@ export function VehicleDriversEditor({
   return (
     <View style={[styles.wrap, desktop && styles.desktopWrap]}>
       {assignments.length === 0 ? (
-        <AppText style={[styles.empty, !desktop && kit.empty]}>לא משויכים נהגים לרכב זה</AppText>
+        <AppText style={[styles.empty, !desktop && kit.empty]}>{t('vehicle.noDriversAssigned')}</AppText>
       ) : (
         assignments.map((a) => (
           <View key={a.id} style={[styles.row, !desktop && kit.row]}>
@@ -119,18 +120,18 @@ export function VehicleDriversEditor({
               activeOpacity={onOpenDriver ? 0.7 : 1}
               disabled={!onOpenDriver}
               onPress={() => onOpenDriver?.(a.driver_id)}
-              accessibilityLabel={`פתח את פרטי הנהג ${a.full_name ?? ''}`}
+              accessibilityLabel={t('driver.openDetails', { v1: a.full_name ?? '' })}
             >
               <View style={!desktop && kit.rowMain}>
               {!desktop && <Avatar name={a.full_name} size={42} tone={a.is_primary ? 'soft' : 'muted'} />}
               <View style={styles.rowText}>
                 <View style={styles.nameRow}>
                   <AppText weight="bold" style={[styles.name, !desktop && kit.name]} numberOfLines={1}>
-                    {a.full_name ?? 'ללא שם'}
+                    {a.full_name ?? t('common.unnamed')}
                   </AppText>
                   <View style={[styles.badge, a.is_primary ? styles.badgePrimary : styles.badgeSecondary]}>
                     <AppText weight="bold" style={[styles.badgeText, a.is_primary && styles.badgeTextPrimary]}>
-                      {a.is_primary ? 'ראשי' : 'משני'}
+                      {a.is_primary ? t('common.primary') : t('common.secondary')}
                     </AppText>
                   </View>
                 </View>
@@ -147,7 +148,7 @@ export function VehicleDriversEditor({
                   hitSlop={8}
                   style={[styles.actionBtn, !desktop && kit.actionBtn]}
                   accessibilityRole="button"
-                  accessibilityLabel="קבע כנהג ראשי"
+                  accessibilityLabel={t('vehicle.makePrimary')}
                 >
                   <Ionicons name="star-outline" size={18} color={desktop ? COLORS.accent : DK.accent} />
                 </TouchableOpacity>
@@ -158,7 +159,7 @@ export function VehicleDriversEditor({
                 hitSlop={8}
                 style={[styles.actionBtn, !desktop && kit.actionBtn, !desktop && kit.actionDanger]}
                 accessibilityRole="button"
-                accessibilityLabel="הסר שיוך נהג"
+                accessibilityLabel={t('vehicle.removeDriverAssignment')}
               >
                 <Ionicons name="trash-outline" size={18} color={desktop ? COLORS.dangerText : STATUS.expired.fg} />
               </TouchableOpacity>
@@ -174,7 +175,7 @@ export function VehicleDriversEditor({
               value={addingDriverId}
               onChange={setAddingDriverId}
               options={availableOptions}
-              placeholder={availableOptions.length ? 'הוסף נהג' : 'אין נהגים זמינים להוספה'}
+              placeholder={availableOptions.length ? t('vehicle.addDriver') : t('vehicle.noDriversAvailable')}
               allowClear
             />
           ) : (
@@ -182,7 +183,7 @@ export function VehicleDriversEditor({
               value={addingDriverId}
               onChange={setAddingDriverId}
               options={availableOptions}
-              placeholder={availableOptions.length ? 'הוסף נהג' : 'אין נהגים זמינים להוספה'}
+              placeholder={availableOptions.length ? t('vehicle.addDriver') : t('vehicle.noDriversAvailable')}
               allowClear
             />
           )}
@@ -192,7 +193,7 @@ export function VehicleDriversEditor({
             style={[styles.addBtn, !desktop && kit.addBtn]}
             onPress={addDriver}
             disabled={busyId === '__new__'}
-            accessibilityLabel="אשר הוספת נהג"
+            accessibilityLabel={t('vehicle.confirmAddDriver')}
           >
             <Ionicons name="checkmark" size={19} color={COLORS.textInverse} />
           </TouchableOpacity>
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.divider,
   },
   rowMain: { flex: 1 },
-  rowText: { flex: 1, gap: 3, alignItems: 'flex-end', paddingRight: 12 },
+  rowText: { flex: 1, gap: 3, alignItems: 'flex-end', paddingEnd: 12 },
   nameRow: { width: '100%', flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'flex-start', gap: 8 },
   name: { fontSize: 14.5, flexShrink: 1 },
   meta: { fontSize: 12.5, color: COLORS.textMuted },

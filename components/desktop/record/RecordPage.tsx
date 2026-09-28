@@ -15,6 +15,7 @@ import {
 } from '../primitives';
 import { EASE_OUT } from './RecordKit';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
+import { t, dirIcon } from '../../../lib/i18n';
 
 /**
  * The building blocks of the desktop record pages (vehicle card, driver
@@ -112,8 +113,8 @@ export function FieldEditDialog({ editor, onClose }: { editor: FieldEditor | nul
       setSaving(true);
       result = await editor.onSave(text);
     } else if (editor.kind === 'monthYear') {
-      if (month && (Number(month) < 1 || Number(month) > 12)) return setError('חודש צריך להיות בין 1 ל-12');
-      if (year && !/^\d{4}$/.test(year)) return setError('שנה צריכה 4 ספרות');
+      if (month && (Number(month) < 1 || Number(month) > 12)) return setError(t('validation.monthRange'));
+      if (year && !/^\d{4}$/.test(year)) return setError(t('validation.year4Digits'));
       setSaving(true);
       result = await editor.onSave(month, year);
     } else if (editor.kind === 'selectPair') {
@@ -130,12 +131,12 @@ export function FieldEditDialog({ editor, onClose }: { editor: FieldEditor | nul
     else onClose();
   };
 
-  const title = `${isEmptyEditor(editor) ? 'הוספת' : 'עריכת'} ${editor.label}`;
+  const title = `${isEmptyEditor(editor) ? t('record.addPrefix') : t('record.editPrefix')} ${editor.label}`;
   const hint = editor.kind === 'select'
-    ? 'בוחרים מהרשימה ולוחצים על "שמירה".'
+    ? t('record.chooseAndSave')
     : (editor.kind === 'text' || editor.kind === 'selectPair') && editor.hint
       ? editor.hint
-      : 'כותבים את הערך החדש ולוחצים על "שמירה".';
+      : t('record.typeAndSave');
 
   return (
     <DesktopModal visible title={title} onClose={onClose} maxWidth={460}>
@@ -173,7 +174,7 @@ export function FieldEditDialog({ editor, onClose }: { editor: FieldEditor | nul
                   }}
                   options={editor.options}
                   allowClear
-                  placeholder={editor.placeholders?.[index] ?? 'לא נבחר'}
+                  placeholder={editor.placeholders?.[index] ?? t('common.notSelected')}
                   hasError={!!error}
                   large
                 />
@@ -184,12 +185,12 @@ export function FieldEditDialog({ editor, onClose }: { editor: FieldEditor | nul
         {editor.kind === 'monthYear' && (
           <View style={pageStyles.monthYearRow}>
             <View style={pageStyles.monthYearCell}>
-              <DText style={pageStyles.editFieldLabel}>חודש</DText>
-              <DesktopInput value={month} onChangeText={(v) => setMonth(digitsOnly(v).slice(0, 2))} placeholder="למשל 3" ltr keyboardType="number-pad" large />
+              <DText style={pageStyles.editFieldLabel}>{t('date.month')}</DText>
+              <DesktopInput value={month} onChangeText={(v) => setMonth(digitsOnly(v).slice(0, 2))} placeholder={t('date.monthExample')} ltr keyboardType="number-pad" large />
             </View>
             <View style={pageStyles.monthYearCell}>
-              <DText style={pageStyles.editFieldLabel}>שנה</DText>
-              <DesktopInput value={year} onChangeText={(v) => setYear(digitsOnly(v).slice(0, 4))} placeholder="למשל 2022" ltr keyboardType="number-pad" onSubmitEditing={() => void save()} large />
+              <DText style={pageStyles.editFieldLabel}>{t('date.year')}</DText>
+              <DesktopInput value={year} onChangeText={(v) => setYear(digitsOnly(v).slice(0, 4))} placeholder={t('date.yearExample')} ltr keyboardType="number-pad" onSubmitEditing={() => void save()} large />
             </View>
           </View>
         )}
@@ -197,10 +198,10 @@ export function FieldEditDialog({ editor, onClose }: { editor: FieldEditor | nul
         <View style={pageStyles.editActions}>
           <HoverPressable style={[pageStyles.primaryBtn, pageStyles.editActionBtn, saving && pageStyles.disabled]} hoverStyle={pageStyles.primaryBtnHover} pressStyle={pageStyles.pressDown} onPress={() => void save()} disabled={saving}>
             {saving && <BrandLoader size="small" color="#FFFFFF" />}
-            <DText weight="semiBold" style={pageStyles.primaryBtnText}>שמירה</DText>
+            <DText weight="semiBold" style={pageStyles.primaryBtnText}>{t('common.save')}</DText>
           </HoverPressable>
           <HoverPressable style={[pageStyles.plainBtn, pageStyles.editActionBtn]} hoverStyle={pageStyles.plainBtnHover} pressStyle={pageStyles.pressDown} onPress={onClose}>
-            <DText weight="semiBold" style={pageStyles.plainBtnText}>ביטול</DText>
+            <DText weight="semiBold" style={pageStyles.plainBtnText}>{t('common.cancel')}</DText>
           </HoverPressable>
         </View>
       </View>
@@ -240,7 +241,7 @@ export function DetailRow({
       <DText style={[pageStyles.rowLabel, compact && pageStyles.rowLabelCompact]} numberOfLines={1}>{label}</DText>
       <View style={pageStyles.rowValueWrap}>
         {empty ? (
-          <DText style={pageStyles.rowValueEmpty}>לא הוזן</DText>
+          <DText style={pageStyles.rowValueEmpty}>{t('common.notEntered')}</DText>
         ) : (
           <ValueText weight="semiBold" style={[pageStyles.rowValue, valueColor ? { color: valueColor } : null]} numberOfLines={1}>{value}</ValueText>
         )}
@@ -248,11 +249,11 @@ export function DetailRow({
       </View>
       {onPress ? (
         <View style={pageStyles.rowEdit}>
-          <DText style={[pageStyles.rowEditText, hovered && pageStyles.rowEditTextHover]}>{empty ? 'הוספה' : 'עריכה'}</DText>
-          <Ionicons name="chevron-back" size={13} color={hovered ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
+          <DText style={[pageStyles.rowEditText, hovered && pageStyles.rowEditTextHover]}>{empty ? t('common.add') : t('common.edit')}</DText>
+          <Ionicons name={dirIcon('chevron-back')} size={13} color={hovered ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
         </View>
       ) : (
-        <DText style={pageStyles.rowEditText}>מחושב</DText>
+        <DText style={pageStyles.rowEditText}>{t('record.calculated')}</DText>
       )}
     </>
   );
@@ -266,7 +267,7 @@ export function DetailRow({
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
       onPress={onPress}
-      accessibilityLabel={`${label}: ${value || 'לא הוזן'}. ${empty ? 'הוספה' : 'עריכה'}`}
+      accessibilityLabel={`${label}: ${value || t('common.notEntered')}. ${empty ? t('common.add') : t('common.edit')}`}
     >
       {content}
     </HoverPressable>
@@ -334,7 +335,7 @@ export const pageStyles = StyleSheet.create({
   heroMenu: { alignSelf: 'flex-start' },
 
   facts: { flexDirection: 'row-reverse' },
-  fact: { paddingHorizontal: 16, gap: 0, borderRightWidth: 1, borderRightColor: DESKTOP_COLORS.border },
+  fact: { paddingHorizontal: 16, gap: 0, borderEndWidth: 1, borderEndColor: DESKTOP_COLORS.border },
   factLabel: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
   factValueRow: { flexDirection: 'row-reverse', alignItems: 'baseline', gap: 4 },
   factValue: { fontSize: 17, color: DESKTOP_COLORS.ink, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
@@ -349,7 +350,7 @@ export const pageStyles = StyleSheet.create({
   attentionIcon: { marginTop: 2 },
   attentionTitle: { fontSize: 14.5, color: '#7A3E00', marginBottom: 2 },
   attentionRow: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', paddingVertical: 2 },
-  attentionTag: { backgroundColor: DESKTOP_COLORS.surface, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 1, marginLeft: 8 },
+  attentionTag: { backgroundColor: DESKTOP_COLORS.surface, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 1, marginStart: 8 },
   attentionTagText: { fontSize: 12.5 },
   attentionText: { fontSize: 14, color: '#6B3A06', ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
 

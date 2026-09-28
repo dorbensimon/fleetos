@@ -15,6 +15,7 @@ import { BrandLoader } from '../../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { DLtrText, DText, HoverPressable, prefersReducedMotion } from '../primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
+import { t } from '../../../lib/i18n';
 
 /**
  * The shared design of the desktop "new driver" and "new vehicle" forms —
@@ -138,7 +139,7 @@ export function RecordHero<K extends string>({
                   hoverStyle={styles.stepHover}
                   pressMotionStyle={styles.stepPress}
                   onPress={() => onJump(step.key)}
-                  accessibilityLabel={`${step.label}${done ? ', הושלם' : ''}`}
+                  accessibilityLabel={`${step.label}${done ? t('form.completedSuffix') : ''}`}
                 >
                   <View style={[styles.stepNum, done && styles.stepNumDone]}>
                     {done ? (
@@ -150,7 +151,7 @@ export function RecordHero<K extends string>({
                   <View style={styles.stepText}>
                     <DText weight="semiBold" style={styles.stepLabel} numberOfLines={1}>{step.label}</DText>
                     <DText style={[styles.stepMeta, done && styles.stepMetaDone]} numberOfLines={1}>
-                      {step.total === 0 ? 'רשות' : done ? 'הושלם' : `${step.filled} מתוך ${step.total}`}
+                      {step.total === 0 ? t('form.optional') : done ? t('form.completed') : t('form.filledOfTotal', { filled: step.filled, total: step.total })}
                     </DText>
                   </View>
                 </HoverPressable>
@@ -519,7 +520,7 @@ export function CreateDock({
         <View
           style={styles.dockStatus}
           accessible
-          accessibilityLabel={canSubmit ? readyText : `נשארו ${missing.length} פרטי חובה: ${missing.map((m) => m.label).join(', ')}`}
+          accessibilityLabel={canSubmit ? readyText : t('form.requiredLeft', { length: missing.length, v1: missing.map((m) => m.label).join(', ') })}
         >
           <View style={[styles.dockBadge, canSubmit && styles.dockBadgeReady]}>
             {canSubmit ? (
@@ -529,7 +530,7 @@ export function CreateDock({
             )}
           </View>
           <DText weight="semiBold" style={styles.dockTitle} numberOfLines={1}>
-            {canSubmit ? 'הכל מוכן' : missing.length === 1 ? 'נשאר פרט אחד' : `נשארו ${missing.length} פרטים`}
+            {canSubmit ? t('form.allReady') : missing.length === 1 ? t('form.oneLeft') : t('form.fieldsLeft', { length: missing.length })}
           </DText>
           <View style={styles.dockTrack}>
             <Animated.View
@@ -548,12 +549,12 @@ export function CreateDock({
           pressMotionStyle={styles.dockCtaPress}
           onPress={canSubmit ? onSave : next?.onPress}
           disabled={saving}
-          accessibilityLabel={saving ? 'שומר' : canSubmit ? ctaLabel : `המשך למילוי ${next?.label ?? ''}`}
+          accessibilityLabel={saving ? t('common.saving') : canSubmit ? ctaLabel : t('form.continueTo', { v1: next?.label ?? '' })}
         >
           <View style={[styles.dockCtaInner, saving && styles.busy]}>
             <Ionicons name={canSubmit ? ctaIcon : 'arrow-down'} size={17} color={canSubmit ? '#FFFFFF' : DESKTOP_COLORS.brand} />
             <DText weight="bold" style={[styles.dockCtaText, !canSubmit && styles.dockCtaNextText]} numberOfLines={1}>
-              {canSubmit ? ctaLabel : `להמשך: ${next?.label ?? ''}`}
+              {canSubmit ? ctaLabel : t('form.next', { v1: next?.label ?? '' })}
             </DText>
           </View>
           {saving && <BrandLoader size="small" color="#FFFFFF" style={StyleSheet.absoluteFill} />}
@@ -630,9 +631,9 @@ const styles = StyleSheet.create({
   heroGrid: {
     position: 'absolute',
     top: 0,
-    right: 0,
+    end: 0,
     bottom: 0,
-    left: 0,
+    start: 0,
     opacity: 0.55,
     ...webOnly({
       backgroundImage:
@@ -667,8 +668,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 9,
     paddingVertical: 10,
-    paddingRight: 10,
-    paddingLeft: 12,
+    paddingEnd: 10,
+    paddingStart: 12,
     borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.07)',
     borderWidth: 1,
@@ -724,9 +725,9 @@ const styles = StyleSheet.create({
   liveCardSheen: {
     position: 'absolute',
     top: 0,
-    right: 0,
+    end: 0,
     bottom: 0,
-    left: 0,
+    start: 0,
     ...webOnly({
       backgroundImage:
         'linear-gradient(115deg, rgba(255,255,255,0) 30%, rgba(255,255,255,0.75) 48%, rgba(255,255,255,0) 62%), repeating-radial-gradient(circle at 110% -20%, rgba(0,136,204,0.05) 0 1px, transparent 1px 9px)',
@@ -797,7 +798,7 @@ const styles = StyleSheet.create({
   tileCheck: {
     position: 'absolute',
     top: 8,
-    left: 8,
+    start: 8,
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -812,8 +813,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     minHeight: 76,
-    marginRight: 20,
-    paddingLeft: 20,
+    marginEnd: 20,
+    paddingStart: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
     borderTopColor: DESKTOP_COLORS.borderSoft,
@@ -844,14 +845,14 @@ const styles = StyleSheet.create({
   noteBody: { fontSize: 15, lineHeight: 22, color: DESKTOP_COLORS.inkMuted },
 
   // Dock: one small floating line
-  dockWrap: { position: 'absolute', left: 0, right: 0, bottom: 20, alignItems: 'center', paddingHorizontal: 24 },
+  dockWrap: { position: 'absolute', start: 0, end: 0, bottom: 20, alignItems: 'center', paddingHorizontal: 24 },
   dock: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 14,
     paddingVertical: 6,
-    paddingRight: 14,
-    paddingLeft: 6,
+    paddingEnd: 14,
+    paddingStart: 6,
     borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.88)',
     borderWidth: 1,

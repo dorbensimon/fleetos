@@ -17,6 +17,7 @@ import {
   setVehicleExpiryLeadDays,
 } from './notificationPreferencesApi';
 import { isVehicleFolderNotification } from './vehicleFolderAlerts';
+import { t } from './i18n';
 
 /**
  * The signed-in user's notification toggles plus the company's lead time
@@ -48,7 +49,7 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
     setError(null);
     if (!profileId) {
       if (requestId === loadRequest.current) {
-        setError('פרופיל המשתמש אינו זמין');
+        setError(t('prefs.profileUnavailable'));
         setLoading(false);
       }
       return;
@@ -64,7 +65,7 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
         setLeads(perType);
       }
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message ?? 'טעינת ההעדפות נכשלה');
+      if (requestId === loadRequest.current) setError(err?.message ?? t('prefs.loadFailed'));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -89,7 +90,7 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
       return true;
     } catch {
       setPrefs((p) => (p ? { ...p, [type]: previous } : p));
-      showToast('שמירת ההעדפה נכשלה, נסה שוב');
+      showToast(t('prefs.saveFailed'));
       return false;
     } finally {
       setSavingType(null);
@@ -127,7 +128,7 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
       return true;
     } catch {
       setLeads(previous);
-      showToast('שמירת זמן ההתראה נכשלה, נסה שוב');
+      showToast(t('prefs.saveTimingFailed'));
       return false;
     } finally {
       setSavingLeadType(null);

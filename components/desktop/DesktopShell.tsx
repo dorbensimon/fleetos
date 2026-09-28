@@ -12,6 +12,7 @@ import { BrandLogo } from '../ui/Brand';
 import { HeaderMenuProvider } from './headerMenu';
 import { NotificationsBell, OwnerNotificationsBell } from './NotificationsBell';
 import { DESKTOP_COLORS, DESKTOP_HEADER_HEIGHT, DESKTOP_SIDEBAR_WIDTH } from './desktopTheme';
+import { t } from '../../lib/i18n';
 
 /**
  * Desktop web frame for signed-in screens: a dark sidebar on the right
@@ -30,22 +31,22 @@ type NavItem = {
 };
 
 const ROLE_LABEL: Record<string, string> = {
-  owner: 'סופר אדמין',
-  admin: 'מנהל מערכת',
-  driver: 'נהג',
+  get owner() { return t('role.owner'); },
+  get admin() { return t('role.admin'); },
+  get driver() { return t('role.driver'); },
 };
 
 const SHELL_LEGAL_LINKS = [
-  { doc: 'terms', label: 'תנאי שימוש' },
-  { doc: 'privacy', label: 'פרטיות' },
-  { doc: 'cookies', label: 'עוגיות' },
-  { doc: 'accessibility', label: 'נגישות' },
+  { doc: 'terms', get label() { return t('legal.terms'); } },
+  { doc: 'privacy', get label() { return t('legal.privacy'); } },
+  { doc: 'cookies', get label() { return t('legal.cookies'); } },
+  { doc: 'accessibility', get label() { return t('legal.accessibility'); } },
 ] as const;
 
 // Pinned to the bottom of an admin's sidebar, just above company settings.
 const ADMIN_FOOTER_ITEMS: NavItem[] = [
-  { key: 'Notifications', label: 'התראות', icon: 'notifications' },
-  { key: 'CompanyDocuments', label: 'מסמכי חברה', icon: 'folder-open' },
+  { key: 'Notifications', get label() { return t('notifications.title'); }, icon: 'notifications' },
+  { key: 'CompanyDocuments', get label() { return t('nav.companyDocuments'); }, icon: 'folder-open' },
 ];
 
 export function DesktopShell({
@@ -67,17 +68,17 @@ export function DesktopShell({
   const isDriver = profile?.role === 'driver';
 
   const logout = () => {
-    showAlert('התנתקות', 'האם אתה בטוח שברצונך להתנתק מהחשבון?', [
-      { text: 'ביטול', style: 'cancel' },
+    showAlert(t('auth.signOut'), t('auth.signOutConfirmLong'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'התנתק',
+        text: t('auth.signOutAction'),
         style: 'destructive',
         onPress: async () => {
           try {
             await signOut();
             navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
           } catch {
-            showAlert('ההתנתקות נכשלה', 'נסה שוב בעוד רגע.');
+            showAlert(t('auth.signOutFailed'), t('common.tryAgainShortly'));
           }
         },
       },
@@ -89,34 +90,34 @@ export function DesktopShell({
   // truth for "what can this role reach."
   const manageItems: NavItem[] = isAdmin
     ? [
-        { key: 'AdminHome', label: 'דשבורד', icon: 'grid' },
-        { key: 'SignedDocuments', label: 'מסמכים חתומים', icon: 'create' },
-        { key: 'SafetyInspections', label: 'בדיקות בטיחות', icon: 'shield-checkmark' },
+        { key: 'AdminHome', label: t('nav.dashboard'), icon: 'grid' },
+        { key: 'SignedDocuments', label: t('nav.signedDocuments'), icon: 'create' },
+        { key: 'SafetyInspections', label: t('nav.safetyInspections'), icon: 'shield-checkmark' },
       ]
     : isOwner
     ? [
-        { key: 'OwnerHome', label: 'מרכז הבקרה', icon: 'business' },
+        { key: 'OwnerHome', label: t('nav.controlCenter'), icon: 'business' },
       ]
     : isDriver
     ? [
-        { key: 'DriverHome', label: 'הבית שלי', icon: 'home' },
-        { key: 'DriverDocuments', label: 'המסמכים שלי', icon: 'folder' },
-        { key: 'DriverSigningDocuments', label: 'מסמכים לחתימה', icon: 'create' },
+        { key: 'DriverHome', label: t('nav.myHome'), icon: 'home' },
+        { key: 'DriverDocuments', label: t('nav.myDocuments'), icon: 'folder' },
+        { key: 'DriverSigningDocuments', label: t('nav.signingDocuments'), icon: 'create' },
       ]
     : [];
   const accountItems: NavItem[] = isAdmin
     ? [
-        { key: 'AdminProfile', label: 'הפרטים שלי', icon: 'person' },
+        { key: 'AdminProfile', label: t('nav.myDetails'), icon: 'person' },
       ]
     : isOwner
     ? [
-        { key: 'AdminProfile', label: 'הפרטים שלי', icon: 'person' },
-        { key: 'Notifications', label: 'התראות', icon: 'notifications' },
+        { key: 'AdminProfile', label: t('nav.myDetails'), icon: 'person' },
+        { key: 'Notifications', label: t('notifications.title'), icon: 'notifications' },
       ]
     : isDriver
     ? [
-        { key: 'DriverProfile', label: 'הפרטים שלי', icon: 'person' },
-        { key: 'Notifications', label: 'התראות', icon: 'notifications' },
+        { key: 'DriverProfile', label: t('nav.myDetails'), icon: 'person' },
+        { key: 'Notifications', label: t('notifications.title'), icon: 'notifications' },
       ]
     : [];
 
@@ -138,26 +139,26 @@ export function DesktopShell({
    */
   const breadcrumbAction = (label: string): (() => void) | undefined => {
     switch (label) {
-      case 'ניהול':
+      case t('nav.management'):
         return () => navigation.navigate('AdminHome');
-      case 'נהגים':
+      case t('common.drivers'):
         return () => navigation.navigate('AdminHome', { mode: 'drivers' });
-      case 'רכבים':
+      case t('common.vehicles'):
         return () => navigation.navigate('AdminHome', { mode: 'vehicles' });
-      case 'בדיקות בטיחות':
+      case t('nav.safetyInspections'):
         return () => navigation.navigate('SafetyInspections');
-      case 'חברות':
-      case 'מרכז הבקרה':
+      case t('owner.notif.companies'):
+      case t('nav.controlCenter'):
         return () => navigation.navigate('OwnerHome');
-      case 'חשבון':
+      case t('nav.account'):
         return () => navigation.navigate(isDriver ? 'DriverProfile' : 'AdminProfile');
-      case 'הבית שלי':
+      case t('nav.myHome'):
         return () => navigation.navigate('DriverHome');
-      case 'הרכב שלי':
+      case t('driver.myVehicle'):
         return () => navigation.navigate('DriverVehicle');
-      case 'המסמכים שלי':
+      case t('nav.myDocuments'):
         return () => navigation.navigate('DriverDocuments');
-      case 'מסמכים לחתימה':
+      case t('nav.signingDocuments'):
         return () => navigation.navigate('DriverSigningDocuments');
       default:
         return undefined;
@@ -180,18 +181,18 @@ export function DesktopShell({
         </View>
         <View style={styles.companyBlock}>
           <DText weight="semiBold" style={styles.companyName} numberOfLines={1}>
-            {company?.name ?? (isOwner ? 'ניהול המערכת' : '')}
+            {company?.name ?? (isOwner ? t('nav.systemManagement') : '')}
           </DText>
           <DText style={styles.companyRole}>{roleLabel}</DText>
         </View>
 
         <ScrollView style={styles.nav} contentContainerStyle={styles.navContent}>
-          {manageItems.length > 0 && <DText weight="bold" style={styles.navSection}>ניהול</DText>}
+          {manageItems.length > 0 && <DText weight="bold" style={styles.navSection}>{t('nav.management')}</DText>}
           {manageItems.map((item) => (
             <SidebarItem key={item.key} item={item} active={item.key === active} onPress={() => go(item.key)} />
           ))}
           {accountItems.length > 0 && (
-            <DText weight="bold" style={[styles.navSection, styles.navSectionSpaced]}>חשבון</DText>
+            <DText weight="bold" style={[styles.navSection, styles.navSectionSpaced]}>{t('nav.account')}</DText>
           )}
           {accountItems.map((item) => (
             <SidebarItem key={item.key} item={item} active={item.key === active} onPress={() => go(item.key)} />
@@ -204,7 +205,7 @@ export function DesktopShell({
               <SidebarItem key={item.key} item={item} active={item.key === active} onPress={() => go(item.key)} />
             ))}
             <SidebarItem
-              item={{ key: 'CompanySettings', label: 'הגדרות החברה', icon: 'settings' }}
+              item={{ key: 'CompanySettings', label: t('nav.companySettings'), icon: 'settings' }}
               active={active === 'CompanySettings'}
               onPress={() => go('CompanySettings')}
             />
@@ -212,7 +213,7 @@ export function DesktopShell({
         )}
         <HoverPressable style={styles.logout} hoverStyle={styles.navItemHover} onPress={logout}>
           <Ionicons name="log-out-outline" size={15} color={DESKTOP_COLORS.sidebarText} />
-          <DText weight="medium" style={styles.navLabel}>התנתקות</DText>
+          <DText weight="medium" style={styles.navLabel}>{t('auth.signOut')}</DText>
         </HoverPressable>
         <View style={styles.legalLinks}>
           {SHELL_LEGAL_LINKS.map(({ doc, label }) => (
@@ -242,7 +243,7 @@ export function DesktopShell({
                     <HoverPressable
                       onPress={onPress}
                       hoverStyle={styles.crumbInteractiveHover}
-                      accessibilityLabel={`מעבר אל ${crumb}`}
+                      accessibilityLabel={t('nav.goTo', { crumb })}
                     >
                       <DText weight="regular" style={[styles.crumb, styles.crumbInteractive]}>{crumb}</DText>
                     </HoverPressable>
@@ -265,7 +266,7 @@ export function DesktopShell({
               <HoverPressable
                 style={styles.user}
                 onPress={() => go(isDriver ? 'DriverProfile' : 'AdminProfile')}
-                accessibilityLabel="הפרטים שלי"
+                accessibilityLabel={t('nav.myDetails')}
               >
                 <View style={styles.userAvatar}>
                   <DText weight="bold" style={styles.userAvatarText}>{initials}</DText>
@@ -350,10 +351,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: 6,
-    borderRightWidth: 2,
-    borderRightColor: 'transparent',
+    borderEndWidth: 2,
+    borderEndColor: 'transparent',
   },
-  navItemActive: { backgroundColor: DESKTOP_COLORS.sidebarActiveBg, borderRightColor: DESKTOP_COLORS.brand },
+  navItemActive: { backgroundColor: DESKTOP_COLORS.sidebarActiveBg, borderEndColor: DESKTOP_COLORS.brand },
   navItemHover: { backgroundColor: DESKTOP_COLORS.sidebarHoverBg },
   navLabel: { flex: 1, color: DESKTOP_COLORS.sidebarText, fontSize: 13 },
   navBadge: { backgroundColor: DESKTOP_COLORS.danger, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 },

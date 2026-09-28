@@ -32,6 +32,7 @@ import { formatDate } from '../../../lib/theme';
 import { nextServiceKmOf } from '../../../lib/serviceSchedule';
 import { vehicleHealth } from './FleetCards';
 import { VehicleInspectionsCard } from '../../../components/inspection/VehicleInspectionsCard';
+import { t, dirIcon, getLocale } from '../../../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 export type VehicleTab = 'general' | 'maintenance' | 'documents' | 'drivers' | 'licensing';
@@ -76,10 +77,10 @@ type Props = {
   onDelete: () => void;
 };
 
-const km = (n: number | null | undefined) => (n == null ? null : `${n.toLocaleString('he-IL')} ק״מ`);
+const km = (n: number | null | undefined) => (n == null ? null : t('unit.kmValue', { v1: n.toLocaleString(getLocale()) }));
 const formatKm = (value: string) => {
   const digits = value.replace(/\D/g, '');
-  return digits ? Number(digits).toLocaleString('he-IL') : '';
+  return digits ? Number(digits).toLocaleString(getLocale()) : '';
 };
 
 /**
@@ -89,7 +90,7 @@ const formatKm = (value: string) => {
  */
 export function VehicleDetailMobile(p: Props) {
   const v = p.vehicle;
-  const name = v ? [v.manufacturer, v.model].filter(Boolean).join(' ') || 'ללא דגם' : '';
+  const name = v ? [v.manufacturer, v.model].filter(Boolean).join(' ') || t('vehicle.noModelShort') : '';
   const health = v ? vehicleHealth(v, p.compliance) : null;
   const archived = v?.status === 'archived';
   const inactive = v?.status === 'maintenance' || v?.status === 'disabled';
@@ -102,8 +103,8 @@ export function VehicleDetailMobile(p: Props) {
       hero={
         <View>
           <View style={styles.bar}>
-            <HeroButton icon="chevron-forward" label="חזרה" onPress={p.onBack} />
-            {!!v && <HeroButton icon="create-outline" label="עריכת פרטי הרכב" onPress={p.onEdit} />}
+            <HeroButton icon={dirIcon('chevron-forward')} label={t('common.goBack')} onPress={p.onBack} />
+            {!!v && <HeroButton icon="create-outline" label={t('vehicle.editDetails')} onPress={p.onEdit} />}
           </View>
           {!!v && (
             <Reveal>
@@ -150,10 +151,10 @@ export function VehicleDetailMobile(p: Props) {
                   value={p.tab === 'licensing' ? 'general' : p.tab}
                   onChange={p.onTab}
                   options={[
-                    { value: 'general', label: 'פרטים' },
-                    { value: 'drivers', label: 'נהגים' },
-                    { value: 'maintenance', label: 'טיפולים' },
-                    { value: 'documents', label: 'מסמכים' },
+                    { value: 'general', label: t('vehicle.tab.details') },
+                    { value: 'drivers', label: t('common.drivers') },
+                    { value: 'maintenance', label: t('vehicle.tab.services') },
+                    { value: 'documents', label: t('common.documents') },
                   ]}
                 />
               </View>
@@ -165,9 +166,9 @@ export function VehicleDetailMobile(p: Props) {
       {p.loading ? (
         <LoadingPanel />
       ) : p.error ? (
-        <ErrorPanel message="טעינת הרכב נכשלה" hint={p.error} onRetry={p.onRetry} />
+        <ErrorPanel message={t('vehicle.loadFailed')} hint={p.error} onRetry={p.onRetry} />
       ) : !v ? (
-        <ErrorPanel message="הרכב לא נמצא" hint="ייתכן שנמחק. חזור לרשימת הרכבים." />
+        <ErrorPanel message={t('vehicle.notFound')} hint={t('vehicle.maybeDeleted')} />
       ) : (
         <Reveal key={p.tab}>
           <View style={styles.body}>{renderTab(p, v)}</View>
@@ -188,7 +189,7 @@ function renderTab(p: Props, v: Vehicle) {
           </Surface>
         </FocusTarget>
         <DKText variant="caption" color={DK.muted} style={styles.note}>
-          הנהג הראשי רואה את הרכב במסך הבית שלו. אפשר לשייך עד שני נהגים.
+          {t('vehicle.primarySeesHome')}
         </DKText>
       </>
     );
@@ -198,18 +199,18 @@ function renderTab(p: Props, v: Vehicle) {
       return (
         <>
           <KitSection>
-            <EditField first label="מד אוץ נוכחי (ק״מ)" value={formatKm(p.maintenance.odometer)} onChangeText={(x) => p.onChangeMaintenance('odometer', x.replace(/\D/g, ''))} keyboardType="number-pad" ltr />
-            <EditField label="ק״מ בטיפול האחרון" value={formatKm(p.maintenance.last_service_km)} onChangeText={(x) => p.onChangeMaintenance('last_service_km', x.replace(/\D/g, ''))} keyboardType="number-pad" ltr />
-            <EditField label="טווח ק״מ בין טיפולים" value={formatKm(p.maintenance.service_interval_km)} onChangeText={(x) => p.onChangeMaintenance('service_interval_km', x.replace(/\D/g, ''))} keyboardType="number-pad" ltr hint="כשמוגדר טווח, הטיפול הבא מחושב אוטומטית" />
+            <EditField first label={t('vehicle.currentOdometerKm')} value={formatKm(p.maintenance.odometer)} onChangeText={(x) => p.onChangeMaintenance('odometer', x.replace(/\D/g, ''))} keyboardType="number-pad" ltr />
+            <EditField label={t('vehicle.kmAtLastService')} value={formatKm(p.maintenance.last_service_km)} onChangeText={(x) => p.onChangeMaintenance('last_service_km', x.replace(/\D/g, ''))} keyboardType="number-pad" ltr />
+            <EditField label={t('vehicle.serviceInterval')} value={formatKm(p.maintenance.service_interval_km)} onChangeText={(x) => p.onChangeMaintenance('service_interval_km', x.replace(/\D/g, ''))} keyboardType="number-pad" ltr hint={t('vehicle.intervalAutoNext')} />
             {p.derivedNextServiceKm != null ? (
-              <EditField label="ק״מ לטיפול הבא" value={formatKm(String(p.derivedNextServiceKm))} editable={false} ltr hint="מחושב מהטיפול האחרון ומהטווח" />
+              <EditField label={t('vehicle.kmToNextService')} value={formatKm(String(p.derivedNextServiceKm))} editable={false} ltr hint={t('vehicle.calcFromLast')} />
             ) : (
-              <EditField label="ק״מ לטיפול הבא" value={formatKm(p.maintenance.next_service_km)} onChangeText={(x) => p.onChangeMaintenance('next_service_km', x.replace(/\D/g, ''))} keyboardType="number-pad" ltr />
+              <EditField label={t('vehicle.kmToNextService')} value={formatKm(p.maintenance.next_service_km)} onChangeText={(x) => p.onChangeMaintenance('next_service_km', x.replace(/\D/g, ''))} keyboardType="number-pad" ltr />
             )}
           </KitSection>
           <View style={styles.row}>
-            <PrimaryAction label="ביטול" tone="ghost" onPress={p.onCancelMaintenance} style={styles.flex} />
-            <PrimaryAction label="שמירה" icon="checkmark" onPress={p.onSaveMaintenance} loading={p.savingMaintenance} style={styles.flex2} />
+            <PrimaryAction label={t('common.cancel')} tone="ghost" onPress={p.onCancelMaintenance} style={styles.flex} />
+            <PrimaryAction label={t('common.save')} icon="checkmark" onPress={p.onSaveMaintenance} loading={p.savingMaintenance} style={styles.flex2} />
           </View>
         </>
       );
@@ -217,13 +218,13 @@ function renderTab(p: Props, v: Vehicle) {
     return (
       <>
         <KitSection>
-          <InfoLine first icon="speedometer" label="מד אוץ נוכחי" focusId="odometer" value={km(v.odometer)} />
-          <InfoLine icon="time" label="עודכן לאחרונה" value={v.odometer_updated_at ? formatDate(v.odometer_updated_at) : null} />
-          <InfoLine icon="build" label="ק״מ בטיפול האחרון" value={km(v.last_service_km)} />
-          <InfoLine icon="repeat" label="טווח בין טיפולים" value={km(v.service_interval_km)} />
-          <InfoLine icon="flag" label="הטיפול הבא" focusId="service" value={km(nextServiceKmOf(v))} />
+          <InfoLine first icon="speedometer" label={t('vehicle.currentOdometer')} focusId="odometer" value={km(v.odometer)} />
+          <InfoLine icon="time" label={t('common.lastUpdated')} value={v.odometer_updated_at ? formatDate(v.odometer_updated_at) : null} />
+          <InfoLine icon="build" label={t('vehicle.kmAtLastService')} value={km(v.last_service_km)} />
+          <InfoLine icon="repeat" label={t('vehicle.serviceIntervalShort')} value={km(v.service_interval_km)} />
+          <InfoLine icon="flag" label={t('vehicle.nextServiceTitle')} focusId="service" value={km(nextServiceKmOf(v))} />
         </KitSection>
-        <PrimaryAction label="עדכון נתוני טיפול" icon="create-outline" tone="ghost" onPress={p.onEditMaintenance} />
+        <PrimaryAction label={t('vehicle.updateServiceData')} icon="create-outline" tone="ghost" onPress={p.onEditMaintenance} />
       </>
     );
   }
@@ -231,7 +232,7 @@ function renderTab(p: Props, v: Vehicle) {
     return (
       <>
         <ComplianceSection companyId={p.companyId} ownerType="vehicle" ownerId={v.id} focusItemType={p.focusItem} spacious folderAppearance hiddenItemTypes={['annual_test']} />
-        <KitSection title="בדיקות ובטיחות">
+        <KitSection title={t('compliance.cat.inspection')}>
           {p.folders.map((folder, index) => (
             <ListRow key={folder.category} first={index === 0} icon={folder.icon as IconName} tint={folder.color} title={folder.title} onPress={() => p.onOpenFolder(folder)} />
           ))}
@@ -243,41 +244,41 @@ function renderTab(p: Props, v: Vehicle) {
   return (
     <>
       {archived && (
-        <Banner tone="missing" icon="archive" title="הרכב בארכיון">
-          הוא מוסתר מרשימת הרכבים, והנתונים שלו נשמרים.
+        <Banner tone="missing" icon="archive" title={t('vehicle.archivedTitle')}>
+          {t('vehicle.archivedHiddenKept')}
         </Banner>
       )}
       <KitSection>
-        <InfoLine first icon="car-sport" label="מספר רישוי" value={formatPlate(v.plate_number)} ltr onPress={p.onEdit} />
-        <InfoLine icon="pricetag" label="יצרן ודגם" value={[v.manufacturer, v.model].filter(Boolean).join(' ')} onPress={p.onEdit} />
-        <InfoLine icon="color-palette" label="צבע" value={v.color} onPress={p.onEdit} />
-        <InfoLine icon="grid" label="סוג רכב" value={VEHICLE_TYPE_LABELS[v.vehicle_type]} onPress={p.onEdit} />
-        <InfoLine icon="calendar" label="שנת ייצור" value={v.production_year ? `${v.production_month ? `${v.production_month}/` : ''}${v.production_year}` : null} onPress={p.onEdit} />
-        <InfoLine icon="flag" label="עלייה לכביש" value={v.road_registration_date ? formatDate(v.road_registration_date) : null} onPress={p.onEdit} />
+        <InfoLine first icon="car-sport" label={t('vehicle.plateNumber')} value={formatPlate(v.plate_number)} ltr onPress={p.onEdit} />
+        <InfoLine icon="pricetag" label={t('vehicle.makeAndModel')} value={[v.manufacturer, v.model].filter(Boolean).join(' ')} onPress={p.onEdit} />
+        <InfoLine icon="color-palette" label={t('vehicle.color')} value={v.color} onPress={p.onEdit} />
+        <InfoLine icon="grid" label={t('vehicle.typeLabel')} value={VEHICLE_TYPE_LABELS[v.vehicle_type]} onPress={p.onEdit} />
+        <InfoLine icon="calendar" label={t('vehicle.productionYear')} value={v.production_year ? `${v.production_month ? `${v.production_month}/` : ''}${v.production_year}` : null} onPress={p.onEdit} />
+        <InfoLine icon="flag" label={t('vehicle.onRoadDate')} value={v.road_registration_date ? formatDate(v.road_registration_date) : null} onPress={p.onEdit} />
         <ActionRow
           first={false}
           icon="cloud-download-outline"
-          label={p.lookupLoading ? 'מחפש במאגר…' : 'מילוי לפי מספר הרישוי'}
-          hint="יצרן, דגם, צבע ושנה ממאגר משרד התחבורה"
+          label={p.lookupLoading ? t('vehicle.searchingDb') : t('vehicle.fillByPlate')}
+          hint={t('vehicle.fillByPlateHint')}
           onPress={p.onLookup}
           disabled={p.lookupLoading}
         />
       </KitSection>
       {!!p.lookupMessage && <Banner tone="info">{p.lookupMessage}</Banner>}
-      <KitSection title="זיהוי וארגון">
-        <InfoLine first icon="barcode" label="מספר שלדה" value={v.vin} ltr onPress={p.onEdit} />
-        <InfoLine icon="code" label="קוד פנימי" value={v.internal_code} ltr onPress={p.onEdit} />
-        <InfoLine icon="business" label="מחלקה" value={p.department} onPress={p.onEdit} />
-        <InfoLine icon="navigate" label="שימוש ברכב" value={v.usage_type} onPress={p.onEdit} />
-        <InfoLine icon="card" label="סוג עסקה" value={v.acquisition_type ? ACQUISITION_TYPE_LABELS[v.acquisition_type] ?? v.acquisition_type : null} onPress={p.onEdit} />
+      <KitSection title={t('vehicle.idAndOrganization')}>
+        <InfoLine first icon="barcode" label={t('vehicle.vin')} value={v.vin} ltr onPress={p.onEdit} />
+        <InfoLine icon="code" label={t('vehicle.internalCode')} value={v.internal_code} ltr onPress={p.onEdit} />
+        <InfoLine icon="business" label={t('common.department')} value={p.department} onPress={p.onEdit} />
+        <InfoLine icon="navigate" label={t('vehicle.usage')} value={v.usage_type} onPress={p.onEdit} />
+        <InfoLine icon="card" label={t('vehicle.dealType')} value={v.acquisition_type ? ACQUISITION_TYPE_LABELS[v.acquisition_type] ?? v.acquisition_type : null} onPress={p.onEdit} />
       </KitSection>
-      <KitSection title="פעולות">
+      <KitSection title={t('common.actions')}>
         {archived ? (
-          <ActionRow icon="arrow-undo" label="הוצאה מהארכיון" hint="מחזיר את הרכב לרשימה הפעילה" onPress={p.onRestore} />
+          <ActionRow icon="arrow-undo" label={t('vehicle.takeOutOfArchive')} hint={t('vehicle.returnsToActive')} onPress={p.onRestore} />
         ) : (
-          <ActionRow icon="archive-outline" tone="muted" label="העברה לארכיון" hint="מסתיר את הרכב; הנתונים נשמרים" onPress={p.onArchive} />
+          <ActionRow icon="archive-outline" tone="muted" label={t('common.moveToArchive')} hint={t('vehicle.hidesKeepsData')} onPress={p.onArchive} />
         )}
-        <ActionRow first={false} icon="trash-outline" tone="danger" label="מחיקת הרכב לצמיתות" hint="אי אפשר לבטל" onPress={p.onDelete} />
+        <ActionRow first={false} icon="trash-outline" tone="danger" label={t('vehicle.deletePermanently')} hint={t('common.cannotUndo')} onPress={p.onDelete} />
       </KitSection>
     </>
   );

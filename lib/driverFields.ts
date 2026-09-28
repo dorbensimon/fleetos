@@ -1,28 +1,54 @@
 import type { Department, DriverRow } from './adminApi';
+import { t } from './i18n';
 
 export const LICENSE_CLASS_OPTIONS = [
-  { value: 'A2', label: 'A2 — אופנוע קל, עד 125 סמ"ק / 14.9 כ"ס' },
-  { value: 'A1', label: 'A1 — אופנוע בינוני, עד 47.46 כ"ס' },
-  { value: 'A', label: 'A — אופנוע כבד, ללא הגבלת הספק או נפח' },
-  { value: 'B', label: 'B — רכב פרטי, עד 3,500 ק"ג ו-8 נוסעים' },
-  { value: 'C1', label: 'C1 — משא קל, 3,501–12,000 ק"ג' },
-  { value: 'C', label: 'C — משא כבד, ללא הגבלת משקל' },
-  { value: 'C+E', label: 'C+E — רכב מחובר (משאית עם גרור/נתמך)' },
-  { value: 'D1', label: 'D1 — מונית ומיניבוס ציבורי, עד 16 נוסעים' },
-  { value: 'D2', label: 'D2 — אוטובוס זעיר ציבורי (היתר מיוחד)' },
-  { value: 'D3', label: 'D3 — אוטובוס זעיר פרטי' },
-  { value: 'D', label: 'D — אוטובוס מלא, ללא הגבלת נוסעים' },
-  { value: '1', label: '1 (T) — טרקטור, טרקטורון ורכב שטח' },
-  { value: 'PERMIT', label: 'היתר מכונה ניידת (צמ"ה)' },
+  { value: 'A2', get label() { return t('license.class.A2'); } },
+  { value: 'A1', get label() { return t('license.class.A1'); } },
+  { value: 'A', get label() { return t('license.class.A'); } },
+  { value: 'B', get label() { return t('license.class.B'); } },
+  { value: 'C1', get label() { return t('license.class.C1'); } },
+  { value: 'C', get label() { return t('license.class.C'); } },
+  { value: 'C+E', get label() { return t('license.class.CE'); } },
+  { value: 'D1', get label() { return t('license.class.D1'); } },
+  { value: 'D2', get label() { return t('license.class.D2'); } },
+  { value: 'D3', get label() { return t('license.class.D3'); } },
+  { value: 'D', get label() { return t('license.class.D'); } },
+  { value: '1', get label() { return t('license.class.T'); } },
+  { value: 'PERMIT', get label() { return t('license.class.machinery'); } },
 ];
 
-// Stored as the Hebrew label itself (the columns are plain text), so every
-// screen can show the value without a lookup.
-export const MARITAL_STATUS_OPTIONS = ['רווק/ה', 'נשוי/אה', 'ידוע/ה בציבור', 'גרוש/ה', 'פרוד/ה', 'אלמן/ה']
-  .map((label) => ({ value: label, label }));
+// Stored as the Hebrew label itself (the columns are plain text), so the
+// value never changes with the UI language; only the label shown is translated.
+const MARITAL_STATUS_KEYS: Record<string, string> = {
+  'רווק/ה': 'driver.marital.single',
+  'נשוי/אה': 'driver.marital.married',
+  'ידוע/ה בציבור': 'driver.marital.partner',
+  'גרוש/ה': 'driver.marital.divorced',
+  'פרוד/ה': 'driver.marital.separated',
+  'אלמן/ה': 'driver.marital.widowed',
+};
 
-export const EDUCATION_OPTIONS = ['יסודית', 'תיכונית ללא בגרות', 'בגרות מלאה', 'מקצועית / הנדסאי', 'תואר ראשון', 'תואר שני ומעלה']
-  .map((label) => ({ value: label, label }));
+const EDUCATION_KEYS: Record<string, string> = {
+  'יסודית': 'driver.edu.elementary',
+  'תיכונית ללא בגרות': 'driver.edu.highSchool',
+  'בגרות מלאה': 'driver.edu.matriculation',
+  'מקצועית / הנדסאי': 'driver.edu.vocational',
+  'תואר ראשון': 'driver.edu.bachelor',
+  'תואר שני ומעלה': 'driver.edu.master',
+};
+
+/** The label for a stored marital status or education value, in the UI language. */
+export function storedValueLabel(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const key = MARITAL_STATUS_KEYS[value] ?? EDUCATION_KEYS[value];
+  return key ? t(key) : value;
+}
+
+export const MARITAL_STATUS_OPTIONS = Object.entries(MARITAL_STATUS_KEYS)
+  .map(([value, key]) => ({ value, get label() { return t(key); } }));
+
+export const EDUCATION_OPTIONS = Object.entries(EDUCATION_KEYS)
+  .map(([value, key]) => ({ value, get label() { return t(key); } }));
 
 /** Keeps a saved value that is not in the list selectable, so it is never shown as empty. */
 export function optionsWithCurrent(
@@ -31,7 +57,7 @@ export function optionsWithCurrent(
 ): { value: string; label: string }[] {
   const value = current?.trim();
   if (!value || options.some((option) => option.value === value)) return options;
-  return [...options, { value, label: value }];
+  return [...options, { value, label: storedValueLabel(value) ?? value }];
 }
 
 export interface DriverEditableFields {
@@ -76,7 +102,7 @@ export function departmentOptions(departments: Department[]): { value: string; l
 export function departmentDeleteMessage(name: string, usage: { vehicles: number; drivers: number }): string {
   const parts = [
     usage.vehicles === 1 ? 'רכב אחד' : usage.vehicles > 0 ? `${usage.vehicles} רכבים` : '',
-    usage.drivers === 1 ? 'נהג אחד' : usage.drivers > 0 ? `${usage.drivers} נהגים` : '',
+    usage.drivers === 1 ? t('common.oneDriver') : usage.drivers > 0 ? `${usage.drivers} נהגים` : '',
   ].filter(Boolean);
   const isSingular = usage.vehicles + usage.drivers === 1;
   return parts.length

@@ -7,6 +7,8 @@
 // Kept as literal hex/rgba (not imported from lib/colors) so this file
 // stays render-free and unit-testable on its own — see the module
 // docstring. Mirrors FLEET_COLORS.success/warning/danger.fill exactly.
+import { t } from './i18n';
+
 export const TONE_OK = '#34c759';
 export const TONE_WARN = '#ff9f0a';
 export const TONE_BAD = '#ff3b30';
@@ -35,15 +37,15 @@ export function remainingRatio(remaining: number | null, total: number): number 
 export function worstTone(tones: string[]): string {
   if (tones.includes(TONE_BAD)) return TONE_BAD;
   if (tones.includes(TONE_WARN)) return TONE_WARN;
-  if (tones.every((t) => t === TONE_NEUTRAL)) return TONE_NEUTRAL;
+  if (tones.every((entry) => entry === TONE_NEUTRAL)) return TONE_NEUTRAL;
   return TONE_OK;
 }
 
 export function chipFor(tone: string, badItems: string[] = []): { label: string; bg: string; fg: string } {
   if (tone === TONE_BAD) {
-    return { label: badItems.length ? badItems.join(' · ') : 'דורש טיפול', bg: 'rgba(255,59,48,.14)', fg: TONE_BAD };
+    return { label: badItems.length ? badItems.join(' · ') : t('status.needsAttention'), bg: 'rgba(255,59,48,.14)', fg: TONE_BAD };
   }
-  if (tone === TONE_WARN) return { label: 'מתקרב מועד', bg: 'rgba(255,159,10,.16)', fg: '#b26200' };
-  if (tone === TONE_NEUTRAL) return { label: 'חסר נתונים', bg: 'rgba(11,12,16,.08)', fg: 'rgba(11,12,16,.6)' };
-  return { label: 'תקין', bg: 'rgba(52,199,89,.14)', fg: '#1e8e3e' };
+  if (tone === TONE_WARN) return { label: t('fleet.status.dueSoon'), bg: 'rgba(255,159,10,.16)', fg: '#b26200' };
+  if (tone === TONE_NEUTRAL) return { label: t('fleet.status.missingData'), bg: 'rgba(11,12,16,.08)', fg: 'rgba(11,12,16,.6)' };
+  return { label: t('status.ok'), bg: 'rgba(52,199,89,.14)', fg: '#1e8e3e' };
 }

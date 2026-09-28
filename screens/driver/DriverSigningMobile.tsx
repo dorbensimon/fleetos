@@ -5,6 +5,7 @@ import { DK, DK_SPACE, DKText, DriverPage, HeroTitle, PrimaryAction, Pressy, Rev
 import { ErrorState, LoadingState } from '../../components/ui';
 import { signingFolderStatus, type SigningFolder } from '../../lib/signingFolders';
 import type { SignatureRequest } from '../../lib/docuseal';
+import { t, dirIcon, getLocale } from '../../lib/i18n';
 
 type Props = {
   insetTop: number;
@@ -23,13 +24,13 @@ type Props = {
   onOpenRequest: (request: SignatureRequest) => void;
 };
 
-const time = (date: string) => new Date(date).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
+const time = (date: string) => new Date(date).toLocaleString(getLocale(), { dateStyle: 'short', timeStyle: 'short' });
 
 const FOLDER_STATUS: Record<ReturnType<typeof signingFolderStatus>, { status: Status; label: string }> = {
-  pending: { status: 'soon', label: 'מחכה לחתימה שלך' },
-  completed: { status: 'ok', label: 'נחתם' },
-  failed: { status: 'expired', label: 'דורש טיפול של מנהל הצי' },
-  empty: { status: 'missing', label: 'ריק' },
+  pending: { status: 'soon', get label() { return t('signing.awaitingYourSignature'); } },
+  completed: { status: 'ok', get label() { return t('common.signedDone'); } },
+  failed: { status: 'expired', get label() { return t('signing.needsManager'); } },
+  empty: { status: 'missing', get label() { return t('common.empty'); } },
 };
 
 /**
@@ -38,12 +39,12 @@ const FOLDER_STATUS: Record<ReturnType<typeof signingFolderStatus>, { status: St
  */
 export function DriverSigningMobile(p: Props) {
   const pendingCount = p.folders.filter((f) => signingFolderStatus(f) === 'pending').length;
-  const title = p.folderMode ? p.folder?.title || 'מסמך' : 'מסמכים לחתימה';
+  const title = p.folderMode ? p.folder?.title || t('documents.document') : t('nav.signingDocuments');
   const subtitle = p.folderMode
-    ? 'פתח את המסמך כדי לחתום או לצפות'
+    ? t('signing.openToSignOrView')
     : pendingCount
-      ? `${pendingCount} ${pendingCount === 1 ? 'מסמך מחכה' : 'מסמכים מחכים'} לחתימה שלך`
-      : 'אין מסמכים שמחכים לחתימה';
+      ? t('signing.pendingForYou', { pendingCount, v1: pendingCount === 1 ? t('signing.docWaiting') : t('signing.docsWaitingWord') })
+      : t('signing.noneWaiting');
 
   return (
     <DriverPage insetTop={p.insetTop} insetBottom={p.insetBottom} hero={<HeroTitle title={title} subtitle={subtitle} onBack={p.onBack} />}>
@@ -53,7 +54,7 @@ export function DriverSigningMobile(p: Props) {
         </Surface>
       ) : p.fatal ? (
         <Surface>
-          <ErrorState message={p.error || 'המסמכים לא נטענו'} onRetry={p.onRetry} />
+          <ErrorState message={p.error || t('signing.docsNotLoaded')} onRetry={p.onRetry} />
         </Surface>
       ) : (
         <>
@@ -81,10 +82,10 @@ function FolderList(p: Props) {
             <Ionicons name="document-text-outline" size={30} color={DK.accent} />
           </View>
           <DKText variant="heading" style={styles.center}>
-            עוד לא נשלחו אליך מסמכים
+            {t('signing.noneSentYet')}
           </DKText>
           <DKText variant="body" color={DK.muted} style={styles.center}>
-            כשמנהל הצי ישלח טופס לחתימה, הוא יופיע כאן ותקבל התראה.
+            {t('signing.whenManagerSends')}
           </DKText>
         </Surface>
       </Reveal>
@@ -116,11 +117,11 @@ function FolderList(p: Props) {
                 {pending ? (
                   <View style={styles.signPill}>
                     <DKText variant="micro" color="#FFFFFF">
-                      לחתימה
+                      {t('signing.toSign')}
                     </DKText>
                   </View>
                 ) : (
-                  <Ionicons name="chevron-back" size={18} color={DK.faint} />
+                  <Ionicons name={dirIcon('chevron-back')} size={18} color={DK.faint} />
                 )}
               </Surface>
             </Pressy>
@@ -136,7 +137,7 @@ function FolderView(p: Props) {
     return (
       <Surface style={styles.empty}>
         <DKText variant="heading" style={styles.center}>
-          התיקייה אינה זמינה
+          {t('signing.folderUnavailable')}
         </DKText>
       </Surface>
     );
@@ -145,7 +146,7 @@ function FolderView(p: Props) {
     return (
       <Surface style={styles.empty}>
         <DKText variant="heading" style={styles.center}>
-          אין כאן מסמכים
+          {t('signing.noDocsHere')}
         </DKText>
       </Surface>
     );
@@ -158,12 +159,12 @@ function FolderView(p: Props) {
         const status: Status = done ? 'ok' : ready ? 'soon' : 'expired';
         const s = STATUS[status];
         const meta = done
-          ? `נחתם ${time(item.completed_at || item.created_at)}`
+          ? t('signing.signedV1', { v1: time(item.completed_at || item.created_at) })
           : ready
-            ? `נשלח אליך ${time(item.sent_at || item.created_at)}`
+            ? t('driver.attention.sentToYou', { v1: time(item.sent_at || item.created_at) })
             : item.status === 'declined'
-              ? 'החתימה נדחתה'
-              : 'השליחה לא הושלמה — מנהל הצי יכול לשלוח שוב';
+              ? t('signing.declined')
+              : t('signing.incompleteManagerCanResend');
         return (
           <Reveal key={item.id} index={index}>
             <Surface style={styles.request}>
@@ -182,7 +183,7 @@ function FolderView(p: Props) {
               </View>
               {(done || ready) && (
                 <PrimaryAction
-                  label={done ? 'צפייה במסמך החתום' : 'חתימה על המסמך'}
+                  label={done ? t('signing.viewSigned') : t('signing.signTheDocument')}
                   icon={done ? 'eye-outline' : 'create-outline'}
                   tone={done ? 'ghost' : 'accent'}
                   loading={p.opening === item.id}

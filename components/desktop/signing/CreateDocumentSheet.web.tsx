@@ -31,6 +31,7 @@ import {
   STATUS_META,
   type ChecklistForm,
 } from '../../../lib/checklistForms';
+import { t, dirIcon } from '../../../lib/i18n';
 
 /**
  * "מסמך חדש": name it, choose to write or upload, place the fields, review and
@@ -41,9 +42,9 @@ import {
 type Mode = 'editor' | 'upload' | 'checklist';
 type Step = 0 | 1 | 2 | 3;
 
-const NAME_IDEAS = ['הצהרת בריאות', 'נוהל בטיחות בנהיגה', DRIVER_MEETING_TITLE, 'טופס קבלת רכב', 'התחייבות לשמירה על הרכב'];
+const nameIdeas = () => ['הצהרת בריאות', t('signing.suggest.safetyProcedure'), DRIVER_MEETING_TITLE, t('signing.suggest.vehicleHandover'), t('signing.suggest.vehicleCare')];
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
-const STEP_NAMES = ['שם ודרך יצירה', 'תוכן ושדות', 'בדיקה ושמירה'];
+const stepNames = () => [t('signing.stepName.nameAndMethod'), t('signing.stepName.contentAndFields'), t('signing.stepName.reviewAndSave')];
 
 function fieldSummary(kinds: SigningFieldKind[]) {
   const counts = new Map<SigningFieldKind, number>();
@@ -111,7 +112,7 @@ export function CreateDocumentSheet({
 
   const onFile = async (file: File) => {
     if (file.size > MAX_UPLOAD_BYTES) {
-      setUploadError('הקובץ גדול מדי. אפשר להעלות קובץ עד 20MB.');
+      setUploadError(t('documents.tooLargeCreate'));
       return;
     }
     setUploadError(null);
@@ -122,7 +123,7 @@ export function CreateDocumentSheet({
       setPdf(loaded);
       setFields([]);
     } catch (error) {
-      setUploadError(error instanceof Error && error.message ? error.message : 'לא הצלחנו לפתוח את הקובץ. נסו שוב.');
+      setUploadError(error instanceof Error && error.message ? error.message : t('common.openFileFailedRetry'));
     } finally {
       setUploading(false);
     }
@@ -177,7 +178,7 @@ export function CreateDocumentSheet({
       onCreated(template);
       setStep(3);
     } catch (error) {
-      setSaveError(error instanceof Error && error.message ? error.message : 'השמירה נכשלה. נסו שוב.');
+      setSaveError(error instanceof Error && error.message ? error.message : t('common.saveFailedRetry'));
     } finally {
       setSaving(false);
     }
@@ -214,12 +215,12 @@ export function CreateDocumentSheet({
       <div>
         {step !== 3 ? (
           <button type="button" className="sd-btn sd-btn-link" onClick={requestClose}>
-            ביטול
+            {t('common.cancel')}
           </button>
         ) : null}
       </div>
       <div className="sd-sheet-title">
-        <strong className="sd-b">{step === 0 || !title.trim() ? 'מסמך חדש' : title.trim()}</strong>
+        <strong className="sd-b">{step === 0 || !title.trim() ? t('signing.newDocument') : title.trim()}</strong>
         {step < 3 ? (
           <>
             <div className="sd-progress" aria-hidden="true">
@@ -228,7 +229,7 @@ export function CreateDocumentSheet({
               ))}
             </div>
             <div className="sd-progress-label">
-              שלב {step + 1} מתוך 3 · {STEP_NAMES[step]}
+              {t('signing.stepLabel')} {step + 1} {t('signing.of3')} {stepNames()[step]}
             </div>
           </>
         ) : null}
@@ -242,12 +243,12 @@ export function CreateDocumentSheet({
       ? mode === 'checklist'
         ? checklist ? formProblem(title, checklist) : null
         : mode === 'upload' && !pdf
-          ? 'העלו את הקובץ כדי להמשיך'
-          : 'כדי להמשיך, הוסיפו לפחות שדה חתימה אחד'
+          ? t('signing.uploadToContinue')
+          : t('signing.addSignatureToContinue')
       : step === 0 && titleTaken
-        ? TAKEN_TITLE_MESSAGE
+        ? TAKEN_TITLE_MESSAGE()
       : step === 0 && !mode && title.trim()
-        ? 'בחרו איך ליצור את המסמך'
+        ? t('signing.chooseHowToCreate')
         : null;
 
   const foot =
@@ -256,8 +257,8 @@ export function CreateDocumentSheet({
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {step > 0 ? (
             <button type="button" className="sd-btn sd-btn-plain sd-btn-lg" onClick={back} disabled={saving}>
-              <Ionicons name="chevron-forward" size={20} color="currentColor" />
-              חזרה
+              <Ionicons name={dirIcon('chevron-forward')} size={20} color="currentColor" />
+              {t('common.goBack')}
             </button>
           ) : null}
           {stepNote ? (
@@ -269,20 +270,20 @@ export function CreateDocumentSheet({
         </div>
         {step < 2 ? (
           <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={next} disabled={!canContinue} style={{ minWidth: 180 }}>
-            המשך
-            <Ionicons name="chevron-back" size={20} color="#fff" />
+            {t('common.continue')}
+            <Ionicons name={dirIcon('chevron-back')} size={20} color="#fff" />
           </button>
         ) : (
           <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={() => void save()} disabled={saving} style={{ minWidth: 220 }}>
             {saving ? (
               <>
                 <span className="sd-spinner" style={{ width: 22, height: 22, borderWidth: 3, borderColor: 'rgba(255,255,255,0.35)', borderTopColor: '#fff' }} />
-                {mode === 'checklist' ? 'שומרים את הטופס…' : 'שומרים את המסמך…'}
+                {mode === 'checklist' ? t('signing.savingForm') : t('signing.savingDocument')}
               </>
             ) : (
               <>
                 <Ionicons name="checkmark-circle" size={21} color="#fff" />
-                {mode === 'checklist' ? 'שמירת הטופס' : 'שמירת המסמך'}
+                {mode === 'checklist' ? t('signing.saveForm') : t('signing.saveDocument')}
               </>
             )}
           </button>
@@ -292,17 +293,17 @@ export function CreateDocumentSheet({
 
   return (
     <>
-      <Sheet closing={closing} onRequestClose={requestClose} label="יצירת מסמך חדש לחתימה" head={head} foot={foot}>
+      <Sheet closing={closing} onRequestClose={requestClose} label={t('signing.createNewForSigning')} head={head} foot={foot}>
         {step === 0 ? (
           <div className="sd-start sd-stage" key="start">
-            <h2 className="sd-q sd-b">איך נקרא למסמך?</h2>
-            <p className="sd-q-sub">השם יופיע לנהג ובתיקייה שלו, לכן כדאי שיהיה ברור.</p>
+            <h2 className="sd-q sd-b">{t('signing.whatName')}</h2>
+            <p className="sd-q-sub">{t('signing.nameVisibleToDriver')}</p>
             <input
               id="sd-doc-name"
               className="sd-name"
               value={title}
               maxLength={120}
-              placeholder="לדוגמה: הצהרת בריאות"
+              placeholder={t('signing.namePlaceholder')}
               autoFocus
               aria-invalid={nameError || titleTaken}
               aria-describedby={titleTaken ? 'sd-doc-name-taken' : undefined}
@@ -317,33 +318,33 @@ export function CreateDocumentSheet({
             {titleTaken ? (
               <div id="sd-doc-name-taken" className="sd-inline-error" role="alert">
                 <Ionicons name="alert-circle" size={20} color="currentColor" />
-                {TAKEN_TITLE_MESSAGE}
+                {TAKEN_TITLE_MESSAGE()}
               </div>
             ) : null}
-            <div className="sd-chips" aria-label="הצעות לשם">
-              {NAME_IDEAS.map((idea) => (
+            <div className="sd-chips" aria-label={t('signing.nameSuggestions')}>
+              {nameIdeas().map((idea) => (
                 <button key={idea} type="button" className="sd-chip" onClick={() => setTitle(idea)}>
                   {idea}
                 </button>
               ))}
             </div>
 
-            <div className="sd-choices" role="radiogroup" aria-label="איך ליצור את המסמך">
+            <div className="sd-choices" role="radiogroup" aria-label={t('signing.howToCreate')}>
               <ChoiceCard
                 selected={mode === 'editor'}
                 onPress={() => setMode('editor')}
                 icon="create"
                 gradient="linear-gradient(160deg,#FFB340,#FF7A00)"
-                title="לכתוב מסמך חדש"
-                text="כותבים את הטקסט כאן, כמו בוורד, ומוסיפים בלחיצה את המקומות שבהם הנהג חותם."
+                title={t('signing.method.write')}
+                text={t('signing.method.writeText')}
               />
               <ChoiceCard
                 selected={mode === 'upload'}
                 onPress={() => setMode('upload')}
                 icon="cloud-upload"
                 gradient="linear-gradient(160deg,#35B8F0,#0075B3)"
-                title="להעלות קובץ קיים"
-                text="בוחרים קובץ PDF, וורד או תמונה מהמחשב, ומסמנים עליו איפה הנהג חותם."
+                title={t('signing.method.upload')}
+                text={t('signing.method.uploadText')}
               />
               <ChoiceCard
                 selected={mode === 'checklist'}
@@ -353,9 +354,9 @@ export function CreateDocumentSheet({
                 }}
                 icon="list"
                 gradient="linear-gradient(160deg,#4ADE9B,#12805C)"
-                title="רשימת סעיפים לסימון"
-                text="למפגשים, בדיקות והדרכות. ליד כל סעיף מסמנים ״בוצע״ או ״לא בוצע״ וכותבים הערה, ובסוף הקצין והנהג חותמים."
-                badge="חדש"
+                title={t('signing.method.checklist')}
+                text={t('signing.method.checklistText')}
+                badge={t('common.new')}
               />
             </div>
           </div>
@@ -388,7 +389,7 @@ export function CreateDocumentSheet({
 
         {step === 1 && mode === 'upload' ? (
           uploading ? (
-            <BusyState title="מכינים את הקובץ…" subtitle="זה לוקח כמה שניות. קובץ וורד לוקח קצת יותר." />
+            <BusyState title={t('signing.preparingFile')} subtitle={t('signing.preparingFileHint')} />
           ) : pdf ? (
             <div className="sd-stage" key="placer">
               <FieldPlacer pdf={pdf} fields={fields} onFieldsChange={setFields} onReplaceFile={() => {
@@ -415,50 +416,50 @@ export function CreateDocumentSheet({
               )}
             </div>
             <div>
-              <h2 className="sd-b">הכול מוכן?</h2>
+              <h2 className="sd-b">{t('signing.allReady')}</h2>
               <p className="sd-review-sub">
                 {mode === 'checklist'
-                  ? 'בדקו את הפרטים. אחרי השמירה הטופס יופיע ברשימה, ותוכלו לקיים מפגש מתוך תיק הנהג.'
-                  : 'בדקו את הפרטים. אחרי השמירה המסמך יופיע ברשימה, ותוכלו לשלוח אותו לנהגים מתוך תיק הנהג.'}
+                  ? t('signing.reviewForm')
+                  : t('signing.reviewDocument')}
               </p>
               <div className="sd-list">
                 <div className="sd-row">
-                  <span>{mode === 'checklist' ? 'שם הטופס' : 'שם המסמך'}</span>
+                  <span>{mode === 'checklist' ? t('signing.formName') : t('signing.documentName')}</span>
                   <strong className="sd-sb">{title.trim()}</strong>
                 </div>
                 <div className="sd-row">
-                  <span>איך נוצר</span>
-                  <strong className="sd-sb">{mode === 'editor' ? 'נכתב כאן' : mode === 'checklist' ? 'רשימת סעיפים לסימון' : 'קובץ שהועלה'}</strong>
+                  <span>{t('signing.howCreated')}</span>
+                  <strong className="sd-sb">{mode === 'editor' ? t('signing.writtenHere') : mode === 'checklist' ? t('signing.method.checklist') : t('signing.uploadedFile')}</strong>
                 </div>
                 {pdf && mode === 'upload' ? (
                   <div className="sd-row">
-                    <span>עמודים</span>
+                    <span>{t('common.pages')}</span>
                     <strong className="sd-sb sd-num">{pdf.pages.length}</strong>
                   </div>
                 ) : null}
                 {mode === 'checklist' && checklist ? (
                   <>
                     <div className="sd-row">
-                      <span>סעיפים</span>
+                      <span>{t('checklist.itemsWord')}</span>
                       <strong className="sd-sb sd-num">{filledItems(checklist).length}</strong>
                     </div>
                     <div className="sd-row">
-                      <span>תשובות</span>
+                      <span>{t('signing.answers')}</span>
                       <strong className="sd-sb">{statusOptions(checklist).map((k) => STATUS_META[k].label).join(' / ')}</strong>
                     </div>
                     <div className="sd-row">
-                      <span>מפגש עם כל נהג</span>
+                      <span>{t('signing.meetingWithEachDriver')}</span>
                       <strong className="sd-sb">{repeatLabel(checklist.repeatMonths)}</strong>
                     </div>
                   </>
                 ) : null}
                 <div className="sd-row">
-                  <span>מי חותם</span>
-                  <strong className="sd-sb">{mode === 'checklist' ? 'הקצין, ואחריו הנהג' : 'הנהג'}</strong>
+                  <span>{t('signing.whoSigns')}</span>
+                  <strong className="sd-sb">{mode === 'checklist' ? t('signing.officerThenDriver') : t('common.theDriver')}</strong>
                 </div>
               </div>
 
-              {mode !== 'checklist' ? <div className="sd-group-label sd-sb" style={{ marginTop: 22 }}>שדות במסמך</div> : null}
+              {mode !== 'checklist' ? <div className="sd-group-label sd-sb" style={{ marginTop: 22 }}>{t('signing.fieldsInDocument')}</div> : null}
               <div className="sd-list" hidden={mode === 'checklist'}>
                 {fieldSummary(fieldKinds).map(([kind, count]) => (
                   <div className="sd-row" key={kind}>
@@ -491,27 +492,27 @@ export function CreateDocumentSheet({
                 <path d="M38 62 l15 15 l30 -32" />
               </svg>
             </div>
-            <h2 className="sd-xb">{mode === 'checklist' ? 'הטופס נשמר' : 'המסמך נשמר'}</h2>
+            <h2 className="sd-xb">{mode === 'checklist' ? t('signing.formSaved') : t('signing.documentSaved')}</h2>
             <p>
               {mode === 'checklist'
-                ? `״${created?.title ?? title.trim()}״ מוכן. כדי לקיים מפגש, היכנסו לתיק הנהג ושם לטופס הזה. אפשר גם מהטלפון.`
-                : `״${created?.title ?? title.trim()}״ מוכן. כדי לשלוח אותו לנהג, היכנסו לתיק הנהג ושם לחלק של הטפסים לחתימה.`}
+                ? t('signing.formReadyHint', { v1: created?.title ?? title.trim() })
+                : t('signing.documentReadyHint', { v1: created?.title ?? title.trim() })}
             </p>
             <div className="sd-success-path sd-sb">
               <Ionicons name="person" size={18} color="#0075B3" />
-              תיק הנהג
-              <Ionicons name="chevron-back" size={16} color="#8B98A4" />
-              טפסים לחתימה
-              <Ionicons name="chevron-back" size={16} color="#8B98A4" />
-              {mode === 'checklist' ? 'מפגש חדש' : 'שליחה'}
+              {t('driver.file')}
+              <Ionicons name={dirIcon('chevron-back')} size={16} color="#8B98A4" />
+              {t('signing.formsToSign')}
+              <Ionicons name={dirIcon('chevron-back')} size={16} color="#8B98A4" />
+              {mode === 'checklist' ? t('meeting.new') : t('common.send')}
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
               <button type="button" className="sd-btn sd-btn-plain sd-btn-lg" onClick={startOver}>
                 <Ionicons name="add" size={20} color="currentColor" />
-                יצירת מסמך נוסף
+                {t('signing.createAnother')}
               </button>
               <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={close} style={{ minWidth: 160 }}>
-                סיום
+                {t('common.done')}
               </button>
             </div>
           </div>
@@ -520,10 +521,10 @@ export function CreateDocumentSheet({
 
       {confirming ? (
         <ConfirmAlert
-          title="לצאת בלי לשמור?"
-          message="המסמך עדיין לא נשמר. אם תצאו עכשיו, מה שעשיתם כאן לא יישמר."
-          cancelLabel="להמשיך לעבוד"
-          confirmLabel="יציאה"
+          title={t('signing.leaveWithoutSaving')}
+          message={t('signing.leaveWarning')}
+          cancelLabel={t('signing.keepWorking')}
+          confirmLabel={t('common.exit')}
           onCancel={() => setConfirming(false)}
           onConfirm={() => {
             setConfirming(false);

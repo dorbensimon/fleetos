@@ -15,9 +15,11 @@ import {
   type NotificationGroup,
   type NotificationType,
   type NotificationTypeInfo,
+  withoutValidity,
 } from '../lib/notificationPreferencesApi';
 import type { NotificationPreferencesState } from '../lib/useNotificationPreferences';
 import { isVehicleFolderNotification } from '../lib/vehicleFolderAlerts';
+import { t, getLocale } from '../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -56,7 +58,7 @@ const ICON: Partial<Record<NotificationType, IconName>> = {
   vehicle_safety_check_due: 'shield-checkmark',
 };
 
-const shortLabel = (label: string) => label.replace(/^תוקף /, '');
+const shortLabel = withoutValidity;
 
 const animateNext = () => {
   if (Platform.OS === 'ios') LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
@@ -71,7 +73,7 @@ export function NotificationPrefsMobile({ insetTop, insetBottom, state, onBack }
   const reduceMotion = useReducedMotion();
   const [open, setOpen] = useState<NotificationType | null>(null);
   const groups = notificationGroups(state.visibleTypes, state.isDriver, state.isOwner);
-  const on = state.visibleTypes.filter((t) => state.prefs?.[t.type] ?? true).length;
+  const on = state.visibleTypes.filter((entry) => state.prefs?.[entry.type] ?? true).length;
   const canEditLeads = !state.isDriver && !!state.leads;
 
   const toggleOpen = (type: NotificationType) => {
@@ -85,8 +87,8 @@ export function NotificationPrefsMobile({ insetTop, insetBottom, state, onBack }
       insetBottom={insetBottom}
       hero={
         <HeroTitle
-          title="ניהול התראות"
-          subtitle={state.loading || state.error ? 'בחירת העדכונים שיישלחו אליך' : `${on} מתוך ${state.visibleTypes.length} התראות פעילות`}
+          title={t('owner.notif.manage')}
+          subtitle={state.loading || state.error ? t('owner.notif.manageHint') : t('prefs.activeOfTotal', { on, length: state.visibleTypes.length })}
           onBack={onBack}
         />
       }
@@ -108,7 +110,7 @@ export function NotificationPrefsMobile({ insetTop, insetBottom, state, onBack }
                   <Ionicons name="toggle" size={18} color={DK.accent} />
                 </View>
                 <DKText variant="caption" color={DK.inkSoft} style={styles.flex}>
-                  כל מתג נשמר מיד ומשפיע רק עליך.
+                  {t('prefs.eachSwitchYouOnly')}
                 </DKText>
               </View>
               {canEditLeads && (
@@ -117,7 +119,7 @@ export function NotificationPrefsMobile({ insetTop, insetBottom, state, onBack }
                     <Ionicons name="time" size={18} color={DK.accent} />
                   </View>
                   <DKText variant="caption" color={DK.inkSoft} style={styles.flex}>
-                    לחיצה על מועד ההתראה משנה מתי היא יוצאת — לכל החברה.
+                    {t('prefs.tapTimingCompany')}
                   </DKText>
                 </View>
               )}
@@ -141,7 +143,7 @@ export function NotificationPrefsMobile({ insetTop, insetBottom, state, onBack }
             <View style={styles.note}>
               <Ionicons name="information-circle" size={15} color={DK.muted} />
               <DKText variant="caption" color={DK.muted} style={styles.flex}>
-                כרגע לכל תיקיות הרכב יש מועד משותף אחד.
+                {t('prefs.sharedTimingNow')}
               </DKText>
             </View>
           )}
@@ -168,10 +170,10 @@ function Group({
   onToggleOpen: (type: NotificationType) => void;
   reduceMotion: boolean;
 }) {
-  const on = group.items.filter((t) => state.prefs?.[t.type] ?? true).length;
+  const on = group.items.filter((entry) => state.prefs?.[entry.type] ?? true).length;
   const allOn = on === group.items.length;
   const folderLeads = group.key === 'folders' && canEditLeads;
-  const folderValues = group.items.map((t) => state.leads?.values[t.type]);
+  const folderValues = group.items.map((entry) => state.leads?.values[entry.type]);
   const sharedFolderValue = folderValues.every((v) => v === folderValues[0]) ? folderValues[0] : undefined;
 
   const toggleAll = async () => {
@@ -203,9 +205,9 @@ function Group({
         </View>
         <View style={styles.flex} />
         {group.items.length > 2 && (
-          <Pressy onPress={() => void toggleAll()} disabled={state.savingType != null} style={styles.linkButton} accessibilityLabel={`${allOn ? 'כיבוי' : 'הפעלת'} כל ההתראות ב${group.title}`}>
+          <Pressy onPress={() => void toggleAll()} disabled={state.savingType != null} style={styles.linkButton} accessibilityLabel={t('prefs.toggleAllIn', { v1: allOn ? t('prefs.turnOff') : t('prefs.turnOn'), title: group.title })}>
             <DKText variant="caption" color={DK.accent}>
-              {allOn ? 'כיבוי הכול' : 'הפעלת הכול'}
+              {allOn ? t('notifications.turnAllOff') : t('notifications.turnAllOn')}
             </DKText>
           </Pressy>
         )}
@@ -219,7 +221,7 @@ function Group({
       {folderLeads && (
         <View style={styles.bulkWrap}>
           <DKText variant="micro" color={DK.muted} style={styles.bulkLabel}>
-            מועד אחד לכל התיקיות
+            {t('prefs.oneTimingAll')}
           </DKText>
           <View style={styles.bulk}>
           {LEAD_RULES.vehicle_license_expiry!.presets.map((days) => {
@@ -231,9 +233,9 @@ function Group({
                 disabled={state.savingLeadType != null}
                 haptic
                 style={[styles.chip, active && styles.chipActive]}
-                accessibilityLabel={`${days} ימים לפני, לכל התיקיות`}
+                accessibilityLabel={t('notifications.daysBeforeAllFolders', { days })}
               >
-                <DKText variant="label" color={active ? '#FFFFFF' : DK.inkSoft}>{`${days} ימים`}</DKText>
+                <DKText variant="label" color={active ? '#FFFFFF' : DK.inkSoft}>{t('common.daysValue', { days })}</DKText>
               </Pressy>
             );
           })}
@@ -306,7 +308,7 @@ function Row({
               onPress={onToggleOpen}
               style={[styles.leadPill, open && styles.leadPillOpen, !value && styles.dim]}
               pressScale={0.95}
-              accessibilityLabel={`מועד ההתראה של ${label}: ${leadPhrase(leadValue!, rule!)}. ${open ? 'סגירה' : 'שינוי'}`}
+              accessibilityLabel={t('prefs.timingLabel', { label, v1: leadPhrase(leadValue!, rule!), v2: open ? t('common.close') : t('common.change') })}
             >
               <Ionicons name="time" size={14} color={open ? '#FFFFFF' : DK.accent} />
               <DKText variant="micro" color={open ? '#FFFFFF' : DK.accent} style={styles.leadPillText}>
@@ -450,7 +452,7 @@ function LeadEditor({ label, rule, value, onCommit }: { label: string; rule: Lea
               accessibilityLabel={`${label}: ${leadPhrase(preset, rule)}`}
             >
               <DKText variant="label" color={active ? '#FFFFFF' : DK.inkSoft}>
-                {rule.unit === 'km' ? preset.toLocaleString('he-IL') : String(preset)}
+                {rule.unit === 'km' ? preset.toLocaleString(getLocale()) : String(preset)}
               </DKText>
             </Pressy>
           );
@@ -458,7 +460,7 @@ function LeadEditor({ label, rule, value, onCommit }: { label: string; rule: Lea
       </View>
       {rule.unit === 'days' && (
         <DKText variant="caption" color={DK.muted} style={styles.editorHint}>
-          ושוב ביום עצמו. חל על כל המנהלים והנהגים בחברה.
+          {t('prefs.andOnDayAllCompany')}
         </DKText>
       )}
     </View>

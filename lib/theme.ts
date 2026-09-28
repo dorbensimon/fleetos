@@ -13,6 +13,8 @@
  */
 
 import { FLEET_COLORS } from './colors';
+import { t } from './i18n';
+import { fontStack } from './fontStack';
 
 export const COLORS = {
   // text
@@ -115,11 +117,11 @@ export const ACCENT_SHADOW = {
 } as const;
 
 export const FONT = {
-  regular: 'Assistant_400Regular',
+  regular: fontStack('Assistant_400Regular'),
   /** Loaded in App.tsx; for form labels/inputs that sit between regular and bold. */
-  medium: 'Assistant_500Medium',
-  semibold: 'Assistant_600SemiBold',
-  bold: 'Assistant_700Bold',
+  medium: fontStack('Assistant_500Medium'),
+  semibold: fontStack('Assistant_600SemiBold'),
+  bold: fontStack('Assistant_700Bold'),
 } as const;
 
 export const RADIUS = {
@@ -194,11 +196,11 @@ export function expiryState(date: string | null | undefined): ExpiryState {
 }
 
 export const EXPIRY_STYLE: Record<ExpiryState, { bg: string; fg: string; label: string }> = {
-  ok: { bg: COLORS.okBg, fg: COLORS.okText, label: 'בתוקף' },
-  soon: { bg: COLORS.warnBg, fg: COLORS.warnText, label: 'קרוב' },
-  expired: { bg: COLORS.dangerBg, fg: COLORS.dangerText, label: 'פג' },
-  missing: { bg: COLORS.neutralBg, fg: COLORS.neutralText, label: 'חסר' },
-  optional: { bg: COLORS.accentSoft, fg: COLORS.accent, label: 'אופציונלי' },
+  ok: { bg: COLORS.okBg, fg: COLORS.okText, get label() { return t('status.valid'); } },
+  soon: { bg: COLORS.warnBg, fg: COLORS.warnText, get label() { return t('status.expiringSoon'); } },
+  expired: { bg: COLORS.dangerBg, fg: COLORS.dangerText, get label() { return t('status.expired'); } },
+  missing: { bg: COLORS.neutralBg, fg: COLORS.neutralText, get label() { return t('status.missing'); } },
+  optional: { bg: COLORS.accentSoft, fg: COLORS.accent, get label() { return t('status.optional'); } },
 };
 
 /** Days remaining until an expiry date (negative once it's passed). `null` when the date is empty/invalid. */
@@ -217,10 +219,10 @@ export function daysUntilExpiry(date: string | null | undefined): number | null 
 /** Time-of-day greeting word, computed from the device clock. */
 export function timeGreeting(): string {
   const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) return 'בוקר טוב';
-  if (hour >= 12 && hour < 18) return 'צהריים טובים';
-  if (hour >= 18 && hour < 22) return 'ערב טוב';
-  return 'לילה טוב';
+  if (hour >= 5 && hour < 12) return t('greeting.morning');
+  if (hour >= 12 && hour < 18) return t('greeting.afternoon');
+  if (hour >= 18 && hour < 22) return t('greeting.evening');
+  return t('greeting.night');
 }
 
 /** Formats an ISO date as DD/MM/YYYY, or an em dash when empty. */

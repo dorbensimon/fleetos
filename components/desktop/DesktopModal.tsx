@@ -3,6 +3,7 @@ import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-
 import { Ionicons } from '@expo/vector-icons';
 import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, webOnly } from './desktopTheme';
+import { t } from '../../lib/i18n';
 
 /**
  * Generic centered floating modal for desktop quick actions (dashboard
@@ -52,7 +53,7 @@ export function DesktopModal({
         >
           <View style={styles.header}>
             <DText weight="bold" style={styles.title}>{title}</DText>
-            <HoverPressable style={styles.closeButton} hoverStyle={styles.closeButtonHover} pressStyle={styles.closeButtonPress} onPress={onClose} accessibilityLabel="סגירה">
+            <HoverPressable style={styles.closeButton} hoverStyle={styles.closeButtonHover} pressStyle={styles.closeButtonPress} onPress={onClose} accessibilityLabel={t('common.close')}>
               <Ionicons name="close" size={14} color={DESKTOP_COLORS.ink} />
             </HoverPressable>
           </View>
