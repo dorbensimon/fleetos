@@ -2,6 +2,7 @@ import { isValidIsraeliPhone } from './phone';
 import { isValidEmail, isValidTemporaryPassword } from './validation';
 import { emptyAccountForm, validateAccountForm, type AccountForm } from './companyAccount';
 import { t } from './i18n';
+import type { CompanyType } from './companyType';
 
 /**
  * The owner's "חברה חדשה" form (components/owner/AddCompanySheet): its
@@ -11,7 +12,7 @@ import { t } from './i18n';
 export type OwnerCompanyForm = {
   name: string;
   logoUrl: string;
-  companyType: '' | 'בע״מ' | 'עוסק מורשה';
+  companyType: '' | CompanyType;
   businessId: string;
   adminFirstName: string;
   adminLastName: string;

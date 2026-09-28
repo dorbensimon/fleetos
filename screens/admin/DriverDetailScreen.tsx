@@ -32,6 +32,8 @@ import { departmentNameById, departmentOptions, isStaleDepartmentError } from '.
 import { dateOnlyIsoFromLocalDate } from '../../lib/driverFormValidation';
 import { DRIVER_DOCUMENT_GROUPS, LICENSE_DOCS_CATEGORY } from '../../lib/driverDocumentFolders';
 import { t } from '../../lib/i18n';
+import { hasBothLicenseSides } from '../../lib/licenseSides';
+import { errorMessage } from '../../lib/requestError';
 
 const APP_STARTED_AT_MS = Date.now();
 
@@ -91,7 +93,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       return null;
     } catch (err: any) {
       if (isStaleDepartmentError(err?.message)) return t('driver.departmentDeleted');
-      return err?.message || t('common.saveFailedRetryShort');
+      return errorMessage(err, t('common.saveFailedRetryShort'));
     }
   };
   const saveDriverEmail = async (email: string): Promise<string | null> => {
@@ -115,7 +117,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       }
       showToast(approve ? t('driver.licenseUpdateApproved') : t('driver.licenseUpdateRejected'));
     } catch (err: any) {
-      showToast(err?.message || t('common.actionFailedRetry'));
+      showToast(errorMessage(err, t('common.actionFailedRetry')));
     } finally {
       setReviewingLicense(false);
     }
@@ -224,11 +226,9 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
         console.warn('Unable to load pending license update request', pendingLicenseError);
         setPendingLicenseRequest(null);
       }
-      setLicensePhotosComplete(
-        licenseDocs.some((doc) => doc.title === 'צד קדמי') && licenseDocs.some((doc) => doc.title === 'צד אחורי')
-      );
+      setLicensePhotosComplete(hasBothLicenseSides(licenseDocs));
     } catch (err: any) {
-      if (requestId === loadRequest.current) setLoadError(err?.message ?? t('driver.loadFailed'));
+      if (requestId === loadRequest.current) setLoadError(errorMessage(err, t('driver.loadFailed')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -285,7 +285,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       const driverSigningRequests = signatureRequests.filter((r) => r.driver_id === driverId);
       await exportDriverSnapshotReport(company, driver, departmentName, driverSigningRequests, documents);
     } catch (err: any) {
-      showToast(err?.message || t('reports.exportFailedRetry'));
+      showToast(errorMessage(err, t('reports.exportFailedRetry')));
     } finally {
       setExportingReport(false);
     }

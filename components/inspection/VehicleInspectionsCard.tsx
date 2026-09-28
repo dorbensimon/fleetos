@@ -11,6 +11,7 @@ import { INSPECTION_STATE_META, formatIsoDay, inspectionRepeatLabel, todayIso } 
 import type { RootStackParamList } from '../../navigation/types';
 import { useVehicleInspections } from './useVehicleInspections';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 const HISTORY_SHOWN = 5;
 
@@ -46,7 +47,7 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived }: { com
     try {
       await move(value);
     } catch (e) {
-      setMoveError((e as Error)?.message || t('common.saveDateFailedRetry'));
+      setMoveError(errorMessage(e, t('common.saveDateFailedRetry')));
     } finally {
       setSaving(false);
     }

@@ -27,6 +27,7 @@ import { DesktopModal } from './DesktopModal';
 import { DepartmentsDesktopView } from './DepartmentsDesktopView';
 import { ReportsDesktopView } from './ReportsDesktopView';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * Dashboard header actions ("דוחות", "מחלקות") shown next to the greeting on
@@ -73,7 +74,7 @@ export function DepartmentsQuickAction() {
       setNewName('');
       await load();
     } catch (err: any) {
-      showAlert(t('departments.addFailed'), String(err?.message ?? t('common.tryAgain')));
+      showAlert(t('departments.addFailed'), String(errorMessage(err, t('common.tryAgain'))));
     } finally {
       setAdding(false);
     }
@@ -86,7 +87,7 @@ export function DepartmentsQuickAction() {
       setEditingId(null);
       await load();
     } catch (err: any) {
-      showAlert(t('departments.renameFailed'), String(err?.message ?? t('common.tryAgain')));
+      showAlert(t('departments.renameFailed'), String(errorMessage(err, t('common.tryAgain'))));
     }
   };
 
@@ -98,8 +99,8 @@ export function DepartmentsQuickAction() {
     showAlert(t('departments.deleteTitle'), message, [
       { text: t('common.cancel'), style: 'cancel' },
       {
-        text: t('common.delete'), style: 'destructive', onPress: async () => {
-          try { await deleteDepartment(companyId, dept.id); await load(); } catch (err: any) { showAlert(t('common.deleteFailed'), String(err?.message ?? t('common.tryAgain'))); }
+        text: t('common.deleteAction'), style: 'destructive', onPress: async () => {
+          try { await deleteDepartment(companyId, dept.id); await load(); } catch (err: any) { showAlert(t('common.deleteFailed'), String(errorMessage(err, t('common.tryAgain')))); }
         },
       },
     ]);
@@ -159,7 +160,7 @@ export function ReportsQuickAction() {
       ]);
       setDrivers(d); setVehicles(v); setCompliance(c); setAssignments(a); setLoaded(true);
     } catch (err: any) {
-      showAlert(t('reports.loadFailed'), String(err?.message ?? t('common.tryAgain')));
+      showAlert(t('reports.loadFailed'), String(errorMessage(err, t('common.tryAgain'))));
     } finally {
       setLoading(false);
     }
@@ -174,7 +175,7 @@ export function ReportsQuickAction() {
     if (!company) return;
     setExporting(category);
     try { await exportDriversReport(company, drivers, category); setKind(null); }
-    catch (err: any) { showAlert(t('reports.exportFailed'), String(err?.message ?? t('common.tryAgain'))); }
+    catch (err: any) { showAlert(t('reports.exportFailed'), String(errorMessage(err, t('common.tryAgain')))); }
     finally { setExporting(null); }
   };
 
@@ -182,7 +183,7 @@ export function ReportsQuickAction() {
     if (!company) return;
     setExporting(category);
     try { await exportVehiclesReport(company, vehicles, compliance, assignments, category); setKind(null); }
-    catch (err: any) { showAlert(t('reports.exportFailed'), String(err?.message ?? t('common.tryAgain'))); }
+    catch (err: any) { showAlert(t('reports.exportFailed'), String(errorMessage(err, t('common.tryAgain')))); }
     finally { setExporting(null); }
   };
 
@@ -190,7 +191,7 @@ export function ReportsQuickAction() {
     if (!company) return;
     setExporting(category);
     try { await exportMeetingsReport(company, drivers, category); setKind(null); }
-    catch (err: any) { showAlert(t('reports.exportFailed'), String(err?.message ?? t('common.tryAgain'))); }
+    catch (err: any) { showAlert(t('reports.exportFailed'), String(errorMessage(err, t('common.tryAgain')))); }
     finally { setExporting(null); }
   };
 
@@ -198,7 +199,7 @@ export function ReportsQuickAction() {
     if (!company) return;
     setExporting(category);
     try { await exportInspectionsReport(company, category); setKind(null); }
-    catch (err: any) { showAlert(t('reports.exportFailed'), String(err?.message ?? t('common.tryAgain'))); }
+    catch (err: any) { showAlert(t('reports.exportFailed'), String(errorMessage(err, t('common.tryAgain')))); }
     finally { setExporting(null); }
   };
 

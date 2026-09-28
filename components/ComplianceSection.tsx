@@ -38,6 +38,7 @@ import { DESKTOP_COLORS } from './desktop/desktopTheme';
 import { DK, DK_FONT } from './driverKit/theme';
 import { FocusTarget } from './ui/FocusTarget';
 import { t, dirIcon } from '../lib/i18n';
+import { errorMessage } from '../lib/requestError';
 
 /** compliance_items only tracks driver/vehicle expiries — not company-level documents. */
 type ComplianceOwnerType = 'driver' | 'vehicle';
@@ -296,7 +297,7 @@ export function ComplianceSection({
         if (requiresExpiryOnUpload) setDrafts((prev) => { const next = { ...prev }; delete next[def.itemType]; return next; });
         return true;
       } catch (err: any) {
-        showAlert(t('common.uploadFailedShort'), err?.message ?? t('common.tryAgain'));
+        showAlert(t('common.uploadFailedShort'), errorMessage(err, t('common.tryAgain')));
         return false;
       } finally {
         setBusyItem(null);
@@ -671,7 +672,7 @@ function GeneralDocuments({
         });
         await onChanged();
       } catch (err: any) {
-        showAlert(t('common.uploadFailedShort'), err?.message ?? t('common.tryAgain'));
+        showAlert(t('common.uploadFailedShort'), errorMessage(err, t('common.tryAgain')));
       } finally {
         setBusy(false);
       }

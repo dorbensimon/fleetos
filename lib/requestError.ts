@@ -31,3 +31,20 @@ export function requestErrorDetails(error: unknown, fallback: string): RequestEr
   }
   return { message: fallback, hint: t('error.tryAgainShortly'), icon: 'alert-circle' };
 }
+
+// Messages written for developers, not people: network, database and parse errors.
+const TECHNICAL = /failed to fetch|network ?request failed|networkerror|load failed|non-2xx|pgrst|violates|duplicate key|syntax error|relation "|column "|unexpected token|json|typeerror|is not a function|undefined|null value/i;
+
+/**
+ * The message to show for a failed action: the error's own when it was
+ * written for people (the server's and the app's own), otherwise a plain
+ * explanation, never a raw technical error.
+ */
+export function errorMessage(error: unknown, fallback: string): string {
+  const own = (error as { message?: unknown } | null)?.message;
+  const message = typeof own === 'string' ? own.trim() : '';
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return t('error.offlineHint');
+  const details = requestErrorDetails(error, fallback);
+  if (!message || TECHNICAL.test(message) || details.message !== fallback) return details.message;
+  return message;
+}

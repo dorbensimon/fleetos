@@ -44,7 +44,7 @@ async function listSignedMeetings(companyId: string): Promise<ReportMeeting[]> {
     .eq('status', 'signed')
     .order('meeting_date', { ascending: false });
   if (error) throw error;
-  return ((data ?? []) as unknown as Array<ReportMeeting & { request: { status: string } | { status: string }[] | null }>).map((row) => ({
+  return ((data ?? []) as unknown as (ReportMeeting & { request: { status: string } | { status: string }[] | null })[]).map((row) => ({
     ...row,
     request: Array.isArray(row.request) ? row.request[0] ?? null : row.request,
   }));

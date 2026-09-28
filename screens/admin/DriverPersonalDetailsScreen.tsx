@@ -20,6 +20,7 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DesktopFieldRow, DesktopInput, DText, HoverPressable } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * Read-only view of exactly the fields DriverFormScreen collects -
@@ -79,7 +80,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
         try {
           await load();
         } catch (err: any) {
-          if (active) setLoadError(err?.message ?? t('driver.detailsLoadFailed'));
+          if (active) setLoadError(errorMessage(err, t('driver.detailsLoadFailed')));
         } finally {
           if (active) setLoading(false);
         }
@@ -125,7 +126,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
       showToast(t('driver.vehicleAssigned'));
     } catch (err: any) {
       if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-      showAlert(t('driver.assignFailed'), String(err?.message ?? t('common.tryAgain')));
+      showAlert(t('driver.assignFailed'), String(errorMessage(err, t('common.tryAgain'))));
     } finally {
       setBusyId(null);
     }
@@ -140,7 +141,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
         showToast(t('vehicle.assignmentRemoved'));
       } catch (err: any) {
         if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-        showAlert(t('vehicle.removeAssignmentFailed'), String(err?.message ?? t('common.tryAgain')));
+        showAlert(t('vehicle.removeAssignmentFailed'), String(errorMessage(err, t('common.tryAgain'))));
       } finally {
         setBusyId(null);
       }
@@ -160,7 +161,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
               setLoading(true);
               setLoadError(null);
               load()
-                .catch((err: any) => setLoadError(err?.message ?? t('driver.detailsLoadFailed')))
+                .catch((err: any) => setLoadError(errorMessage(err, t('driver.detailsLoadFailed'))))
                 .finally(() => setLoading(false));
             }}
           />
@@ -209,7 +210,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
     setLoading(true);
     setLoadError(null);
     load()
-      .catch((err: any) => setLoadError(err?.message ?? t('driver.detailsLoadFailed')))
+      .catch((err: any) => setLoadError(errorMessage(err, t('driver.detailsLoadFailed'))))
       .finally(() => setLoading(false));
   };
   return (

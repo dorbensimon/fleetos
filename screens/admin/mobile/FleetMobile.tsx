@@ -1,5 +1,5 @@
-import React from 'react';
-import { FlatList, RefreshControl, StatusBar, StyleSheet, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { FlatList, RefreshControl, StatusBar, StyleSheet, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   DK,
@@ -9,6 +9,7 @@ import {
   ErrorPanel,
   Fab,
   FilterPills,
+  ListEndAction,
   GlassSearch,
   HeroButton,
   HeroStat,
@@ -93,13 +94,83 @@ type Entry =
   | { kind: 'error' }
   | { kind: 'empty' }
   | { kind: 'driver'; item: DriverRow; index: number }
-  | { kind: 'vehicle'; item: Vehicle; index: number };
+  | { kind: 'vehicle'; item: Vehicle; index: number }
+  | { kind: 'add' };
+
+/** The add button starts floating once this many rows have scrolled past. */
+const FLOAT_AFTER_ROWS = 4;
+
+/** Where the list is and how its parts measure, in content pixels. */
+export type ListMetrics = {
+  scrollY: number;
+  viewport: number;
+  content: number;
+  /** Height of everything above the pinned filter bar. */
+  header: number;
+  /** Height of each row, by its place in the list. */
+  rows: number[];
+  rowCount: number;
+  /** Height of the add button at the end of the list; 0 while not shown. */
+  end: number;
+  /** Room under the list end: safe area and tab bar. */
+  bottomPadding: number;
+};
+
+/**
+ * The add button sits at the end of the list. Once the first rows have
+ * slid under the pinned filter bar it also floats at the side, until the
+ * button at the end of the list comes into view.
+ */
+export function addFloats(m: ListMetrics): boolean {
+  const firstRows = m.rows.slice(0, FLOAT_AFTER_ROWS);
+  const measured = firstRows.length === FLOAT_AFTER_ROWS && firstRows.every((height) => height > 0);
+  const pastFirstRows = m.rowCount > FLOAT_AFTER_ROWS && measured
+    && m.scrollY >= m.header + firstRows.reduce((sum, height) => sum + height, 0);
+  const endInView = m.end > 0 && m.scrollY + m.viewport >= m.content - m.bottomPadding - m.end / 2;
+  return pastFirstRows && !endInView;
+}
+
+function useFloatingAdd(rowCount: number, bottomPadding: number) {
+  const [floating, setFloating] = useState(false);
+  const metrics = useRef<ListMetrics>({ scrollY: 0, viewport: 0, content: 0, header: 0, rows: [], rowCount: 0, end: 0, bottomPadding: 0 }).current;
+  metrics.rowCount = rowCount;
+  metrics.bottomPadding = bottomPadding;
+  const update = () => setFloating(addFloats(metrics));
+  return {
+    floating,
+    onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+      metrics.scrollY = contentOffset.y;
+      metrics.viewport = layoutMeasurement.height;
+      metrics.content = contentSize.height;
+      update();
+    },
+    onLayout: (event: LayoutChangeEvent) => {
+      metrics.viewport = event.nativeEvent.layout.height;
+      update();
+    },
+    onContentSizeChange: (_width: number, height: number) => {
+      metrics.content = height;
+      update();
+    },
+    measureHeader: (event: LayoutChangeEvent) => {
+      metrics.header = event.nativeEvent.layout.height;
+    },
+    measureRow: (index: number) => (event: LayoutChangeEvent) => {
+      metrics.rows[index] = event.nativeEvent.layout.height;
+    },
+    measureEnd: (event: LayoutChangeEvent) => {
+      metrics.end = event.nativeEvent.layout.height;
+      update();
+    },
+  };
+}
 
 /**
  * The fleet manager's home. The night carries the company, what needs
  * attention, the drivers/vehicles switch and three live counts that double
  * as filters; below, the list itself with its filters pinned while it
- * scrolls, and one floating action to add.
+ * scrolls, and the action to add at its end, floating once the first rows have scrolled past.
  */
 export function FleetMobile(p: Props) {
   const drivers = p.mode === 'drivers';
@@ -111,12 +182,16 @@ export function FleetMobile(p: Props) {
     : p.vehicles.map((item, index) => ({ kind: 'vehicle', item, index }));
   const data: Entry[] = [
     { kind: 'bar' },
-    ...(loading ? [{ kind: 'loading' as const }] : error && !hasAny ? [{ kind: 'error' as const }] : items.length ? items : [{ kind: 'empty' as const }]),
+    ...(loading ? [{ kind: 'loading' as const }] : error && !hasAny ? [{ kind: 'error' as const }] : items.length ? [...items, { kind: 'add' as const }] : [{ kind: 'empty' as const }]),
   ];
+  const addLabel = drivers ? t('driver.new') : t('vehicle.new');
+  const onAdd = drivers ? p.onAddDriver : p.onAddVehicle;
   const search = drivers ? p.driverSearch : p.vehicleSearch;
   const filtered = drivers ? p.driverFilter !== 'all' : p.vehicleFilter !== 'all';
   const tabBarScroll = useTabBarScroll();
   const tabBarSpace = useTabBarSpace();
+  const bottomPadding = p.insetBottom + 24 + tabBarSpace;
+  const floatingAdd = useFloatingAdd(items.length, bottomPadding);
 
   const clear = () => {
     if (drivers) {
@@ -212,7 +287,7 @@ export function FleetMobile(p: Props) {
         );
       case 'driver':
         return (
-          <View style={styles.cell}>
+          <View style={styles.cell} onLayout={floatingAdd.measureRow(entry.index)}>
             <Reveal index={Math.min(entry.index, 8)}>
               <DriverFleetCard
                 item={entry.item}
@@ -224,9 +299,15 @@ export function FleetMobile(p: Props) {
             </Reveal>
           </View>
         );
+      case 'add':
+        return (
+          <View style={styles.cell} onLayout={floatingAdd.measureEnd}>
+            <ListEndAction label={addLabel} onPress={onAdd} />
+          </View>
+        );
       case 'vehicle':
         return (
-          <View style={styles.cell}>
+          <View style={styles.cell} onLayout={floatingAdd.measureRow(entry.index)}>
             <Reveal index={Math.min(entry.index, 8)}>
               <VehicleFleetCard
                 item={entry.item}
@@ -256,11 +337,21 @@ export function FleetMobile(p: Props) {
           data={data}
           keyExtractor={(entry) => (entry.kind === 'driver' || entry.kind === 'vehicle' ? entry.item.id : entry.kind)}
           renderItem={renderItem}
-          {...tabBarScroll}
-          ListHeaderComponent={<Hero {...p} />}
+          onScroll={(event) => {
+            tabBarScroll.onScroll?.(event);
+            floatingAdd.onScroll(event);
+          }}
+          scrollEventThrottle={16}
+          onLayout={floatingAdd.onLayout}
+          onContentSizeChange={floatingAdd.onContentSizeChange}
+          ListHeaderComponent={
+            <View onLayout={floatingAdd.measureHeader}>
+              <Hero {...p} />
+            </View>
+          }
           stickyHeaderIndices={[1]}
           style={styles.flex}
-          contentContainerStyle={[styles.content, { paddingBottom: p.insetBottom + 104 + tabBarSpace }]}
+          contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
@@ -269,7 +360,7 @@ export function FleetMobile(p: Props) {
           refreshControl={<RefreshControl refreshing={p.refreshing} onRefresh={p.onRefresh} tintColor="#FFFFFF" colors={[DK.accent]} />}
         />
       </View>
-      <Fab label={drivers ? t('driver.new') : t('vehicle.new')} onPress={drivers ? p.onAddDriver : p.onAddVehicle} bottom={p.insetBottom + 18} />
+      <Fab label={addLabel} onPress={onAdd} bottom={p.insetBottom + 18} visible={floatingAdd.floating} />
     </View>
   );
 }

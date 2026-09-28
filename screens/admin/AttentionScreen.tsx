@@ -12,6 +12,7 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { AttentionDesktopView } from '../../components/desktop/AttentionDesktopView';
 import { AttentionMobile } from './mobile/AttentionMobile';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Attention'>;
 
@@ -34,7 +35,7 @@ export default function AttentionScreen({ navigation }: Props) {
     try {
       setDetails(await getAttentionDetails(companyId));
     } catch (e: any) {
-      setError(e?.message ?? t('attention.loadFailed'));
+      setError(errorMessage(e, t('attention.loadFailed')));
     } finally {
       setLoading(false);
     }

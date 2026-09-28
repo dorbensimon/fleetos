@@ -668,12 +668,32 @@ export function FilterPills<T extends string>({
   );
 }
 
-/** The one floating action on a list screen: a blue disc that sits above the home indicator. */
-export function Fab({ icon = 'add', label, onPress, bottom }: { icon?: IconName; label: string; onPress: () => void; bottom: number }) {
+/**
+ * The one floating action on a list screen: a blue disc that sits above the
+ * home indicator. `visible` fades it in and out, for a screen that shows it
+ * only part of the time.
+ */
+export function Fab({ icon = 'add', label, onPress, bottom, visible = true }: { icon?: IconName; label: string; onPress: () => void; bottom: number; visible?: boolean }) {
   // Rides above the tab bar while it shows, and settles when it leaves.
   const lift = useTabBarLift();
+  const reduceMotion = useReducedMotion();
+  const shown = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.timing(shown, {
+      toValue: visible ? 1 : 0,
+      duration: reduceMotion ? 0 : 180,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  }, [visible, reduceMotion, shown]);
+  const scale = shown.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] });
   return (
-    <Animated.View style={[styles.fabHost, { bottom, transform: [{ translateY: lift }] }]} pointerEvents="box-none">
+    <Animated.View
+      style={[styles.fabHost, { bottom, opacity: shown, transform: [{ translateY: lift }, { scale }] }]}
+      pointerEvents={visible ? 'box-none' : 'none'}
+      accessibilityElementsHidden={!visible}
+      importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
+    >
       <Pressy onPress={onPress} haptic accessibilityLabel={label} style={styles.fab} pressScale={0.92}>
         <Ionicons name={icon} size={24} color="#FFFFFF" />
         <DKText variant="label" color="#FFFFFF">
@@ -681,6 +701,20 @@ export function Fab({ icon = 'add', label, onPress, bottom }: { icon?: IconName;
         </DKText>
       </Pressy>
     </Animated.View>
+  );
+}
+
+/** The same action as the floating one, sitting in place at the end of a list. */
+export function ListEndAction({ icon = 'add', label, onPress }: { icon?: IconName; label: string; onPress: () => void }) {
+  return (
+    <View style={styles.listEndAction}>
+      <Pressy onPress={onPress} haptic accessibilityLabel={label} style={styles.fab} pressScale={0.94}>
+        <Ionicons name={icon} size={24} color="#FFFFFF" />
+        <DKText variant="label" color="#FFFFFF">
+          {label}
+        </DKText>
+      </Pressy>
+    </View>
   );
 }
 
@@ -918,6 +952,7 @@ const styles = StyleSheet.create({
   filterCountActive: { backgroundColor: 'rgba(255,255,255,0.18)' },
 
   fabHost: { position: 'absolute', start: 20, zIndex: 20 },
+  listEndAction: { alignItems: 'center', paddingTop: 8, paddingBottom: 4 },
   fab: {
     height: 56,
     paddingHorizontal: 20,

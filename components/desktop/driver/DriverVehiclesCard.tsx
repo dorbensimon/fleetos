@@ -19,6 +19,7 @@ import { DesktopSelect, DLtrText, DText, HoverPressable } from '../primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
 import { pageStyles } from '../record/RecordPage';
 import { t, dirIcon, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../../lib/i18n';
+import { errorMessage } from '../../../lib/requestError';
 
 type Row = { assignmentId: string | null; vehicleId: string; plate: string; name: string; isPrimary: boolean };
 
@@ -107,7 +108,7 @@ export function DriverVehiclesCard({
       await afterChange(t('driver.vehicleAssigned'));
     } catch (err: any) {
       if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-      showAlert(t('driver.assignFailed'), String(err?.message ?? t('common.tryAgain')));
+      showAlert(t('driver.assignFailed'), String(errorMessage(err, t('common.tryAgain'))));
     } finally {
       setBusy(null);
     }
@@ -128,7 +129,7 @@ export function DriverVehiclesCard({
             await afterChange(t('driver.vehicleRemoved'));
           } catch (err: any) {
             if (isPendingAssignmentSyncError(err)) { showToast(err.message); return; }
-            showAlert(t('driver.removeVehicleFailed'), String(err?.message ?? t('common.tryAgain')));
+            showAlert(t('driver.removeVehicleFailed'), String(errorMessage(err, t('common.tryAgain'))));
           } finally {
             setBusy(null);
           }

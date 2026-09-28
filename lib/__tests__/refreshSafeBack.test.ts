@@ -30,6 +30,13 @@ describe('refreshBackFallback', () => {
     expect(refreshBackFallback({ name: 'DriverDocuments' }, 'DriverHome')).toEqual({ name: 'DriverHome' });
   });
 
+  it('returns from a meeting to its driver, and from signing to the documents to sign', () => {
+    expect(refreshBackFallback({ name: 'ChecklistMeeting', params: { driverId: 'd' } }, 'AdminHome'))
+      .toEqual({ name: 'DriverDetail', params: { driverId: 'd' } });
+    expect(refreshBackFallback({ name: 'DriverSignDocument', params: { requestId: 'r' } }, 'DriverHome'))
+      .toEqual({ name: 'DriverSigningDocuments' });
+  });
+
   it('does not invent a back route for a home screen', () => {
     expect(refreshBackFallback({ name: 'AdminHome' }, 'AdminHome')).toBeNull();
   });

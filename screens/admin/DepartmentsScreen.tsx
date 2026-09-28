@@ -15,6 +15,7 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DepartmentsDesktopView } from '../../components/desktop/DepartmentsDesktopView';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * Manages the company's internal org units ("תפעול", "הסעות" ...) that
@@ -54,7 +55,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
       const rows = await listDepartments(companyId);
       if (requestId === loadRequest.current) setDepartments(rows);
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message ?? t('departments.loadFailed'));
+      if (requestId === loadRequest.current) setError(errorMessage(err, t('departments.loadFailed')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -78,7 +79,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
       await load();
       showToast(t('common.savedSuccessfully'));
     } catch (err: any) {
-      showAlert(t('departments.addFailed'), String(err?.message ?? t('common.tryAgain')));
+      showAlert(t('departments.addFailed'), String(errorMessage(err, t('common.tryAgain'))));
     } finally {
       setAdding(false);
     }
@@ -95,7 +96,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
       await load();
       showToast(t('common.savedSuccessfully'));
     } catch (err: any) {
-      showAlert(t('departments.renameFailed'), String(err?.message ?? t('common.tryAgain')));
+      showAlert(t('departments.renameFailed'), String(errorMessage(err, t('common.tryAgain'))));
     }
   };
 
@@ -115,14 +116,14 @@ export default function DepartmentsScreen({ navigation }: Props) {
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
-          text: t('common.delete'),
+          text: t('common.deleteAction'),
           style: 'destructive',
           onPress: async () => {
             try {
               await deleteDepartment(companyId, dept.id);
               await load();
             } catch (err: any) {
-              showAlert(t('common.deleteFailed'), String(err?.message ?? t('common.tryAgain')));
+              showAlert(t('common.deleteFailed'), String(errorMessage(err, t('common.tryAgain'))));
             }
           },
         },

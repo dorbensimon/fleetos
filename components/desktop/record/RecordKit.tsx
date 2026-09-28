@@ -6,13 +6,14 @@ import type { DocumentRow } from '../../../lib/adminApi';
 import type { OwnerType } from '../../../lib/adminApi/types';
 import { DocumentFolderModal } from '../../documents/DocumentFolderModal';
 import { FolderDocumentsModal, FolderUploadBar, type FolderLayout } from './FolderDocuments';
-import { getDocumentUrl, listDocuments, uploadDocument, type PickedFile } from '../../../lib/documents';
+import { getDocumentUrl, listDocuments, storedFolderTitle, uploadDocument, type PickedFile } from '../../../lib/documents';
 import { chooseDocumentSource, pickDocumentSource, type DocumentSource } from '../../../lib/documentActions';
 import { showAlert } from '../../../lib/platformAlert';
 import { ExpiryState } from '../../../lib/theme';
 import { DesktopDateField, DesktopInput, DesktopSelect, DesktopSelectOption, DLtrText, DText, HoverPressable, popoverEnterStyle } from '../primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from '../desktopTheme';
 import { t, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../../lib/i18n';
+import { errorMessage } from '../../../lib/requestError';
 
 /**
  * Shared building blocks of the desktop record pages ("תיק רכב" and
@@ -568,7 +569,7 @@ export function DocumentFolderUploadModal({
         ownerType,
         ownerId,
         category: folder.category,
-        title: folder.title,
+        title: storedFolderTitle(folder.category, folder.title),
         file,
         expiryDate: folder.requiresExpiry ? expiryDate : null,
       });
@@ -576,7 +577,7 @@ export function DocumentFolderUploadModal({
       await onChanged();
       return true;
     } catch (err: any) {
-      showAlert(t('common.uploadFailedShort'), err?.message ?? t('common.tryAgain'));
+      showAlert(t('common.uploadFailedShort'), errorMessage(err, t('common.tryAgain')));
       return false;
     } finally {
       setUploading(false);

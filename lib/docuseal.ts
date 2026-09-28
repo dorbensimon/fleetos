@@ -66,7 +66,7 @@ export type SigningFile = { uri: string; name: string; mimeType: string; base64?
 export type DocuSealPreviewField = {
   name: string;
   type: 'signature' | 'stamp';
-  areas: Array<{ page: number; x: number; y: number; w: number; h: number }>;
+  areas: { page: number; x: number; y: number; w: number; h: number }[];
 };
 export type DocuSealSession =
   | { mode: 'sign'; src: string; host: string }

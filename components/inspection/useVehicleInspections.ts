@@ -11,6 +11,7 @@ import {
   type InspectionState,
 } from '../../lib/inspections';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 export type VehicleInspectionEntry = { row: InspectionListRow; state: InspectionState };
 
@@ -40,7 +41,7 @@ export function useVehicleInspections(companyId: string | null | undefined, vehi
       setRepeatMonths(settings.repeatMonths);
       setError('');
     } catch (e) {
-      if (current === generation.current) setError((e as Error)?.message || t('inspection.loadFailed'));
+      if (current === generation.current) setError(errorMessage(e, t('inspection.loadFailed')));
     }
   }, [companyId, vehicleId]);
 

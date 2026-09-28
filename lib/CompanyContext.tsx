@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, Company, Profile } from './supabase';
 import { t } from './i18n';
+import { errorMessage } from './requestError';
 
 /**
  * Supplies the admin screens with the company they are operating on.
@@ -106,7 +107,7 @@ export function CompanyProvider({
       setLoading(false);
     } catch (err: any) {
       if (!isCurrent()) return;
-      setError(err?.message ?? t('company.loadFailed'));
+      setError(errorMessage(err, t('company.loadFailed')));
       setLoading(false);
     }
   }, [companyIdOverride]);

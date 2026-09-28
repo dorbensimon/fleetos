@@ -21,6 +21,7 @@ import {
   type OwnerNotification,
 } from '../../lib/ownerNotifications';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * Logs every driver self-edit (name/phone/ID/license/department) so
@@ -69,7 +70,7 @@ function CompanyNotificationsScreen({ navigation, route }: Props) {
       setUnreadIds(new Set(rows.filter((r) => !r.read_at).map((r) => r.id)));
     } catch (err: any) {
       if (requestId === loadRequest.current) {
-        setError(err?.message ?? t('notifications.loadFailedShort'));
+        setError(errorMessage(err, t('notifications.loadFailedShort')));
       }
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
@@ -194,7 +195,7 @@ function OwnerNotificationsScreen({ navigation }: Props) {
       setItems(rows);
       setUnreadIds(new Set(rows.filter((r) => !r.read_at).map((r) => r.id)));
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message ?? t('notifications.loadFailedShort'));
+      if (requestId === loadRequest.current) setError(errorMessage(err, t('notifications.loadFailedShort')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }

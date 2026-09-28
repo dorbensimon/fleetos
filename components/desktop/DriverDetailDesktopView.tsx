@@ -23,7 +23,8 @@ import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTh
 import { DocumentFolderUploadModal, EASE_OUT, OverflowMenu, useOwnerDocuments, type RecordDocumentFolder } from './record/RecordKit';
 import { expiryStatusText, FolderListRow } from './record/FolderDocuments';
 import { DetailRow, Fact, FieldEditDialog, GroupLabel, pageStyles, type FieldEditor } from './record/RecordPage';
-import { DriverLicenseModal, LICENSE_SIDE_STORED_TITLE } from './driver/DriverLicenseModal';
+import { DriverLicenseModal } from './driver/DriverLicenseModal';
+import { LICENSE_SIDE_STORED_TITLE } from '../../lib/licenseSides';
 import { DRIVER_DOCUMENT_GROUPS } from '../../lib/driverDocumentFolders';
 import { DriverVehiclesCard } from './driver/DriverVehiclesCard';
 import { DriverSigningList, useDriverSigningFolders, type SigningSessionTarget } from './driver/DriverSigningSection';

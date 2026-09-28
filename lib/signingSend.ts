@@ -2,6 +2,7 @@ import { assignSigningTemplate, deleteSigningRecord, listSignatureRequests } fro
 import { listDrivers } from './adminApi/drivers';
 import { formatDate } from './theme';
 import { t } from './i18n';
+import { errorMessage } from './requestError';
 
 /**
  * Sending a signing document to drivers and deleting a company's own
@@ -83,7 +84,7 @@ export async function sendToRecipients(
       if (response.success && response.created === 1) result.sent += 1;
       else result.failed.push({ name: driver.name, reason: response.message || t('signing.sendNotApproved') });
     } catch (error) {
-      result.failed.push({ name: driver.name, reason: (error as Error)?.message || t('signing.sendFailed') });
+      result.failed.push({ name: driver.name, reason: errorMessage(error, t('signing.sendFailed')) });
     }
     onProgress?.(i + 1, targets.length);
   }

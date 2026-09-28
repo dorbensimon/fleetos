@@ -22,6 +22,7 @@ import { lookupVehicleRegistry } from '../../lib/vehicleRegistry';
 import { requiresTachograph } from '../../lib/tachograph';
 import { VehicleDetailMobile } from './mobile/VehicleDetailMobile';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 // 'licensing' only exists on the desktop tab bar (registration/insurance/test
 // status cards) — the phone tiles never set it, but the type has to allow it
@@ -70,7 +71,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     setVehicle(loadedVehicle); setDrivers(loadedDrivers); setCompliance(loadedCompliance);
     if (companyId) { const [deps, companyDrivers] = await Promise.all([listDepartments(companyId), listDrivers(companyId)]); setDepartments(deps); setDriverOptions(companyDrivers.map((d) => ({ value: d.id, label: d.full_name ?? t('common.unnamed') }))); }
   }, [companyId, vehicleId]);
-  useFocusEffect(useCallback(() => { let active = true; setLoading(true); setError(null); load().catch((e: any) => active && setError(e?.message ?? t('vehicle.loadFailed'))).finally(() => active && setLoading(false)); return () => { active = false; }; }, [load]));
+  useFocusEffect(useCallback(() => { let active = true; setLoading(true); setError(null); load().catch((e: any) => active && setError(errorMessage(e, t('vehicle.loadFailed')))).finally(() => active && setLoading(false)); return () => { active = false; }; }, [load]));
   useFocusEffect(useCallback(() => {
     const channel = supabase.channel(`vehicle-driver-assignments:${vehicleId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_drivers', filter: `vehicle_id=eq.${vehicleId}` }, () => { void load(); })
@@ -126,8 +127,8 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const archive = () => showAlert(t('common.moveToArchive'), t('vehicle.archiveConfirm', { v1: formatPlate(vehicle?.plate_number) }), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.moveToArchiveAction'), style: 'destructive', onPress: async () => { await archiveVehicle(vehicleId); navigation.goBack(); } }]);
   const restore = () => showAlert(t('vehicle.unarchiveTitle'), t('vehicle.unarchiveConfirm', { v1: formatPlate(vehicle?.plate_number) }), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('vehicle.unarchiveAction'), onPress: async () => { await restoreVehicle(vehicleId); await load(); showToast(t('vehicle.unarchived')); } }]);
   const editMaintenance = () => { if (!vehicle) return; setMaintenance({ odometer: String(vehicle.odometer ?? ''), last_service_km: String(vehicle.last_service_km ?? ''), service_interval_km: vehicle.service_interval_km ? String(vehicle.service_interval_km) : '', next_service_km: vehicle.next_service_km ? String(vehicle.next_service_km) : '' }); setEditingMaintenance(true); };
-  const saveMaintenance = async () => { setSavingMaintenance(true); try { await updateVehicle(vehicleId, { odometer: numberOrNull(maintenance.odometer) ?? 0, last_service_km: numberOrNull(maintenance.last_service_km) ?? 0, service_interval_km: numberOrNull(maintenance.service_interval_km), next_service_km: deriveNextServiceKm(numberOrNull(maintenance.last_service_km) ?? 0, numberOrNull(maintenance.service_interval_km)) ?? numberOrNull(maintenance.next_service_km) }); setEditingMaintenance(false); await load(); showToast(t('common.savedSuccessfully')); } catch (e: any) { showAlert(t('common.saveFailed'), String(e?.message ?? t('common.tryAgain'))); } finally { setSavingMaintenance(false); } };
-  const removePermanently = () => showAlert(t('vehicle.deleteTitle'), t('vehicle.deleteConfirm', { v1: formatPlate(vehicle?.plate_number) }), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.deletePermanentlyAction'), style: 'destructive', onPress: async () => { try { if (!companyId) throw new Error(t('company.noLinkedCompany')); await deleteVehicle(vehicleId, companyId); navigation.goBack(); } catch (e: any) { showAlert(t('common.deleteFailed'), String(e?.message ?? t('vehicle.cannotDelete'))); } } }]);
+  const saveMaintenance = async () => { setSavingMaintenance(true); try { await updateVehicle(vehicleId, { odometer: numberOrNull(maintenance.odometer) ?? 0, last_service_km: numberOrNull(maintenance.last_service_km) ?? 0, service_interval_km: numberOrNull(maintenance.service_interval_km), next_service_km: deriveNextServiceKm(numberOrNull(maintenance.last_service_km) ?? 0, numberOrNull(maintenance.service_interval_km)) ?? numberOrNull(maintenance.next_service_km) }); setEditingMaintenance(false); await load(); showToast(t('common.savedSuccessfully')); } catch (e: any) { showAlert(t('common.saveFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setSavingMaintenance(false); } };
+  const removePermanently = () => showAlert(t('vehicle.deleteTitle'), t('vehicle.deleteConfirm', { v1: formatPlate(vehicle?.plate_number) }), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.deletePermanentlyAction'), style: 'destructive', onPress: async () => { try { if (!companyId) throw new Error(t('company.noLinkedCompany')); await deleteVehicle(vehicleId, companyId); navigation.goBack(); } catch (e: any) { showAlert(t('common.deleteFailed'), String(errorMessage(e, t('vehicle.cannotDelete')))); } } }]);
 
   const saveField = async (patch: Partial<Vehicle>): Promise<string | null> => {
     if (!companyId || !vehicle) return t('company.noLinkedCompany');
@@ -175,7 +176,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
       await load();
       setLookupMessage(t('vehicle.filledFromMotShort'));
     } catch (e: any) {
-      setLookupMessage(e?.message || t('vehicle.lookupUnavailable'));
+      setLookupMessage(errorMessage(e, t('vehicle.lookupUnavailable')));
     } finally {
       setLookupLoading(false);
     }
@@ -200,7 +201,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     lookupMessage,
     scrollRef,
     onBack: () => navigation.goBack(),
-    onRetry: () => { setLoading(true); setError(null); load().catch((e: any) => setError(e?.message ?? t('vehicle.loadFailed'))).finally(() => setLoading(false)); },
+    onRetry: () => { setLoading(true); setError(null); load().catch((e: any) => setError(errorMessage(e, t('vehicle.loadFailed')))).finally(() => setLoading(false)); },
     onEdit: () => navigation.navigate('VehicleForm', { vehicleId }),
     onLookup: () => void lookupPlate(),
     onEditMaintenance: editMaintenance,

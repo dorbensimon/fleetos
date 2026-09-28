@@ -3,6 +3,8 @@ import { applyLanguage, t } from '../i18n';
 import { withoutValidity } from '../notificationPreferencesApi';
 import { COMPANY_TYPES, companyTypeLabel } from '../companyType';
 import { docusealFormLanguage } from '../docusealEmbed';
+import { storedFolderTitle } from '../documents';
+import { hasBothLicenseSides, LICENSE_SIDE_STORED_TITLE } from '../licenseSides';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock') // eslint-disable-line @typescript-eslint/no-require-imports
@@ -56,5 +58,22 @@ describe('DocuSeal signing form language', () => {
     expect(docusealFormLanguage()).toBe('ar');
     await applyLanguage('ru');
     expect(docusealFormLanguage()).toBe('en');
+  });
+});
+
+describe('a file uploaded to a folder', () => {
+  it("is stored under the folder's Hebrew name in every language", async () => {
+    await applyLanguage('en');
+    expect(storedFolderTitle('driver_file', t('folder.driverFile'))).toBe('תיק נהג');
+    expect(storedFolderTitle('some_other', 'As given')).toBe('As given');
+  });
+});
+
+describe('license photos', () => {
+  it('are found by their stored titles in every language', async () => {
+    await applyLanguage('ru');
+    const docs = [{ title: LICENSE_SIDE_STORED_TITLE.front }, { title: LICENSE_SIDE_STORED_TITLE.back }];
+    expect(hasBothLicenseSides(docs)).toBe(true);
+    expect(hasBothLicenseSides(docs.slice(1))).toBe(false);
   });
 });

@@ -44,5 +44,3 @@ export const DRIVER_DOCUMENT_GROUPS: { title: string; folders: DriverDocumentFol
 
 /** Category of the license front/back photos. */
 export const LICENSE_DOCS_CATEGORY = 'license_docs';
-/** Document titles the license photos are stored under. */
-export const LICENSE_SIDE_TITLES = { get front() { return t('documents.frontSide'); }, get back() { return t('documents.backSide'); } } as const;

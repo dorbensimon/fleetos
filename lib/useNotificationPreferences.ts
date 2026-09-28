@@ -18,6 +18,7 @@ import {
 } from './notificationPreferencesApi';
 import { isVehicleFolderNotification } from './vehicleFolderAlerts';
 import { t } from './i18n';
+import { errorMessage } from './requestError';
 
 /**
  * The signed-in user's notification toggles plus the company's lead time
@@ -65,7 +66,7 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
         setLeads(perType);
       }
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message ?? t('prefs.loadFailed'));
+      if (requestId === loadRequest.current) setError(errorMessage(err, t('prefs.loadFailed')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }

@@ -15,17 +15,17 @@ import { formatDate } from '../../lib/theme';
 import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
-import { CompanyDocumentsDesktopView, type CompanyDocumentDraft } from '../../components/desktop/CompanyDocumentsDesktopView';
+import { CompanyDocumentsDesktopView, titleOf, type CompanyDocumentDraft } from '../../components/desktop/CompanyDocumentsDesktopView';
 import { DText } from '../../components/desktop/primitives';
 import { showAlert } from '../../lib/platformAlert';
 import { t, textStart } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyDocuments'>;
 type Draft = { title: string; date: string | null; description: string; file: PickedFile | null };
 type DocumentPreview = { doc: DocumentRow; src: string };
 const CATEGORY = 'general';
 const emptyDraft = (): Draft => ({ title: '', date: null, description: '', file: null });
-const titleOf = (doc: DocumentRow) => doc.title?.trim() || doc.file_name || t('documents.untitled');
 const isImage = (doc: DocumentRow) => Boolean(doc.mime_type?.startsWith('image/'));
 
 export default function CompanyDocumentsScreen({ navigation }: Props) {
@@ -51,7 +51,7 @@ export default function CompanyDocumentsScreen({ navigation }: Props) {
     setLoading(true); setError(null);
     if (!companyId) { setError(t('company.noLinkedCompany')); setLoading(false); return; }
     try { const rows = await listDocuments('company', companyId, CATEGORY); if (request === loadRequest.current) setDocs(rows); }
-    catch (err: any) { if (request === loadRequest.current) setError(err?.message ?? t('documents.loadFailedShort')); }
+    catch (err: any) { if (request === loadRequest.current) setError(errorMessage(err, t('documents.loadFailedShort'))); }
     finally { if (request === loadRequest.current) setLoading(false); }
   }, [companyId]);
   useFocusEffect(useCallback(() => { void load(); return () => { loadRequest.current += 1; }; }, [load]));
@@ -81,7 +81,7 @@ export default function CompanyDocumentsScreen({ navigation }: Props) {
   const closeComposer = () => { if (!saving) setVisible(false); };
   const chooseFile = () => chooseDocumentSource(t('companyDocs.chooseDocFile'), async (source: DocumentSource) => {
     try { const file = await pickDocumentSource(source); if (file) { setDraft((current) => ({ ...current, file })); setErrors((current) => ({ ...current, file: false })); } }
-    catch (err: any) { showAlert(t('companyDocs.chooseFileFailed'), err?.message ?? t('common.tryAgain')); }
+    catch (err: any) { showAlert(t('companyDocs.chooseFileFailed'), errorMessage(err, t('common.tryAgain'))); }
   });
   const save = async () => {
     const next = { title: !draft.title.trim(), date: !draft.date, file: !draft.file };
@@ -91,7 +91,7 @@ export default function CompanyDocumentsScreen({ navigation }: Props) {
     try {
       await uploadDocument({ companyId, ownerType: 'company', ownerId: companyId, category: CATEGORY, title: draft.title.trim(), documentDate: draft.date, description: draft.description, file: draft.file });
       setVisible(false); await load();
-    } catch (err: any) { showAlert(t('common.uploadFailedShort'), err?.message ?? t('common.tryAgain')); }
+    } catch (err: any) { showAlert(t('common.uploadFailedShort'), errorMessage(err, t('common.tryAgain'))); }
     finally { setSaving(false); }
   };
   const open = async (doc: DocumentRow) => {
@@ -109,7 +109,7 @@ export default function CompanyDocumentsScreen({ navigation }: Props) {
       await load();
       showToast(t('signing.documentSaved'));
       return true;
-    } catch (err: any) { showAlert(t('common.uploadFailedShort'), err?.message ?? t('common.tryAgain')); return false; }
+    } catch (err: any) { showAlert(t('common.uploadFailedShort'), errorMessage(err, t('common.tryAgain'))); return false; }
   };
   if (isDesktop) return <><DesktopShell active="CompanyDocuments" breadcrumbs={[t('nav.management'), t('nav.companyDocuments')]}><CompanyDocumentsDesktopView docs={docs} loading={loading && docs.length === 0} error={error} onRetry={load} onOpen={(doc) => void open(doc)} onDownload={downloadDocumentWithAlert} onDelete={(doc) => confirmDeleteDocument(doc, load)} onUpload={uploadFromDesktop} /></DesktopShell>{documentOverlay}</>;
   return (

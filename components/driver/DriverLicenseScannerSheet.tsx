@@ -7,6 +7,7 @@ import { COLORS, SPACING } from '../../lib/theme';
 import { pickImage } from '../../lib/documents';
 import { scanLicenseImage, type ScanResult } from '../../lib/documentScanner';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = {
   visible: boolean;
@@ -68,7 +69,7 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
       }
     } catch (err: any) {
       if (sessionRef.current === session) {
-        setErrors({ front: err?.message || t('license.frontPhotoFailed') });
+        setErrors({ front: errorMessage(err, t('license.frontPhotoFailed')) });
       }
     }
   };
@@ -96,7 +97,7 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
       }
     } catch (err: any) {
       if (sessionRef.current === session) {
-        setErrors({ back: err?.message || t('license.backPhotoFailed') });
+        setErrors({ back: errorMessage(err, t('license.backPhotoFailed')) });
       }
     }
   };
@@ -124,7 +125,7 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
       });
       close();
     } catch (err: any) {
-      setErrors({ general: err?.message || t('common.saveFailed') });
+      setErrors({ general: errorMessage(err, t('common.saveFailed')) });
     } finally {
       setSaving(false);
     }
@@ -241,7 +242,7 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
           {errors.general && <AppText style={styles.error}>{errors.general}</AppText>}
 
           <PrimaryButton
-            label={t('common.saveShort')}
+            label={t('common.save')}
             icon="checkmark-circle-outline"
             onPress={submit}
             loading={saving}

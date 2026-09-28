@@ -1,6 +1,7 @@
 import { Company } from './supabase';
 import { DocumentRow, DriverRow } from './adminApi';
-import { DRIVER_DOCUMENT_GROUPS, LICENSE_DOCS_CATEGORY, LICENSE_SIDE_TITLES } from './driverDocumentFolders';
+import { DRIVER_DOCUMENT_GROUPS, LICENSE_DOCS_CATEGORY } from './driverDocumentFolders';
+import { LICENSE_SIDE_STORED_TITLE } from './licenseSides';
 import { SignatureRequest } from './docuseal';
 import { expiryState, formatDate } from './theme';
 import { formatPlate } from './plate';
@@ -39,7 +40,7 @@ function buildHtml(
   const license = licenseStatus(driver);
   const vehicles = driver.vehicles ?? [];
   const licensePhotos = documents.filter((doc) => doc.category === LICENSE_DOCS_CATEGORY);
-  const photoSides = Object.values(LICENSE_SIDE_TITLES).filter((title) => licensePhotos.some((doc) => doc.title === title)).length;
+  const photoSides = Object.values(LICENSE_SIDE_STORED_TITLE).filter((title) => licensePhotos.some((doc) => doc.title === title)).length;
 
   const signingRows = signingRequests
     .map((req) => {

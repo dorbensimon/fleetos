@@ -37,6 +37,7 @@ import {
 } from '../../lib/inspections';
 import type { RootStackParamList } from '../../navigation/types';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * Settings of "בדיקות בטיחות": how often each vehicle is checked, and the
@@ -89,7 +90,7 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
       setLoadError('');
       setLoaded(true);
     } catch (e) {
-      setLoadError((e as Error)?.message || t('inspection.settingsLoadFailed'));
+      setLoadError(errorMessage(e, t('inspection.settingsLoadFailed')));
     }
   }, [companyId]);
   useEffect(() => {
@@ -131,7 +132,7 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
       setRepeatMonths(saved.repeatMonths);
       setNotice(t('inspection.frequencySaved'));
     } catch (e) {
-      setError((e as Error)?.message || t('meeting.saveFrequencyFailed'));
+      setError(errorMessage(e, t('meeting.saveFrequencyFailed')));
     } finally {
       setBusy('');
     }
@@ -153,7 +154,7 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
       setShowErrors(false);
       setNotice(t('inspection.listSaved'));
     } catch (e) {
-      setError((e as Error)?.message || t('inspection.listSaveFailed'));
+      setError(errorMessage(e, t('inspection.listSaveFailed')));
     } finally {
       setBusy('');
     }
@@ -172,7 +173,7 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
       setNotice(t('inspection.backToReady'));
     } catch (e) {
       setResetting(false);
-      setError((e as Error)?.message || t('inspection.restoreFailed'));
+      setError(errorMessage(e, t('inspection.restoreFailed')));
     } finally {
       setBusy('');
     }

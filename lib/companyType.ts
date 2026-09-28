@@ -11,3 +11,9 @@ export function companyTypeLabel(type: string | null | undefined): string {
   if (type === 'עוסק מורשה') return t('company.typeLicensedDealer');
   return type ?? '';
 }
+
+/** The choices of a company-type picker, with the full name in the UI language. */
+export const COMPANY_TYPE_OPTIONS: { value: CompanyType; label: string }[] = [
+  { value: 'בע״מ', get label() { return t('company.typeLtd'); } },
+  { value: 'עוסק מורשה', get label() { return t('company.typeLicensedDealer'); } },
+];

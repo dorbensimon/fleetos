@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { getSigningTemplateSourceUrl, listSigningTemplates, type SigningTemplate } from '../../../lib/docuseal';
-import { requestErrorDetails, type RequestErrorDetails } from '../../../lib/requestError';
+import { errorMessage, requestErrorDetails, type RequestErrorDetails } from '../../../lib/requestError';
 import { countWaitingSigners, deleteCompanyTemplate, deleteTemplateMessage } from '../../../lib/signingSend';
 import { formatDate } from '../../../lib/theme';
 import { SIGNING_CSS } from './signingCss';
@@ -158,7 +158,7 @@ function PreviewSheet({
       onChanged({ ...template, form_content: { ...(template.form_content as object), repeatMonths: months } });
     } catch (error) {
       setRepeat(before);
-      setRepeatError((error as Error)?.message || t('meeting.saveFrequencyFailedRetry'));
+      setRepeatError(errorMessage(error, t('meeting.saveFrequencyFailedRetry')));
     } finally {
       setRepeatSaving(false);
     }
@@ -184,7 +184,7 @@ function PreviewSheet({
       onDeleted();
       close();
     } catch (error) {
-      setDeleteError((error as Error)?.message || t('documents.deleteFailedRetry'));
+      setDeleteError(errorMessage(error, t('documents.deleteFailedRetry')));
       setDeleting(false);
     }
   };

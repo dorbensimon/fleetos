@@ -12,7 +12,7 @@ import { DocumentFileRow } from '../../components/documents/DocumentFileRow';
 import { Procedure6FormModal } from '../../components/documents/Procedure6FormModal';
 import { useCompany } from '../../lib/CompanyContext';
 import { DocumentRow } from '../../lib/adminApi';
-import { listDocuments, readPickedFileBase64, uploadDocument, type PickedFile } from '../../lib/documents';
+import { listDocuments, readPickedFileBase64, storedFolderTitle, uploadDocument, type PickedFile } from '../../lib/documents';
 import { createProcedure6Report, Procedure6FormValues } from '../../lib/procedure6Report';
 import { chooseDocumentSource, confirmDeleteDocument, documentDisplayName, documentViewerMode, downloadDocumentWithAlert, getDocumentViewUrl, pickDocumentSource, type DocumentSource } from '../../lib/documentActions';
 import { RootStackParamList } from '../../navigation/types';
@@ -22,6 +22,7 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * A generic "one category, one screen" document list — reused by every
@@ -85,7 +86,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       const rows = await listDocuments(ownerType, ownerId, category);
       if (requestId === loadRequest.current) setDocs(rows);
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(err?.message ?? t('documents.loadFailedShort'));
+      if (requestId === loadRequest.current) setError(errorMessage(err, t('documents.loadFailedShort')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
@@ -113,11 +114,11 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
         const file = await pickDocumentSource(source);
         if (!file) return;
 
-        await uploadDocument({ companyId, ownerType, ownerId, category, title, file, expiryDate });
+        await uploadDocument({ companyId, ownerType, ownerId, category, title: storedFolderTitle(category, title), file, expiryDate });
         if (requiresExpiry) setExpiryDate(null);
         await load();
       } catch (err: any) {
-        showAlert(t('common.uploadFailedShort'), err?.message ?? t('common.tryAgain'));
+        showAlert(t('common.uploadFailedShort'), errorMessage(err, t('common.tryAgain')));
       } finally {
         setUploading(false);
       }

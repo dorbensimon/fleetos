@@ -49,6 +49,7 @@ import { DesktopShell } from '../components/desktop/DesktopShell';
 import { DText, HoverPressable, StatusPill } from '../components/desktop/primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES } from '../components/desktop/desktopTheme';
 import { t } from '../lib/i18n';
+import { errorMessage } from '../lib/requestError';
 
 /**
  * Owner-only screen: one company as a customer — its subscription, its
@@ -100,7 +101,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       const url = await pickAndUploadLogo();
       if (url) setFields((f) => ({ ...f, logoUrl: url }));
     } catch (err: any) {
-      setLogoError(err?.message || t('company.logoUploadFailed'));
+      setLogoError(errorMessage(err, t('company.logoUploadFailed')));
     } finally {
       setUploadingLogo(false);
     }
@@ -204,7 +205,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       setUsers(usersData.users);
     }
     } catch (err: any) {
-      if (requestId === loadRequest.current) setLoadError(err?.message ?? t('company.loadFailedShort'));
+      if (requestId === loadRequest.current) setLoadError(errorMessage(err, t('company.loadFailedShort')));
     }
   }, [companyId]);
 

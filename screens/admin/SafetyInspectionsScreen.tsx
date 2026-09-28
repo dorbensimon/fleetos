@@ -39,6 +39,7 @@ import {
 } from '../../lib/inspections';
 import type { RootStackParamList } from '../../navigation/types';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 /**
  * "בדיקות בטיחות": vehicles due for an inspection on top, then every
@@ -69,7 +70,7 @@ export default function SafetyInspectionsScreen({ navigation }: Props) {
       setPlan(due);
       setError('');
     } catch (e) {
-      setError((e as Error)?.message || t('inspection.listLoadFailed'));
+      setError(errorMessage(e, t('inspection.listLoadFailed')));
     }
   }, [companyId]);
   useFocusEffect(useCallback(() => { void load(); }, [load]));

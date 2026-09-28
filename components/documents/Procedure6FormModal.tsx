@@ -15,6 +15,7 @@ import { Procedure6FormValues } from '../../lib/procedure6Report';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DK, HeroButton, NightBar, PrimaryAction } from '../driverKit';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = {
   visible: boolean;
@@ -92,7 +93,7 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
       );
       reset();
     } catch (err: any) {
-      showAlert(t('common.saveFailed'), err?.message ?? t('common.tryAgain'));
+      showAlert(t('common.saveFailed'), errorMessage(err, t('common.tryAgain')));
     } finally {
       setSaving(false);
     }
@@ -118,7 +119,7 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
           </TouchableOpacity>
           <AppText weight="bold" style={styles.title}>{t('procedure6.addDocument')}</AppText>
           <TouchableOpacity onPress={submit} disabled={saving} hitSlop={10}>
-            <AppText weight="bold" style={[styles.saveText, saving && { opacity: 0 }]}>{t('common.saveShort')}</AppText>
+            <AppText weight="bold" style={[styles.saveText, saving && { opacity: 0 }]}>{t('common.save')}</AppText>
             {saving && <BrandLoader size="small" color={COLORS.accent} style={StyleSheet.absoluteFill} />}
           </TouchableOpacity>
         </View>

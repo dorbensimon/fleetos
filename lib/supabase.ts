@@ -1,6 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import type { CompanyType } from './companyType';
 
 const SUPABASE_URL =
   process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://lnflftptzrfuzfecmhho.supabase.co';
@@ -34,7 +35,7 @@ export interface Company {
   name: string;
   logo_url: string | null;
   status: 'active' | 'disabled';
-  company_type: 'בע״מ' | 'עוסק מורשה' | null;
+  company_type: CompanyType | null;
   business_id: string | null;
   address: string | null;
   phone: string | null;

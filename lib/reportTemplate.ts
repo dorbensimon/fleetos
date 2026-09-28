@@ -9,12 +9,13 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
+import { t, textDirection } from './i18n';
 
 export type TagTone = 'accent' | 'accent2' | 'neutral' | 'outline';
 
 export function esc(value: string | null | undefined): string {
   if (!value) return '';
-  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 export function statusTag(label: string, tone: TagTone): string {
@@ -305,7 +306,7 @@ const VIEWER_ID = 'icar-report-viewer';
 
 const VIEWER_CSS = `
   #${VIEWER_ID} { position: fixed; inset: 0; z-index: 2147483000; display: flex; flex-direction: column;
-    background: #f8fafc; direction: rtl; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Heebo', sans-serif;
+    background: #f8fafc; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Heebo', sans-serif;
     animation: icar-rv-in 200ms cubic-bezier(0.23, 1, 0.32, 1); }
   @keyframes icar-rv-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
   @media (prefers-reduced-motion: reduce) { #${VIEWER_ID} { animation: none; } }
@@ -328,7 +329,8 @@ const VIEWER_CSS = `
   @media (max-width: 480px) { #${VIEWER_ID} .rv-label { display: none; } #${VIEWER_ID} button { padding: 0 12px; } }
 `;
 
-const BACK_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+// Points toward the start side: right in Hebrew and Arabic, left otherwise.
+const backIcon = () => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${textDirection() === 'rtl' ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'}"/></svg>`;
 const PRINT_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>';
 
 /** A full-screen, in-app reader for a report on web: back, title, print / save as PDF. */
@@ -341,11 +343,12 @@ function openWebReportViewer(html: string, title: string): void {
   root.setAttribute('role', 'dialog');
   root.setAttribute('aria-modal', 'true');
   root.setAttribute('aria-label', title);
+  root.dir = textDirection();
   root.innerHTML = `<style>${VIEWER_CSS}</style>
     <div class="rv-bar">
-      <button type="button" class="rv-back" aria-label="חזרה">${BACK_ICON}<span class="rv-label">חזרה</span></button>
+      <button type="button" class="rv-back" aria-label="${esc(t('common.goBack'))}">${backIcon()}<span class="rv-label">${esc(t('common.goBack'))}</span></button>
       <h1 class="rv-title">${esc(title)}</h1>
-      <button type="button" class="rv-print" aria-label="הדפסה או שמירה כ־PDF">${PRINT_ICON}<span class="rv-label">הדפסה / PDF</span></button>
+      <button type="button" class="rv-print" aria-label="${esc(t('reports.printOrPdfLabel'))}">${PRINT_ICON}<span class="rv-label">${esc(t('reports.printOrPdf'))}</span></button>
     </div>`;
 
   const frame = document.createElement('iframe');

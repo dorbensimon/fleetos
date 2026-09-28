@@ -5,7 +5,8 @@ import { DK, DKText, DriverPage, EditField, HeroTitle, KitSection, PrimaryAction
 import { DateField } from '../../../components/ui/DateField';
 import { Select } from '../../../components/ui/Select';
 import { LiquidGlassSwitch } from '../../../components/ui/LiquidGlassSwitch';
-import type { CompanyContactForm, CompanySettingsForm, CompanyType, SafetyOfficerForm } from '../../../components/desktop/CompanySettingsDesktopView';
+import type { CompanyContactForm, CompanySettingsForm, SafetyOfficerForm } from '../../../components/desktop/CompanySettingsDesktopView';
+import { COMPANY_TYPE_OPTIONS } from '../../../lib/companyType';
 import { t } from '../../../lib/i18n';
 
 type Props = {
@@ -25,11 +26,6 @@ type Props = {
   onSave: () => void;
   onDiscard: () => void;
 };
-
-const TYPE_OPTIONS: { value: CompanyType; label: string }[] = [
-  { value: 'בע״מ', get label() { return t('company.typeLtd'); } },
-  { value: 'עוסק מורשה', get label() { return t('company.typeLicensedDealer'); } },
-];
 
 const digits = (v: string, max = 10) => v.replace(/\D/g, '').slice(0, max);
 
@@ -66,7 +62,7 @@ export function CompanySettingsMobile(p: Props) {
         <KitSection>
           <EditField first label={t('company.name')} required value={form.name} onChangeText={(v) => p.onChange('name', v)} onBlur={() => p.onFieldBlur('name')} error={errors.name} />
           <EditField label={t('company.businessId')} required value={form.businessId} onChangeText={(v) => p.onChange('businessId', digits(v, 9))} onBlur={() => p.onFieldBlur('businessId')} error={errors.businessId} keyboardType="number-pad" ltr hint={t('common.9digits')} />
-          <EditField label={t('company.type')} editor={<Select value={form.companyType} options={TYPE_OPTIONS} onChange={(v) => p.onChange('companyType', v)} allowClear placeholder={t('common.notSelected')} />} />
+          <EditField label={t('company.type')} editor={<Select value={form.companyType} options={COMPANY_TYPE_OPTIONS} onChange={(v) => p.onChange('companyType', v)} allowClear placeholder={t('common.notSelected')} />} />
           <EditField label={t('company.carrierLicenseExpiry')} editor={<DateField value={form.carrierLicenseExpiry} onChange={(v) => p.onChange('carrierLicenseExpiry', v)} placeholder={t('common.notEntered')} />} />
           <EditField label={t('common.address')} value={form.address} onChangeText={(v) => p.onChange('address', v)} />
         </KitSection>
