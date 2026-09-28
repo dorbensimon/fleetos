@@ -317,18 +317,8 @@ export function ComplianceSection({
       ((draft.last_date !== undefined && draft.last_date !== (item?.last_date ?? null)) ||
         (draft.expiry_date !== undefined && draft.expiry_date !== (item?.expiry_date ?? null)));
 
-    if (def.requiresExpiryOnUpload) {
-      return (
-        <>
-          <View style={styles.dateRow}>
-            <AppText style={styles.dateLabel}>תוקף המסמך החדש</AppText>
-            <View style={styles.dateInput}>
-              <DateField value={draft?.expiry_date ?? null} onChange={(iso) => setDraftDate(def, 'expiry_date', iso)} />
-            </View>
-          </View>
-        </>
-      );
-    }
+    // Items that date each upload pick that date beside the upload button (renderItemBody).
+    if (def.requiresExpiryOnUpload) return null;
 
     return (
       <>
@@ -411,15 +401,45 @@ export function ComplianceSection({
 
   const renderItemBody = (def: ComplianceItemDef) => {
     const itemDocs = docs.filter((d) => d.title === def.label);
+    const datesEachUpload = def.requiresExpiryOnUpload === true;
+    const uploading = busyItem === def.itemType;
+    const stagedExpiry = drafts[def.itemType]?.expiry_date ?? null;
+
+    const uploadButton = (
+      <TouchableOpacity
+        style={[styles.uploadBtn, datesEachUpload && styles.uploadBtnPaired, datesEachUpload && !stagedExpiry && !uploading && styles.uploadBtnWaiting]}
+        activeOpacity={0.8}
+        onPress={() => addDocument(def)}
+        disabled={uploading}
+        accessibilityRole="button"
+        accessibilityHint={datesEachUpload && !stagedExpiry ? 'יש לבחור קודם את תוקף המסמך' : undefined}
+      >
+        {uploading ? (
+          <>
+            <BrandLoader size="small" color={COLORS.accent} />
+            <AppText weight="bold" style={styles.uploadText}>מעבד ומעלה…</AppText>
+          </>
+        ) : (
+          <>
+            <Ionicons name="cloud-upload-outline" size={16} color={COLORS.accent} />
+            <AppText weight="bold" style={styles.uploadText}>העלה מסמך</AppText>
+          </>
+        )}
+      </TouchableOpacity>
+    );
 
     return (
       <View style={[styles.itemBody, spacious && styles.itemBodySpacious, folderAppearance && styles.folderItemBody]}>
         {renderDateFields(def)}
 
+        {itemDocs.length === 0 && <AppText style={styles.emptyFolder}>אין עדיין מסמכים בתיקייה</AppText>}
+
         {itemDocs.map((doc) => (
           <DocumentFileRow
             key={doc.id}
             doc={doc}
+            showDate
+            showExpiry={datesEachUpload || !!doc.expiry_date}
             onOpen={openDocumentExternally}
             onDownload={downloadDocumentWithAlert}
             onDelete={(item) =>
@@ -431,19 +451,24 @@ export function ComplianceSection({
           />
         ))}
 
-        <TouchableOpacity style={styles.uploadBtn} activeOpacity={0.8} onPress={() => addDocument(def)} disabled={busyItem === def.itemType}>
-          {busyItem === def.itemType ? (
-            <>
-              <BrandLoader size="small" color={COLORS.accent} />
-              <AppText weight="bold" style={styles.uploadText}>מעבד ומעלה…</AppText>
-            </>
-          ) : (
-            <>
-              <Ionicons name="cloud-upload-outline" size={16} color={COLORS.accent} />
-              <AppText weight="bold" style={styles.uploadText}>העלה מסמך</AppText>
-            </>
-          )}
-        </TouchableOpacity>
+        {datesEachUpload ? (
+          <View style={styles.newDocBlock}>
+            <AppText style={styles.newDocLabel}>מסמך חדש: בחר תוקף ואז העלה</AppText>
+            <View style={styles.uploadRow}>
+              <View style={styles.uploadRowDate}>
+                <DateField
+                  value={stagedExpiry}
+                  onChange={(iso) => setDraftDate(def, 'expiry_date', iso)}
+                  placeholder="תוקף המסמך"
+                  style={styles.uploadRowDateBox}
+                />
+              </View>
+              {uploadButton}
+            </View>
+          </View>
+        ) : (
+          uploadButton
+        )}
       </View>
     );
   };
@@ -541,10 +566,11 @@ export function ComplianceSection({
                 const isOpen = expanded === def.itemType;
                 const itemDocs = docs.filter((d) => d.title === def.label);
                 const latestDoc = latestDocument(itemDocs);
-                const latestExpiry = latestDoc?.expiry_date ?? null;
+                const latestExpiry = latestDoc ? latestDoc.expiry_date ?? null : items.get(def.itemType)?.expiry_date ?? null;
                 return (
-                  // Lights up when a task or notification lands on this folder.
-                  <FocusTarget key={def.itemType} id={def.itemType} radius={16} tint={DK.accent}>
+                  <React.Fragment key={def.itemType}>
+                  {/* Lights up when a task or notification lands on this folder. */}
+                  <FocusTarget id={def.itemType} radius={16} tint={DK.accent}>
                   <TouchableOpacity
                     activeOpacity={0.66}
                     style={[styles.folderRow, index === 0 && styles.folderFirstItem]}
@@ -557,15 +583,14 @@ export function ComplianceSection({
                       <AppText weight="bold" style={styles.folderItemLabel}>{def.label}</AppText>
                       <AppText style={styles.itemDocCount}>{itemDocs.length ? `${itemDocs.length} ${itemDocs.length === 1 ? 'מסמך' : 'מסמכים'}` : 'אין מסמכים'}</AppText>
                     </View>
-                    {!!latestDoc && <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : 'חסר תוקף'} />}
+                    {(!!latestDoc || !!latestExpiry) && <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : 'חסר תוקף'} />}
                     <Ionicons name={isOpen ? 'chevron-down' : 'chevron-back'} size={18} color={DK.faint} />
                   </TouchableOpacity>
                   </FocusTarget>
+                  {isOpen && <View style={styles.folderDetailPanel}>{renderItemBody(def)}</View>}
+                  </React.Fragment>
                 );
               })}
-              {group.items.map((def) => expanded === def.itemType && (
-                <View key={`${def.itemType}-body`} style={styles.folderDetailPanel}>{renderItemBody(def)}</View>
-              ))}
               {extraFolderTiles}
             </>
           ) : (
@@ -747,7 +772,8 @@ const styles = StyleSheet.create({
   folderRow: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline, minHeight: 64, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
   folderIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   folderItemLabel: { fontFamily: DK_FONT.semibold, fontSize: 15, lineHeight: 20, color: DK.ink },
-  folderItemBody: { paddingHorizontal: SPACING.lg },
+  // The sunken detail panel already pads the sides.
+  folderItemBody: { paddingHorizontal: 0 },
   itemLabelWrap: { flex: 1, gap: 1 },
   itemLabel: { fontSize: 13.5 },
   itemDocCount: { fontFamily: DK_FONT.medium, fontSize: 13, color: DK.muted },
@@ -778,6 +804,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   uploadText: { fontFamily: DK_FONT.semibold, fontSize: 15, color: DK.accent },
+  uploadBtnPaired: { flex: 1, minHeight: 52, marginTop: 0 },
+  uploadBtnWaiting: { opacity: 0.6 },
+  newDocBlock: { gap: 6, marginTop: 4 },
+  newDocLabel: { fontFamily: DK_FONT.medium, fontSize: 13, color: DK.muted },
+  uploadRow: { flexDirection: 'row-reverse', alignItems: 'stretch', gap: 8 },
+  uploadRowDate: { flex: 1 },
+  uploadRowDateBox: { backgroundColor: DK.surface, borderColor: DK.hairline, borderWidth: StyleSheet.hairlineWidth },
+  emptyFolder: { fontFamily: DK_FONT.medium, fontSize: 13.5, color: DK.faint, textAlign: 'right', paddingVertical: 4 },
 
   emptyDocs: { fontSize: 12.5, color: COLORS.textFaint, paddingVertical: SPACING.md },
 

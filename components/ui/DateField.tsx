@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform, Modal, Pressable, ScrollView } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Platform, Modal, Pressable, ScrollView, type StyleProp, type ViewStyle } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText } from './Text';
@@ -121,16 +121,19 @@ export function DateField({
   placeholder = 'בחר תאריך',
   hasError,
   disabled,
+  style,
 }: {
   value: string | null;
   onChange: (iso: string | null) => void;
   placeholder?: string;
   hasError?: boolean;
   disabled?: boolean;
+  /** Overrides for the field box, e.g. a white fill when it sits on a sunken panel. */
+  style?: StyleProp<ViewStyle>;
 }) {
   const phone = !useIsDesktop();
   const [showPicker, setShowPicker] = useState(false);
-  const boxStyle = [styles.box, phone && kit.box, hasError && (phone ? kit.boxError : styles.boxError), disabled && styles.boxDisabled];
+  const boxStyle = [styles.box, phone && kit.box, hasError && (phone ? kit.boxError : styles.boxError), disabled && styles.boxDisabled, style];
   const valueStyle = [styles.value, phone && kit.value, !value && (phone ? kit.placeholder : styles.placeholder)];
   const iconColor = phone ? DK.muted : COLORS.textFaint;
 
