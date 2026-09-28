@@ -42,6 +42,12 @@ const SHELL_LEGAL_LINKS = [
   { doc: 'accessibility', label: 'נגישות' },
 ] as const;
 
+// Pinned to the bottom of an admin's sidebar, just above company settings.
+const ADMIN_FOOTER_ITEMS: NavItem[] = [
+  { key: 'Notifications', label: 'התראות', icon: 'notifications' },
+  { key: 'CompanyDocuments', label: 'מסמכי חברה', icon: 'folder-open' },
+];
+
 export function DesktopShell({
   active,
   breadcrumbs,
@@ -84,7 +90,6 @@ export function DesktopShell({
   const manageItems: NavItem[] = isAdmin
     ? [
         { key: 'AdminHome', label: 'דשבורד', icon: 'grid' },
-        { key: 'CompanyDocuments', label: 'מסמכי חברה', icon: 'folder-open' },
         { key: 'SignedDocuments', label: 'מסמכים חתומים', icon: 'create' },
       ]
     : isOwner
@@ -101,7 +106,6 @@ export function DesktopShell({
   const accountItems: NavItem[] = isAdmin
     ? [
         { key: 'AdminProfile', label: 'הפרטים שלי', icon: 'person' },
-        { key: 'Notifications', label: 'התראות', icon: 'notifications' },
       ]
     : isOwner
     ? [
@@ -193,6 +197,9 @@ export function DesktopShell({
 
         {isAdmin && (
           <View style={styles.footerNav}>
+            {ADMIN_FOOTER_ITEMS.map((item) => (
+              <SidebarItem key={item.key} item={item} active={item.key === active} onPress={() => go(item.key)} />
+            ))}
             <SidebarItem
               item={{ key: 'CompanySettings', label: 'הגדרות החברה', icon: 'settings' }}
               active={active === 'CompanySettings'}

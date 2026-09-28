@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>תוכנית בדיקות בטיחות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f4ef; --card:#ffffff; --ink:#1d2330; --muted:#5d6574; --line:#e3dfd6;
+  --brand:#1f5eff; --brand-soft:#e8eeff;
+  --ok:#13804f; --ok-soft:#e3f5ec; --bad:#c62f2f; --bad-soft:#fbe7e7;
+  --warn:#9a6400; --warn-soft:#fff3d9; --na:#6b7280; --na-soft:#eef0f3;
+  --shadow:0 1px 2px rgba(20,25,40,.06),0 6px 20px rgba(20,25,40,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12151c; --card:#1b1f29; --ink:#eef1f6; --muted:#a3abba; --line:#2c3240;
+    --brand:#7a9cff; --brand-soft:#232c45;
+    --ok:#4cc98b; --ok-soft:#18332a; --bad:#ff7b7b; --bad-soft:#3a1f22;
+    --warn:#f2bd55; --warn-soft:#3a3020; --na:#9aa3b2; --na-soft:#262b36;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12151c; --card:#1b1f29; --ink:#eef1f6; --muted:#a3abba; --line:#2c3240;
+  --brand:#7a9cff; --brand-soft:#232c45;
+  --ok:#4cc98b; --ok-soft:#18332a; --bad:#ff7b7b; --bad-soft:#3a1f22;
+  --warn:#f2bd55; --warn-soft:#3a3020; --na:#9aa3b2; --na-soft:#262b36;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Heebo,system-ui,sans-serif;font-size:18px;line-height:1.7}
+.wrap{max-width:920px;margin:0 auto;padding:32px 16px 80px}
+header.top{padding:24px 0 8px}
+.eyebrow{color:var(--brand);font-weight:700;font-size:15px;letter-spacing:.02em}
+h1{font-size:clamp(30px,5vw,44px);line-height:1.2;margin:6px 0 12px;font-weight:800}
+.lead{font-size:20px;color:var(--muted);max-width:720px;margin:0}
+nav.toc{display:flex;flex-wrap:wrap;gap:8px;margin:24px 0 8px}
+nav.toc a{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 14px;color:var(--ink);text-decoration:none;font-size:15px}
+nav.toc a:hover{border-color:var(--brand);color:var(--brand)}
+section{margin-top:48px}
+h2{font-size:28px;margin:0 0 6px;font-weight:800;display:flex;align-items:center;gap:12px}
+h2 .n{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--brand);color:#fff;font-size:18px;flex:none}
+.sub{color:var(--muted);margin:0 0 18px}
+h3{font-size:20px;margin:0 0 6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow)}
+.grid{display:grid;gap:14px}
+.g3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.note{border-inline-start:4px solid var(--brand);background:var(--brand-soft);padding:14px 18px;border-radius:10px;margin-top:16px}
+.note.warn{border-color:var(--warn);background:var(--warn-soft)}
+.pill{display:inline-block;border-radius:999px;padding:2px 10px;font-size:14px;font-weight:700}
+.p-ok{background:var(--ok-soft);color:var(--ok)} .p-bad{background:var(--bad-soft);color:var(--bad)} .p-na{background:var(--na-soft);color:var(--na)} .p-warn{background:var(--warn-soft);color:var(--warn)} .p-b{background:var(--brand-soft);color:var(--brand)}
+ul{padding-inline-start:22px;margin:6px 0} li{margin:4px 0}
+.muted{color:var(--muted)}
+
+/* Steps */
+.steps{list-style:none;padding:0;margin:0;counter-reset:s}
+.steps li{position:relative;padding:0 56px 22px 0;margin:0;counter-increment:s}
+.steps li::before{content:counter(s);position:absolute;right:0;top:0;width:38px;height:38px;border-radius:50%;background:var(--card);border:2px solid var(--brand);color:var(--brand);font-weight:800;display:grid;place-items:center}
+.steps li::after{content:"";position:absolute;right:18px;top:40px;bottom:2px;width:2px;background:var(--line)}
+.steps li:last-child::after{display:none}
+.steps b{display:block;font-size:19px}
+.who{font-size:13px;font-weight:700;border-radius:6px;padding:1px 8px;margin-inline-start:6px;vertical-align:2px}
+.w-m{background:var(--brand-soft);color:var(--brand)} .w-d{background:var(--warn-soft);color:var(--warn)} .w-s{background:var(--na-soft);color:var(--na)}
+
+/* Mock form */
+.phoneframe{max-width:520px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+.mf-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700}
+.logo i{width:38px;height:38px;border-radius:10px;background:var(--brand-soft);display:grid;place-items:center;font-style:normal;font-size:20px}
+.mf-title{padding:16px 18px 4px;font-size:22px;font-weight:800}
+.mf-sec{padding:12px 18px}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fact{background:var(--bg);border-radius:10px;padding:8px 12px}
+.fact small{display:block;color:var(--muted);font-size:13px}
+.fact span{font-weight:700;font-size:16px}
+.fact.bad span{color:var(--bad)}
+.group{border:1px solid var(--line);border-radius:14px;margin-top:10px;overflow:hidden}
+.group h4{margin:0;padding:10px 14px;background:var(--bg);font-size:16px;display:flex;justify-content:space-between}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid var(--line);font-size:16px}
+.seg{display:flex;gap:6px;flex:none}
+.seg span{border:1.5px solid var(--line);border-radius:999px;padding:3px 12px;font-size:14px;font-weight:700;color:var(--muted)}
+.seg .on-ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.seg .on-bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.defect{background:var(--bad-soft);border-radius:10px;padding:8px 12px;margin:0 14px 10px;font-size:15px;color:var(--ink)}
+.disclaimer{font-size:14px;color:var(--muted);background:var(--bg);border-radius:10px;padding:10px 12px}
+.sigs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sig{border:1.5px dashed var(--line);border-radius:12px;height:86px;display:flex;flex-direction:column;justify-content:flex-end;padding:8px 10px;font-size:14px;color:var(--muted);position:relative}
+.sig svg{position:absolute;top:12px;right:20px;width:110px;height:44px}
+.btn{display:block;text-align:center;background:var(--brand);color:#fff;border-radius:12px;padding:12px;font-weight:700;margin:6px 18px 18px}
+
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:16px}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+th{color:var(--muted);font-weight:700;font-size:14px}
+td.c{text-align:center}
+.yes{color:var(--ok);font-weight:800} .no{color:var(--bad);font-weight:800}
+.tablewrap{overflow-x:auto}
+
+/* Compare */
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)}
+.cmp div{padding:10px 14px;border-bottom:1px solid var(--line);font-size:16px}
+.cmp .h{font-weight:800;background:var(--bg)}
+.cmp div:nth-child(odd){border-inline-end:1px solid var(--line)}
+
+/* Questions */
+.q{counter-increment:q;position:relative;padding-inline-start:0}
+.qlist{counter-reset:q;display:grid;gap:12px}
+.q h3::before{content:"שאלה " counter(q) " · ";color:var(--brand)}
+.rec{margin-top:8px;font-size:16px}
+.rec b{color:var(--ok)}
+.answer{margin-top:10px;border:1.5px dashed var(--line);border-radius:10px;padding:8px 12px;color:var(--muted);font-size:15px}
+
+.stage{display:flex;gap:14px;align-items:flex-start}
+.stage .tag{flex:none;background:var(--brand);color:#fff;font-weight:800;border-radius:10px;padding:4px 12px;font-size:15px}
+
+footer{margin-top:60px;color:var(--muted);font-size:15px;text-align:center}
+@media (max-width:560px){
+  body{font-size:17px}
+  .facts,.sigs{grid-template-columns:1fr}
+  .row{flex-direction:column;align-items:flex-start}
+  .cmp{grid-template-columns:1fr}
+  .cmp div:nth-child(odd){border-inline-end:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="eyebrow">תוכנית ראשונית · לעיון ואישור · שום דבר עוד לא נבנה</div>
+  <h1>בדיקות בטיחות לרכבים</h1>
+  <p class="lead">קצין הבטיחות עובר על הרכב סעיף אחרי סעיף, מסמן מה תקין ומה לא, רושם ליקויים, וחותם יחד עם הנהג. בסוף נשמר מסמך מסודר בתיק הרכב, ומגיעה תזכורת כשמגיע זמן הבדיקה הבאה.</p>
+  <nav class="toc">
+    <a href="#short">בקצרה</a><a href="#who">מי עושה מה</a><a href="#form">איך הטופס נראה</a><a href="#flow">שלב אחרי שלב</a><a href="#where">איפה זה מופיע</a><a href="#perm">הרשאות</a><a href="#reminders">תזכורות</a><a href="#diff">שונה מהמקור</a><a href="#stages">סדר בנייה</a><a href="#q">שאלות אליך</a>
+  </nav>
+</header>
+
+<!-- 1 -->
+<section id="short">
+  <h2><span class="n">1</span>בקצרה</h2>
+  <p class="sub">כל התהליך בשלושה צעדים.</p>
+  <div class="grid g3">
+    <div class="card"><h3>🔍 בודקים</h3>קצין הבטיחות פותח את הרכב באתר (בדרך כלל מהטלפון, ליד הרכב) ולוחץ על כל סעיף: <span class="pill p-ok">תקין</span> או <span class="pill p-bad">לא תקין</span>.</div>
+    <div class="card"><h3>✍️ חותמים</h3>קצין הבטיחות חותם באצבע. אחריו הנהג חותם, על אותו טלפון או אצלו בטלפון שלו.</div>
+    <div class="card"><h3>📁 נשמר ומזכיר</h3>נוצר מסמך PDF מסודר שנשמר בתיק הרכב. המערכת זוכרת מתי הבדיקה הבאה ושולחת תזכורת.</div>
+  </div>
+  <div class="note"><b>חדשות טובות:</b> את רוב העבודה כבר בנינו. "מפגש שיחה עם נהג" עובד בדיוק ככה: מסמנים סעיפים, שתי חתימות, מסמך PDF, ביטול ותזכורת למפגש הבא. כאן אנחנו משתמשים באותו מנגנון, רק שהבדיקה שייכת <b>לרכב</b> ולא לנהג.</div>
+</section>
+
+<!-- 2 -->
+<section id="who">
+  <h2><span class="n">2</span>מי עושה מה</h2>
+  <p class="sub">שלושה תפקידים, בלי להוסיף סוג משתמש חדש.</p>
+  <div class="grid g3">
+    <div class="card"><h3><span class="who w-m">מנהל</span> קצין הבטיחות / מנהל החברה</h3>
+      <ul><li>מתחיל בדיקה לרכב</li><li>מסמן סעיפים ורושם ליקויים</li><li>חותם ראשון</li><li>רואה את כל הבדיקות של החברה</li><li>יכול לבטל בדיקה חתומה (המסמך נשאר, מסומן "בוטל")</li></ul>
+      <p class="muted" style="font-size:15px;margin:8px 0 0">כמו במפגש עם נהג: מנהל באתר מקליד את שם הקצין (עם הצעות משמות קודמים) וחותם כל פעם מחדש.</p></div>
+    <div class="card"><h3><span class="who w-d">נהג</span> הנהג של הרכב</h3>
+      <ul><li>לא ממלא שום דבר</li><li>רק קורא וחותם</li><li>רואה את הבדיקות שחתם עליהן, אצלו באתר</li></ul></div>
+    <div class="card"><h3><span class="who w-s">אתה</span> בעל האתר</h3>
+      <ul><li>מכין רשימת סעיפים מוכנה שכל חברה מקבלת</li><li>לא רואה ולא ממלא בדיקות של חברות (כמו היום)</li></ul></div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section id="form">
+  <h2><span class="n">3</span>איך הטופס נראה</h2>
+  <p class="sub">דוגמה ויזואלית. הנוסח והסדר שונים מהטופס שהראית, ובמקום טבלה צפופה יש כרטיסים גדולים שנוח ללחוץ עליהם.</p>
+
+  <div class="phoneframe">
+    <div class="mf-head">
+      <div class="logo"><i>🚌</i>שם החברה</div>
+      <span class="pill p-warn">ממתין לחתימת נהג</span>
+    </div>
+    <div class="mf-title">בדיקת בטיחות תקופתית לרכב</div>
+
+    <div class="mf-sec">
+      <div class="facts">
+        <div class="fact"><small>מספר רכב</small><span>28-336-004</span></div>
+        <div class="fact"><small>יצרן ודגם</small><span>מרצדס</span></div>
+        <div class="fact"><small>קילומטראז' היום</small><span>775,600</span></div>
+        <div class="fact"><small>נהג</small><span>ראובן טהר</span></div>
+        <div class="fact"><small>תאריך הבדיקה</small><span>02/09/2026</span></div>
+        <div class="fact"><small>הבדיקה הבאה</small><span>02/10/2026</span></div>
+        <div class="fact"><small>טסט בתוקף עד</small><span>19/09/2026</span></div>
+        <div class="fact bad"><small>ביטוח בתוקף עד</small><span>29/09/2026 ⚠</span></div>
+      </div>
+      <p class="muted" style="font-size:14px;margin:8px 0 0">כל הפרטים נמשכים לבד מכרטיס הרכב ומכרטיס הנהג. רק הקילומטראז' מוקלד. תאריך שעומד לפוג מסומן באדום.</p>
+    </div>
+
+    <div class="mf-sec">
+      <div class="group">
+        <h4>גלגלים ובלימה <span class="pill p-ok">4/4</span></h4>
+        <div class="row">מצב הצמיגים ולחץ האוויר <div class="seg"><span class="on-ok">תקין</span><span>לא תקין</span></div></div>
+        <div class="row">הידוק ברגי הגלגלים <div class="seg"><span class="on-ok">תקין</span><span>לא תקין</span></div></div>
+        <div class="row">בלמים ובלם עזר <div class="seg"><span class="on-ok">תקין</span><span>לא תקין</span></div></div>
+        <div class="row">גלגל חלופי ומגבה <div class="seg"><span class="on-ok">תקין</span><span>לא תקין</span></div></div>
+      </div>
+      <div class="group">
+        <h4>תאורה ולוח שעונים <span class="pill p-bad">ליקוי 1</span></h4>
+        <div class="row">פנסים ואיתות <div class="seg"><span class="on-ok">תקין</span><span>לא תקין</span></div></div>
+        <div class="row">נורות אזהרה בלוח <div class="seg"><span>תקין</span><span class="on-bad">לא תקין</span></div></div>
+        <div class="defect">✎ נורת מנוע דולקת. להעביר למוסך עד סוף השבוע.</div>
+        <div class="row">צופר <div class="seg"><span class="on-ok">תקין</span><span>לא תקין</span></div></div>
+      </div>
+      <p class="muted" style="font-size:14px;margin:8px 0 0">כשמסמנים "לא תקין" נפתחת שורה לכתוב מה הבעיה. כל הליקויים נאספים לבד לרשימה אחת בסוף.</p>
+    </div>
+
+    <div class="mf-sec">
+      <div class="disclaimer"><b>לתשומת לב:</b> בדיקה זו נעשית במבט חיצוני בלבד ואינה מחליפה טיפול או בדיקה במוסך. על הנהג לדווח מיד לממונה על כל תקלה, או חשד לתקלה, שעלולה לפגוע בבטיחות הנסיעה.</div>
+    </div>
+
+    <div class="mf-sec">
+      <div class="sigs">
+        <div class="sig"><svg viewBox="0 0 110 44" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 30c10-20 18-24 22-10s8 14 16-6 12 6 20 8 18-14 28-6"/></svg>קצין בטיחות: מיקי א.</div>
+        <div class="sig">חתימת הנהג</div>
+      </div>
+    </div>
+    <span class="btn">הנהג יחתום כאן עכשיו / לשלוח לנהג</span>
+  </div>
+
+  <h3 style="margin-top:28px">רשימת הסעיפים המוכנה (הצעה)</h3>
+  <p class="sub">מסודרת לפי מה שעוברים עליו כשמסתובבים סביב הרכב, ולא לפי הטבלה המקורית. כל חברה תוכל להוסיף או להוריד סעיפים (ראו שאלה 2).</p>
+  <div class="grid g3">
+    <div class="card"><h3>1. מבחוץ</h3><ul><li>שמשות, מגבים ומתזים</li><li>מראות</li><li>דלתות ונעילה</li><li>פחחות: פגיעות ושריטות</li><li>שילוט על דפנות הרכב</li></ul></div>
+    <div class="card"><h3>2. גלגלים ובלימה</h3><ul><li>מצב הצמיגים ולחץ האוויר</li><li>הידוק ברגי הגלגלים</li><li>בלמים ובלם עזר</li><li>גלגל חלופי, מגבה ומפתח</li></ul></div>
+    <div class="card"><h3>3. מתחת למכסה ומתחת לרכב</h3><ul><li>נזילות: שמן, סולר, מים</li><li>דליפות אוויר</li><li>היגוי</li><li>מערכת פליטה</li><li>מצברים וכבלים</li></ul></div>
+    <div class="card"><h3>4. תאורה ולוח שעונים</h3><ul><li>פנסים ואיתות</li><li>תאורת פנים</li><li>נורות אזהרה בלוח</li><li>מד מהירות וטכוגרף</li><li>צופר וזמזם רוורס</li><li>מיזוג</li></ul></div>
+    <div class="card"><h3>5. תא הנוסעים</h3><ul><li>ניקיון כללי</li><li>מושבים וחגורות</li><li>פטישי חילוץ ויציאות חירום</li><li>רמקולים ומיקרופון</li></ul></div>
+    <div class="card"><h3>6. ציוד חובה ומסמכים</h3><ul><li>מטפי כיבוי</li><li>ערכת עזרה ראשונה</li><li>משולש אזהרה ואפוד זוהר</li><li>רישיון רכב וביטוח ברכב</li></ul></div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="flow">
+  <h2><span class="n">4</span>שלב אחרי שלב</h2>
+  <p class="sub">מה קורה מהרגע שקצין הבטיחות ניגש לרכב ועד שהמסמך בתיק.</p>
+  <div class="card">
+    <ol class="steps">
+      <li><b>נכנסים לרכב באתר <span class="who w-m">מנהל</span></b>ברשימת הרכבים בוחרים את הרכב ולוחצים "בדיקת בטיחות חדשה". אפשר גם מהעמוד "בדיקות בטיחות" ולבחור שם רכב.</li>
+      <li><b>הפרטים מתמלאים לבד <span class="who w-s">מערכת</span></b>שם החברה והלוגו, פרטי הרכב, תוקף טסט וביטוח, והנהג הקבוע של הרכב. אם אין נהג קבוע, או שנהג אחר נוהג היום, בוחרים מהרשימה. מקלידים רק את הקילומטראז'.</li>
+      <li><b>עוברים סעיף אחרי סעיף <span class="who w-m">מנהל</span></b>לחיצה אחת לכל סעיף. כפתור "הכול תקין" בכל קבוצה חוסך זמן, ואז משנים רק את מה שלא תקין.</li>
+      <li><b>רושמים ליקויים <span class="who w-m">מנהל</span></b>כל "לא תקין" מבקש משפט קצר. אפשר גם להוסיף ליקוי חופשי שלא ברשימה.</li>
+      <li><b>קצין הבטיחות חותם <span class="who w-m">מנהל</span></b>מקליד את שמו וחותם באצבע. מהרגע הזה אי אפשר לשנות את הסימונים.</li>
+      <li><b>הנהג חותם <span class="who w-d">נהג</span></b>שתי אפשרויות: <b>כאן ועכשיו</b> על אותו טלפון, או <b>שליחה לנהג</b>. אז הוא מקבל התראה, פותח אצלו, קורא וחותם.</li>
+      <li><b>נוצר מסמך PDF <span class="who w-s">מערכת</span></b>עם לוגו, כל הפרטים, הסימונים, הליקויים, ההערה ושתי החתימות. נשמר בתיק הרכב, ואפשר להוריד אותו.</li>
+      <li><b>נקבע תאריך הבדיקה הבאה <span class="who w-s">מערכת</span></b>לפי התדירות של החברה (למשל כל חודש). אפשר לשנות ידנית.</li>
+    </ol>
+  </div>
+  <div class="note warn"><b>ואם עוצרים באמצע?</b> הבדיקה נשמרת כ"טיוטה" וממשיכים אחר כך. בדיקה שנחתמה ע״י הקצין ועוד לא ע״י הנהג מופיעה כ"ממתין לחתימת נהג".</div>
+</section>
+
+<!-- 5 -->
+<section id="where">
+  <h2><span class="n">5</span>איפה זה מופיע באתר</h2>
+  <div class="grid g2">
+    <div class="card"><h3>📋 עמוד חדש בתפריט: "בדיקות בטיחות"</h3>
+      רשימה של כל הבדיקות בחברה, החדשות למעלה. כל שורה: מספר רכב · תאריך · נהג · מצב.
+      <ul><li>סינון לפי חודש ושנה, לפי רכב ולפי מצב</li><li>למעלה: <b>"רכבים שצריך לבדוק"</b> עם רכבים שהגיע או עבר זמן הבדיקה שלהם</li></ul>
+      <p style="margin:8px 0 0"><span class="pill p-ok">חתום</span> <span class="pill p-warn">ממתין לחתימת נהג</span> <span class="pill p-na">טיוטה</span> <span class="pill p-bad">יש ליקויים</span> <span class="pill p-na">בוטל</span></p></div>
+    <div class="card"><h3>🚌 בתוך כרטיס הרכב</h3>אזור "בדיקות בטיחות": הבדיקה האחרונה, מתי הבאה, וכל הבדיקות הקודמות אחת מתחת לשנייה.</div>
+    <div class="card"><h3>👤 אצל הנהג</h3>הנהג רואה בדיקות שממתינות לחתימה שלו (עם התראה), ואת הבדיקות שכבר חתם עליהן. הוא לא רואה בדיקות של רכבים אחרים או נהגים אחרים.</div>
+    <div class="card"><h3>🔔 התראות</h3>
+      <ul><li>לנהג: "יש בדיקת בטיחות שמחכה לחתימה שלך"</li><li>למנהלים: "הנהג חתם"</li><li>למנהלים: "הגיע זמן בדיקה לרכב X"</li></ul>
+      הכול מנוהל מעמוד ההתראות הקיים, כולל כמה ימים מראש.</div>
+    <div class="card"><h3>📱 טלפון ומחשב</h3>הכול עובד בשניהם. את הבדיקה עצמה ממלאים בדרך כלל בטלפון ליד הרכב, ולכן הטופס נבנה קודם כול לטלפון: כפתורים גדולים וטקסט ברור.</div>
+    <div class="card"><h3>📊 ייצוא דוחות</h3>בעמוד הדוחות הקיים: קובץ Excel של כל הבדיקות בתקופה, רכבים שלא נבדקו, ורשימת ליקויים.</div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="perm">
+  <h2><span class="n">6</span>הרשאות: מי יכול מה</h2>
+  <div class="card tablewrap">
+    <table>
+      <thead><tr><th>פעולה</th><th class="c">מנהל חברה</th><th class="c">נהג</th><th class="c">אתה (בעל האתר)</th></tr></thead>
+      <tbody>
+        <tr><td>להתחיל בדיקה ולסמן סעיפים</td><td class="c yes">✓</td><td class="c no">✗</td><td class="c no">✗</td></tr>
+        <tr><td>לחתום כקצין בטיחות</td><td class="c yes">✓</td><td class="c no">✗</td><td class="c no">✗</td></tr>
+        <tr><td>לחתום כנהג</td><td class="c muted">—</td><td class="c yes">✓ רק על בדיקה שנשלחה אליו</td><td class="c no">✗</td></tr>
+        <tr><td>לראות בדיקות</td><td class="c yes">✓ כל החברה</td><td class="c yes">✓ רק שלו</td><td class="c no">✗</td></tr>
+        <tr><td>להוריד PDF</td><td class="c yes">✓</td><td class="c yes">✓ רק שלו</td><td class="c no">✗</td></tr>
+        <tr><td>לבטל בדיקה חתומה</td><td class="c yes">✓ (נשאר מסומן "בוטל")</td><td class="c no">✗</td><td class="c no">✗</td></tr>
+        <tr><td>למחוק בדיקה לגמרי</td><td class="c no">✗ לאף אחד</td><td class="c no">✗</td><td class="c no">✗</td></tr>
+        <tr><td>לערוך את רשימת הסעיפים של החברה</td><td class="c yes">✓</td><td class="c no">✗</td><td class="c no">✗</td></tr>
+        <tr><td>לקבוע את הרשימה המוכנה לכל החברות</td><td class="c no">✗</td><td class="c no">✗</td><td class="c yes">✓</td></tr>
+      </tbody>
+    </table>
+    <p class="muted" style="font-size:15px;margin:10px 0 0">חברה אחת לעולם לא רואה בדיקות של חברה אחרת. זה נשמר כמו בכל שאר האתר.</p>
+  </div>
+</section>
+
+<!-- 7 -->
+<section id="reminders">
+  <h2><span class="n">7</span>תאריכים ותזכורות</h2>
+  <div class="grid g2">
+    <div class="card"><h3>תדירות</h3>כל חברה בוחרת כל כמה זמן בודקים: כל חודש, חודשיים, 3 חודשים וכו'. אחרי כל בדיקה חתומה נקבע תאריך הבדיקה הבאה לבד, ואפשר לשנות אותו ידנית לרכב מסוים.</div>
+    <div class="card"><h3>רכב חדש</h3>רכב שנוסף למערכת מקבל "בדיקה ראשונה" תוך שבועיים. רכבים שיצאו משימוש לא מקבלים תזכורות.</div>
+    <div class="card"><h3>ביטול</h3>אם בדיקה בוטלה, תאריך הבדיקה הבאה חוזר להיות כמו שהיה לפני הבדיקה הזו.</div>
+    <div class="card"><h3>הרבה רכבים בבת אחת</h3>אם באותו יום מגיע זמן הבדיקה של כמה רכבים, נשלחת התראה אחת מסכמת ולא עשר התראות.</div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section id="diff">
+  <h2><span class="n">8</span>במה זה שונה מהטופס שהראית</h2>
+  <p class="sub">כדי שלא ייראה כמו העתקה: נוסח אחר, סדר אחר ועיצוב אחר.</p>
+  <div class="cmp">
+    <div class="h">הטופס המקורי</div><div class="h">אצלנו</div>
+    <div>"ביקורת קצין בטיחות לאוטובוס"</div><div>"בדיקת בטיחות תקופתית לרכב" (מתאים לכל סוג רכב)</div>
+    <div>טבלה צפופה בשני טורים</div><div>כרטיסים לפי אזורים ברכב, כפתורים גדולים</div>
+    <div>קבוצות: מכונאות, מרכב, חשמל, אביזרי עזר</div><div>לפי סדר הסיבוב סביב הרכב: מבחוץ, גלגלים, מתחת למכסה, תאורה, תא נוסעים, ציוד</div>
+    <div>שני טורים: "נבדק" ו"תקין"</div><div>לחיצה אחת: תקין או לא תקין, ואם לא תקין אז שורה לפרט</div>
+    <div>ליקויים 1–4 בשורות ריקות</div><div>הליקויים נאספים לבד מהסעיפים, ואפשר להוסיף כמה שרוצים</div>
+    <div>פרטים מוקלדים בשורות טקסט</div><div>הכול נמשך מכרטיס הרכב והנהג, ותוקף שעומד לפוג מודגש</div>
+    <div>ההערה על בדיקה חיצונית</div><div>באותה משמעות, בנוסח שלנו (ראו בדוגמה למעלה)</div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section id="stages">
+  <h2><span class="n">9</span>סדר בנייה</h2>
+  <p class="sub">שלושה שלבים. כל שלב עומד בפני עצמו ואפשר לעצור אחריו.</p>
+  <div class="grid">
+    <div class="card stage"><span class="tag">שלב 1</span><div><h3>הבדיקה עצמה</h3>רשימת סעיפים מוכנה, מילוי מהרכב, ליקויים, שתי חתימות, PDF, ושמירה בכרטיס הרכב ובעמוד "בדיקות בטיחות". זה החלק החשוב, ובו נשתמש הכי הרבה במה שכבר קיים.</div></div>
+    <div class="card stage"><span class="tag">שלב 2</span><div><h3>תזכורות ורשימת "צריך לבדוק"</h3>תדירות, תאריך בדיקה הבאה, התראות למנהלים ובדיקה ראשונה לרכב חדש.</div></div>
+    <div class="card stage"><span class="tag">שלב 3</span><div><h3>עריכת סעיפים ודוחות</h3>החברה עורכת את הרשימה שלה, ודוחות Excel בעמוד הדוחות.</div></div>
+  </div>
+  <div class="note"><b>לא בגרסה הראשונה:</b> צילום תמונות לליקוי, הפיכת ליקוי למשימה עם מעקב תיקון, ורשימות שונות לכל סוג רכב. אפשר להוסיף בהמשך אם יתברר שצריך.</div>
+</section>
+
+<!-- 10 -->
+<section id="q">
+  <h2><span class="n">10</span>שאלות אליך: כל ההמלצות אושרו</h2>
+  <p class="sub">תענה על כולן יחד, ותתקן אותי איפה שצריך. ליד כל שאלה כתבתי מה אני ממליץ.</p>
+  <div class="qlist">
+    <div class="card q"><h3>מי ממלא את הבדיקה?</h3>כל מנהל בחברה שמקליד את שם הקצין (כמו במפגש עם נהג)? או שנוסיף לאתר תפקיד חדש של "קצין בטיחות" שיכול רק לבדוק ולא לנהל שום דבר אחר?
+      <div class="rec">המלצה: <b>כל מנהל, עם הקלדת שם הקצין.</b> זה פשוט יותר, וכבר עובד ככה במפגשים.</div><div class="answer">התשובה שלך: <b>מאושר, כמו ההמלצה</b> (27.9.2026)</div></div>
+    <div class="card q"><h3>רשימת הסעיפים: קבועה או ניתנת לעריכה?</h3>
+      <div class="rec">המלצה: <b>רשימה מוכנה שאני מכין, וכל חברה יכולה להוסיף ולהוריד סעיפים</b> (בשלב 3).</div><div class="answer">התשובה שלך: <b>מאושר, כמו ההמלצה</b> (27.9.2026)</div></div>
+    <div class="card q"><h3>רשימה אחת לכל סוגי הרכבים?</h3>הטופס שהראית מיועד לאוטובוס. האם יש לך גם חברות עם משאיות, מסחריות או רכבים פרטיים שצריכות רשימה אחרת?
+      <div class="rec">המלצה: <b>להתחיל עם רשימה אחת כללית</b> ולבדוק אם יש בעיה.</div><div class="answer">התשובה שלך: <b>מאושר, כמו ההמלצה</b> (27.9.2026)</div></div>
+    <div class="card q"><h3>אילו אפשרויות סימון?</h3>רק "תקין / לא תקין"? או שנוסיף גם "לא רלוונטי" (למשל טכוגרף ברכב שאין בו)?
+      <div class="rec">המלצה: <b>תקין / לא תקין / לא רלוונטי.</b></div><div class="answer">התשובה שלך: <b>מאושר, כמו ההמלצה</b> (27.9.2026)</div></div>
+    <div class="card q"><h3>כל כמה זמן בודקים, כברירת מחדל?</h3>בטופס שהראית, בדיקה אחת בחודש.
+      <div class="rec">המלצה: <b>כל חודש כברירת מחדל</b>, וכל חברה יכולה לשנות.</div><div class="answer">התשובה שלך: <b>מאושר, כמו ההמלצה</b> (27.9.2026)</div></div>
+    <div class="card q"><h3>הקילומטראז' שמוקלד בבדיקה: לעדכן גם בכרטיס הרכב?</h3>
+      <div class="rec">המלצה: <b>כן</b>, אם הוא גבוה ממה שכבר רשום.</div><div class="answer">התשובה שלך: <b>מאושר, כמו ההמלצה</b> (27.9.2026)</div></div>
+    <div class="card q"><h3>ליקוי: רק לרשום, או גם לעקוב אחרי התיקון?</h3>במפגש עם נהג החלטת שלא להפוך "לא בוצע" למשימה. האם גם כאן? או שליקוי ברכב חשוב מספיק כדי שיופיע ב"דורש טיפול" עד שמישהו מסמן "תוקן"?
+      <div class="rec">המלצה: <b>בגרסה הראשונה רק לרשום</b>, ולהראות סימון "יש ליקויים" על הרכב עד הבדיקה הבאה.</div><div class="answer">התשובה שלך: <b>מאושר, כמו ההמלצה</b> (27.9.2026)</div></div>
+    <div class="card q"><h3>שליחת ה-PDF במייל?</h3>בצילום השני יש "בחר דוא״ל". האם צריך אפשרות לשלוח את המסמך החתום במייל (למשל למשרד או למוסך)?
+      <div class="rec">המלצה: <b>בגרסה הראשונה רק הורדה</b>, ושליחה במייל בהמשך.</div><div class="answer">התשובה שלך: <b>מאושר, כמו ההמלצה</b> (27.9.2026)</div></div>
+    <div class="card q"><h3>נהג שלא נמצא או מסרב לחתום?</h3>
+      <div class="rec">המלצה: <b>הבדיקה נשארת "ממתין לחתימת נהג"</b>, והמנהל יכול לסגור אותה עם הערה "הנהג לא חתם".</div><div class="answer">התשובה שלך: <b>מאושר, כמו ההמלצה</b> (27.9.2026)</div></div>
+    <div class="card q"><h3>שם הכפתור בתפריט</h3>"בדיקות בטיחות"? "בדיקות קצין בטיחות"? משהו אחר?
+      <div class="rec">המלצה: <b>"בדיקות בטיחות".</b></div><div class="answer">התשובה שלך: <b>מאושר, כמו ההמלצה</b> (27.9.2026)</div></div>
+  </div>
+</section>
+
+<footer>תוכנית ראשונית · 27/09/2026 · שום דבר לא ישתנה באתר עד שתאשר</footer>
+</div>
+</body>
+</html>
