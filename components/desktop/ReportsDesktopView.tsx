@@ -20,20 +20,24 @@ export function ReportsDesktopView({
   driverCategories,
   vehicleCategories,
   meetingCategories,
+  inspectionCategories,
   exportingCategory,
   onSelectDriverCategory,
   onSelectVehicleCategory,
   onSelectMeetingCategory,
+  onSelectInspectionCategory,
 }: {
-  open: 'drivers' | 'vehicles' | 'meetings' | null;
-  onToggle: (kind: 'drivers' | 'vehicles' | 'meetings') => void;
+  open: 'drivers' | 'vehicles' | 'meetings' | 'inspections' | null;
+  onToggle: (kind: 'drivers' | 'vehicles' | 'meetings' | 'inspections') => void;
   driverCategories: Category[];
   vehicleCategories: Category[];
   meetingCategories: Category[];
+  inspectionCategories: Category[];
   exportingCategory: string | null;
   onSelectDriverCategory: (value: string) => void;
   onSelectVehicleCategory: (value: string) => void;
   onSelectMeetingCategory: (value: string) => void;
+  onSelectInspectionCategory: (value: string) => void;
 }) {
   return (
     <View style={styles.wrap}>
@@ -68,6 +72,16 @@ export function ReportsDesktopView({
         categories={meetingCategories}
         exportingCategory={exportingCategory}
         onSelect={onSelectMeetingCategory}
+      />
+      <ReportGroup
+        icon="shield-checkmark-outline"
+        title="בדיקות בטיחות לרכבים"
+        subtitle="מה נבדק, ליקויים, ומי צריך בדיקה"
+        open={open === 'inspections'}
+        onPress={() => onToggle('inspections')}
+        categories={inspectionCategories}
+        exportingCategory={exportingCategory}
+        onSelect={onSelectInspectionCategory}
       />
     </View>
   );

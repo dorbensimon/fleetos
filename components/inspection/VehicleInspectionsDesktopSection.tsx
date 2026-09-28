@@ -1,0 +1,156 @@
+import React, { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { DateField } from '../ui/DateField';
+import { DLtrText, DText, HoverPressable, StatusPill } from '../desktop/primitives';
+import { GroupLabel, pageStyles } from '../desktop/record/RecordPage';
+import { DESKTOP_COLORS, DESKTOP_TONES, type DesktopTone } from '../desktop/desktopTheme';
+import { dueState, dueText } from '../../lib/meetingPlan';
+import { INSPECTION_STATE_META, formatIsoDay, inspectionRepeatLabel, todayIso } from '../../lib/inspections';
+import type { RootStackParamList } from '../../navigation/types';
+import { useVehicleInspections } from './useVehicleInspections';
+import { defectsText, latestNextDue } from './VehicleInspectionsCard';
+
+const HISTORY_SHOWN = 6;
+const STATE_TONE: Record<string, DesktopTone> = { ok: 'ok', soon: 'warn', expired: 'bad', missing: 'neutral', info: 'neutral' };
+
+/**
+ * "בדיקות בטיחות" in a vehicle's card on the desktop: the next inspection
+ * (and a way to move it) beside the inspections the vehicle had.
+ */
+export function VehicleInspectionsDesktopSection({ companyId, vehicleId, archived }: { companyId: string; vehicleId: string; archived: boolean }) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { plan, entries, repeatMonths, error, draft, move } = useVehicleInspections(companyId, vehicleId);
+  const [saving, setSaving] = useState(false);
+  const [moveError, setMoveError] = useState('');
+
+  const change = async (value: string | null) => {
+    if (!value || value === plan?.nextDue || saving) return;
+    if (value < todayIso() || value > latestNextDue()) {
+      setMoveError('בחרו תאריך מהיום ועד שלוש שנים קדימה');
+      return;
+    }
+    setSaving(true);
+    setMoveError('');
+    try {
+      await move(value);
+    } catch (e) {
+      setMoveError((e as Error)?.message || 'שמירת התאריך נכשלה. נסו שוב.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const state = plan?.nextDue ? dueState(plan.nextDue) : null;
+  const dueColor = state === 'late' ? DESKTOP_TONES.bad.fg : state && state !== 'later' ? DESKTOP_TONES.warn.fg : DESKTOP_COLORS.ink;
+  const shown = (entries ?? []).slice(0, HISTORY_SHOWN);
+  const open = (inspectionId?: string) => navigation.navigate('SafetyInspection', inspectionId ? { vehicleId, inspectionId } : { vehicleId });
+
+  return (
+    <>
+      <View style={pageStyles.docsHead}>
+        <DText weight="bold" style={pageStyles.docsTitle}>בדיקות בטיחות</DText>
+        <DText style={pageStyles.mutedText}>בדיקת קצין הבטיחות לרכב, עם חתימה שלו ושל הנהג</DText>
+      </View>
+      <View style={pageStyles.gridRow}>
+        <View style={pageStyles.halfCell}>
+          <GroupLabel>{plan?.firstInspection ? 'הבדיקה הראשונה' : 'הבדיקה הבאה'}</GroupLabel>
+          <View style={[pageStyles.card, styles.body]}>
+            {!!error && <DText style={styles.error}>{error}</DText>}
+            {!archived && (
+              <View style={styles.dueRow}>
+                <DLtrText weight="bold" style={[styles.dueDate, { color: plan?.nextDue ? dueColor : DESKTOP_COLORS.inkFaint }]}>
+                  {plan?.nextDue ? formatIsoDay(plan.nextDue) : 'לא נקבע מועד'}
+                </DLtrText>
+                {plan?.nextDue && state !== 'later' && <StatusPill tone={state === 'late' ? 'bad' : 'warn'} label={dueText(plan.nextDue)} />}
+              </View>
+            )}
+            <DText style={pageStyles.mutedText}>
+              {repeatMonths > 0 ? `בדיקה ${inspectionRepeatLabel(repeatMonths)}` : 'בלי תזכורות קבועות'}
+              {plan?.lastInspection ? ` · האחרונה ב-${formatIsoDay(plan.lastInspection)}` : ' · עוד לא נעשתה בדיקה'}
+            </DText>
+            {!!plan?.lastDefects && (
+              <View style={styles.defects}>
+                <Ionicons name="warning-outline" size={16} color={DESKTOP_TONES.bad.fg} />
+                <DText weight="semiBold" style={styles.defectsText}>יש ליקויים: {defectsText(plan.lastDefects)} בבדיקה האחרונה</DText>
+              </View>
+            )}
+            {!archived && plan && (
+              <View style={styles.move}>
+                <DText style={pageStyles.editFieldLabel}>שינוי מועד הבדיקה הבאה</DText>
+                <DateField value={plan.nextDue} onChange={(value) => void change(value)} placeholder="בחירת תאריך" disabled={saving} hasError={!!moveError} />
+                {!!moveError && <DText style={styles.error} accessibilityRole="alert">{moveError}</DText>}
+                {saving && <DText style={pageStyles.mutedText}>שומר…</DText>}
+              </View>
+            )}
+            {!archived && (
+              <HoverPressable style={[pageStyles.primaryBtn, styles.button]} hoverStyle={pageStyles.primaryBtnHover} pressStyle={pageStyles.pressDown} onPress={() => open(draft?.id)}>
+                <Ionicons name={draft ? 'play-outline' : 'add'} size={16} color="#FFFFFF" />
+                <DText weight="semiBold" style={pageStyles.primaryBtnText}>{draft ? 'המשך הבדיקה שהתחלתם' : 'בדיקה חדשה'}</DText>
+              </HoverPressable>
+            )}
+          </View>
+        </View>
+
+        <View style={pageStyles.halfCell}>
+          <GroupLabel
+            action={
+              (entries?.length ?? 0) > HISTORY_SHOWN ? (
+                <HoverPressable style={pageStyles.linkBtn} hoverStyle={pageStyles.softBtnHover} onPress={() => navigation.navigate('SafetyInspections')} accessibilityLabel="כל בדיקות הבטיחות">
+                  <DText weight="semiBold" style={pageStyles.linkText}>הכול ({entries!.length})</DText>
+                </HoverPressable>
+              ) : undefined
+            }
+          >
+            בדיקות קודמות
+          </GroupLabel>
+          <View style={[pageStyles.card, pageStyles.listCard]}>
+            {entries === null ? (
+              <DText style={[pageStyles.mutedText, styles.empty]}>טוען…</DText>
+            ) : shown.length === 0 ? (
+              <DText style={[pageStyles.mutedText, styles.empty]}>עוד אין בדיקות לרכב הזה</DText>
+            ) : (
+              shown.map(({ row, state: rowState }, index) => {
+                const meta = INSPECTION_STATE_META[rowState];
+                const defects = row.defect_count > 0 && rowState !== 'draft' ? defectsText(row.defect_count) : null;
+                return (
+                  <HoverPressable
+                    key={row.id}
+                    style={[pageStyles.detailRow, index > 0 && pageStyles.rowDivider]}
+                    hoverStyle={pageStyles.rowHover}
+                    onPress={() => open(row.id)}
+                    accessibilityLabel={`בדיקה מ-${formatIsoDay(row.inspection_date)}, ${meta.label}${defects ? `, ${defects}` : ''}`}
+                  >
+                    <DLtrText weight="semiBold" style={styles.rowDate}>{formatIsoDay(row.inspection_date)}</DLtrText>
+                    <View style={pageStyles.flex}>
+                      <DText style={pageStyles.mutedText} numberOfLines={1}>
+                        {[row.officer_name, defects].filter(Boolean).join(' · ') || ' '}
+                      </DText>
+                    </View>
+                    <StatusPill tone={STATE_TONE[meta.tone]} label={meta.label} />
+                    <Ionicons name="chevron-back" size={15} color={DESKTOP_COLORS.inkFaint} />
+                  </HoverPressable>
+                );
+              })
+            )}
+          </View>
+        </View>
+      </View>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  body: { padding: 16, gap: 10 },
+  dueRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  dueDate: { fontSize: 24, lineHeight: 30 },
+  defects: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, backgroundColor: DESKTOP_TONES.bad.bg },
+  defectsText: { fontSize: 14, color: DESKTOP_TONES.bad.fg, flex: 1 },
+  move: { gap: 4, paddingTop: 10, borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
+  button: { justifyContent: 'center', marginTop: 4 },
+  error: { fontSize: 13.5, color: DESKTOP_TONES.bad.fg },
+  empty: { padding: 16 },
+  rowDate: { fontSize: 14.5, width: 92 },
+});

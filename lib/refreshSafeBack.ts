@@ -62,6 +62,9 @@ export function refreshBackFallback(
       return { name: 'DriverHome' };
     case 'CompanyDetail':
       return { name: 'OwnerHome' };
+    case 'SafetyInspection':
+    case 'SafetyInspectionSettings':
+      return { name: 'SafetyInspections' };
     case 'SetPassword':
       return params.voluntary ? { name: homeRoute } : { name: 'Login' };
     case 'Login':

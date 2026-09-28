@@ -188,6 +188,7 @@ export function VehicleFleetCard({
   item,
   compliance,
   drivers,
+  defects = 0,
   departmentName,
   restoring,
   onPress,
@@ -196,6 +197,8 @@ export function VehicleFleetCard({
   item: Vehicle;
   compliance: ComplianceItem[] | undefined;
   drivers: VehicleDriverWithProfile[] | undefined;
+  /** Defects found in the vehicle's last safety inspection. */
+  defects?: number;
   departmentName: string | null;
   restoring: boolean;
   onPress: () => void;
@@ -221,8 +224,9 @@ export function VehicleFleetCard({
           : health.worst === 'missing'
             ? { label: 'חסרים נתונים', status: 'missing' }
             : null;
+  const showDefects = !archived && defects > 0;
   return (
-    <Pressy onPress={onPress} accessibilityLabel={`${title}, ${formatPlate(item.plate_number)}, ${meta}${chip ? `, ${chip.label}` : ''}`} pressScale={0.985}>
+    <Pressy onPress={onPress} accessibilityLabel={`${title}, ${formatPlate(item.plate_number)}, ${meta}${chip ? `, ${chip.label}` : ''}${showDefects ? ', יש ליקויים' : ''}`} pressScale={0.985}>
       <Surface style={[styles.card, !archived && health.worst === 'expired' && styles.cardAlert, archived && styles.cardArchived]}>
         <View style={styles.vehicleTop}>
           <View style={styles.flex}>
@@ -241,6 +245,14 @@ export function VehicleFleetCard({
             <DKText variant="caption" color={DK.muted} numberOfLines={1}>
               {meta}
             </DKText>
+            {showDefects && (
+              <View style={[styles.statusChip, styles.defectChip, { backgroundColor: STATUS.expired.soft }]}>
+                <Ionicons name="warning" size={12} color={STATUS.expired.fg} />
+                <DKText variant="micro" color={STATUS.expired.fg} numberOfLines={1}>
+                  יש ליקויים
+                </DKText>
+              </View>
+            )}
           </View>
           <Plate number={formatPlate(item.plate_number)} size="sm" />
         </View>
@@ -284,6 +296,7 @@ const styles = StyleSheet.create({
   card: { padding: 14, gap: 12, borderRadius: 24 },
   cardAlert: { borderWidth: 1, borderColor: 'rgba(255,77,94,0.28)' },
   cardArchived: { opacity: 0.92 },
+  defectChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, alignSelf: 'flex-end', marginTop: 4 },
 
   driverTop: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   grade: {

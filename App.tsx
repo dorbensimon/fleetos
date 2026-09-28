@@ -47,6 +47,9 @@ import { LegalConsentGate } from './components/legal/LegalConsentGate';
 import { LEGAL_DOCUMENTS, isLegalDocId } from './lib/legal/documents';
 import SignedDocumentsScreen from './screens/admin/SignedDocumentsScreen';
 import ChecklistMeetingScreen from './screens/admin/ChecklistMeetingScreen';
+import SafetyInspectionsScreen from './screens/admin/SafetyInspectionsScreen';
+import SafetyInspectionScreen from './screens/admin/SafetyInspectionScreen';
+import SafetyInspectionSettingsScreen from './screens/admin/SafetyInspectionSettingsScreen';
 import NotificationsScreen from './screens/admin/NotificationsScreen';
 import AdminDocumentSigningScreen from './screens/admin/AdminDocumentSigningScreen';
 import DocusealWebViewScreen from './screens/DocusealWebViewScreen';
@@ -122,6 +125,9 @@ const linking: LinkingOptions<RootStackParamList> = {
       CompanySettings: 'admin/company-settings',
       SignedDocuments: 'signed-documents',
       ChecklistMeeting: 'drivers/:driverId/meeting',
+      SafetyInspections: 'safety-inspections',
+      SafetyInspectionSettings: 'safety-inspections/settings',
+      SafetyInspection: 'vehicles/:vehicleId/safety-inspection',
       Notifications: 'notifications',
       AdminDocumentSigning: 'documents/signing',
       DocusealWebView: 'documents/view',
@@ -312,6 +318,9 @@ export default function App() {
               <Stack.Screen name="CompanySettings" component={CompanySettingsScreen} />
               <Stack.Screen name="SignedDocuments" component={SignedDocumentsScreen} />
               <Stack.Screen name="ChecklistMeeting" component={ChecklistMeetingScreen} />
+              <Stack.Screen name="SafetyInspections" component={SafetyInspectionsScreen} />
+              <Stack.Screen name="SafetyInspection" component={SafetyInspectionScreen} />
+              <Stack.Screen name="SafetyInspectionSettings" component={SafetyInspectionSettingsScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               <Stack.Screen name="AdminDocumentSigning" component={AdminDocumentSigningScreen} />
               <Stack.Screen name="DocusealWebView" component={DocusealWebViewScreen} />

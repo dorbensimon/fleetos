@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { FleetDesktopView } from '../../components/desktop/FleetDesktopView';
+import { loadInspectionPlan } from '../../lib/inspections';
 import { AttentionMenu } from '../../components/desktop/FleetOverview';
 import { FleetMobile, type DriverFilter, type VehicleFilter } from './mobile/FleetMobile';
 
@@ -204,6 +205,8 @@ export default function FleetScreen() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [compliance, setCompliance] = useState<Map<string, ComplianceItem[]>>(new Map());
   const [vehicleDrivers, setVehicleDrivers] = useState<Map<string, VehicleDriverWithProfile[]>>(new Map());
+  // Defects found in each vehicle's last safety inspection ("יש ליקויים").
+  const [inspectionDefects, setInspectionDefects] = useState<Map<string, number>>(new Map());
   const [departmentNames, setDepartmentNames] = useState<Map<string, string>>(new Map());
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [vehiclesError, setVehiclesError] = useState<string | null>(null);
@@ -234,15 +237,18 @@ export default function FleetScreen() {
 
     try {
       const [rows, departments] = await Promise.all([listVehicles(companyId, true), listDepartments(companyId)]);
-      const [nextCompliance, nextVehicleDrivers] = await Promise.all([
+      const [nextCompliance, nextVehicleDrivers, plan] = await Promise.all([
         listComplianceForOwners('vehicle', rows.map((vehicle) => vehicle.id)),
         listActiveVehicleDriversForVehicles(rows.map((vehicle) => vehicle.id)),
+        // The list works without it; only the defect marks are missing.
+        loadInspectionPlan(companyId).catch(() => []),
       ]);
       if (requestId !== vehicleLoadRequest.current) return false;
 
       setVehicles(rows);
       setCompliance(nextCompliance);
       setVehicleDrivers(nextVehicleDrivers);
+      setInspectionDefects(new Map(plan.filter((row) => row.lastDefects > 0).map((row) => [row.vehicleId, row.lastDefects])));
       setDepartmentNames(new Map(departments.map((department) => [department.id, department.name])));
       setVehiclesError(null);
       return true;
@@ -461,6 +467,7 @@ export default function FleetScreen() {
           }}
           compliance={compliance}
           vehicleDrivers={vehicleDrivers}
+          inspectionDefects={inspectionDefects}
           departmentNames={departmentNames}
           restoringVehicleId={restoringVehicleId}
           onOpenDriver={(driverId) => navigation.navigate('DriverDetail', { driverId })}
@@ -511,6 +518,7 @@ export default function FleetScreen() {
       onRetryVehicles={() => void retryVehicles()}
       compliance={compliance}
       vehicleDrivers={vehicleDrivers}
+      inspectionDefects={inspectionDefects}
       departmentNames={departmentNames}
       restoringVehicleId={restoringVehicleId}
       onNotifications={() => navigation.navigate('Notifications')}

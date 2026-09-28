@@ -79,6 +79,7 @@ const TYPE_ICON: Partial<Record<NotificationType, IconName>> = {
   vehicle_child_detection_expiry: 'happy-outline',
   vehicle_service_due: 'build-outline',
   driver_meeting_due: 'people-outline',
+  vehicle_safety_check_due: 'shield-checkmark-outline',
   signature_request_assigned: 'create-outline',
   vehicle_assignment: 'car-sport-outline',
   driver_profile_updated_by_manager: 'person-outline',
@@ -584,6 +585,7 @@ const LANE_HEIGHT = 34;
  */
 const TIMELINE_LABEL: Partial<Record<NotificationType, string>> = {
   driver_meeting_due: 'מפגש עם נהג',
+  vehicle_safety_check_due: 'בדיקת בטיחות',
   driver_license_expiry: 'רישיון נהיגה',
   company_carrier_license_expiry: 'רישיון מוביל',
 };
@@ -598,7 +600,7 @@ function LeadTimeline({ prefs, onPick, reduceMotion }: { prefs: NotificationPref
   for (const t of prefs.visibleTypes) {
     if (LEAD_RULES[t.type]?.unit !== 'days') continue;
     const days = leads.values[t.type] ?? 0;
-    const entry = { type: t.type, label: TIMELINE_LABEL[t.type] ?? shortLabel(t.label), on: prefs.prefs?.[t.type] ?? true, meeting: t.type === 'driver_meeting_due' };
+    const entry = { type: t.type, label: TIMELINE_LABEL[t.type] ?? shortLabel(t.label), on: prefs.prefs?.[t.type] ?? true, meeting: t.type === 'driver_meeting_due' || t.type === 'vehicle_safety_check_due' };
     byDays.set(days, [...(byDays.get(days) ?? []), entry]);
   }
   const clusters = Array.from(byDays.entries())

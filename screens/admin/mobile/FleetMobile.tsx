@@ -69,6 +69,8 @@ type Props = {
   onRetryVehicles: () => void;
   compliance: Map<string, ComplianceItem[]>;
   vehicleDrivers: Map<string, VehicleDriverWithProfile[]>;
+  /** Defects in each vehicle's last safety inspection; absent when none. */
+  inspectionDefects: Map<string, number>;
   departmentNames: Map<string, string>;
   restoringVehicleId: string | null;
 
@@ -228,6 +230,7 @@ export function FleetMobile(p: Props) {
                 item={entry.item}
                 compliance={p.compliance.get(entry.item.id)}
                 drivers={p.vehicleDrivers.get(entry.item.id)}
+                defects={p.inspectionDefects.get(entry.item.id) ?? 0}
                 departmentName={entry.item.department_id ? p.departmentNames.get(entry.item.department_id) ?? null : null}
                 restoring={p.restoringVehicleId === entry.item.id}
                 onPress={() => p.onOpenVehicle(entry.item.id)}

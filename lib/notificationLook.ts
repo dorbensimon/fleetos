@@ -25,6 +25,7 @@ export function notificationIcon(type: string | null): keyof typeof Ionicons.gly
   if (type === 'company_carrier_license_expiry') return 'business-outline';
   if (type === 'vehicle_odometer_stale') return 'speedometer-outline';
   if (type === 'driver_meeting_due') return 'people-outline';
+  if (type === 'vehicle_safety_check_due') return 'shield-checkmark-outline';
   if (type === 'vehicle_assignment') return 'car-outline';
   if (type?.startsWith('vehicle_')) return 'warning-outline';
   if (type?.startsWith('license_update')) return 'card-outline';
@@ -46,5 +47,7 @@ export function notificationTone(n: Pick<Notification, 'notification_type' | 'me
   if (type === 'vehicle_service_due' || type === 'license_update_requested' || type === 'vehicle_odometer_stale') return 'warn';
   // Meeting reminders (supabase/sql/97): a week ahead is a heads-up, due or late is urgent.
   if (type === 'driver_meeting_due') return n.message.includes('המועד בעוד') || n.message.includes('בשבוע הקרוב') ? 'warn' : 'bad';
+  // Inspection reminders (supabase/sql/103): ahead is a heads-up, due or late is urgent.
+  if (type === 'vehicle_safety_check_due') return n.message.includes('המועד בעוד') || n.message.includes('מתקרבת') ? 'warn' : 'bad';
   return 'brand';
 }
