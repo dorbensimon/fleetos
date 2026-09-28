@@ -8,7 +8,7 @@ export default function AdminDocumentSigningScreen({ navigation }: NativeStackSc
   const { profile, loading } = useCompany();
   useEffect(() => {
     if (loading || !profile) return;
-    if (profile.role === 'owner') navigation.replace('GlobalSigningTemplates');
+    if (profile.role === 'owner') navigation.replace('OwnerHome');
     else if (profile.role === 'admin') navigation.replace('AdminHome');
     else navigation.replace('DriverDocuments');
   }, [loading, profile, navigation]);

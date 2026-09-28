@@ -39,7 +39,6 @@ export type RootStackParamList = {
   /** A meeting on a "רשימת סעיפים" form: a new one (templateId) or one in progress (meetingId). */
   ChecklistMeeting: { driverId: string; templateId?: string; meetingId?: string };
   /** Owner-only: manage the global signing templates shared by every company. */
-  GlobalSigningTemplates: undefined;
   DocusealWebView: {
     mode: 'builder' | 'sign' | 'preview' | 'document' | 'image';
     title: string;

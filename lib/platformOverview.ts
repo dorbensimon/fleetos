@@ -2,6 +2,7 @@ import type { Company } from './supabase';
 import type { ComplianceItem, Vehicle, VehicleDriverWithProfile } from './adminApi';
 import { vehicleAttentionGroups } from './vehicleAttention';
 import { daysUntilExpiry, expiryState, formatDate } from './theme';
+import { accountMrr, type CompanyAccount } from './companyAccount';
 
 /**
  * The owner's control room, computed from raw rows. Only counts, dates and
@@ -20,6 +21,8 @@ export type PlatformRows = {
   assignments: { vehicle_id: string; company_id: string }[];
   signatures: { company_id: string; status: string }[];
   activity: { company_id: string | null; created_at: string }[];
+  /** The owner's customer records (migration 102); missing before it. */
+  accounts?: CompanyAccount[];
 };
 
 export type Tone = 'ok' | 'warn' | 'bad' | 'off';
@@ -49,6 +52,10 @@ export type CompanyHealth = {
   pendingSignatures: number;
   lastActivity: string | null;
   activity7d: number;
+  /** The company as the owner's customer, or null before one was set up. */
+  account: CompanyAccount | null;
+  /** Monthly revenue from this company right now. */
+  mrr: number;
   issues: CompanyIssue[];
   tone: Tone;
 };
@@ -65,6 +72,14 @@ export type PlatformOverview = {
     notActivated: number;
     activity7d: number;
     needAttention: number;
+    /** Monthly revenue from paying (and overdue) companies. */
+    mrr: number;
+    paying: number;
+    trials: number;
+    overdue: number;
+    /** Paying companies that renew in the next 30 days, and trials that end in the next 7. */
+    renewalsSoon: number;
+    trialsEndingSoon: number;
   };
   issues: CompanyIssue[];
   /** Actions per day, oldest first, ending today. */
@@ -105,6 +120,7 @@ export function buildPlatformOverview(rows: PlatformRows, now: Date = new Date()
   const assignedBy = groupBy(rows.assignments, (a) => a.vehicle_id);
   const signaturesBy = groupBy(rows.signatures.filter((s) => s.status === 'pending'), (s) => s.company_id);
   const activityBy = groupBy(rows.activity, (a) => a.company_id);
+  const accountBy = new Map((rows.accounts ?? []).map((a) => [a.company_id, a]));
 
   const weekAgo = now.getTime() - 7 * 86_400_000;
   const idleSince = now.getTime() - IDLE_DAYS * 86_400_000;
@@ -141,6 +157,7 @@ export function buildPlatformOverview(rows: PlatformRows, now: Date = new Date()
     const notActivated = people.filter((p) => (p.role === 'admin' || p.role === 'driver') && p.must_change_password).length;
     const adminsNotActivated = admins.filter((p) => p.must_change_password).length;
 
+    const account = accountBy.get(company.id) ?? null;
     const issues: CompanyIssue[] = [];
     const add = (tone: CompanyIssue['tone'], title: string, detail: string) =>
       issues.push({ companyId: company.id, companyName: company.name, tone, title, detail });
@@ -166,6 +183,22 @@ export function buildPlatformOverview(rows: PlatformRows, now: Date = new Date()
       if (people.length > 0 && (!lastActivity || new Date(lastActivity).getTime() < idleSince)) {
         add('warn', 'אין פעילות בחודש האחרון', 'לא נרשמה פעולה ב-30 הימים האחרונים');
       }
+
+      // The customer side: money and dates the owner has to act on.
+      if (account?.status === 'overdue') add('bad', 'התשלום בפיגור', 'החברה מסומנת כלקוח בפיגור תשלום');
+      if (account?.status === 'trial' && account.trial_ends_at) {
+        const d = daysUntilExpiry(account.trial_ends_at);
+        if (d != null && d < 0) add('bad', 'תקופת הניסיון הסתיימה', `הסתיימה ב-${formatDate(account.trial_ends_at)}`);
+        else if (d != null && d <= 7) add('warn', 'תקופת הניסיון מסתיימת', d === 0 ? 'מסתיימת היום' : `עוד ${plural(d, 'יום אחד', 'ימים')}`);
+      }
+      if ((account?.status === 'active' || account?.status === 'overdue') && account.renewal_date) {
+        const d = daysUntilExpiry(account.renewal_date);
+        if (d != null && d < 0) add('bad', 'מועד החידוש עבר', `היה ב-${formatDate(account.renewal_date)}`);
+        else if (d != null && d <= 14) add('warn', 'חידוש מנוי מתקרב', d === 0 ? 'היום' : `עוד ${plural(d, 'יום אחד', 'ימים')}`);
+      }
+      if (account?.vehicle_limit && vehicles.length >= account.vehicle_limit) {
+        add('warn', 'הגיעה למכסת הרכבים', `${vehicles.length} מתוך ${account.vehicle_limit} במנוי`);
+      }
     }
 
     // Worst first, so the one line a card has room for is the most urgent.
@@ -187,6 +220,8 @@ export function buildPlatformOverview(rows: PlatformRows, now: Date = new Date()
       pendingSignatures: signaturesBy.get(company.id)?.length ?? 0,
       lastActivity,
       activity7d,
+      account,
+      mrr: active ? accountMrr(account) : 0,
       issues,
       tone,
     };
@@ -223,6 +258,22 @@ export function buildPlatformOverview(rows: PlatformRows, now: Date = new Date()
       notActivated: sum((c) => (c.active ? c.notActivated : 0)),
       activity7d: sum((c) => c.activity7d),
       needAttention: companies.filter((c) => c.tone === 'bad' || c.tone === 'warn').length,
+      mrr: sum((c) => c.mrr),
+      paying: companies.filter((c) => c.active && (c.account?.status === 'active' || c.account?.status === 'overdue')).length,
+      trials: companies.filter((c) => c.active && c.account?.status === 'trial').length,
+      overdue: companies.filter((c) => c.active && c.account?.status === 'overdue').length,
+      renewalsSoon: companies.filter((c) => {
+        const a = c.account;
+        if (!c.active || !a?.renewal_date || (a.status !== 'active' && a.status !== 'overdue')) return false;
+        const d = daysUntilExpiry(a.renewal_date);
+        return d != null && d <= 30;
+      }).length,
+      trialsEndingSoon: companies.filter((c) => {
+        const a = c.account;
+        if (!c.active || a?.status !== 'trial' || !a.trial_ends_at) return false;
+        const d = daysUntilExpiry(a.trial_ends_at);
+        return d != null && d <= 7;
+      }).length,
     },
     issues,
     activityByDay: days,

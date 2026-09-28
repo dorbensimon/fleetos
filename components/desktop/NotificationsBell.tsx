@@ -17,6 +17,13 @@ import { showAlert } from '../../lib/platformAlert';
 import type { UserRole } from '../../lib/supabase';
 import { formatDateTime } from '../../lib/theme';
 import { RootStackParamList } from '../../navigation/types';
+import {
+  countUnreadOwnerNotifications,
+  listOwnerNotifications,
+  markAllOwnerNotificationsRead,
+  markOwnerNotificationRead,
+  type OwnerNotification,
+} from '../../lib/ownerNotifications';
 import { BrandLoader } from '../ui/BrandLoader';
 import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
@@ -25,24 +32,116 @@ import { HeaderMenuBackdrop, headerMenuEnter, headerMenuStyles, useHeaderMenu } 
 const PREVIEW_COUNT = 6;
 const TABULAR = webOnly({ fontVariantNumeric: 'tabular-nums' });
 
+type IconName = keyof typeof Ionicons.glyphMap;
+
+/** One row of the dropdown, whatever feed it came from. */
+type BellRow = { id: string; unread: boolean; icon: IconName; colors: { bg: string; fg: string }; title?: string; text: string; createdAt: string };
+
+type Feed<T> = {
+  count: () => Promise<number>;
+  list: () => Promise<T[]>;
+  markAll: () => Promise<void>;
+  markOne: (id: string) => Promise<void>;
+  toRow: (item: T) => BellRow;
+  open: (item: T) => Promise<void> | void;
+  isUnread: (item: T) => boolean;
+  withRead: (item: T, at: string) => T;
+};
+
 /**
  * The top bar's bell: the unread count on the badge, and a dropdown of the
  * latest notifications. A row opens the record it talks about (same rule as
  * the notifications page, lib/notificationTargets.ts) and marks it read.
  * The count refreshes on focus and whenever the browser tab comes back.
+ * Company users read their company's feed; the owner reads their own
+ * (lib/ownerNotifications.ts), about companies only.
  */
 export function NotificationsBell({ companyId, role }: { companyId: string; role: UserRole | null | undefined }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const feed: Feed<Notification> = {
+    count: () => countUnreadNotifications(companyId),
+    list: () => listNotifications(companyId),
+    markAll: () => markAllNotificationsRead(companyId),
+    markOne: markNotificationRead,
+    isUnread: (n) => !n.read_at,
+    withRead: (n, at) => ({ ...n, read_at: at }),
+    toRow: (n) => {
+      const tone = notificationTone(n);
+      return {
+        id: n.id,
+        unread: !n.read_at,
+        icon: notificationIcon(n.notification_type) as IconName,
+        colors: tone === 'brand' ? { bg: DESKTOP_COLORS.brandFocusRing, fg: DESKTOP_COLORS.brand } : DESKTOP_TONES[tone],
+        text: n.message,
+        createdAt: n.created_at,
+      };
+    },
+    open: async (n) => {
+      const target = await notificationTarget(role, n, resolveNotificationVehicleId);
+      if (target) navigateToNotificationTarget(navigation, target);
+      else navigation.navigate('Notifications');
+    },
+  };
+  return <Bell feed={feed} refreshKey={companyId} />;
+}
+
+const OWNER_ICON: Record<OwnerNotification['notification_type'], IconName> = {
+  owner_company_activated: 'rocket-outline',
+  owner_admin_added: 'person-add-outline',
+  owner_company_not_activated: 'hourglass-outline',
+  owner_company_inactive: 'moon-outline',
+  owner_carrier_license_expiry: 'document-text-outline',
+  owner_trial_ending: 'timer-outline',
+  owner_renewal_due: 'card-outline',
+  owner_vehicle_limit: 'trending-up-outline',
+};
+
+export function OwnerNotificationsBell() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const feed: Feed<OwnerNotification> = {
+    count: countUnreadOwnerNotifications,
+    list: listOwnerNotifications,
+    markAll: markAllOwnerNotificationsRead,
+    markOne: markOwnerNotificationRead,
+    isUnread: (n) => !n.read_at,
+    withRead: (n, at) => ({ ...n, read_at: at }),
+    toRow: (n) => ({
+      id: n.id,
+      unread: !n.read_at,
+      icon: OWNER_ICON[n.notification_type] ?? 'business-outline',
+      colors:
+        n.tone === 'info'
+          ? { bg: DESKTOP_COLORS.brandFocusRing, fg: DESKTOP_COLORS.brand }
+          : DESKTOP_TONES[n.tone === 'good' ? 'ok' : n.tone],
+      title: n.title,
+      text: n.message,
+      createdAt: n.created_at,
+    }),
+    open: (n) => {
+      if (n.company_id) navigation.navigate('CompanyDetail', { companyId: n.company_id });
+      else navigation.navigate('Notifications');
+    },
+  };
+  return <Bell feed={feed} refreshKey="owner" />;
+}
+
+function Bell<T extends { id: string }>({ feed, refreshKey }: { feed: Feed<T>; refreshKey: string }) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const menu = useHeaderMenu('notifications');
   const [unread, setUnread] = useState(0);
-  const [rows, setRows] = useState<Notification[] | null>(null);
+  const [rows, setRows] = useState<T[] | null>(null);
   const [failed, setFailed] = useState(false);
   const request = useRef(0);
+  // The feed object is rebuilt every render; the callbacks below read it
+  // through a ref so they only change when the feed's identity does.
+  const feedRef = useRef(feed);
+  feedRef.current = feed;
 
   // Badge counts are decoration — a failure must never break the page.
   const refreshCount = useCallback(() => {
-    countUnreadNotifications(companyId).then(setUnread).catch(() => undefined);
-  }, [companyId]);
+    feedRef.current.count().then(setUnread).catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
   useFocusEffect(refreshCount);
 
@@ -57,14 +156,15 @@ export function NotificationsBell({ companyId, role }: { companyId: string; role
     const id = ++request.current;
     setFailed(false);
     try {
-      const all = await listNotifications(companyId);
+      const all = await feedRef.current.list();
       if (id !== request.current) return;
       setRows(all.slice(0, PREVIEW_COUNT));
-      setUnread(all.filter((n) => !n.read_at).length);
+      setUnread(all.filter((n) => feedRef.current.isUnread(n)).length);
     } catch {
       if (id === request.current) setFailed(true);
     }
-  }, [companyId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
   // Every opening shows fresh rows: stale ones stay visible while they reload.
   useEffect(() => {
@@ -73,7 +173,7 @@ export function NotificationsBell({ companyId, role }: { companyId: string; role
 
   const markRead = (ids: Set<string>) => {
     const now = new Date().toISOString();
-    setRows((current) => current?.map((n) => (ids.has(n.id) && !n.read_at ? { ...n, read_at: now } : n)) ?? null);
+    setRows((current) => current?.map((n) => (ids.has(n.id) && feed.isUnread(n) ? feed.withRead(n, now) : n)) ?? null);
   };
 
   const readAll = async () => {
@@ -82,7 +182,7 @@ export function NotificationsBell({ companyId, role }: { companyId: string; role
     markRead(new Set(rows?.map((n) => n.id)));
     setUnread(0);
     try {
-      await markAllNotificationsRead(companyId);
+      await feed.markAll();
     } catch {
       setRows(before);
       setUnread(beforeUnread);
@@ -91,16 +191,14 @@ export function NotificationsBell({ companyId, role }: { companyId: string; role
   };
 
   // The page opens right away; marking read happens behind it.
-  const openRow = async (n: Notification) => {
+  const openRow = async (n: T) => {
     menu.close();
-    if (!n.read_at) {
+    if (feed.isUnread(n)) {
       markRead(new Set([n.id]));
       setUnread((c) => Math.max(0, c - 1));
-      markNotificationRead(n.id).catch(refreshCount);
+      feed.markOne(n.id).catch(refreshCount);
     }
-    const target = await notificationTarget(role, n, resolveNotificationVehicleId);
-    if (target) navigateToNotificationTarget(navigation, target);
-    else navigation.navigate('Notifications');
+    await feed.open(n);
   };
 
   const openAll = () => {
@@ -173,28 +271,33 @@ export function NotificationsBell({ companyId, role }: { companyId: string; role
             </View>
           ) : (
             <ScrollView style={headerMenuStyles.scroll}>
-              {rows.map((n, index) => {
-                const tone = notificationTone(n);
-                const colors = tone === 'brand' ? { bg: DESKTOP_COLORS.brandFocusRing, fg: DESKTOP_COLORS.brand } : DESKTOP_TONES[tone];
-                const isUnread = !n.read_at;
+              {rows.map((item, index) => {
+                const n = feed.toRow(item);
+                const colors = n.colors;
+                const isUnread = n.unread;
                 return (
                   <HoverPressable
                     key={n.id}
                     style={[styles.row, index > 0 && styles.rowDivider, isUnread && styles.rowUnread]}
                     hoverStyle={headerMenuStyles.rowHover}
-                    onPress={() => void openRow(n)}
+                    onPress={() => void openRow(item)}
                     accessibilityRole="button"
-                    accessibilityLabel={`${isUnread ? 'לא נקראה. ' : ''}${n.message}, ${timeAgo(n.created_at)}`}
+                    accessibilityLabel={`${isUnread ? 'לא נקראה. ' : ''}${n.title ? `${n.title}. ` : ''}${n.text}, ${timeAgo(n.createdAt)}`}
                   >
                     <View style={[styles.icon, { backgroundColor: colors.bg }]}>
-                      <Ionicons name={notificationIcon(n.notification_type)} size={15} color={colors.fg} />
+                      <Ionicons name={n.icon} size={15} color={colors.fg} />
                     </View>
                     <View style={styles.copy}>
-                      <DText weight={isUnread ? 'semiBold' : 'regular'} style={styles.message} numberOfLines={2}>
-                        {n.message}
+                      {!!n.title && (
+                        <DText weight="bold" style={styles.message} numberOfLines={1}>
+                          {n.title}
+                        </DText>
+                      )}
+                      <DText weight={isUnread && !n.title ? 'semiBold' : 'regular'} style={[styles.message, !!n.title && styles.messageSoft]} numberOfLines={2}>
+                        {n.text}
                       </DText>
                       <DText style={[styles.time, TABULAR]} numberOfLines={1}>
-                        {timeAgo(n.created_at)} · {formatDateTime(n.created_at)}
+                        {timeAgo(n.createdAt)} · {formatDateTime(n.createdAt)}
                       </DText>
                     </View>
                     {isUnread ? <View style={styles.unreadDot} /> : <Ionicons name="chevron-back" size={13} color={DESKTOP_COLORS.inkFaint} />}
@@ -262,6 +365,7 @@ const styles = StyleSheet.create({
   icon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   copy: { flex: 1, minWidth: 0, gap: 2 },
   message: { fontSize: 13, lineHeight: 18, color: DESKTOP_COLORS.ink },
+  messageSoft: { color: DESKTOP_COLORS.inkMuted },
   time: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: DESKTOP_COLORS.brand },
 });

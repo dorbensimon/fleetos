@@ -22,7 +22,8 @@ export type NotificationTarget =
   | { screen: 'DriverMeetingFolder'; params: { driverId: string; folderId: string } }
   | { screen: 'SignedDocuments'; params: { openMeeting: string } }
   | { screen: 'DriverVehicle'; params?: { focus?: string } }
-  | { screen: 'DriverProfile'; params?: { focus?: string; edit?: boolean } };
+  | { screen: 'DriverProfile'; params?: { focus?: string; edit?: boolean } }
+  | { screen: 'CompanyDetail'; params: { companyId: string } };
 
 export type NotificationTargetFields = Pick<
   Notification,
@@ -189,6 +190,9 @@ export function navigateToNotificationTarget(
       return;
     case 'DriverProfile':
       navigation.navigate('DriverProfile', target.params);
+      return;
+    case 'CompanyDetail':
+      navigation.navigate('CompanyDetail', target.params);
       return;
     default:
       navigation.navigate(target.screen);

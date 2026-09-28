@@ -129,3 +129,65 @@ describe('lastSeenLabel', () => {
     expect(lastSeenLabel(recent(5), NOW)).toBe('לפני 5 ימים');
   });
 });
+
+describe('the customer side', () => {
+  const account = (company_id: string, extra: Partial<import('../companyAccount').CompanyAccount>) => ({
+    company_id,
+    status: 'active' as const,
+    plan: null,
+    monthly_price: null,
+    billing_cycle: 'monthly' as const,
+    trial_ends_at: null,
+    renewal_date: null,
+    vehicle_limit: null,
+    contact_name: null,
+    contact_phone: null,
+    contact_email: null,
+    notes: null,
+    ...extra,
+  });
+  const admin = (company_id: string) => ({ company_id, role: 'admin', must_change_password: false });
+  const inDays = (d: number) => {
+    const x = new Date();
+    x.setDate(x.getDate() + d);
+    return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+  };
+
+  it('adds up monthly revenue from paying and overdue companies only', () => {
+    const o = buildPlatformOverview(
+      rows({
+        companies: [company('a', 'א'), company('b', 'ב'), company('c', 'ג'), company('d', 'ד', { status: 'disabled' })],
+        profiles: [admin('a'), admin('b'), admin('c')],
+        accounts: [
+          account('a', { monthly_price: 500 }),
+          account('b', { status: 'overdue', monthly_price: 300 }),
+          account('c', { status: 'trial', monthly_price: 900, trial_ends_at: inDays(20) }),
+          account('d', { monthly_price: 1000 }),
+        ],
+      }),
+    );
+    expect(o.totals.mrr).toBe(800);
+    expect([o.totals.paying, o.totals.trials, o.totals.overdue]).toEqual([2, 1, 1]);
+    expect(o.companies.find((c) => c.company.id === 'b')!.issues.map((i) => i.title)).toContain('התשלום בפיגור');
+  });
+
+  it('flags an ending trial, a passed renewal and a full vehicle quota', () => {
+    const o = buildPlatformOverview(
+      rows({
+        companies: [company('t', 'ניסיון'), company('r', 'חידוש'), company('q', 'מכסה')],
+        profiles: [admin('t'), admin('r'), admin('q')],
+        vehicles: [{ id: 'v1', company_id: 'q', status: 'active', plate_number: '1', manufacturer: null, model: null }],
+        accounts: [
+          account('t', { status: 'trial', trial_ends_at: inDays(3) }),
+          account('r', { renewal_date: inDays(-2) }),
+          account('q', { vehicle_limit: 1 }),
+        ],
+      }),
+    );
+    const titles = (id: string) => o.companies.find((c) => c.company.id === id)!.issues.map((i) => i.title);
+    expect(titles('t')).toContain('תקופת הניסיון מסתיימת');
+    expect(titles('r')).toContain('מועד החידוש עבר');
+    expect(titles('q')).toContain('הגיעה למכסת הרכבים');
+    expect(o.totals.trialsEndingSoon).toBe(1);
+  });
+});

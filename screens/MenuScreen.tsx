@@ -7,6 +7,7 @@ import { useCompany } from '../lib/CompanyContext';
 import { RootStackParamList } from '../navigation/types';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import { countUnreadNotifications } from '../lib/adminApi';
+import { countUnreadOwnerNotifications } from '../lib/ownerNotifications';
 import { listSignatureRequests } from '../lib/docuseal';
 import { STATUS } from '../components/driverKit/theme';
 import { MenuMobile, type MenuGroup } from './MenuMobile';
@@ -18,7 +19,7 @@ import { MenuMobile, type MenuGroup } from './MenuMobile';
 type Props = NativeStackScreenProps<RootStackParamList, 'Menu'>;
 
 const ROLE_LABEL: Record<string, string> = {
-  owner: 'בעל החברה',
+  owner: 'סופר אדמין',
   admin: 'מנהל צי',
   driver: 'נהג',
 };
@@ -35,7 +36,11 @@ export default function MenuScreen({ navigation }: Props) {
     if (isDesktop || !role) return;
     let alive = true;
     Promise.all([
-      company?.id ? countUnreadNotifications(company.id).catch(() => 0) : Promise.resolve(0),
+      role === 'owner'
+        ? countUnreadOwnerNotifications().catch(() => 0)
+        : company?.id
+          ? countUnreadNotifications(company.id).catch(() => 0)
+          : Promise.resolve(0),
       role === 'driver'
         ? listSignatureRequests()
             .then((rows) => rows.filter((r) => r.status === 'pending' && !!r.docuseal_submitter_slug).length)
@@ -148,13 +153,20 @@ export default function MenuScreen({ navigation }: Props) {
             notifications,
           ]
         : [
+            // The owner runs the platform, not a fleet: no departments or
+            // drivers here, only the companies and their own feed.
             {
               rows: [
-                { key: 'profile', icon: 'person', title: 'הפרטים שלי', onPress: () => navigation.navigate('AdminProfile') },
-                { key: 'departments', icon: 'business', title: 'מחלקות', onPress: () => navigation.navigate('Departments') },
+                { key: 'profile', icon: 'person', title: 'הפרטים שלי', subtitle: 'שם, טלפון, מייל וסיסמה', onPress: () => navigation.navigate('AdminProfile') },
+                { key: 'console', icon: 'business', title: 'מרכז הבקרה', subtitle: 'כל החברות, מנויים והכנסות', onPress: () => navigation.navigate('OwnerHome') },
               ],
             },
-            notifications,
+            {
+              ...notifications,
+              rows: notifications.rows.map((row) =>
+                row.key === 'notifications' ? { ...row, subtitle: counts.unread ? `${counts.unread} עדכונים חדשים מהחברות` : 'עדכונים על החברות והמנויים' } : row,
+              ),
+            },
           ];
 
   const groups = [...roleGroups, legal];

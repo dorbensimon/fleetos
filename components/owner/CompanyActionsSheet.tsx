@@ -1,49 +1,48 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { BottomSheet, styles as sheetStyles } from './OwnerModals';
-import { COLORS } from './ownerTheme';
+import { StyleSheet } from 'react-native';
+import { DK, KitSheet, ListRow, STATUS, Surface } from '../driverKit';
 import { CompanyRow } from './CompanyCard';
 
-/** The "⋮" menu opened from a company card: toggle active/disabled, or go to delete. */
+/** The "⋯" menu of a company: open it, its subscription, switch it off or on, or delete it. */
 export function CompanyActionsSheet({
   company,
   visible,
   onClose,
+  onOpen,
+  onAccount,
   onToggleActive,
   onDelete,
 }: {
   company: CompanyRow | null;
   visible: boolean;
   onClose: () => void;
+  onOpen: () => void;
+  onAccount: () => void;
   onToggleActive: () => void;
   onDelete: () => void;
 }) {
+  const active = company?.status === 'active';
   return (
-    <BottomSheet visible={visible} onClose={onClose}>
-      <View style={sheetStyles.sheetHandle} />
-      <Text style={styles.companyName}>{company?.name}</Text>
-      <TouchableOpacity style={styles.action} onPress={onToggleActive}>
-        <Ionicons name="power-outline" size={19} color={COLORS.gray} />
-        <Text style={styles.actionText}>{company?.status === 'active' ? 'השבת חברה' : 'הפעל חברה'}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.action} onPress={onDelete}>
-        <Ionicons name="trash-outline" size={19} color={COLORS.red} />
-        <Text style={[styles.actionText, { color: COLORS.red }]}>מחק חברה</Text>
-      </TouchableOpacity>
-    </BottomSheet>
+    <KitSheet visible={visible} onClose={onClose} title={company?.name ?? ''} subtitle={active ? 'חברה פעילה' : 'חברה מושבתת'}>
+      <Surface style={styles.list}>
+        <ListRow first icon="open-outline" title="פתיחת דף החברה" subtitle="פרטים, מנהלים ונהגים" onPress={onOpen} />
+        <ListRow icon="card-outline" title="מנוי ותשלום" subtitle="מצב הלקוח, מחיר ומועד חידוש" onPress={onAccount} />
+        <ListRow
+          icon={active ? 'pause-circle-outline' : 'play-circle-outline'}
+          tint={active ? STATUS.soon.fg : STATUS.ok.fg}
+          title={active ? 'השבתת החברה' : 'הפעלת החברה מחדש'}
+          subtitle={active ? 'המשתמשים שלה לא יוכלו להיכנס. הנתונים נשמרים.' : 'המשתמשים שלה יוכלו להיכנס שוב'}
+          onPress={onToggleActive}
+        />
+      </Surface>
+      <Surface style={[styles.list, styles.gap]}>
+        <ListRow first icon="trash-outline" tint={STATUS.expired.fg} title="מחיקת החברה" subtitle="מחיקה סופית של כל הנתונים" onPress={onDelete} />
+      </Surface>
+    </KitSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  companyName: { fontSize: 14, fontWeight: '600', color: COLORS.black, textAlign: 'right' },
-  action: {
-    height: 52,
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 10,
-  },
-  actionText: { fontSize: 15, color: COLORS.black },
+  list: { overflow: 'hidden', backgroundColor: DK.surface },
+  gap: { marginTop: 12 },
 });

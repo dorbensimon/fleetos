@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { BrandLoader } from '../components/ui/BrandLoader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../lib/platformAlert';
@@ -20,37 +20,43 @@ import {
 import { pickAndUploadLogo } from '../lib/uploadLogo';
 import { isValidIsraeliPhone } from '../lib/phone';
 import { isValidEmail, isValidTemporaryPassword } from '../lib/validation';
-import { COLORS } from '../components/owner/ownerTheme';
-import { CONTENT_MAX_WIDTH } from '../lib/theme';
-import { sharedStyles as s } from '../components/companyDetail/sharedStyles';
+import { DK } from '../components/driverKit';
+import { formatDate } from '../lib/theme';
 import { CompanyUser } from '../components/companyDetail/types';
 import { UserRow } from '../components/companyDetail/UserRow';
 import { CompanyInfoCard, CompanyEditableFields } from '../components/companyDetail/CompanyInfoCard';
-import { DeleteCompanyModal } from '../components/companyDetail/DeleteCompanyModal';
-import { AddAdminModal, EMPTY_NEW_ADMIN_FORM, NewAdminForm } from '../components/companyDetail/AddAdminModal';
-import { RemoveUserModal } from '../components/companyDetail/RemoveUserModal';
+import { DeleteCompanyModal } from '../components/owner/DeleteCompanyModal';
 import {
-  ResetPasswordModal,
-  EMPTY_RESET_PASSWORD_FORM,
-  ResetPasswordForm,
-} from '../components/companyDetail/ResetPasswordModal';
-import { EditUserModal, EditUserForm } from '../components/companyDetail/EditUserModal';
-import { InfoSuccessModal } from '../components/companyDetail/InfoSuccessModal';
+  AddAdminSheet,
+  CredentialsSheet,
+  EditUserSheet,
+  EMPTY_NEW_ADMIN_FORM,
+  RemoveUserSheet,
+  ResetPasswordSheet,
+  UserActionsSheet,
+  type Credentials,
+  type EditUserForm,
+  type NewAdminForm,
+} from '../components/companyDetail/CompanyDetailSheets';
+import { CompanyDetailMobile } from '../components/companyDetail/CompanyDetailMobile';
+import { CompanyAccountSheet } from '../components/owner/CompanyAccountSheet';
+import { getCompanyAccount } from '../lib/companyAccountApi';
+import { accountNextStep, formatMoney, planLabel, statusLabel, statusTone, type CompanyAccount } from '../lib/companyAccount';
 import { ErrorState } from '../components/ui';
 import { functionErrorMessage } from '../lib/functionError';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import { DesktopShell } from '../components/desktop/DesktopShell';
 import { DText, HoverPressable, StatusPill } from '../components/desktop/primitives';
-import { DESKTOP_COLORS } from '../components/desktop/desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_TONES } from '../components/desktop/desktopTheme';
 
 /**
- * Owner-only screen: one company's editable details + its admins/drivers
- * list, with add-admin / remove-user / reset-password / edit-user flows.
- * Predates lib/theme.ts — see components/owner/ownerTheme.ts.
- *
- * Split into components/companyDetail/* by concern (info card, user row,
- * and one file per modal) — this screen only owns data loading and the
- * handlers those pieces call back into.
+ * Owner-only screen: one company as a customer — its subscription, its
+ * managers and drivers, its editable details — with add-manager / edit /
+ * new temporary password / remove flows, disabling and deleting. The phone
+ * view is components/companyDetail/CompanyDetailMobile (app kit); desktop
+ * keeps its column here. Every dialog is a kit sheet
+ * (components/companyDetail/CompanyDetailSheets). This screen owns data
+ * loading and the handlers those pieces call back into.
  */
 
 const EMPTY_FIELDS: CompanyEditableFields = {
@@ -72,6 +78,11 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   const isDesktop = useIsDesktop();
 
   const [company, setCompany] = useState<Company | null>(null);
+  const [account, setAccount] = useState<CompanyAccount | null>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [actionsUser, setActionsUser] = useState<CompanyUser | null>(null);
+  const [credentials, setCredentials] = useState<Credentials | null>(null);
   const [users, setUsers] = useState<CompanyUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -103,22 +114,17 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   const [addAdminOpen, setAddAdminOpen] = useState(false);
   const [newAdminForm, setNewAdminForm] = useState<NewAdminForm>(EMPTY_NEW_ADMIN_FORM);
   const [newAdminFieldErrors, setNewAdminFieldErrors] = useState<Record<string, string>>({});
-  const [showNewAdminPassword, setShowNewAdminPassword] = useState(false);
   const [addingAdmin, setAddingAdmin] = useState(false);
   const [addAdminError, setAddAdminError] = useState('');
-
-  const [addAdminSuccessOpen, setAddAdminSuccessOpen] = useState(false);
 
   const [removeTarget, setRemoveTarget] = useState<CompanyUser | null>(null);
   const [removing, setRemoving] = useState(false);
 
   const [resetTarget, setResetTarget] = useState<CompanyUser | null>(null);
-  const [resetForm, setResetForm] = useState<ResetPasswordForm>(EMPTY_RESET_PASSWORD_FORM);
-  const [resetFieldErrors, setResetFieldErrors] = useState<Record<string, string>>({});
-  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetPasswordValue, setResetPasswordValue] = useState('');
+  const [resetFieldError, setResetFieldError] = useState('');
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState('');
-  const [resetSuccessOpen, setResetSuccessOpen] = useState(false);
 
   const [editTarget, setEditTarget] = useState<CompanyUser | null>(null);
   const [editForm, setEditForm] = useState<EditUserForm>({ firstName: '', lastName: '', phone: '' });
@@ -184,6 +190,10 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       });
     }
 
+    // The subscription is decoration on this page: a failure leaves it empty.
+    const accountData = await getCompanyAccount(companyId).catch(() => null);
+    if (requestId === loadRequest.current) setAccount(accountData);
+
     const { data: usersData, error } = await listCompanyUsers(companyId);
 
     if (error || !usersData?.success) {
@@ -243,15 +253,36 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     await load();
   };
 
-  const toggleActive = async () => {
+  const setStatus = async (status: Company['status']) => {
     if (!company) return;
-    const newStatus = company.status === 'active' ? 'disabled' : 'active';
-    const { error } = await updateCompany(company.id, { status: newStatus });
+    const { error } = await updateCompany(company.id, { status });
     if (error) {
       showAlert('העדכון נכשל', 'לא הצלחנו לעדכן את סטטוס החברה');
       return;
     }
     await load();
+  };
+
+  // Disabling locks every user of the company out, so it asks first.
+  const toggleActive = () => {
+    if (!company) return;
+    if (company.status !== 'active') {
+      void setStatus('active');
+      return;
+    }
+    showAlert('השבתת החברה', `המנהלים והנהגים של ${company.name} לא יוכלו להיכנס עד שתפעיל אותה מחדש. הנתונים נשמרים.`, [
+      { text: 'ביטול', style: 'cancel' },
+      { text: 'השבתה', style: 'destructive', onPress: () => void setStatus('disabled') },
+    ]);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const confirmDeleteCompany = async () => {
@@ -274,11 +305,8 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     else if (!isValidEmail(newAdminForm.email)) errors.email = 'כתובת מייל לא תקינה';
     if (!newAdminForm.phone.trim()) errors.phone = 'שדה חובה';
     else if (!isValidIsraeliPhone(newAdminForm.phone)) errors.phone = 'מספר טלפון לא תקין';
-    if (!newAdminForm.password) errors.password = 'שדה חובה';
-    else if (!isValidTemporaryPassword(newAdminForm.password)) errors.password = 'לפחות 4 ספרות בלבד';
-    if (!newAdminForm.confirmPassword) errors.confirmPassword = 'שדה חובה';
-    else if (newAdminForm.confirmPassword !== newAdminForm.password)
-      errors.confirmPassword = 'הסיסמאות אינן תואמות';
+    if (!newAdminForm.password) errors.password = 'צריך סיסמה זמנית';
+    else if (!isValidTemporaryPassword(newAdminForm.password)) errors.password = 'לפחות 4 ספרות, ספרות בלבד';
     return errors;
   };
 
@@ -302,10 +330,16 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         setAddAdminError(await functionErrorMessage(error, data, 'הוספת האדמין נכשלה', false));
         return;
       }
+      setCredentials({
+        title: 'המנהל נוסף',
+        subtitle: 'העבר לו את פרטי הכניסה. בכניסה הראשונה יבחר סיסמה קבועה.',
+        name: newAdminForm.firstName.trim(),
+        email: newAdminForm.email.trim(),
+        password: newAdminForm.password,
+      });
       setNewAdminForm(EMPTY_NEW_ADMIN_FORM);
       setNewAdminFieldErrors({});
       setAddAdminOpen(false);
-      setAddAdminSuccessOpen(true);
       await load();
     } catch {
       setAddAdminError('אירעה שגיאה. נסה שוב');
@@ -327,36 +361,32 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     await load();
   };
 
-  const validateResetForm = () => {
-    const errors: Record<string, string> = {};
-    if (!resetForm.password) errors.password = 'שדה חובה';
-    else if (!isValidTemporaryPassword(resetForm.password)) errors.password = 'לפחות 4 ספרות בלבד';
-    if (!resetForm.confirmPassword) errors.confirmPassword = 'שדה חובה';
-    else if (resetForm.confirmPassword !== resetForm.password)
-      errors.confirmPassword = 'הסיסמאות אינן תואמות';
-    return errors;
-  };
-
   const resetPassword = async () => {
     if (!resetTarget) return;
     setResetError('');
-    const errors = validateResetForm();
-    setResetFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+    const fieldError = !resetPasswordValue ? 'צריך סיסמה זמנית' : !isValidTemporaryPassword(resetPasswordValue) ? 'לפחות 4 ספרות, ספרות בלבד' : '';
+    setResetFieldError(fieldError);
+    if (fieldError) return;
 
     setResetting(true);
     try {
-      const { data, error } = await resetCompanyUserPassword(resetTarget.id, resetForm.password, companyId);
+      const { data, error } = await resetCompanyUserPassword(resetTarget.id, resetPasswordValue, companyId);
 
       if (error || !data?.success) {
         setResetError(await functionErrorMessage(error, data, 'איפוס הסיסמה נכשל', false));
         return;
       }
 
-      setResetForm(EMPTY_RESET_PASSWORD_FORM);
-      setResetFieldErrors({});
+      setCredentials({
+        title: 'הסיסמה הוחלפה',
+        subtitle: 'הסיסמה הקודמת כבר לא עובדת. העבר את הפרטים החדשים.',
+        name: (resetTarget.full_name || '').trim().split(/\s+/)[0] || '',
+        email: resetTarget.email || '',
+        password: resetPasswordValue,
+      });
+      setResetPasswordValue('');
+      setResetFieldError('');
       setResetTarget(null);
-      setResetSuccessOpen(true);
       await load();
     } catch {
       setResetError('אירעה שגיאה. נסה שוב');
@@ -364,6 +394,8 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       setResetting(false);
     }
   };
+
+  const openUser = (user: CompanyUser) => setActionsUser(user);
 
   if (loadError && !company) {
     if (isDesktop) {
@@ -390,7 +422,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     }
     return (
       <View style={styles.centerFill}>
-        <BrandLoader color={COLORS.blue} />
+        <BrandLoader color={DK.accent} />
       </View>
     );
   }
@@ -403,7 +435,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     <>
       <DeleteCompanyModal
         visible={deleteOpen}
-        companyName={company.name}
+        company={{ ...company, admins: admins.length, drivers: drivers.length }}
         confirmText={deleteConfirmText}
         deleting={deleting}
         onChangeConfirmText={setDeleteConfirmText}
@@ -414,57 +446,71 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         onConfirm={confirmDeleteCompany}
       />
 
-      <AddAdminModal
+      <CompanyAccountSheet
+        visible={accountOpen}
+        companyId={company.id}
+        companyName={company.name}
+        account={account}
+        onClose={() => setAccountOpen(false)}
+        onSaved={() => void load()}
+      />
+
+      <UserActionsSheet
+        user={actionsUser}
+        onClose={() => setActionsUser(null)}
+        onEdit={() => {
+          const u = actionsUser;
+          setActionsUser(null);
+          if (u) openEdit(u);
+        }}
+        onReset={() => {
+          const u = actionsUser;
+          setActionsUser(null);
+          setResetPasswordValue('');
+          setResetFieldError('');
+          setResetError('');
+          setResetTarget(u);
+        }}
+        onRemove={() => {
+          const u = actionsUser;
+          setActionsUser(null);
+          setRemoveTarget(u);
+        }}
+      />
+
+      <AddAdminSheet
         visible={addAdminOpen}
+        companyName={company.name}
         form={newAdminForm}
         fieldErrors={newAdminFieldErrors}
-        showPassword={showNewAdminPassword}
         submitting={addingAdmin}
         submitError={addAdminError}
         onClose={() => {
           setAddAdminOpen(false);
           setNewAdminFieldErrors({});
+          setAddAdminError('');
         }}
         onChangeForm={setNewAdminForm}
-        onToggleShowPassword={() => setShowNewAdminPassword((v) => !v)}
         onSubmit={addAdmin}
       />
 
-      <InfoSuccessModal
-        visible={addAdminSuccessOpen}
-        title="האדמין נוסף בהצלחה"
-        description="האדמין יכול להתחבר עכשיו עם המייל והסיסמה שקבעת, ויתבקש לקבוע סיסמה קבועה משלו בכניסה הראשונה."
-        onClose={() => setAddAdminSuccessOpen(false)}
-      />
+      <RemoveUserSheet target={removeTarget} removing={removing} onClose={() => setRemoveTarget(null)} onConfirm={removeUser} />
 
-      <RemoveUserModal target={removeTarget} removing={removing} onClose={() => setRemoveTarget(null)} onConfirm={removeUser} />
-
-      <ResetPasswordModal
+      <ResetPasswordSheet
         target={resetTarget}
-        form={resetForm}
-        fieldErrors={resetFieldErrors}
-        showPassword={showResetPassword}
+        password={resetPasswordValue}
+        error={resetFieldError}
         submitting={resetting}
         submitError={resetError}
-        onClose={() => {
-          setResetTarget(null);
-          setResetForm(EMPTY_RESET_PASSWORD_FORM);
-          setResetFieldErrors({});
-          setResetError('');
+        onClose={() => setResetTarget(null)}
+        onChange={(v) => {
+          setResetPasswordValue(v);
+          setResetFieldError('');
         }}
-        onChangeForm={setResetForm}
-        onToggleShowPassword={() => setShowResetPassword((v) => !v)}
         onSubmit={resetPassword}
       />
 
-      <InfoSuccessModal
-        visible={resetSuccessOpen}
-        title="הסיסמה אופסה בהצלחה"
-        description="המשתמש יכול להתחבר עכשיו עם הסיסמה החדשה שקבעת, ויתבקש לקבוע סיסמה קבועה משלו בכניסה הבאה."
-        onClose={() => setResetSuccessOpen(false)}
-      />
-
-      <EditUserModal
+      <EditUserSheet
         target={editTarget}
         form={editForm}
         fieldErrors={editFieldErrors}
@@ -474,6 +520,8 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         onChangeForm={setEditForm}
         onSubmit={saveEdit}
       />
+
+      <CredentialsSheet details={credentials} onClose={() => setCredentials(null)} />
     </>
   );
 
@@ -507,14 +555,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
               />
             </View>
 
-            <HoverPressable style={ds.linkCard} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={() => navigation.navigate('GlobalSigningTemplates')}>
-              <Ionicons name="document-text-outline" size={16} color={DESKTOP_COLORS.brand} />
-              <View style={{ flex: 1 }}>
-                <DText weight="semiBold" style={ds.linkTitle}>תבניות מסמכים</DText>
-                <DText style={ds.linkSubtitle}>ניהול התבניות המשותפות לכל החברות</DText>
-              </View>
-              <Ionicons name="chevron-back" size={16} color={DESKTOP_COLORS.inkFaint} />
-            </HoverPressable>
+            <DesktopAccountPanel account={account} onEdit={() => setAccountOpen(true)} />
 
             <View style={ds.sectionHeadRow}>
               <DText weight="bold" style={ds.sectionTitle}>אדמינים ({admins.length})</DText>
@@ -551,130 +592,83 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-          hitSlop={6}
-          accessibilityRole="button"
-          accessibilityLabel="חזור"
-        >
-          <Ionicons name="chevron-forward" size={20} color={COLORS.black} />
-        </TouchableOpacity>
-        {!!company.logo_url && <Image source={{ uri: company.logo_url }} accessibilityLabel={`לוגו ${company.name}`} style={styles.headerLogo} resizeMode="cover" />}
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {company.name}
-        </Text>
-        <View style={[styles.badge, active ? styles.badgeActive : styles.badgeDisabled]}>
-          <Text style={[styles.badgeText, active ? styles.badgeTextActive : styles.badgeTextDisabled]}>
-            {active ? 'פעיל' : 'מושבת'}
-          </Text>
-        </View>
-      </View>
-
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <CompanyInfoCard
-          fields={fields}
-          active={active}
-          hasChanges={hasChanges}
-          saving={saving}
-          saveError={saveError}
-          uploadingLogo={uploadingLogo}
-          logoError={logoError}
-          onChangeFields={setFields}
-          onPickLogo={handlePickLogo}
-          onSave={saveChanges}
-          onToggleActive={toggleActive}
-          onRequestDelete={() => setDeleteOpen(true)}
-        />
-
-        <View style={s.card}>
-          <TouchableOpacity style={s.sectionHeaderRow} onPress={() => navigation.navigate('GlobalSigningTemplates')}>
-            <Ionicons name="chevron-back" size={20} color={COLORS.gray} />
-            <Text style={s.sectionTitle}>תבניות מסמכים</Text>
-            <Ionicons name="document-text-outline" size={20} color={COLORS.blue} />
-          </TouchableOpacity>
-          <Text style={s.emptyText}>ניהול התבניות המשותפות לכל החברות. שליחה לחתימה מתבצעת בתיקייה המתאימה בפרופיל הנהג.</Text>
-        </View>
-
-        <View style={s.card}>
-          <View style={s.sectionHeaderRow}>
-            <Text style={s.sectionTitle}>אדמינים ({admins.length})</Text>
-            <TouchableOpacity style={s.addSmallButton} onPress={() => setAddAdminOpen(true)}>
-              <Ionicons name="add" size={16} color={COLORS.blue} />
-              <Text style={s.addSmallButtonText}>הוסף אדמין</Text>
-            </TouchableOpacity>
-          </View>
-          {admins.length === 0 ? (
-            <Text style={s.emptyText}>אין אדמינים עדיין</Text>
-          ) : (
-            admins.map((u) => (
-              <UserRow
-                key={u.id}
-                user={u}
-                onRemove={() => setRemoveTarget(u)}
-                onResetPassword={() => setResetTarget(u)}
-                onEdit={() => openEdit(u)}
-              />
-            ))
-          )}
-        </View>
-
-        <View style={s.card}>
-          <Text style={s.sectionTitle}>נהגים ({drivers.length})</Text>
-          {drivers.length === 0 ? (
-            <Text style={s.emptyText}>אין נהגים עדיין</Text>
-          ) : (
-            drivers.map((u) => (
-              <UserRow
-                key={u.id}
-                user={u}
-                onRemove={() => setRemoveTarget(u)}
-                onResetPassword={() => setResetTarget(u)}
-                onEdit={() => openEdit(u)}
-              />
-            ))
-          )}
-        </View>
-      </ScrollView>
-
+    <>
+      <CompanyDetailMobile
+        insetTop={insets.top}
+        insetBottom={insets.bottom}
+        company={company}
+        account={account}
+        fields={fields}
+        hasChanges={hasChanges}
+        saving={saving}
+        saveError={saveError}
+        uploadingLogo={uploadingLogo}
+        logoError={logoError}
+        admins={admins}
+        drivers={drivers}
+        refreshing={refreshing}
+        onRefresh={() => void onRefresh()}
+        onBack={() => navigation.goBack()}
+        onChangeFields={setFields}
+        onPickLogo={handlePickLogo}
+        onSave={saveChanges}
+        onEditAccount={() => setAccountOpen(true)}
+        onAddAdmin={() => setAddAdminOpen(true)}
+        onUser={openUser}
+        onToggleActive={toggleActive}
+        onDelete={() => setDeleteOpen(true)}
+      />
       {modals}
+    </>
+  );
+}
+
+/** The subscription on the desktop page, in the desktop's own look. */
+function DesktopAccountPanel({ account, onEdit }: { account: CompanyAccount | null; onEdit: () => void }) {
+  const next = accountNextStep(account);
+  const tone = statusTone(account?.status);
+  const pill = tone === 'off' ? 'neutral' : tone;
+  const facts: [string, string][] = [
+    ['מסלול', planLabel(account?.plan)],
+    ['לחודש', formatMoney(account?.monthly_price)],
+    [account?.status === 'trial' ? 'סוף הניסיון' : 'חידוש', formatDate(account?.status === 'trial' ? account?.trial_ends_at : account?.renewal_date)],
+    ['מכסת רכבים', account?.vehicle_limit ? String(account.vehicle_limit) : 'ללא'],
+  ];
+  const contact = [account?.contact_name, account?.contact_phone, account?.contact_email].filter(Boolean).join(' · ');
+  return (
+    <View style={ds.card}>
+      <View style={ds.accountHead}>
+        <DText weight="bold" style={ds.sectionTitleDark}>מנוי ותשלום</DText>
+        <StatusPill tone={pill} label={statusLabel(account?.status)} />
+        {!!next && next.tone !== 'ok' && (
+          <DText weight="semiBold" style={[ds.accountNext, { color: DESKTOP_TONES[next.tone === 'bad' ? 'bad' : 'warn'].fg }]}>{next.label}</DText>
+        )}
+        <View style={{ flex: 1 }} />
+        <HoverPressable style={ds.addButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={onEdit}>
+          <Ionicons name="create-outline" size={14} color={DESKTOP_COLORS.brand} />
+          <DText weight="semiBold" style={ds.addButtonText}>עריכה</DText>
+        </HoverPressable>
+      </View>
+      <View style={ds.facts}>
+        {facts.map(([label, value]) => (
+          <View key={label} style={ds.fact}>
+            <DText style={ds.factLabel}>{label}</DText>
+            <DText weight="bold" style={ds.factValue}>{value}</DText>
+          </View>
+        ))}
+      </View>
+      {(!!contact || !!account?.notes) && (
+        <View style={ds.accountFoot}>
+          {!!contact && <DText style={ds.linkSubtitle}>איש קשר לחיוב: {contact}</DText>}
+          {!!account?.notes && <DText style={ds.linkSubtitle}>הערות: {account.notes}</DText>}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.screenBg },
-  // Without an explicit flex here, ScrollView (a plain div under react-native-web)
-  // sizes to its own content instead of stretching into the remaining flex
-  // space under the header, so on web the whole page scrolls instead of just
-  // this area.
-  scroll: { flex: 1 },
-  centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.screenBg },
-  header: {
-    backgroundColor: COLORS.white,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 10,
-    width: '100%',
-    maxWidth: CONTENT_MAX_WIDTH,
-    alignSelf: 'center',
-  },
-  backButton: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  headerLogo: { width: 32, height: 32, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: COLORS.black, textAlign: 'right' },
-  content: { padding: 16, gap: 14, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
-  badge: { paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 6 },
-  badgeActive: { backgroundColor: COLORS.activeBg },
-  badgeDisabled: { backgroundColor: COLORS.disabledBg },
-  badgeText: { fontSize: 11, fontWeight: '600' },
-  badgeTextActive: { color: COLORS.activeText },
-  badgeTextDisabled: { color: COLORS.disabledText },
+  centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: DK.canvas },
 });
 
 const ds = StyleSheet.create({
@@ -707,4 +701,12 @@ const ds = StyleSheet.create({
   addButton: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, height: 28, paddingHorizontal: 10, borderRadius: 6 },
   addButtonText: { fontSize: 12, color: DESKTOP_COLORS.brand },
   empty: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint, textAlign: 'center', paddingVertical: 20 },
+  accountHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 6 },
+  sectionTitleDark: { fontSize: 14, color: DESKTOP_COLORS.ink },
+  accountNext: { fontSize: 12.5 },
+  facts: { flexDirection: 'row-reverse', paddingHorizontal: 8, paddingBottom: 12 },
+  fact: { flex: 1, paddingHorizontal: 6, gap: 2 },
+  factLabel: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint },
+  factValue: { fontSize: 14, color: DESKTOP_COLORS.ink },
+  accountFoot: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft, paddingHorizontal: 14, paddingVertical: 10, gap: 4 },
 });

@@ -16,6 +16,15 @@ type NotificationRow = {
 
 type PushTokenRow = { user_id: string; expo_push_token: string };
 
+/** What goes out: one message to a set of people, with the data the app opens it by. */
+type Outgoing = {
+  recipientIds: string[];
+  type: string | null;
+  title: string;
+  body: string;
+  data: Record<string, unknown>;
+};
+
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -46,38 +55,72 @@ Deno.serve(async (req) => {
   if (authorizationError || authorized !== true) return json({ error: 'אין הרשאה' }, 401);
 
   try {
-    const { notificationId } = await req.json();
-    if (typeof notificationId !== 'string') return json({ error: 'חסר מזהה התראה' }, 400);
+    const body = await req.json();
+    let outgoing: Outgoing;
 
-    const { data: notification, error: notificationError } = await admin
-      .from('notifications')
-      .select('id, company_id, recipient_id, message, notification_type, vehicle_id, folder_key')
-      .eq('id', notificationId)
-      .maybeSingle();
-    if (notificationError) throw notificationError;
-    if (!notification) return json({ success: true, sent: 0, reason: 'not_found' });
-    const row = notification as NotificationRow;
-
-    let recipientIds: string[];
-    if (row.recipient_id) {
-      recipientIds = [row.recipient_id];
+    if (typeof body?.ownerNotificationId === 'string') {
+      // The owner's own feed: about companies, to every owner.
+      const { data: ownerRow, error: ownerError } = await admin
+        .from('owner_notifications')
+        .select('id, company_id, notification_type, title, message')
+        .eq('id', body.ownerNotificationId)
+        .maybeSingle();
+      if (ownerError) throw ownerError;
+      if (!ownerRow) return json({ success: true, sent: 0, reason: 'not_found' });
+      const { data: owners, error: ownersError } = await admin.from('profiles').select('id').eq('role', 'owner');
+      if (ownersError) throw ownersError;
+      outgoing = {
+        recipientIds: (owners ?? []).map((owner) => owner.id as string),
+        type: ownerRow.notification_type as string,
+        title: ownerRow.title as string,
+        body: ownerRow.message as string,
+        data: { ownerNotificationId: ownerRow.id, notificationType: ownerRow.notification_type, companyId: ownerRow.company_id },
+      };
     } else {
-      const { data: managers, error: managerError } = await admin
-        .from('profiles')
-        .select('id')
-        .in('role', ['owner', 'admin'])
-        .or(`company_id.eq.${row.company_id},role.eq.owner`);
-      if (managerError) throw managerError;
-      recipientIds = (managers ?? []).map((manager) => manager.id as string);
+      const { notificationId } = body ?? {};
+      if (typeof notificationId !== 'string') return json({ error: 'חסר מזהה התראה' }, 400);
+
+      const { data: notification, error: notificationError } = await admin
+        .from('notifications')
+        .select('id, company_id, recipient_id, message, notification_type, vehicle_id, folder_key')
+        .eq('id', notificationId)
+        .maybeSingle();
+      if (notificationError) throw notificationError;
+      if (!notification) return json({ success: true, sent: 0, reason: 'not_found' });
+      const row = notification as NotificationRow;
+
+      let recipientIds: string[];
+      if (row.recipient_id) {
+        recipientIds = [row.recipient_id];
+      } else {
+        // A company's own updates go to that company's managers only; the
+        // owner has a feed of their own (owner_notifications).
+        const { data: managers, error: managerError } = await admin
+          .from('profiles')
+          .select('id')
+          .eq('role', 'admin')
+          .eq('company_id', row.company_id);
+        if (managerError) throw managerError;
+        recipientIds = (managers ?? []).map((manager) => manager.id as string);
+      }
+      outgoing = {
+        recipientIds,
+        type: row.notification_type,
+        title: 'icar',
+        body: row.message,
+        data: { notificationId: row.id, notificationType: row.notification_type, vehicleId: row.vehicle_id, folderKey: row.folder_key },
+      };
     }
+
+    let recipientIds = outgoing.recipientIds;
     if (!recipientIds.length) return json({ success: true, sent: 0 });
 
-    if (row.notification_type) {
+    if (outgoing.type) {
       const { data: disabled, error: preferencesError } = await admin
         .from('notification_preferences')
         .select('user_id')
         .in('user_id', recipientIds)
-        .eq('notification_type', row.notification_type)
+        .eq('notification_type', outgoing.type)
         .eq('enabled', false);
       if (preferencesError) throw preferencesError;
       const disabledIds = new Set((disabled ?? []).map((item) => item.user_id as string));
@@ -97,10 +140,10 @@ Deno.serve(async (req) => {
     for (const batch of chunks(registeredTokens, BATCH_SIZE)) {
       const payload = batch.map((token) => ({
         to: token.expo_push_token,
-        title: 'icar',
-        body: row.message,
+        title: outgoing.title,
+        body: outgoing.body,
         sound: 'default',
-        data: { notificationId: row.id, notificationType: row.notification_type, vehicleId: row.vehicle_id, folderKey: row.folder_key },
+        data: outgoing.data,
       }));
       const response = await fetch(EXPO_PUSH_ENDPOINT, {
         method: 'POST',
