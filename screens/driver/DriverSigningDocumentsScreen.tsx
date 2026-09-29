@@ -85,8 +85,13 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
     } catch (err: any) { if (generation === loadRequest.current) setError(errorMessage(err, t('documents.loadFailedShort'))); }
     finally { if (generation === loadRequest.current) setLoading(false); }
   }, [driverId, folderId, profileLoading]);
+  // The loader shows the first time only; a return refreshes the list quietly.
+  const shownFor = useRef<string | null>(null);
   useFocusEffect(useCallback(() => {
-    setLoading(true); load();
+    const key = `${driverId ?? ''}/${folderId ?? ''}`;
+    if (shownFor.current !== key) setLoading(true);
+    shownFor.current = key;
+    load();
     const interval = setInterval(load, 60_000);
     return () => { loadRequest.current += 1; clearInterval(interval); };
   }, [load]));

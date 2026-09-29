@@ -38,12 +38,17 @@ export default function DepartmentsScreen({ navigation }: Props) {
   const [editingName, setEditingName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const loadRequest = useRef(0);
+  // The company whose departments are on screen: a return refreshes quietly.
+  const shownFor = useRef<string | null>(null);
   const isDesktop = useIsDesktop();
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
-    setLoading(true);
-    setError(null);
+    const quiet = !!companyId && shownFor.current === companyId;
+    if (!quiet) {
+      setLoading(true);
+      setError(null);
+    }
     if (!companyId) {
       if (requestId === loadRequest.current) {
         setError(t('company.noLinkedCompany'));
@@ -53,9 +58,12 @@ export default function DepartmentsScreen({ navigation }: Props) {
     }
     try {
       const rows = await listDepartments(companyId);
-      if (requestId === loadRequest.current) setDepartments(rows);
+      if (requestId === loadRequest.current) {
+        setDepartments(rows);
+        shownFor.current = companyId;
+      }
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(errorMessage(err, t('departments.loadFailed')));
+      if (requestId === loadRequest.current && !quiet) setError(errorMessage(err, t('departments.loadFailed')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }

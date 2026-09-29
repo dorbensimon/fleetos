@@ -58,17 +58,23 @@ export default function AdminProfileScreen({ navigation }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
+  const shownOnce = useRef(false);
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
-    setLoading(true);
-    setLoadError(null);
+    // The loader shows the first time only; a return refreshes quietly.
+    const quiet = shownOnce.current;
+    if (!quiet) {
+      setLoading(true);
+      setLoadError(null);
+    }
     try {
       const [{ data }] = await Promise.all([supabase.auth.getUser(), refresh()]);
       if (requestId === loadRequest.current) {
         setEmail(data.user?.email ?? null);
+        shownOnce.current = true;
       }
     } catch (err: any) {
-      if (requestId === loadRequest.current) setLoadError(errorMessage(err, t('profile.loadFailed')));
+      if (requestId === loadRequest.current && !quiet) setLoadError(errorMessage(err, t('profile.loadFailed')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }

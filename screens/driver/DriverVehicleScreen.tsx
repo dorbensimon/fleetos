@@ -39,11 +39,16 @@ export default function DriverVehicleScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadRequest = useRef(0);
+  // Whose vehicles are on screen: a return refreshes them quietly.
+  const shownFor = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
-    setLoading(true);
-    setError(null);
+    const quiet = !!profile && shownFor.current === profile.id;
+    if (!quiet) {
+      setLoading(true);
+      setError(null);
+    }
     if (!profile) {
       // Right after a refresh the profile is still on its way: keep loading.
       if (profileLoading) return;
@@ -59,8 +64,9 @@ export default function DriverVehicleScreen({ navigation, route }: Props) {
       if (requestId !== loadRequest.current) return;
       setAssignments(data);
       setCompliance(loadedCompliance);
+      shownFor.current = profile.id;
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(errorMessage(err, t('fleet.vehiclesLoadFailed')));
+      if (requestId === loadRequest.current && !quiet) setError(errorMessage(err, t('fleet.vehiclesLoadFailed')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }

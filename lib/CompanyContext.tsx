@@ -117,10 +117,24 @@ export function CompanyProvider({
     load();
   }, [load]);
 
+  // The account the provider last heard about; undefined until the first
+  // auth event, which only reports the session the mount-time load reads.
+  const sessionUserId = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      const userId = session?.user?.id ?? null;
+      const previous = sessionUserId.current;
+      sessionUserId.current = userId;
+      // Supabase also reports the same account: its hourly token refresh, a
+      // return to the tab and the start-up session. Clearing the profile for
+      // those blanks every screen for nothing, so the app keeps what it shows.
+      if (previous === undefined || previous === userId) {
+        if (event === 'USER_UPDATED') load();
+        return;
+      }
       if (!session?.user) {
         loadVersion.current += 1;
         setProfile(null);

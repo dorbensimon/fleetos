@@ -71,7 +71,19 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     setVehicle(loadedVehicle); setDrivers(loadedDrivers); setCompliance(loadedCompliance);
     if (companyId) { const [deps, companyDrivers] = await Promise.all([listDepartments(companyId), listDrivers(companyId)]); setDepartments(deps); setDriverOptions(companyDrivers.map((d) => ({ value: d.id, label: d.full_name ?? t('common.unnamed') }))); }
   }, [companyId, vehicleId]);
-  useFocusEffect(useCallback(() => { let active = true; setLoading(true); setError(null); load().catch((e: any) => active && setError(errorMessage(e, t('vehicle.loadFailed')))).finally(() => active && setLoading(false)); return () => { active = false; }; }, [load]));
+  // The loader shows the first time only; coming back refreshes quietly
+  // behind what is already on screen.
+  const shownVehicleId = useRef<string | null>(null);
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    const quiet = shownVehicleId.current === vehicleId;
+    if (!quiet) { setLoading(true); setError(null); }
+    load()
+      .then(() => { if (active) shownVehicleId.current = vehicleId; })
+      .catch((e: any) => active && !quiet && setError(errorMessage(e, t('vehicle.loadFailed'))))
+      .finally(() => active && !quiet && setLoading(false));
+    return () => { active = false; };
+  }, [load, vehicleId]));
   useFocusEffect(useCallback(() => {
     const channel = supabase.channel(`vehicle-driver-assignments:${vehicleId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicle_drivers', filter: `vehicle_id=eq.${vehicleId}` }, () => { void load(); })

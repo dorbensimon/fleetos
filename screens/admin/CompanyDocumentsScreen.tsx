@@ -45,13 +45,16 @@ export default function CompanyDocumentsScreen({ navigation }: Props) {
   const [reduceMotion, setReduceMotion] = useState(false);
   const previewProgress = useRef(new Animated.Value(0)).current;
   const loadRequest = useRef(0);
+  // The company whose documents are on screen: a reload refreshes them quietly.
+  const shownFor = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     const request = ++loadRequest.current;
-    setLoading(true); setError(null);
+    const quiet = !!companyId && shownFor.current === companyId;
+    if (!quiet) { setLoading(true); setError(null); }
     if (!companyId) { setError(t('company.noLinkedCompany')); setLoading(false); return; }
-    try { const rows = await listDocuments('company', companyId, CATEGORY); if (request === loadRequest.current) setDocs(rows); }
-    catch (err: any) { if (request === loadRequest.current) setError(errorMessage(err, t('documents.loadFailedShort'))); }
+    try { const rows = await listDocuments('company', companyId, CATEGORY); if (request === loadRequest.current) { setDocs(rows); shownFor.current = companyId; } }
+    catch (err: any) { if (request === loadRequest.current && !quiet) setError(errorMessage(err, t('documents.loadFailedShort'))); }
     finally { if (request === loadRequest.current) setLoading(false); }
   }, [companyId]);
   useFocusEffect(useCallback(() => { void load(); return () => { loadRequest.current += 1; }; }, [load]));

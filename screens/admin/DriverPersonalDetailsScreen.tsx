@@ -71,16 +71,22 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
     setEmail(mail);
   }, [driverId, companyId]);
 
+  // The loader shows the first time only; a return refreshes quietly.
+  const shownDriverId = useRef<string | null>(null);
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      const quiet = shownDriverId.current === driverId;
       (async () => {
-        setLoading(true);
-        setLoadError(null);
+        if (!quiet) {
+          setLoading(true);
+          setLoadError(null);
+        }
         try {
           await load();
+          if (active) shownDriverId.current = driverId;
         } catch (err: any) {
-          if (active) setLoadError(errorMessage(err, t('driver.detailsLoadFailed')));
+          if (active && !quiet) setLoadError(errorMessage(err, t('driver.detailsLoadFailed')));
         } finally {
           if (active) setLoading(false);
         }
@@ -88,7 +94,7 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
       return () => {
         active = false;
       };
-    }, [load])
+    }, [load, driverId])
   );
 
   useFocusEffect(

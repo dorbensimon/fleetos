@@ -66,6 +66,8 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
   const toastAnim = useRef(new Animated.Value(0)).current;
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadRequest = useRef(0);
+  // The driver whose photos are on screen: a reload refreshes them quietly.
+  const shownDriverId = useRef<string | null>(null);
 
 
   const { showToast: showAppToast } = useToast();
@@ -85,8 +87,11 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
-    setLoading(true);
-    setLoadError(null);
+    const quiet = shownDriverId.current === driverId;
+    if (!quiet) {
+      setLoading(true);
+      setLoadError(null);
+    }
     try {
       const [driverRow, allDocs] = await Promise.all([
         getDriver(driverId),
@@ -103,8 +108,9 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
       setDriver(driverRow);
       setDocs({ front, back });
       setImageUrl({ front: frontUrl, back: backUrl });
+      shownDriverId.current = driverId;
     } catch (err: any) {
-      if (requestId === loadRequest.current) setLoadError(errorMessage(err, t('documents.loadFailedShort')));
+      if (requestId === loadRequest.current && !quiet) setLoadError(errorMessage(err, t('documents.loadFailedShort')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
