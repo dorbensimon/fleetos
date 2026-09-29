@@ -178,9 +178,7 @@ function Group({
 
   const toggleAll = async () => {
     const next = !allOn;
-    for (const item of group.items) {
-      if ((state.prefs?.[item.type] ?? true) !== next && !(await state.toggle(item.type, next))) return;
-    }
+    await state.toggleMany(group.items.map((item) => item.type), next);
   };
 
   const setAll = async (days: number) => {

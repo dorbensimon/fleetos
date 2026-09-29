@@ -766,9 +766,7 @@ function SettingsSection({
 
   const toggleAll = async () => {
     const next = !allOn;
-    for (const item of group.items) {
-      if ((prefs.prefs?.[item.type] ?? true) !== next && !(await prefs.toggle(item.type, next))) return;
-    }
+    await prefs.toggleMany(group.items.map((item) => item.type), next);
   };
 
   return (

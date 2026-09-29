@@ -286,6 +286,23 @@ export async function setPreference(
   if (error) throw error;
 }
 
+/** Sets several types at once ("turn all on/off"), in one request. */
+export async function setPreferences(
+  userId: string,
+  types: NotificationType[],
+  enabled: boolean
+): Promise<void> {
+  if (!types.length) return;
+  const { error } = await supabase
+    .from('notification_preferences')
+    .upsert(
+      types.map((type) => ({ user_id: userId, notification_type: type, enabled })),
+      { onConflict: 'user_id,notification_type' }
+    );
+
+  if (error) throw error;
+}
+
 /**
  * Company-wide lead time for vehicle folder expiry alerts (migration 90):
  * how many days before a folder expires the "about to expire" alert goes
