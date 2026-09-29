@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from './Text';
@@ -50,8 +50,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [opacity, translateY]
   );
 
+  // Stable, so showing a toast does not re-render every screen that can show one.
+  const value = useMemo(() => ({ showToast }), [showToast]);
+
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={value}>
       <View style={styles.root}>
         {children}
         {message !== null && (

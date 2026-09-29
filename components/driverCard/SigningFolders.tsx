@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,17 +21,20 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = t('s
   // A driver sees only folders with something sent to them; managers also see
   // empty folders, which is where they send a new document from.
   const driverView = profile?.role === 'driver';
+  // The loader shows the first time only; a return refreshes quietly.
+  const shownFor = useRef<string | null>(null);
   useFocusEffect(useCallback(() => {
     let active = true;
-    setLoading(true);
+    const quiet = shownFor.current === driverId;
+    if (!quiet) setLoading(true);
     (async () => {
       try {
         const driver = await getDriver(driverId);
         if (!driver?.company_id) throw new Error(t('signing.noCompanyForDriver'));
         const [templates, requests] = await Promise.all([listSigningTemplates(driver.company_id), listDriverSigningRequests(driverId)]);
         const all = buildSigningFolders(templates, requests);
-        if (active) { setFolders(driverView ? all.filter(folder => folder.requests.length > 0) : all); setError(''); }
-      } catch (err: any) { if (active) setError(errorMessage(err, t('signing.foldersLoadFailed'))); }
+        if (active) { setFolders(driverView ? all.filter(folder => folder.requests.length > 0) : all); setError(''); shownFor.current = driverId; }
+      } catch (err: any) { if (active && !quiet) setError(errorMessage(err, t('signing.foldersLoadFailed'))); }
       finally { if (active) setLoading(false); }
     })();
     return () => { active = false; };

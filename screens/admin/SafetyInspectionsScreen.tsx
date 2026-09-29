@@ -23,6 +23,7 @@ import {
 } from '../../components/driverKit';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DuePill } from '../../components/checklist/DuePill';
+import { SafetyInspectionsDesktopView } from '../../components/inspection/SafetyInspectionsDesktopView';
 import { useCompany } from '../../lib/CompanyContext';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { formatPlate } from '../../lib/plate';
@@ -30,6 +31,7 @@ import { dueState } from '../../lib/meetingPlan';
 import {
   INSPECTION_STATE_META,
   formatIsoDay,
+  getInspectionSettings,
   listInspections,
   listStateOf,
   loadInspectionPlan,
@@ -61,13 +63,19 @@ export default function SafetyInspectionsScreen({ navigation }: Props) {
   const [query, setQuery] = useState('');
   const [picking, setPicking] = useState(false);
   const [pickQuery, setPickQuery] = useState('');
+  const [repeatMonths, setRepeatMonths] = useState(1);
 
   const load = useCallback(async () => {
     if (!companyId) return;
     try {
-      const [list, due] = await Promise.all([listInspections(companyId), loadInspectionPlan(companyId).catch(() => [])]);
+      const [list, due, settings] = await Promise.all([
+        listInspections(companyId),
+        loadInspectionPlan(companyId).catch(() => []),
+        getInspectionSettings(companyId).catch(() => null),
+      ]);
       setRows(list);
       setPlan(due);
+      if (settings) setRepeatMonths(settings.repeatMonths);
       setError('');
     } catch (e) {
       setError(errorMessage(e, t('inspection.listLoadFailed')));
@@ -81,6 +89,25 @@ export default function SafetyInspectionsScreen({ navigation }: Props) {
     const draft = drafts.get(vehicleId);
     navigation.navigate('SafetyInspection', draft ? { vehicleId, inspectionId: draft } : { vehicleId });
   };
+
+  if (isDesktop) {
+    return (
+      <DesktopShell active="SafetyInspections" breadcrumbs={[t('nav.management'), t('nav.safetyInspections')]}>
+        <SafetyInspectionsDesktopView
+          companyId={companyId}
+          rows={rows}
+          plan={plan}
+          error={error}
+          repeatMonths={repeatMonths}
+          onRepeatSaved={setRepeatMonths}
+          onRetry={() => void load()}
+          onOpen={(vehicleId, inspectionId) => navigation.navigate('SafetyInspection', { vehicleId, inspectionId })}
+          onStart={open}
+          onEditList={() => navigation.navigate('SafetyInspectionSettings')}
+        />
+      </DesktopShell>
+    );
+  }
 
   const due = plan.filter((p) => p.nextDue && dueState(p.nextDue) !== 'later');
   const withState = (rows ?? []).map((row) => ({ row, state: listStateOf(row) as InspectionState }));
@@ -98,8 +125,8 @@ export default function SafetyInspectionsScreen({ navigation }: Props) {
 
   const body = (
     <DriverPage
-      insetTop={isDesktop ? 0 : insets.top}
-      insetBottom={isDesktop ? 0 : insets.bottom}
+      insetTop={insets.top}
+      insetBottom={insets.bottom}
       hero={
         <View style={styles.hero}>
           <HeroTitle
@@ -187,7 +214,7 @@ export default function SafetyInspectionsScreen({ navigation }: Props) {
     </DriverPage>
   );
 
-  return isDesktop ? <DesktopShell active="SafetyInspections" breadcrumbs={[t('nav.management'), t('nav.safetyInspections')]}>{body}</DesktopShell> : body;
+  return body;
 }
 
 function GlassSearchLight({ value, onChange }: { value: string; onChange: (v: string) => void }) {

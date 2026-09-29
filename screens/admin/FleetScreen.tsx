@@ -87,6 +87,8 @@ export default function FleetScreen() {
   const vehicleLoadRequest = useRef(0);
   const loadedDriversCompanyId = useRef<string | null>(companyId ?? null);
   const loadedVehiclesCompanyId = useRef<string | null>(companyId ?? null);
+  // The company whose lists are on screen, so a return needs no loader.
+  const fleetShownFor = useRef<string | null | undefined>(undefined);
 
   const errorMessage = (error: unknown, fallback: string) =>
     error instanceof Error && error.message ? error.message : fallback;
@@ -355,11 +357,17 @@ export default function FleetScreen() {
       // when returning from a pushed detail screen. The fleet screen stays
       // mounted in the navigation stack, so its existing state is the
       // correct place to return to.
+      // The loader shows the first time only; coming back refreshes the
+      // lists quietly behind what is already on screen.
+      const quiet = fleetShownFor.current === (companyId ?? null);
       (async () => {
-        setDriversLoading(true);
-        setVehiclesLoading(true);
+        if (!quiet) {
+          setDriversLoading(true);
+          setVehiclesLoading(true);
+        }
         try {
-          await Promise.all([loadDrivers(), loadVehicles()]);
+          const [driversOk, vehiclesOk] = await Promise.all([loadDrivers(), loadVehicles()]);
+          if (active && driversOk && vehiclesOk) fleetShownFor.current = companyId ?? null;
         } finally {
           if (active) {
             setDriversLoading(false);
@@ -374,7 +382,7 @@ export default function FleetScreen() {
         driverLoadRequest.current += 1;
         vehicleLoadRequest.current += 1;
       };
-    }, [loadDrivers, loadVehicles])
+    }, [companyId, loadDrivers, loadVehicles])
   );
 
   const [refreshing, setRefreshing] = useState(false);

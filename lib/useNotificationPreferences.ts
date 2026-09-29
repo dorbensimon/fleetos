@@ -14,6 +14,7 @@ import {
   getPreferences,
   setNotificationLead,
   setPreference,
+  setPreferences,
   setVehicleExpiryLeadDays,
 } from './notificationPreferencesApi';
 import { isVehicleFolderNotification } from './vehicleFolderAlerts';
@@ -38,6 +39,11 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
   const [leads, setLeads] = useState<NotificationLeads | null>(null);
   const [savingLeadType, setSavingLeadType] = useState<NotificationType | null>(null);
   const loadRequest = useRef(0);
+  // The latest values, for saves started one after another before a re-render.
+  const prefsRef = useRef<NotificationPreferencesMap | null>(null);
+  const leadsRef = useRef<NotificationLeads | null>(null);
+  prefsRef.current = prefs;
+  leadsRef.current = leads;
 
   const isDriver = profile?.role === 'driver';
   const isOwner = profile?.role === 'owner';
@@ -81,16 +87,33 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
   );
 
   /** Optimistic + immediate save, per the PRD's "no save button" rule. Resolves to whether it saved. */
-  const toggle = async (type: NotificationType, next: boolean): Promise<boolean> => {
-    if (!profileId || !prefs) return false;
-    const previous = prefs[type];
-    setPrefs({ ...prefs, [type]: next });
-    setSavingType(type);
+  const toggle = async (type: NotificationType, next: boolean): Promise<boolean> => toggleMany([type], next);
+
+  /**
+   * Several types at once ("turn all on/off"): one change on screen and one
+   * request, so none of them is lost to another's stale copy of the state.
+   */
+  const toggleMany = async (types: NotificationType[], next: boolean): Promise<boolean> => {
+    const current = prefsRef.current;
+    if (!profileId || !current) return false;
+    const changed = types.filter((type) => current[type] !== next);
+    if (!changed.length) return true;
+    const apply = (value: boolean) =>
+      setPrefs((p) => {
+        if (!p) return p;
+        const copy = { ...p };
+        for (const type of changed) copy[type] = value;
+        prefsRef.current = copy;
+        return copy;
+      });
+    apply(next);
+    setSavingType(changed.length === 1 ? changed[0] : null);
     try {
-      await setPreference(profileId, type, next);
+      if (changed.length === 1) await setPreference(profileId, changed[0], next);
+      else await setPreferences(profileId, changed, next);
       return true;
     } catch {
-      setPrefs((p) => (p ? { ...p, [type]: previous } : p));
+      apply(!next);
       showToast(t('prefs.saveFailed'));
       return false;
     } finally {
@@ -104,6 +127,7 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
    */
   const setLead = async (type: NotificationType, value: number): Promise<boolean> => {
     const rule = LEAD_RULES[type];
+    const leads = leadsRef.current;
     if (!companyId || !leads || !rule) return false;
     const next = Math.max(rule.min, Math.min(rule.max, Math.round(value / rule.step) * rule.step));
     if (leads.values[type] === next) return true;
@@ -118,7 +142,8 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
       values[type] = next;
       custom.add(type);
     }
-    setLeads({ ...leads, values, custom });
+    leadsRef.current = { ...leads, values, custom };
+    setLeads(leadsRef.current);
     setSavingLeadType(type);
     try {
       if (shared) {
@@ -128,7 +153,17 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
       }
       return true;
     } catch {
-      setLeads(previous);
+      // Only this type goes back; a save that ran alongside keeps its value.
+      const latest = leadsRef.current;
+      if (latest && !shared) {
+        const values = { ...latest.values, [type]: previous.values[type] };
+        const custom = new Set(latest.custom);
+        if (!previous.custom.has(type)) custom.delete(type);
+        leadsRef.current = { ...latest, values, custom };
+      } else {
+        leadsRef.current = previous;
+      }
+      setLeads(leadsRef.current);
       showToast(t('prefs.saveTimingFailed'));
       return false;
     } finally {
@@ -143,6 +178,7 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
     prefs,
     savingType,
     toggle,
+    toggleMany,
     isDriver,
     isOwner,
     visibleTypes,

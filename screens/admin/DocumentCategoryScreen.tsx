@@ -77,16 +77,26 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const [expiryDate, setExpiryDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const loadRequest = useRef(0);
+  // The folder on screen: reloading it (a return, an upload) keeps the list
+  // up and refreshes it quietly instead of flashing the loader.
+  const shownFolder = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
-    setLoading(true);
-    setError(null);
+    const folder = `${ownerType}/${ownerId}/${category}`;
+    const quiet = shownFolder.current === folder;
+    if (!quiet) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const rows = await listDocuments(ownerType, ownerId, category);
-      if (requestId === loadRequest.current) setDocs(rows);
+      if (requestId === loadRequest.current) {
+        setDocs(rows);
+        shownFolder.current = folder;
+      }
     } catch (err: any) {
-      if (requestId === loadRequest.current) setError(errorMessage(err, t('documents.loadFailedShort')));
+      if (requestId === loadRequest.current && !quiet) setError(errorMessage(err, t('documents.loadFailedShort')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }

@@ -189,9 +189,9 @@ describe('the inspection reminder', () => {
 
   test('ahead is a heads-up; due or late is urgent', () => {
     const tone = (message: string) => notificationTone({ notification_type: 'vehicle_safety_check_due', message });
-    expect(tone('בדיקת בטיחות · מאן (1234567): המועד בעוד 7 ימים (05/10/2026)')).toBe('warn');
+    expect(tone('בדיקת קצין בטיחות · מאן (1234567): המועד בעוד 7 ימים (05/10/2026)')).toBe('warn');
     expect(tone('ב-5 רכבים בדיקת הבטיחות הבאה מתקרבת')).toBe('warn');
-    expect(tone('בדיקת בטיחות · מאן (1234567): המועד היום')).toBe('bad');
-    expect(tone('הגיע הזמן לבדיקת בטיחות ב-5 רכבים')).toBe('bad');
+    expect(tone('בדיקת קצין בטיחות · מאן (1234567): המועד היום')).toBe('bad');
+    expect(tone('הגיע הזמן לבדיקת קצין בטיחות ב-5 רכבים')).toBe('bad');
   });
 });

@@ -615,7 +615,7 @@ Deno.serve(async (req) => {
       const { data: signedUrl, error } = await db.storage.from('documents').createSignedUrl(path, 60 * 10);
       if (error || !signedUrl?.signedUrl) return json({ error: 'פתיחת המסמך נכשלה' }, 500);
       const plate = inspection.facts?.plate ? formatPlate(inspection.facts.plate) : '';
-      return json({ url: signedUrl.signedUrl, fileName: `בדיקת בטיחות ${plate} ${dayText(inspection.inspection_date).replace(/\//g, '-')}.pdf`.replace(/\s+/g, ' ') });
+      return json({ url: signedUrl.signedUrl, fileName: `בדיקת קצין בטיחות ${plate} ${dayText(inspection.inspection_date).replace(/\//g, '-')}.pdf`.replace(/\s+/g, ' ') });
     }
 
     // ── set-next ──────────────────────────────────────────────────────
@@ -849,7 +849,7 @@ async function notifyDriver(db: Db, companyId: string, actorId: string, actorNam
   const last = existing?.[0] as { created_at?: string } | undefined;
   if (last && !reminder) return 'skipped';
   if (last?.created_at && Date.now() - new Date(last.created_at).getTime() < 60 * 60_000) return 'recent';
-  const what = plate ? `בדיקת בטיחות של הרכב ${formatPlate(plate)}` : 'בדיקת בטיחות';
+  const what = plate ? `בדיקת קצין בטיחות של הרכב ${formatPlate(plate)}` : 'בדיקת קצין בטיחות';
   const { error } = await db.from('notifications').insert({
     company_id: companyId,
     actor_id: actorId,

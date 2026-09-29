@@ -60,6 +60,8 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   const [restoring, setRestoring] = useState(false);
   const [exportingReport, setExportingReport] = useState(false);
   const loadRequest = useRef(0);
+  // The driver on screen: a return refreshes the card quietly.
+  const shownDriverId = useRef<string | null>(null);
 
   const [resetOpen, setResetOpen] = useState(false);
   const [resetPassword, setResetPassword] = useState('');
@@ -207,8 +209,11 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
-    setLoading(true);
-    setLoadError(null);
+    const quiet = shownDriverId.current === driverId;
+    if (!quiet) {
+      setLoading(true);
+      setLoadError(null);
+    }
     try {
       const [d, licenseDocs, email] = await Promise.all([
         getDriver(driverId),
@@ -227,8 +232,9 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
         setPendingLicenseRequest(null);
       }
       setLicensePhotosComplete(hasBothLicenseSides(licenseDocs));
+      shownDriverId.current = driverId;
     } catch (err: any) {
-      if (requestId === loadRequest.current) setLoadError(errorMessage(err, t('driver.loadFailed')));
+      if (requestId === loadRequest.current && !quiet) setLoadError(errorMessage(err, t('driver.loadFailed')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }

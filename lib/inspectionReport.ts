@@ -34,11 +34,11 @@ export const INSPECTION_REPORT_CATEGORIES: { value: InspectionReportCategory; la
 ];
 
 const TITLES: Record<InspectionReportCategory, string> = {
-  insp_quarter: 'דוח בדיקות בטיחות ב־3 החודשים האחרונים',
-  insp_awaiting: 'דוח בדיקות בטיחות שממתינות לחתימת הנהג',
-  insp_defects: 'דוח ליקויים בבדיקות הבטיחות',
-  insp_due: 'דוח רכבים שצריכים בדיקת בטיחות',
-  insp_never: 'דוח רכבים שעוד לא עברו בדיקת בטיחות',
+  insp_quarter: 'דוח בדיקות קצין בטיחות ב־3 החודשים האחרונים',
+  insp_awaiting: 'דוח בדיקות קצין בטיחות שממתינות לחתימת הנהג',
+  insp_defects: 'דוח ליקויים בבדיקות קצין הבטיחות',
+  insp_due: 'דוח רכבים שצריכים בדיקת קצין בטיחות',
+  insp_never: 'דוח רכבים שעוד לא עברו בדיקת קצין בטיחות',
 };
 
 const SOON_DAYS = 14;
@@ -156,11 +156,11 @@ function buildHtml(company: Company, category: InspectionReportCategory, picked:
   }
 
   const empty: Record<InspectionReportCategory, string> = {
-    insp_quarter: 'לא נעשו בדיקות בטיחות ב־3 החודשים האחרונים',
+    insp_quarter: 'לא נעשו בדיקות קצין בטיחות ב־3 החודשים האחרונים',
     insp_awaiting: 'אין בדיקות שממתינות לחתימת הנהג',
     insp_defects: 'לא נמצאו ליקויים בבדיקות האחרונות',
     insp_due: 'אין רכבים שצריכים בדיקה בשבועיים הקרובים',
-    insp_never: 'כל הרכבים כבר עברו בדיקת בטיחות',
+    insp_never: 'כל הרכבים כבר עברו בדיקת קצין בטיחות',
   };
   const bodyHtml = count === 0
     ? emptyState(empty[category])

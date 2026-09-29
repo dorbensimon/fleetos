@@ -35,3 +35,11 @@ test('required profile fields block sending, while signer questions and optional
   ], {})).toEqual(['תעודת זהות']);
   expect(missingPrefill([{ name: 'driver_national_id', required: true }], { driver_national_id: '123456789' })).toEqual([]);
 });
+test('safety officer inspections signed before and after the rename share one folder under the new name', () => {
+  const before = { id: 'r2', template_id: null, status: 'completed', template_title: 'בדיקת בטיחות תקופתית לרכב' } as SignatureRequest;
+  const after = { id: 'r3', template_id: null, status: 'completed', template_title: 'בדיקת קצין בטיחות לרכב' } as SignatureRequest;
+  const folders = buildSigningFolders([], [after, before]);
+  expect(folders).toHaveLength(1);
+  expect(folders[0].title).toBe('בדיקת קצין בטיחות לרכב');
+  expect(folders[0].requests).toHaveLength(2);
+});

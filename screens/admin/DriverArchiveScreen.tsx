@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,18 +44,24 @@ export default function DriverArchiveScreen({ navigation }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // The company whose archive is on screen: a return refreshes quietly.
+  const shownFor = useRef<string | null>(null);
   const load = useCallback(async () => {
     if (!companyId) {
       setError(t('company.noLinkedCompany'));
       setLoading(false);
       return;
     }
-    setLoading(true);
-    setError(null);
+    const quiet = shownFor.current === companyId;
+    if (!quiet) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       setRows(await listArchivedDrivers(companyId));
+      shownFor.current = companyId;
     } catch (e: any) {
-      setError(errorMessage(e, t('archive.loadFailed')));
+      if (!quiet) setError(errorMessage(e, t('archive.loadFailed')));
     } finally {
       setLoading(false);
     }

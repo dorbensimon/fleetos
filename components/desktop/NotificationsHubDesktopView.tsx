@@ -766,9 +766,7 @@ function SettingsSection({
 
   const toggleAll = async () => {
     const next = !allOn;
-    for (const item of group.items) {
-      if ((prefs.prefs?.[item.type] ?? true) !== next && !(await prefs.toggle(item.type, next))) return;
-    }
+    await prefs.toggleMany(group.items.map((item) => item.type), next);
   };
 
   return (
@@ -898,7 +896,7 @@ function TypeCard({
  * One type's lead time: − value + with the unit in words, and a few presets.
  * Steps and typing settle for a moment before saving, so a run of clicks is one save.
  */
-function LeadControl({
+export function LeadControl({
   type,
   label,
   rule,

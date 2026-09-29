@@ -48,13 +48,18 @@ function CompanyNotificationsScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadRequest = useRef(0);
+  // The company whose notifications are on screen: a return refreshes quietly.
+  const shownFor = useRef<string | null>(null);
   // Desktop shows the notification settings beside the list (one "התראות" page).
   const preferences = useNotificationPreferences({ enabled: isDesktop });
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
-    setLoading(true);
-    setError(null);
+    const quiet = !!companyId && shownFor.current === companyId;
+    if (!quiet) {
+      setLoading(true);
+      setError(null);
+    }
     if (!companyId) {
       if (requestId === loadRequest.current) {
         setItems([]);
@@ -68,8 +73,9 @@ function CompanyNotificationsScreen({ navigation, route }: Props) {
       if (requestId !== loadRequest.current) return;
       setItems(rows);
       setUnreadIds(new Set(rows.filter((r) => !r.read_at).map((r) => r.id)));
+      shownFor.current = companyId;
     } catch (err: any) {
-      if (requestId === loadRequest.current) {
+      if (requestId === loadRequest.current && !quiet) {
         setError(errorMessage(err, t('notifications.loadFailedShort')));
       }
     } finally {

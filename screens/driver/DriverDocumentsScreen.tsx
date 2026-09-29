@@ -42,11 +42,16 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadRequest = useRef(0);
+  // Whose documents are on screen: a return refreshes them quietly.
+  const shownFor = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
-    setLoading(true);
-    setError(null);
+    const quiet = !!profileId && shownFor.current === profileId;
+    if (!quiet) {
+      setLoading(true);
+      setError(null);
+    }
     if (!profileId) {
       // Right after a refresh the profile is still on its way: keep loading.
       if (profileLoading) return;
@@ -62,8 +67,9 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
       if (requestId !== loadRequest.current) return;
       setDriver(loadedDriver);
       setLicensePhotosComplete(hasBothLicenseSides(licenseDocs));
+      shownFor.current = profileId;
     } catch (loadError: any) {
-      if (requestId === loadRequest.current) setError(errorMessage(loadError, t('documents.loadFailedShort')));
+      if (requestId === loadRequest.current && !quiet) setError(errorMessage(loadError, t('documents.loadFailedShort')));
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
