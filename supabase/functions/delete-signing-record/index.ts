@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
         // A safety inspection is never deleted, only cancelled (vehicle-inspection "cancel").
         const { data: inspection } = await access.adminClient.from('vehicle_inspections')
           .select('id').eq('signature_request_id', id).maybeSingle();
-        if (inspection) return json({ error: 'זה מסמך של בדיקת בטיחות. אפשר לבטל אותה מתוך הבדיקה, בעמוד "בדיקות בטיחות".' }, 409);
+        if (inspection) return json({ error: 'זה מסמך של בדיקת קצין בטיחות. אפשר לבטל אותה מתוך הבדיקה, בעמוד "בדיקות קצין בטיחות".' }, 409);
         if (item.status === 'pending') {
           // Claim it first, so a signature being saved right now is never cut in half.
           const now = new Date().toISOString();

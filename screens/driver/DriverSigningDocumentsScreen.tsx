@@ -9,7 +9,7 @@ import { SigningFolders } from '../../components/driverCard/SigningFolders';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { assignSigningTemplate, downloadSignedRequest, getSigningSession, getSigningTemplatePreviewSession, inspectDriverSigning, listDriverSigningRequests, listSigningTemplates, syncSigningRequest, type SignatureRequest } from '../../lib/docuseal';
 import { eraseSigningRequest, eraseWarning } from '../../lib/signingSend';
-import { buildSigningFolders, type SigningFolder } from '../../lib/signingFolders';
+import { buildSigningFolders, type SigningFolder, requestTitle } from '../../lib/signingFolders';
 import { getDriver, type DriverRow } from '../../lib/adminApi';
 import { useCompany } from '../../lib/CompanyContext';
 import type { RootStackParamList } from '../../navigation/types';
@@ -106,7 +106,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
         if (check?.status === 'pending' && check.signOnly) {
           navigation.navigate('DriverSignDocument', {
             requestId: item.id,
-            title: item.template_title || folder?.title || t('documents.document'),
+            title: requestTitle(item) || folder?.title || t('documents.document'),
             documentUrl: check.documentUrl ?? null,
           });
           return;
@@ -115,7 +115,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
       const session = await getSigningSession(item.id);
       navigation.navigate('DocusealWebView', {
         ...session,
-        title: item.template_title || folder?.title || t('documents.document'),
+        title: requestTitle(item) || folder?.title || t('documents.document'),
         requestId: item.id,
         returnToDriverDocuments: profile?.role === 'driver',
         allowDownload: item.status === 'completed',
@@ -309,7 +309,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                             color={item.status === 'completed' ? DESKTOP_COLORS.brand : ready ? DESKTOP_COLORS.brand : DESKTOP_COLORS.danger}
                           />
                           <View style={{ flex: 1 }}>
-                            <DText weight="semiBold" style={ds.rowTitle}>{item.template_title || folder.title}</DText>
+                            <DText weight="semiBold" style={ds.rowTitle}>{requestTitle(item) || folder.title}</DText>
                             <DText style={ds.rowMeta}>
                               {cancelled ? t('common.cancelled') : item.status === 'completed' ? t('signing.signedV1', { v1: time(item.completed_at || item.created_at) }) : signNow ? t('signing.awaitingDriverTapNow') : ready ? t('signing.sentWhen', { v1: time(item.sent_at || item.created_at) }) : item.status === 'declined' ? t('signing.declined') : t('signing.notApprovedCanRetry')}
                             </DText>
@@ -482,7 +482,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                       <Ionicons name={cancelled ? 'close' : done ? 'checkmark-done' : ready ? 'time' : 'alert'} size={22} color={tone.fg} />
                     </View>
                     <View style={styles.flex}>
-                      <DKText variant="label" numberOfLines={2}>{item.template_title || folder.title}</DKText>
+                      <DKText variant="label" numberOfLines={2}>{requestTitle(item) || folder.title}</DKText>
                       <DKText variant="caption" color={done ? DK.muted : tone.fg}>
                         {cancelled
                           ? t('signing.cancelledV1', { v1: meeting?.cancelled_at ? ` ${time(meeting.cancelled_at)}` : '' })

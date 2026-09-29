@@ -10,7 +10,7 @@ import {
   syncSigningRequest,
   type SignatureRequest,
 } from '../../../lib/docuseal';
-import { buildSigningFolders, signingFolderStatus, type SigningFolder } from '../../../lib/signingFolders';
+import { buildSigningFolders, signingFolderStatus, type SigningFolder, requestTitle } from '../../../lib/signingFolders';
 import { DesktopModal } from '../DesktopModal';
 import { DText, HoverPressable } from '../primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
@@ -280,7 +280,7 @@ function SigningFolderModal({
     setOpening(item.id);
     try {
       const session = await getSigningSession(item.id);
-      onOpenSession({ ...session, title: item.template_title || folder.title, requestId: item.id, signedAt: item.completed_at ?? undefined });
+      onOpenSession({ ...session, title: requestTitle(item) || folder.title, requestId: item.id, signedAt: item.completed_at ?? undefined });
       // The document opens full screen; this window must not stay on top of it.
       onClose();
     } catch (err: any) {
@@ -422,7 +422,7 @@ function SigningFolderModal({
                     color={item.status === 'completed' || ready ? DESKTOP_COLORS.brand : DESKTOP_COLORS.danger}
                   />
                   <View style={styles.rowText}>
-                    <DText weight="semiBold" style={styles.rowTitle}>{item.template_title || folder.title}</DText>
+                    <DText weight="semiBold" style={styles.rowTitle}>{requestTitle(item) || folder.title}</DText>
                     <DText style={styles.rowMeta}>
                       {cancelled
                         ? t('common.cancelled')

@@ -21,7 +21,7 @@ export type InspectionForm = { version: 1; groups: InspectionGroup[] };
 export type InspectionAnswer = { status: InspectionStatus | null; note: string };
 export type InspectionAnswers = Record<string, InspectionAnswer>;
 
-export const INSPECTION_TITLE = 'בדיקת בטיחות תקופתית לרכב';
+export { INSPECTION_TITLE, LEGACY_INSPECTION_TITLE } from './inspectionTitle';
 
 export const INSPECTION_LIMITS = {
   groups: 12,

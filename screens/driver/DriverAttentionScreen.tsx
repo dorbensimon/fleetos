@@ -6,6 +6,7 @@ import { useDriverOverview } from '../../lib/useDriverOverview';
 import { statusOfDate } from '../../components/driverKit';
 import { formatDate } from '../../lib/theme';
 import type { RootStackParamList } from '../../navigation/types';
+import { requestTitle } from '../../lib/signingFolders';
 import { t, getLocale } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverAttention'>;
@@ -54,7 +55,7 @@ export default function DriverAttentionScreen({ navigation }: Props) {
       });
     }
     const signatureTasks: AttentionTask[] = pendingRequests.map((request) => {
-      const title = request.template?.title || request.template_title || t('signing.docToSign');
+      const title = request.template?.title || requestTitle(request) || t('signing.docToSign');
       const sent = request.sent_at || request.created_at;
       return {
         key: `sign-${request.id}`,

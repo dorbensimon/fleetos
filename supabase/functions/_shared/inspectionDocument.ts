@@ -15,7 +15,7 @@ export const DRIVER_ROLE = 'נהג';
 export const OFFICER_FIELD = 'חתימת קצין הבטיחות';
 export const DRIVER_FIELD = 'חתימת הנהג';
 
-export const INSPECTION_TITLE = 'בדיקת בטיחות תקופתית לרכב';
+export const INSPECTION_TITLE = 'בדיקת קצין בטיחות לרכב';
 
 export const INSPECTION_LIMITS = {
   groups: 12,

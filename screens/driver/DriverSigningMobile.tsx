@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DK, DK_SPACE, DKText, DriverPage, HeroTitle, PrimaryAction, Pressy, Reveal, STATUS, Surface, type Status } from '../../components/driverKit';
 import { ErrorState, LoadingState } from '../../components/ui';
-import { signingFolderStatus, type SigningFolder } from '../../lib/signingFolders';
+import { signingFolderStatus, type SigningFolder, requestTitle } from '../../lib/signingFolders';
 import type { SignatureRequest } from '../../lib/docuseal';
 import { t, dirIcon, getLocale } from '../../lib/i18n';
 
@@ -174,7 +174,7 @@ function FolderView(p: Props) {
                 </View>
                 <View style={styles.flex}>
                   <DKText variant="label" numberOfLines={2}>
-                    {item.template_title || p.folder!.title}
+                    {requestTitle(item) || p.folder!.title}
                   </DKText>
                   <DKText variant="caption" color={DK.muted}>
                     {meta}
