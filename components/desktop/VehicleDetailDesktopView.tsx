@@ -612,11 +612,10 @@ export function VehicleDetailDesktopView({
                 first={index === 0}
               />
             ))}
+            <VehicleInspectionsDesktopSection companyId={companyId} vehicleId={vehicleId} archived={isArchived} first={documentFolders.length === 0} />
           </View>
         </View>
       </View>
-
-      <VehicleInspectionsDesktopSection companyId={companyId} vehicleId={vehicleId} archived={isArchived} />
 
       {openDocumentFolder && (
         <DocumentFolderUploadModal
