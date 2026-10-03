@@ -25,6 +25,7 @@ import {
   useReducedMotion,
 } from '../../components/driverKit';
 import { InspectionItemCard } from '../../components/inspection/InspectionItemCard';
+import { InspectionItemRow } from '../../components/inspection/InspectionItemRow';
 import { SignaturePad } from '../../components/checklist/SignaturePad';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { getVehicle, listCompliance, listDrivers, type ComplianceItem, type DriverRow, type Vehicle } from '../../lib/adminApi';
@@ -421,12 +422,133 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
     const needDriver = showErrors && !driverId;
     // Items are numbered straight through, across groups.
     const firstNumber = form.groups.map((_, i) => form.groups.slice(0, i).reduce((sum, g) => sum + g.items.length, 1));
+    const fillAction = (
+          <View style={styles.footer}>
+            <View style={styles.need} accessibilityLiveRegion="polite">
+              {left > 0 || problem || odometerValue == null || !driverId ? (
+                <>
+                  <Ionicons name="information-circle-outline" size={18} color={DK.muted} />
+                  <DKText variant="caption" color={DK.muted}>
+                    {problem ?? (odometerValue == null ? t('inspection.mileageMissing') : t('inspection.signerMissing'))}
+                  </DKText>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={18} color={STATUS.ok.fg} />
+                  <DKText variant="label" color={STATUS.ok.fg}>
+                    {t('inspection.allMarkedSign')}
+                  </DKText>
+                </>
+              )}
+            </View>
+            <PrimaryAction label={t('common.continueToSign')} icon={dirIcon('arrow-back')} onPress={toOfficer} loading={busy === 'next'} disabled={!!busy && busy !== 'next'} />
+          </View>
+    );
+    const fillDetails = (
+        <Reveal>
+          <Surface style={styles.block}>
+            <DKText variant="heading">{t('inspection.details')}</DKText>
+            <View style={styles.field}>
+              <DKText variant="label" color={DK.inkSoft} nativeID="odometer-label">
+                {t('inspection.mileageToday')}
+              </DKText>
+              <KitInput
+                value={odometer}
+                onChangeText={(text) => edit(setOdometer)(text.replace(/[^\d]/g, '').slice(0, 7))}
+                placeholder={vehicle.odometer ? t('inspection.currentlyRecorded', { v1: vehicle.odometer.toLocaleString(getLocale()) }) : t('inspection.mileageExample')}
+                keyboardType="number-pad"
+                inputMode="numeric"
+                ltr
+                hasError={needOdometer}
+                accessibilityLabel={t('inspection.mileageToday')}
+                accessibilityLabelledBy="odometer-label"
+              />
+              {odometerValue != null && vehicle.odometer > odometerValue ? (
+                <DKText variant="caption" color={STATUS.soon.fg}>
+                  {t('inspection.lowerThanRecorded')}{vehicle.odometer.toLocaleString(getLocale())}{t('inspection.recordedStays')}
+                </DKText>
+              ) : (
+                <DKText variant="caption" color={DK.muted}>
+                  {t('inspection.higherUpdates')}
+                </DKText>
+              )}
+            </View>
+            <View style={styles.field}>
+              <DKText variant="label" color={DK.inkSoft}>
+                {t('inspection.signingDriver')}
+              </DKText>
+              <View style={styles.chips}>
+                {vehicleDrivers.map((d) => {
+                  const on = d.id === driverId;
+                  return (
+                    <Pressy key={d.id} onPress={() => edit(setDriverId)(d.id)} accessibilityLabel={`${d.full_name ?? t('common.unnamed')}${on ? t('common.selectedSuffix') : ''}`} style={[styles.chip, on && styles.chipOn]} pressScale={0.95}>
+                      <Ionicons name={on ? 'checkmark' : 'person-outline'} size={16} color={on ? '#FFFFFF' : DK.accent} />
+                      <DKText variant="label" color={on ? '#FFFFFF' : DK.accent}>
+                        {d.full_name ?? t('common.unnamed')}
+                      </DKText>
+                    </Pressy>
+                  );
+                })}
+                {driver && !vehicleDrivers.some((d) => d.id === driver.id) && (
+                  <View style={[styles.chip, styles.chipOn]}>
+                    <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                    <DKText variant="label" color="#FFFFFF">
+                      {driver.full_name ?? t('common.unnamed')}
+                    </DKText>
+                  </View>
+                )}
+                <Pressy onPress={() => setPickDriver(true)} accessibilityLabel={t('inspection.chooseOtherDriver')} style={[styles.chip, styles.chipGhost, needDriver && styles.chipError]} pressScale={0.95}>
+                  <Ionicons name="people-outline" size={16} color={DK.inkSoft} />
+                  <DKText variant="label" color={DK.inkSoft}>
+                    {vehicleDrivers.length ? t('inspection.otherDriver') : t('inspection.chooseDriver')}
+                  </DKText>
+                </Pressy>
+              </View>
+            </View>
+            <View style={styles.validity}>
+              <Validity label={t('inspection.testValidUntil')} date={live.test} />
+              <Validity label={t('inspection.insuranceValidUntil')} date={live.insurance} />
+            </View>
+          </Surface>
+        </Reveal>
+    );
+    const fillExtra = (
+        <Surface style={styles.block}>
+          <DKText variant="heading">{t('inspection.unlistedDefect')}</DKText>
+          <DKText variant="caption" color={DK.muted}>
+            {t('inspection.unlistedHint')}
+          </DKText>
+          {extra.map((line, index) => (
+            <View key={index} style={styles.extraRow}>
+              <KitInput
+                value={line}
+                onChangeText={(text) => edit(setExtra)(extra.map((l, i) => (i === index ? text.slice(0, INSPECTION_LIMITS.note) : l)))}
+                placeholder={t('inspection.whatFound')}
+                accessibilityLabel={t('inspection.extraDefectN', { v1: index + 1 })}
+                style={styles.flex}
+              />
+              <Pressy onPress={() => edit(setExtra)(extra.filter((_, i) => i !== index))} accessibilityLabel={t('inspection.deleteExtraDefect', { v1: index + 1 })} style={styles.iconButton} pressScale={0.9}>
+                <Ionicons name="trash-outline" size={20} color={STATUS.expired.fg} />
+              </Pressy>
+            </View>
+          ))}
+          {extra.length < INSPECTION_LIMITS.extraDefects && (
+            <Pressy onPress={() => setExtra((prev) => [...prev, ''])} accessibilityLabel={t('inspection.addDefect')} style={styles.noteAdd} pressScale={0.97}>
+              <Ionicons name="add" size={19} color={DK.accent} />
+              <DKText variant="label" color={DK.accent}>
+                {t('inspection.addDefect')}
+              </DKText>
+            </Pressy>
+          )}
+        </Surface>
+    );
     return inShell(
       <DriverPage
         key={step}
         insetTop={topInset}
         insetBottom={bottomInset}
         scrollRef={scrollRef}
+        maxWidth={isDesktop ? 1180 : undefined}
         hero={
           <View>
             <HeroTitle
@@ -455,28 +577,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
             <Progress marked={marked} total={items.length} />
           </View>
         }
-        footer={
-          <View style={styles.footer}>
-            <View style={styles.need} accessibilityLiveRegion="polite">
-              {left > 0 || problem || odometerValue == null || !driverId ? (
-                <>
-                  <Ionicons name="information-circle-outline" size={18} color={DK.muted} />
-                  <DKText variant="caption" color={DK.muted}>
-                    {problem ?? (odometerValue == null ? t('inspection.mileageMissing') : t('inspection.signerMissing'))}
-                  </DKText>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="checkmark-circle" size={18} color={STATUS.ok.fg} />
-                  <DKText variant="label" color={STATUS.ok.fg}>
-                    {t('inspection.allMarkedSign')}
-                  </DKText>
-                </>
-              )}
-            </View>
-            <PrimaryAction label={t('common.continueToSign')} icon={dirIcon('arrow-back')} onPress={toOfficer} loading={busy === 'next'} disabled={!!busy && busy !== 'next'} />
-          </View>
-        }
+        footer={isDesktop ? undefined : fillAction}
         overlay={
           <>
             <KitSheet
@@ -569,144 +670,135 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
         }
       >
         {messages}
-        <Reveal>
-          <Surface style={styles.block}>
-            <DKText variant="heading">{t('inspection.details')}</DKText>
-            <View style={styles.field}>
-              <DKText variant="label" color={DK.inkSoft} nativeID="odometer-label">
-                {t('inspection.mileageToday')}
-              </DKText>
-              <KitInput
-                value={odometer}
-                onChangeText={(text) => edit(setOdometer)(text.replace(/[^\d]/g, '').slice(0, 7))}
-                placeholder={vehicle.odometer ? t('inspection.currentlyRecorded', { v1: vehicle.odometer.toLocaleString(getLocale()) }) : t('inspection.mileageExample')}
-                keyboardType="number-pad"
-                inputMode="numeric"
-                ltr
-                hasError={needOdometer}
-                accessibilityLabel={t('inspection.mileageToday')}
-                accessibilityLabelledBy="odometer-label"
-              />
-              {odometerValue != null && vehicle.odometer > odometerValue ? (
-                <DKText variant="caption" color={STATUS.soon.fg}>
-                  {t('inspection.lowerThanRecorded')}{vehicle.odometer.toLocaleString(getLocale())}{t('inspection.recordedStays')}
-                </DKText>
-              ) : (
-                <DKText variant="caption" color={DK.muted}>
-                  {t('inspection.higherUpdates')}
-                </DKText>
-              )}
-            </View>
-            <View style={styles.field}>
-              <DKText variant="label" color={DK.inkSoft}>
-                {t('inspection.signingDriver')}
-              </DKText>
-              <View style={styles.chips}>
-                {vehicleDrivers.map((d) => {
-                  const on = d.id === driverId;
+        {isDesktop ? (
+          <View style={styles.desk}>
+            <View style={styles.deskAside}>
+              {fillDetails}
+              <Surface style={styles.block}>{fillAction}</Surface>
+              <Surface style={styles.deskNav}>
+                {form.groups.map((group, groupIndex) => {
+                  const open = group.items.filter((item) => !answers[item.id]?.status).length;
+                  const defects = group.items.filter((item) => answers[item.id]?.status === 'not_ok').length;
                   return (
-                    <Pressy key={d.id} onPress={() => edit(setDriverId)(d.id)} accessibilityLabel={`${d.full_name ?? t('common.unnamed')}${on ? t('common.selectedSuffix') : ''}`} style={[styles.chip, on && styles.chipOn]} pressScale={0.95}>
-                      <Ionicons name={on ? 'checkmark' : 'person-outline'} size={16} color={on ? '#FFFFFF' : DK.accent} />
-                      <DKText variant="label" color={on ? '#FFFFFF' : DK.accent}>
-                        {d.full_name ?? t('common.unnamed')}
+                    <Pressy
+                      key={group.id}
+                      onPress={() => (globalThis as any).document?.getElementById(`group-${group.id}`)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })}
+                      accessibilityLabel={group.title}
+                      style={styles.deskNavRow}
+                      pressScale={0.98}
+                    >
+                      <Ionicons
+                        name={defects ? 'alert-circle' : open === 0 ? 'checkmark-circle' : 'ellipse-outline'}
+                        size={18}
+                        color={defects ? STATUS.expired.fg : open === 0 ? STATUS.ok.fg : DK.muted}
+                      />
+                      <DKText variant="label" style={styles.flex} numberOfLines={1}>
+                        {groupIndex + 1}. {group.title}
+                      </DKText>
+                      <DKText variant="caption" color={DK.muted}>
+                        {group.items.length - open}/{group.items.length}
                       </DKText>
                     </Pressy>
                   );
                 })}
-                {driver && !vehicleDrivers.some((d) => d.id === driver.id) && (
-                  <View style={[styles.chip, styles.chipOn]}>
-                    <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                    <DKText variant="label" color="#FFFFFF">
-                      {driver.full_name ?? t('common.unnamed')}
-                    </DKText>
+              </Surface>
+            </View>
+            <View style={styles.deskMain}>
+              {form.groups.map((group, groupIndex) => {
+                const open = group.items.filter((item) => !answers[item.id]?.status).length;
+                return (
+                  <View key={group.id} nativeID={`group-${group.id}`} style={styles.deskAnchor}>
+                    <Surface style={styles.deskGroup}>
+                      <View style={styles.deskGroupHead}>
+                        <View style={styles.groupNum}>
+                          <DKText variant="label" color={DK.accent}>
+                            {groupIndex + 1}
+                          </DKText>
+                        </View>
+                        <DKText variant="heading" style={styles.flex} accessibilityRole="header">
+                          {group.title}
+                        </DKText>
+                        {open > 0 ? (
+                          <Pressy onPress={() => markGroupOk(group.id)} accessibilityLabel={t('inspection.markRestOk', { title: group.title })} style={styles.deskMarkAll} pressScale={0.97}>
+                            <Ionicons name="checkmark-done" size={17} color={DK.accent} />
+                            <DKText variant="label" color={DK.accent}>
+                              {open === group.items.length ? t('common.allOk') : t('inspection.restOk')}
+                            </DKText>
+                          </Pressy>
+                        ) : (
+                          <View style={[styles.countPill, { backgroundColor: STATUS.ok.soft }]}>
+                            <DKText variant="micro" color={STATUS.ok.fg}>
+                              {t('inspection.allMarkedShort')}
+                            </DKText>
+                          </View>
+                        )}
+                      </View>
+                      {group.items.map((item, itemIndex) => (
+                        <InspectionItemRow
+                          key={item.id}
+                          number={firstNumber[groupIndex] + itemIndex}
+                          item={item}
+                          answer={answers[item.id]}
+                          onStatus={setStatus}
+                          onNote={setNote}
+                          last={itemIndex === group.items.length - 1}
+                        />
+                      ))}
+                    </Surface>
                   </View>
-                )}
-                <Pressy onPress={() => setPickDriver(true)} accessibilityLabel={t('inspection.chooseOtherDriver')} style={[styles.chip, styles.chipGhost, needDriver && styles.chipError]} pressScale={0.95}>
-                  <Ionicons name="people-outline" size={16} color={DK.inkSoft} />
-                  <DKText variant="label" color={DK.inkSoft}>
-                    {vehicleDrivers.length ? t('inspection.otherDriver') : t('inspection.chooseDriver')}
-                  </DKText>
-                </Pressy>
-              </View>
+                );
+              })}
+              {fillExtra}
             </View>
-            <View style={styles.validity}>
-              <Validity label={t('inspection.testValidUntil')} date={live.test} />
-              <Validity label={t('inspection.insuranceValidUntil')} date={live.insurance} />
-            </View>
-          </Surface>
-        </Reveal>
-
-        {form.groups.map((group, groupIndex) => {
-          const open = group.items.filter((item) => !answers[item.id]?.status).length;
-          const defects = group.items.filter((item) => answers[item.id]?.status === 'not_ok').length;
-          return (
-            <View key={group.id} style={styles.group}>
-              <View style={styles.groupHead}>
-                <View style={styles.groupNum}>
-                  <DKText variant="label" color={DK.accent}>
-                    {groupIndex + 1}
-                  </DKText>
+          </View>
+        ) : (
+          <>
+            {fillDetails}
+            {form.groups.map((group, groupIndex) => {
+              const open = group.items.filter((item) => !answers[item.id]?.status).length;
+              const defects = group.items.filter((item) => answers[item.id]?.status === 'not_ok').length;
+              return (
+                <View key={group.id} style={styles.group}>
+                  <View style={styles.groupHead}>
+                    <View style={styles.groupNum}>
+                      <DKText variant="label" color={DK.accent}>
+                        {groupIndex + 1}
+                      </DKText>
+                    </View>
+                    <DKText variant="title" style={styles.flex} accessibilityRole="header">
+                      {group.title}
+                    </DKText>
+                    {defects > 0 ? (
+                      <View style={[styles.countPill, { backgroundColor: STATUS.expired.soft }]}>
+                        <DKText variant="micro" color={STATUS.expired.fg}>
+                          {defects === 1 ? t('inspection.oneDefect') : t('inspection.defectsCountN', { defects })}
+                        </DKText>
+                      </View>
+                    ) : open === 0 ? (
+                      <View style={[styles.countPill, { backgroundColor: STATUS.ok.soft }]}>
+                        <DKText variant="micro" color={STATUS.ok.fg}>
+                          {t('inspection.allMarkedShort')}
+                        </DKText>
+                      </View>
+                    ) : null}
+                  </View>
+                  {open > 0 && (
+                    <Pressy onPress={() => markGroupOk(group.id)} haptic accessibilityLabel={t('inspection.markRestOk', { title: group.title })} style={styles.markAll} pressScale={0.97}>
+                      <Ionicons name="checkmark-done" size={20} color={DK.accent} />
+                      <DKText variant="label" color={DK.accent}>
+                        {open === group.items.length ? t('common.allOk') : t('inspection.restOk')}
+                      </DKText>
+                    </Pressy>
+                  )}
+                  {group.items.map((item, itemIndex) => (
+                    <InspectionItemCard key={item.id} number={firstNumber[groupIndex] + itemIndex} item={item} answer={answers[item.id]} onStatus={setStatus} onNote={setNote} />
+                  ))}
                 </View>
-                <DKText variant="title" style={styles.flex} accessibilityRole="header">
-                  {group.title}
-                </DKText>
-                {defects > 0 ? (
-                  <View style={[styles.countPill, { backgroundColor: STATUS.expired.soft }]}>
-                    <DKText variant="micro" color={STATUS.expired.fg}>
-                      {defects === 1 ? t('inspection.oneDefect') : t('inspection.defectsCountN', { defects })}
-                    </DKText>
-                  </View>
-                ) : open === 0 ? (
-                  <View style={[styles.countPill, { backgroundColor: STATUS.ok.soft }]}>
-                    <DKText variant="micro" color={STATUS.ok.fg}>
-                      {t('inspection.allMarkedShort')}
-                    </DKText>
-                  </View>
-                ) : null}
-              </View>
-              {open > 0 && (
-                <Pressy onPress={() => markGroupOk(group.id)} haptic accessibilityLabel={t('inspection.markRestOk', { title: group.title })} style={styles.markAll} pressScale={0.97}>
-                  <Ionicons name="checkmark-done" size={20} color={DK.accent} />
-                  <DKText variant="label" color={DK.accent}>
-                    {open === group.items.length ? t('common.allOk') : t('inspection.restOk')}
-                  </DKText>
-                </Pressy>
-              )}
-              {group.items.map((item, itemIndex) => (
-                <InspectionItemCard key={item.id} number={firstNumber[groupIndex] + itemIndex} item={item} answer={answers[item.id]} onStatus={setStatus} onNote={setNote} />
-              ))}
-            </View>
-          );
-        })}
-
-        <Surface style={styles.block}>
-          <DKText variant="heading">{t('inspection.unlistedDefect')}</DKText>
-          <DKText variant="caption" color={DK.muted}>
-            {t('inspection.unlistedHint')}
-          </DKText>
-          {extra.map((line, index) => (
-            <View key={index} style={styles.extraRow}>
-              <KitInput
-                value={line}
-                onChangeText={(text) => edit(setExtra)(extra.map((l, i) => (i === index ? text.slice(0, INSPECTION_LIMITS.note) : l)))}
-                placeholder={t('inspection.whatFound')}
-                accessibilityLabel={t('inspection.extraDefectN', { v1: index + 1 })}
-                style={styles.flex}
-              />
-              <Pressy onPress={() => edit(setExtra)(extra.filter((_, i) => i !== index))} accessibilityLabel={t('inspection.deleteExtraDefect', { v1: index + 1 })} style={styles.iconButton} pressScale={0.9}>
-                <Ionicons name="trash-outline" size={20} color={STATUS.expired.fg} />
-              </Pressy>
-            </View>
-          ))}
-          {extra.length < INSPECTION_LIMITS.extraDefects && (
-            <Pressy onPress={() => setExtra((prev) => [...prev, ''])} accessibilityLabel={t('inspection.addDefect')} style={styles.noteAdd} pressScale={0.97}>
-              <Ionicons name="add" size={19} color={DK.accent} />
-              <DKText variant="label" color={DK.accent}>
-                {t('inspection.addDefect')}
-              </DKText>
-            </Pressy>
-          )}
-        </Surface>
+              );
+            })}
+            {fillExtra}
+          </>
+        )}
 
         {inspection && (
           <Pressy onPress={() => setCancelling(true)} accessibilityLabel={t('meeting.deleteDraft')} style={styles.quietLinkDark} pressScale={0.96}>
@@ -1410,6 +1502,16 @@ const styles = StyleSheet.create({
   validity: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 },
   validityItem: { flexGrow: 1, flexBasis: 200, flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderRadius: 16 },
   group: { gap: 12 },
+  // Desktop: a side panel beside the items, which sit as tables.
+  desk: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 24 },
+  deskAside: { width: 340, gap: 16 },
+  deskMain: { flex: 1, minWidth: 0, gap: 20 },
+  deskNav: { paddingVertical: 8 },
+  deskNavRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 16, minHeight: 40 },
+  deskAnchor: { scrollMarginTop: 16 } as object,
+  deskGroup: { padding: 0, overflow: 'hidden' },
+  deskGroupHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 14, backgroundColor: DK.surfaceSunk },
+  deskMarkAll: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 14, borderRadius: 999, backgroundColor: DK.accentSoft },
   groupHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 4, marginTop: 8 },
   groupNum: { width: 32, height: 32, borderRadius: 10, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
   countPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
