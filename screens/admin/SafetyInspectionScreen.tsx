@@ -414,6 +414,14 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
     insurance: compliance.find((c) => c.item_type === 'insurance_mandatory')?.expiry_date ?? null,
   };
   const facts = inspection?.facts;
+  // Desktop: a side panel beside the main column, under the same night header.
+  const wide = isDesktop ? 1180 : undefined;
+  const split = (aside: React.ReactNode, main: React.ReactNode) => (
+    <View style={styles.desk}>
+      <View style={styles.deskAside}>{aside}</View>
+      <View style={styles.deskMain}>{main}</View>
+    </View>
+  );
 
   // ── fill ──────────────────────────────────────────────────────────────
   if (step === 'fill') {
@@ -548,7 +556,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
         insetTop={topInset}
         insetBottom={bottomInset}
         scrollRef={scrollRef}
-        maxWidth={isDesktop ? 1180 : undefined}
+        maxWidth={wide}
         hero={
           <View>
             <HeroTitle
@@ -816,15 +824,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
   if (step === 'officer') {
     const canSign = !!officerName.trim() && !!officerSig;
     const defects = defectLines(form, answers, extra);
-    return inShell(
-      <DriverPage
-        key={step}
-        insetTop={topInset}
-        insetBottom={bottomInset}
-        scrollRef={scrollRef}
-        scrollEnabled={!drawing}
-        hero={<HeroTitle title={t('inspection.officerSignature')} subtitle={`${plate}, ${formatIsoDay(today)}`} onBack={() => setStep('fill')} />}
-        footer={
+    const officerAction = (
           <View style={styles.footer}>
             <View style={styles.need}>
               <Ionicons name="lock-closed-outline" size={17} color={DK.muted} />
@@ -834,12 +834,13 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
             </View>
             <PrimaryAction label={t('common.saveSignatureContinue')} icon="checkmark-circle" onPress={() => void officerSigns()} disabled={!canSign} loading={busy === 'sign'} />
           </View>
-        }
-      >
-        {messages}
+    );
+    const oDefects = (
         <Reveal>
           <DefectsCard lines={defects} />
         </Reveal>
+    );
+    const oName = (
         <Reveal index={1}>
           <Surface style={styles.block}>
             <DKText variant="label" color={DK.inkSoft} nativeID="officer-name-label">
@@ -877,6 +878,8 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
             )}
           </Surface>
         </Reveal>
+    );
+    const oPad = (
         <Reveal index={2}>
           <Surface style={styles.block}>
             <SignaturePad title={t('inspection.officerSignature')} onChange={setOfficerSig} onDrawing={setDrawing} disabled={busy === 'sign'} />
@@ -885,9 +888,44 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
             </DKText>
           </Surface>
         </Reveal>
+    );
+    const oDisclaimer = (
         <Reveal index={3}>
           <Disclaimer />
         </Reveal>
+    );
+    return inShell(
+      <DriverPage
+        key={step}
+        insetTop={topInset}
+        insetBottom={bottomInset}
+        scrollRef={scrollRef}
+        scrollEnabled={!drawing}
+        maxWidth={wide}
+        hero={<HeroTitle title={t('inspection.officerSignature')} subtitle={`${plate}, ${formatIsoDay(today)}`} onBack={() => setStep('fill')} />}
+        footer={isDesktop ? undefined : officerAction}
+      >
+        {messages}
+        {isDesktop ? (
+          split(
+            <>
+              {oDefects}
+              <Surface style={styles.block}>{officerAction}</Surface>
+              {oDisclaimer}
+            </>,
+            <>
+              {oName}
+              {oPad}
+            </>,
+          )
+        ) : (
+          <>
+            {oDefects}
+            {oName}
+            {oPad}
+            {oDisclaimer}
+          </>
+        )}
       </DriverPage>,
     );
   }
@@ -895,12 +933,12 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
   // ── choose ────────────────────────────────────────────────────────────
   if (step === 'choose') {
     const first = firstName(driverName);
-    return inShell(
-      <DriverPage key={step} insetTop={topInset} insetBottom={bottomInset} scrollRef={scrollRef} hero={<HeroTitle title={t('signature.ofFirst', { first })} subtitle={t('signature.chooseWay')} onBack={() => setStep('view')} />}>
-        {messages}
+    const cSigned = (
         <Reveal>
           <SignedBy image={officerSig} name={inspection?.officer_name ?? officerName} date={formatIsoDay(inspection?.inspection_date ?? today)} />
         </Reveal>
+    );
+    const cHere = (
         <Reveal index={1}>
           <Choice
             icon={isDesktop ? 'desktop-outline' : 'phone-portrait-outline'}
@@ -916,6 +954,8 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
             disabled={!!busy}
           />
         </Reveal>
+    );
+    const cSend = (
         <Reveal index={2}>
           <Choice
             icon="paper-plane-outline"
@@ -927,6 +967,25 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
             disabled={!!busy}
           />
         </Reveal>
+    );
+    return inShell(
+      <DriverPage key={step} insetTop={topInset} insetBottom={bottomInset} scrollRef={scrollRef} maxWidth={wide} hero={<HeroTitle title={t('signature.ofFirst', { first })} subtitle={t('signature.chooseWay')} onBack={() => setStep('view')} />}>
+        {messages}
+        {isDesktop ? (
+          split(
+            cSigned,
+            <View style={styles.choiceRow}>
+              <View style={styles.flex}>{cHere}</View>
+              <View style={styles.flex}>{cSend}</View>
+            </View>,
+          )
+        ) : (
+          <>
+            {cSigned}
+            {cHere}
+            {cSend}
+          </>
+        )}
       </DriverPage>,
     );
   }
@@ -985,16 +1044,8 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
   // ── driver ────────────────────────────────────────────────────────────
   if (step === 'driver') {
     const first = firstName(driverName);
-    return (
-      <View style={styles.page}>
-        <StatusBar barStyle="dark-content" />
-        <ScrollView
-          ref={scrollRef}
-          scrollEnabled={!drawing}
-          contentContainerStyle={[styles.driverBody, { paddingTop: insets.top + 24, paddingBottom: 24 }]}
-          keyboardShouldPersistTaps="handled"
-        >
-          {messages}
+    const driverAction = <PrimaryAction label={t('field.signature')} icon="create-outline" onPress={() => void driverSigns()} disabled={!driverSig} loading={busy === 'driver'} />;
+    const dHello = (
           <Reveal>
             <Surface style={styles.hello}>
               <DKText variant="title">{t('common.hello')} {first}</DKText>
@@ -1003,32 +1054,79 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
               </DKText>
             </Surface>
           </Reveal>
+    );
+    const dDefects = (
           <Reveal index={1}>
             <DefectsCard lines={defectLines(form, answers, extra)} />
           </Reveal>
+    );
+    const dResults = (
           <Reveal index={2}>
             <ResultList form={form} answers={answers} />
           </Reveal>
+    );
+    const dDisclaimer = (
           <Reveal index={3}>
             <Disclaimer />
           </Reveal>
+    );
+    const dSigned = (
           <Reveal index={4}>
             <SignedBy image={officerSig} name={inspection?.officer_name ?? officerName} date={formatIsoDay(inspection?.inspection_date ?? today)} />
           </Reveal>
+    );
+    const dPad = (
           <Reveal index={5}>
             <Surface style={styles.block}>
               <SignaturePad title={t('inspection.driverSignature')} onChange={setDriverSig} onDrawing={setDrawing} disabled={busy === 'driver'} />
             </Surface>
           </Reveal>
+    );
+    const dBack = (
           <Pressy onPress={() => setStep('choose')} accessibilityLabel={t('signature.returnWithoutSigning')} style={styles.quietLinkDark} pressScale={0.96}>
             <DKText variant="label" color={DK.muted}>
               {t('signature.returnWithoutSigning')}
             </DKText>
           </Pressy>
+    );
+    return (
+      <View style={styles.page}>
+        <StatusBar barStyle="dark-content" />
+        <ScrollView
+          ref={scrollRef}
+          scrollEnabled={!drawing}
+          contentContainerStyle={[styles.driverBody, isDesktop && styles.driverBodyWide, { paddingTop: insets.top + 24, paddingBottom: 24 }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          {messages}
+          {isDesktop ? (
+            split(
+              <>
+                {dHello}
+                {dDefects}
+                {dSigned}
+                {dPad}
+                <Surface style={styles.block}>{driverAction}</Surface>
+                {dBack}
+              </>,
+              <>
+                {dResults}
+                {dDisclaimer}
+              </>,
+            )
+          ) : (
+            <>
+              {dHello}
+              {dDefects}
+              {dResults}
+              {dDisclaimer}
+              {dSigned}
+              {dPad}
+              {dBack}
+            </>
+          )}
         </ScrollView>
-        <View style={[styles.pageFooter, { paddingBottom: insets.bottom + 12 }]}>
-          <PrimaryAction label={t('field.signature')} icon="create-outline" onPress={() => void driverSigns()} disabled={!driverSig} loading={busy === 'driver'} />
-        </View>
+        {!isDesktop && <View style={[styles.pageFooter, { paddingBottom: insets.bottom + 12 }]}>{driverAction}</View>}
       </View>
     );
   }
@@ -1091,12 +1189,71 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
     { label: t('inspection.date'), value: formatIsoDay(inspection?.inspection_date) },
     { label: t('company.safetyOfficer'), value: inspection?.officer_name ?? '—' },
   ];
+  const vFacts = (
+      <Reveal>
+        <Surface style={styles.factsGrid}>
+          {shownFacts.map((fact) => (
+            <View key={fact.label} style={styles.fact}>
+              <DKText variant="caption" color={DK.muted}>
+                {fact.label}
+              </DKText>
+              <DKText variant="label">{fact.value}</DKText>
+            </View>
+          ))}
+        </Surface>
+      </Reveal>
+  );
+  const vActions = (canDriverSign || canClose || documentReady) && (
+        <Reveal index={1}>
+          <Surface style={styles.block}>
+            {documentReady && <PrimaryAction label={t('viewer.downloadDocument')} icon="download-outline" onPress={() => void download()} loading={busy === 'download'} />}
+            {canDriverSign && (
+              <PrimaryAction
+                label={t('inspection.driverSignsNowHere')}
+                icon={isDesktop ? 'desktop-outline' : 'phone-portrait-outline'}
+                onPress={() => {
+                  setError('');
+                  setNotice('');
+                  setDriverSig(null);
+                  setStep('handoff');
+                }}
+                disabled={!!busy}
+              />
+            )}
+            {canDriverSign && <PrimaryAction label={t('inspection.sendReminder')} icon="paper-plane-outline" tone="ghost" onPress={() => void run('notify', async () => { await notifyInspectionDriver(companyId, inspection!.id); setNotice(t('inspection.reminderSent')); })} loading={busy === 'notify'} />}
+            {canClose && <PrimaryAction label={t('inspection.closeWithoutDriver')} icon="lock-closed-outline" tone="ghost" onPress={() => setClosing(true)} disabled={!!busy} />}
+          </Surface>
+        </Reveal>
+      );
+  const vDefects = (
+      <Reveal index={2}>
+        <DefectsCard lines={defectLines(form, answers, extra)} />
+      </Reveal>
+  );
+  const vResults = (
+      <Reveal index={3}>
+        <ResultList form={form} answers={answers} />
+      </Reveal>
+  );
+  const vSigned = !!officerSig && (
+        <Reveal index={4}>
+          <SignedBy image={officerSig} name={inspection?.officer_name ?? ''} date={formatIsoDay(inspection?.inspection_date)} />
+        </Reveal>
+      );
+  const vCancel = state !== 'cancelled' && (
+        <Pressy onPress={() => setCancelling(true)} accessibilityLabel={t('inspection.cancel')} style={styles.quietLinkDark} pressScale={0.96}>
+          <DKText variant="label" color={STATUS.expired.fg}>
+            {t('inspection.cancel')}
+          </DKText>
+        </Pressy>
+      );
   return inShell(
     <DriverPage
       key={step}
       insetTop={topInset}
       insetBottom={bottomInset}
       scrollRef={scrollRef}
+      maxWidth={wide}
       hero={
         <View>
           <HeroTitle title={t('notifications.cat.safetyCheck')} subtitle={`${vehicleLabel ? `${vehicleLabel} · ` : ''}${formatIsoDay(inspection?.inspection_date)}`} onBack={leave} />
@@ -1155,57 +1312,28 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
           </Banner>
         </Reveal>
       )}
-      <Reveal>
-        <Surface style={styles.factsGrid}>
-          {shownFacts.map((fact) => (
-            <View key={fact.label} style={styles.fact}>
-              <DKText variant="caption" color={DK.muted}>
-                {fact.label}
-              </DKText>
-              <DKText variant="label">{fact.value}</DKText>
-            </View>
-          ))}
-        </Surface>
-      </Reveal>
-      {(canDriverSign || canClose || documentReady) && (
-        <Reveal index={1}>
-          <Surface style={styles.block}>
-            {documentReady && <PrimaryAction label={t('viewer.downloadDocument')} icon="download-outline" onPress={() => void download()} loading={busy === 'download'} />}
-            {canDriverSign && (
-              <PrimaryAction
-                label={t('inspection.driverSignsNowHere')}
-                icon={isDesktop ? 'desktop-outline' : 'phone-portrait-outline'}
-                onPress={() => {
-                  setError('');
-                  setNotice('');
-                  setDriverSig(null);
-                  setStep('handoff');
-                }}
-                disabled={!!busy}
-              />
-            )}
-            {canDriverSign && <PrimaryAction label={t('inspection.sendReminder')} icon="paper-plane-outline" tone="ghost" onPress={() => void run('notify', async () => { await notifyInspectionDriver(companyId, inspection!.id); setNotice(t('inspection.reminderSent')); })} loading={busy === 'notify'} />}
-            {canClose && <PrimaryAction label={t('inspection.closeWithoutDriver')} icon="lock-closed-outline" tone="ghost" onPress={() => setClosing(true)} disabled={!!busy} />}
-          </Surface>
-        </Reveal>
-      )}
-      <Reveal index={2}>
-        <DefectsCard lines={defectLines(form, answers, extra)} />
-      </Reveal>
-      <Reveal index={3}>
-        <ResultList form={form} answers={answers} />
-      </Reveal>
-      {!!officerSig && (
-        <Reveal index={4}>
-          <SignedBy image={officerSig} name={inspection?.officer_name ?? ''} date={formatIsoDay(inspection?.inspection_date)} />
-        </Reveal>
-      )}
-      {state !== 'cancelled' && (
-        <Pressy onPress={() => setCancelling(true)} accessibilityLabel={t('inspection.cancel')} style={styles.quietLinkDark} pressScale={0.96}>
-          <DKText variant="label" color={STATUS.expired.fg}>
-            {t('inspection.cancel')}
-          </DKText>
-        </Pressy>
+      {isDesktop ? (
+        split(
+          <>
+            {vFacts}
+            {vActions}
+            {vSigned}
+            {vCancel}
+          </>,
+          <>
+            {vDefects}
+            {vResults}
+          </>,
+        )
+      ) : (
+        <>
+          {vFacts}
+          {vActions}
+          {vDefects}
+          {vResults}
+          {vSigned}
+          {vCancel}
+        </>
       )}
     </DriverPage>,
   );
@@ -1560,6 +1688,8 @@ const styles = StyleSheet.create({
   quietLink: { alignItems: 'center', justifyContent: 'center', minHeight: 48 },
   quietLinkDark: { alignItems: 'center', justifyContent: 'center', minHeight: 48 },
   driverBody: { paddingHorizontal: 16, gap: 16, width: '100%', maxWidth: 560, alignSelf: 'center' },
+  driverBodyWide: { maxWidth: 1180 },
+  choiceRow: { flexDirection: 'row-reverse', gap: 16 },
   hello: { padding: 18, gap: 6 },
   summary: { paddingHorizontal: 14, paddingVertical: 4 },
   sumGroup: { paddingTop: 12, paddingBottom: 2 },
