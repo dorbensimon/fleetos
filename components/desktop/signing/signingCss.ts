@@ -229,7 +229,7 @@ export const SIGNING_CSS = `
 .sd-stage { animation: sd-stage-in 480ms var(--sd-ease) both; }
 
 /* step 1 */
-.sd-start { max-width: 900px; margin: 0 auto; padding: 40px 24px 60px; }
+.sd-start { max-width: 900px; margin: 0 auto; padding: 40px 24px 60px; zoom: 0.8; }
 .sd-q { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.015em; }
 .sd-q-sub { margin: 0 0 18px; font-size: 16px; color: var(--sd-ink-2); }
 .sd-name {

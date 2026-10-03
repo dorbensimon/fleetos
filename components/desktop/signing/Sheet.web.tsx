@@ -36,12 +36,17 @@ export function Sheet({
   children: React.ReactNode;
 }) {
   const sheetRef = useRef<HTMLDivElement>(null);
+  // The caller's handler changes as its state does (first letter typed = "has changes");
+  // the setup below must run once, or it pulls focus out of the field being typed in.
+  const requestCloseRef = useRef(onRequestClose);
+  requestCloseRef.current = onRequestClose;
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    sheetRef.current?.focus({ preventScroll: true });
+    // A field with autoFocus inside already has focus: keep it there.
+    if (!sheetRef.current?.contains(document.activeElement)) sheetRef.current?.focus({ preventScroll: true });
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !document.querySelector('.sd-alert')) onRequestClose();
+      if (event.key === 'Escape' && !document.querySelector('.sd-alert')) requestCloseRef.current();
     };
     document.addEventListener('keydown', onKey);
     const overflow = document.body.style.overflow;
@@ -51,7 +56,7 @@ export function Sheet({
       document.body.style.overflow = overflow;
       previous?.focus?.({ preventScroll: true });
     };
-  }, [onRequestClose]);
+  }, []);
 
   return createPortal(
     <div className="sd-root">
