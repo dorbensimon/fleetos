@@ -49,6 +49,10 @@ export function CompanyProvider({
       // showing an empty home screen. Network failures keep the session.
       if (authError && (isAuthSessionMissingError(authError) || (isAuthApiError(authError) && [401, 403].includes(authError.status)))) {
         await supabase.auth.signOut({ scope: 'local' });
+        if (!isCurrent()) return;
+        setProfile(null);
+        setCompany(null);
+        setLoading(false);
         return;
       }
       if (authError) throw authError;

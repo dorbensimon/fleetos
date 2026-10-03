@@ -45,7 +45,7 @@ import {
   useOwnerDocuments,
 } from './record/RecordKit';
 import { expiryStatusText, FolderListRow, folderStatus } from './record/FolderDocuments';
-import { DetailRow, Fact, FieldEditDialog, GroupLabel, digitsOnly, pageStyles, type FieldEditor } from './record/RecordPage';
+import { DetailRow, Fact, FieldEditDialog, GroupLabel, digitsOnly, pageStyles, type FieldEditor, type TextFieldEditor } from './record/RecordPage';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { t, dirIcon, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../lib/i18n';
 
@@ -265,7 +265,7 @@ export function VehicleDetailDesktopView({
     return names.sort((a, b) => a.localeCompare(b, 'he')).map((he) => ({ value: he, label: he }));
   }, [vehicle.manufacturer]);
 
-  const kmEditor = (label: string, raw: number | null, onSave: (value: number | null) => Promise<string | null>, hint?: string): FieldEditor => ({
+  const kmEditor = (label: string, raw: number | null, onSave: (value: number | null) => Promise<string | null>, hint?: string): TextFieldEditor => ({
     kind: 'text',
     label,
     raw: raw ? String(raw) : '',
@@ -303,6 +303,7 @@ export function VehicleDetailDesktopView({
             ) : (
               <StatusPicker value={vehicle.status} options={STATUS_OPTIONS} onChange={(status) => onSaveField({ status })} />
             )}
+            <OverflowMenu items={menuItems} />
           </View>
           <DText weight="bold" style={styles.heroName} numberOfLines={1}>{name}</DText>
           <View style={styles.heroSub}>
@@ -328,9 +329,6 @@ export function VehicleDetailDesktopView({
         </View>
 
         <LicensePlate plate={formatPlate(vehicle.plate_number)} />
-        <View style={styles.heroMenu}>
-          <OverflowMenu items={menuItems} />
-        </View>
       </View>
 
       {isArchived && (
@@ -389,7 +387,7 @@ export function VehicleDetailDesktopView({
               label={t('vehicle.plateNumber')}
               value={formatPlate(vehicle.plate_number)}
               ltr
-              onPress={() => setEditor({
+              edit={{
                 kind: 'text',
                 label: t('vehicle.plateNumber'),
                 raw: vehicle.plate_number,
@@ -400,7 +398,7 @@ export function VehicleDetailDesktopView({
                 format: formatPlate,
                 validate: (v) => (/^\d{7,8}$/.test(v) ? null : t('vehicle.plateInvalid')),
                 onSave: (v) => onSaveField({ plate_number: v }),
-              })}
+              }}
               accessory={
                 <HoverPressable
                   style={[styles.lookupPill, lookupLoading && styles.disabled]}
@@ -421,7 +419,7 @@ export function VehicleDetailDesktopView({
               </View>
             )}
             <DetailRow first={!!lookupMessage} label={t('vehicle.manufacturer')} value={vehicle.manufacturer} onPress={() => setEditor({ kind: 'select', label: t('vehicle.manufacturer'), raw: vehicle.manufacturer, options: manufacturerOptions, allowClear: true, placeholder: t('vehicle.chooseManufacturer'), onSave: (v) => onSaveField({ manufacturer: v }) })} />
-            <DetailRow label={t('vehicle.model')} value={vehicle.model} onPress={() => setEditor({ kind: 'text', label: t('vehicle.model'), raw: vehicle.model ?? '', onSave: (v) => onSaveField({ model: v.trim() || null }) })} />
+            <DetailRow label={t('vehicle.model')} value={vehicle.model} edit={{ kind: 'text', label: t('vehicle.model'), raw: vehicle.model ?? '', onSave: (v) => onSaveField({ model: v.trim() || null }) }} />
             <DetailRow label={t('vehicle.typeLabel')} value={VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type} onPress={() => setEditor({ kind: 'select', label: t('vehicle.typeLabel'), raw: vehicle.vehicle_type, options: VEHICLE_TYPE_OPTIONS(), onSave: (v) => onSaveField({ vehicle_type: (v ?? vehicle.vehicle_type) as VehicleType }) })} />
             <DetailRow
               label={t('vehicle.productionYear')}
@@ -435,13 +433,13 @@ export function VehicleDetailDesktopView({
                 onSave: (month, year) => onSaveField({ production_month: month ? Number(month) : null, production_year: year ? Number(year) : null }),
               })}
             />
-            <DetailRow label={t('vehicle.color')} value={vehicle.color} onPress={() => setEditor({ kind: 'text', label: t('vehicle.color'), raw: vehicle.color ?? '', onSave: (v) => onSaveField({ color: v.trim() || null }) })} />
+            <DetailRow label={t('vehicle.color')} value={vehicle.color} edit={{ kind: 'text', label: t('vehicle.color'), raw: vehicle.color ?? '', onSave: (v) => onSaveField({ color: v.trim() || null }) }} />
             <DetailRow label={t('vehicle.onRoadDate')} value={vehicle.road_registration_date ? formatDate(vehicle.road_registration_date) : null} ltr onPress={() => setEditor({ kind: 'date', label: t('vehicle.onRoadDate'), raw: vehicle.road_registration_date, onSave: (v) => onSaveField({ road_registration_date: v }) })} />
             <DetailRow
               label={t('vehicle.vin')}
               value={vehicle.vin}
               ltr
-              onPress={() => setEditor({
+              edit={{
                 kind: 'text',
                 label: t('vehicle.vin'),
                 raw: vehicle.vin ?? '',
@@ -450,7 +448,7 @@ export function VehicleDetailDesktopView({
                 parse: (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 17),
                 validate: (v) => (!v || /^[A-HJ-NPR-Z0-9]{17}$/.test(v) ? null : t('vehicle.vinInvalid')),
                 onSave: (v) => onSaveField({ vin: v || null }),
-              })}
+              }}
             />
           </View>
         </View>
@@ -501,26 +499,26 @@ export function VehicleDetailDesktopView({
                 compact
                 label={t('vehicle.atLastService')}
                 value={t('unit.kmValue', { v1: km(vehicle.last_service_km) })}
-                onPress={() => setEditor(kmEditor(t('vehicle.kmAtLastService'), vehicle.last_service_km, (value) => {
+                edit={kmEditor(t('vehicle.kmAtLastService'), vehicle.last_service_km, (value) => {
                   const last = value ?? 0;
                   const next = deriveNextServiceKm(last, vehicle.service_interval_km);
                   return onSaveField(next != null ? { last_service_km: last, next_service_km: next } : { last_service_km: last });
-                }, t('vehicle.kmAtLastServiceHint')))}
+                }, t('vehicle.kmAtLastServiceHint'))}
               />
               <DetailRow
                 compact
                 label={t('vehicle.serviceEvery')}
                 value={vehicle.service_interval_km ? t('unit.kmValue', { v1: km(vehicle.service_interval_km) }) : null}
-                onPress={() => setEditor(kmEditor(t('vehicle.serviceInterval'), vehicle.service_interval_km, (interval) => {
+                edit={kmEditor(t('vehicle.serviceInterval'), vehicle.service_interval_km, (interval) => {
                   const next = deriveNextServiceKm(vehicle.last_service_km, interval);
                   return onSaveField(next != null ? { service_interval_km: interval, next_service_km: next } : { service_interval_km: interval });
-                }, t('vehicle.serviceIntervalHint')))}
+                }, t('vehicle.serviceIntervalHint'))}
               />
               <DetailRow
                 compact
                 label={t('vehicle.nextServiceAt')}
                 value={nextServiceKm != null ? t('unit.kmNext', { nextServiceKm: km(nextServiceKm) }) : null}
-                onPress={derivedNextServiceKm != null ? undefined : () => setEditor(kmEditor(t('vehicle.kmToNextService'), vehicle.next_service_km, (v) => onSaveField({ next_service_km: v })))}
+                edit={derivedNextServiceKm != null ? undefined : kmEditor(t('vehicle.kmToNextService'), vehicle.next_service_km, (v) => onSaveField({ next_service_km: v }))}
               />
             </View>
 
@@ -543,13 +541,13 @@ export function VehicleDetailDesktopView({
           <GroupLabel>{t('vehicle.companyUse')}</GroupLabel>
           <View style={styles.card}>
             <DetailRow first label={t('common.department')} value={department} onPress={() => setEditor({ kind: 'select', label: t('common.department'), raw: vehicle.department_id, options: departmentOptions, allowClear: true, placeholder: t('common.noDepartment'), onSave: (v) => onSaveField({ department_id: v }) })} />
-            <DetailRow label={t('vehicle.purpose')} value={vehicle.usage_type} onPress={() => setEditor({ kind: 'text', label: t('vehicle.purpose'), raw: vehicle.usage_type ?? '', onSave: (v) => onSaveField({ usage_type: v.trim() || null }) })} />
+            <DetailRow label={t('vehicle.purpose')} value={vehicle.usage_type} edit={{ kind: 'text', label: t('vehicle.purpose'), raw: vehicle.usage_type ?? '', onSave: (v) => onSaveField({ usage_type: v.trim() || null }) }} />
             <DetailRow
               label={t('vehicle.dealType')}
               value={vehicle.acquisition_type ? ACQUISITION_TYPE_LABELS[vehicle.acquisition_type] ?? vehicle.acquisition_type : null}
               onPress={() => setEditor({ kind: 'select', label: t('vehicle.dealType'), raw: vehicle.acquisition_type, options: ACQUISITION_TYPE_OPTIONS(), allowClear: true, placeholder: t('common.notSelected'), onSave: (v) => onSaveField({ acquisition_type: v as AcquisitionType | null }) })}
             />
-            <DetailRow label={t('vehicle.internalCode')} value={vehicle.internal_code} ltr onPress={() => setEditor({ kind: 'text', label: t('vehicle.internalCode'), raw: vehicle.internal_code ?? '', ltr: true, onSave: (v) => onSaveField({ internal_code: v.trim() || null }) })} />
+            <DetailRow label={t('vehicle.internalCode')} value={vehicle.internal_code} ltr edit={{ kind: 'text', label: t('vehicle.internalCode'), raw: vehicle.internal_code ?? '', ltr: true, onSave: (v) => onSaveField({ internal_code: v.trim() || null }) }} />
           </View>
         </View>
 
