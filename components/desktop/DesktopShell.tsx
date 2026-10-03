@@ -36,13 +36,6 @@ const ROLE_LABEL: Record<string, string> = {
   get driver() { return t('role.driver'); },
 };
 
-const SHELL_LEGAL_LINKS = [
-  { doc: 'terms', get label() { return t('legal.terms'); } },
-  { doc: 'privacy', get label() { return t('legal.privacy'); } },
-  { doc: 'cookies', get label() { return t('legal.cookies'); } },
-  { doc: 'accessibility', get label() { return t('legal.accessibility'); } },
-] as const;
-
 // Pinned to the bottom of an admin's sidebar, just above company settings.
 const ADMIN_FOOTER_ITEMS: NavItem[] = [
   { key: 'Notifications', get label() { return t('notifications.title'); }, icon: 'notifications' },
@@ -113,11 +106,13 @@ export function DesktopShell({
     ? [
         { key: 'AdminProfile', label: t('nav.myDetails'), icon: 'person' },
         { key: 'Notifications', label: t('notifications.title'), icon: 'notifications' },
+        { key: 'SystemSettings', label: t('nav.systemSettings'), icon: 'cog' },
       ]
     : isDriver
     ? [
         { key: 'DriverProfile', label: t('nav.myDetails'), icon: 'person' },
         { key: 'Notifications', label: t('notifications.title'), icon: 'notifications' },
+        { key: 'SystemSettings', label: t('nav.systemSettings'), icon: 'cog' },
       ]
     : [];
 
@@ -209,24 +204,17 @@ export function DesktopShell({
               active={active === 'CompanySettings'}
               onPress={() => go('CompanySettings')}
             />
+            <SidebarItem
+              item={{ key: 'SystemSettings', label: t('nav.systemSettings'), icon: 'cog' }}
+              active={active === 'SystemSettings'}
+              onPress={() => go('SystemSettings')}
+            />
           </View>
         )}
         <HoverPressable style={styles.logout} hoverStyle={styles.navItemHover} onPress={logout}>
           <Ionicons name="log-out-outline" size={15} color={DESKTOP_COLORS.sidebarText} />
           <DText weight="medium" style={styles.navLabel}>{t('auth.signOut')}</DText>
         </HoverPressable>
-        <View style={styles.legalLinks}>
-          {SHELL_LEGAL_LINKS.map(({ doc, label }) => (
-            <DText
-              key={doc}
-              style={styles.legalLink}
-              accessibilityRole="link"
-              onPress={() => navigation.navigate('Legal', { doc })}
-            >
-              {label}
-            </DText>
-          ))}
-        </View>
       </View>
 
       <View style={styles.main}>
@@ -365,15 +353,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: DESKTOP_COLORS.sidebarDivider,
   },
-  legalLinks: {
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    columnGap: 10,
-    rowGap: 2,
-    paddingHorizontal: 18,
-    paddingBottom: 12,
-  },
-  legalLink: { color: DESKTOP_COLORS.sidebarMeta, fontSize: 11, textDecorationLine: 'underline', paddingVertical: 2 },
   logout: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

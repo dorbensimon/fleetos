@@ -97,13 +97,9 @@ export default function MenuScreen({ navigation }: Props) {
     ],
   };
 
-  const legal: MenuGroup = {
-    title: t('menu.legal'),
+  const system: MenuGroup = {
     rows: [
-      { key: 'terms', icon: 'document-text', title: t('legal.terms'), onPress: () => navigation.navigate('Legal', { doc: 'terms' }) },
-      { key: 'privacy', icon: 'lock-closed', title: t('legal.privacyPolicyShort'), onPress: () => navigation.navigate('Legal', { doc: 'privacy' }) },
-      { key: 'cookies', icon: 'server', title: t('legal.cookiePolicy'), onPress: () => navigation.navigate('Legal', { doc: 'cookies' }) },
-      { key: 'accessibility', icon: 'accessibility', title: t('legal.accessibilityStatement'), onPress: () => navigation.navigate('Legal', { doc: 'accessibility' }) },
+      { key: 'system', icon: 'cog', title: t('nav.systemSettings'), subtitle: t('menu.systemSettingsSubtitle'), onPress: () => navigation.navigate('SystemSettings') },
     ],
   };
 
@@ -138,7 +134,6 @@ export default function MenuScreen({ navigation }: Props) {
             {
               title: t('menu.fleetManagement'),
               rows: [
-                { key: 'inspections', icon: 'shield-checkmark', title: t('nav.safetyInspections'), subtitle: t('menu.inspectionsSubtitle'), onPress: () => navigation.navigate('SafetyInspections') },
                 { key: 'departments', icon: 'business', title: t('departments.title'), subtitle: t('menu.departmentsSubtitle'), onPress: () => navigation.navigate('Departments') },
                 { key: 'archive', icon: 'archive', title: t('fleet.driverArchive'), subtitle: t('menu.archiveSubtitle'), onPress: () => navigation.navigate('DriverArchive') },
                 { key: 'reports', icon: 'stats-chart', title: t('reports.export'), subtitle: t('menu.reportsSubtitle'), onPress: () => navigation.navigate('Reports') },
@@ -149,6 +144,7 @@ export default function MenuScreen({ navigation }: Props) {
               rows: [
                 { key: 'companyDocs', icon: 'folder-open', title: t('nav.companyDocuments'), subtitle: t('menu.companyDocsSubtitle'), onPress: () => navigation.navigate('CompanyDocuments') },
                 { key: 'signedDocs', icon: 'create', title: t('nav.signedDocuments'), subtitle: t('menu.signedDocsSubtitle'), onPress: () => navigation.navigate('SignedDocuments') },
+                { key: 'inspections', icon: 'shield-checkmark', title: t('nav.safetyInspections'), subtitle: t('menu.inspectionsSubtitle'), onPress: () => navigation.navigate('SafetyInspections') },
                 { key: 'settings', icon: 'settings', title: t('nav.companySettings'), subtitle: t('settings.companySettingsSubtitle'), onPress: () => navigation.navigate('CompanySettings') },
               ],
             },
@@ -171,7 +167,7 @@ export default function MenuScreen({ navigation }: Props) {
             },
           ];
 
-  const groups = [...roleGroups, legal];
+  const groups = [...roleGroups, system];
 
   return (
     <MenuMobile

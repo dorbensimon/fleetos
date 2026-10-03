@@ -89,4 +89,6 @@ export type RootStackParamList = {
 
   // Shared
   Menu: undefined;
+  /** "הגדרות מערכת": language and the legal pages, for every role. */
+  SystemSettings: undefined;
 };

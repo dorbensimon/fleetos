@@ -1778,6 +1778,7 @@
     "profileSubtitle": "الاسم والهاتف والبريد وكلمة المرور",
     "reportsSubtitle": "تقارير السائقين والمركبات إلى Excel",
     "signedDocsSubtitle": "العرض والإرسال إلى السائقين والحذف",
+    "systemSettingsSubtitle": "اللغة، شروط الاستخدام، الخصوصية، ملفات تعريف الارتباط وإمكانية الوصول",
     "version": "icar · الإصدار 1.0.0"
   },
   "nav": {
@@ -1797,7 +1798,8 @@
     "safetyInspections": "فحوصات ضابط السلامة",
     "signedDocuments": "المستندات الموقّعة",
     "signingDocuments": "مستندات للتوقيع",
-    "systemManagement": "إدارة النظام"
+    "systemManagement": "إدارة النظام",
+    "systemSettings": "إعدادات النظام"
   },
   "notifications": {
     "action": {
@@ -2298,9 +2300,7 @@
     "preparingFile": "جارٍ تجهيز الملف…",
     "title": "التقارير",
     "vehicles": "تقارير المركبات",
-    "vehiclesHint": "التأمين والفحص السنوي والصيانة والتجاوزات",
-    "printOrPdf": "طباعة / PDF",
-    "printOrPdfLabel": "طباعة أو حفظ كملف PDF"
+    "vehiclesHint": "التأمين والفحص السنوي والصيانة والتجاوزات"
   },
   "role": {
     "admin": "مدير النظام",
@@ -2898,11 +2898,12 @@
   },
   "viewer": {
     "downloadDocument": "تنزيل المستند",
+    "forward": "إعادة توجيه",
+    "forwardFailed": "فشلت إعادة التوجيه. يمكنك تنزيل الملف وإرساله.",
+    "forwardLabel": "إرسال الملف عبر واتساب أو البريد الإلكتروني أو تطبيق آخر",
     "loadingDocument": "جارٍ تحميل المستند",
     "pageN": "صفحة {{number}}",
     "pageNumber": "صفحة {{pageNumber}}",
-    "print": "طباعة",
-    "printFailed": "فشلت الطباعة. يمكن تنزيل المستند وطباعته.",
     "signedDocument": "مستند موقّع",
     "signedOn": "وُقّع في {{signedAt}}",
     "zoom": "حجم العرض",

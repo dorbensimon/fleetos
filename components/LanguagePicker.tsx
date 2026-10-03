@@ -8,7 +8,7 @@ import { DText, HoverPressable } from './desktop/primitives';
 import { DESKTOP_COLORS } from './desktop/desktopTheme';
 
 /**
- * The user's own language choice, in their personal settings. Each language
+ * The user's own language choice, in system settings. Each language
  * is shown in its own name. The choice is kept on this device and on the
  * user's account, so it follows them to every device they sign in on.
  */
@@ -28,7 +28,7 @@ function Trailing({ selected, busy, color }: { selected: boolean; busy: boolean;
   return selected ? <Ionicons name="checkmark" size={20} color={color} /> : null;
 }
 
-/** Phone layout: a section in the profile screen. */
+/** Phone layout: a section in the system settings screen. */
 export function LanguageSection() {
   const { current, pending, choose } = useLanguageChoice();
   return (
@@ -57,7 +57,7 @@ export function LanguageSection() {
   );
 }
 
-/** Desktop layout: the rows of a card in the profile page. */
+/** Desktop layout: the rows of a card in the system settings page. */
 export function LanguageRows() {
   const { current, pending, choose } = useLanguageChoice();
   return (

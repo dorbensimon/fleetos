@@ -9,7 +9,6 @@ import { DLtrText, DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
 import { t, dirIcon, textStart } from '../../lib/i18n';
 import { companyTypeLabel } from '../../lib/companyType';
-import { LanguageRows } from '../LanguagePicker';
 
 /**
  * Desktop body of the admin's own profile: an identity card plus grouped
@@ -112,9 +111,6 @@ export function AdminProfileDesktopView({
               <DText weight="semiBold" style={styles.actionText}>{t('password.change')}</DText>
               <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
             </HoverPressable>
-          </Group>
-          <Group title={t('settings.language')} icon="language-outline">
-            <LanguageRows />
           </Group>
           <View style={styles.memberCard}>
             <Ionicons name="calendar-outline" size={17} color={DESKTOP_COLORS.inkMuted} />

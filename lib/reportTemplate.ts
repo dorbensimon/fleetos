@@ -10,6 +10,8 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 import { t, textDirection } from './i18n';
+import { safeFileName } from './fileNames';
+import { shareFileOnWeb } from './webDownload';
 
 export type TagTone = 'accent' | 'accent2' | 'neutral' | 'outline';
 
@@ -140,7 +142,9 @@ const REPORT_STYLES = `
 
   .link { color: var(--primary); text-decoration: none; }
 
-  .table { width: 100%; border-collapse: collapse; font-size: 0.875rem; margin-bottom: 2.5rem; }
+  /* Wide tables scroll sideways inside the card instead of spilling past it on a phone. */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 2.5rem; }
+  .table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
   .table th {
     text-align: right;
     font-size: 0.8125rem;
@@ -207,6 +211,7 @@ const REPORT_STYLES = `
     .grid, .meta-row { grid-template-columns: 1fr 1fr; }
     .header { flex-direction: column; align-items: flex-start; gap: 1rem; }
     .header-meta { text-align: right; }
+    .table th, .table td { white-space: nowrap; padding-inline: 0.5rem; }
   }
 
   @media print {
@@ -214,6 +219,7 @@ const REPORT_STYLES = `
     body { padding: 0; display: block; }
     .page { max-width: none; border: none; box-shadow: none; border-radius: 0; padding: 0; }
     h2.section-title, .grid, .table tr { break-inside: avoid; }
+    .table-scroll { overflow: visible; }
   }
 `;
 
@@ -266,7 +272,7 @@ export function buildReportDocument(opts: ReportDocumentOptions): string {
 
     ${metaColumns.length ? `<div class="meta-row">${metaColumns.map(metaColumnHtml).join('')}</div>` : ''}
 
-    ${opts.bodyHtml}
+    ${opts.bodyHtml.replace(/<table class="table"/g, '<div class="table-scroll"><table class="table"').replace(/<\/table>/g, '</table></div>')}
 
     <div class="footnote">
       <div class="footnote-mark">${ICAR_REPORT_MARK}</div>
@@ -331,9 +337,9 @@ const VIEWER_CSS = `
 
 // Points toward the start side: right in Hebrew and Arabic, left otherwise.
 const backIcon = () => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${textDirection() === 'rtl' ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'}"/></svg>`;
-const PRINT_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>';
+const FORWARD_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>';
 
-/** A full-screen, in-app reader for a report on web: back, title, print / save as PDF. */
+/** A full-screen, in-app reader for a report on web: back, title, and forward (the share sheet; print / save as PDF where the browser can't share files). */
 function openWebReportViewer(html: string, title: string): void {
   document.getElementById(VIEWER_ID)?.remove();
   const previousFocus = document.activeElement as HTMLElement | null;
@@ -348,7 +354,7 @@ function openWebReportViewer(html: string, title: string): void {
     <div class="rv-bar">
       <button type="button" class="rv-back" aria-label="${esc(t('common.goBack'))}">${backIcon()}<span class="rv-label">${esc(t('common.goBack'))}</span></button>
       <h1 class="rv-title">${esc(title)}</h1>
-      <button type="button" class="rv-print" aria-label="${esc(t('reports.printOrPdfLabel'))}">${PRINT_ICON}<span class="rv-label">${esc(t('reports.printOrPdf'))}</span></button>
+      <button type="button" class="rv-print" aria-label="${esc(t('viewer.forwardLabel'))}">${FORWARD_ICON}<span class="rv-label">${esc(t('viewer.forward'))}</span></button>
     </div>`;
 
   const frame = document.createElement('iframe');
@@ -368,11 +374,17 @@ function openWebReportViewer(html: string, title: string): void {
   };
 
   root.querySelector<HTMLButtonElement>('.rv-back')!.onclick = close;
+  // Built now, so the share sheet opens straight from the tap (Safari requires it).
+  const file = new File([html], safeFileName(`${title}.html`, 'report.html'), { type: 'text/html' });
   root.querySelector<HTMLButtonElement>('.rv-print')!.onclick = () => {
-    const win = frame.contentWindow;
-    if (!win) return;
-    win.focus();
-    win.print();
+    shareFileOnWeb(file, title)
+      .then((shared) => {
+        if (shared) return;
+        const win = frame.contentWindow;
+        win?.focus();
+        win?.print();
+      })
+      .catch(() => window.alert(t('viewer.forwardFailed')));
   };
   document.addEventListener('keydown', onKey);
   document.body.style.overflow = 'hidden';

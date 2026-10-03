@@ -255,7 +255,9 @@ export function ComplianceSection({
     const requiresExpiryOnUpload = def.requiresExpiryOnUpload === true;
     const stagedExpiryDate = drafts[def.itemType]?.expiry_date ?? null;
     if (requiresExpiryOnUpload && !stagedExpiryDate) {
-      showAlert(t('documents.expiryMissing'), t('documents.chooseExpiryBeforeUpload'));
+      // On the phone an in-app message (a browser alert can go unseen there); the desktop folder window is a modal that would cover it.
+      if (desktopModal) showAlert(t('documents.expiryMissing'), t('documents.chooseExpiryBeforeUpload'));
+      else showToast(t('documents.chooseExpiryBeforeUpload'), 'warning');
       return false;
     }
     const uploadExpiryDate = requiresExpiryOnUpload

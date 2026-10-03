@@ -1778,6 +1778,7 @@
     "profileSubtitle": "Name, phone, email and password",
     "reportsSubtitle": "Driver and vehicle reports to Excel",
     "signedDocsSubtitle": "View, send to drivers and delete",
+    "systemSettingsSubtitle": "Language, terms, privacy, cookies and accessibility",
     "version": "icar · version 1.0.0"
   },
   "nav": {
@@ -1797,7 +1798,8 @@
     "safetyInspections": "Safety officer inspections",
     "signedDocuments": "Signed documents",
     "signingDocuments": "Documents to sign",
-    "systemManagement": "System management"
+    "systemManagement": "System management",
+    "systemSettings": "System settings"
   },
   "notifications": {
     "action": {
@@ -2298,9 +2300,7 @@
     "preparingFile": "Preparing the file…",
     "title": "Reports",
     "vehicles": "Vehicle reports",
-    "vehiclesHint": "Insurance, annual test, services and overdue items",
-    "printOrPdf": "Print / PDF",
-    "printOrPdfLabel": "Print or save as PDF"
+    "vehiclesHint": "Insurance, annual test, services and overdue items"
   },
   "role": {
     "admin": "Administrator",
@@ -2898,11 +2898,12 @@
   },
   "viewer": {
     "downloadDocument": "Download the document",
+    "forward": "Forward",
+    "forwardFailed": "Forwarding failed. You can download the file and send it.",
+    "forwardLabel": "Send the file by WhatsApp, email or another app",
     "loadingDocument": "Loading the document",
     "pageN": "Page {{number}}",
     "pageNumber": "Page {{pageNumber}}",
-    "print": "Print",
-    "printFailed": "Printing failed. You can download the document and print it.",
     "signedDocument": "Signed document",
     "signedOn": "Signed on {{signedAt}}",
     "zoom": "Zoom",

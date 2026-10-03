@@ -5,34 +5,40 @@ import { AppText } from './Text';
 import { Ionicons } from '@expo/vector-icons';
 import { RADIUS, SPACING } from '../../lib/theme';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
-import { DK, DK_FONT } from '../driverKit/theme';
+import { DK, DK_FONT, STATUS } from '../driverKit/theme';
+
+/** 'warning': something still needs doing first, e.g. a date before an upload. Stays a little longer. */
+type ToastTone = 'success' | 'warning';
 
 interface ToastContextValue {
-  showToast: (message: string) => void;
+  showToast: (message: string, tone?: ToastTone) => void;
 }
 
 const ToastContext = createContext<ToastContextValue>({ showToast: () => {} });
 
-/** Call after any successful save across the app to show the bottom confirmation toast. */
+/** Call after any successful save across the app to show the bottom confirmation toast, or with 'warning' for what must come first. */
 export function useToast() {
   return useContext(ToastContext);
 }
 
 const VISIBLE_MS = 2000;
+const WARNING_VISIBLE_MS = 3500;
 const ANIM_MS = 220;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const phone = !useIsDesktop();
   const [message, setMessage] = useState<string | null>(null);
+  const [tone, setTone] = useState<ToastTone>('success');
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(12)).current;
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback(
-    (text: string) => {
+    (text: string, nextTone: ToastTone = 'success') => {
       if (hideTimer.current) clearTimeout(hideTimer.current);
       setMessage(text);
+      setTone(nextTone);
       opacity.setValue(0);
       translateY.setValue(12);
       Animated.parallel([
@@ -45,7 +51,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           Animated.timing(opacity, { toValue: 0, duration: ANIM_MS, useNativeDriver: true }),
           Animated.timing(translateY, { toValue: 12, duration: ANIM_MS, useNativeDriver: true }),
         ]).start(() => setMessage(null));
-      }, VISIBLE_MS);
+      }, nextTone === 'warning' ? WARNING_VISIBLE_MS : VISIBLE_MS);
     },
     [opacity, translateY]
   );
@@ -61,10 +67,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <Animated.View
             pointerEvents="none"
             style={[styles.wrap, { bottom: insets.bottom + 24, opacity, transform: [{ translateY }] }]}
-            accessibilityLiveRegion="polite"
+            accessibilityLiveRegion={tone === 'warning' ? 'assertive' : 'polite'}
           >
-            <View style={[styles.toast, phone && kit.toast]}>
-              {phone && <Ionicons name="checkmark-circle" size={20} color={DK.mint} />}
+            <View style={[styles.toast, (phone || tone === 'warning') && kit.toast]}>
+              {tone === 'warning' ? (
+                <Ionicons name="alert-circle" size={20} color={STATUS.soon.fill} />
+              ) : (
+                phone && <Ionicons name="checkmark-circle" size={20} color={DK.mint} />
+              )}
               <AppText weight="bold" style={[styles.text, phone && kit.text]}>
                 {message}
               </AppText>

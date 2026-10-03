@@ -1778,6 +1778,7 @@
     "profileSubtitle": "שם, טלפון, מייל וסיסמה",
     "reportsSubtitle": "דוחות נהגים ורכבים לאקסל",
     "signedDocsSubtitle": "צפייה, שליחה לנהגים ומחיקה",
+    "systemSettingsSubtitle": "שפה, תנאי שימוש, פרטיות, עוגיות ונגישות",
     "version": "icar · גרסה 1.0.0"
   },
   "nav": {
@@ -1797,7 +1798,8 @@
     "safetyInspections": "בדיקות קצין בטיחות",
     "signedDocuments": "מסמכים חתומים",
     "signingDocuments": "מסמכים לחתימה",
-    "systemManagement": "ניהול המערכת"
+    "systemManagement": "ניהול המערכת",
+    "systemSettings": "הגדרות מערכת"
   },
   "notifications": {
     "action": {
@@ -2298,9 +2300,7 @@
     "preparingFile": "מכין את הקובץ…",
     "title": "דוחות",
     "vehicles": "דוחות רכבים",
-    "vehiclesHint": "ביטוח, טסט, טיפולים וחריגות",
-    "printOrPdf": "הדפסה / PDF",
-    "printOrPdfLabel": "הדפסה או שמירה כ־PDF"
+    "vehiclesHint": "ביטוח, טסט, טיפולים וחריגות"
   },
   "role": {
     "admin": "מנהל מערכת",
@@ -2898,11 +2898,12 @@
   },
   "viewer": {
     "downloadDocument": "הורדת המסמך",
+    "forward": "העבר",
+    "forwardFailed": "ההעברה נכשלה. אפשר להוריד את הקובץ ולשלוח אותו.",
+    "forwardLabel": "העברת הקובץ בוואטסאפ, במייל או באפליקציה אחרת",
     "loadingDocument": "טוען את המסמך",
     "pageN": "עמוד {{number}}",
     "pageNumber": "עמוד {{pageNumber}}",
-    "print": "הדפסה",
-    "printFailed": "ההדפסה נכשלה. אפשר להוריד את המסמך ולהדפיס אותו.",
     "signedDocument": "מסמך חתום",
     "signedOn": "נחתם ב-{{signedAt}}",
     "zoom": "גודל תצוגה",

@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Ionicons } from '@expo/vector-icons';
 import { downloadSignedRequest } from '../../../lib/docuseal';
-import { downloadRemoteFileOnWeb } from '../../../lib/webDownload';
+import { downloadRemoteFileOnWeb, shareFileOnWeb } from '../../../lib/webDownload';
+import { safeFileName } from '../../../lib/fileNames';
 import { loadPdf, renderPage, type LoadedPdf } from './pdf.web';
 import { t, getLocale } from '../../../lib/i18n';
 import { errorMessage } from '../../../lib/requestError';
@@ -11,7 +12,7 @@ import { errorMessage } from '../../../lib/requestError';
  * Desktop document viewer (web only). The phone viewer squeezes a PDF into a
  * narrow column; on a computer the document gets the whole screen: the pages
  * float as real paper on a dark stage, under a glass toolbar with zoom,
- * print and download. Files pdf.js can't read fall back to the browser's own
+ * forward and download. Files pdf.js can't read fall back to the browser's own
  * viewer inside the same stage.
  */
 
@@ -78,7 +79,8 @@ export function DocumentViewer({
   const [base, setBase] = useState(baseWidth);
   const [current, setCurrent] = useState(1);
   const [closing, setClosing] = useState(false);
-  const [busy, setBusy] = useState<'' | 'download' | 'print'>('');
+  const [busy, setBusy] = useState<'' | 'download'>('');
+  const fileRef = useRef<File | null>(null);
   const [error, setError] = useState('');
   const stageRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -93,6 +95,22 @@ export function DocumentViewer({
       cancelled = true;
     };
   }, [src]);
+
+  // The file is fetched ahead, so "forward" opens the share sheet straight
+  // from the tap (Safari refuses one that waits on a download first).
+  useEffect(() => {
+    let alive = true;
+    fileRef.current = null;
+    fetch(src)
+      .then((response) => (response.ok ? response.blob() : Promise.reject()))
+      .then((blob) => {
+        if (alive) fileRef.current = new File([blob], safeFileName(`${title}.pdf`, 'document.pdf'), { type: blob.type || 'application/pdf' });
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [src, title]);
 
   useEffect(() => {
     const onResize = () => setBase(baseWidth());
@@ -154,30 +172,14 @@ export function DocumentViewer({
     }
   };
 
-  // Prints the real file (not the screen), from a hidden same-origin frame.
-  const print = async () => {
-    setBusy('print');
+  // The device's share sheet; where the browser can't share files, a download.
+  const forward = async () => {
     setError('');
     try {
-      const response = await fetch(src);
-      if (!response.ok) throw new Error();
-      const url = URL.createObjectURL(await response.blob());
-      const frame = document.createElement('iframe');
-      frame.style.cssText = 'position:fixed;width:0;height:0;border:0;opacity:0';
-      frame.src = url;
-      frame.onload = () => {
-        frame.contentWindow?.focus();
-        frame.contentWindow?.print();
-        window.setTimeout(() => {
-          frame.remove();
-          URL.revokeObjectURL(url);
-        }, 60_000);
-      };
-      document.body.appendChild(frame);
+      if (fileRef.current && (await shareFileOnWeb(fileRef.current, title))) return;
+      await download();
     } catch {
-      setError(t('viewer.printFailed'));
-    } finally {
-      setBusy('');
+      setError(t('viewer.forwardFailed'));
     }
   };
 
@@ -221,9 +223,9 @@ export function DocumentViewer({
               </button>
             </div>
           ) : null}
-          <button type="button" className="dv-ghost" onClick={() => void print()} disabled={!!busy}>
-            <Ionicons name="print-outline" size={19} color="currentColor" />
-            {busy === 'print' ? t('common.preparing') : t('viewer.print')}
+          <button type="button" className="dv-ghost" onClick={() => void forward()} disabled={!!busy} aria-label={t('viewer.forwardLabel')}>
+            <Ionicons name="share-outline" size={19} color="currentColor" />
+            {t('viewer.forward')}
           </button>
           <button type="button" className="dv-primary" onClick={() => void download()} disabled={!!busy} aria-label={t('viewer.downloadDocument')} title={t('common.download')}>
             <Ionicons name={busy === 'download' ? 'hourglass-outline' : 'download-outline'} size={21} color="#fff" />
