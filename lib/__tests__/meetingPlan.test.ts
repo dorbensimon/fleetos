@@ -1,7 +1,7 @@
 jest.mock('../supabase', () => ({ supabase: {} }));
 
 import { daysBetween, dueState, dueText, isDueSoon, type PlanRow } from '../meetingPlan';
-import { selectMeetingReport } from '../meetingReport';
+import { formReportCategories, formReportCount, formReportTitle, monthsBefore, selectFormReport, type FormReportPick, type ReportForm, type ReportMeeting } from '../meetingReport';
 import { adminNotificationTarget } from '../notificationTargets';
 import { notificationTone } from '../notificationLook';
 import type { DriverRow } from '../adminApi';
@@ -45,32 +45,86 @@ describe('when is the next meeting', () => {
   });
 });
 
-describe('the meetings report', () => {
-  const drivers = [{ id: 'd1', full_name: 'אבי' }, { id: 'd2', full_name: 'רונית' }, { id: 'd3', full_name: 'משה' }] as DriverRow[];
+describe('reports on one form', () => {
+  const drivers = [
+    { id: 'd1', full_name: 'אבי' }, { id: 'd2', full_name: 'רונית' }, { id: 'd3', full_name: 'משה' },
+    { id: 'd4', full_name: 'דנה' }, { id: 'd5', full_name: 'גיל' },
+  ] as DriverRow[];
+  const talk: ReportForm = { id: 't1', title: 'מפגש שיחה עם נהג', repeatMonths: 6, createdAt: '2026-01-01T00:00:00Z' };
+  const once: ReportForm = { ...talk, title: 'הצהרה', repeatMonths: 0 };
+  let n = 0;
+  const fill = (driver: string, date: string, status: 'draft' | 'signed', request: string | null, created = `${date}T10:00:00Z`): ReportMeeting => ({
+    id: `m${++n}`, template_id: 't1', driver_id: driver, meeting_date: date, officer_name: 'קצין', status, created_at: created, signed_at: status === 'signed' ? created : null,
+    request: request ? { status: request } : null,
+  });
   const meetings = [
-    { driver_id: 'd1', title: 'מפגש', meeting_date: '2026-09-01', officer_name: 'קצין', request: { status: 'completed' } },
-    { driver_id: 'd2', title: 'מפגש', meeting_date: '2026-05-01', officer_name: 'קצין', request: { status: 'pending' } },
-    { driver_id: 'd3', title: 'מפגש', meeting_date: '2026-09-10', officer_name: 'קצין', request: { status: 'cancelled' } },
-    // A driver who was archived since: not in the active list, never reported.
-    { driver_id: 'gone', title: 'מפגש', meeting_date: '2026-09-10', officer_name: 'קצין', request: { status: 'completed' } },
+    fill('d1', '2026-08-01', 'signed', 'completed'),        // within six months
+    fill('d1', '2026-02-01', 'signed', 'completed'),        // older than six months
+    fill('d2', '2026-09-20', 'signed', 'pending'),          // waiting for the driver
+    fill('d3', '2026-09-10', 'signed', 'cancelled'),        // cancelled: never counts
+    fill('d4', '2026-07-01', 'signed', 'declined'),         // refused, then done again:
+    fill('d4', '2026-07-05', 'signed', 'completed'),        //   the refusal is settled
+    fill('d5', '2026-09-25', 'draft', null),                // a draft the officer left open
+    fill('d5', '2026-09-24', 'signed', 'failed'),           // sending failed, nothing after it
+    fill('gone', '2026-09-10', 'signed', 'completed'),      // archived driver
+    fill('d1', '2026-10-30', 'signed', 'completed'),        // a future date
   ];
-  const plan = [row('d1', '2026-12-01', { firstMeeting: false }), row('d3', '2026-09-20'), row('gone', '2026-09-20')];
+  const plan = [row('d1', '2027-02-01', { firstMeeting: false }), row('d3', '2026-09-20'), row('gone', '2026-09-20'), row('d2', '2026-10-01', { templateId: 'other' })];
+  const data = { meetings, plan };
+  const ids = (pick: FormReportPick) => pick.meetings.map((m) => `${m.meeting.driver_id}:${m.meeting.meeting_date}`);
 
-  test('the last three months, without cancelled meetings or archived drivers', () => {
-    const picked = selectMeetingReport('met_quarter', { drivers, meetings, plan }, today);
-    expect(picked.meetings.map((m) => m.driver_id)).toEqual(['d1']);
+  test('filled: only within the form\'s own cycle, nothing cancelled, archived or in the future', () => {
+    expect(ids(selectFormReport('filled', talk, data, drivers, today))).toEqual(['d1:2026-08-01', 'd4:2026-07-05']);
   });
 
-  test('meetings the driver has not signed yet', () => {
-    expect(selectMeetingReport('awaiting_driver', { drivers, meetings, plan }, today).meetings.map((m) => m.driver_id)).toEqual(['d2']);
+  test('a one-time form counts every completed fill', () => {
+    expect(ids(selectFormReport('filled', once, data, drivers, today))).toEqual(['d1:2026-08-01', 'd4:2026-07-05', 'd1:2026-02-01']);
   });
 
-  test('who needs a meeting now', () => {
-    expect(selectMeetingReport('due', { drivers, meetings, plan }, today).plan.map((r) => r.driverId)).toEqual(['d3']);
+  test('unfinished: drafts, waiting and failed, but not a refusal that was done again', () => {
+    expect(ids(selectFormReport('unfinished', talk, data, drivers, today))).toEqual(['d2:2026-09-20', 'd5:2026-09-24', 'd5:2026-09-25']);
   });
 
-  test('who never had a meeting: a cancelled one does not count', () => {
-    expect(selectMeetingReport('never', { drivers, meetings, plan }, today).drivers.map((d) => d.id)).toEqual(['d3']);
+  test('due: this form only, active drivers only; a one-time form has none', () => {
+    expect(selectFormReport('due', talk, data, drivers, today).plan.map((r) => r.driverId)).toEqual(['d3']);
+    expect(selectFormReport('due', once, data, drivers, today).plan).toEqual([]);
+    expect(formReportCategories(once).map((c) => c.value)).toEqual(['filled', 'unfinished', 'never']);
+  });
+
+  test('never: a cancelled fill does not count, a draft does not count, and is noted', () => {
+    const pick = selectFormReport('never', talk, data, drivers, today);
+    expect(pick.drivers.map((d) => d.id)).toEqual(['d3']);
+    expect(pick.open.get('d5')).toBe('draft');
+    expect(pick.open.get('d2')).toBe('awaiting_driver');
+    expect(pick.open.has('d4')).toBe(false);
+  });
+
+  test('another form\'s fills never count: the bug this replaces', () => {
+    const training = { meetings: [{ ...fill('d1', '2026-09-01', 'signed', 'completed'), template_id: 'training' }], plan: [] };
+    expect(selectFormReport('never', talk, training, drivers, today).drivers.map((d) => d.id)).toEqual(['d1', 'd2', 'd3', 'd4', 'd5'].sort((a, b) => {
+      const name = (id: string) => drivers.find((d) => d.id === id)!.full_name!;
+      return name(a).localeCompare(name(b), 'he');
+    }));
+  });
+
+  test('the number beside each report is the number of rows in it', () => {
+    for (const category of formReportCategories(talk)) {
+      const pick = selectFormReport(category.value, talk, data, drivers, today);
+      const rows = category.value === 'due' ? pick.plan.length : category.value === 'never' ? pick.drivers.length : pick.meetings.length;
+      expect(formReportCount(category.value, pick)).toBe(rows);
+    }
+  });
+
+  test('months back stop at the end of a short month', () => {
+    expect(monthsBefore('2026-08-31', 6)).toBe('2026-02-28');
+    expect(monthsBefore('2028-08-31', 6)).toBe('2028-02-29');
+    expect(monthsBefore('2026-09-26', 12)).toBe('2025-09-26');
+    expect(monthsBefore('2026-01-15', 1)).toBe('2025-12-15');
+  });
+
+  test('the title names the form', () => {
+    expect(formReportTitle(talk, 'due')).toBe('מפגש שיחה עם נהג — צריכים למלא עכשיו');
+    expect(formReportTitle(talk, 'filled')).toBe('מפגש שיחה עם נהג — מילאו ב־6 החודשים האחרונים');
   });
 });
 
@@ -88,6 +142,9 @@ describe('meeting reminders', () => {
   test('a week ahead is a heads-up; due or late is urgent', () => {
     expect(notificationTone({ notification_type: 'driver_meeting_due', message: 'מפגש · אבי: המועד בעוד 7 ימים (03/10/2026)' })).toBe('warn');
     expect(notificationTone({ notification_type: 'driver_meeting_due', message: 'מפגש: ל-5 נהגים המפגש הבא בשבוע הקרוב' })).toBe('warn');
+    expect(notificationTone({ notification_type: 'driver_meeting_due', message: 'הדרכה: ל-5 נהגים המועד בשבוע הקרוב' })).toBe('warn');
+    expect(notificationTone({ notification_type: 'driver_meeting_due', message: 'הדרכה: ל-5 נהגים המועד ב-14 הימים הקרובים' })).toBe('warn');
+    expect(notificationTone({ notification_type: 'driver_meeting_due', message: 'הדרכה: הגיע המועד אצל 5 נהגים' })).toBe('bad');
     expect(notificationTone({ notification_type: 'driver_meeting_due', message: 'מפגש · אבי: המועד היום' })).toBe('bad');
     expect(notificationTone({ notification_type: 'driver_meeting_due', message: 'מפגש · אבי: המועד עבר ב-20/09/2026' })).toBe('bad');
   });

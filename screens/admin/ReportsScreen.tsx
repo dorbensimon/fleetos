@@ -6,12 +6,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ErrorState } from '../../components/ui';
 import { BrandLoader } from '../../components/ui/BrandLoader';
-import { DK, DKText, DriverPage, ErrorPanel, HeroTitle, ListRow, LoadingPanel, Reveal, STATUS, Segmented, Surface } from '../../components/driverKit';
+import { DK, DKText, DriverPage, ErrorPanel, HeroTitle, ListRow, LoadingPanel, Pressy, PrimaryAction, Reveal, STATUS, Segmented, Surface } from '../../components/driverKit';
 import { useCompany } from '../../lib/CompanyContext';
 import { listDrivers, listVehicles, listComplianceForOwners, listActiveVehicleDriversForVehicles, type DriverRow, type Vehicle, type ComplianceItem, type VehicleDriverWithProfile } from '../../lib/adminApi';
 import { REPORT_CATEGORIES, exportDriversReport, type ReportCategory } from '../../lib/driverReport';
 import { VEHICLE_REPORT_CATEGORIES, exportVehiclesReport, type VehicleReportCategory } from '../../lib/vehicleReport';
-import { MEETING_REPORT_CATEGORIES, exportMeetingsReport, type MeetingReportCategory } from '../../lib/meetingReport';
+import { exportFormReport, type FormReportCategory } from '../../lib/meetingReport';
+import { useFormReports } from '../../components/reports/useFormReports';
 import { INSPECTION_REPORT_CATEGORIES, exportInspectionsReport, type InspectionReportCategory } from '../../lib/inspectionReport';
 import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
@@ -30,7 +31,9 @@ export default function ReportsScreen({ navigation }: Props) {
   const load = useCallback(async () => { if (!companyId) { setError(t('company.noLinkedCompany')); setLoading(false); return; } setLoading(true); setError(null); try { const [d, v] = await Promise.all([listDrivers(companyId), listVehicles(companyId, true)]); const [c, a] = await Promise.all([listComplianceForOwners('vehicle', v.map((x) => x.id)), listActiveVehicleDriversForVehicles(v.map((x) => x.id))]); setDrivers(d); setVehicles(v); setCompliance(c); setAssignments(a); } catch (e: any) { setError(errorMessage(e, t('reports.loadFailed'))); } finally { setLoading(false); } }, [companyId]);
   useEffect(() => { load(); }, [load]);
   const exportDrivers = async (category: ReportCategory) => { if (!company) return; setExporting(category); try { await exportDriversReport(company, drivers, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setExporting(null); } };
-  const exportMeetings = async (category: MeetingReportCategory) => { if (!company) return; setExporting(category); try { await exportMeetingsReport(company, drivers, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setExporting(null); } };
+  const forms = useFormReports(companyId, drivers);
+  const pickKind = (next: typeof kind) => { setKind(next); if (next === 'meetings') void forms.open(isDesktop); };
+  const exportForm = async (category: FormReportCategory) => { if (!company || !forms.form || !forms.data) return; setExporting(category); try { await exportFormReport(company, drivers, forms.form, forms.data, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setExporting(null); } };
   const exportInspections = async (category: InspectionReportCategory) => { if (!company) return; setExporting(category); try { await exportInspectionsReport(company, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setExporting(null); } };
   const exportVehicles = async (category: VehicleReportCategory) => { if (!company) return; setExporting(category); try { await exportVehiclesReport(company, vehicles, compliance, assignments, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setExporting(null); } };
 
@@ -42,15 +45,16 @@ export default function ReportsScreen({ navigation }: Props) {
         ) : (
           <ReportsDesktopView
             open={kind}
-            onToggle={(next) => setKind((current) => (current === next ? null : next))}
+            onToggle={(next) => pickKind(kind === next ? null : next)}
             driverCategories={REPORT_CATEGORIES}
             vehicleCategories={VEHICLE_REPORT_CATEGORIES}
-            meetingCategories={MEETING_REPORT_CATEGORIES}
+            forms={forms}
             inspectionCategories={INSPECTION_REPORT_CATEGORIES}
             exportingCategory={exporting}
             onSelectDriverCategory={(value) => void exportDrivers(value as ReportCategory)}
             onSelectVehicleCategory={(value) => void exportVehicles(value as VehicleReportCategory)}
-            onSelectMeetingCategory={(value) => void exportMeetings(value as MeetingReportCategory)}
+            onSelectFormCategory={(value) => void exportForm(value as FormReportCategory)}
+            onGoToForms={() => navigation.navigate('SignedDocuments', undefined)}
             onSelectInspectionCategory={(value) => void exportInspections(value as InspectionReportCategory)}
           />
         )}
@@ -59,7 +63,7 @@ export default function ReportsScreen({ navigation }: Props) {
   }
 
   const mode = kind ?? 'drivers';
-  const categories = mode === 'drivers' ? REPORT_CATEGORIES : mode === 'meetings' ? MEETING_REPORT_CATEGORIES : mode === 'inspections' ? INSPECTION_REPORT_CATEGORIES : VEHICLE_REPORT_CATEGORIES;
+  const categories = mode === 'drivers' ? REPORT_CATEGORIES : mode === 'meetings' ? forms.categories : mode === 'inspections' ? INSPECTION_REPORT_CATEGORIES : VEHICLE_REPORT_CATEGORIES;
   return (
     <DriverPage
       insetTop={insets.top}
@@ -71,12 +75,12 @@ export default function ReportsScreen({ navigation }: Props) {
             <Segmented<'drivers' | 'vehicles' | 'meetings' | 'inspections'>
               onNight
               value={mode}
-              onChange={setKind}
+              onChange={pickKind}
               options={[
                 // Four tabs share a phone's width: words and icons, no counts.
                 { value: 'drivers', label: t('common.drivers'), icon: 'people' },
                 { value: 'vehicles', label: t('common.vehicles'), icon: 'car-sport' },
-                { value: 'meetings', label: t('reports.meetingsShort'), icon: 'chatbubbles' },
+                { value: 'meetings', label: t('reports.meetingsShort'), icon: 'clipboard' },
                 { value: 'inspections', label: t('reports.inspectionsShort'), icon: 'shield-checkmark' },
               ]}
             />
@@ -88,9 +92,52 @@ export default function ReportsScreen({ navigation }: Props) {
         <LoadingPanel />
       ) : error ? (
         <ErrorPanel message={t('reports.loadFailed')} hint={error} onRetry={load} />
+      ) : mode === 'meetings' && !forms.form ? (
+        <Reveal key="forms">
+          {forms.formsError ? (
+            <ErrorPanel message={t('reports.loadFailed')} hint={forms.formsError} onRetry={() => void forms.retry()} />
+          ) : !forms.forms ? (
+            <LoadingPanel />
+          ) : forms.forms.length === 0 ? (
+            <Surface style={s.empty}>
+              <DKText variant="body" color={DK.inkSoft} style={s.emptyText}>{t('reports.formsEmpty')}</DKText>
+              <PrimaryAction label={t('reports.formsEmptyAction')} icon="document-text-outline" onPress={() => navigation.navigate('SignedDocuments', undefined)} />
+            </Surface>
+          ) : (
+            <Surface>
+              {forms.forms.map((item, index) => (
+                <ListRow
+                  key={item.id}
+                  first={index === 0}
+                  icon="clipboard-outline"
+                  tint={DK.accent}
+                  title={item.title}
+                  subtitle={forms.formSubtitle(item)}
+                  onPress={() => void forms.pick(item)}
+                />
+              ))}
+            </Surface>
+          )}
+        </Reveal>
+      ) : mode === 'meetings' && forms.dataError ? (
+        <ErrorPanel message={t('reports.loadFailed')} hint={forms.dataError} onRetry={() => void forms.retry()} />
       ) : (
-        <Reveal key={mode}>
+        <Reveal key={mode === 'meetings' ? `form-${forms.form?.id}` : mode}>
           <Surface>
+            {mode === 'meetings' && forms.form && (
+              <View style={s.formHead}>
+                <View style={s.formTitle}>
+                  <DKText variant="heading" numberOfLines={2}>{forms.form.title}</DKText>
+                  <DKText variant="caption" color={DK.muted}>{forms.formSubtitle(forms.form)}</DKText>
+                </View>
+                {forms.canGoBack && (
+                  <Pressy onPress={forms.back} accessibilityLabel={t('reports.allForms')} style={s.back} pressScale={0.96}>
+                    <Ionicons name="chevron-forward" size={16} color={DK.accent} />
+                    <DKText variant="label" color={DK.accent}>{t('reports.allForms')}</DKText>
+                  </Pressy>
+                )}
+              </View>
+            )}
             {categories.map((category, index) => {
               const busy = exporting === category.value;
               return (
@@ -98,9 +145,9 @@ export default function ReportsScreen({ navigation }: Props) {
                   key={category.value}
                   first={index === 0}
                   icon={category.icon as React.ComponentProps<typeof Ionicons>['name']}
-                  tint={category.value === 'expired' || category.value === 'issues' || category.value === 'due' || category.value === 'insp_due' || category.value === 'insp_defects' ? STATUS.expired.fg : DK.accent}
+                  tint={category.value === 'expired' || category.value === 'issues' || category.value === 'due' || category.value === 'unfinished' || category.value === 'insp_due' || category.value === 'insp_defects' ? STATUS.expired.fg : DK.accent}
                   title={category.label}
-                  subtitle={busy ? t('reports.preparingFile') : t('reports.exportExcel')}
+                  subtitle={busy ? t('reports.preparingFile') : 'count' in category ? [category.count === null ? t('common.loading') : t('reports.rowsInReport', { count: category.count }), category.hint].filter(Boolean).join(' · ') : t('reports.exportExcel')}
                   trailing={
                     busy ? (
                       <BrandLoader size={22} />
@@ -110,7 +157,7 @@ export default function ReportsScreen({ navigation }: Props) {
                       </View>
                     )
                   }
-                  onPress={exporting ? undefined : () => void (mode === 'drivers' ? exportDrivers(category.value as ReportCategory) : mode === 'meetings' ? exportMeetings(category.value as MeetingReportCategory) : mode === 'inspections' ? exportInspections(category.value as InspectionReportCategory) : exportVehicles(category.value as VehicleReportCategory))}
+                  onPress={exporting || ('count' in category && category.count === null) ? undefined : () => void (mode === 'drivers' ? exportDrivers(category.value as ReportCategory) : mode === 'meetings' ? exportForm(category.value as FormReportCategory) : mode === 'inspections' ? exportInspections(category.value as InspectionReportCategory) : exportVehicles(category.value as VehicleReportCategory))}
                 />
               );
             })}
@@ -127,4 +174,9 @@ const s = StyleSheet.create({
   segment: { marginTop: 18 },
   download: { width: 36, height: 36, borderRadius: 12, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
   note: { textAlign: 'center', marginTop: 12 },
+  empty: { padding: 20, gap: 16 },
+  emptyText: { textAlign: 'center' },
+  formHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: DK.hairline },
+  formTitle: { flex: 1, alignItems: 'flex-end', gap: 2 },
+  back: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, paddingHorizontal: 12, minHeight: 36, borderRadius: 999, backgroundColor: DK.accentSoft },
 });
