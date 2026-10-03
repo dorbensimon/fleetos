@@ -101,10 +101,10 @@ Deno.serve(async (req) => {
 
       if (body.meetingId) {
         const meeting = await loadMeeting();
-        if (!meeting) return json({ error: 'המפגש לא נמצא' }, 404);
-        if (meeting.status !== 'draft') return json({ error: 'המפגש כבר נחתם ואי אפשר לשנות אותו' }, 409);
+        if (!meeting) return json({ error: 'הטופס המלא לא נמצא' }, 404);
+        if (meeting.status !== 'draft') return json({ error: 'הטופס כבר נחתם ואי אפשר לשנות אותו' }, 409);
         const form = parseForm(meeting.form);
-        if (!form) return json({ error: 'הטופס של המפגש אינו תקין' }, 500);
+        if (!form) return json({ error: 'הטופס אינו תקין' }, 500);
         const { data: saved, error } = await db.from('checklist_meetings').update({
           answers: parseAnswers(body.answers, form),
           officer_name: officerName || null,
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
 
       const { templateId, driverId } = body;
       if (typeof templateId !== 'string' || !UUID.test(templateId) || typeof driverId !== 'string' || !UUID.test(driverId)) {
-        return json({ error: 'חסרים פרטי המפגש' }, 400);
+        return json({ error: 'חסרים פרטי הטופס' }, 400);
       }
       const { data: template } = await db.from('signing_templates')
         .select('id, company_id, title, status, archived_at, form_kind, form_content')
@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
       if (!form) return json({ error: 'הטופס אינו תקין' }, 500);
       const { data: driver } = await db.from('profiles').select('id').eq('id', driverId).eq('company_id', companyId).eq('role', 'driver').maybeSingle();
       const { data: details } = await db.from('driver_details').select('id').eq('id', driverId).eq('company_id', companyId).eq('status', 'active').maybeSingle();
-      if (!driver || !details) return json({ error: 'אפשר לקיים מפגש רק עם נהג פעיל' }, 400);
+      if (!driver || !details) return json({ error: 'אפשר למלא רק עם נהג פעיל' }, 400);
 
       const { data: created, error } = await db.from('checklist_meetings').insert({
         company_id: companyId,
@@ -141,23 +141,23 @@ Deno.serve(async (req) => {
         officer_name: officerName || null,
         meeting_date: meetingDate,
       }).select('*').single();
-      if (error || !created) return json({ error: 'פתיחת המפגש נכשלה' }, 500);
+      if (error || !created) return json({ error: 'פתיחת הטופס נכשלה' }, 500);
       return json({ meeting: created });
     }
 
     // ── sign (the officer) ────────────────────────────────────────────
     if (action === 'sign') {
       const meeting = await loadMeeting();
-      if (!meeting) return json({ error: 'המפגש לא נמצא' }, 404);
-      if (meeting.status !== 'draft') return json({ error: 'המפגש כבר נחתם' }, 409);
+      if (!meeting) return json({ error: 'הטופס המלא לא נמצא' }, 404);
+      if (meeting.status !== 'draft') return json({ error: 'הטופס כבר נחתם' }, 409);
       const form = parseForm(meeting.form) as Form | null;
-      if (!form) return json({ error: 'הטופס של המפגש אינו תקין' }, 500);
+      if (!form) return json({ error: 'הטופס אינו תקין' }, 500);
       const answers = parseAnswers(body.answers, form);
       if (!everyItemAnswered(form, answers)) return json({ error: 'יש לסמן תשובה בכל הסעיפים לפני החתימה' }, 400);
       const officerName = oneLine(body.officerName, LIMITS.officerName);
       if (!officerName) return json({ error: 'חסר השם של מי שחותם' }, 400);
       const meetingDate = meetingDateOrNull(body.meetingDate);
-      if (!meetingDate) return json({ error: 'תאריך המפגש אינו תקין' }, 400);
+      if (!meetingDate) return json({ error: 'התאריך אינו תקין' }, 400);
       const officerSignature = signaturePng(body.officerSignature);
       if (!officerSignature) return json({ error: 'החתימה לא נקלטה. חתמו שוב ונסו שוב.' }, 400);
 
@@ -303,8 +303,8 @@ Deno.serve(async (req) => {
     // ── driver-sign ───────────────────────────────────────────────────
     if (action === 'driver-sign') {
       const meeting = await loadMeeting();
-      if (!meeting) return json({ error: 'המפגש לא נמצא' }, 404);
-      if (meeting.status !== 'signed' || !meeting.signature_request_id) return json({ error: 'הקצין עוד לא חתם על המפגש' }, 409);
+      if (!meeting) return json({ error: 'הטופס המלא לא נמצא' }, 404);
+      if (meeting.status !== 'signed' || !meeting.signature_request_id) return json({ error: 'הקצין עוד לא חתם על הטופס' }, 409);
       const driverSignature = signaturePng(body.driverSignature);
       if (!driverSignature) return json({ error: 'החתימה לא נקלטה. חתמו שוב ונסו שוב.' }, 400);
       const { data: request } = await db.from('signature_requests')
@@ -395,8 +395,8 @@ Deno.serve(async (req) => {
     // ── notify ────────────────────────────────────────────────────────
     if (action === 'notify') {
       const meeting = await loadMeeting();
-      if (!meeting) return json({ error: 'המפגש לא נמצא' }, 404);
-      if (meeting.status !== 'signed' || !meeting.signature_request_id) return json({ error: 'הקצין עוד לא חתם על המפגש' }, 409);
+      if (!meeting) return json({ error: 'הטופס המלא לא נמצא' }, 404);
+      if (meeting.status !== 'signed' || !meeting.signature_request_id) return json({ error: 'הקצין עוד לא חתם על הטופס' }, 409);
       const { data: request } = await db.from('signature_requests').select('status').eq('id', meeting.signature_request_id).maybeSingle();
       if (request?.status !== 'pending') return json({ error: 'המסמך כבר לא ממתין לחתימה' }, 409);
       await notifyDriver(db, companyId, user.userId, user.profile.full_name, meeting.driver_id, meeting.signature_request_id, meeting.title);
@@ -409,7 +409,7 @@ Deno.serve(async (req) => {
     // the driver's next meeting date goes back to what it was before.
     if (action === 'cancel') {
       const meeting = await loadMeeting();
-      if (!meeting) return json({ error: 'המפגש לא נמצא' }, 404);
+      if (!meeting) return json({ error: 'הטופס המלא לא נמצא' }, 404);
 
       if (meeting.signature_request_id) {
         const { data: request } = await db.from('signature_requests')
@@ -426,7 +426,7 @@ Deno.serve(async (req) => {
             }).eq('id', request.id).eq('status', 'pending')
               .or(`sync_locked_until.is.null,sync_locked_until.lt.${now}`)
               .select('id').maybeSingle();
-            if (claimError) return json({ error: 'מחיקת המפגש נכשלה' }, 500);
+            if (claimError) return json({ error: 'המחיקה נכשלה' }, 500);
             if (!claimed) {
               const { data: current } = await db.from('signature_requests').select('status').eq('id', request.id).maybeSingle();
               if (current?.status === 'pending') return json({ error: 'חתימת הנהג נשמרת כעת. חכו רגע ונסו למחוק שוב.' }, 409);
@@ -440,15 +440,15 @@ Deno.serve(async (req) => {
             if (storageError) return json({ error: 'מחיקת קובץ המסמך נכשלה' }, 500);
           }
           const { error: requestError } = await db.from('signature_requests').delete().eq('id', request.id);
-          if (requestError) return json({ error: 'מחיקת המפגש נכשלה' }, 500);
+          if (requestError) return json({ error: 'המחיקה נכשלה' }, 500);
         }
       }
 
       if (!await restoreScheduleAfterCancellation(db, meeting.id, user.userId, new Date().toISOString())) {
-        return json({ error: 'מחיקת המפגש נכשלה. נסו שוב.' }, 500);
+        return json({ error: 'המחיקה נכשלה. נסו שוב.' }, 500);
       }
       const { error } = await db.from('checklist_meetings').delete().eq('id', meeting.id);
-      if (error) return json({ error: 'מחיקת המפגש נכשלה' }, 500);
+      if (error) return json({ error: 'המחיקה נכשלה' }, 500);
       return json({ success: true, removed: true });
     }
 
@@ -456,7 +456,7 @@ Deno.serve(async (req) => {
     if (action === 'set-next') {
       const { templateId, driverId, nextDue } = body;
       if (typeof templateId !== 'string' || !UUID.test(templateId) || typeof driverId !== 'string' || !UUID.test(driverId)) {
-        return json({ error: 'חסרים פרטי המפגש' }, 400);
+        return json({ error: 'חסרים פרטי הטופס' }, 400);
       }
       const today = israelToday();
       if (!isIsoDay(nextDue) || nextDue < today || nextDue > addMonths(today, 36)) {

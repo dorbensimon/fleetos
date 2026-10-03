@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
         const { data: meeting } = await access.adminClient.from('checklist_meetings')
           .select('id').eq('signature_request_id', id).maybeSingle();
         // A meeting's document is deleted with its meeting (checklist-meeting "cancel").
-        if (meeting) return json({ error: 'זה מסמך של מפגש. מוחקים אותו מתוך המפגש.' }, 409);
+        if (meeting) return json({ error: 'זה מסמך של טופס שמולא עם נהג. מוחקים אותו מתוך הטופס בתיק הנהג.' }, 409);
         // A safety inspection is never deleted, only cancelled (vehicle-inspection "cancel").
         const { data: inspection } = await access.adminClient.from('vehicle_inspections')
           .select('id').eq('signature_request_id', id).maybeSingle();
@@ -255,7 +255,7 @@ Deno.serve(async (req) => {
         const unsignedRequestIds = new Set(requests.map((request) => request.id));
         const { data: formMeetings, error: meetingsError } = await adminClient.from('checklist_meetings')
           .select('id, status, signature_request_id').eq('template_id', id);
-        if (meetingsError) return json({ error: 'טעינת המפגשים של הטופס נכשלה' }, 500);
+        if (meetingsError) return json({ error: 'טעינת המילויים של הטופס נכשלה' }, 500);
         const meetingIds = (formMeetings ?? [])
           .filter((meeting) => meeting.status !== 'signed' || !meeting.signature_request_id || unsignedRequestIds.has(meeting.signature_request_id))
           .map((meeting) => meeting.id);

@@ -220,7 +220,7 @@ export function renderChecklistHtml({ title, form, letterhead, meeting }: Render
 <body><div class="page">
 <div class="lh">
   <div class="lh-brand">${logo}<span class="lh-name">${escapeHtml(letterhead.name)}</span></div>
-  <div class="lh-date"><span class="lh-label">תאריך המפגש</span><span class="lh-value">${dateText}</span></div>
+  <div class="lh-date"><span class="lh-label">תאריך</span><span class="lh-value">${dateText}</span></div>
 </div>
 <h1>${escapeHtml(title)}</h1>
 ${intro}
@@ -241,7 +241,7 @@ ${intro}
     <div class="sig-l">${escapeHtml(form.labels.driver)}</div>
     <div class="sig-box"><signature-field name="${DRIVER_FIELD}" title="${escapeHtml(form.labels.driver)}" role="${DRIVER_ROLE}" required="true" style="width: 240px; height: 68px; display: inline-block;"></signature-field></div>
     <div class="sig-n">${driverName}</div>
-    <div class="sig-d">${meeting ? 'בחתימה זו מאושר שהמפגש התקיים כמפורט' : 'שם ותאריך'}</div>
+    <div class="sig-d">${meeting ? 'בחתימה זו מאושר שהטופס מולא כמפורט' : 'שם ותאריך'}</div>
   </div>
 </div>
 </div></body>

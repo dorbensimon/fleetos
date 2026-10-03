@@ -75,8 +75,8 @@ test('the delete warning counts only drivers still waiting on this document', as
   expect(deleteTemplateMessage(2)).toContain('2 נהגים עוד לא חתמו עליו');
   expect(deleteTemplateMessage(1)).toContain('נהג אחד עוד לא חתם עליו');
   expect(deleteTemplateMessage(0)).toBe('המסמך יימחק לצמיתות, גם מ-DocuSeal. מסמכים שנהגים כבר חתמו עליהם יישארו בתיק הנהג.');
-  expect(deleteTemplateMessage(0, true)).toBe('הטופס יימחק לצמיתות. טיוטות של מפגשים שעוד לא נחתמו יימחקו איתו. מפגשים שכבר נחתמו יישארו בתיק הנהג.');
-  expect(deleteTemplateMessage(2, true)).toContain('2 מפגשים עוד מחכים לחתימת הנהג');
+  expect(deleteTemplateMessage(0, true)).toBe('הטופס יימחק לצמיתות. טיוטות שעוד לא נחתמו יימחקו איתו. מה שכבר נחתם יישאר בתיק הנהג.');
+  expect(deleteTemplateMessage(2, true)).toContain('2 טפסים מלאים עוד מחכים לחתימת הנהג');
 });
 
 test('deleting a document and withdrawing a request use the server actions that cancel waiting signatures', async () => {

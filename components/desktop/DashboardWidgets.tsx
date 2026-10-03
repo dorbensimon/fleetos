@@ -19,7 +19,11 @@ import {
 } from '../../lib/adminApi';
 import { REPORT_CATEGORIES, exportDriversReport, type ReportCategory } from '../../lib/driverReport';
 import { VEHICLE_REPORT_CATEGORIES, exportVehiclesReport, type VehicleReportCategory } from '../../lib/vehicleReport';
-import { MEETING_REPORT_CATEGORIES, exportMeetingsReport, type MeetingReportCategory } from '../../lib/meetingReport';
+import { exportFormReport, type FormReportCategory } from '../../lib/meetingReport';
+import { useFormReports } from '../reports/useFormReports';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../navigation/types';
 import { INSPECTION_REPORT_CATEGORIES, exportInspectionsReport, type InspectionReportCategory } from '../../lib/inspectionReport';
 import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, webOnly } from './desktopTheme';
@@ -187,10 +191,13 @@ export function ReportsQuickAction() {
     finally { setExporting(null); }
   };
 
-  const exportMeetings = async (category: MeetingReportCategory) => {
-    if (!company) return;
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const forms = useFormReports(companyId, drivers);
+
+  const exportForm = async (category: FormReportCategory) => {
+    if (!company || !forms.form || !forms.data) return;
     setExporting(category);
-    try { await exportMeetingsReport(company, drivers, category); setKind(null); }
+    try { await exportFormReport(company, drivers, forms.form, forms.data, category); setKind(null); }
     catch (err: any) { showAlert(t('reports.exportFailed'), String(errorMessage(err, t('common.tryAgain')))); }
     finally { setExporting(null); }
   };
@@ -212,15 +219,16 @@ export function ReportsQuickAction() {
         ) : (
           <ReportsDesktopView
             open={kind}
-            onToggle={(next) => setKind((current) => (current === next ? null : next))}
+            onToggle={(next) => { const value = kind === next ? null : next; setKind(value); if (value === 'meetings') void forms.open(); }}
             driverCategories={REPORT_CATEGORIES}
             vehicleCategories={VEHICLE_REPORT_CATEGORIES}
-            meetingCategories={MEETING_REPORT_CATEGORIES}
+            forms={forms}
             inspectionCategories={INSPECTION_REPORT_CATEGORIES}
             exportingCategory={exporting}
             onSelectDriverCategory={(value) => void exportDrivers(value as ReportCategory)}
             onSelectVehicleCategory={(value) => void exportVehicles(value as VehicleReportCategory)}
-            onSelectMeetingCategory={(value) => void exportMeetings(value as MeetingReportCategory)}
+            onSelectFormCategory={(value) => void exportForm(value as FormReportCategory)}
+            onGoToForms={() => { setOpen(false); navigation.navigate('SignedDocuments', undefined); }}
             onSelectInspectionCategory={(value) => void exportInspections(value as InspectionReportCategory)}
           />
         )}

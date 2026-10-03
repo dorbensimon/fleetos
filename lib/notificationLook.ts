@@ -50,7 +50,8 @@ export function notificationTone(n: Pick<Notification, 'notification_type' | 'me
   if (type === 'signature_expiry') return n.message.includes('תפוג בעוד') ? 'warn' : 'bad';
   if (type === 'vehicle_service_due' || type === 'license_update_requested' || type === 'vehicle_odometer_stale') return 'warn';
   // Meeting reminders (supabase/sql/97): a week ahead is a heads-up, due or late is urgent.
-  if (type === 'driver_meeting_due') return n.message.includes('המועד בעוד') || n.message.includes('בשבוע הקרוב') ? 'warn' : 'bad';
+  // A heads-up before the date (any lead the company picked); due or late is urgent.
+  if (type === 'driver_meeting_due') return n.message.includes('המועד בעוד') || n.message.includes('בשבוע הקרוב') || n.message.includes('הימים הקרובים') ? 'warn' : 'bad';
   // Inspection reminders (supabase/sql/103): ahead is a heads-up, due or late is urgent.
   if (type === 'vehicle_safety_check_due') return n.message.includes('המועד בעוד') || n.message.includes('מתקרבת') ? 'warn' : 'bad';
   return 'brand';
