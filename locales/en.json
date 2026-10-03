@@ -2224,7 +2224,11 @@
       "vehicleQuota": "Vehicle quota full",
       "vehicleQuotaDesc": "A company reached the number of vehicles included in its plan",
       "vehicleService": "Vehicle service",
-      "vehicleServiceDesc": "Before the next periodic service, or when the vehicle is past its service date"
+      "vehicleServiceDesc": "Before the next periodic service, or when the vehicle is past its service date",
+      "signatureExpiry": "Signature validity",
+      "signatureExpiryDesc": "A driver's signature on a document is about to expire, or expired and was sent to sign again",
+      "mySignatureExpiry": "My signatures expiring",
+      "mySignatureExpiryDesc": "Your signature on a document is about to expire"
     },
     "validityOf": "{{label}} validity"
   },
@@ -2911,5 +2915,18 @@
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
     "zoomReset": "Actual size"
+  },
+  "signingRules": {
+    "title": "Signature validity",
+    "subtitle": "For each document: how long a signature is good for, and how many days before to get an alert. When it runs out, the driver automatically gets a new request to sign.",
+    "validity": "Signature valid for",
+    "noExpiry": "No expiry",
+    "halfYear": "Half a year",
+    "oneYear": "1 year",
+    "yearsValue": "{{value}} years",
+    "monthsValue": "{{value}} months",
+    "empty": "No signing documents yet. Every document you create will show up here.",
+    "loadFailed": "Could not load document validity",
+    "saveFailed": "Could not save the validity. Try again."
   }
 }

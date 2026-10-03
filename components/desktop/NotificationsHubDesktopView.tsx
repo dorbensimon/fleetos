@@ -22,6 +22,8 @@ import { LiquidGlassSwitch } from '../ui/LiquidGlassSwitch';
 import { DText, HoverPressable, prefersReducedMotion } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, webOnly } from './desktopTheme';
 import { t, dirIcon, getLocale } from '../../lib/i18n';
+import { useCompany } from '../../lib/CompanyContext';
+import { SIGNING_LEAD_RULE, VALIDITY_MONTHS, useSigningRules, validityLabel } from '../../lib/signingRules';
 
 /**
  * Desktop "התראות" page, in two calm views behind one switch:
@@ -66,6 +68,7 @@ function dayGroupOf(iso: string, now: Date): string {
 }
 
 const TYPE_ICON: Partial<Record<NotificationType, IconName>> = {
+  signature_expiry: 'hourglass-outline',
   driver_profile_update: 'person-outline',
   driver_document_upload: 'document-text-outline',
   vehicle_license_expiry: 'card-outline',
@@ -363,6 +366,7 @@ export function NotificationsHubDesktopView({
                     registerCard={(type, node) => { cardRefs.current[type] = node; }}
                   />
                 ))}
+                {canEditLeads && <SigningRulesSection />}
                 <View style={styles.note}>
                   <Ionicons name="checkmark-circle-outline" size={17} color={DESKTOP_COLORS.inkFaint} />
                   <DText style={styles.noteText}>
@@ -893,6 +897,81 @@ function TypeCard({
 }
 
 /**
+ * Every signing document of the company, on its own: how long a signature
+ * stays good and when its alert goes out (lib/signingRules.ts, migration 105).
+ */
+function SigningRulesSection() {
+  const { companyId } = useCompany();
+  const rules = useSigningRules(companyId, true);
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHead}>
+        <View style={styles.headingCopy}>
+          <DText weight="bold" style={styles.sectionTitle} accessibilityRole="header">{t('signingRules.title')}</DText>
+          <DText style={styles.sectionSubtitle}>{t('signingRules.subtitle')}</DText>
+        </View>
+      </View>
+      {!!rules.error && <DText style={[styles.sectionSubtitle, styles.ruleError]}>{rules.error}</DText>}
+      {!rules.rows ? (
+        !rules.error && <BrandLoader color={DESKTOP_COLORS.brand} />
+      ) : rules.rows.length === 0 ? (
+        <DText style={styles.sectionSubtitle}>{t('signingRules.empty')}</DText>
+      ) : (
+        <View style={styles.cards}>
+          {rules.rows.map((row) => (
+            <View key={row.templateId} style={[styles.card, styles.ruleCard]}>
+              <View style={styles.cardHead}>
+                <View style={styles.cardIcon}>
+                  <Ionicons name="document-text-outline" size={20} color={DESKTOP_COLORS.brand} />
+                </View>
+                <View style={styles.cardCopy}>
+                  <DText weight="bold" style={styles.cardTitle} numberOfLines={1}>{row.title}</DText>
+                </View>
+                {rules.saving === row.templateId && <BrandLoader size={14} color={DESKTOP_COLORS.brand} />}
+              </View>
+              <View style={styles.lead}>
+                <DText weight="semiBold" style={styles.leadLabel}>{t('signingRules.validity')}</DText>
+                <View style={[styles.presets, styles.presetsWrap]}>
+                  {VALIDITY_MONTHS.map((months) => {
+                    const active = (row.validMonths ?? 0) === months;
+                    return (
+                      <HoverPressable
+                        key={months}
+                        style={[styles.preset, active && styles.presetActive]}
+                        hoverStyle={active ? undefined : styles.presetHover}
+                        pressMotionStyle={styles.pressDown}
+                        onPress={() => { if (!active) void rules.save(row.templateId, months || null, row.leadDays); }}
+                        disabled={rules.saving != null}
+                        accessibilityLabel={`${row.title}: ${validityLabel(months)}`}
+                        accessibilityState={{ selected: active }}
+                      >
+                        <DText weight="semiBold" style={[styles.presetText, active && styles.presetTextActive]}>{validityLabel(months)}</DText>
+                      </HoverPressable>
+                    );
+                  })}
+                </View>
+              </View>
+              {!!row.validMonths && (
+                <LeadControl
+                  type="signature_expiry"
+                  label={row.title}
+                  rule={SIGNING_LEAD_RULE}
+                  value={row.leadDays}
+                  saving={false}
+                  dimmed={false}
+                  onCommit={(days) => rules.save(row.templateId, row.validMonths, days)}
+                />
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/**
  * One type's lead time: − value + with the unit in words, and a few presets.
  * Steps and typing settle for a moment before saving, so a run of clicks is one save.
  */
@@ -1353,6 +1432,9 @@ const styles = StyleSheet.create({
   },
   stepInputWide: { width: 60 },
   presets: { flexDirection: 'row-reverse', gap: 6 },
+  presetsWrap: { flexWrap: 'wrap' },
+  ruleCard: { flexBasis: 380, flexGrow: 1 },
+  ruleError: { color: DESKTOP_TONES.bad.fg },
   preset: {
     minWidth: 44,
     height: 30,

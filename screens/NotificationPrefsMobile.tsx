@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { LayoutAnimation, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { DK, DK_FONT, DK_SPACE, DKText, DriverPage, HeroTitle, Pressy, Reveal, Surface, useReducedMotion } from '../components/driverKit';
+import { DK, DK_FONT, DK_SPACE, DKText, DriverPage, HeroTitle, Pressy, Reveal, STATUS, Surface, useReducedMotion } from '../components/driverKit';
 import { BrandLoader } from '../components/ui/BrandLoader';
 import { ErrorState, LoadingState } from '../components/ui';
 import { LiquidGlassSwitch } from '../components/ui/LiquidGlassSwitch';
@@ -20,6 +20,8 @@ import {
 import type { NotificationPreferencesState } from '../lib/useNotificationPreferences';
 import { isVehicleFolderNotification } from '../lib/vehicleFolderAlerts';
 import { t, getLocale } from '../lib/i18n';
+import { useCompany } from '../lib/CompanyContext';
+import { SIGNING_LEAD_RULE, VALIDITY_MONTHS, useSigningRules, validityLabel } from '../lib/signingRules';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -36,6 +38,7 @@ const ICON: Partial<Record<NotificationType, IconName>> = {
   license_update_requested: 'id-card',
   license_update_reviewed: 'id-card',
   signature_request_completed: 'checkmark-done',
+  signature_expiry: 'hourglass',
   signature_request_assigned: 'create',
   vehicle_assignment: 'car-sport',
   driver_profile_updated_by_manager: 'person',
@@ -138,6 +141,8 @@ export function NotificationPrefsMobile({ insetTop, insetBottom, state, onBack }
               reduceMotion={reduceMotion}
             />
           ))}
+
+          {canEditLeads && <SigningRulesGroup index={groups.length + 1} />}
 
           {canEditLeads && !state.leads!.perType && (
             <View style={styles.note}>
@@ -336,6 +341,64 @@ function Row({
   );
 }
 
+/** Each signing document: how long a signature stays good and when its alert goes out (migration 105). */
+function SigningRulesGroup({ index }: { index: number }) {
+  const { companyId } = useCompany();
+  const rules = useSigningRules(companyId, true);
+
+  return (
+    <Reveal index={index}>
+      <View style={styles.groupHead}>
+        <DKText variant="heading" accessibilityRole="header">{t('signingRules.title')}</DKText>
+      </View>
+      <DKText variant="caption" color={DK.muted} style={styles.groupSubtitle}>{t('signingRules.subtitle')}</DKText>
+      {!!rules.error && <DKText variant="caption" color={STATUS.expired.fg} style={styles.groupSubtitle}>{rules.error}</DKText>}
+      <Surface>
+        {!rules.rows ? (
+          !rules.error && <LoadingState />
+        ) : rules.rows.length === 0 ? (
+          <View style={styles.row}><DKText variant="caption" color={DK.muted}>{t('signingRules.empty')}</DKText></View>
+        ) : (
+          rules.rows.map((row, i) => (
+            <View key={row.templateId} style={[styles.row, i > 0 && styles.divider]}>
+              <View style={styles.rowTop}>
+                <View style={styles.icon}>
+                  <Ionicons name="document-text" size={19} color={DK.accent} />
+                </View>
+                <View style={styles.text}>
+                  <DKText variant="label" color={DK.ink}>{row.title}</DKText>
+                  <DKText variant="caption" color={DK.muted}>{`${t('signingRules.validity')}: ${validityLabel(row.validMonths)}`}</DKText>
+                </View>
+                {rules.saving === row.templateId && <BrandLoader size={14} color={DK.accent} />}
+              </View>
+              <View style={styles.validityChips}>
+                {VALIDITY_MONTHS.map((months) => {
+                  const active = (row.validMonths ?? 0) === months;
+                  return (
+                    <Pressy
+                      key={months}
+                      onPress={() => { if (!active) void rules.save(row.templateId, months || null, row.leadDays); }}
+                      disabled={rules.saving != null}
+                      haptic
+                      style={[styles.chip, styles.validityChip, active && styles.chipActive]}
+                      accessibilityLabel={`${row.title}: ${validityLabel(months)}`}
+                    >
+                      <DKText variant="label" color={active ? '#FFFFFF' : DK.inkSoft}>{validityLabel(months)}</DKText>
+                    </Pressy>
+                  );
+                })}
+              </View>
+              {!!row.validMonths && (
+                <LeadEditor label={row.title} rule={SIGNING_LEAD_RULE} value={row.leadDays} onCommit={(days) => rules.save(row.templateId, row.validMonths, days)} />
+              )}
+            </View>
+          ))
+        )}
+      </Surface>
+    </Reveal>
+  );
+}
+
 /**
  * − value + with the unit in words, then a few one-tap values. Steps and
  * typing settle for a moment before saving; closing the editor saves too.
@@ -480,6 +543,8 @@ const styles = StyleSheet.create({
   bulk: { flexDirection: 'row-reverse', gap: 8 },
   chip: { flex: 1, minHeight: 40, paddingHorizontal: 8, borderRadius: 999, backgroundColor: DK.surface, borderWidth: 1, borderColor: DK.hairline, alignItems: 'center', justifyContent: 'center' },
   chipActive: { backgroundColor: DK.accent, borderColor: DK.accent },
+  validityChips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  validityChip: { flex: 0, flexGrow: 1 },
   row: { paddingHorizontal: DK_SPACE.md, paddingVertical: 12 },
   rowTop: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 48 },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },
