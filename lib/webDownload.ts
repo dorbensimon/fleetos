@@ -25,6 +25,22 @@ export async function downloadRemoteFileOnWeb(url: string, fileName: string): Pr
 }
 
 /**
+ * Hands a file to the device's share sheet (WhatsApp, mail, AirDrop…).
+ * Resolves to false where the browser can't share files, so the caller can
+ * fall back; a share the user cancels counts as handled. Safari only allows
+ * this straight after a tap, so callers have the file ready beforehand.
+ */
+export async function shareFileOnWeb(file: File, title: string): Promise<boolean> {
+  if (Platform.OS !== 'web' || !navigator.canShare?.({ files: [file] })) return false;
+  try {
+    await navigator.share({ files: [file], title });
+  } catch (err) {
+    if ((err as Error)?.name !== 'AbortError') throw err;
+  }
+  return true;
+}
+
+/**
  * expo-file-system's File class is an unimplemented stub on web, so a picker
  * result's blob: URL must be read back into base64 through the DOM instead.
  */

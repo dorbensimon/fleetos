@@ -1778,6 +1778,7 @@
     "profileSubtitle": "Name, phone, email and password",
     "reportsSubtitle": "Driver and vehicle reports to Excel",
     "signedDocsSubtitle": "View, send to drivers and delete",
+    "systemSettingsSubtitle": "Language, terms, privacy, cookies and accessibility",
     "version": "icar · version 1.0.0"
   },
   "nav": {
@@ -1797,7 +1798,8 @@
     "safetyInspections": "Safety officer inspections",
     "signedDocuments": "Signed documents",
     "signingDocuments": "Documents to sign",
-    "systemManagement": "System management"
+    "systemManagement": "System management",
+    "systemSettings": "System settings"
   },
   "notifications": {
     "action": {
@@ -2222,7 +2224,11 @@
       "vehicleQuota": "Vehicle quota full",
       "vehicleQuotaDesc": "A company reached the number of vehicles included in its plan",
       "vehicleService": "Vehicle service",
-      "vehicleServiceDesc": "Before the next periodic service, or when the vehicle is past its service date"
+      "vehicleServiceDesc": "Before the next periodic service, or when the vehicle is past its service date",
+      "signatureExpiry": "Signature validity",
+      "signatureExpiryDesc": "A driver's signature on a document is about to expire, or expired and was sent to sign again",
+      "mySignatureExpiry": "My signatures expiring",
+      "mySignatureExpiryDesc": "Your signature on a document is about to expire"
     },
     "validityOf": "{{label}} validity"
   },
@@ -2298,9 +2304,7 @@
     "preparingFile": "Preparing the file…",
     "title": "Reports",
     "vehicles": "Vehicle reports",
-    "vehiclesHint": "Insurance, annual test, services and overdue items",
-    "printOrPdf": "Print / PDF",
-    "printOrPdfLabel": "Print or save as PDF"
+    "vehiclesHint": "Insurance, annual test, services and overdue items"
   },
   "role": {
     "admin": "Administrator",
@@ -2490,7 +2494,7 @@
       "write": "Write a new document",
       "writeText": "Write the text here, like in Word, and add the places where the driver signs with a click."
     },
-    "namePlaceholder": "For example: Health declaration",
+    "namePlaceholder": "For example: Safe driving procedure",
     "nameSuggestions": "Name suggestions",
     "nameVisibleToDriver": "The name shows to the driver and in their folder, so make it clear.",
     "needsManager": "Needs your fleet manager's attention",
@@ -2608,7 +2612,8 @@
     "willBeReplaced": "Will be replaced with a new document",
     "willResend": "Will be sent again",
     "writtenHere": "Written here",
-    "yourSignature": "Your signature"
+    "yourSignature": "Your signature",
+    "fixedFolderName": "Every driver file already has a fixed folder with this name. Choose another name."
   },
   "status": {
     "aboutToExpire": "About to expire",
@@ -2898,16 +2903,30 @@
   },
   "viewer": {
     "downloadDocument": "Download the document",
+    "forward": "Forward",
+    "forwardFailed": "Forwarding failed. You can download the file and send it.",
+    "forwardLabel": "Send the file by WhatsApp, email or another app",
     "loadingDocument": "Loading the document",
     "pageN": "Page {{number}}",
     "pageNumber": "Page {{pageNumber}}",
-    "print": "Print",
-    "printFailed": "Printing failed. You can download the document and print it.",
     "signedDocument": "Signed document",
     "signedOn": "Signed on {{signedAt}}",
     "zoom": "Zoom",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
     "zoomReset": "Actual size"
+  },
+  "signingRules": {
+    "title": "Signature validity",
+    "subtitle": "For each document: how long a signature is good for, and how many days before to get an alert. When it runs out, the driver automatically gets a new request to sign.",
+    "validity": "Signature valid for",
+    "noExpiry": "No expiry",
+    "halfYear": "Half a year",
+    "oneYear": "1 year",
+    "yearsValue": "{{value}} years",
+    "monthsValue": "{{value}} months",
+    "empty": "No signing documents yet. Every document you create will show up here.",
+    "loadFailed": "Could not load document validity",
+    "saveFailed": "Could not save the validity. Try again."
   }
 }

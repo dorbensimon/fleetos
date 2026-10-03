@@ -61,6 +61,9 @@ function titleKey(value: string | null | undefined): string {
   return (value ?? '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('he');
 }
 
+/** The fixed folders of every driver's file (lib/compliance.ts DRIVER_COMPLIANCE); a document may not take their names. */
+const FIXED_DRIVER_FOLDERS = ['הצהרת בריאות', 'הדרכות תקופתיות', 'נוהל 6 (הסעת ילדים)', 'נוהל 6', 'רישיון מנוף', 'תוקף ר.פ'];
+
 function draftFolder(companyId: string, draftId: string) {
   return `${companyId}/signing-templates/${draftId}`;
 }
@@ -459,6 +462,9 @@ Deno.serve(async (req) => {
     const { data: named, error: namedError } = await access.adminClient.from('signing_templates')
       .select('title').or(`company_id.eq.${companyId},company_id.is.null`).eq('status', 'ready').is('archived_at', null);
     if (namedError) return json({ error: 'שמירת המסמך נכשלה. נסו שוב.' }, 500);
+    if (FIXED_DRIVER_FOLDERS.some((name) => titleKey(name) === titleKey(title))) {
+      return json({ error: 'יש כבר תיקייה קבועה בשם הזה בתיק הנהג. בחרו שם אחר.' }, 409);
+    }
     if ((named ?? []).some((row) => titleKey(row.title) === titleKey(title))) {
       return json({ error: 'כבר יש מסמך בשם הזה. בחרו שם אחר.' }, 409);
     }

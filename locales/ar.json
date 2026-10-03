@@ -1778,6 +1778,7 @@
     "profileSubtitle": "الاسم والهاتف والبريد وكلمة المرور",
     "reportsSubtitle": "تقارير السائقين والمركبات إلى Excel",
     "signedDocsSubtitle": "العرض والإرسال إلى السائقين والحذف",
+    "systemSettingsSubtitle": "اللغة، شروط الاستخدام، الخصوصية، ملفات تعريف الارتباط وإمكانية الوصول",
     "version": "icar · الإصدار 1.0.0"
   },
   "nav": {
@@ -1797,7 +1798,8 @@
     "safetyInspections": "فحوصات ضابط السلامة",
     "signedDocuments": "المستندات الموقّعة",
     "signingDocuments": "مستندات للتوقيع",
-    "systemManagement": "إدارة النظام"
+    "systemManagement": "إدارة النظام",
+    "systemSettings": "إعدادات النظام"
   },
   "notifications": {
     "action": {
@@ -2222,7 +2224,11 @@
       "vehicleQuota": "حد المركبات ممتلئ",
       "vehicleQuotaDesc": "وصلت شركة إلى عدد المركبات المشمول في اشتراكها",
       "vehicleService": "صيانة المركبة",
-      "vehicleServiceDesc": "قبل الصيانة الدورية القادمة، أو عندما تتجاوز المركبة موعد الصيانة"
+      "vehicleServiceDesc": "قبل الصيانة الدورية القادمة، أو عندما تتجاوز المركبة موعد الصيانة",
+      "signatureExpiry": "صلاحية التوقيع على المستندات",
+      "signatureExpiryDesc": "توقيع سائق على مستند على وشك الانتهاء، أو انتهى وأُرسل للتوقيع من جديد",
+      "mySignatureExpiry": "صلاحية توقيعاتي",
+      "mySignatureExpiryDesc": "توقيعك على مستند على وشك الانتهاء"
     },
     "validityOf": "صلاحية {{label}}"
   },
@@ -2298,9 +2304,7 @@
     "preparingFile": "جارٍ تجهيز الملف…",
     "title": "التقارير",
     "vehicles": "تقارير المركبات",
-    "vehiclesHint": "التأمين والفحص السنوي والصيانة والتجاوزات",
-    "printOrPdf": "طباعة / PDF",
-    "printOrPdfLabel": "طباعة أو حفظ كملف PDF"
+    "vehiclesHint": "التأمين والفحص السنوي والصيانة والتجاوزات"
   },
   "role": {
     "admin": "مدير النظام",
@@ -2490,7 +2494,7 @@
       "write": "كتابة مستند جديد",
       "writeText": "اكتبوا النص هنا، كما في Word، وأضيفوا بنقرة الأماكن التي يوقّع فيها السائق."
     },
-    "namePlaceholder": "مثلًا: تصريح صحي",
+    "namePlaceholder": "مثلًا: إجراء السلامة في القيادة",
     "nameSuggestions": "اقتراحات للاسم",
     "nameVisibleToDriver": "سيظهر الاسم للسائق وفي مجلده، لذا يُفضّل أن يكون واضحًا.",
     "needsManager": "يتطلب معالجة من مدير الأسطول",
@@ -2608,7 +2612,8 @@
     "willBeReplaced": "سيُستبدل بمستند جديد",
     "willResend": "سيُرسل مجددًا",
     "writtenHere": "كُتب هنا",
-    "yourSignature": "توقيعك"
+    "yourSignature": "توقيعك",
+    "fixedFolderName": "يوجد مجلد ثابت بهذا الاسم في ملف كل سائق. اختاروا اسمًا آخر."
   },
   "status": {
     "aboutToExpire": "قريب الانتهاء",
@@ -2898,16 +2903,30 @@
   },
   "viewer": {
     "downloadDocument": "تنزيل المستند",
+    "forward": "إعادة توجيه",
+    "forwardFailed": "فشلت إعادة التوجيه. يمكنك تنزيل الملف وإرساله.",
+    "forwardLabel": "إرسال الملف عبر واتساب أو البريد الإلكتروني أو تطبيق آخر",
     "loadingDocument": "جارٍ تحميل المستند",
     "pageN": "صفحة {{number}}",
     "pageNumber": "صفحة {{pageNumber}}",
-    "print": "طباعة",
-    "printFailed": "فشلت الطباعة. يمكن تنزيل المستند وطباعته.",
     "signedDocument": "مستند موقّع",
     "signedOn": "وُقّع في {{signedAt}}",
     "zoom": "حجم العرض",
     "zoomIn": "تكبير",
     "zoomOut": "تصغير",
     "zoomReset": "الحجم العادي"
+  },
+  "signingRules": {
+    "title": "صلاحية التوقيع على المستندات",
+    "subtitle": "لكل مستند: كم يبقى التوقيع ساريًا، وقبل كم يومًا تصل التنبيهات. عند انتهائه يتلقى السائق تلقائيًا طلبًا جديدًا للتوقيع.",
+    "validity": "صلاحية التوقيع",
+    "noExpiry": "بلا انتهاء",
+    "halfYear": "نصف سنة",
+    "oneYear": "سنة",
+    "yearsValue": "{{value}} سنوات",
+    "monthsValue": "{{value}} أشهر",
+    "empty": "لا توجد مستندات للتوقيع بعد. كل مستند تنشئونه سيظهر هنا.",
+    "loadFailed": "تعذر تحميل صلاحية المستندات",
+    "saveFailed": "تعذر حفظ الصلاحية. حاولوا مرة أخرى."
   }
 }

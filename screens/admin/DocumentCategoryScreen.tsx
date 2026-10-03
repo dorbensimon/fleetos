@@ -6,7 +6,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LoadingState, EmptyState, ErrorState } from '../../components/ui';
+import { LoadingState, EmptyState, ErrorState, useToast } from '../../components/ui';
 import { DateField } from '../../components/ui/DateField';
 import { DocumentFileRow } from '../../components/documents/DocumentFileRow';
 import { Procedure6FormModal } from '../../components/documents/Procedure6FormModal';
@@ -63,6 +63,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const { companyId, profile } = useCompany();
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
+  const { showToast } = useToast();
 
   // נוהל 6 replaces the plain "upload any file" flow with a structured
   // form that produces a PDF (see Procedure6FormModal) — drivers may only
@@ -114,7 +115,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const addDocument = async () => {
     if (!companyId) return;
     if (requiresExpiry && !expiryDate) {
-      showAlert(t('documents.expiryMissing'), t('documents.chooseExpiryBeforeUpload'));
+      showToast(t('documents.chooseExpiryBeforeUpload'), 'warning');
       return;
     }
 

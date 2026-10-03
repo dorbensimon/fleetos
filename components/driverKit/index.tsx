@@ -203,11 +203,14 @@ export function NightHero({
   children,
   compact = false,
   style,
+  maxWidth,
 }: {
   insetTop: number;
   children: ReactNode;
   compact?: boolean;
   style?: StyleProp<ViewStyle>;
+  /** Wider content than the phone column (desktop screens that use the room). */
+  maxWidth?: number;
 }) {
   const reduce = useReducedMotion();
   const ring = useRef(new Animated.Value(0)).current;
@@ -247,7 +250,7 @@ export function NightHero({
           ]}
         />
       </View>
-      <View style={styles.heroContent}>{children}</View>
+      <View style={[styles.heroContent, maxWidth != null && { maxWidth }]}>{children}</View>
     </View>
   );
 }
@@ -361,6 +364,7 @@ export function DriverPage({
   scrollRef,
   bottomSpace = 36,
   scrollEnabled = true,
+  maxWidth,
 }: {
   insetTop: number;
   insetBottom: number;
@@ -378,7 +382,10 @@ export function DriverPage({
   bottomSpace?: number;
   /** Held still while a finger draws a signature on the page. */
   scrollEnabled?: boolean;
+  /** Wider than the phone column, for desktop screens that use the room. */
+  maxWidth?: number;
 }) {
+  const wide = maxWidth != null && { maxWidth };
   // A pinned action owns the bottom of the screen; the tab bar steps aside.
   useTabBarHold(!!footer);
   const tabBarScroll = useTabBarScroll();
@@ -399,13 +406,13 @@ export function DriverPage({
           onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" colors={[DK.accent]} /> : undefined
         }
       >
-        <NightHero insetTop={insetTop} compact>
+        <NightHero insetTop={insetTop} compact maxWidth={maxWidth}>
           {hero}
         </NightHero>
-        <View style={styles.pageBody}>{children}</View>
+        <View style={[styles.pageBody, wide]}>{children}</View>
       </ScrollView>
       <StatusBand insetTop={insetTop} />
-      {!!footer && <View style={[styles.pageFooter, { paddingBottom: insetBottom + 12 }]}>{footer}</View>}
+      {!!footer && <View style={[styles.pageFooter, wide, { paddingBottom: insetBottom + 12 }]}>{footer}</View>}
       {overlay}
     </View>
   );

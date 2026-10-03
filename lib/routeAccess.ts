@@ -53,6 +53,7 @@ const ROUTE_ACCESS: Record<RouteName, Access> = {
   Notifications: ['owner', 'admin', 'driver'],
   NotificationPreferences: ['owner', 'admin', 'driver'],
   Menu: ['owner', 'admin', 'driver'],
+  SystemSettings: ['owner', 'admin', 'driver'],
   DocusealWebView: ['admin', 'driver'],
   DocumentCategory: ['admin', 'driver'],
   DriverLicenseDocuments: ['admin', 'driver'],

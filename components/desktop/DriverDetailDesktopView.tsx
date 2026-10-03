@@ -22,7 +22,7 @@ import { DLtrText, DText, HoverPressable, prefersReducedMotion, StatusPill } fro
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { DocumentFolderUploadModal, EASE_OUT, OverflowMenu, useOwnerDocuments, type RecordDocumentFolder } from './record/RecordKit';
 import { expiryStatusText, FolderListRow } from './record/FolderDocuments';
-import { DetailRow, Fact, FieldEditDialog, GroupLabel, pageStyles, type FieldEditor } from './record/RecordPage';
+import { DetailRow, Fact, FieldEditDialog, GroupLabel, pageStyles, type FieldEditor, type TextFieldEditor } from './record/RecordPage';
 import { DriverLicenseModal } from './driver/DriverLicenseModal';
 import { LICENSE_SIDE_STORED_TITLE } from '../../lib/licenseSides';
 import { DRIVER_DOCUMENT_GROUPS } from '../../lib/driverDocumentFolders';
@@ -223,7 +223,7 @@ export function DriverDetailDesktopView({
     ...(isArchived ? [] : [{ label: archiving ? t('common.archiving') : t('common.moveToArchive'), icon: 'archive-outline' as const, onPress: onArchive, disabled: archiving }]),
   ];
 
-  const textEditor = (label: string, raw: string | null | undefined, onSave: (v: string) => Promise<string | null>, extra?: Partial<Extract<FieldEditor, { kind: 'text' }>>): FieldEditor => ({
+  const textEditor = (label: string, raw: string | null | undefined, onSave: (v: string) => Promise<string | null>, extra?: Partial<TextFieldEditor>): TextFieldEditor => ({
     kind: 'text',
     label,
     raw: raw ?? '',
@@ -248,6 +248,7 @@ export function DriverDetailDesktopView({
           <View style={styles.flex}>
             <View style={styles.heroStatusRow}>
               <StatusPill tone={statusTone} label={statusLabel} />
+              <OverflowMenu items={menuItems} />
             </View>
             <DText weight="bold" style={styles.heroName} numberOfLines={1}>{name}</DText>
             <View style={styles.heroSub}>
@@ -267,9 +268,6 @@ export function DriverDetailDesktopView({
           <Fact label={t('driver.tenure')} value={inCompany?.value ?? t('common.notEntered')} unit={inCompany?.unit} muted={!inCompany} />
         </View>
 
-        <View style={styles.heroMenu}>
-          <OverflowMenu items={menuItems} />
-        </View>
       </View>
 
       {isArchived && (
@@ -334,28 +332,28 @@ export function DriverDetailDesktopView({
               first
               label={t('common.fullName')} focusId="full_name"
               value={driver?.full_name?.trim() || null}
-              onPress={() => setEditor(textEditor(t('common.fullName'), driver?.full_name, (v) => onSaveField({ full_name: v.trim() }), { validate: (v) => (v.trim() ? null : t('validation.thisRequired')) }))}
+              edit={textEditor(t('common.fullName'), driver?.full_name, (v) => onSaveField({ full_name: v.trim() }), { validate: (v) => (v.trim() ? null : t('validation.thisRequired')) })}
             />
             <DetailRow
               label={t('common.mobilePhone')} focusId="phone"
               value={driver?.phone || null}
               ltr
               accessory={driver?.phone ? <DText style={styles.rowNote} numberOfLines={1}>{t('driver.alsoUsername')}</DText> : undefined}
-              onPress={() => setEditor(textEditor(t('common.mobilePhone'), driver?.phone, (v) => onSaveField({ phone: v.trim() }), {
+              edit={textEditor(t('common.mobilePhone'), driver?.phone, (v) => onSaveField({ phone: v.trim() }), {
                 ltr: true,
                 numeric: true,
                 hint: t('driver.signsInWithNumber'),
                 validate: (v) => (!v.trim() ? t('validation.thisRequired') : isValidIsraeliPhone(v) ? null : t('validation.invalidPhone')),
-              }))}
+              })}
             />
             <DetailRow
               label={t('common.emailAddress')}
               value={driver?.email || null}
               ltr
-              onPress={() => setEditor(textEditor(t('common.emailAddress'), driver?.email, (v) => onSaveEmail(v.trim().toLowerCase()), {
+              edit={textEditor(t('common.emailAddress'), driver?.email, (v) => onSaveEmail(v.trim().toLowerCase()), {
                 ltr: true,
                 validate: (v) => (isValidEmail(v.trim()) ? null : t('validation.invalidEmail')),
-              }))}
+              })}
             />
             <DetailRow
               label={t('field.nationalId')} focusId="national_id"
@@ -371,13 +369,13 @@ export function DriverDetailDesktopView({
                   <DText weight="semiBold" style={styles.revealText}>{showNationalId ? t('common.hide') : t('common.show')}</DText>
                 </HoverPressable>
               ) : undefined}
-              onPress={() => setEditor(textEditor(t('field.nationalId'), driver?.national_id, (v) => onSaveField({ national_id: v || null }), {
+              edit={textEditor(t('field.nationalId'), driver?.national_id, (v) => onSaveField({ national_id: v || null }), {
                 ltr: true,
                 numeric: true,
                 hint: t('driver.nationalIdHintDot'),
                 parse: (v) => v.replace(/\D/g, '').slice(0, 9),
                 validate: (v) => (!v || isValidIsraeliNationalId(v) ? null : t('validation.invalidNationalId')),
-              }))}
+              })}
             />
             <DetailRow
               label={t('driver.birthDate')} focusId="birth_date"
@@ -386,16 +384,16 @@ export function DriverDetailDesktopView({
               accessory={age != null ? <DText style={styles.rowNote}>{t('driver.age')} {age}</DText> : undefined}
               onPress={() => setEditor(dateEditor(t('driver.birthDate'), driver?.birth_date, (v) => onSaveField({ birth_date: v })))}
             />
-            <DetailRow label={t('common.address')} focusId="address" value={driver?.address || null} onPress={() => setEditor(textEditor(t('common.address'), driver?.address, (v) => onSaveField({ address: v.trim() || null })))} />
+            <DetailRow label={t('common.address')} focusId="address" value={driver?.address || null} edit={textEditor(t('common.address'), driver?.address, (v) => onSaveField({ address: v.trim() || null }))} />
             <DetailRow
               label={t('driver.homePhone')} focusId="home_phone"
               value={driver?.home_phone || null}
               ltr
-              onPress={() => setEditor(textEditor(t('driver.homePhone'), driver?.home_phone, (v) => onSaveField({ home_phone: v.trim() || null }), {
+              edit={textEditor(t('driver.homePhone'), driver?.home_phone, (v) => onSaveField({ home_phone: v.trim() || null }), {
                 ltr: true,
                 numeric: true,
                 validate: (v) => (!v.trim() || isValidIsraeliPhone(v) ? null : t('validation.invalidPhone')),
-              }))}
+              })}
             />
             <DetailRow
               label={t('driver.maritalStatus')} focusId="marital_status"
@@ -439,7 +437,7 @@ export function DriverDetailDesktopView({
               label={t('field.licenseNumber')} focusId="license_number"
               value={driver?.license_number || null}
               ltr
-              onPress={() => setEditor(textEditor(t('field.licenseNumber'), driver?.license_number, (v) => onSaveField({ license_number: v.trim() || null }), { ltr: true, numeric: true }))}
+              edit={textEditor(t('field.licenseNumber'), driver?.license_number, (v) => onSaveField({ license_number: v.trim() || null }), { ltr: true, numeric: true })}
             />
             <DetailRow
               compact
@@ -468,7 +466,7 @@ export function DriverDetailDesktopView({
         <View style={styles.mainCell}>
           <GroupLabel>{t('driver.work')}</GroupLabel>
           <View style={styles.card}>
-            <DetailRow first label={t('driver.employeeNumber')} focusId="employee_number" value={driver?.employee_number || null} ltr onPress={() => setEditor(textEditor(t('driver.employeeNumber'), driver?.employee_number, (v) => onSaveField({ employee_number: v.trim() || null }), { ltr: true }))} />
+            <DetailRow first label={t('driver.employeeNumber')} focusId="employee_number" value={driver?.employee_number || null} ltr edit={textEditor(t('driver.employeeNumber'), driver?.employee_number, (v) => onSaveField({ employee_number: v.trim() || null }), { ltr: true })} />
             <DetailRow
               label={t('common.department')} focusId="department_id"
               value={departmentName}

@@ -1778,6 +1778,7 @@
     "profileSubtitle": "שם, טלפון, מייל וסיסמה",
     "reportsSubtitle": "דוחות נהגים ורכבים לאקסל",
     "signedDocsSubtitle": "צפייה, שליחה לנהגים ומחיקה",
+    "systemSettingsSubtitle": "שפה, תנאי שימוש, פרטיות, עוגיות ונגישות",
     "version": "icar · גרסה 1.0.0"
   },
   "nav": {
@@ -1797,7 +1798,8 @@
     "safetyInspections": "בדיקות קצין בטיחות",
     "signedDocuments": "מסמכים חתומים",
     "signingDocuments": "מסמכים לחתימה",
-    "systemManagement": "ניהול המערכת"
+    "systemManagement": "ניהול המערכת",
+    "systemSettings": "הגדרות מערכת"
   },
   "notifications": {
     "action": {
@@ -2222,7 +2224,11 @@
       "vehicleQuota": "מכסת רכבים מלאה",
       "vehicleQuotaDesc": "חברה הגיעה למספר הרכבים שכלול במנוי שלה",
       "vehicleService": "טיפול רכב",
-      "vehicleServiceDesc": "לפני הטיפול התקופתי הבא, או כשהרכב עבר את מועד הטיפול"
+      "vehicleServiceDesc": "לפני הטיפול התקופתי הבא, או כשהרכב עבר את מועד הטיפול",
+      "signatureExpiry": "תוקף חתימה על מסמכים",
+      "signatureExpiryDesc": "חתימה של נהג על מסמך עומדת לפוג, או פגה ונשלחה לחתימה מחדש",
+      "mySignatureExpiry": "תוקף החתימות שלי",
+      "mySignatureExpiryDesc": "חתימה שלך על מסמך עומדת לפוג"
     },
     "validityOf": "תוקף {{label}}"
   },
@@ -2298,9 +2304,7 @@
     "preparingFile": "מכין את הקובץ…",
     "title": "דוחות",
     "vehicles": "דוחות רכבים",
-    "vehiclesHint": "ביטוח, טסט, טיפולים וחריגות",
-    "printOrPdf": "הדפסה / PDF",
-    "printOrPdfLabel": "הדפסה או שמירה כ־PDF"
+    "vehiclesHint": "ביטוח, טסט, טיפולים וחריגות"
   },
   "role": {
     "admin": "מנהל מערכת",
@@ -2490,7 +2494,7 @@
       "write": "לכתוב מסמך חדש",
       "writeText": "כותבים את הטקסט כאן, כמו בוורד, ומוסיפים בלחיצה את המקומות שבהם הנהג חותם."
     },
-    "namePlaceholder": "לדוגמה: הצהרת בריאות",
+    "namePlaceholder": "לדוגמה: נוהל בטיחות בנהיגה",
     "nameSuggestions": "הצעות לשם",
     "nameVisibleToDriver": "השם יופיע לנהג ובתיקייה שלו, לכן כדאי שיהיה ברור.",
     "needsManager": "דורש טיפול של מנהל הצי",
@@ -2608,7 +2612,8 @@
     "willBeReplaced": "יוחלף במסמך חדש",
     "willResend": "יישלח שוב",
     "writtenHere": "נכתב כאן",
-    "yourSignature": "החתימה שלך"
+    "yourSignature": "החתימה שלך",
+    "fixedFolderName": "יש כבר תיקייה קבועה בשם הזה בתיק הנהג. בחרו שם אחר."
   },
   "status": {
     "aboutToExpire": "קרוב לפוג",
@@ -2898,16 +2903,30 @@
   },
   "viewer": {
     "downloadDocument": "הורדת המסמך",
+    "forward": "העבר",
+    "forwardFailed": "ההעברה נכשלה. אפשר להוריד את הקובץ ולשלוח אותו.",
+    "forwardLabel": "העברת הקובץ בוואטסאפ, במייל או באפליקציה אחרת",
     "loadingDocument": "טוען את המסמך",
     "pageN": "עמוד {{number}}",
     "pageNumber": "עמוד {{pageNumber}}",
-    "print": "הדפסה",
-    "printFailed": "ההדפסה נכשלה. אפשר להוריד את המסמך ולהדפיס אותו.",
     "signedDocument": "מסמך חתום",
     "signedOn": "נחתם ב-{{signedAt}}",
     "zoom": "גודל תצוגה",
     "zoomIn": "הגדלה",
     "zoomOut": "הקטנה",
     "zoomReset": "גודל רגיל"
+  },
+  "signingRules": {
+    "title": "תוקף חתימה על מסמכים",
+    "subtitle": "לכל מסמך: כמה זמן החתימה טובה, וכמה ימים לפני לקבל התראה. כשהתוקף פג, הנהג מקבל אוטומטית בקשה לחתום מחדש.",
+    "validity": "תוקף החתימה",
+    "noExpiry": "ללא תוקף",
+    "halfYear": "חצי שנה",
+    "oneYear": "שנה",
+    "yearsValue": "{{value}} שנים",
+    "monthsValue": "{{value}} חודשים",
+    "empty": "עדיין אין מסמכים לחתימה. כל מסמך שתיצרו יופיע כאן.",
+    "loadFailed": "לא ניתן לטעון את תוקף המסמכים",
+    "saveFailed": "לא ניתן לשמור את התוקף. נסו שוב."
   }
 }

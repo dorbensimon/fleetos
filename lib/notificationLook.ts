@@ -22,6 +22,7 @@ export function timeAgo(iso: string): string {
 export function notificationIcon(type: string | null): keyof typeof Ionicons.glyphMap {
   if (type === 'signature_request_assigned') return 'create-outline';
   if (type === 'signature_request_completed') return 'checkmark-done-outline';
+  if (type === 'signature_expiry') return 'hourglass-outline';
   if (type === 'driver_license_expiry') return 'id-card-outline';
   if (type === 'company_carrier_license_expiry') return 'business-outline';
   if (type === 'vehicle_odometer_stale') return 'speedometer-outline';
@@ -45,6 +46,8 @@ export function notificationTone(n: Pick<Notification, 'notification_type' | 'me
   if (isVehicleFolderNotification(type) || type === 'driver_license_expiry' || type === 'company_carrier_license_expiry') {
     return n.message.includes(' פג ב-') ? 'bad' : 'warn';
   }
+  // Signature validity (supabase/sql/105): ahead is a heads-up, run out is urgent.
+  if (type === 'signature_expiry') return n.message.includes('תפוג בעוד') ? 'warn' : 'bad';
   if (type === 'vehicle_service_due' || type === 'license_update_requested' || type === 'vehicle_odometer_stale') return 'warn';
   // Meeting reminders (supabase/sql/97): a week ahead is a heads-up, due or late is urgent.
   if (type === 'driver_meeting_due') return n.message.includes('המועד בעוד') || n.message.includes('בשבוע הקרוב') ? 'warn' : 'bad';

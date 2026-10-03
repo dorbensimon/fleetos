@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DK, NightBar, HeroButton } from '../components/driverKit';
 import { t, textDirection } from '../lib/i18n';
 import { errorMessage } from '../lib/requestError';
+import { shareFileOnWeb } from '../lib/webDownload';
+import { safeFileName } from '../lib/fileNames';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DocusealWebView'>;
 type IframeMessage = { type?: 'completed' | 'declined' | 'saved' | 'error' };
@@ -200,6 +202,37 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
     }
   };
 
+  // A viewed file can be forwarded. It is fetched ahead, so the share sheet
+  // opens straight from the tap (Safari refuses one that waits on a download).
+  // (The desktop viewer has its own.)
+  const viewing = !isDesktop && (params.mode === 'document' || params.mode === 'image') && !!params.src;
+  const shareFile = useRef<File | null>(null);
+  const [canForward, setCanForward] = useState(false);
+  useEffect(() => {
+    shareFile.current = null;
+    setCanForward(false);
+    if (!viewing || !params.src) return;
+    let alive = true;
+    fetch(params.src)
+      .then((response) => (response.ok ? response.blob() : Promise.reject()))
+      .then((blob) => {
+        if (!alive) return;
+        const extension = blob.type === 'application/pdf' ? 'pdf' : blob.type.split('/')[1] || 'file';
+        const file = new File([blob], safeFileName(`${params.title}.${extension}`, `document.${extension}`), { type: blob.type });
+        if (!navigator.canShare?.({ files: [file] })) return;
+        shareFile.current = file;
+        setCanForward(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [viewing, params.src, params.title]);
+  const forward = () => {
+    if (!shareFile.current) return;
+    shareFileOnWeb(shareFile.current, params.title).catch(() => setError(t('viewer.forwardFailed')));
+  };
+
   const documentUrl = params.src;
   // On a computer a document gets the full-screen viewer; the phone layout
   // below stays for iPhone-size screens.
@@ -217,7 +250,12 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
           title={params.title}
           subtitle={params.mode === 'builder' ? t('docuseal.placeFieldsSave') : isSigningForm ? (isDriver ? t('docuseal.fillAndSign') : t('docuseal.preview')) : params.mode === 'document' ? t('signing.viewDocument') : undefined}
           onBack={() => navigation.goBack()}
-          right={downloadAction ? <HeroButton icon="download-outline" label={t('signing.downloadSigned')} onPress={() => void download()} /> : undefined}
+          right={canForward || downloadAction ? (
+            <View style={styles.barActions}>
+              {canForward && <HeroButton icon="share-outline" label={t('viewer.forwardLabel')} onPress={forward} />}
+              {downloadAction && <HeroButton icon="download-outline" label={t('signing.downloadSigned')} onPress={() => void download()} />}
+            </View>
+          ) : undefined}
         />
       ) : (
         <ScreenHeader
@@ -272,6 +310,7 @@ const DRIVER_FORM_CSS =
   '.base-button{background-color:#2F5BFF!important;border-color:#2F5BFF!important;color:#FFFFFF!important;min-height:52px;border-radius:16px!important}';
 const styles = StyleSheet.create({
   driverScreen: { backgroundColor: DK.canvas },
+  barActions: { flexDirection: 'row-reverse', gap: 8 },
   webWrap: { flex: 1, width: '100%', minHeight: 0, overflow: 'hidden' },
   signingSurface: { backgroundColor: COLORS.screen },
   documentSurface: { backgroundColor: '#CDD3DB' },

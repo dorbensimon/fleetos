@@ -45,7 +45,7 @@ export function isVehicleNotificationType(type: string | null | undefined): bool
  */
 export function driverNotificationTarget(n: NotificationTargetFields): NotificationTarget | null {
   const type = n.notification_type;
-  if (type === 'signature_request_assigned') {
+  if (type === 'signature_request_assigned' || type === 'signature_expiry') {
     return n.signature_request_id
       ? { screen: 'DriverSigningDocuments', params: { requestId: n.signature_request_id } }
       : { screen: 'DriverSigningDocuments' };
@@ -129,7 +129,7 @@ export async function adminNotificationTarget<N extends NotificationTargetFields
 
   if (type === 'company_carrier_license_expiry') return { screen: 'CompanySettings' };
 
-  if (type === 'signature_request_completed' && n.actor_id) {
+  if ((type === 'signature_request_completed' || type === 'signature_expiry') && n.actor_id) {
     return {
       screen: 'DriverSigningDocuments',
       params: n.signature_request_id

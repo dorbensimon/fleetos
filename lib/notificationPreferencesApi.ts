@@ -44,6 +44,7 @@ export type NotificationType =
   | 'company_carrier_license_expiry'
   | 'vehicle_odometer_stale'
   | 'signature_request_completed'
+  | 'signature_expiry'
   | 'owner_company_activated'
   | 'owner_admin_added'
   | 'owner_company_not_activated'
@@ -102,6 +103,11 @@ export const ADMIN_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     get description() { return t('prefs.type.documentSignedDesc'); },
   },
   {
+    type: 'signature_expiry',
+    get label() { return t('prefs.type.signatureExpiry'); },
+    get description() { return t('prefs.type.signatureExpiryDesc'); },
+  },
+  {
     type: 'driver_license_expiry',
     get label() { return t('prefs.type.driverLicense'); },
     get description() { return t('prefs.type.driverLicenseDesc'); },
@@ -139,6 +145,11 @@ export const DRIVER_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     type: 'signature_request_assigned',
     get label() { return t('prefs.type.newSigningDoc'); },
     get description() { return t('prefs.type.newSigningDocDesc'); },
+  },
+  {
+    type: 'signature_expiry',
+    get label() { return t('prefs.type.mySignatureExpiry'); },
+    get description() { return t('prefs.type.mySignatureExpiryDesc'); },
   },
   {
     type: 'vehicle_assignment',
@@ -404,6 +415,7 @@ const ADMIN_GROUP_OF: Partial<Record<NotificationType, NotificationGroup['key']>
   driver_document_upload: 'drivers',
   license_update_requested: 'drivers',
   signature_request_completed: 'drivers',
+  signature_expiry: 'drivers',
   driver_license_expiry: 'licenses',
   company_carrier_license_expiry: 'licenses',
   vehicle_service_due: 'care',

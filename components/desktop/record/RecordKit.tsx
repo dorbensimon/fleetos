@@ -51,13 +51,13 @@ export function OverflowMenu({ items }: { items: RecordMenuItem[] }) {
   return (
     <View ref={triggerRef}>
       <HoverPressable
-        style={styles.iconAction}
+        style={styles.menuTrigger}
         hoverStyle={styles.rowHover}
         pressStyle={styles.pressDown}
         onPress={() => (anchor ? setAnchor(null) : open())}
         accessibilityLabel={t('common.moreActions')}
       >
-        <Ionicons name="ellipsis-horizontal" size={20} color={DESKTOP_COLORS.ink} />
+        <Ionicons name="ellipsis-horizontal" size={16} color={DESKTOP_COLORS.ink} />
       </HoverPressable>
       {anchor && (
         <Modal transparent visible animationType="none" onRequestClose={() => setAnchor(null)}>
@@ -677,6 +677,8 @@ export const recordStyles = StyleSheet.create({
   menu: { position: 'absolute', minWidth: 170, padding: 4, backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 8, ...webOnly({ boxShadow: '0 8px 24px -6px rgba(22,34,46,0.18)' }) },
   // The menu opens under a trigger at the inline end of the header, so it grows from that corner.
   menuOrigin: webOnly({ transformOrigin: 'top left' }),
+  // Sits beside the status pill in the record header, so it matches its height.
+  menuTrigger: { width: 30, height: 24, borderWidth: 1, borderColor: DESKTOP_COLORS.borderInput, borderRadius: 12, backgroundColor: DESKTOP_COLORS.surface, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
   statusTrigger: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

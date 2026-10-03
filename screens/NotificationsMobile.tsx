@@ -32,6 +32,7 @@ type Props = {
 function look(type: string | null): { icon: IconName; tint: string } {
   if (type === 'signature_request_assigned') return { icon: 'create', tint: STATUS.soon.fg };
   if (type === 'signature_request_completed') return { icon: 'checkmark-done', tint: STATUS.ok.fg };
+  if (type === 'signature_expiry') return { icon: 'hourglass', tint: STATUS.soon.fg };
   if (type === 'vehicle_assignment') return { icon: 'car-sport', tint: DK.accent };
   if (type === 'driver_license_expiry') return { icon: 'id-card', tint: STATUS.expired.fg };
   if (type === 'company_carrier_license_expiry') return { icon: 'business', tint: STATUS.expired.fg };

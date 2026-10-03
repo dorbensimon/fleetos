@@ -33,7 +33,6 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DesktopFieldRow, DesktopInput, DesktopSelect, DText, HoverPressable } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
 import { t, textStart } from '../../lib/i18n';
-import { LanguageRows, LanguageSection } from '../../components/LanguagePicker';
 import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverProfile'>;
@@ -372,11 +371,6 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
               <DesktopFieldRow label={t('driver.joinedApp')} last><DesktopInput value={driver?.created_at ? formatDate(driver.created_at) : ''} editable={false} ltr /></DesktopFieldRow>
             </View>
 
-            <DText weight="bold" style={ds.sectionTitle}>{t('settings.language')}</DText>
-            <View style={ds.card}>
-              <LanguageRows />
-            </View>
-
             <HoverPressable style={ds.signOutButton} onPress={signOut}>
               <DText weight="semiBold" style={ds.signOutText}>{t('auth.signOut')}</DText>
             </HoverPressable>
@@ -502,9 +496,6 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
             </ProfileSection>
           </Reveal>
           <Reveal index={4}>
-            <LanguageSection />
-          </Reveal>
-          <Reveal index={5}>
             <PrimaryAction label={t('auth.signOutOfAccountAction')} icon="log-out-outline" tone="danger" onPress={signOut} />
           </Reveal>
         </>

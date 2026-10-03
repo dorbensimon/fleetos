@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { FocusTarget } from '../ui/FocusTarget';
-import { Modal, Pressable, PressableProps, ScrollView, StyleProp, Text, TextInput, TextProps, View, ViewStyle, StyleSheet } from 'react-native';
+import { Modal, Pressable, PressableProps, ScrollView, StyleProp, Text, TextInput, TextInputProps, TextProps, View, ViewStyle, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { formatDate, parseDateValue } from '../../lib/theme';
@@ -156,8 +156,14 @@ export function DesktopInput({
   onBlur,
   onSubmitEditing,
   large,
+  autoFocus,
+  onKeyPress,
+  accessibilityLabel,
 }: {
   value: string;
+  autoFocus?: boolean;
+  onKeyPress?: TextInputProps['onKeyPress'];
+  accessibilityLabel?: string;
   /** Roomier 44px field for airy settings pages. */
   large?: boolean;
   onChangeText?: (v: string) => void;
@@ -184,6 +190,9 @@ export function DesktopInput({
       editable={editable}
       onBlur={onBlur}
       onSubmitEditing={onSubmitEditing}
+      autoFocus={autoFocus}
+      onKeyPress={onKeyPress}
+      accessibilityLabel={accessibilityLabel}
       style={[
         fieldStyles.input,
         large && fieldStyles.inputLarge,

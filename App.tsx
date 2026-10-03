@@ -64,6 +64,7 @@ import DriverProfileScreen from './screens/driver/DriverProfileScreen';
 import DriverOdometerScreen from './screens/driver/DriverOdometerScreen';
 import DriverAttentionScreen from './screens/driver/DriverAttentionScreen';
 import MenuScreen from './screens/MenuScreen';
+import SystemSettingsScreen from './screens/SystemSettingsScreen';
 import { RootStackParamList } from './navigation/types';
 import { refreshBackFallback } from './lib/refreshSafeBack';
 import { supabase } from './lib/supabase';
@@ -164,6 +165,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       DriverOdometer: 'my-vehicle/odometer/:vehicleId',
       DriverAttention: 'my-attention',
       Menu: 'menu',
+      SystemSettings: 'settings',
     },
   },
 };
@@ -374,6 +376,7 @@ export default function App() {
                   screen, same screen instance for both roles. */}
               <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
               <Stack.Screen name="Menu" component={MenuScreen} />
+              <Stack.Screen name="SystemSettings" component={SystemSettingsScreen} />
 
               {/* Admin module — no tab bar; drivers and vehicles are one
                   screen (FleetScreen) that crossfades its body via the

@@ -35,7 +35,6 @@ import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { AdminProfileDesktopView } from '../../components/desktop/AdminProfileDesktopView';
-import { LanguageSection } from '../../components/LanguagePicker';
 import { t, textStart } from '../../lib/i18n';
 import { companyTypeLabel } from '../../lib/companyType';
 import { errorMessage } from '../../lib/requestError';
@@ -254,9 +253,6 @@ export default function AdminProfileScreen({ navigation }: Props) {
             </KitSection>
           </Reveal>
           <Reveal index={3}>
-            <LanguageSection />
-          </Reveal>
-          <Reveal index={4}>
             <KitSection title={t('profile.security')}>
               <ActionRow icon="lock-closed" label={t('password.change')} hint={t('profile.newPasswordHint')} onPress={() => navigation.navigate('SetPassword', { voluntary: true })} />
               <ActionRow first={false} icon="log-out-outline" tone="danger" label={t('auth.signOutOfAccountAction')} onPress={signOut} />

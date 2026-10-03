@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FocusTarget } from '../../ui/FocusTarget';
 import { StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../../ui/BrandLoader';
@@ -12,6 +12,7 @@ import {
   DLtrText,
   DText,
   HoverPressable,
+  prefersReducedMotion,
 } from '../primitives';
 import { EASE_OUT } from './RecordKit';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
@@ -29,19 +30,21 @@ export const digitsOnly = (v: string) => v.replace(/\D/g, '');
 // ---------------------------------------------------------------------------
 // Field editing — every detail row opens one small window with a single field.
 
+export type TextFieldEditor = {
+  kind: 'text';
+  label: string;
+  raw: string;
+  ltr?: boolean;
+  numeric?: boolean;
+  hint?: string;
+  parse?: (v: string) => string;
+  format?: (v: string) => string;
+  validate?: (v: string) => string | null;
+  onSave: (v: string) => Promise<string | null>;
+};
+
 export type FieldEditor =
-  | {
-      kind: 'text';
-      label: string;
-      raw: string;
-      ltr?: boolean;
-      numeric?: boolean;
-      hint?: string;
-      parse?: (v: string) => string;
-      format?: (v: string) => string;
-      validate?: (v: string) => string | null;
-      onSave: (v: string) => Promise<string | null>;
-    }
+  | TextFieldEditor
   | {
       kind: 'select';
       label: string;
@@ -209,13 +212,18 @@ export function FieldEditDialog({ editor, onClose }: { editor: FieldEditor | nul
   );
 }
 
-/** One tappable detail row: label, value, and a faint "עריכה" that turns blue on hover. */
+/**
+ * One detail row: label, value, and a faint "עריכה" that turns blue on hover.
+ * A row given `edit` (free text) turns into an input in place, with ✓ / ✕
+ * at its end; other rows call `onPress` to open the field window.
+ */
 export function DetailRow({
   label,
   value,
   ltr,
   first,
   onPress,
+  edit,
   accessory,
   compact,
   valueColor,
@@ -226,6 +234,7 @@ export function DetailRow({
   ltr?: boolean;
   first?: boolean;
   onPress?: () => void;
+  edit?: TextFieldEditor;
   /** Extra content inside the value area (a lookup button, a short note). */
   accessory?: React.ReactNode;
   compact?: boolean;
@@ -234,12 +243,106 @@ export function DetailRow({
   focusId?: string;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const rowRef = useRef<View>(null);
   const ValueText = ltr ? DLtrText : DText;
   const empty = !value;
+  const pressable = onPress ?? (edit ? () => {
+    setDraft(edit.raw);
+    setError(null);
+    setEditing(true);
+  } : undefined);
+  const motion = !prefersReducedMotion();
+
+  const cancel = () => {
+    setEditing(false);
+    setError(null);
+  };
+
+  const save = async () => {
+    if (!edit || saving) return;
+    const invalid = edit.validate?.(draft) ?? null;
+    if (invalid) return setError(invalid);
+    setSaving(true);
+    const result = await edit.onSave(draft);
+    setSaving(false);
+    if (result) setError(result);
+    else cancel();
+  };
+
+  // A click anywhere outside the row drops the change, like ✕.
+  useEffect(() => {
+    if (!editing || saving || typeof document === 'undefined') return;
+    const onDown = (event: MouseEvent) => {
+      const node = rowRef.current as unknown as HTMLElement | null;
+      if (node && !node.contains(event.target as Node)) cancel();
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [editing, saving]);
+
+  const rowStyle = [pageStyles.detailRow, compact && pageStyles.detailRowCompact, !first && pageStyles.rowDivider];
+
+  if (editing && edit) {
+    const row = (
+      <View ref={rowRef} style={[...rowStyle, pageStyles.rowEditing]}>
+        <DText style={[pageStyles.rowLabel, compact && pageStyles.rowLabelCompact, pageStyles.inlineLabel]} numberOfLines={1}>{label}</DText>
+        <View style={[pageStyles.inlineField, motion && pageStyles.inlineFieldIn]}>
+          <DesktopInput
+            value={edit.format ? edit.format(draft) : draft}
+            onChangeText={(v) => {
+              setDraft(edit.parse ? edit.parse(v) : v);
+              setError(null);
+            }}
+            ltr={edit.ltr}
+            keyboardType={edit.numeric ? 'number-pad' : 'default'}
+            hasError={!!error}
+            onSubmitEditing={() => void save()}
+            autoFocus
+            onKeyPress={(e) => {
+              if (e.nativeEvent.key === 'Escape') cancel();
+            }}
+            accessibilityLabel={label}
+            style={pageStyles.inlineInput}
+          />
+          {!!(error || edit.hint) && (
+            <DText style={error ? pageStyles.inlineError : pageStyles.inlineHint}>{error ?? edit.hint}</DText>
+          )}
+        </View>
+        <View style={pageStyles.inlineActions}>
+          <HoverPressable
+            style={[pageStyles.inlineBtn, pageStyles.inlineSave, motion && pageStyles.inlineBtnIn]}
+            hoverStyle={pageStyles.inlineSaveHover}
+            pressMotionStyle={pageStyles.inlineBtnPress}
+            onPress={() => void save()}
+            disabled={saving}
+            accessibilityLabel={t('common.save')}
+          >
+            {saving ? <BrandLoader size="small" color="#FFFFFF" /> : <Ionicons name="checkmark" size={18} color="#FFFFFF" />}
+          </HoverPressable>
+          <HoverPressable
+            style={[pageStyles.inlineBtn, pageStyles.inlineCancel, motion && pageStyles.inlineBtnIn, motion && pageStyles.inlineBtnInLate]}
+            hoverStyle={pageStyles.inlineCancelHover}
+            pressMotionStyle={pageStyles.inlineBtnPress}
+            onPress={cancel}
+            disabled={saving}
+            accessibilityLabel={t('common.cancel')}
+          >
+            <Ionicons name="close" size={18} color={DESKTOP_COLORS.inkMuted} />
+          </HoverPressable>
+        </View>
+      </View>
+    );
+    return focusId ? <FocusTarget id={focusId} radius={6} tint={DESKTOP_COLORS.brand}>{row}</FocusTarget> : row;
+  }
+
   const content = (
     <>
       <DText style={[pageStyles.rowLabel, compact && pageStyles.rowLabelCompact]} numberOfLines={1}>{label}</DText>
-      <View style={pageStyles.rowValueWrap}>
+      <View style={[pageStyles.rowValueWrap, edit && motion && pageStyles.inlineFieldIn]}>
         {empty ? (
           <DText style={pageStyles.rowValueEmpty}>{t('common.notEntered')}</DText>
         ) : (
@@ -247,7 +350,7 @@ export function DetailRow({
         )}
         {accessory}
       </View>
-      {onPress ? (
+      {pressable ? (
         <View style={pageStyles.rowEdit}>
           <DText style={[pageStyles.rowEditText, hovered && pageStyles.rowEditTextHover]}>{empty ? t('common.add') : t('common.edit')}</DText>
           <Ionicons name={dirIcon('chevron-back')} size={13} color={hovered ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
@@ -258,15 +361,15 @@ export function DetailRow({
     </>
   );
 
-  const row = !onPress ? (
-    <View style={[pageStyles.detailRow, compact && pageStyles.detailRowCompact, !first && pageStyles.rowDivider]}>{content}</View>
+  const row = !pressable ? (
+    <View style={rowStyle}>{content}</View>
   ) : (
     <HoverPressable
-      style={[pageStyles.detailRow, compact && pageStyles.detailRowCompact, !first && pageStyles.rowDivider]}
+      style={rowStyle}
       hoverStyle={pageStyles.rowHover}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
-      onPress={onPress}
+      onPress={pressable}
       accessibilityLabel={`${label}: ${value || t('common.notEntered')}. ${empty ? t('common.add') : t('common.edit')}`}
     >
       {content}
@@ -327,12 +430,11 @@ export const pageStyles = StyleSheet.create({
     ...webOnly({ boxShadow: CARD_SHADOW }),
   },
   heroIdentity: { flex: 1, minWidth: 200, gap: 1 },
-  heroStatusRow: { flexDirection: 'row-reverse', marginBottom: 3 },
+  heroStatusRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, marginBottom: 3 },
   heroName: { fontSize: 21, letterSpacing: -0.2, lineHeight: 26 },
   heroSub: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   heroSubText: { fontSize: 14, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   heroSubDot: { fontSize: 14, color: DESKTOP_COLORS.inkFaint },
-  heroMenu: { alignSelf: 'flex-start' },
 
   facts: { flexDirection: 'row-reverse' },
   fact: { paddingHorizontal: 16, gap: 0, borderEndWidth: 1, borderEndColor: DESKTOP_COLORS.border },
@@ -385,6 +487,34 @@ export const pageStyles = StyleSheet.create({
   rowEdit: { flexDirection: 'row-reverse', alignItems: 'center', gap: 3 },
   rowEditText: { fontSize: 13, color: DESKTOP_COLORS.inkFaint },
   rowEditTextHover: { color: DESKTOP_COLORS.brand },
+
+  // In-row editing — iOS-style: the field eases in, ✓ / ✕ spring up in turn.
+  rowEditing: { alignItems: 'flex-start', backgroundColor: 'rgba(0,136,204,0.035)', ...webOnly({ transition: 'background-color 220ms ease' }) },
+  inlineLabel: { paddingTop: 7 },
+  inlineField: { flex: 1, minWidth: 0, gap: 4 },
+  inlineFieldIn: webOnly({
+    animationKeyframes: { from: { opacity: 0, transform: [{ scale: 0.985 }] }, to: { opacity: 1, transform: [{ scale: 1 }] } },
+    animationDuration: '260ms',
+    animationTimingFunction: EASE_OUT,
+    animationFillMode: 'backwards',
+  }),
+  inlineInput: { height: 32, borderRadius: 8, fontSize: 14.5, borderColor: DESKTOP_COLORS.brand, ...webOnly({ boxShadow: '0 0 0 3px rgba(0,136,204,0.12)', outlineStyle: 'none' }) },
+  inlineHint: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
+  inlineError: { fontSize: 12.5, color: DESKTOP_TONES.bad.fg },
+  inlineActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, },
+  inlineBtn: { width: 32, height: 32, borderRadius: 9, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
+  inlineSave: { backgroundColor: DESKTOP_COLORS.brand },
+  inlineSaveHover: { backgroundColor: DESKTOP_COLORS.brandHover },
+  inlineCancel: { backgroundColor: '#EEF1F4' },
+  inlineCancelHover: { backgroundColor: '#E5E9ED' },
+  inlineBtnPress: { transform: [{ scale: 0.9 }] },
+  inlineBtnIn: webOnly({
+    animationKeyframes: { from: { opacity: 0, transform: [{ scale: 0.5 }] }, to: { opacity: 1, transform: [{ scale: 1 }] } },
+    animationDuration: '340ms',
+    animationTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+    animationFillMode: 'backwards',
+  }),
+  inlineBtnInLate: webOnly({ animationDelay: '45ms' }),
 
   inlineMeta: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap' },
   mutedText: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },

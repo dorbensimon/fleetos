@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { isAuthApiError, isAuthSessionMissingError } from '@supabase/supabase-js';
 import { supabase, Company, Profile } from './supabase';
 import { t } from './i18n';
 import { errorMessage } from './requestError';
@@ -42,6 +43,18 @@ export function CompanyProvider({
     setError(null);
     try {
       const { data: auth, error: authError } = await supabase.auth.getUser();
+      // A session saved on this device that the server no longer knows
+      // (signed out elsewhere, password changed, user deleted) still reads as
+      // signed in locally; drop it so the app goes to login instead of
+      // showing an empty home screen. Network failures keep the session.
+      if (authError && (isAuthSessionMissingError(authError) || (isAuthApiError(authError) && [401, 403].includes(authError.status)))) {
+        await supabase.auth.signOut({ scope: 'local' });
+        if (!isCurrent()) return;
+        setProfile(null);
+        setCompany(null);
+        setLoading(false);
+        return;
+      }
       if (authError) throw authError;
 
       if (!isCurrent()) return;
