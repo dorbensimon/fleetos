@@ -3,6 +3,7 @@ import { listDrivers } from './adminApi/drivers';
 import { formatDate } from './theme';
 import { t } from './i18n';
 import { errorMessage } from './requestError';
+import { DRIVER_COMPLIANCE } from './compliance';
 
 /**
  * Sending a signing document to drivers and deleting a company's own
@@ -26,6 +27,11 @@ export function sameDocumentTitle(a: string | null | undefined, b: string | null
 }
 
 export const TAKEN_TITLE_MESSAGE = () => t('signing.duplicateName');
+
+/** A name every driver's file already has as a fixed folder, such as "הצהרת בריאות". */
+export function isFixedFolderTitle(title: string | null | undefined): boolean {
+  return DRIVER_COMPLIANCE.some((def) => sameDocumentTitle(def.storedTitle, title) || sameDocumentTitle(def.label, title));
+}
 
 export const RECIPIENT_STATE_LABEL: Record<SendRecipient['state'], string> = { none: '', get pending() { return t('signing.pendingSignature'); }, get signed() { return t('signing.alreadySigned'); } };
 

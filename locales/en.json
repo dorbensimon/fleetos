@@ -2490,7 +2490,7 @@
       "write": "Write a new document",
       "writeText": "Write the text here, like in Word, and add the places where the driver signs with a click."
     },
-    "namePlaceholder": "For example: Health declaration",
+    "namePlaceholder": "For example: Safe driving procedure",
     "nameSuggestions": "Name suggestions",
     "nameVisibleToDriver": "The name shows to the driver and in their folder, so make it clear.",
     "needsManager": "Needs your fleet manager's attention",
@@ -2608,7 +2608,8 @@
     "willBeReplaced": "Will be replaced with a new document",
     "willResend": "Will be sent again",
     "writtenHere": "Written here",
-    "yourSignature": "Your signature"
+    "yourSignature": "Your signature",
+    "fixedFolderName": "Every driver file already has a fixed folder with this name. Choose another name."
   },
   "status": {
     "aboutToExpire": "About to expire",

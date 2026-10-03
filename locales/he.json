@@ -2490,7 +2490,7 @@
       "write": "לכתוב מסמך חדש",
       "writeText": "כותבים את הטקסט כאן, כמו בוורד, ומוסיפים בלחיצה את המקומות שבהם הנהג חותם."
     },
-    "namePlaceholder": "לדוגמה: הצהרת בריאות",
+    "namePlaceholder": "לדוגמה: נוהל בטיחות בנהיגה",
     "nameSuggestions": "הצעות לשם",
     "nameVisibleToDriver": "השם יופיע לנהג ובתיקייה שלו, לכן כדאי שיהיה ברור.",
     "needsManager": "דורש טיפול של מנהל הצי",
@@ -2608,7 +2608,8 @@
     "willBeReplaced": "יוחלף במסמך חדש",
     "willResend": "יישלח שוב",
     "writtenHere": "נכתב כאן",
-    "yourSignature": "החתימה שלך"
+    "yourSignature": "החתימה שלך",
+    "fixedFolderName": "יש כבר תיקייה קבועה בשם הזה בתיק הנהג. בחרו שם אחר."
   },
   "status": {
     "aboutToExpire": "קרוב לפוג",

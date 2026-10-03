@@ -9,6 +9,7 @@ import { assignSigningTemplate, deleteSigningRecord, listSignatureRequests } fro
 import { listDrivers } from '../adminApi/drivers';
 import {
   cancelSigningRequest,
+  isFixedFolderTitle,
   countWaitingSigners,
   deleteCompanyTemplate,
   deleteTemplateMessage,
@@ -103,4 +104,12 @@ test('wording', () => {
   expect(recipientNote({ id: 'x', name: 'x', state: 'none' }, true)).toBe('');
   expect(recipientNote({ id: 'x', name: 'x', state: 'signed', lastSignedAt: '2026-09-23T10:00:00Z' }, false)).toBe('חתם לאחרונה ב-23/09/2026');
   expect(recipientNote({ id: 'x', name: 'x', state: 'signed', lastSignedAt: '2026-09-23T10:00:00Z' }, true)).toBe('חתם לאחרונה ב-23/09/2026 · יישלח שוב');
+});
+
+test('a document may not take the name of a fixed folder of the driver file', () => {
+  expect(isFixedFolderTitle('הצהרת בריאות')).toBe(true);
+  expect(isFixedFolderTitle('  הצהרת   בריאות ')).toBe(true);
+  expect(isFixedFolderTitle('רישיון מנוף')).toBe(true);
+  expect(isFixedFolderTitle('הצהרת בריאות 2027')).toBe(false);
+  expect(isFixedFolderTitle('')).toBe(false);
 });

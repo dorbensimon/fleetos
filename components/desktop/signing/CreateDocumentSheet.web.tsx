@@ -13,7 +13,7 @@ import {
   type SigningFieldKind,
 } from '../../../lib/companySigningTemplates';
 import { ConfirmAlert, Sheet, useSheetClose } from './Sheet.web';
-import { sameDocumentTitle, TAKEN_TITLE_MESSAGE } from '../../../lib/signingSend';
+import { isFixedFolderTitle, sameDocumentTitle, TAKEN_TITLE_MESSAGE } from '../../../lib/signingSend';
 import { DocumentEditor, EditorPagePreview, initialEditorDraft, type DocumentEditorHandle, type EditorDraft } from './DocumentEditor.web';
 import { BusyState, FieldPlacer, PdfPageView, UploadDropzone } from './FieldPlacer.web';
 import { loadPdf, type LoadedPdf } from './pdf.web';
@@ -42,7 +42,7 @@ import { t, dirIcon } from '../../../lib/i18n';
 type Mode = 'editor' | 'upload' | 'checklist';
 type Step = 0 | 1 | 2 | 3;
 
-const nameIdeas = () => ['הצהרת בריאות', t('signing.suggest.safetyProcedure'), DRIVER_MEETING_TITLE, t('signing.suggest.vehicleHandover'), t('signing.suggest.vehicleCare')];
+const nameIdeas = () => [t('signing.suggest.safetyProcedure'), DRIVER_MEETING_TITLE, t('signing.suggest.vehicleHandover'), t('signing.suggest.vehicleCare')];
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 const stepNames = () => [t('signing.stepName.nameAndMethod'), t('signing.stepName.contentAndFields'), t('signing.stepName.reviewAndSave')];
 
@@ -129,7 +129,10 @@ export function CreateDocumentSheet({
     }
   };
 
-  const titleTaken = takenTitles.some((taken) => sameDocumentTitle(taken, title));
+  // A fixed folder of the driver's file is a name too: two folders alike would confuse.
+  const fixedFolderName = isFixedFolderTitle(title);
+  const titleTaken = fixedFolderName || takenTitles.some((taken) => sameDocumentTitle(taken, title));
+  const takenMessage = fixedFolderName ? t('signing.fixedFolderName') : TAKEN_TITLE_MESSAGE();
   const canContinue =
     step === 0
       ? title.trim().length > 0 && !titleTaken && !!mode
@@ -246,7 +249,7 @@ export function CreateDocumentSheet({
           ? t('signing.uploadToContinue')
           : t('signing.addSignatureToContinue')
       : step === 0 && titleTaken
-        ? TAKEN_TITLE_MESSAGE()
+        ? takenMessage
       : step === 0 && !mode && title.trim()
         ? t('signing.chooseHowToCreate')
         : null;
@@ -318,7 +321,7 @@ export function CreateDocumentSheet({
             {titleTaken ? (
               <div id="sd-doc-name-taken" className="sd-inline-error" role="alert">
                 <Ionicons name="alert-circle" size={20} color="currentColor" />
-                {TAKEN_TITLE_MESSAGE()}
+                {takenMessage}
               </div>
             ) : null}
             <div className="sd-chips" aria-label={t('signing.nameSuggestions')}>

@@ -2490,7 +2490,7 @@
       "write": "كتابة مستند جديد",
       "writeText": "اكتبوا النص هنا، كما في Word، وأضيفوا بنقرة الأماكن التي يوقّع فيها السائق."
     },
-    "namePlaceholder": "مثلًا: تصريح صحي",
+    "namePlaceholder": "مثلًا: إجراء السلامة في القيادة",
     "nameSuggestions": "اقتراحات للاسم",
     "nameVisibleToDriver": "سيظهر الاسم للسائق وفي مجلده، لذا يُفضّل أن يكون واضحًا.",
     "needsManager": "يتطلب معالجة من مدير الأسطول",
@@ -2608,7 +2608,8 @@
     "willBeReplaced": "سيُستبدل بمستند جديد",
     "willResend": "سيُرسل مجددًا",
     "writtenHere": "كُتب هنا",
-    "yourSignature": "توقيعك"
+    "yourSignature": "توقيعك",
+    "fixedFolderName": "يوجد مجلد ثابت بهذا الاسم في ملف كل سائق. اختاروا اسمًا آخر."
   },
   "status": {
     "aboutToExpire": "قريب الانتهاء",
