@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useSigningStyles } from './folderCss';
 
 /**
  * An iOS-style page sheet: rises from the bottom over a dimmed, blurred
@@ -35,6 +36,8 @@ export function Sheet({
   foot?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  // Opened from screens that never loaded the signing styles (the company page, the driver file).
+  useSigningStyles();
   const sheetRef = useRef<HTMLDivElement>(null);
   // The caller's handler changes as its state does (first letter typed = "has changes");
   // the setup below must run once, or it pulls focus out of the field being typed in.
@@ -88,6 +91,7 @@ export function ConfirmAlert({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  useSigningStyles();
   const cancelRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     cancelRef.current?.focus();

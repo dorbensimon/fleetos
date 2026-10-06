@@ -61,16 +61,18 @@ Deno.serve(async (req) => {
       .eq('id', companyId);
     if (disableError) return json({ error: 'חסימת החברה לפני המחיקה נכשלה' }, 500);
 
-    const [profilesResult, documentsResult, legacyTemplatesResult, templatesResult, requestsResult] = await Promise.all([
+    const [profilesResult, documentsResult, legacyTemplatesResult, templatesResult, requestsResult, versionsResult] = await Promise.all([
       adminClient.from('profiles').select('id').eq('company_id', companyId),
       adminClient.from('documents').select('file_path').eq('company_id', companyId),
       adminClient.from('document_templates').select('source_file_path').eq('company_id', companyId),
       adminClient.from('signing_templates').select('source_file_path').eq('company_id', companyId),
       adminClient.from('signature_requests').select('signed_file_path').eq('company_id', companyId),
+      // Earlier versions of a folder's form keep their own source PDFs.
+      adminClient.from('signing_template_versions').select('source_file_path').eq('company_id', companyId),
     ]);
     if (
       profilesResult.error || documentsResult.error || legacyTemplatesResult.error ||
-      templatesResult.error || requestsResult.error
+      templatesResult.error || requestsResult.error || versionsResult.error
     ) {
       return json({ error: 'איסוף נתוני החברה למחיקה נכשל' }, 500);
     }
@@ -94,6 +96,7 @@ Deno.serve(async (req) => {
       ...(documentsResult.data ?? []).map((row: { file_path: string | null }) => row.file_path),
       ...(legacyTemplatesResult.data ?? []).map((row: { source_file_path: string | null }) => row.source_file_path),
       ...(templatesResult.data ?? []).map((row: { source_file_path: string | null }) => row.source_file_path),
+      ...(versionsResult.data ?? []).map((row: { source_file_path: string | null }) => row.source_file_path),
       // Signed PDFs live in the same 'documents' bucket, under
       // <company>/driver/<driver>/signed/<request>.pdf.
       ...(requestsResult.data ?? []).map((row: { signed_file_path: string | null }) => row.signed_file_path),

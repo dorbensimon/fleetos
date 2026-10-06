@@ -49,7 +49,7 @@ export async function assignSigningTemplate(
   // is null), in which case every company may send it.
   const { data: template } = await admin
     .from('signing_templates')
-    .select('id, company_id, title, docuseal_template_id, archived_at')
+    .select('id, company_id, title, docuseal_template_id, archived_at, version')
     .eq('id', templateId)
     .eq('status', 'ready')
     .or(`company_id.eq.${companyId},company_id.is.null`)
@@ -221,6 +221,8 @@ export async function assignSigningTemplate(
           driver_id: driver.id,
           created_by: callerId,
           template_title: template.title,
+          // Which version of the form the driver got ("replace form" adds versions).
+          template_version: template.version,
           // Signing is in-app only. No email reminder is ever scheduled.
           next_email_reminder_at: null,
           provisioning_locked_until: provisioningLockUntil,
@@ -331,6 +333,7 @@ export async function assignSigningTemplate(
       docuseal_submission_id: submitter.submission_id,
       docuseal_submitter_id: submitter.id,
       docuseal_submitter_slug: submitter.slug,
+      template_version: template.version,
       provisioning_locked_until: null,
       failure_reason: null,
     }).eq('id', requestRow.id).eq('status', 'pending');

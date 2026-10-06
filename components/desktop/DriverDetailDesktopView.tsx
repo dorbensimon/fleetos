@@ -27,7 +27,7 @@ import { DriverLicenseModal } from './driver/DriverLicenseModal';
 import { LICENSE_SIDE_STORED_TITLE } from '../../lib/licenseSides';
 import { DRIVER_DOCUMENT_GROUPS } from '../../lib/driverDocumentFolders';
 import { DriverVehiclesCard } from './driver/DriverVehiclesCard';
-import { DriverSigningList, useDriverSigningFolders, type SigningSessionTarget } from './driver/DriverSigningSection';
+import { AddFolderButton, DriverSigningList, useDriverSigningFolders, type SigningSessionTarget } from './driver/DriverSigningSection';
 import { t, dirIcon } from '../../lib/i18n';
 
 /**
@@ -496,9 +496,12 @@ export function DriverDetailDesktopView({
       </View>
 
       {/* Forms to sign */}
-      <View style={styles.docsHead}>
-        <DText weight="bold" style={styles.docsTitle}>{t('signing.formsToSign')}</DText>
-        <DText style={styles.mutedText}>{t('driver.formsHint')}</DText>
+      <View style={[styles.docsHead, styles.formsHead]}>
+        <View style={styles.formsHeadText}>
+          <DText weight="bold" style={styles.docsTitle}>{t('signing.formsToSign')}</DText>
+          <DText style={styles.mutedText}>{t('driver.formsHint')}</DText>
+        </View>
+        {canSendSigning && <AddFolderButton companyId={companyId} onChanged={() => void signing.reload()} />}
       </View>
       <View style={[styles.card, styles.listCard]}>
         <DriverSigningList
@@ -659,6 +662,10 @@ const styles = StyleSheet.create({
 
   // Header portrait
   heroWho: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14 },
+  // "טפסים לחתימה" head with "+ הוסף תיקייה" beside it
+  formsHead: { flexDirection: 'row-reverse', alignItems: 'flex-end', gap: 12 },
+  formsHeadText: { flex: 1, minWidth: 0, gap: 1 },
+
   portrait: {
     width: 60,
     height: 60,

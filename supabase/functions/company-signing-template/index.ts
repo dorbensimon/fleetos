@@ -64,6 +64,65 @@ function titleKey(value: string | null | undefined): string {
 /** The fixed folders of every driver's file (lib/compliance.ts DRIVER_COMPLIANCE); a document may not take their names. */
 const FIXED_DRIVER_FOLDERS = ['הצהרת בריאות', 'הדרכות תקופתיות', 'נוהל 6 (הסעת ילדים)', 'נוהל 6', 'רישיון מנוף', 'תוקף ר.פ'];
 
+const STALE_DRAFT_MS = 15 * 60 * 1000;
+
+type CatalogFolder = {
+  id: string; title: string; kind: 'document' | 'checklist';
+  default_valid_months: number | null; default_lead_days: number;
+};
+
+/** The catalog folder, only while this company has it added. */
+async function companyFolder(adminClient: SupabaseClient, companyId: string, catalogId: string): Promise<CatalogFolder | null> {
+  const { data: added } = await adminClient.from('company_catalog_folders')
+    .select('catalog_id').eq('company_id', companyId).eq('catalog_id', catalogId).is('removed_at', null).maybeSingle();
+  if (!added) return null;
+  const { data } = await adminClient.from('folder_catalog')
+    .select('id, title, kind, default_valid_months, default_lead_days').eq('id', catalogId).maybeSingle();
+  return (data as CatalogFolder | null) ?? null;
+}
+
+/** Is this draft folder already a form, or one of a form's earlier versions? */
+async function draftInUse(adminClient: SupabaseClient, folder: string): Promise<boolean> {
+  const prefix = `${folder}/%`;
+  const [templates, versions] = await Promise.all([
+    adminClient.from('signing_templates').select('id').like('source_file_path', prefix).limit(1),
+    adminClient.from('signing_template_versions').select('id').like('source_file_path', prefix).limit(1),
+  ]);
+  if (templates.error || versions.error) throw new Error('draft lookup failed');
+  return Boolean(templates.data?.length || versions.data?.length);
+}
+
+/** Drivers still waiting to sign an earlier version of the form. */
+async function pendingOnOlderVersion(adminClient: SupabaseClient, templateId: string, version: number): Promise<number> {
+  const { count } = await adminClient.from('signature_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('template_id', templateId).eq('status', 'pending').is('archived_at', null).is('deleted_at', null)
+    .or(`template_version.is.null,template_version.lt.${version}`);
+  return count ?? 0;
+}
+
+type ReplaceResult =
+  | { ok: true; template: Record<string, unknown>; pendingOld: number }
+  | { ok: false; status: number; error: string; code?: string };
+
+async function replaceVersion(
+  adminClient: SupabaseClient, companyId: string, replacing: { id: string; version: number },
+  docusealId: number | null, path: string, fileName: string, form: unknown, actor: string,
+): Promise<ReplaceResult> {
+  const { data: version, error } = await adminClient.rpc('replace_signing_template_version', {
+    target_template: replacing.id, target_company: companyId, expected_version: replacing.version,
+    new_docuseal_template_id: docusealId, new_source_file_path: path, new_source_file_name: fileName,
+    new_form_content: form, actor,
+  });
+  if (error) {
+    console.error('company-signing-template replace failed', error.message);
+    return { ok: false, status: 500, error: 'שמירת הנוסח החדש נכשלה' };
+  }
+  if (version == null) return { ok: false, status: 409, error: 'הטופס עודכן בינתיים. רעננו ונסו שוב.', code: 'stale' };
+  const { data: template } = await adminClient.from('signing_templates').select('*').eq('id', replacing.id).single();
+  return { ok: true, template: template ?? {}, pendingOld: await pendingOnOlderVersion(adminClient, replacing.id, version as number) };
+}
+
 function draftFolder(companyId: string, draftId: string) {
   return `${companyId}/signing-templates/${draftId}`;
 }
@@ -418,11 +477,35 @@ Deno.serve(async (req) => {
     const access = await verifyCompanyAccess(req.headers.get('Authorization'), companyId ?? null);
     if (!access.ok) return json({ error: access.error }, access.status);
     if (access.callerRole !== 'admin' && access.callerRole !== 'owner') return json({ error: 'אין הרשאה ליצור מסמכים' }, 403);
+
+    // Bring back an earlier version of a folder's form (its DocuSeal template was kept).
+    if (action === 'restore-version') {
+      const { templateId, version, expectedVersion } = body;
+      if (typeof templateId !== 'string' || !UUID.test(templateId) || !Number.isInteger(version) || !Number.isInteger(expectedVersion)) {
+        return json({ error: 'חסרים פרטי הטופס' }, 400);
+      }
+      const { data: restored, error } = await access.adminClient.rpc('restore_signing_template_version', {
+        target_template: templateId, target_company: companyId, version_number: version, expected_version: expectedVersion, actor: access.callerId,
+      });
+      if (error) {
+        console.error('company-signing-template restore failed', error.message);
+        return json({ error: 'שחזור הנוסח נכשל' }, 500);
+      }
+      if (restored == null) return json({ error: 'הטופס עודכן בינתיים. רעננו ונסו שוב.', code: 'stale' }, 409);
+      const { data: template } = await access.adminClient.from('signing_templates').select('*').eq('id', templateId).single();
+      return json({ template, pendingOld: await pendingOnOlderVersion(access.adminClient, templateId, restored as number) });
+    }
+
     if (typeof draftId !== 'string' || !UUID.test(draftId)) return json({ error: 'מזהה הטיוטה אינו תקין' }, 400);
 
     const folder = draftFolder(companyId, draftId);
     const pdfPath = `${folder}/document.pdf`;
     const storage = access.adminClient.storage.from('documents');
+
+    // A draft folder that already became a form (or one of its versions) is never written again.
+    if (await draftInUse(access.adminClient, folder)) {
+      return json({ error: 'הטיוטה כבר נשמרה. סגרו את החלון ופתחו אותו מחדש.' }, 409);
+    }
 
     if (action === 'prepare') {
       const { uploadName } = body;
@@ -453,22 +536,75 @@ Deno.serve(async (req) => {
       return json({ pdfPath });
     }
 
-    if (action !== 'create') return json({ error: 'פעולה לא מוכרת' }, 400);
+    if (action !== 'create' && action !== 'replace') return json({ error: 'פעולה לא מוכרת' }, 400);
 
-    const title = typeof body.title === 'string' ? body.title.replace(/\s+/g, ' ').trim().slice(0, 120) : '';
-    if (!title) return json({ error: 'חסר שם למסמך' }, 400);
-    // Each document the company can send has its own name, so a driver's
-    // folders and the manager's list never show two alike.
-    const { data: named, error: namedError } = await access.adminClient.from('signing_templates')
-      .select('title').or(`company_id.eq.${companyId},company_id.is.null`).eq('status', 'ready').is('archived_at', null);
-    if (namedError) return json({ error: 'שמירת המסמך נכשלה. נסו שוב.' }, 500);
-    if (FIXED_DRIVER_FOLDERS.some((name) => titleKey(name) === titleKey(title))) {
-      return json({ error: 'יש כבר תיקייה קבועה בשם הזה בתיק הנהג. בחרו שם אחר.' }, 409);
-    }
-    if ((named ?? []).some((row) => titleKey(row.title) === titleKey(title))) {
-      return json({ error: 'כבר יש מסמך בשם הזה. בחרו שם אחר.' }, 409);
-    }
     const kind = body.kind;
+    if (kind !== 'checklist' && kind !== 'pdf' && kind !== 'editor') return json({ error: 'סוג המסמך אינו תקין' }, 400);
+    const formKind = kind === 'checklist' ? 'checklist' : 'document';
+
+    // What is being saved: a new form of a catalog folder, a new version of a
+    // folder's form ("replace form"), or a company's own document.
+    let title = '';
+    let catalog: CatalogFolder | null = null;
+    let replacing: { id: string; version: number } | null = null;
+
+    if (action === 'replace') {
+      const { templateId, expectedVersion } = body;
+      if (typeof templateId !== 'string' || !UUID.test(templateId) || !Number.isInteger(expectedVersion)) {
+        return json({ error: 'חסרים פרטי הטופס' }, 400);
+      }
+      const { data: current } = await access.adminClient.from('signing_templates')
+        .select('id, title, version, form_kind, catalog_folder_id, archived_at, status')
+        .eq('id', templateId).eq('company_id', companyId).maybeSingle();
+      if (!current || !current.catalog_folder_id || current.archived_at || current.status !== 'ready') return json({ error: 'הטופס לא נמצא' }, 404);
+      if (current.form_kind !== formKind) return json({ error: 'סוג הטופס לא מתאים לתיקייה' }, 400);
+      if (current.version !== expectedVersion) return json({ error: 'הטופס עודכן בינתיים. רעננו ונסו שוב.', code: 'stale' }, 409);
+      replacing = { id: current.id, version: current.version };
+      title = current.title;
+    } else if (body.catalogFolderId != null) {
+      if (typeof body.catalogFolderId !== 'string' || !UUID.test(body.catalogFolderId)) return json({ error: 'התיקייה אינה תקינה' }, 400);
+      catalog = await companyFolder(access.adminClient, companyId, body.catalogFolderId);
+      if (!catalog) return json({ error: 'התיקייה לא נוספה לחברה' }, 404);
+      if (catalog.kind !== formKind) return json({ error: 'סוג הטופס לא מתאים לתיקייה' }, 400);
+      title = catalog.title;
+      const { data: existing } = await access.adminClient.from('signing_templates')
+        .select('id, status, created_at, docuseal_template_id')
+        .eq('company_id', companyId).eq('catalog_folder_id', catalog.id).maybeSingle();
+      if (existing) {
+        // A draft left by a create that crashed half way would block the folder forever.
+        const stale = existing.status === 'draft' && Date.now() - new Date(existing.created_at).getTime() > STALE_DRAFT_MS;
+        if (!stale) return json({ error: 'כבר נוצר טופס לתיקייה הזאת. רעננו את המסך.', code: 'exists' }, 409);
+        await deleteRemoteTemplate(existing.docuseal_template_id ?? undefined);
+        await access.adminClient.from('signing_templates').delete().eq('id', existing.id).eq('status', 'draft');
+      }
+      const { data: named, error: namedError } = await access.adminClient.from('signing_templates')
+        .select('title').eq('company_id', companyId).eq('status', 'ready').is('archived_at', null);
+      if (namedError) return json({ error: 'שמירת המסמך נכשלה. נסו שוב.' }, 500);
+      if ((named ?? []).some((row) => titleKey(row.title) === titleKey(title))) {
+        return json({ error: 'כבר יש לכם מסמך בשם הזה. אפשר לקשר אותו לתיקייה במקום ליצור חדש.', code: 'can_link' }, 409);
+      }
+    } else {
+      title = typeof body.title === 'string' ? body.title.replace(/\s+/g, ' ').trim().slice(0, 120) : '';
+      if (!title) return json({ error: 'חסר שם למסמך' }, 400);
+      // Each document the company can send has its own name, so a driver's
+      // folders and the manager's list never show two alike.
+      const [{ data: named, error: namedError }, { data: catalogNames, error: catalogError }] = await Promise.all([
+        access.adminClient.from('signing_templates')
+          .select('title').or(`company_id.eq.${companyId},company_id.is.null`).eq('status', 'ready').is('archived_at', null),
+        access.adminClient.from('folder_catalog').select('title').is('retired_at', null),
+      ]);
+      if (namedError || catalogError) return json({ error: 'שמירת המסמך נכשלה. נסו שוב.' }, 500);
+      if (FIXED_DRIVER_FOLDERS.some((name) => titleKey(name) === titleKey(title))) {
+        return json({ error: 'יש כבר תיקייה קבועה בשם הזה בתיק הנהג. בחרו שם אחר.' }, 409);
+      }
+      if ((catalogNames ?? []).some((row) => titleKey(row.title) === titleKey(title))) {
+        return json({ error: 'יש תיקייה מוכנה בשם הזה. הוסיפו אותה לתיק הנהג ("+ הוסף תיקייה") וצרו בה את הטופס.', code: 'catalog_name' }, 409);
+      }
+      if ((named ?? []).some((row) => titleKey(row.title) === titleKey(title))) {
+        return json({ error: 'כבר יש מסמך בשם הזה. בחרו שם אחר.' }, 409);
+      }
+    }
+
     if (kind === 'checklist') {
       const form = parseForm(body.form);
       if (!form) return json({ error: 'הסעיפים בטופס אינם תקינים' }, 400);
@@ -481,21 +617,31 @@ Deno.serve(async (req) => {
       }
       const { error: uploadError } = await storage.upload(pdfPath, pdf, { contentType: 'application/pdf', upsert: true });
       if (uploadError) return json({ error: 'שמירת הטופס נכשלה' }, 500);
+
+      if (replacing) {
+        const replaced = await replaceVersion(access.adminClient, companyId, replacing, null, pdfPath, `${title}.pdf`, form, access.callerId);
+        if (!replaced.ok) {
+          await storage.remove([pdfPath]);
+          return json({ error: replaced.error, code: replaced.code }, replaced.status);
+        }
+        return json({ template: replaced.template, pendingOld: replaced.pendingOld });
+      }
+
       const { data: row, error: insertError } = await access.adminClient
         .from('signing_templates')
         .insert({
           company_id: companyId, created_by: access.callerId, title, source_file_path: pdfPath, source_file_name: `${title}.pdf`,
-          status: 'ready', form_kind: 'checklist', form_content: form,
+          status: 'ready', form_kind: 'checklist', form_content: form, catalog_folder_id: catalog?.id ?? null,
         })
         .select('*')
         .single();
       if (insertError || !row) {
         await storage.remove([pdfPath]);
+        if (insertError?.code === '23505') return json({ error: 'כבר נוצר טופס לתיקייה הזאת. רעננו את המסך.', code: 'exists' }, 409);
         return json({ error: 'שמירת הטופס נכשלה' }, 500);
       }
       return json({ template: row });
     }
-    if (kind !== 'pdf' && kind !== 'editor') return json({ error: 'סוג המסמך אינו תקין' }, 400);
 
     let fields: PlacedField[] | null = null;
     let pageSizes: Array<{ width: number; height: number }> = [];
@@ -520,12 +666,24 @@ Deno.serve(async (req) => {
       if (fields!.some((f) => f.page > pageSizes.length)) return json({ error: 'אחד השדות נמצא בעמוד שלא קיים' }, 400);
     }
 
-    const { data: row, error: insertError } = await access.adminClient
-      .from('signing_templates')
-      .insert({ company_id: companyId, created_by: access.callerId, title, source_file_path: pdfPath, source_file_name: `${title}.pdf`, status: 'draft' })
-      .select('id')
-      .single();
-    if (insertError || !row) return json({ error: 'שמירת המסמך נכשלה' }, 500);
+    // A replacement builds its DocuSeal template first and swaps it in at the
+    // end; a new form gets its row first (the unique index stops a second one).
+    let rowId: string;
+    if (replacing) {
+      rowId = replacing.id;
+    } else {
+      const { data: row, error: insertError } = await access.adminClient
+        .from('signing_templates')
+        .insert({
+          company_id: companyId, created_by: access.callerId, title, source_file_path: pdfPath, source_file_name: `${title}.pdf`,
+          status: 'draft', catalog_folder_id: catalog?.id ?? null,
+        })
+        .select('id')
+        .single();
+      if (insertError?.code === '23505') return json({ error: 'כבר נוצר טופס לתיקייה הזאת. רעננו את המסך.', code: 'exists' }, 409);
+      if (insertError || !row) return json({ error: 'שמירת המסמך נכשלה' }, 500);
+      rowId = row.id;
+    }
 
     const folderName = `FleetOS-${companyId}`;
     let remote: RemoteTemplate | null = null;
@@ -533,11 +691,11 @@ Deno.serve(async (req) => {
       if (kind === 'pdf') {
         const { data: signed, error } = await storage.createSignedUrl(pdfPath, 60 * 30);
         if (error || !signed?.signedUrl) throw new Error('signed url failed');
-        remote = await createFromPdf(title, folderName, row.id, signed.signedUrl, fields!, pageSizes);
+        remote = await createFromPdf(title, folderName, rowId, signed.signedUrl, fields!, pageSizes);
       } else {
         const response = await docusealFetch('/templates/html', {
           method: 'POST',
-          body: JSON.stringify({ name: title, html: rendered!, size: 'A4', folder_name: folderName, external_id: row.id }),
+          body: JSON.stringify({ name: title, html: rendered!, size: 'A4', folder_name: folderName, external_id: rowId }),
         });
         if (!response.ok) throw new Error(`DocuSeal rejected the html template (${response.status})`);
         remote = await response.json() as RemoteTemplate;
@@ -550,21 +708,46 @@ Deno.serve(async (req) => {
         if (uploadError) throw new Error('storing the generated pdf failed');
       }
       if (!remote?.id) throw new Error('DocuSeal returned no template id');
-
-      const { data: ready, error: readyError } = await access.adminClient
-        .from('signing_templates')
-        .update({ docuseal_template_id: remote.id, status: 'ready', updated_at: new Date().toISOString() })
-        .eq('id', row.id)
-        .select('*')
-        .single();
-      if (readyError || !ready) throw new Error('marking the template ready failed');
-      return json({ template: ready });
     } catch (error) {
       console.error('company-signing-template create failed', error instanceof Error ? error.message : 'unknown');
       await deleteRemoteTemplate(remote?.id);
-      await access.adminClient.from('signing_templates').delete().eq('id', row.id);
+      if (replacing) await storage.remove([pdfPath]);
+      else await access.adminClient.from('signing_templates').delete().eq('id', rowId).eq('status', 'draft');
       return json({ error: 'יצירת המסמך ב-DocuSeal נכשלה. נסו שוב בעוד רגע.' }, 502);
     }
+
+    if (replacing) {
+      const replaced = await replaceVersion(access.adminClient, companyId, replacing, remote.id, pdfPath, `${title}.pdf`, null, access.callerId);
+      if (!replaced.ok) {
+        // Only the new version is undone. The old DocuSeal template stays: deleting
+        // it can take the drivers' signatures on it down with it.
+        await deleteRemoteTemplate(remote.id);
+        await storage.remove([pdfPath]);
+        return json({ error: replaced.error, code: replaced.code }, replaced.status);
+      }
+      return json({ template: replaced.template, pendingOld: replaced.pendingOld });
+    }
+
+    const { data: ready, error: readyError } = await access.adminClient
+      .from('signing_templates')
+      .update({ docuseal_template_id: remote.id, status: 'ready', updated_at: new Date().toISOString() })
+      .eq('id', rowId)
+      .select('*')
+      .single();
+    if (readyError || !ready) {
+      console.error('company-signing-template ready failed', readyError?.message ?? 'no row');
+      await deleteRemoteTemplate(remote.id);
+      await access.adminClient.from('signing_templates').delete().eq('id', rowId).eq('status', 'draft');
+      return json({ error: 'יצירת המסמך ב-DocuSeal נכשלה. נסו שוב בעוד רגע.' }, 502);
+    }
+    // The folder's default validity becomes the company's rule (it can change it later).
+    if (catalog?.default_valid_months) {
+      const { error: ruleError } = await access.adminClient.from('signing_template_rules').upsert({
+        company_id: companyId, template_id: ready.id, valid_months: catalog.default_valid_months, lead_days: catalog.default_lead_days,
+      }, { onConflict: 'company_id,template_id', ignoreDuplicates: true });
+      if (ruleError) console.error('company-signing-template default rule failed', ruleError.message);
+    }
+    return json({ template: ready });
   } catch (error) {
     console.error('company-signing-template failed', error instanceof Error ? error.message : 'unknown');
     return json({ error: 'הפעולה נכשלה' }, 500);

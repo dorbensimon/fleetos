@@ -13,6 +13,7 @@ import { AttentionDesktopView } from '../../components/desktop/AttentionDesktopV
 import { AttentionMobile } from './mobile/AttentionMobile';
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
+import { listCompanyFolders } from '../../lib/folderCatalog';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Attention'>;
 
@@ -24,6 +25,8 @@ export default function AttentionScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Folders added to every driver's file that still have no form to send.
+  const [emptyFolders, setEmptyFolders] = useState<{ id: string; title: string }[]>([]);
 
   const load = useCallback(async () => {
     if (!companyId) {
@@ -33,7 +36,12 @@ export default function AttentionScreen({ navigation }: Props) {
     }
     setError(null);
     try {
-      setDetails(await getAttentionDetails(companyId));
+      const [attention, folders] = await Promise.all([
+        getAttentionDetails(companyId),
+        listCompanyFolders(companyId).then((result) => result.folders).catch(() => []),
+      ]);
+      setDetails(attention);
+      setEmptyFolders(folders.filter((folder) => folder.added && !folder.form).map(({ id, title }) => ({ id, title })));
     } catch (e: any) {
       setError(errorMessage(e, t('attention.loadFailed')));
     } finally {
@@ -50,12 +58,13 @@ export default function AttentionScreen({ navigation }: Props) {
 
   if (isDesktop) {
     const data = details ? summarizeAttention(details) : { license: 0, insurance: 0, unassignedVehicles: 0, missingLicenseDocuments: 0 };
-    const total = Object.values(data).reduce((a, b) => a + b, 0);
+    const total = Object.values(data).reduce((a, b) => a + b, 0) + emptyFolders.length;
     const rows = [
       { count: data.license, icon: 'card-outline' as React.ComponentProps<typeof Ionicons>['name'], title: t('attention.licensesNeedAttention'), detail: t('attention.licensesExpiring30') },
       { count: data.insurance, icon: 'shield-outline' as const, title: t('attention.vehiclesNoInsurance'), detail: t('attention.insuranceMissingExpired') },
       { count: data.unassignedVehicles, icon: 'car-outline' as const, title: t('attention.vehiclesNoDriver'), detail: t('attention.noActiveAssignment') },
       { count: data.missingLicenseDocuments, icon: 'document-outline' as const, title: t('attention.driversUnverified'), detail: t('attention.licensePhotoMissing') },
+      { count: emptyFolders.length, icon: 'folder-open-outline' as const, title: t('folders.attentionTitle'), detail: emptyFolders.map((folder) => folder.title).join(' · ') || t('folders.attentionHint') },
     ].filter((x) => x.count > 0);
     return (
       <DesktopShell active="Attention" breadcrumbs={[t('nav.management'), t('status.needsAttention')]}>
@@ -88,6 +97,8 @@ export default function AttentionScreen({ navigation }: Props) {
       onOpenInsurance={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, openFolder: 'insurance_mandatory', focus: 'insurance_mandatory' })}
       onAssignDriver={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, openDrivers: true, focus: 'drivers' })}
       onOpenLicenseDocs={(driverId) => navigation.navigate('DriverLicenseDocuments', { driverId })}
+      emptyFolders={emptyFolders}
+      onOpenFolders={() => navigation.navigate('SignedDocuments')}
     />
   );
 }

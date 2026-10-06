@@ -12,6 +12,7 @@ import { loadMeetingPlan, type PlanRow } from '../../lib/meetingPlan';
 import { requestErrorDetails } from '../../lib/requestError';
 import { useFocusEffect } from '@react-navigation/native';
 import { t } from '../../lib/i18n';
+import { listCompanyFolders, type CompanyFolder } from '../../lib/folderCatalog';
 
 /**
  * The company's signing documents. The desktop page (reached from the
@@ -44,6 +45,7 @@ function SignedDocumentsPhone({
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [plan, setPlan] = useState<PlanRow[]>([]);
+  const [catalog, setCatalog] = useState<CompanyFolder[]>([]);
   const request = useRef(0);
 
   // Who needs a meeting: fresh every time the screen is shown (after a meeting, too).
@@ -57,9 +59,14 @@ function SignedDocumentsPhone({
     if (!companyId) return;
     const generation = ++request.current;
     try {
-      const rows = await listSigningTemplates(companyId);
+      const [rows, folders] = await Promise.all([
+        listSigningTemplates(companyId),
+        // Extra: the page still works when the folders fail to load.
+        listCompanyFolders(companyId).then((result) => result.folders).catch(() => [] as CompanyFolder[]),
+      ]);
       if (generation !== request.current) return;
       setTemplates(rows);
+      setCatalog(folders);
       setError('');
     } catch (err) {
       if (generation === request.current) {
@@ -103,6 +110,8 @@ function SignedDocumentsPhone({
       plan={plan}
       openMeeting={openMeeting}
       onMeetingOpened={onMeetingOpened}
+      catalog={catalog}
+      onFoldersChanged={() => void load()}
     />
   );
 }
