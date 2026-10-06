@@ -6,6 +6,7 @@ import {
   createTemplateFromFields,
   newDraftId,
   signedDocumentUrl,
+  type FormTarget,
   uploadSigningDraft,
   type EditorBlock,
   type EditorPlacedField,
@@ -25,6 +26,7 @@ import {
   createChecklistTemplate,
   driverMeetingForm,
   filledItems,
+  readForm,
   formProblem,
   repeatLabel,
   statusOptions,
@@ -52,23 +54,39 @@ function fieldSummary(kinds: SigningFieldKind[]) {
   return [...counts.entries()];
 }
 
+/** A catalog folder the new form is made for: its name and kind are fixed. */
+export type FormFolder = { catalogId: string; title: string; kind: 'document' | 'checklist'; defaultRepeatMonths?: number | null };
+
 export function CreateDocumentSheet({
   companyId,
   takenTitles = [],
+  folder,
+  replace,
   onClosed,
   onCreated,
 }: {
   companyId: string;
   /** Names already used by the company's documents; a new one must differ. */
   takenTitles?: string[];
+  /** "צור טופס" inside a catalog folder. */
+  folder?: FormFolder;
+  /** "החלף טופס": a new version of this folder's form (same name, same kind). */
+  replace?: SigningTemplate;
   onClosed: () => void;
-  onCreated: (template: SigningTemplate) => void;
+  /** `pendingOld`: after a replace, drivers still waiting to sign the earlier version. */
+  onCreated: (template: SigningTemplate, pendingOld?: number) => void;
 }) {
   const { closing, close } = useSheetClose(onClosed);
+  // A folder's form keeps the folder's name and kind.
+  const lockedTitle = folder?.title ?? replace?.title ?? null;
+  const lockedKind = folder?.kind ?? (replace ? (replace.form_kind ?? 'document') : null);
+  const target: FormTarget | undefined = replace
+    ? { replace: { templateId: replace.id, expectedVersion: replace.version ?? 1 } }
+    : folder ? { catalogFolderId: folder.catalogId } : undefined;
   const [draftId, setDraftId] = useState(newDraftId);
   const [step, setStep] = useState<Step>(0);
-  const [title, setTitle] = useState('');
-  const [mode, setMode] = useState<Mode | null>(null);
+  const [title, setTitle] = useState(lockedTitle ?? '');
+  const [mode, setMode] = useState<Mode | null>(lockedKind === 'checklist' ? 'checklist' : null);
   const [nameError, setNameError] = useState(false);
 
   // editor
@@ -130,8 +148,8 @@ export function CreateDocumentSheet({
   };
 
   // A fixed folder of the driver's file is a name too: two folders alike would confuse.
-  const fixedFolderName = isFixedFolderTitle(title);
-  const titleTaken = fixedFolderName || takenTitles.some((taken) => sameDocumentTitle(taken, title));
+  const fixedFolderName = !lockedTitle && isFixedFolderTitle(title);
+  const titleTaken = !lockedTitle && (fixedFolderName || takenTitles.some((taken) => sameDocumentTitle(taken, title)));
   const takenMessage = fixedFolderName ? t('signing.fixedFolderName') : TAKEN_TITLE_MESSAGE();
   const canContinue =
     step === 0
@@ -153,7 +171,13 @@ export function CreateDocumentSheet({
       }
       if (!mode) return;
       if (mode === 'editor' && editorDraft === null) setEditorDraft(initialEditorDraft(title.trim()));
-      if (mode === 'checklist' && checklist === null) setChecklist(driverMeetingForm());
+      if (mode === 'checklist' && checklist === null) {
+        // A folder's form starts empty (or from the version it replaces).
+        if (replace) setChecklist(readForm(replace.form_content) ?? blankChecklistForm());
+        else if (folder) setChecklist({ ...blankChecklistForm(), repeatMonths: folder.defaultRepeatMonths ?? 0 });
+        else setChecklist(driverMeetingForm());
+        if (lockedTitle) setFromTemplate(false);
+      }
       setStep(1);
     } else if (step === 1) {
       leaveEditor();
@@ -171,15 +195,17 @@ export function CreateDocumentSheet({
     setSaving(true);
     setSaveError(null);
     try {
-      const template =
+      const saved =
         mode === 'editor'
-          ? await createTemplateFromEditor(companyId, draftId, title.trim(), blocks, editorFields)
+          ? await createTemplateFromEditor(companyId, draftId, title.trim(), blocks, editorFields, target)
           : mode === 'checklist'
-            ? await createChecklistTemplate(companyId, draftId, title.trim(), checklist!)
-            : await createTemplateFromFields(companyId, draftId, title.trim(), fields);
-      setCreated(template);
-      onCreated(template);
-      setStep(3);
+            ? await createChecklistTemplate(companyId, draftId, title.trim(), checklist!, target)
+            : await createTemplateFromFields(companyId, draftId, title.trim(), fields, target);
+      setCreated(saved.template);
+      onCreated(saved.template, saved.pendingOld);
+      // A new version goes straight to "what to send" (the caller's window).
+      if (replace) close();
+      else setStep(3);
     } catch (error) {
       setSaveError(error instanceof Error && error.message ? error.message : t('common.saveFailedRetry'));
     } finally {
@@ -223,7 +249,7 @@ export function CreateDocumentSheet({
         ) : null}
       </div>
       <div className="sd-sheet-title">
-        <strong className="sd-b">{step === 0 || !title.trim() ? t('signing.newDocument') : title.trim()}</strong>
+        <strong className="sd-b">{replace ? t('folders.newVersionOf', { title: replace.title }) : step === 0 || !title.trim() ? (folder ? t('folders.createForm') : t('signing.newDocument')) : title.trim()}</strong>
         {step < 3 ? (
           <>
             <div className="sd-progress" aria-hidden="true">
@@ -299,6 +325,13 @@ export function CreateDocumentSheet({
       <Sheet closing={closing} onRequestClose={requestClose} label={t('signing.createNewForSigning')} head={head} foot={foot}>
         {step === 0 ? (
           <div className="sd-start sd-stage" key="start">
+            {lockedTitle ? (
+              <>
+                <h2 className="sd-q sd-b">{lockedTitle}</h2>
+                <p className="sd-q-sub">{replace ? t('folders.replaceIntro') : t('folders.createIntro')}</p>
+              </>
+            ) : (
+            <>
             <h2 className="sd-q sd-b">{t('signing.whatName')}</h2>
             <p className="sd-q-sub">{t('signing.nameVisibleToDriver')}</p>
             <input
@@ -331,8 +364,12 @@ export function CreateDocumentSheet({
                 </button>
               ))}
             </div>
+            </>
+            )}
 
             <div className="sd-choices" role="radiogroup" aria-label={t('signing.howToCreate')}>
+              {lockedKind !== 'checklist' ? (
+              <>
               <ChoiceCard
                 selected={mode === 'editor'}
                 onPress={() => setMode('editor')}
@@ -349,6 +386,9 @@ export function CreateDocumentSheet({
                 title={t('signing.method.upload')}
                 text={t('signing.method.uploadText')}
               />
+              </>
+              ) : null}
+              {!lockedKind || lockedKind === 'checklist' ? (
               <ChoiceCard
                 selected={mode === 'checklist'}
                 onPress={() => {
@@ -361,6 +401,7 @@ export function CreateDocumentSheet({
                 text={t('signing.method.checklistText')}
                 badge={t('common.new')}
               />
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -510,10 +551,12 @@ export function CreateDocumentSheet({
               {mode === 'checklist' ? t('meeting.new') : t('common.send')}
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-              <button type="button" className="sd-btn sd-btn-plain sd-btn-lg" onClick={startOver}>
-                <Ionicons name="add" size={20} color="currentColor" />
-                {t('signing.createAnother')}
-              </button>
+              {!lockedTitle ? (
+                <button type="button" className="sd-btn sd-btn-plain sd-btn-lg" onClick={startOver}>
+                  <Ionicons name="add" size={20} color="currentColor" />
+                  {t('signing.createAnother')}
+                </button>
+              ) : null}
               <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={close} style={{ minWidth: 160 }}>
                 {t('common.done')}
               </button>

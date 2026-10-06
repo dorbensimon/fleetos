@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet, Image, ScrollView } from 'react-native';
 import { BrandLoader } from '../components/ui/BrandLoader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../lib/platformAlert';
@@ -26,6 +26,7 @@ import { CompanyUser } from '../components/companyDetail/types';
 import { UserRow } from '../components/companyDetail/UserRow';
 import { CompanyInfoCard, CompanyEditableFields } from '../components/companyDetail/CompanyInfoCard';
 import { DeleteCompanyModal } from '../components/owner/DeleteCompanyModal';
+import { CompanyFoldersPanel } from '../components/owner/CompanyFoldersPanel';
 import {
   AddAdminSheet,
   CredentialsSheet,
@@ -531,7 +532,8 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     return (
       <>
         <DesktopShell active="OwnerHome" breadcrumbs={[t('nav.controlCenter'), company.name]}>
-          <View style={ds.wrap}>
+          {/* The shell's body doesn't scroll; the page does. */}
+          <ScrollView style={ds.scroll} contentContainerStyle={ds.wrap}>
             <View style={ds.headRow}>
               <View style={ds.headMain}>
                 {!!company.logo_url && <Image source={{ uri: company.logo_url }} accessibilityLabel={t('company.logoOf', { name: company.name })} style={ds.logo} resizeMode="cover" />}
@@ -558,6 +560,8 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
             </View>
 
             <DesktopAccountPanel account={account} onEdit={() => setAccountOpen(true)} />
+
+            <CompanyFoldersPanel companyId={company.id} />
 
             <View style={ds.sectionHeadRow}>
               <DText weight="bold" style={ds.sectionTitle}>{t('company.adminsOpen')}{admins.length})</DText>
@@ -586,7 +590,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
                 ))
               )}
             </View>
-          </View>
+          </ScrollView>
         </DesktopShell>
         {modals}
       </>
@@ -674,6 +678,7 @@ const styles = StyleSheet.create({
 });
 
 const ds = StyleSheet.create({
+  scroll: { flex: 1 },
   wrap: { padding: 24, maxWidth: 620, alignSelf: 'center', width: '100%', gap: 14 },
   headRow: { marginBottom: 4 },
   headMain: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },

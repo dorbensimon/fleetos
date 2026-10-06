@@ -29,6 +29,8 @@ import { isChecklistTemplate, readForm, repeatLabel } from '../../../lib/checkli
 import { isDueSoon, planByDriver, type PlanRow } from '../../../lib/meetingPlan';
 import { DuePill } from '../../../components/checklist/DuePill';
 import { t, dirIcon } from '../../../lib/i18n';
+import type { CompanyFolder } from '../../../lib/folderCatalog';
+import { AddCatalogFolderSheet, EmptyCatalogFolderSheet, useRemoveCatalogFolder } from '../../../components/desktop/signing/FolderCatalogSheets';
 
 type Props = {
   insetTop: number;
@@ -52,6 +54,10 @@ type Props = {
   /** Opens this form's "עם מי המפגש?" list on arrival (from a notification). */
   openMeeting?: string;
   onMeetingOpened: () => void;
+  /** The company's catalog folders (lib/folderCatalog.ts). */
+  catalog: CompanyFolder[];
+  /** After a folder was added, linked or removed. */
+  onFoldersChanged: () => void;
 };
 
 const DUE_COLLAPSED = 4;
@@ -88,9 +94,15 @@ export function SignedDocumentsMobile(p: Props) {
     return [...rows].sort((a, b) => (templatePlan.get(a.id)?.nextDue ?? '9999').localeCompare(templatePlan.get(b.id)?.nextDue ?? '9999'));
   }, [send.drivers, templatePlan]);
 
-  const own = (p.templates ?? []).filter((entry) => entry.company_id === p.companyId);
+  const own = (p.templates ?? []).filter((entry) => entry.company_id === p.companyId && !entry.catalog_folder_id);
   const shared = (p.templates ?? []).filter((entry) => entry.company_id === null);
   const isOwn = !!template && template.company_id === p.companyId;
+  // A folder's form is removed with its folder, never deleted (forms are made and replaced on a computer).
+  const folderOfTemplate = template?.catalog_folder_id ? p.catalog.find((folder) => folder.id === template.catalog_folder_id) ?? null : null;
+  const addedFolders = p.catalog.filter((folder) => folder.added);
+  const [addingFolder, setAddingFolder] = useState(false);
+  const [emptyFolder, setEmptyFolder] = useState<CompanyFolder | null>(null);
+  const removeFolder = useRemoveCatalogFolder(p.companyId, p.onFoldersChanged);
 
   const openSheet = (entry: SigningTemplate) => {
     setTemplate(entry);
@@ -232,9 +244,21 @@ export function SignedDocumentsMobile(p: Props) {
             <View style={styles.actions}>
               <ActionRow icon="eye-outline" label={busy === 'view' ? t('common.opening') : checklist ? t('signing.viewForm') : t('signing.viewDocument')} hint={checklist ? t('signing.blankAsPrinted') : t('signing.asDriverSees')} onPress={() => void view()} disabled={!!busy} />
               <ActionRow icon="download-outline" label={busy === 'download' ? t('common.downloading') : t('common.download')} hint={t('signing.saveOrShare')} onPress={() => void download()} disabled={!!busy} first={false} />
-              {isOwn && (
+              {isOwn && folderOfTemplate ? (
+                <ActionRow
+                  icon="folder-open-outline"
+                  tone="danger"
+                  label={t('folders.removeFolder')}
+                  onPress={() => {
+                    setOpen(false);
+                    removeFolder.start(folderOfTemplate.id, folderOfTemplate.title);
+                  }}
+                  disabled={!!busy}
+                  first={false}
+                />
+              ) : isOwn ? (
                 <ActionRow icon="trash-outline" tone="danger" label={busy === 'check' ? t('common.checking') : t('documents.deleteDocument')} onPress={() => void askDelete()} disabled={!!busy} first={false} />
-              )}
+              ) : null}
             </View>
           ) : null}
         </KitSheet>
@@ -280,6 +304,48 @@ export function SignedDocumentsMobile(p: Props) {
             </Reveal>
           )}
           <Reveal index={2}>
+            <KitSection
+              title={t('folders.sectionTitle')}
+              trailing={
+                <Pressy onPress={() => setAddingFolder(true)} accessibilityLabel={t('folders.addButton')} pressScale={0.95}>
+                  <View style={styles.addFolder}>
+                    <Ionicons name="add" size={16} color={DK.accent} />
+                    <DKText variant="label" color={DK.accent}>{t('folders.addShort')}</DKText>
+                  </View>
+                </Pressy>
+              }
+            >
+              {!!removeFolder.error && <Banner tone="expired">{removeFolder.error}</Banner>}
+              {addedFolders.length ? (
+                addedFolders.map((folder, index) => {
+                  const form = folder.form ? (p.templates ?? []).find((entry) => entry.id === folder.form!.id) : null;
+                  return form ? (
+                    <ListRow
+                      key={folder.id}
+                      first={index === 0}
+                      leading={<TemplateThumb template={form} />}
+                      title={folder.title}
+                      subtitle={t('folders.versionN', { version: form.version ?? 1 })}
+                      onPress={() => openSheet(form)}
+                    />
+                  ) : (
+                    <ListRow
+                      key={folder.id}
+                      first={index === 0}
+                      icon="folder-open-outline"
+                      tint={DK.accent}
+                      title={folder.title}
+                      subtitle={t('folders.noFormYet')}
+                      onPress={() => setEmptyFolder(folder)}
+                    />
+                  );
+                })
+              ) : (
+                <DKText variant="caption" color={DK.muted} style={styles.empty}>{t('folders.noneAddedHint')}</DKText>
+              )}
+            </KitSection>
+          </Reveal>
+          <Reveal index={2}>
             <KitSection title={t('signing.companyDocuments')} trailing={own.length ? <DKText variant="micro" color={DK.muted}>{own.length === 1 ? t('documents.oneDocument') : t('documents.count', { length: own.length })}</DKText> : undefined}>
               {own.length ? (
                 own.map((entry, index) => (
@@ -303,6 +369,20 @@ export function SignedDocumentsMobile(p: Props) {
           )}
         </>
       )}
+      {addingFolder && (
+        <AddCatalogFolderSheet
+          companyId={p.companyId}
+          onClosed={() => setAddingFolder(false)}
+          onAdded={(folder, templateId) => {
+            p.onFoldersChanged();
+            if (!templateId) setEmptyFolder({ ...folder, added: true });
+          }}
+        />
+      )}
+      {emptyFolder && (
+        <EmptyCatalogFolderSheet companyId={p.companyId} folder={emptyFolder} onClosed={() => setEmptyFolder(null)} onChanged={p.onFoldersChanged} />
+      )}
+      {removeFolder.dialog}
     </DriverPage>
   );
 }
@@ -314,4 +394,5 @@ const styles = StyleSheet.create({
   driver: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 14, paddingVertical: 8 },
   more: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 52 },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },
+  addFolder: { flexDirection: 'row-reverse', alignItems: 'center', gap: 2, minHeight: 32, paddingHorizontal: 6 },
 });

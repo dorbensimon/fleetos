@@ -2,6 +2,8 @@ import { supabase } from './supabase';
 import { functionErrorMessage } from './functionError';
 import type { SigningTemplate } from './docuseal';
 import { t } from './i18n';
+import { callFunction } from './folderCatalog';
+import { formTargetBody, type FormTarget, type SavedForm } from './companySigningTemplates';
 
 /**
  * "רשימת סעיפים": a form the manager (or the safety officer) fills during a
@@ -332,10 +334,10 @@ export async function cancelMeeting(companyId: string, meetingId: string): Promi
   await invoke({ action: 'cancel', companyId, meetingId }, t('checklist.deleteMeetingFailed'));
 }
 
-export async function createChecklistTemplate(companyId: string, draftId: string, title: string, form: ChecklistForm): Promise<SigningTemplate> {
-  const { data, error } = await supabase.functions.invoke('company-signing-template', {
-    body: { action: 'create', kind: 'checklist', companyId, draftId, title, form: cleanForm(form) },
-  });
-  if (error || data?.error) throw new Error(await functionErrorMessage(error, data, t('checklist.saveFormFailed'), false));
-  return (data as { template: SigningTemplate }).template;
+export async function createChecklistTemplate(companyId: string, draftId: string, title: string, form: ChecklistForm, target?: FormTarget): Promise<SavedForm> {
+  return callFunction<SavedForm>(
+    'company-signing-template',
+    { ...formTargetBody(target), kind: 'checklist', companyId, draftId, title, form: cleanForm(form) },
+    t('checklist.saveFormFailed'),
+  );
 }

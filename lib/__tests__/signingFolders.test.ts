@@ -1,4 +1,5 @@
 import { buildSigningFolders, signingFolderStatus } from '../signingFolders';
+import type { CompanyFolder } from '../folderCatalog';
 import { missingPrefill } from '../../supabase/functions/_shared/signingPrefill';
 import type { SignatureRequest, SigningTemplate } from '../docuseal';
 const template = { id: 't1', title: 'בריאות', status: 'ready', company_id: null } as SigningTemplate;
@@ -42,4 +43,26 @@ test('safety officer inspections signed before and after the rename share one fo
   expect(folders).toHaveLength(1);
   expect(folders[0].title).toBe('בדיקת קצין בטיחות לרכב');
   expect(folders[0].requests).toHaveLength(2);
+});
+
+const catalogFolder = (id: string, title: string, extra: Partial<CompanyFolder> = {}) => ({
+  id, title, kind: 'document', description: null, sort_order: 0, retired_at: null,
+  default_valid_months: null, default_lead_days: 30, default_repeat_months: null,
+  added: true, form: null, sameName: null, linkable: [], ...extra,
+} as CompanyFolder);
+
+test('an added catalog folder with no form shows empty for managers, catalog folders first in the owner order', () => {
+  const own = { ...template, id: 'own', title: 'אאא מסמך שלי' } as SigningTemplate;
+  const linked = { ...template, id: 'f2form', title: 'ביטוח', catalog_folder_id: 'c2' } as SigningTemplate;
+  const folders = buildSigningFolders([own, linked], [], [
+    catalogFolder('c1', 'תדריך'),
+    catalogFolder('c2', 'ביטוח', { form: { id: 'f2form', version: 1, updatedAt: '' } }),
+    catalogFolder('c3', 'לא נוסף', { added: false }),
+  ]);
+  expect(folders.map((f) => f.title)).toEqual(['תדריך', 'ביטוח', 'אאא מסמך שלי']);
+  expect(folders[0].emptyCatalog?.id).toBe('c1');
+  expect(signingFolderStatus(folders[0])).toBe('empty');
+});
+test('a driver (no catalog given) never gets empty catalog folders', () => {
+  expect(buildSigningFolders([], [])).toEqual([]);
 });

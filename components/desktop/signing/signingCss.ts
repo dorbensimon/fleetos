@@ -285,9 +285,9 @@ export const SIGNING_CSS = `
 }
 .sd-area-btn:active { transform: scale(0.98); }
 @media (hover: hover) and (pointer: fine) { .sd-area-btn:hover { background: rgba(0,136,204,0.16) !important; } }
-.sd-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sd-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .sd-tile {
-  display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 6px 8px; border-radius: 12px; text-align: start; font-size: 14px; line-height: 1.2; white-space: nowrap;
+  display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 6px 8px; border-radius: 12px; text-align: start; font-size: 14px; line-height: 1.2; min-width: 0; overflow-wrap: anywhere;
   background: var(--sd-bg) !important; box-shadow: inset 0 0 0 1px var(--sd-sep); cursor: grab; user-select: none;
   transition: box-shadow 150ms ease, background-color 150ms ease, transform 160ms var(--sd-ease);
 }
@@ -498,6 +498,9 @@ export const SIGNING_CSS = `
   .sd-hero { grid-template-columns: 1fr; }
   .sd-art { display: none; }
   .sd-review { grid-template-columns: 1fr; }
-  .sd-work { grid-template-columns: 270px minmax(0, 1fr); }
+  /* The A4 page (794px) is wider than the column here: trim only its blank side margins
+     (72px each) so it never covers the field panel. clip, not auto, keeps the toolbar sticky. */
+  .sd-work { grid-template-columns: 250px minmax(0, 1fr); }
+  .sd-canvas { padding-inline: 12px; overflow-x: clip; }
 }
 `;

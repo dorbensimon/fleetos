@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { FolderCatalogManager } from './FolderCatalogManager';
 import { FlatList, Image, RefreshControl, StatusBar, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -330,9 +331,23 @@ function Footer({ overview, onOpen, onExport }: { overview: PlatformOverview; on
   const total = days.reduce((n, d) => n + d.count, 0);
   const disabled = overview.totals.companies - overview.totals.activeCompanies;
   const notActivated = overview.totals.notActivated;
+  const [catalogOpen, setCatalogOpen] = useState(false);
   return (
     <View style={styles.footer}>
       <Revenue overview={overview} onOpen={onOpen} onExport={onExport} />
+
+      <KitSection title={t('folders.catalogTitle')} style={styles.sectionGap}>
+        <Pressy onPress={() => setCatalogOpen(true)} accessibilityLabel={t('folders.catalogTitle')} pressScale={0.985}>
+          <View style={styles.upRow}>
+            <Ionicons name="folder-open-outline" size={18} color={DK.accent} />
+            <DKText variant="label" color={DK.accent} style={styles.flex}>
+              {t('folders.manageCatalog')}
+            </DKText>
+            <Ionicons name={dirIcon('chevron-back')} size={16} color={DK.faint} />
+          </View>
+        </Pressy>
+      </KitSection>
+      {catalogOpen && <FolderCatalogManager onClosed={() => setCatalogOpen(false)} />}
 
       <KitSection title={t('owner.systemUsage')} style={styles.sectionGap}>
         <View style={styles.chartBox} accessible accessibilityLabel={t('owner.totalActions', { total, ACTIVITY_DAYS })}>

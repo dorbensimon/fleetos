@@ -26,6 +26,9 @@ import { showAlert } from '../../../lib/platformAlert';
 import { eraseSigningRequest, eraseWarning } from '../../../lib/signingSend';
 import { t, dirIcon, getLocale } from '../../../lib/i18n';
 import { errorMessage } from '../../../lib/requestError';
+import { listCompanyFolders, type CompanyFolder } from '../../../lib/folderCatalog';
+import { AddCatalogFolderSheet, EmptyCatalogFolderSheet } from '../signing/FolderCatalogSheets';
+import { CreateDocumentSheet, type FormFolder } from '../signing/CreateDocumentSheet';
 
 type FolderStatus = ReturnType<typeof signingFolderStatus>;
 const STATUS_LABEL: Record<FolderStatus, string> = { get pending() { return t('signing.pendingSignature'); }, get completed() { return t('common.signedDone'); }, get failed() { return t('status.needsAttention'); }, get empty() { return t('signing.notSentShort'); } };
@@ -57,9 +60,14 @@ export function useDriverSigningFolders(companyId: string | null | undefined, dr
     if (!companyId) return;
     const generation = ++request.current;
     try {
-      const [templates, requests] = await Promise.all([listSigningTemplates(companyId), listDriverSigningRequests(driverId)]);
+      const [templates, requests, catalog] = await Promise.all([
+        listSigningTemplates(companyId),
+        listDriverSigningRequests(driverId),
+        // The company's catalog folders (empty ones show too). Extra: the file still loads without them.
+        listCompanyFolders(companyId).then((result) => result.folders).catch(() => [] as CompanyFolder[]),
+      ]);
       if (generation !== request.current) return;
-      setFolders(buildSigningFolders(templates, requests));
+      setFolders(buildSigningFolders(templates, requests, catalog));
       setError('');
     } catch (err: any) {
       if (generation === request.current) setError(errorMessage(err, t('signing.formsLoadFailed')));
@@ -120,6 +128,7 @@ export function DriverSigningList({
   onOpenSession: (target: SigningSessionTarget) => void;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [creatingFor, setCreatingFor] = useState<FormFolder | null>(null);
 
   useEffect(() => {
     if (!openFolderId) return;
@@ -128,6 +137,7 @@ export function DriverSigningList({
   }, [openFolderId, onFolderOpened]);
 
   const openFolder = folders.find((folder) => folder.id === openId) ?? null;
+  const emptyCatalog = openFolder?.emptyCatalog ?? null;
 
   if (loading) return <DText style={styles.message}>{t('signing.loadingForms')}</DText>;
   if (error) return <DText style={styles.message}>{error}</DText>;
@@ -139,8 +149,10 @@ export function DriverSigningList({
         const status = signingFolderStatus(folder);
         const signedAt = lastSignedAt(folder);
         const sentAt = lastSentAt(folder);
-        const checklist = isChecklistTemplate(folder.template);
-        const meta = status === 'pending' && sentAt
+        const checklist = folder.emptyCatalog ? folder.emptyCatalog.kind === 'checklist' : isChecklistTemplate(folder.template);
+        const meta = folder.emptyCatalog
+          ? t('folders.noFormYet')
+          : status === 'pending' && sentAt
           ? checklist ? t('signing.officerSignedOn', { sentAt: day(sentAt) }) : t('signing.sentOn', { sentAt: day(sentAt) })
           : signedAt
             ? t('signing.signedOn', { signedAt: day(signedAt) })
@@ -165,13 +177,32 @@ export function DriverSigningList({
             </View>
             <View style={styles.listStatus}>
               <View style={[styles.listDot, { backgroundColor: color }]} />
-              <DText weight="semiBold" style={[styles.listStatusText, { color }]}>{checklist && status === 'empty' ? t('meeting.none') : STATUS_LABEL[status]}</DText>
+              <DText weight="semiBold" style={[styles.listStatusText, { color: folder.emptyCatalog ? DESKTOP_COLORS.brand : color }]}>
+                {folder.emptyCatalog ? (canSend ? t('folders.createForm') : t('folders.noFormShort')) : checklist && status === 'empty' ? t('meeting.none') : STATUS_LABEL[status]}
+              </DText>
             </View>
             <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
           </HoverPressable>
         );
       })}
-      {openFolder && (
+      {emptyCatalog && canSend && (
+        <EmptyCatalogFolderSheet
+          companyId={companyId}
+          folder={emptyCatalog}
+          onCreate={() => setCreatingFor({ catalogId: emptyCatalog.id, title: emptyCatalog.title, kind: emptyCatalog.kind, defaultRepeatMonths: emptyCatalog.default_repeat_months })}
+          onClosed={() => setOpenId(null)}
+          onChanged={() => void onChanged()}
+        />
+      )}
+      {creatingFor && (
+        <CreateDocumentSheet
+          companyId={companyId}
+          folder={creatingFor}
+          onClosed={() => setCreatingFor(null)}
+          onCreated={() => void onChanged()}
+        />
+      )}
+      {openFolder && !emptyCatalog && (
         <SigningFolderModal
           companyId={companyId}
           driverId={driverId}
@@ -182,6 +213,26 @@ export function DriverSigningList({
           onOpenSession={onOpenSession}
         />
       )}
+    </>
+  );
+}
+
+/** "+ הוסף תיקייה" beside the driver file's forms: adds a catalog folder to every driver of the company. */
+export function AddFolderButton({ companyId, onChanged }: { companyId: string; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <HoverPressable
+        style={styles.addFolder}
+        hoverStyle={styles.addFolderHover}
+        pressStyle={recordStyles.pressDown}
+        onPress={() => setOpen(true)}
+        accessibilityLabel={t('folders.addButton')}
+      >
+        <Ionicons name="add" size={16} color={DESKTOP_COLORS.brand} />
+        <DText weight="semiBold" style={styles.addFolderText}>{t('folders.addButton')}</DText>
+      </HoverPressable>
+      {open && <AddCatalogFolderSheet companyId={companyId} onClosed={() => setOpen(false)} onAdded={() => onChanged()} />}
     </>
   );
 }
@@ -413,8 +464,9 @@ function SigningFolderModal({
                   key={item.id}
                   style={[styles.row, index < folder.requests.length - 1 && recordStyles.rowBorder]}
                   hoverStyle={openable ? recordStyles.rowHover : undefined}
-                  disabled={opening === item.id || !openable}
-                  onPress={() => open(item)}
+                  // Not `disabled` when unopenable: a disabled row swallows its delete button's click.
+                  disabled={opening === item.id}
+                  onPress={() => { if (openable) open(item); }}
                 >
                   <Ionicons
                     name={item.status === 'completed' ? 'checkmark-circle' : ready ? 'time-outline' : 'alert-circle-outline'}
@@ -514,4 +566,16 @@ const styles = StyleSheet.create({
   rowLink: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
   rowDanger: { fontSize: 13.5, color: DESKTOP_COLORS.danger },
   rowAction: { paddingHorizontal: 8, minHeight: 32, borderRadius: 8, justifyContent: 'center' },
+  addFolder: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 4,
+    height: 32,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(47,91,255,0.09)',
+    ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }),
+  },
+  addFolderHover: { backgroundColor: 'rgba(47,91,255,0.16)' },
+  addFolderText: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
 });

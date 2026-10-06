@@ -3,6 +3,7 @@ import { requestErrorDetails } from './requestError';
 import { functionErrorMessage } from './functionError';
 import type { SigningTemplate } from './docuseal';
 import { t } from './i18n';
+import { callFunction } from './folderCatalog';
 
 /**
  * A company admin's own signing templates, created on desktop ("מסמכים חתומים").
@@ -138,20 +139,31 @@ export async function signedDocumentUrl(path: string): Promise<string> {
   return data.signedUrl;
 }
 
-export async function createTemplateFromFields(companyId: string, draftId: string, title: string, fields: PlacedSigningField[]) {
-  const payload = fields.map(({ kind, label, page, x, y, w, h }) => ({ kind, label, page, x, y, w, h }));
-  const { template } = await invoke<{ template: SigningTemplate }>(
-    { action: 'create', kind: 'pdf', companyId, draftId, title, fields: payload },
-    t('signing.saveDocumentFailed'),
-  );
-  return template;
+/** Where a new form goes: a catalog folder, or in place of a folder's current form ("replace form"). */
+export type FormTarget = { catalogFolderId: string } | { replace: { templateId: string; expectedVersion: number } };
+/** A saved form; `pendingOld` = drivers still waiting to sign the version it replaced. */
+export type SavedForm = { template: SigningTemplate; pendingOld?: number };
+
+export function formTargetBody(target?: FormTarget): Record<string, unknown> {
+  if (!target) return { action: 'create' };
+  if ('replace' in target) return { action: 'replace', templateId: target.replace.templateId, expectedVersion: target.replace.expectedVersion };
+  return { action: 'create', catalogFolderId: target.catalogFolderId };
 }
 
-export async function createTemplateFromEditor(companyId: string, draftId: string, title: string, blocks: EditorBlock[], fields: EditorPlacedField[]) {
-  const payload = fields.map(({ kind, label, x, y, w, h }) => ({ kind, label, x, y, w, h }));
-  const { template } = await invoke<{ template: SigningTemplate }>(
-    { action: 'create', kind: 'editor', companyId, draftId, title, blocks, fields: payload },
+export async function createTemplateFromFields(companyId: string, draftId: string, title: string, fields: PlacedSigningField[], target?: FormTarget): Promise<SavedForm> {
+  const payload = fields.map(({ kind, label, page, x, y, w, h }) => ({ kind, label, page, x, y, w, h }));
+  return callFunction<SavedForm>(
+    'company-signing-template',
+    { ...formTargetBody(target), kind: 'pdf', companyId, draftId, title, fields: payload },
     t('signing.saveDocumentFailed'),
   );
-  return template;
+}
+
+export async function createTemplateFromEditor(companyId: string, draftId: string, title: string, blocks: EditorBlock[], fields: EditorPlacedField[], target?: FormTarget): Promise<SavedForm> {
+  const payload = fields.map(({ kind, label, x, y, w, h }) => ({ kind, label, x, y, w, h }));
+  return callFunction<SavedForm>(
+    'company-signing-template',
+    { ...formTargetBody(target), kind: 'editor', companyId, draftId, title, blocks, fields: payload },
+    t('signing.saveDocumentFailed'),
+  );
 }
