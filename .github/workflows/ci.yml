@@ -25,4 +25,7 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.9.5
-      - run: deno check --no-config --lock=supabase/functions/deno.lock --frozen supabase/functions/*/index.ts
+      - run: |
+          # company-signing-template maps pdf-lib in its own deno.json, so it is checked with that config.
+          deno check --no-config --lock=supabase/functions/deno.lock --frozen $(ls supabase/functions/*/index.ts | grep -v company-signing-template)
+          deno check --config supabase/functions/company-signing-template/deno.json --frozen supabase/functions/company-signing-template/index.ts
