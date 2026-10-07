@@ -38,6 +38,8 @@ export const DESKTOP_COLORS = {
   danger: '#D92D20', // error text and badges: 4.8:1; was #FF453A (3.4:1)
 } as const;
 
+export const DESKTOP_BRAND_SHADOW = '0 10px 24px rgba(47,91,255,0.32)';
+
 export type DesktopTone = 'ok' | 'warn' | 'bad' | 'neutral';
 
 export const DESKTOP_TONES: Record<DesktopTone, { bg: string; fg: string }> = {

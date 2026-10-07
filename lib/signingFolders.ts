@@ -1,5 +1,5 @@
 import type { SignatureRequest, SigningTemplate } from './docuseal';
-import { t } from './i18n';
+import { getLocale, t } from './i18n';
 import { INSPECTION_TITLE, LEGACY_INSPECTION_TITLE } from './inspectionTitle';
 import type { CompanyFolder } from './folderCatalog';
 
@@ -46,7 +46,8 @@ export function buildSigningFolders(templates: SigningTemplate[], requests: Sign
   const order = new Map(catalog.map((folder, index) => [folder.id, index]));
   const rank = (folder: SigningFolder) => {
     const catalogId = folder.emptyCatalog?.id ?? folder.template?.catalog_folder_id;
-    return catalogId && order.has(catalogId) ? order.get(catalogId)! : Number.MAX_SAFE_INTEGER;
+    // A driver gets no catalog: their catalog folders still come first, by name.
+    return catalogId ? order.get(catalogId) ?? Number.MAX_SAFE_INTEGER - 1 : Number.MAX_SAFE_INTEGER;
   };
   return [...folders.values()].sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title, 'he'));
 }
@@ -56,4 +57,23 @@ export function signingFolderStatus(folder: SigningFolder): 'empty' | 'pending' 
   const latest = folder.requests[0];
   if (latest && (latest.status === 'failed' || latest.status === 'declined' || (latest.status === 'pending' && !latest.docuseal_submitter_slug))) return 'failed';
   return folder.requests.some((r) => r.status === 'completed') ? 'completed' : 'empty';
+}
+
+/** When the folder's most recent signed copy was signed, or null if none was. */
+export function lastSignedAt(folder: SigningFolder): string | null {
+  let latest: string | null = null;
+  for (const item of folder.requests) {
+    if (item.status !== 'completed') continue;
+    const at = item.completed_at || item.created_at;
+    if (!latest || new Date(at) > new Date(latest)) latest = at;
+  }
+  return latest;
+}
+
+/** "נחתם ב־05/10/2026" for the folder's latest signed copy, or null. */
+export function signedOnLabel(folder: SigningFolder): string | null {
+  const at = lastSignedAt(folder);
+  if (!at) return null;
+  const day = new Date(at).toLocaleDateString(getLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '/');
+  return t('signing.signedOn', { signedAt: day });
 }

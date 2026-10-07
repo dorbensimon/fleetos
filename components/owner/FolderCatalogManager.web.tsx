@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  addFolderToAllCompanies,
   createCatalogFolder,
   deleteCatalogFolder,
   FolderActionError,
@@ -34,6 +35,8 @@ export function FolderCatalogManager({ onClosed }: { onClosed: () => void }) {
   const [editing, setEditing] = useState<OwnerCatalogFolder | 'new' | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<OwnerCatalogFolder | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [confirmAll, setConfirmAll] = useState<OwnerCatalogFolder | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -82,6 +85,19 @@ export function FolderCatalogManager({ onClosed }: { onClosed: () => void }) {
     }, t('folders.deleteFailed'));
   };
 
+  const addToAll = (folder: OwnerCatalogFolder) => {
+    setConfirmAll(null);
+    setNotice(null);
+    void run(`all:${folder.id}`, async () => {
+      const { added, skipped } = await addFolderToAllCompanies(folder.id);
+      setNotice(
+        skipped.length
+          ? t('folders.addedToAllSkipped', { added, names: skipped.join(', ') })
+          : t('folders.addedToAll', { added }),
+      );
+    }, t('folders.addFailed'));
+  };
+
   const defaultsLine = (folder: OwnerCatalogFolder) =>
     folder.kind === 'checklist'
       ? repeatLabel(folder.default_repeat_months ?? 0)
@@ -114,6 +130,7 @@ export function FolderCatalogManager({ onClosed }: { onClosed: () => void }) {
             {t('folders.newFolder')}
           </button>
           {error ? <div className="fc-note fc-bad" role="alert" style={{ marginBottom: 14 }}>{error}</div> : null}
+          {notice ? <div className="fc-note" role="status" style={{ marginBottom: 14 }}>{notice}</div> : null}
           {!folders ? (
             <div className="fc-empty"><span className="sd-spinner" /></div>
           ) : !folders.length ? (
@@ -141,6 +158,18 @@ export function FolderCatalogManager({ onClosed }: { onClosed: () => void }) {
                   <button type="button" className="fc-tool" onClick={() => move(index, 1)} disabled={index === folders.length - 1 || !!busy} aria-label={t('folders.moveDown')}>
                     <Ionicons name="arrow-down" size={18} color="currentColor" />
                   </button>
+                  {!folder.retired_at ? (
+                    <button
+                      type="button"
+                      className="fc-tool"
+                      onClick={() => setConfirmAll(folder)}
+                      disabled={!!busy}
+                      aria-label={t('folders.addToAll')}
+                      title={t('folders.addToAll')}
+                    >
+                      {busy === `all:${folder.id}` ? <span className="sd-spinner" /> : <Ionicons name="albums-outline" size={18} color="currentColor" />}
+                    </button>
+                  ) : null}
                   <button type="button" className="fc-tool" onClick={() => setEditing(folder)} disabled={!!busy} aria-label={t('common.edit')}>
                     <Ionicons name="create-outline" size={18} color="currentColor" />
                   </button>
@@ -170,6 +199,16 @@ export function FolderCatalogManager({ onClosed }: { onClosed: () => void }) {
           folder={editing === 'new' ? null : editing}
           onClosed={() => setEditing(null)}
           onSaved={() => void load()}
+        />
+      ) : null}
+      {confirmAll ? (
+        <ConfirmAlert
+          title={t('folders.addToAllQuestion', { title: confirmAll.title })}
+          message={t('folders.addToAllWarning')}
+          cancelLabel={t('common.cancel')}
+          confirmLabel={t('folders.addToAllConfirm')}
+          onCancel={() => setConfirmAll(null)}
+          onConfirm={() => addToAll(confirmAll)}
         />
       ) : null}
       {confirmDelete ? (

@@ -13,6 +13,7 @@ import { HeaderMenuProvider } from './headerMenu';
 import { NotificationsBell, OwnerNotificationsBell } from './NotificationsBell';
 import { DESKTOP_COLORS, DESKTOP_HEADER_HEIGHT, DESKTOP_SIDEBAR_WIDTH } from './desktopTheme';
 import { t } from '../../lib/i18n';
+import { AnnouncementBanner } from '../AnnouncementBanner';
 
 /**
  * Desktop web frame for signed-in screens: a dark sidebar on the right
@@ -268,6 +269,7 @@ export function DesktopShell({
           </HeaderMenuProvider>
         </View>
 
+        <AnnouncementBanner inline />
         <View style={styles.body}>{children}</View>
       </View>
 

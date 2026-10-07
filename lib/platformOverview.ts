@@ -176,10 +176,7 @@ export function buildPlatformOverview(rows: PlatformRows, now: Date = new Date()
         add('warn', t('owner.health.carrierLicenseExpiring'), carrierDays === 0 ? t('expiry.expiredToday') : t('common.inTime', { v1: plural(carrierDays, t('common.oneDay'), t('common.days')) }));
       }
 
-      if (problemVehicles.size) {
-        add('bad', plural(problemVehicles.size, t('owner.health.oneVehicleInvalid'), t('owner.health.vehiclesInvalid')), t('owner.health.vehiclesInvalidDetail'));
-      }
-      if (licensesExpired) add('bad', plural(licensesExpired, t('owner.health.oneLicenseExpired'), t('owner.health.licensesExpired')), t('owner.health.licensesExpiredDetail'));
+      // Vehicle and driver paperwork is the company manager's job; the owner only sees the company itself.
 
       if (people.length > 0 && (!lastActivity || new Date(lastActivity).getTime() < idleSince)) {
         add('warn', t('owner.health.noActivity'), t('owner.health.noActivityDetail'));
@@ -196,9 +193,6 @@ export function buildPlatformOverview(rows: PlatformRows, now: Date = new Date()
         const d = daysUntilExpiry(account.renewal_date);
         if (d != null && d < 0) add('bad', t('account.renewalPassed'), t('owner.health.wasOn', { v1: formatDate(account.renewal_date) }));
         else if (d != null && d <= 14) add('warn', t('owner.health.renewalApproaching'), d === 0 ? t('common.today') : t('common.inTime', { v1: plural(d, t('common.oneDay'), t('common.days')) }));
-      }
-      if (account?.vehicle_limit && vehicles.length >= account.vehicle_limit) {
-        add('warn', t('owner.health.vehicleQuotaReached'), t('owner.health.vehicleQuotaDetail', { length: vehicles.length, vehicle_limit: account.vehicle_limit }));
       }
     }
 

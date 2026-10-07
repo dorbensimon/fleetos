@@ -6,6 +6,7 @@ import type { SigningTemplate } from '../../lib/docuseal';
 import { listCompanyFolders, type CompanyFolder } from '../../lib/folderCatalog';
 import { DText, HoverPressable } from '../desktop/primitives';
 import { DESKTOP_COLORS, webOnly } from '../desktop/desktopTheme';
+import { CARD_SHADOW } from '../desktop/record/RecordPage';
 import { AddCatalogFolderSheet, EmptyCatalogFolderSheet, FormVersionsSheet, useRemoveCatalogFolder } from '../desktop/signing/FolderCatalogSheets';
 import { CreateDocumentSheet, type FormFolder } from '../desktop/signing/CreateDocumentSheet';
 import { t } from '../../lib/i18n';
@@ -48,9 +49,9 @@ export function CompanyFoldersPanel({ companyId }: { companyId: string }) {
   };
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.headRow}>
-        <DText weight={isDesktop ? 'bold' : 'medium'} style={[styles.title, !isDesktop && styles.titlePhone]}>{t('folders.sectionTitle')}</DText>
+    <View style={isDesktop ? styles.wrap : styles.wrapPhone}>
+      <View style={[styles.headRow, !isDesktop && styles.headRowPhone]}>
+        <DText weight={isDesktop ? 'semiBold' : 'medium'} style={[styles.title, !isDesktop && styles.titlePhone]}>{t('folders.sectionTitle')}</DText>
         <HoverPressable style={[styles.addButton, !isDesktop && styles.addButtonPhone]} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={() => setAdding(true)}>
           <Ionicons name="add" size={14} color={DESKTOP_COLORS.brand} />
           <DText weight="semiBold" style={styles.addText}>{t('folders.addButton')}</DText>
@@ -150,20 +151,24 @@ export function CompanyFoldersPanel({ companyId }: { companyId: string }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 8 },
-  headRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
+  wrap: { gap: 0 },
+  wrapPhone: { gap: 8 },
+  headRowPhone: { height: 'auto', paddingHorizontal: 0 },
+  // The record pages' group label (RecordPage GroupLabel).
+  headRow: { height: 28, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
+  title: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted },
   addButton: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, height: 28, paddingHorizontal: 10, borderRadius: 6 },
   titlePhone: { fontSize: 13 },
   addButtonPhone: { height: 32, borderRadius: 16, paddingHorizontal: 12, backgroundColor: 'rgba(47,91,255,0.08)' },
   cardPhone: { borderWidth: 0, borderRadius: 20, ...webOnly({ boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 4px 14px rgba(16,24,40,0.05)' }) },
-  addText: { fontSize: 12, color: DESKTOP_COLORS.brand },
+  addText: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
   card: {
     backgroundColor: DESKTOP_COLORS.surface,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.border,
-    borderRadius: 10,
+    borderRadius: 14,
     overflow: 'hidden',
+    ...webOnly({ boxShadow: CARD_SHADOW }),
   },
   row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, minHeight: 52 },
   rowPhone: { flexWrap: 'wrap', rowGap: 4 },
@@ -172,11 +177,11 @@ const styles = StyleSheet.create({
   actionsPhone: { width: '100%', paddingRight: 18 },
   divider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   text: { flex: 1, minWidth: 0, gap: 1 },
-  rowTitle: { fontSize: 13.5 },
-  meta: { fontSize: 12, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+  rowTitle: { fontSize: 14.5 },
+  meta: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   action: { paddingHorizontal: 8, minHeight: 30, borderRadius: 6, justifyContent: 'center' },
-  link: { fontSize: 12.5, color: DESKTOP_COLORS.brand },
-  danger: { fontSize: 12.5, color: DESKTOP_COLORS.danger },
+  link: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
+  danger: { fontSize: 13.5, color: DESKTOP_COLORS.danger },
   empty: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint, textAlign: 'center', paddingVertical: 20 },
   error: { fontSize: 12.5, color: DESKTOP_COLORS.danger, padding: 12 },
   notice: { fontSize: 12.5, color: DESKTOP_COLORS.ink, padding: 12, backgroundColor: 'rgba(47,91,255,0.06)' },

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Image, Share, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
+import { openWhatsapp, useSendMessage, whatsappNumber } from '../companyDetail/CompanyDetailSheets';
 import { Ionicons } from '@expo/vector-icons';
 import { DK, DKText, EditField, KitSection, KitSheet, PrimaryAction, Pressy, SheetActions, STATUS, Surface } from '../driverKit';
 import { BrandLoader } from '../ui/BrandLoader';
@@ -328,13 +329,15 @@ export function CompanyCreatedSheet({
   onOpenCompany,
 }: {
   visible: boolean;
-  details: { companyId: string | null; companyName: string; email: string; password: string } | null;
+  details: { companyId: string | null; companyName: string; email: string; password: string; phone?: string } | null;
   onClose: () => void;
   onOpenCompany: (id: string) => void;
 }) {
   const message = details
     ? t('addCompany.shareMessage', { companyName: details.companyName, email: details.email, password: details.password })
     : '';
+  const sender = useSendMessage(message);
+  const whatsapp = whatsappNumber(details?.phone);
   return (
     <KitSheet
       visible={visible}
@@ -358,7 +361,10 @@ export function CompanyCreatedSheet({
           ) : (
             <PrimaryAction label={t('common.close')} tone="ghost" onPress={onClose} style={styles.grow} />
           )}
-          <PrimaryAction label={t('addCompany.sendDetails')} icon="share-outline" onPress={() => void Share.share({ message }).catch(() => {})} style={styles.grow} />
+          {!!whatsapp && (
+            <PrimaryAction label={t('users.sendWhatsapp')} icon="logo-whatsapp" tone="ghost" onPress={() => openWhatsapp(whatsapp, message)} style={styles.grow} />
+          )}
+          <PrimaryAction label={sender.label} icon={sender.icon} onPress={sender.send} style={styles.grow} />
         </SheetActions>
       }
     >

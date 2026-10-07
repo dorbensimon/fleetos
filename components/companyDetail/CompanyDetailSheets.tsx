@@ -1,5 +1,5 @@
-import React from 'react';
-import { Share, StyleSheet, View } from 'react-native';
+import React, { useState } from 'react';
+import { Linking, Platform, Share, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DK, DKText, EditField, KitSection, KitSheet, ListRow, PrimaryAction, Pressy, SheetActions, STATUS, Surface } from '../driverKit';
 import { formatPhone } from '../../lib/phone';
@@ -329,12 +329,50 @@ export function RemoveUserSheet({
 
 // ── Sign-in details to pass on ───────────────────────────────────────────
 
-export type Credentials = { title: string; subtitle: string; name: string; email: string; password: string };
+export type Credentials = { title: string; subtitle: string; name: string; email: string; password: string; phone?: string | null };
+
+/** 050-1234567 → 972501234567 for a WhatsApp link, or null when it isn't an Israeli mobile. */
+export function whatsappNumber(phone: string | null | undefined): string | null {
+  const digits = (phone ?? '').replace(/\D/g, '');
+  if (/^05\d{8}$/.test(digits)) return `972${digits.slice(1)}`;
+  if (/^9725\d{8}$/.test(digits)) return digits;
+  return null;
+}
+
+export function openWhatsapp(number: string, message: string) {
+  void Linking.openURL(`https://wa.me/${number}?text=${encodeURIComponent(message)}`).catch(() => {});
+}
+
+/**
+ * "שליחת הפרטים": the share menu where there is one; a computer browser
+ * usually has none, so there it copies the message and says so.
+ */
+export function useSendMessage(message: string) {
+  const [copied, setCopied] = useState(false);
+  const canShare = Platform.OS !== 'web' || (typeof navigator !== 'undefined' && typeof navigator.share === 'function');
+  const send = () => {
+    if (canShare) {
+      void Share.share({ message }).catch(() => {});
+      return;
+    }
+    void navigator.clipboard?.writeText(message).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  };
+  return {
+    send,
+    label: canShare ? t('addCompany.sendDetails') : copied ? t('companyPage.copied') : t('users.copyDetails'),
+    icon: (canShare ? 'share-outline' : copied ? 'checkmark' : 'copy-outline') as 'share-outline' | 'checkmark' | 'copy-outline',
+  };
+}
 
 export function CredentialsSheet({ details, onClose }: { details: Credentials | null; onClose: () => void }) {
   const message = details
     ? t('users.shareCredentials', { name: details.name, email: details.email, password: details.password })
     : '';
+  const sender = useSendMessage(message);
+  const whatsapp = whatsappNumber(details?.phone);
   return (
     <KitSheet
       visible={!!details}
@@ -345,7 +383,10 @@ export function CredentialsSheet({ details, onClose }: { details: Credentials | 
       footer={
         <SheetActions>
           <PrimaryAction label={t('common.close')} tone="ghost" onPress={onClose} style={styles.grow} />
-          <PrimaryAction label={t('addCompany.sendDetails')} icon="share-outline" onPress={() => void Share.share({ message }).catch(() => {})} style={styles.grow} />
+          {!!whatsapp && (
+            <PrimaryAction label={t('users.sendWhatsapp')} icon="logo-whatsapp" tone="ghost" onPress={() => openWhatsapp(whatsapp, message)} style={styles.grow} />
+          )}
+          <PrimaryAction label={sender.label} icon={sender.icon} onPress={sender.send} style={styles.grow} />
         </SheetActions>
       }
     >

@@ -73,6 +73,7 @@ import { canOpenRoute, isPublicRoute } from './lib/routeAccess';
 import { CompanyProvider, useCompany } from './lib/CompanyContext';
 import { ToastProvider } from './components/ui';
 import { MobileTabBar, TabBarProvider } from './components/driverKit/tabBar';
+import { AnnouncementBanner } from './components/AnnouncementBanner';
 import { flushPendingAssignmentOperations } from './lib/adminApi';
 import {
   listenForPushNotificationResponses,
@@ -417,6 +418,7 @@ export default function App() {
           </NavigationContainer>
           {/* Home and menu at the bottom of every signed-in phone screen. */}
           <MobileTabBar navigationRef={navigationRef} />
+          <AnnouncementBanner />
           <RouteRoleGuard />
           </View>
           </TabBarProvider>
