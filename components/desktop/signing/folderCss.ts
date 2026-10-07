@@ -9,14 +9,15 @@ import { SIGNING_CSS } from './signingCss';
  */
 export const FOLDER_CSS = `
 .sd-float {
-  position: fixed; z-index: 1001; top: 50%; left: 50%;
+  /* Pinned at the top, not centered: when the list arrives the window grows down instead of jumping. */
+  position: fixed; z-index: 1001; top: max(24px, calc(50dvh - 360px)); left: 50%;
   width: min(560px, calc(100vw - 40px)); max-height: min(720px, calc(100dvh - 48px));
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%); will-change: transform, opacity;
   display: flex; flex-direction: column; overflow: hidden;
   background: var(--sd-bg); border-radius: 24px; box-shadow: var(--sd-depth-3);
   animation: fc-float-in 420ms var(--sd-ease) both;
 }
-.sd-float.sd-closing { animation: fc-float-out 220ms ease both; }
+.sd-float.sd-closing { animation: fc-float-out 200ms ease-in both; }
 .sd-float-head { flex: none; padding: 22px 24px 14px; text-align: center; }
 .sd-float-head h2 { margin: 6px 0 4px; font-size: 22px; letter-spacing: -0.01em; }
 .sd-float-head p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--sd-ink-2); }
@@ -27,8 +28,8 @@ export const FOLDER_CSS = `
 }
 .sd-float-foot .sd-btn { min-height: 46px; }
 .sd-float-grabber { display: none; }
-@keyframes fc-float-in { from { opacity: 0; transform: translate(-50%, -46%) scale(0.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
-@keyframes fc-float-out { to { opacity: 0; transform: translate(-50%, -48%) scale(0.97); } }
+@keyframes fc-float-in { from { opacity: 0; transform: translateX(-50%) translateY(12px) scale(0.97); } to { opacity: 1; transform: translateX(-50%); } }
+@keyframes fc-float-out { from { opacity: 1; transform: translateX(-50%); } to { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.98); } }
 
 /* ---------- the folder animation ---------- */
 .fc-hero { position: relative; width: 96px; height: 78px; margin: 0 auto; }
@@ -59,7 +60,7 @@ export const FOLDER_CSS = `
   display: flex; align-items: flex-start; gap: 14px; width: 100%; padding: 14px 16px; text-align: start;
   background: var(--sd-card); border-radius: 16px; box-shadow: var(--sd-depth-1), inset 0 0 0 1px rgba(0,0,0,0.04);
   transition: box-shadow 180ms ease, transform 160ms var(--sd-ease), background-color 160ms ease;
-  animation: sd-rise 360ms var(--sd-ease) both; animation-delay: calc(560ms + var(--i, 0) * 60ms);
+  animation: sd-rise 360ms var(--sd-ease) both; animation-delay: calc(min(var(--i, 0), 8) * 35ms);
 }
 .fc-item[aria-checked="true"] { box-shadow: inset 0 0 0 2px var(--sd-tint), 0 8px 20px -10px rgba(47,91,255,0.45); }
 .fc-item:disabled { opacity: 0.55; }
@@ -76,6 +77,7 @@ export const FOLDER_CSS = `
 .fc-note { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; padding: 12px 14px; border-radius: 14px; font-size: 14.5px; line-height: 1.5; background: var(--sd-tint-soft); color: var(--sd-ink); }
 .fc-note.fc-warn { background: rgba(255,159,10,0.13); color: #7A4A00; }
 .fc-note.fc-bad { background: rgba(255,69,58,0.1); color: #B42318; }
+.fc-loading { min-height: 240px; display: flex; align-items: center; justify-content: center; }
 .fc-empty { padding: 28px 12px; text-align: center; color: var(--sd-ink-2); font-size: 15px; line-height: 1.6; }
 .fc-actions { display: flex; flex-direction: column; gap: 10px; }
 .fc-actions .sd-btn { width: 100%; }

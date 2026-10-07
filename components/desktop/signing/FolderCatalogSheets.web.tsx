@@ -207,7 +207,7 @@ export function AddCatalogFolderSheet({
       {loadError ? (
         <div className="fc-note fc-bad" role="alert">{loadError}</div>
       ) : !folders ? (
-        <div className="fc-empty"><span className="sd-spinner" /></div>
+        <div className="fc-loading"><span className="sd-spinner" /></div>
       ) : (
         <>
           {available.length + restorable.length === 0 ? (

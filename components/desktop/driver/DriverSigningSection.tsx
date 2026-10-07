@@ -10,7 +10,7 @@ import {
   syncSigningRequest,
   type SignatureRequest,
 } from '../../../lib/docuseal';
-import { buildSigningFolders, signingFolderStatus, type SigningFolder, requestTitle } from '../../../lib/signingFolders';
+import { buildSigningFolders, lastSignedAt, signingFolderStatus, type SigningFolder, requestTitle } from '../../../lib/signingFolders';
 import { DesktopModal } from '../DesktopModal';
 import { DText, HoverPressable } from '../primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
@@ -28,6 +28,7 @@ import { t, dirIcon, getLocale } from '../../../lib/i18n';
 import { errorMessage } from '../../../lib/requestError';
 import { listCompanyFolders, type CompanyFolder } from '../../../lib/folderCatalog';
 import { AddCatalogFolderSheet, EmptyCatalogFolderSheet } from '../signing/FolderCatalogSheets';
+import { useSigningStyles } from '../signing/folderCss';
 import { CreateDocumentSheet, type FormFolder } from '../signing/CreateDocumentSheet';
 
 type FolderStatus = ReturnType<typeof signingFolderStatus>;
@@ -35,17 +36,6 @@ const STATUS_LABEL: Record<FolderStatus, string> = { get pending() { return t('s
 
 const time = (date: string) => new Date(date).toLocaleString(getLocale(), { dateStyle: 'short', timeStyle: 'short' });
 const day = (date: string) => new Date(date).toLocaleDateString(getLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '/');
-
-/** When the folder's most recent signed copy was signed, or null if none was. */
-function lastSignedAt(folder: SigningFolder) {
-  let latest: string | null = null;
-  for (const item of folder.requests) {
-    if (item.status !== 'completed') continue;
-    const at = item.completed_at || item.created_at;
-    if (!latest || new Date(at) > new Date(latest)) latest = at;
-  }
-  return latest;
-}
 
 export type SigningSessionTarget = Awaited<ReturnType<typeof getSigningSession>> & { title: string; requestId?: string; signedAt?: string };
 
@@ -153,7 +143,8 @@ export function DriverSigningList({
         const meta = folder.emptyCatalog
           ? t('folders.noFormYet')
           : status === 'pending' && sentAt
-          ? checklist ? t('signing.officerSignedOn', { sentAt: day(sentAt) }) : t('signing.sentOn', { sentAt: day(sentAt) })
+          ? (checklist ? t('signing.officerSignedOn', { sentAt: day(sentAt) }) : t('signing.sentOn', { sentAt: day(sentAt) }))
+            + (signedAt ? ` · ${t('signing.signedOn', { signedAt: day(signedAt) })}` : '')
           : signedAt
             ? t('signing.signedOn', { signedAt: day(signedAt) })
             : status === 'failed'
@@ -220,6 +211,8 @@ export function DriverSigningList({
 /** "+ הוסף תיקייה" beside the driver file's forms: adds a catalog folder to every driver of the company. */
 export function AddFolderButton({ companyId, onChanged }: { companyId: string; onChanged: () => void }) {
   const [open, setOpen] = useState(false);
+  // The window's styles go on the page now, not in the frame it opens.
+  useSigningStyles();
   return (
     <>
       <HoverPressable
@@ -520,7 +513,7 @@ const styles = StyleSheet.create({
   listRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 54, paddingHorizontal: 16, paddingVertical: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },
   listDivider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   listIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: DESKTOP_COLORS.canvas, alignItems: 'center', justifyContent: 'center' },
-  listIconDone: { backgroundColor: 'rgba(0,136,204,0.10)' },
+  listIconDone: { backgroundColor: 'rgba(47,91,255,0.10)' },
   listText: { flex: 1, minWidth: 0, gap: 1 },
   listTitle: { fontSize: 14.5 },
   listMeta: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
@@ -534,7 +527,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 10,
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,136,204,0.09)',
+    backgroundColor: 'rgba(47,91,255,0.09)',
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 6,

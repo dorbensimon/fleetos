@@ -35,7 +35,7 @@ import { fontStack } from '../../lib/fontStack';
 
 /**
  * The owner's control room on the phone: the night carries the business at a
- * glance (what needs the owner, companies, monthly revenue, vehicles,
+ * glance (what needs the owner, companies, monthly revenue,
  * search); below, every company as a card that says whether it is healthy,
  * where it stands as a customer and why; then revenue, how the system is
  * being used and its security state. Counts only, like desktop.
@@ -249,7 +249,6 @@ function Hero(p: Props & { search: string; onSearch: (v: string) => void; onAtte
       <Reveal index={2} style={styles.stats}>
         <HeroStat value={totals ? `${totals.activeCompanies}/${totals.companies}` : '–'} label={t('owner.activeCompanies')} />
         <HeroStat value={totals ? formatMoneyCompact(totals.mrr) : '–'} label={t('owner.monthlyRevenue')} />
-        <HeroStat value={totals?.vehicles ?? '–'} label={t('common.vehicles')} />
       </Reveal>
 
       <Reveal index={3} style={styles.block}>
@@ -262,7 +261,7 @@ function Hero(p: Props & { search: string; onSearch: (v: string) => void; onAtte
 function CompanyCard({ row, onPress, onMenu }: { row: CompanyHealth; onPress: () => void; onMenu: () => void }) {
   const c = row.company;
   const issue = row.issues[0];
-  const meta = t('owner.driversVehicles', { drivers: row.drivers, vehicles: row.vehicles, v1: row.account?.vehicle_limit ? `/${row.account.vehicle_limit}` : '' });
+  const meta = `${row.drivers} ${t('common.drivers')}`;
   const next = accountNextStep(row.account);
   return (
     <Surface style={[styles.card, !row.active && styles.cardOff]}>

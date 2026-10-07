@@ -1,4 +1,4 @@
-import { buildSigningFolders, signingFolderStatus } from '../signingFolders';
+import { buildSigningFolders, lastSignedAt, signingFolderStatus } from '../signingFolders';
 import type { CompanyFolder } from '../folderCatalog';
 import { missingPrefill } from '../../supabase/functions/_shared/signingPrefill';
 import type { SignatureRequest, SigningTemplate } from '../docuseal';
@@ -65,4 +65,18 @@ test('an added catalog folder with no form shows empty for managers, catalog fol
 });
 test('a driver (no catalog given) never gets empty catalog folders', () => {
   expect(buildSigningFolders([], [])).toEqual([]);
+});
+test('a folder shows the date of its latest signed copy', () => {
+  const [folder] = buildSigningFolders([template], [
+    { ...signed, completed_at: '2026-09-01T10:00:00Z' },
+    { ...signed, id: 'r2', completed_at: '2026-10-05T20:29:00Z' },
+    { ...signed, id: 'r3', status: 'pending', completed_at: null, docuseal_submitter_slug: 's' },
+  ] as SignatureRequest[]);
+  expect(lastSignedAt(folder)).toBe('2026-10-05T20:29:00Z');
+  expect(lastSignedAt(buildSigningFolders([template], [])[0])).toBeNull();
+});
+test('without the catalog (a driver), catalog folders still come before other folders', () => {
+  const own = { ...template, id: 't2', title: 'א אחר' } as SigningTemplate;
+  const linked = { ...template, id: 't3', title: 'ת קטלוג', catalog_folder_id: 'c1' } as SigningTemplate;
+  expect(buildSigningFolders([own, linked], []).map((folder) => folder.id)).toEqual(['t3', 't2']);
 });

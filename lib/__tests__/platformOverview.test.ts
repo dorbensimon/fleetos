@@ -76,8 +76,11 @@ describe('buildPlatformOverview', () => {
     const b = o.companies[0];
     expect(b.tone).toBe('bad');
     expect(b.issues.map((i) => i.title)).toEqual(
-      expect.arrayContaining(['אין מנהל לחברה', 'רישיון המוביל פג', 'רכב אחד לא תקין', 'רישיון נהיגה אחד פג']),
+      expect.arrayContaining(['אין מנהל לחברה', 'רישיון המוביל פג']),
     );
+    // Vehicle and driver paperwork is the company manager's job, not the owner's.
+    expect(b.issues.map((i) => i.title)).not.toEqual(expect.arrayContaining(['רכב אחד לא תקין']));
+    expect(b.issues.map((i) => i.title)).not.toEqual(expect.arrayContaining(['רישיון נהיגה אחד פג']));
     expect(b.notActivated).toBe(1);
     expect(b.unassignedVehicles).toBe(1);
   });
@@ -171,7 +174,7 @@ describe('the customer side', () => {
     expect(o.companies.find((c) => c.company.id === 'b')!.issues.map((i) => i.title)).toContain('התשלום בפיגור');
   });
 
-  it('flags an ending trial, a passed renewal and a full vehicle quota', () => {
+  it('flags an ending trial and a passed renewal, not a full vehicle quota', () => {
     const o = buildPlatformOverview(
       rows({
         companies: [company('t', 'ניסיון'), company('r', 'חידוש'), company('q', 'מכסה')],
@@ -187,7 +190,7 @@ describe('the customer side', () => {
     const titles = (id: string) => o.companies.find((c) => c.company.id === id)!.issues.map((i) => i.title);
     expect(titles('t')).toContain('תקופת הניסיון מסתיימת');
     expect(titles('r')).toContain('מועד החידוש עבר');
-    expect(titles('q')).toContain('הגיעה למכסת הרכבים');
+    expect(titles('q')).not.toContain('הגיעה למכסת הרכבים');
     expect(o.totals.trialsEndingSoon).toBe(1);
   });
 });

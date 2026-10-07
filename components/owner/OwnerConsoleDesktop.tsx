@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { FolderCatalogManager } from './FolderCatalogManager';
+import { AnnouncementPanel, CollectedPanel } from './OwnerToolsPanels';
 import { Image, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DesktopInput, DText, HoverPressable } from '../desktop/primitives';
-import { DESKTOP_COLORS, DESKTOP_SIDEBAR_WIDTH, DESKTOP_TONES, webOnly } from '../desktop/desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_SIDEBAR_WIDTH, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from '../desktop/desktopTheme';
 import { DesktopModal } from '../desktop/DesktopModal';
 import { enter, enterRow } from '../desktop/FleetOverview';
 import { BrandLoader } from '../ui/BrandLoader';
@@ -17,7 +18,7 @@ import { companyTypeLabel } from '../../lib/companyType';
 
 /**
  * The owner's control room on desktop. One band of business vitals on top
- * (companies, monthly revenue, trials, people, vehicles, use); below, every
+ * (companies, monthly revenue, trials, people, use); below, every
  * company as a row that says at a glance whether it is healthy, where it
  * stands as a customer and when it was last used, with the revenue picture
  * and the problems that need the owner beside it. Counts only: people's
@@ -46,7 +47,7 @@ type Props = {
 };
 
 export function OwnerConsoleDesktop(p: Props) {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const wide = width - DESKTOP_SIDEBAR_WIDTH >= 1180;
   const [filter, setFilter] = useState<CompanyFilter>('all');
   const [sort, setSort] = useState<CompanySort>('health');
@@ -94,7 +95,8 @@ export function OwnerConsoleDesktop(p: Props) {
       </View>
 
       {p.loading && !p.overview ? (
-        <View style={styles.center}>
+        // Fills the rest of the window so the loader sits in its middle, not under the header.
+        <View style={[styles.center, { minHeight: Math.max(320, height - 240) }]}>
           <BrandLoader color={DESKTOP_COLORS.brand} />
         </View>
       ) : p.error && !p.overview ? (
@@ -165,8 +167,10 @@ export function OwnerConsoleDesktop(p: Props) {
             </View>
 
             <View style={[styles.sideColumn, !wide && styles.sideColumnStacked, enter(3)]}>
-              <BusinessPanel overview={p.overview} onOpen={p.onOpenCompany} />
               <AttentionQueue issues={p.overview.issues} onOpen={p.onOpenCompany} />
+              <BusinessPanel overview={p.overview} onOpen={p.onOpenCompany} />
+              <CollectedPanel expected={p.overview.totals.mrr} />
+              <AnnouncementPanel />
             </View>
           </View>
         </>
@@ -228,8 +232,6 @@ export function OwnerConsoleDesktop(p: Props) {
 
 function Vitals({ overview }: { overview: PlatformOverview }) {
   const totals = overview.totals;
-  const vehicleIssues = overview.companies.reduce((n, c) => n + (c.active ? c.vehicleIssues : 0), 0);
-  const licensesExpired = overview.companies.reduce((n, c) => n + (c.active ? c.licensesExpired : 0), 0);
   const cells: { label: string; value: string; sub: string; tone?: 'bad' | 'warn'; icon: IconName }[] = [
     { label: t('owner.activeCompanies'), value: totals.activeCompanies.toLocaleString(getLocale()), sub: t('owner.ofCompanies', { companies: totals.companies }), icon: 'business-outline' },
     {
@@ -249,16 +251,8 @@ function Vitals({ overview }: { overview: PlatformOverview }) {
     {
       label: t('common.drivers'),
       value: totals.drivers.toLocaleString(getLocale()),
-      sub: licensesExpired ? t('owner.licensesExpiredCount', { licensesExpired }) : t('owner.fleetManagers', { admins: totals.admins }),
-      tone: licensesExpired ? 'bad' : undefined,
+      sub: t('owner.fleetManagers', { admins: totals.admins }),
       icon: 'people-outline',
-    },
-    {
-      label: t('common.vehicles'),
-      value: totals.vehicles.toLocaleString(getLocale()),
-      sub: vehicleIssues ? t('owner.vehicleIssuesCount', { vehicleIssues }) : t('owner.allInsured'),
-      tone: vehicleIssues ? 'bad' : undefined,
-      icon: 'car-sport-outline',
     },
     { label: t('owner.actionsThisWeek'), value: totals.activity7d.toLocaleString(getLocale()), sub: t('owner.updatesAcrossCompanies'), icon: 'pulse-outline' },
   ];
@@ -292,7 +286,6 @@ const COLUMNS: { key: string; label: string; sort?: CompanySort; style: object }
   { key: 'company', get label() { return t('owner.col.company'); }, sort: 'name', style: { flex: 1, minWidth: 200 } },
   { key: 'state', get label() { return t('common.state'); }, sort: 'health', style: { width: 150 } },
   { key: 'team', get label() { return t('owner.col.team'); }, sort: 'size', style: { width: 110 } },
-  { key: 'vehicles', get label() { return t('common.vehicles'); }, style: { width: 120 } },
   { key: 'account', get label() { return t('owner.col.subscription'); }, style: { width: 132 } },
   { key: 'activity', get label() { return t('owner.col.lastActivity'); }, sort: 'activity', style: { width: 128 } },
   { key: 'menu', label: '', style: { width: 36 } },
@@ -480,21 +473,6 @@ function CompanyRowView({
             </DText>
           </View>
         )}
-
-        <View style={[styles.cell, { width: 120 }]}>
-          <DText weight="semiBold" style={[styles.cellMain, TABULAR]}>
-            {row.vehicles}
-          </DText>
-          {row.vehicleIssues > 0 ? (
-            <DText weight="semiBold" style={[styles.cellSub, { color: DESKTOP_TONES.bad.fg }]} numberOfLines={1}>
-              {row.vehicleIssues} {t('owner.notOkPl')}
-            </DText>
-          ) : row.unassignedVehicles > 0 ? (
-            <DText style={styles.cellSub} numberOfLines={1}>
-              {row.unassignedVehicles} {t('owner.withoutDriver')}
-            </DText>
-          ) : null}
-        </View>
 
         {!noAccount && (
           <View style={[styles.cell, { width: 132 }]}>
@@ -796,7 +774,7 @@ function SecurityPanel({ overview }: { overview: PlatformOverview }) {
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   page: { padding: 28, paddingBottom: 48, gap: 20, width: '100%', maxWidth: 1480, alignSelf: 'center' },
-  center: { paddingVertical: 80, alignItems: 'center' },
+  center: { alignItems: 'center', justifyContent: 'center' },
 
   header: { flexDirection: 'row-reverse', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' },
   headerText: { gap: 4 },
@@ -811,7 +789,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 10,
     backgroundColor: DESKTOP_COLORS.brand,
-    ...webOnly({ boxShadow: '0 1px 2px rgba(0,80,130,0.2), 0 8px 18px -10px rgba(0,117,179,0.7)' }),
+    ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW }),
   },
   primaryButtonHover: { backgroundColor: DESKTOP_COLORS.brandHover },
   primaryButtonText: { fontSize: 14, color: '#FFFFFF' },

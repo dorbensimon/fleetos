@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getDriver } from '../../lib/adminApi';
 import { listDriverSigningRequests, listSigningTemplates } from '../../lib/docuseal';
 import { useCompany } from '../../lib/CompanyContext';
-import { buildSigningFolders, signingFolderStatus, type SigningFolder } from '../../lib/signingFolders';
+import { buildSigningFolders, signedOnLabel as signedLine, signingFolderStatus, type SigningFolder } from '../../lib/signingFolders';
 import { DK, DKText, KitSection, ListRow, STATUS } from '../driverKit';
 import { isChecklistTemplate } from '../../lib/checklistForms';
 import { DText, HoverPressable, StatusPill } from '../desktop/primitives';
@@ -14,6 +14,7 @@ import { t, dirIcon, textStart } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 import { listCompanyFolders, type CompanyFolder } from '../../lib/folderCatalog';
 import { AddCatalogFolderSheet, EmptyCatalogFolderSheet } from '../desktop/signing/FolderCatalogSheets';
+import { useSigningStyles } from '../desktop/signing/folderCss';
 import { CreateDocumentSheet, type FormFolder } from '../desktop/signing/CreateDocumentSheet';
 
 export function SigningFolders({ driverId, onOpen, desktop = false, title = t('signing.formsAndDocsToSign') }: { driverId: string; onOpen: (folder: SigningFolder) => void; desktop?: boolean; /** Phone section heading; none when the list opens a page. */ title?: string | null }) {
@@ -32,6 +33,8 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = t('s
   const [emptyFolder, setEmptyFolder] = useState<CompanyFolder | null>(null);
   const [creatingFor, setCreatingFor] = useState<FormFolder | null>(null);
   const reload = () => setReloadKey((key) => key + 1);
+  // The add-folder window's styles go on the page now, not in the frame it opens.
+  useSigningStyles();
   // An empty catalog folder opens its own window; everything else opens the folder page.
   const open = (folder: SigningFolder) => (folder.emptyCatalog ? setEmptyFolder(folder.emptyCatalog) : onOpen(folder));
   useFocusEffect(useCallback(() => {
@@ -92,7 +95,10 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = t('s
             onPress={() => open(folder)}
           >
             <View style={desktopStyles.folder}><Ionicons name="folder-outline" size={21} color={DESKTOP_COLORS.brand} /></View>
-            <DText weight="semiBold" style={desktopStyles.label}>{folder.title}</DText>
+            <View style={desktopStyles.text}>
+              <DText weight="semiBold" style={desktopStyles.label}>{folder.title}</DText>
+              {signedLine(folder) ? <DText style={desktopStyles.date}>{signedLine(folder)}</DText> : null}
+            </View>
             <StatusPill tone={tone} label={label} />
             <Ionicons name={dirIcon('chevron-back')} size={16} color={DESKTOP_COLORS.inkFaint} />
           </HoverPressable>;
@@ -106,7 +112,7 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = t('s
             onPress={() => setAdding(true)}
           >
             <View style={desktopStyles.folder}><Ionicons name="add" size={21} color={DESKTOP_COLORS.brand} /></View>
-            <DText weight="semiBold" style={[desktopStyles.label, { color: DESKTOP_COLORS.brand }]}>{t('folders.addButton')}</DText>
+            <DText weight="semiBold" style={[desktopStyles.label, { flex: 1, color: DESKTOP_COLORS.brand }]}>{t('folders.addButton')}</DText>
           </HoverPressable>
         )}
       </View>
@@ -143,7 +149,7 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = t('s
               icon={m.icon}
               tint={m.tone === 'missing' ? DK.accent : STATUS[m.tone].fg}
               title={folder.title}
-              subtitle={m.label}
+              subtitle={!signedLine(folder) || folder.emptyCatalog ? m.label : m.tone === 'ok' ? signedLine(folder)! : `${m.label} · ${signedLine(folder)}`}
               onPress={() => open(folder)}
             />
           );
@@ -185,6 +191,8 @@ const desktopStyles = StyleSheet.create({
   rowHoverMotion: webOnly({ transform: 'translateY(-2px)' }),
   rowPress: webOnly({ transform: 'scale(0.98)' }),
   folder: { width: 34, height: 34, borderRadius: 9, backgroundColor: DESKTOP_COLORS.brandFocusRing, alignItems: 'center', justifyContent: 'center' },
-  label: { flex: 1, textAlign: textStart(), color: DESKTOP_COLORS.ink, fontSize: 13, lineHeight: 20 },
+  text: { flex: 1, minWidth: 0 },
+  label: { textAlign: textStart(), color: DESKTOP_COLORS.ink, fontSize: 13, lineHeight: 20 },
+  date: { textAlign: textStart(), color: DESKTOP_COLORS.inkMuted, fontSize: 11.5, lineHeight: 16, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   message: { textAlign: 'center', color: DESKTOP_COLORS.inkMuted, padding: 20, fontSize: 13, lineHeight: 20 },
 });

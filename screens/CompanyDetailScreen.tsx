@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Image, ScrollView } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { BrandLoader } from '../components/ui/BrandLoader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { showAlert } from '../lib/platformAlert';
-import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Company } from '../lib/supabase';
@@ -21,12 +20,9 @@ import { pickAndUploadLogo } from '../lib/uploadLogo';
 import { isValidIsraeliPhone } from '../lib/phone';
 import { isValidEmail, isValidTemporaryPassword } from '../lib/validation';
 import { DK } from '../components/driverKit';
-import { formatDate } from '../lib/theme';
 import { CompanyUser } from '../components/companyDetail/types';
-import { UserRow } from '../components/companyDetail/UserRow';
-import { CompanyInfoCard, CompanyEditableFields } from '../components/companyDetail/CompanyInfoCard';
+import type { CompanyEditableFields } from '../components/companyDetail/companyFields';
 import { DeleteCompanyModal } from '../components/owner/DeleteCompanyModal';
-import { CompanyFoldersPanel } from '../components/owner/CompanyFoldersPanel';
 import {
   AddAdminSheet,
   CredentialsSheet,
@@ -40,15 +36,16 @@ import {
   type NewAdminForm,
 } from '../components/companyDetail/CompanyDetailSheets';
 import { CompanyDetailMobile } from '../components/companyDetail/CompanyDetailMobile';
+import { CompanyDetailDesktop } from '../components/companyDetail/CompanyDetailDesktop';
+import { loadPlatformRows } from '../lib/ownerApi';
+import { buildPlatformOverview, type CompanyHealth } from '../lib/platformOverview';
 import { CompanyAccountSheet } from '../components/owner/CompanyAccountSheet';
 import { getCompanyAccount } from '../lib/companyAccountApi';
-import { accountNextStep, formatMoney, planLabel, statusLabel, statusTone, type CompanyAccount } from '../lib/companyAccount';
-import { ErrorState } from '../components/ui';
+import type { CompanyAccount } from '../lib/companyAccount';
+import { ErrorState, LoadingState } from '../components/ui';
 import { functionErrorMessage } from '../lib/functionError';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import { DesktopShell } from '../components/desktop/DesktopShell';
-import { DText, HoverPressable, StatusPill } from '../components/desktop/primitives';
-import { DESKTOP_COLORS, DESKTOP_TONES } from '../components/desktop/desktopTheme';
 import { t } from '../lib/i18n';
 import { errorMessage } from '../lib/requestError';
 
@@ -56,8 +53,8 @@ import { errorMessage } from '../lib/requestError';
  * Owner-only screen: one company as a customer — its subscription, its
  * managers and drivers, its editable details — with add-manager / edit /
  * new temporary password / remove flows, disabling and deleting. The phone
- * view is components/companyDetail/CompanyDetailMobile (app kit); desktop
- * keeps its column here. Every dialog is a kit sheet
+ * view is components/companyDetail/CompanyDetailMobile (app kit), the
+ * computer's is CompanyDetailDesktop. Every dialog is a kit sheet
  * (components/companyDetail/CompanyDetailSheets). This screen owns data
  * loading and the handlers those pieces call back into.
  */
@@ -82,6 +79,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
 
   const [company, setCompany] = useState<Company | null>(null);
   const [account, setAccount] = useState<CompanyAccount | null>(null);
+  const [health, setHealth] = useState<CompanyHealth | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [actionsUser, setActionsUser] = useState<CompanyUser | null>(null);
@@ -196,6 +194,14 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     // The subscription is decoration on this page: a failure leaves it empty.
     const accountData = await getCompanyAccount(companyId).catch(() => null);
     if (requestId === loadRequest.current) setAccount(accountData);
+    // The control room's numbers and checks for this company (computer only); extra, so a failure leaves them out.
+    // ponytail: loads every company's rows; a per-company query if the platform grows large.
+    if (isDesktop) {
+      void loadPlatformRows()
+        .then((rows) => buildPlatformOverview(rows).companies.find((row) => row.company.id === companyId) ?? null)
+        .catch(() => null)
+        .then((row) => { if (requestId === loadRequest.current) setHealth(row); });
+    }
 
     const { data: usersData, error } = await listCompanyUsers(companyId);
 
@@ -208,7 +214,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     } catch (err: any) {
       if (requestId === loadRequest.current) setLoadError(errorMessage(err, t('company.loadFailedShort')));
     }
-  }, [companyId]);
+  }, [companyId, isDesktop]);
 
   useEffect(() => {
     let active = true;
@@ -254,6 +260,29 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       return;
     }
     await load();
+  };
+
+  /** The computer's in-place edits: one field at a time. */
+  const saveField = async (patch: Partial<Company>) => {
+    if (!company) return null;
+    const { error } = await updateCompany(company.id, patch);
+    if (error) return t('common.saveChangesFailed');
+    await load();
+    return null;
+  };
+
+  const replaceLogo = async () => {
+    if (!company) return;
+    setLogoError('');
+    setUploadingLogo(true);
+    try {
+      const url = await pickAndUploadLogo();
+      if (url) setLogoError((await saveField({ logo_url: url })) ?? '');
+    } catch (err: any) {
+      setLogoError(errorMessage(err, t('company.logoUploadFailed')));
+    } finally {
+      setUploadingLogo(false);
+    }
   };
 
   const setStatus = async (status: Company['status']) => {
@@ -339,6 +368,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         name: newAdminForm.firstName.trim(),
         email: newAdminForm.email.trim(),
         password: newAdminForm.password,
+        phone: newAdminForm.phone,
       });
       setNewAdminForm(EMPTY_NEW_ADMIN_FORM);
       setNewAdminFieldErrors({});
@@ -386,6 +416,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         name: (resetTarget.full_name || '').trim().split(/\s+/)[0] || '',
         email: resetTarget.email || '',
         password: resetPasswordValue,
+        phone: resetTarget.phone,
       });
       setResetPasswordValue('');
       setResetFieldError('');
@@ -419,7 +450,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     if (isDesktop) {
       return (
         <DesktopShell active="OwnerHome" breadcrumbs={[t('nav.controlCenter'), '…']}>
-          <BrandLoader color={DESKTOP_COLORS.brand} />
+          <LoadingState />
         </DesktopShell>
       );
     }
@@ -532,65 +563,29 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     return (
       <>
         <DesktopShell active="OwnerHome" breadcrumbs={[t('nav.controlCenter'), company.name]}>
-          {/* The shell's body doesn't scroll; the page does. */}
-          <ScrollView style={ds.scroll} contentContainerStyle={ds.wrap}>
-            <View style={ds.headRow}>
-              <View style={ds.headMain}>
-                {!!company.logo_url && <Image source={{ uri: company.logo_url }} accessibilityLabel={t('company.logoOf', { name: company.name })} style={ds.logo} resizeMode="cover" />}
-                <DText weight="bold" style={ds.heading} numberOfLines={1}>{company.name}</DText>
-                <StatusPill tone={active ? 'ok' : 'neutral'} label={active ? t('vehicle.status.active') : t('vehicle.status.disabled')} />
-              </View>
-            </View>
-
-            <View style={ds.card}>
-              <CompanyInfoCard
-                fields={fields}
-                active={active}
-                hasChanges={hasChanges}
-                saving={saving}
-                saveError={saveError}
-                uploadingLogo={uploadingLogo}
-                logoError={logoError}
-                onChangeFields={setFields}
-                onPickLogo={handlePickLogo}
-                onSave={saveChanges}
-                onToggleActive={toggleActive}
-                onRequestDelete={() => setDeleteOpen(true)}
-              />
-            </View>
-
-            <DesktopAccountPanel account={account} onEdit={() => setAccountOpen(true)} />
-
-            <CompanyFoldersPanel companyId={company.id} />
-
-            <View style={ds.sectionHeadRow}>
-              <DText weight="bold" style={ds.sectionTitle}>{t('company.adminsOpen')}{admins.length})</DText>
-              <HoverPressable style={ds.addButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={() => setAddAdminOpen(true)}>
-                <Ionicons name="add" size={14} color={DESKTOP_COLORS.brand} />
-                <DText weight="semiBold" style={ds.addButtonText}>{t('company.addAdmin')}</DText>
-              </HoverPressable>
-            </View>
-            <View style={ds.card}>
-              {admins.length === 0 ? (
-                <DText style={ds.empty}>{t('company.noAdminsYet')}</DText>
-              ) : (
-                admins.map((u) => (
-                  <UserRow key={u.id} user={u} onRemove={() => setRemoveTarget(u)} onResetPassword={() => setResetTarget(u)} onEdit={() => openEdit(u)} />
-                ))
-              )}
-            </View>
-
-            <DText weight="bold" style={ds.sectionTitle}>{t('company.driversOpen')}{drivers.length})</DText>
-            <View style={ds.card}>
-              {drivers.length === 0 ? (
-                <DText style={ds.empty}>{t('company.noDriversYetShort')}</DText>
-              ) : (
-                drivers.map((u) => (
-                  <UserRow key={u.id} user={u} onRemove={() => setRemoveTarget(u)} onResetPassword={() => setResetTarget(u)} onEdit={() => openEdit(u)} />
-                ))
-              )}
-            </View>
-          </ScrollView>
+          <CompanyDetailDesktop
+            company={company}
+            account={account}
+            health={health}
+            admins={admins}
+            drivers={drivers}
+            onSaveField={saveField}
+            onPickLogo={() => void replaceLogo()}
+            uploadingLogo={uploadingLogo}
+            logoError={logoError}
+            onToggleActive={toggleActive}
+            onDelete={() => setDeleteOpen(true)}
+            onEditAccount={() => setAccountOpen(true)}
+            onAddAdmin={() => setAddAdminOpen(true)}
+            onEditUser={openEdit}
+            onResetUser={(user) => {
+              setResetPasswordValue('');
+              setResetFieldError('');
+              setResetError('');
+              setResetTarget(user);
+            }}
+            onRemoveUser={setRemoveTarget}
+          />
         </DesktopShell>
         {modals}
       </>
@@ -629,91 +624,6 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   );
 }
 
-/** The subscription on the desktop page, in the desktop's own look. */
-function DesktopAccountPanel({ account, onEdit }: { account: CompanyAccount | null; onEdit: () => void }) {
-  const next = accountNextStep(account);
-  const tone = statusTone(account?.status);
-  const pill = tone === 'off' ? 'neutral' : tone;
-  const facts: [string, string][] = [
-    [t('account.planLabel'), planLabel(account?.plan)],
-    [t('common.perMonth'), formatMoney(account?.monthly_price)],
-    [account?.status === 'trial' ? t('company.trialEnd') : t('company.renewal'), formatDate(account?.status === 'trial' ? account?.trial_ends_at : account?.renewal_date)],
-    [t('company.vehicleQuota'), account?.vehicle_limit ? String(account.vehicle_limit) : t('common.none')],
-  ];
-  const contact = [account?.contact_name, account?.contact_phone, account?.contact_email].filter(Boolean).join(' · ');
-  return (
-    <View style={ds.card}>
-      <View style={ds.accountHead}>
-        <DText weight="bold" style={ds.sectionTitleDark}>{t('owner.subscriptionAndPayment')}</DText>
-        <StatusPill tone={pill} label={statusLabel(account?.status)} />
-        {!!next && next.tone !== 'ok' && (
-          <DText weight="semiBold" style={[ds.accountNext, { color: DESKTOP_TONES[next.tone === 'bad' ? 'bad' : 'warn'].fg }]}>{next.label}</DText>
-        )}
-        <View style={{ flex: 1 }} />
-        <HoverPressable style={ds.addButton} hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }} onPress={onEdit}>
-          <Ionicons name="create-outline" size={14} color={DESKTOP_COLORS.brand} />
-          <DText weight="semiBold" style={ds.addButtonText}>{t('common.edit')}</DText>
-        </HoverPressable>
-      </View>
-      <View style={ds.facts}>
-        {facts.map(([label, value]) => (
-          <View key={label} style={ds.fact}>
-            <DText style={ds.factLabel}>{label}</DText>
-            <DText weight="bold" style={ds.factValue}>{value}</DText>
-          </View>
-        ))}
-      </View>
-      {(!!contact || !!account?.notes) && (
-        <View style={ds.accountFoot}>
-          {!!contact && <DText style={ds.linkSubtitle}>{t('company.billingContactColon')} {contact}</DText>}
-          {!!account?.notes && <DText style={ds.linkSubtitle}>{t('common.notesColon')} {account.notes}</DText>}
-        </View>
-      )}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: DK.canvas },
-});
-
-const ds = StyleSheet.create({
-  scroll: { flex: 1 },
-  wrap: { padding: 24, maxWidth: 620, alignSelf: 'center', width: '100%', gap: 14 },
-  headRow: { marginBottom: 4 },
-  headMain: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
-  logo: { width: 32, height: 32, borderRadius: 7, borderWidth: 1, borderColor: DESKTOP_COLORS.border },
-  heading: { fontSize: 17, flexShrink: 1 },
-  card: {
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  linkCard: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 10,
-    padding: 14,
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
-    borderRadius: 8,
-  },
-  linkTitle: { fontSize: 13 },
-  linkSubtitle: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint, marginTop: 2 },
-  sectionHeadRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
-  addButton: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, height: 28, paddingHorizontal: 10, borderRadius: 6 },
-  addButtonText: { fontSize: 12, color: DESKTOP_COLORS.brand },
-  empty: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint, textAlign: 'center', paddingVertical: 20 },
-  accountHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 6 },
-  sectionTitleDark: { fontSize: 14, color: DESKTOP_COLORS.ink },
-  accountNext: { fontSize: 12.5 },
-  facts: { flexDirection: 'row-reverse', paddingHorizontal: 8, paddingBottom: 12 },
-  fact: { flex: 1, paddingHorizontal: 6, gap: 2 },
-  factLabel: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint },
-  factValue: { fontSize: 14, color: DESKTOP_COLORS.ink },
-  accountFoot: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft, paddingHorizontal: 14, paddingVertical: 10, gap: 4 },
 });

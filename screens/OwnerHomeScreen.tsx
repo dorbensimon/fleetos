@@ -84,7 +84,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
 
-  const [created, setCreated] = useState<{ companyId: string | null; companyName: string; email: string; password: string } | null>(null);
+  const [created, setCreated] = useState<{ companyId: string | null; companyName: string; email: string; password: string; phone?: string } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const loadRequest = useRef(0);
 
@@ -225,7 +225,7 @@ export default function OwnerHomeScreen({ navigation }: Props) {
       // The subscription is the owner's own record; a failure here leaves the
       // default trial in place and is fixable from the company's page.
       if (companyId) await saveCompanyAccount(companyId, formToAccountInput(form.account)).catch(() => {});
-      setCreated({ companyId, companyName: form.name.trim(), email: form.email.trim(), password: form.password });
+      setCreated({ companyId, companyName: form.name.trim(), email: form.email.trim(), password: form.password, phone: form.phone });
       setForm(emptyOwnerCompanyForm());
       setAddOpen(false);
       await loadCompanies();

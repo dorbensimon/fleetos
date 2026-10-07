@@ -106,6 +106,27 @@ export async function restoreFormVersion(companyId: string, templateId: string, 
 
 // ── Owner ────────────────────────────────────────────────────────────
 
+/**
+ * Adds a catalog folder to every active company at once. A company that
+ * already has its own document under that name is skipped and named back,
+ * so the owner can sort it out with that company.
+ */
+export async function addFolderToAllCompanies(catalogId: string): Promise<{ added: number; skipped: string[] }> {
+  const { data, error } = await supabase.from('companies').select('id, name').eq('status', 'active');
+  if (error) throw new Error(t('folders.addFailed'));
+  let added = 0;
+  const skipped: string[] = [];
+  for (const company of data ?? []) {
+    try {
+      await addCompanyFolder(company.id, catalogId);
+      added += 1;
+    } catch {
+      skipped.push(company.name);
+    }
+  }
+  return { added, skipped };
+}
+
 export type CatalogFolderInput = {
   title: string;
   kind: FolderKind;

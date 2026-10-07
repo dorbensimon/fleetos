@@ -25,7 +25,7 @@ import { formatPhone } from '../../lib/phone';
 import type { Company } from '../../lib/supabase';
 import { accountNextStep, formatMoney, planLabel, statusLabel, statusTone, BILLING_CYCLES, type CompanyAccount } from '../../lib/companyAccount';
 import { ChoiceChips, TonePill } from '../owner/ownerKit';
-import type { CompanyEditableFields } from './CompanyInfoCard';
+import type { CompanyEditableFields } from './companyFields';
 import type { CompanyUser } from './types';
 import { t, dirIcon } from '../../lib/i18n';
 import { COMPANY_TYPES, companyTypeLabel } from '../../lib/companyType';
@@ -155,7 +155,6 @@ export function CompanyDetailMobile(p: Props) {
               value={`${next.label} · ${formatDate(a?.status === 'trial' ? a.trial_ends_at : a?.renewal_date)}`}
             />
           )}
-          {!!a?.vehicle_limit && <InfoLine icon="car-sport-outline" label={t('company.vehicleQuota')} value={t('company.vehiclesLimit', { vehicle_limit: a.vehicle_limit })} />}
           {!!(a?.contact_name || a?.contact_phone || a?.contact_email) && (
             <InfoLine
               icon="person-circle-outline"
