@@ -36,7 +36,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
         #pages{width:100%;min-height:100%;padding:18px 14px 42px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:18px}
         .page{position:relative;width:min(100%,760px);background:#fff;border-radius:5px;overflow:hidden;box-shadow:0 18px 44px rgba(24,35,49,.22),0 3px 10px rgba(24,35,49,.16);animation:page-in 260ms cubic-bezier(.23,1,.32,1) both}
         canvas{display:block;width:100%;height:auto}
-        .preview-field{position:absolute;box-sizing:border-box;border:2px dashed #0088cc;background:rgba(0,136,204,.10);color:#075985;display:flex;align-items:center;justify-content:center;font:700 12px sans-serif;pointer-events:none;overflow:hidden}
+        .preview-field{position:absolute;box-sizing:border-box;border:2px dashed #0088cc;background:rgba(47,91,255,.10);color:#075985;display:flex;align-items:center;justify-content:center;font:700 12px sans-serif;pointer-events:none;overflow:hidden}
         .preview-field.stamp{border-color:#7c3aed;background:rgba(124,58,237,.10);color:#6d28d9}
         @keyframes page-in{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
         @media (prefers-reduced-motion:reduce){.page{animation:none}}

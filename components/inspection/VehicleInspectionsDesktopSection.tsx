@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   rowDivider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
   rowIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: DESKTOP_COLORS.canvas, alignItems: 'center', justifyContent: 'center' },
-  rowIconFilled: { backgroundColor: 'rgba(0,136,204,0.10)' },
+  rowIconFilled: { backgroundColor: 'rgba(47,91,255,0.10)' },
   rowText: { flex: 1, minWidth: 0, gap: 1 },
   rowTitle: { fontSize: 14.5 },
   rowMeta: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },

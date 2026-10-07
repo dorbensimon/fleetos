@@ -15,7 +15,7 @@ import {
 } from '../../../lib/documentActions';
 import { DesktopModal } from '../DesktopModal';
 import { DesktopDateField, DLtrText, DText, HoverPressable, prefersReducedMotion } from '../primitives';
-import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from '../desktopTheme';
 import { DocumentPreview } from './DocumentPreview';
 import { t, dirIcon } from '../../../lib/i18n';
 
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   rowDivider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
   rowIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: DESKTOP_COLORS.canvas, alignItems: 'center', justifyContent: 'center' },
-  rowIconFilled: { backgroundColor: 'rgba(0,136,204,0.10)' },
+  rowIconFilled: { backgroundColor: 'rgba(47,91,255,0.10)' },
   rowText: { flex: 1, minWidth: 0, gap: 1 },
   rowTitle: { fontSize: 14.5 },
   rowMeta: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap' },
@@ -470,8 +470,8 @@ const styles = StyleSheet.create({
   fileMeta: { fontSize: 14, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   previewHover: webOnly({ filter: 'brightness(0.97)' }),
 
-  softBtn: { height: 36, paddingHorizontal: 14, borderRadius: 9, backgroundColor: 'rgba(0,136,204,0.09)', flexDirection: 'row-reverse', alignItems: 'center', gap: 6, ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
-  softBtnHover: { backgroundColor: 'rgba(0,136,204,0.15)' },
+  softBtn: { height: 36, paddingHorizontal: 14, borderRadius: 9, backgroundColor: 'rgba(47,91,255,0.09)', flexDirection: 'row-reverse', alignItems: 'center', gap: 6, ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
+  softBtnHover: { backgroundColor: 'rgba(47,91,255,0.15)' },
   softBtnText: { fontSize: 14.5, color: DESKTOP_COLORS.brand },
   plainBtn: { height: 36, paddingHorizontal: 14, borderRadius: 9, backgroundColor: DESKTOP_COLORS.canvas, flexDirection: 'row-reverse', alignItems: 'center', gap: 6, ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
   plainBtnText: { fontSize: 14.5, color: DESKTOP_COLORS.ink },
@@ -528,8 +528,8 @@ const styles = StyleSheet.create({
     ...webOnly({ transition: 'background-color 150ms ease, border-color 150ms ease, transform 120ms ease-out' }),
   },
   dropZoneHover: { borderColor: DESKTOP_COLORS.brand, backgroundColor: '#F5FAFD' },
-  dropZoneActive: { borderColor: DESKTOP_COLORS.brand, backgroundColor: 'rgba(0,136,204,0.08)', ...webOnly({ transform: 'scale(1.01)' }) },
-  dropZoneChosen: { borderStyle: 'solid', borderColor: 'rgba(0,136,204,0.35)', backgroundColor: '#F5FAFD' },
+  dropZoneActive: { borderColor: DESKTOP_COLORS.brand, backgroundColor: 'rgba(47,91,255,0.08)', ...webOnly({ transform: 'scale(1.01)' }) },
+  dropZoneChosen: { borderStyle: 'solid', borderColor: 'rgba(47,91,255,0.35)', backgroundColor: '#F5FAFD' },
   dropText: { fontSize: 15.5, color: DESKTOP_COLORS.inkMuted, textAlign: 'center' },
   dropLink: { fontSize: 15.5, color: DESKTOP_COLORS.brand },
   dropNote: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted, textAlign: 'center' },
@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
   uploadError: { fontSize: 14, color: DESKTOP_TONES.bad.fg },
   actions: { flexDirection: 'row-reverse', gap: 12, marginTop: 4 },
   actionBtn: { flex: 1, height: 48, borderRadius: 12, justifyContent: 'center' },
-  primaryBtn: { height: 44, paddingHorizontal: 18, borderRadius: 10, backgroundColor: DESKTOP_COLORS.brand, flexDirection: 'row-reverse', alignItems: 'center', gap: 8, ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
+  primaryBtn: { height: 44, paddingHorizontal: 18, borderRadius: 10, backgroundColor: DESKTOP_COLORS.brand, flexDirection: 'row-reverse', alignItems: 'center', gap: 8, ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW, transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
   primaryBtnHover: { backgroundColor: DESKTOP_COLORS.brandHover },
   primaryBtnText: { fontSize: 16, color: '#FFFFFF' },
   closeBtn: { backgroundColor: '#EEF1F4', flexDirection: 'row-reverse', alignItems: 'center', ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },

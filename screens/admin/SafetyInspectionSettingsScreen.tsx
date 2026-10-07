@@ -206,13 +206,15 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
     return (
       <DesktopShell active="SafetyInspections" breadcrumbs={[t('nav.management'), t('nav.safetyInspections'), t('common.settings')]}>
         <ScrollView style={pageStyles.root} contentContainerStyle={pageStyles.content}>
-          <View style={[pageStyles.hero, pageStyles.enter]}>
+          <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
+            <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
+            <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
             <HoverPressable style={desk.back} hoverStyle={desk.backHover} onPress={back} accessibilityLabel={t('common.goBack')}>
-              <Ionicons name="arrow-forward" size={18} color={DESKTOP_COLORS.ink} />
+              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
             </HoverPressable>
             <View style={pageStyles.heroIdentity}>
-              <DText weight="bold" style={pageStyles.heroName} accessibilityRole="header">{t('inspection.settingsTitle')}</DText>
-              <DText style={pageStyles.heroSubText}>{t('inspection.settingsSubtitle')}</DText>
+              <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">{t('inspection.settingsTitle')}</DText>
+              <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark]}>{t('inspection.settingsSubtitle')}</DText>
             </View>
             {loaded && dirty && (
               <View style={desk.actions}>
@@ -630,8 +632,8 @@ const styles = StyleSheet.create({
 });
 
 const desk = StyleSheet.create({
-  back: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#EEF1F4', alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease' }) },
-  backHover: { backgroundColor: '#E5E9ED' },
+  back: { width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease' }) },
+  backHover: { backgroundColor: 'rgba(255,255,255,0.2)' },
   actions: { flexDirection: 'row-reverse', gap: 8 },
   state: { flexGrow: 0, alignItems: 'center', gap: 10, padding: 32 },
   error: { fontSize: 13.5, color: DESKTOP_TONES.bad.fg },
@@ -641,15 +643,15 @@ const desk = StyleSheet.create({
   bannerText: { fontSize: 14, flex: 1 },
   groups: { gap: 12 },
   groupHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 12, backgroundColor: DESKTOP_COLORS.surfaceMuted, borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
-  groupNum: { width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(0,136,204,0.10)', alignItems: 'center', justifyContent: 'center' },
+  groupNum: { width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(47,91,255,0.10)', alignItems: 'center', justifyContent: 'center' },
   groupNumText: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
   groupTitle: { flex: 1, fontSize: 15, fontWeight: '600' },
   item: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, paddingVertical: 6, paddingHorizontal: 12 },
   itemNum: { width: 28, textAlign: 'center', fontSize: 13, color: DESKTOP_COLORS.inkFaint, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   itemInput: { flex: 1, borderColor: 'transparent', backgroundColor: 'transparent' },
   addItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, height: 42, paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft, ...webOnly({ transition: 'background-color 150ms ease' }) },
-  addGroup: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(0,117,179,0.35)', ...webOnly({ transition: 'background-color 150ms ease' }) },
-  addGroupHover: { backgroundColor: 'rgba(0,136,204,0.06)' },
+  addGroup: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(47,91,255,0.35)', ...webOnly({ transition: 'background-color 150ms ease' }) },
+  addGroupHover: { backgroundColor: 'rgba(47,91,255,0.06)' },
   icon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease' }) },
   iconHover: { backgroundColor: DESKTOP_COLORS.canvas },
   iconDangerHover: { backgroundColor: DESKTOP_TONES.bad.bg },

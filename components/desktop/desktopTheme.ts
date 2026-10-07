@@ -18,9 +18,9 @@ export const DESKTOP_COLORS = {
   ink: '#16222E',
   inkMuted: '#5C6773',
   inkFaint: '#65717D', // 4.6:1 on the canvas; was #8B98A4 (2.7:1)
-  brand: '#0075B3', // 5.0:1 on white (WCAG AA); was #0088CC (3.9:1)
-  brandHover: '#00649A',
-  brandFocusRing: 'rgba(0,136,204,0.14)',
+  brand: '#2F5BFF', // 5.2:1 on white (WCAG AA); the driver kit's blue, was #0075B3
+  brandHover: '#2449E0',
+  brandFocusRing: 'rgba(47,91,255,0.14)',
   rowHover: '#F7F9FA',
   overlay: 'rgba(16,34,50,0.32)',
 
@@ -31,13 +31,14 @@ export const DESKTOP_COLORS = {
   sidebarTextStrong: '#EDF1F4',
   sidebarSection: '#7C8896',
   sidebarMeta: '#7C8896',
-  sidebarActiveBg: 'rgba(0,136,204,0.18)',
+  sidebarActiveBg: 'rgba(47,91,255,0.18)',
   sidebarActiveText: '#5FC1F0',
   sidebarHoverBg: 'rgba(255,255,255,0.05)',
 
   danger: '#D92D20', // error text and badges: 4.8:1; was #FF453A (3.4:1)
 } as const;
 
+/** The lift under every filled brand button — same as the driver kit's PrimaryAction ("הורדת המסמך"). */
 export const DESKTOP_BRAND_SHADOW = '0 10px 24px rgba(47,91,255,0.32)';
 
 export type DesktopTone = 'ok' | 'warn' | 'bad' | 'neutral';

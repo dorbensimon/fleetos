@@ -122,7 +122,8 @@ export function StatusPicker<T extends string>({
   return (
     <View ref={triggerRef}>
       <HoverPressable
-        style={[styles.statusTrigger, { backgroundColor: tone.bg }]}
+        // The tint sits on its own white so the pill reads the same on the night header.
+        style={[styles.statusTrigger, { backgroundColor: '#FFFFFF' }, webOnly({ backgroundImage: `linear-gradient(${tone.bg}, ${tone.bg})` })]}
         hoverStyle={styles.statusTriggerHover}
         pressStyle={styles.pressDown}
         disabled={saving}
@@ -198,6 +199,15 @@ export function Field({ label, value, ltr, compact }: { label: string; value: st
   );
 }
 
+
+/** A save that throws instead of returning its message must still end the spinner. */
+async function runSave(save: () => Promise<string | null>): Promise<string | null> {
+  try {
+    return await save();
+  } catch (e) {
+    return errorMessage(e, t('common.saveFailedRetry'));
+  }
+}
 
 /**
  * Shell shared by every per-field editor below — a single field in
@@ -315,7 +325,7 @@ export function EditableTextField({
     const validationError = validate?.(draft) ?? null;
     if (validationError) { setError(validationError); return; }
     setSaving(true);
-    const err = await onSave(draft);
+    const err = await runSave(() => onSave(draft));
     setSaving(false);
     if (err) { setError(err); return; }
     setSavedNonce((n) => n + 1);
@@ -367,7 +377,7 @@ export function EditableSelectField<T extends string>({
   const cancel = () => setEditing(false);
   const confirm = async () => {
     setSaving(true);
-    const err = await onSave(draft);
+    const err = await runSave(() => onSave(draft));
     setSaving(false);
     if (err) { setError(err); return; }
     setSavedNonce((n) => n + 1);
@@ -404,7 +414,7 @@ export function EditableDateField({
   const cancel = () => setEditing(false);
   const confirm = async () => {
     setSaving(true);
-    const err = await onSave(draft);
+    const err = await runSave(() => onSave(draft));
     setSaving(false);
     if (err) { setError(err); return; }
     setSavedNonce((n) => n + 1);
@@ -801,7 +811,7 @@ export const recordStyles = StyleSheet.create({
       transition: 'transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease',
     }),
   },
-  folderTileSignedHover: webOnly({ borderColor: 'rgba(0,136,204,0.32)', boxShadow: '0 18px 32px -20px rgba(16,34,50,0.42)' }),
+  folderTileSignedHover: webOnly({ borderColor: 'rgba(47,91,255,0.32)', boxShadow: '0 18px 32px -20px rgba(16,34,50,0.42)' }),
   folderTileHoverMotion: webOnly({ transform: 'translateY(-2px)' }),
   folderTilePress: webOnly({ transform: 'scale(0.97)' }),
   folderTileThumb: { width: '100%', height: 72, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },

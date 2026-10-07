@@ -8,6 +8,7 @@ import { LanguageRows, LanguageSection } from '../components/LanguagePicker';
 import { DesktopShell } from '../components/desktop/DesktopShell';
 import { DText, HoverPressable } from '../components/desktop/primitives';
 import { DESKTOP_COLORS } from '../components/desktop/desktopTheme';
+import { pageStyles } from '../components/desktop/record/RecordPage';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import type { RootStackParamList } from '../navigation/types';
 import { t, dirIcon } from '../lib/i18n';
@@ -34,21 +35,38 @@ export default function SystemSettingsScreen({ navigation }: Props) {
   if (isDesktop) {
     return (
       <DesktopShell active="SystemSettings" breadcrumbs={[t('nav.systemSettings')]}>
-        <ScrollView contentContainerStyle={ds.content}>
-          <DText weight="bold" style={ds.title}>{t('nav.systemSettings')}</DText>
-          <DText weight="bold" style={ds.sectionTitle}>{t('settings.language')}</DText>
-          <View style={ds.card}>
-            <LanguageRows />
+        <ScrollView style={pageStyles.root} contentContainerStyle={pageStyles.content}>
+          {/* The night header shared with the other desktop pages. */}
+          <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
+            <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
+            <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+            <View style={ds.heroIcon}>
+              <Ionicons name="settings" size={22} color="#FFFFFF" />
+            </View>
+            <View style={pageStyles.heroIdentity}>
+              <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">{t('nav.systemSettings')}</DText>
+              <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark]}>{t('menu.systemSettingsSubtitle')}</DText>
+            </View>
           </View>
-          <DText weight="bold" style={ds.sectionTitle}>{t('menu.legal')}</DText>
-          <View style={ds.card}>
-            {LEGAL_ROWS.map((row, index) => (
-              <HoverPressable key={row.doc} style={[ds.row, index > 0 && ds.rowDivider]} hoverStyle={ds.rowHover} onPress={() => openLegal(row.doc)} accessibilityRole="link">
-                <Ionicons name={`${row.icon}-outline` as IconName} size={16} color={DESKTOP_COLORS.brand} />
-                <DText weight="medium" style={ds.rowLabel}>{row.label()}</DText>
-                <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
-              </HoverPressable>
-            ))}
+          <View style={ds.columns}>
+            <View style={ds.column}>
+              <DText weight="bold" style={ds.sectionTitle}>{t('settings.language')}</DText>
+              <View style={ds.card}>
+                <LanguageRows />
+              </View>
+            </View>
+            <View style={ds.column}>
+              <DText weight="bold" style={ds.sectionTitle}>{t('menu.legal')}</DText>
+              <View style={ds.card}>
+                {LEGAL_ROWS.map((row, index) => (
+                  <HoverPressable key={row.doc} style={[ds.row, index > 0 && ds.rowDivider]} hoverStyle={ds.rowHover} onPress={() => openLegal(row.doc)} accessibilityRole="link">
+                    <Ionicons name={`${row.icon}-outline` as IconName} size={16} color={DESKTOP_COLORS.brand} />
+                    <DText weight="medium" style={ds.rowLabel}>{row.label()}</DText>
+                    <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
+                  </HoverPressable>
+                ))}
+              </View>
+            </View>
           </View>
         </ScrollView>
       </DesktopShell>
@@ -72,10 +90,11 @@ export default function SystemSettingsScreen({ navigation }: Props) {
 }
 
 const ds = StyleSheet.create({
-  content: { padding: 24, paddingBottom: 48, maxWidth: 640, width: '100%', alignSelf: 'center' },
-  title: { fontSize: 22, color: DESKTOP_COLORS.ink, marginBottom: 8 },
-  sectionTitle: { fontSize: 14, color: DESKTOP_COLORS.ink, marginTop: 18, marginBottom: 8 },
-  card: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 10, overflow: 'hidden' },
+  heroIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  columns: { flexDirection: 'row-reverse', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 },
+  column: { flexGrow: 1, flexBasis: 360, minWidth: 0 },
+  sectionTitle: { fontSize: 14, color: DESKTOP_COLORS.ink, marginTop: 4, marginBottom: 8 },
+  card: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 14, overflow: 'hidden' },
   row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 16, minHeight: 46 },
   rowDivider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },

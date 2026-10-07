@@ -3,7 +3,7 @@ import { StyleSheet, TextInput, View } from 'react-native';
 import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { DText, HoverPressable } from './primitives';
-import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from './desktopTheme';
 import { BrandLogo } from '../ui/Brand';
 import { t, dirIcon, textStart } from '../../lib/i18n';
 
@@ -157,10 +157,10 @@ const styles = StyleSheet.create({
   formHeading: { marginBottom: 28 }, title: { fontSize: 26, letterSpacing: -0.4, color: DESKTOP_COLORS.ink }, subtitle: { color: DESKTOP_COLORS.inkMuted, fontSize: 13.5, lineHeight: 21, marginTop: 7 },
   field: { marginBottom: 18 }, label: { fontSize: 13, color: DESKTOP_COLORS.ink, marginBottom: 8 },
   inputWrap: { flexDirection: 'row-reverse', alignItems: 'center', height: 50, paddingHorizontal: 8, borderRadius: 12, backgroundColor: DESKTOP_COLORS.surfaceMuted, borderWidth: 1, borderColor: DESKTOP_COLORS.borderInput, ...webOnly({ transition: 'border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease' }) },
-  inputWrapFocused: { backgroundColor: '#fff', borderColor: DESKTOP_COLORS.brand, ...webOnly({ boxShadow: '0 0 0 3px rgba(0,136,204,0.14)' }) }, inputWrapError: { borderColor: DESKTOP_TONES.bad.fg },
+  inputWrapFocused: { backgroundColor: '#fff', borderColor: DESKTOP_COLORS.brand, ...webOnly({ boxShadow: '0 0 0 3px rgba(47,91,255,0.14)' }) }, inputWrapError: { borderColor: DESKTOP_TONES.bad.fg },
   input: { flex: 1, height: '100%', paddingHorizontal: 8, fontSize: 14, color: DESKTOP_COLORS.ink, ...webOnly({ outlineStyle: 'none' }) }, visibilityButton: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }, visibilityButtonHover: { backgroundColor: DESKTOP_COLORS.canvas, ...webOnly({ outlineWidth: 2, outlineStyle: 'solid', outlineColor: DESKTOP_COLORS.brand, outlineOffset: 2 }) }, fieldError: { color: DESKTOP_TONES.bad.fg, fontSize: 11.5, marginTop: 6 },
   requirements: { flexDirection: 'row-reverse', gap: 18, marginTop: 1, marginBottom: 24 }, requirement: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 }, requirementText: { color: DESKTOP_COLORS.inkFaint, fontSize: 11.5 }, requirementTextMet: { color: DESKTOP_TONES.ok.fg },
   errorCallout: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, borderRadius: 10, backgroundColor: DESKTOP_TONES.bad.bg, padding: 11, marginBottom: 16 }, generalError: { flex: 1, color: DESKTOP_TONES.bad.fg, fontSize: 12, textAlign: textStart() },
-  submitButton: { height: 50, borderRadius: 12, backgroundColor: DESKTOP_COLORS.brand, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8 }, submitButtonHover: { backgroundColor: DESKTOP_COLORS.brandHover }, submitButtonDisabled: { opacity: 0.72 }, submitText: { color: '#fff', fontSize: 14 },
+  submitButton: { height: 50, borderRadius: 12, backgroundColor: DESKTOP_COLORS.brand, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW }) }, submitButtonHover: { backgroundColor: DESKTOP_COLORS.brandHover }, submitButtonDisabled: { opacity: 0.72 }, submitText: { color: '#fff', fontSize: 14 },
   cancelButton: { alignSelf: 'center', marginTop: 14, paddingHorizontal: 10, minHeight: 36, justifyContent: 'center', borderRadius: 8 }, cancelButtonHover: { opacity: 0.68, ...webOnly({ outlineWidth: 2, outlineStyle: 'solid', outlineColor: DESKTOP_COLORS.brand, outlineOffset: 2 }) }, cancelText: { color: DESKTOP_COLORS.inkMuted, fontSize: 12.5 }, pressDown: webOnly({ transform: 'scale(0.97)' }),
 });

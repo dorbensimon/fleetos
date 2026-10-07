@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { functionErrorMessage } from './functionError';
 import type { SigningTemplate } from './docuseal';
 import { t } from './i18n';
-import { callFunction } from './folderCatalog';
+import { callFunction } from './callFunction';
 import { formTargetBody, type FormTarget, type SavedForm } from './companySigningTemplates';
 
 /**

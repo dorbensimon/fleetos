@@ -68,6 +68,23 @@ export const FOLDER_CSS = `
 @media (hover: hover) and (pointer: fine) {
   .fc-item:hover:not(:disabled):not([aria-checked="true"]) { box-shadow: var(--sd-depth-2), inset 0 0 0 1px rgba(0,0,0,0.05); }
 }
+/* "תיקיות בתיק הנהג": one size whatever the list, a circle beside each name */
+.sd-float.fc-fixed { height: min(600px, calc(100dvh - 48px)); }
+.fc-rows { background: var(--sd-card); border-radius: 16px; box-shadow: var(--sd-depth-1), inset 0 0 0 1px rgba(0,0,0,0.04); overflow: hidden; }
+.fc-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; text-align: start; background: none; border: 0; cursor: pointer; font: inherit; color: inherit; transition: background-color 160ms ease; }
+.fc-row + .fc-row { border-top: 1px solid rgba(22,34,46,0.07); }
+.fc-row:disabled { cursor: default; opacity: 0.6; }
+.fc-row:focus-visible { outline: 2px solid var(--sd-tint); outline-offset: -2px; }
+.fc-circle { flex: none; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 0 0 2px rgba(92,103,115,0.4); transition: background-color 200ms var(--sd-ease), box-shadow 200ms var(--sd-ease); }
+.fc-circle > * { opacity: 0; transform: scale(0.4); transition: opacity 160ms ease, transform 260ms var(--sd-ease); }
+.fc-row[aria-checked="true"] .fc-circle { background: var(--sd-tint); box-shadow: none; }
+.fc-row[aria-checked="true"] .fc-circle > * { opacity: 1; transform: none; }
+@media (hover: hover) and (pointer: fine) {
+  .fc-row:hover:not(:disabled) { background: rgba(47,91,255,0.04); }
+  .fc-row:hover:not(:disabled) .fc-circle { box-shadow: inset 0 0 0 2px var(--sd-tint); }
+  .fc-row[aria-checked="true"]:hover .fc-circle { box-shadow: none; }
+}
 .fc-icon { flex: none; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--sd-tint-soft); color: var(--sd-tint); }
 .fc-text { flex: 1; min-width: 0; }
 .fc-text strong { display: block; font-size: 16px; line-height: 1.35; }
@@ -117,6 +134,7 @@ textarea.fc-input { min-height: 84px; resize: vertical; line-height: 1.5; }
     transform: none; border-radius: 24px 24px 0 0;
     animation: sd-sheet-in 460ms var(--sd-sheet) both;
   }
+  .sd-float.fc-fixed { height: 80dvh; }
   .sd-float.sd-closing { animation: sd-sheet-out 260ms cubic-bezier(0.4, 0, 1, 1) both; }
   .sd-float-grabber { display: block; width: 40px; height: 5px; border-radius: 3px; background: rgba(22,34,46,0.18); margin: 8px auto 0; flex: none; }
   .sd-float-head { padding: 12px 18px 10px; }

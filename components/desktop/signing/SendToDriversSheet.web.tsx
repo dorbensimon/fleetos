@@ -81,7 +81,7 @@ export function SendToDriversSheet({ companyId, template, onClosed }: { companyI
         ) : (
           <>
             <span className="sd-foot-note">
-              <Ionicons name="phone-portrait" size={20} color="#0075B3" />
+              <Ionicons name="phone-portrait" size={20} color="#2F5BFF" />
               {t('signing.driversWillSignInApp')}
             </span>
             <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={() => void send()} disabled={!count || sending} style={{ minWidth: 220 }}>
@@ -127,7 +127,7 @@ export function SendToDriversSheet({ companyId, template, onClosed }: { companyI
           </div>
         ) : drivers.length === 0 ? (
           <div className="sd-busy">
-            <Ionicons name="people" size={46} color="#0075B3" />
+            <Ionicons name="people" size={46} color="#2F5BFF" />
             <h3 className="sd-b">{t('driver.noActiveDrivers')}</h3>
           </div>
         ) : (

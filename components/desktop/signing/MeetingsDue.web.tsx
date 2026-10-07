@@ -10,7 +10,7 @@ const MARK: Record<DueState, { icon: 'alert' | 'time' | 'calendar'; color: strin
   late: { icon: 'alert', color: '#D92D20', soft: 'rgba(255,69,58,0.12)' },
   today: { icon: 'time', color: '#B25E00', soft: 'rgba(255,149,0,0.14)' },
   soon: { icon: 'time', color: '#B25E00', soft: 'rgba(255,149,0,0.14)' },
-  later: { icon: 'calendar', color: '#0075B3', soft: 'rgba(0,136,204,0.1)' },
+  later: { icon: 'calendar', color: '#2F5BFF', soft: 'rgba(47,91,255,0.1)' },
 };
 
 /** "באיחור של 5 ימים" / "היום" / "בעוד 3 ימים", as a coloured pill with a word. */

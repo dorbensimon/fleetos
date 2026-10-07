@@ -9,6 +9,7 @@ import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTh
 import { DepartmentsQuickAction, ReportsQuickAction } from './DashboardWidgets';
 import { HeaderMenuBackdrop, headerMenuEnter, headerMenuStyles, useHeaderMenu } from './headerMenu';
 import { t, dirIcon, getLocale } from '../../lib/i18n';
+import { pageStyles } from './record/RecordPage';
 
 /**
  * Building blocks of the desktop dashboard, one control per job:
@@ -67,12 +68,15 @@ export function FleetHeader() {
   const dateLine = now.toLocaleDateString(getLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <View style={[styles.header, enter(0)]}>
-      <View style={styles.headerText}>
-        <DText weight="extraBold" style={styles.greeting}>
+    // The night header shared with the other desktop pages.
+    <View style={[pageStyles.hero, pageStyles.heroNight, enter(0)]}>
+      <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
+      <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+      <View style={pageStyles.heroIdentity}>
+        <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">
           {greeting}
         </DText>
-        <DText style={styles.dateLine}>{dateLine}</DText>
+        <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark]}>{dateLine}</DText>
       </View>
       <View style={styles.headerActions}>
         <ReportsQuickAction />
@@ -524,24 +528,20 @@ export function enterRow(index: number) {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row-reverse', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 },
-  headerText: { gap: 4 },
-  greeting: { fontSize: 30, lineHeight: 36, color: DESKTOP_COLORS.ink, letterSpacing: -0.7 },
-  dateLine: { fontSize: 15, color: DESKTOP_COLORS.inkMuted },
   headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
 
   segmented: {
     flexDirection: 'row-reverse',
-    padding: 4,
-    borderRadius: 16,
+    padding: 3,
+    borderRadius: 13,
     backgroundColor: '#E8ECF0',
     ...webOnly({ boxShadow: 'inset 0 1px 2px rgba(16,34,50,0.06)' }),
   },
   segmentThumb: {
     position: 'absolute',
-    top: 4,
-    bottom: 4,
-    borderRadius: 12,
+    top: 3,
+    bottom: 3,
+    borderRadius: 10,
     backgroundColor: DESKTOP_COLORS.ink,
     ...webOnly({ boxShadow: '0 6px 14px -6px rgba(22,34,46,0.55), inset 0 1px 0 rgba(255,255,255,0.12)' }),
   },
@@ -550,14 +550,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 44,
-    minWidth: 104,
-    paddingHorizontal: 18,
-    borderRadius: 12,
+    height: 36,
+    minWidth: 92,
+    paddingHorizontal: 14,
+    borderRadius: 10,
   },
   segmentCompact: { minWidth: 48, paddingHorizontal: 0 },
   segmentPress: { transform: [{ scale: 0.96 }] },
-  segmentText: { fontSize: 15.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ transition: 'color 260ms ease' }) },
+  segmentText: { fontSize: 14, color: DESKTOP_COLORS.inkMuted, ...webOnly({ transition: 'color 260ms ease' }) },
   segmentTextOn: { color: '#FFFFFF' },
   segmentCount: {
     minWidth: 24,
@@ -578,11 +578,11 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 11,
-    minHeight: 60,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 16,
+    gap: 10,
+    minHeight: 52,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
     backgroundColor: DESKTOP_COLORS.surface,
     borderWidth: 1,
     borderColor: 'rgba(16,34,50,0.06)',
@@ -598,9 +598,9 @@ const styles = StyleSheet.create({
   },
   tilePress: { transform: [{ scale: 0.985 }] },
   tileIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
+    width: 32,
+    height: 32,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -625,11 +625,11 @@ const styles = StyleSheet.create({
   },
   tileCheckOn: { opacity: 1, transform: [{ scale: 1 }] },
   tileText: { flex: 1, minWidth: 0, gap: 1 },
-  tileLabel: { fontSize: 15, lineHeight: 20, color: DESKTOP_COLORS.ink, ...webOnly({ transition: 'color 280ms ease' }) },
-  tileHint: { fontSize: 12.5, lineHeight: 17, color: DESKTOP_COLORS.inkFaint, ...webOnly({ transition: 'color 280ms ease' }) },
+  tileLabel: { fontSize: 14, lineHeight: 18, color: DESKTOP_COLORS.ink, ...webOnly({ transition: 'color 280ms ease' }) },
+  tileHint: { fontSize: 12, lineHeight: 16, color: DESKTOP_COLORS.inkFaint, ...webOnly({ transition: 'color 280ms ease' }) },
   tileCount: {
-    fontSize: 25,
-    lineHeight: 28,
+    fontSize: 21,
+    lineHeight: 24,
     letterSpacing: -0.5,
     flexShrink: 0,
     ...webOnly({ transition: 'color 280ms ease' }),

@@ -45,7 +45,7 @@ import {
   useOwnerDocuments,
 } from './record/RecordKit';
 import { expiryStatusText, FolderListRow, folderStatus } from './record/FolderDocuments';
-import { DetailRow, Fact, FieldEditDialog, GroupLabel, digitsOnly, pageStyles, type FieldEditor, type TextFieldEditor } from './record/RecordPage';
+import { DetailRow, Fact, FieldEditDialog, GroupLabel, NIGHT_TONES, digitsOnly, pageStyles, type FieldEditor, type TextFieldEditor } from './record/RecordPage';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { t, dirIcon, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../lib/i18n';
 
@@ -295,37 +295,40 @@ export function VehicleDetailDesktopView({
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       {/* Header */}
-      <View style={[styles.hero, !reduceMotion && styles.enter]}>
+      <View style={[styles.hero, styles.heroNight, !reduceMotion && styles.enter]}>
+        <View pointerEvents="none" style={[styles.heroGlow, styles.heroGlowBlue]} />
+        <View pointerEvents="none" style={[styles.heroGlow, styles.heroGlowCyan]} />
         <View style={styles.heroIdentity}>
           <View style={styles.heroStatusRow}>
             {isArchived ? (
-              <StatusPill tone="neutral" label={VEHICLE_STATUS_LABELS.archived} />
+              <View style={styles.pillOnDark}><StatusPill tone="neutral" label={VEHICLE_STATUS_LABELS.archived} /></View>
             ) : (
               <StatusPicker value={vehicle.status} options={STATUS_OPTIONS} onChange={(status) => onSaveField({ status })} />
             )}
             <OverflowMenu items={menuItems} />
           </View>
-          <DText weight="bold" style={styles.heroName} numberOfLines={1}>{name}</DText>
+          <DText weight="bold" style={[styles.heroName, styles.heroNameOnDark]} numberOfLines={1}>{name}</DText>
           <View style={styles.heroSub}>
             {subParts.map((part, index) => (
               <React.Fragment key={`${part}-${index}`}>
-                {index > 0 && <DText style={styles.heroSubDot}>·</DText>}
-                <DText style={styles.heroSubText}>{part}</DText>
+                {index > 0 && <DText style={[styles.heroSubDot, styles.heroSubDotOnDark]}>·</DText>}
+                <DText style={[styles.heroSubText, styles.heroSubTextOnDark]}>{part}</DText>
               </React.Fragment>
             ))}
           </View>
         </View>
 
         <View style={styles.facts}>
-          <Fact label={t('vehicle.odometer')} value={km(vehicle.odometer)} unit={t('unit.km')} />
+          <Fact onDark label={t('vehicle.odometer')} value={km(vehicle.odometer)} unit={t('unit.km')} />
           <Fact
+            onDark
             label={t('vehicle.nextServiceIn')}
             value={serviceRemaining == null ? t('common.notSet') : serviceRemaining <= 0 ? t('vehicle.overBy', { v1: km(Math.abs(serviceRemaining)) }) : km(serviceRemaining)}
             unit={serviceRemaining == null ? undefined : t('unit.km')}
-            color={serviceState === 'expired' ? DESKTOP_TONES.bad.fg : serviceState === 'soon' ? DESKTOP_TONES.warn.fg : undefined}
+            color={serviceState === 'expired' ? NIGHT_TONES.bad : serviceState === 'soon' ? NIGHT_TONES.warn : undefined}
             muted={serviceRemaining == null}
           />
-          <Fact label={t('vehicle.assignedDrivers')} value={String(drivers.length)} />
+          <Fact onDark label={t('vehicle.assignedDrivers')} value={String(drivers.length)} />
         </View>
 
         <LicensePlate plate={formatPlate(vehicle.plate_number)} />
@@ -677,7 +680,7 @@ function DriverRow({ driver, first, onPress }: { driver: VehicleDriverWithProfil
 const styles = StyleSheet.create({
   ...pageStyles,
 
-  plateWrap: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, backgroundColor: DESKTOP_COLORS.canvas },
+  plateWrap: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   plate: {
     flexDirection: 'row',
     alignItems: 'stretch',
@@ -702,7 +705,7 @@ const styles = StyleSheet.create({
   plateBandText: { fontSize: 10, color: '#FFFFFF', letterSpacing: 0.4 },
   plateText: { fontSize: 30, lineHeight: 46, color: '#111111', paddingHorizontal: 14, letterSpacing: 0.6, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
 
-  lookupPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, height: 24, paddingHorizontal: 8, borderRadius: 12, backgroundColor: 'rgba(0,136,204,0.09)', ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
+  lookupPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, height: 24, paddingHorizontal: 8, borderRadius: 12, backgroundColor: 'rgba(47,91,255,0.09)', ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
   lookupSpinner: { transform: [{ scale: 0.7 }], width: 13, height: 13 },
   lookupText: { fontSize: 12.5, color: DESKTOP_COLORS.brand },
   lookupNote: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#F3FAF6', borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },

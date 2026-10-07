@@ -29,7 +29,6 @@ import type { CompanyEditableFields } from './companyFields';
 import type { CompanyUser } from './types';
 import { t, dirIcon } from '../../lib/i18n';
 import { COMPANY_TYPES, companyTypeLabel } from '../../lib/companyType';
-import { CompanyFoldersPanel } from '../owner/CompanyFoldersPanel';
 
 /**
  * One company on the owner's phone: who it is and where it stands as a
@@ -208,10 +207,6 @@ export function CompanyDetailMobile(p: Props) {
             </>
           )}
         </KitSection>
-      </Reveal>
-
-      <Reveal index={4}>
-        <CompanyFoldersPanel companyId={p.company.id} />
       </Reveal>
 
       <Reveal index={4}>

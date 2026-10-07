@@ -20,7 +20,7 @@ import { DK, DriverPage, EditField, EmptyPanel, ErrorPanel, HeroTitle, KitSectio
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable } from '../../components/desktop/primitives';
-import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_BRAND_SHADOW, webOnly } from '../../components/desktop/desktopTheme';
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 
@@ -333,6 +333,7 @@ const desktopStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW }),
   },
   uploadText: { fontSize: 13, color: '#FFFFFF' },
 });

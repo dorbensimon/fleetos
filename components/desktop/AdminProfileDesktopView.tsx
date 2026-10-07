@@ -6,9 +6,10 @@ import type { Company } from '../../lib/supabase';
 import { formatDate } from '../../lib/theme';
 import { formatPhone } from '../../lib/phone';
 import { DLtrText, DText, HoverPressable } from './primitives';
-import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from './desktopTheme';
 import { t, dirIcon, textStart } from '../../lib/i18n';
 import { companyTypeLabel } from '../../lib/companyType';
+import { pageStyles } from './record/RecordPage';
 
 /**
  * Desktop body of the admin's own profile: an identity card plus grouped
@@ -49,20 +50,16 @@ export function AdminProfileDesktopView({
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
-      <View style={styles.pageHeading}>
-        <View>
-          <DText weight="bold" style={styles.pageTitle}>{t('nav.myDetails')}</DText>
-          <DText style={styles.pageSubtitle}>{t('profile.manageIntro')}</DText>
-        </View>
-      </View>
-
-      <View style={styles.identityCard}>
+      {/* The night header shared with the other desktop pages. */}
+      <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
+        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
+        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
         <View style={styles.avatar}>
           <DText weight="bold" style={styles.avatarText}>{initial}</DText>
         </View>
-        <View style={styles.identityText}>
-          <DText weight="bold" style={styles.name}>{fullName || '—'}</DText>
-          <DText style={styles.role}>{role} · {company?.name || 'icar'}</DText>
+        <View style={pageStyles.heroIdentity}>
+          <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">{fullName || '—'}</DText>
+          <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark]}>{role} · {company?.name || 'icar'}</DText>
         </View>
         <View style={styles.identityMeta}>
           <DText style={styles.identityMetaLabel}>{t('profile.activeAccount')}</DText>
@@ -196,30 +193,11 @@ function EditableRow({
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  content: { paddingHorizontal: 32, paddingTop: 28, paddingBottom: 52, gap: 20, maxWidth: 1440, width: '100%', alignSelf: 'center' },
-  pageHeading: { flexDirection: 'row-reverse', justifyContent: 'space-between' },
-  pageTitle: { fontSize: 27, color: DESKTOP_COLORS.ink, letterSpacing: -0.45 },
-  pageSubtitle: { fontSize: 13, color: DESKTOP_COLORS.inkMuted, marginTop: 4 },
-
-  identityCard: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 16,
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
-    borderRadius: 16,
-    padding: 22,
-    minHeight: 112,
-    ...webOnly({ boxShadow: '0 12px 28px rgba(22,34,46,0.07)', transition: 'transform 180ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 180ms cubic-bezier(0.23, 1, 0.32, 1)' }),
-  },
-  avatar: { width: 64, height: 64, borderRadius: 22, backgroundColor: DESKTOP_COLORS.ink, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontSize: 24, textAlign: 'center' },
-  identityText: { flex: 1, gap: 2 },
-  name: { fontSize: 20, color: DESKTOP_COLORS.ink },
-  role: { fontSize: 13, color: DESKTOP_COLORS.inkMuted },
-  identityMeta: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, paddingHorizontal: 18, borderStartWidth: 1, borderStartColor: DESKTOP_COLORS.borderSoft },
-  identityMetaLabel: { fontSize: 12, color: DESKTOP_COLORS.inkMuted },
+  content: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 48, gap: 16, maxWidth: 1160, width: '100%', alignSelf: 'center' },
+  avatar: { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#fff', fontSize: 20, textAlign: 'center' },
+  identityMeta: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, paddingHorizontal: 18, borderStartWidth: 1, borderStartColor: 'rgba(255,255,255,0.14)' },
+  identityMetaLabel: { fontSize: 12.5, color: 'rgba(255,255,255,0.7)' },
   activeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: DESKTOP_TONES.ok.fg },
   editButton: {
     flexDirection: 'row-reverse',
@@ -229,6 +207,7 @@ const styles = StyleSheet.create({
     minHeight: 40,
     borderRadius: 10,
     backgroundColor: DESKTOP_COLORS.brand,
+    ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW }),
   },
   editButtonHover: { backgroundColor: DESKTOP_COLORS.brandHover },
   pressDown: webOnly({ transform: 'scale(0.97)' }),
@@ -247,7 +226,7 @@ const styles = StyleSheet.create({
   rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
   rowLabel: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, flex: 1 },
   rowValue: { fontSize: 13, color: DESKTOP_COLORS.ink },
-  settingsRow: { borderBottomWidth: 0, backgroundColor: 'rgba(0,136,204,0.045)' },
+  settingsRow: { borderBottomWidth: 0, backgroundColor: 'rgba(47,91,255,0.045)' },
   settingsText: { flex: 1, fontSize: 12.5, color: DESKTOP_COLORS.brand },
   securityState: { flexDirection: 'row-reverse', gap: 11, alignItems: 'center', padding: 16, backgroundColor: DESKTOP_TONES.ok.bg },
   securityIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },

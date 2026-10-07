@@ -115,7 +115,8 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       setPendingLicenseRequest(null);
       if (approve) {
         const refreshed = await getDriver(driverId);
-        setDriver(refreshed);
+        // getDriver has no email (it comes from Auth); keep the one on screen.
+        setDriver((prev) => (refreshed && prev ? { ...refreshed, email: prev.email } : refreshed));
       }
       showToast(approve ? t('driver.licenseUpdateApproved') : t('driver.licenseUpdateRejected'));
     } catch (err: any) {

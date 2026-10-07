@@ -24,7 +24,7 @@ import {
   HoverPressable,
   prefersReducedMotion,
 } from './primitives';
-import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from './desktopTheme';
 import { FORM_PAGE_STYLES, heroEnter, useReducedMotion } from './form/RecordFormKit';
 import { t, getLocale } from '../../lib/i18n';
 import { COMPANY_TYPE_OPTIONS, companyTypeLabel, type CompanyType } from '../../lib/companyType';
@@ -129,8 +129,8 @@ const SPRING = {
   mass: 1,
   useNativeDriver: false,
 } as const;
-const NAV_STEP = 56; // item height 52 + gap 4
-const PAGE_TOP = 32; // the page's top padding; section offsets are measured inside the form column
+const NAV_STEP = 46; // item height 42 + gap 4
+const PAGE_TOP = 24; // the page's top padding; section offsets are measured inside the form column
 
 export function CompanySettingsDesktopView({
   form,
@@ -238,11 +238,10 @@ export function CompanySettingsDesktopView({
           <Section {...sectionProps('details', 0)}>
             <Panel>
               <Cell label={t('company.name')} required error={errors.name}>
-                <DesktopInput large value={form.name} onChangeText={(v) => onChange('name', v)} hasError={!!errors.name} />
+                <DesktopInput value={form.name} onChangeText={(v) => onChange('name', v)} hasError={!!errors.name} />
               </Cell>
               <Cell label={t('company.businessId')} required error={errors.businessId}>
                 <DesktopInput
-                  large
                   value={form.businessId}
                   onChangeText={(v) => onChange('businessId', v.replace(/\D/g, ''))}
                   keyboardType="number-pad"
@@ -253,7 +252,6 @@ export function CompanySettingsDesktopView({
               </Cell>
               <Cell label={t('company.type')}>
                 <DesktopSelect
-                  large
                   value={form.companyType}
                   options={COMPANY_TYPE_OPTIONS}
                   onChange={(v) => onChange('companyType', v)}
@@ -262,11 +260,10 @@ export function CompanySettingsDesktopView({
                 />
               </Cell>
               <Cell label={t('company.carrierLicenseExpiry')}>
-                <DesktopDateField large value={form.carrierLicenseExpiry} onChange={(v) => onChange('carrierLicenseExpiry', v)} />
+                <DesktopDateField value={form.carrierLicenseExpiry} onChange={(v) => onChange('carrierLicenseExpiry', v)} />
               </Cell>
               <Cell label={t('company.address')} wide>
                 <DesktopInput
-                  large
                   value={form.address}
                   onChangeText={(v) => onChange('address', v)}
                   placeholder={t('company.addressPlaceholder')}
@@ -355,13 +352,12 @@ export function CompanySettingsDesktopView({
           <Section {...sectionProps('people', 3)}>
             <View style={styles.panelStack}>
               {form.contacts.map((c, i) => (
-                <Panel key={i} title={t('company.contactN', { v1: i + 1 })} icon="person-circle-outline">
+                <Panel key={i} half title={t('company.contactN', { v1: i + 1 })} icon="person-circle-outline">
                   <Cell label={t('common.fullName')}>
-                    <DesktopInput large value={c.name} onChangeText={(v) => onChangeContact(i, 'name', v)} />
+                    <DesktopInput value={c.name} onChangeText={(v) => onChangeContact(i, 'name', v)} />
                   </Cell>
                   <Cell label={t('common.role')}>
                     <DesktopInput
-                      large
                       value={c.role}
                       onChangeText={(v) => onChangeContact(i, 'role', v)}
                       placeholder={t('company.rolePlaceholder')}
@@ -390,9 +386,9 @@ export function CompanySettingsDesktopView({
           <Section {...sectionProps('safety', 4)}>
             <View style={styles.panelStack}>
               {form.officers.map((o, i) => (
-                <Panel key={i} title={i === 0 ? t('company.safetyOfficer') : t('company.extraSafetyOfficer')} icon="shield-half-outline">
+                <Panel key={i} half title={i === 0 ? t('company.safetyOfficer') : t('company.extraSafetyOfficer')} icon="shield-half-outline">
                   <Cell label={t('common.name')}>
-                    <DesktopInput large value={o.name} onChangeText={(v) => onChangeOfficer(i, 'name', v)} />
+                    <DesktopInput value={o.name} onChangeText={(v) => onChangeOfficer(i, 'name', v)} />
                   </Cell>
                   <Cell label={t('common.phone')} error={errors[`officer${i}Phone`]}>
                     <PhoneInput
@@ -565,7 +561,7 @@ function Section({
     >
       <View style={styles.sectionHead}>
         <View style={styles.sectionGlyph}>
-          <Ionicons name={meta.icon} size={22} color="#FFFFFF" />
+          <Ionicons name={meta.icon} size={16} color="#FFFFFF" />
         </View>
         <View style={styles.sectionHeadText}>
           <DText weight="bold" style={styles.sectionTitle} accessibilityRole="header">
@@ -584,12 +580,12 @@ function Section({
  * split by inset hairlines. The rows sit 1px up so the first row's line
  * hides under the platter's edge.
  */
-function Panel({ title, icon, children }: { title?: string; icon?: IconName; children: React.ReactNode }) {
+function Panel({ title, icon, half, children }: { title?: string; icon?: IconName; half?: boolean; children: React.ReactNode }) {
   return (
-    <View style={styles.panel}>
+    <View style={[styles.panel, half && styles.panelHalf]}>
       {!!title && (
         <View style={styles.panelHead}>
-          {!!icon && <Ionicons name={icon} size={20} color={DESKTOP_COLORS.brand} />}
+          {!!icon && <Ionicons name={icon} size={17} color={DESKTOP_COLORS.brand} />}
           <DText weight="bold" style={styles.panelTitle}>
             {title}
           </DText>
@@ -833,7 +829,6 @@ function CompanyOverview({ form, onJump }: { form: CompanySettingsForm; onJump: 
 
   return (
     <View style={[styles.hero, heroEnter()]}>
-      <View style={styles.heroGrid} pointerEvents="none" />
       <View style={styles.heroBody}>
         <View style={styles.heroIdentity}>
           <View style={styles.heroTop}>
@@ -880,7 +875,7 @@ function CompanyOverview({ form, onJump }: { form: CompanySettingsForm; onJump: 
           >
             <View style={styles.ringInner}>
               {complete ? (
-                <Ionicons name="checkmark" size={38} color="#34C759" />
+                <Ionicons name="checkmark" size={26} color="#34C759" />
               ) : (
                 <DLtrText weight="extraBold" style={[styles.ringValue, styles.tabular]}>
                   {doneCount}
@@ -1023,7 +1018,6 @@ function PhoneInput({
 }) {
   return (
     <DesktopInput
-      large
       value={formatPhone(value)}
       onChangeText={(v) => onChange(v.replace(/\D/g, '').slice(0, 10))}
       onBlur={onBlur}
@@ -1064,7 +1058,6 @@ function EmailField({
   const [blocked, setBlocked] = useState(false);
   const input = (
     <DesktopInput
-      large
       value={value}
       onChangeText={(raw) => {
         const clean = sanitizeEmail(raw);
@@ -1256,21 +1249,36 @@ const styles = StyleSheet.create({
   ...FORM_PAGE_STYLES,
   root: { flex: 1, flexDirection: 'row-reverse', backgroundColor: GROUPED_BG },
   tabular: webOnly({ fontVariantNumeric: 'tabular-nums' }),
+  // Compact sizes for this page (the shared form kit stays as is).
+  // Fields sit in a grid inside each panel: label above a short box, two or
+  // three to a row, so a panel stays short and no box stretches across the page.
+  section: { marginBottom: 24 },
+  sectionHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, marginBottom: 10, paddingHorizontal: 2 },
+  sectionTitle: { fontSize: 16, letterSpacing: -0.2, lineHeight: 21 },
+  sectionHint: { fontSize: 12.5, lineHeight: 17, color: DESKTOP_COLORS.inkMuted },
+  panel: { ...FORM_PAGE_STYLES.panel, borderRadius: 12 },
+  rows: { flexDirection: 'row-reverse', flexWrap: 'wrap', columnGap: 16, rowGap: 12, padding: 16 },
+  cell: { flexGrow: 1, flexBasis: 220, maxWidth: 320, minWidth: 0, gap: 5 },
+  cellLabel: { fontSize: 13, lineHeight: 18, color: DESKTOP_COLORS.inkMuted, textAlign: 'right' },
+  required: { color: DESKTOP_COLORS.danger, fontSize: 13 },
+  cellErrorText: { fontSize: 12.5, color: DESKTOP_TONES.bad.fg },
+  toggleTitle: { fontSize: 14 },
+  toggleCaption: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
 
   // Section menu — an iOS Settings sidebar: a white list whose blue
   // selection platter glides with the page scroll.
   nav: {},
-  navTitle: { fontSize: 30, letterSpacing: -0.7, lineHeight: 36 },
+  navTitle: { fontSize: 19, letterSpacing: -0.3, lineHeight: 25 },
   navSubtitle: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 13.5,
+    lineHeight: 19,
     color: DESKTOP_COLORS.inkMuted,
-    marginTop: 6,
-    marginBottom: 22,
+    marginTop: 4,
+    marginBottom: 14,
   },
   navCard: {
-    padding: 6,
-    borderRadius: 18,
+    padding: 5,
+    borderRadius: 14,
     backgroundColor: DESKTOP_COLORS.surface,
     ...webOnly({ boxShadow: PANEL_SHADOW }),
   },
@@ -1281,33 +1289,33 @@ const styles = StyleSheet.create({
     start: 0,
     end: 0,
     height: NAV_STEP - 4,
-    borderRadius: 13,
+    borderRadius: 10,
     backgroundColor: DESKTOP_COLORS.brand,
     ...webOnly({
-      boxShadow: '0 1px 2px rgba(0,136,204,0.25), 0 6px 16px rgba(0,136,204,0.28)',
+      boxShadow: DESKTOP_BRAND_SHADOW,
     }),
   },
   navItem: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     height: NAV_STEP - 4,
-    paddingHorizontal: 10,
-    borderRadius: 13,
+    paddingHorizontal: 8,
+    borderRadius: 10,
     ...webOnly({ transition: 'background-color 150ms ease-out' }),
   },
   navItemHover: { backgroundColor: 'rgba(120,120,128,0.08)' },
   navIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 9,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: DESKTOP_COLORS.brand,
     ...webOnly({ transition: 'background-color 200ms ease-out' }),
   },
   navIconActive: { backgroundColor: '#FFFFFF' },
-  navLabel: { flex: 1, fontSize: 16, color: DESKTOP_COLORS.ink, ...webOnly({ transition: 'color 200ms ease-out' }) },
+  navLabel: { flex: 1, fontSize: 14.5, color: DESKTOP_COLORS.ink, ...webOnly({ transition: 'color 200ms ease-out' }) },
   navLabelActive: { color: '#FFFFFF' },
   navErrorBadge: {
     minWidth: 24,
@@ -1326,60 +1334,56 @@ const styles = StyleSheet.create({
   page: {
     flexDirection: 'row-reverse',
     alignItems: 'flex-start',
-    gap: 32,
+    gap: 24,
     paddingTop: PAGE_TOP,
-    paddingHorizontal: 28,
-    paddingBottom: 150,
+    paddingHorizontal: 24,
+    paddingBottom: 120,
     width: '100%',
-    maxWidth: 1360,
+    maxWidth: 1260,
     alignSelf: 'center',
   },
-  navColumn: { width: 280, flexShrink: 0, ...webOnly({ position: 'sticky', top: 24 }) },
+  navColumn: { width: 240, flexShrink: 0, ...webOnly({ position: 'sticky', top: 24 }) },
   main: { flex: 1, minWidth: 0 },
   sectionLast: { marginBottom: 0 },
   sectionGlyph: {
-    width: 46,
-    height: 46,
-    borderRadius: 13,
+    width: 30,
+    height: 30,
+    borderRadius: 8,
     backgroundColor: DESKTOP_COLORS.brand,
     alignItems: 'center',
     justifyContent: 'center',
-    ...webOnly({ boxShadow: '0 1px 2px rgba(0,136,204,0.2), 0 4px 12px rgba(0,136,204,0.2)' }),
+    ...webOnly({ boxShadow: '0 1px 2px rgba(47,91,255,0.2), 0 4px 12px rgba(47,91,255,0.2)' }),
   },
   footnote: {
-    fontSize: 13.5,
+    fontSize: 12.5,
     color: DESKTOP_COLORS.inkFaint,
-    marginTop: 10,
-    paddingHorizontal: 20,
+    marginTop: 6,
+    paddingHorizontal: 4,
   },
 
   panelRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 16 },
-  panelStack: { gap: 20 },
+  panelStack: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 12 },
   panelHalf: { flexGrow: 1, flexBasis: 300, minWidth: 0 },
   slotPanel: { padding: 20 },
   panelHead: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     backgroundColor: DESKTOP_COLORS.surfaceMuted,
     borderBottomWidth: 1,
     borderBottomColor: DESKTOP_COLORS.borderSoft,
   },
-  panelTitle: { fontSize: 16.5 },
-  cellControl: { flexGrow: 1, flexBasis: 280, minWidth: 0, maxWidth: 520, gap: 6 },
+  panelTitle: { fontSize: 14 },
+  cellControl: { gap: 5 },
 
   toggleRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 16,
-    minHeight: 76,
-    marginEnd: 20,
-    paddingStart: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: DESKTOP_COLORS.borderSoft,
+    width: '100%',
+    maxWidth: 520,
     ...webOnly({
       cursor: 'pointer',
       userSelect: 'none',
@@ -1437,7 +1441,7 @@ const styles = StyleSheet.create({
   },
   dropHover: {
     borderColor: DESKTOP_COLORS.brand,
-    backgroundColor: 'rgba(0,136,204,0.04)',
+    backgroundColor: 'rgba(47,91,255,0.04)',
   },
   dropIcon: {
     width: 44,
@@ -1521,6 +1525,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...webOnly({
+      boxShadow: DESKTOP_BRAND_SHADOW,
       transition: 'background-color 150ms ease-out, transform 100ms ease-out',
     }),
   },
@@ -1531,38 +1536,23 @@ const styles = StyleSheet.create({
 
   // Company hero
   hero: {
-    marginBottom: 44,
-    borderRadius: 28,
+    marginBottom: 28,
+    borderRadius: 18,
     overflow: 'hidden',
-    backgroundColor: DESKTOP_COLORS.ink,
+    backgroundColor: '#12306E',
     ...webOnly({
       backgroundImage:
-        'radial-gradient(90% 120% at 100% 0%, rgba(0,136,204,0.55) 0%, rgba(0,136,204,0) 55%), radial-gradient(60% 90% at 0% 100%, rgba(0,136,204,0.28) 0%, rgba(0,136,204,0) 60%), linear-gradient(160deg, #1D2E3D 0%, #16222E 60%)',
-      boxShadow: '0 2px 4px rgba(16,24,40,0.08), 0 24px 48px -12px rgba(22,34,46,0.35)',
+        'radial-gradient(420px 420px at 100% 0%, rgba(47,91,255,0.42), rgba(47,91,255,0) 70%), radial-gradient(320px 320px at 0% 100%, rgba(25,198,240,0.22), rgba(25,198,240,0) 70%), linear-gradient(180deg, #12306E 0%, #0B1C45 60%, #0A1626 100%)',
+      boxShadow: '0 18px 40px -18px rgba(10,22,38,0.55)',
     }),
   },
-  heroGrid: {
-    position: 'absolute',
-    top: 0,
-    end: 0,
-    bottom: 0,
-    start: 0,
-    opacity: 0.5,
-    ...webOnly({
-      backgroundImage:
-        'linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px)',
-      backgroundSize: '32px 32px',
-      maskImage: 'radial-gradient(80% 100% at 100% 0%, #000 0%, transparent 75%)',
-      WebkitMaskImage: 'radial-gradient(80% 100% at 100% 0%, #000 0%, transparent 75%)',
-    }),
-  },
-  heroBody: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 28, padding: 28 },
-  heroIdentity: { flexGrow: 1, flexBasis: 380, minWidth: 0, gap: 20 },
-  heroTop: { flexDirection: 'row-reverse', alignItems: 'center', gap: 16 },
+  heroBody: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 18, padding: 20 },
+  heroIdentity: { flexGrow: 1, flexBasis: 320, minWidth: 0, gap: 14 },
+  heroTop: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   heroMark: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -1572,100 +1562,95 @@ const styles = StyleSheet.create({
     ...webOnly({ backdropFilter: 'blur(12px)' }),
   },
   heroMarkLogo: { backgroundColor: '#FFFFFF', borderColor: 'rgba(255,255,255,0.6)' },
-  heroLogo: { width: 64, height: 64 },
-  heroInitial: { fontSize: 30, color: '#FFFFFF' },
-  heroNameBlock: { flex: 1, minWidth: 0, gap: 6 },
-  heroName: { fontSize: 34, lineHeight: 40, letterSpacing: -0.9, color: '#FFFFFF' },
+  heroLogo: { width: 42, height: 42 },
+  heroInitial: { fontSize: 20, color: '#FFFFFF' },
+  heroNameBlock: { flex: 1, minWidth: 0, gap: 3 },
+  heroName: { fontSize: 21, lineHeight: 27, letterSpacing: -0.3, color: '#FFFFFF' },
   heroIdRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  heroIdLabel: { fontSize: 15, color: 'rgba(255,255,255,0.6)' },
-  heroIdValue: { fontSize: 15.5, color: '#FFFFFF' },
+  heroIdLabel: { fontSize: 13.5, color: 'rgba(255,255,255,0.6)' },
+  heroIdValue: { fontSize: 13.5, color: '#FFFFFF' },
   heroTag: {
     marginEnd: 4,
-    paddingHorizontal: 10,
-    height: 26,
-    borderRadius: 13,
+    paddingHorizontal: 8,
+    height: 22,
+    borderRadius: 11,
     justifyContent: 'center',
     backgroundColor: 'rgba(95,193,240,0.18)',
   },
-  heroTagText: { fontSize: 13, color: '#9FD8F5' },
-  heroChips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
+  heroTagText: { fontSize: 12, color: '#9FD8F5' },
+  heroChips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 },
   heroChip: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 8,
     maxWidth: '100%',
-    height: 38,
-    paddingHorizontal: 14,
-    borderRadius: 19,
+    height: 32,
+    paddingHorizontal: 11,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
   heroChipEmpty: { backgroundColor: 'transparent', borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.2)' },
-  heroChipText: { fontSize: 15, color: '#FFFFFF', flexShrink: 1 },
+  heroChipText: { fontSize: 13.5, color: '#FFFFFF', flexShrink: 1 },
   heroChipTextEmpty: { color: 'rgba(255,255,255,0.5)' },
 
   heroProgress: {
     flexGrow: 1,
-    flexBasis: 320,
-    maxWidth: 460,
+    flexBasis: 290,
+    maxWidth: 400,
     minWidth: 0,
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 20,
-    padding: 20,
-    borderRadius: 22,
+    gap: 14,
+    padding: 14,
+    borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.09)',
     ...webOnly({ backdropFilter: 'blur(16px) saturate(140%)' }),
   },
-  ring: { width: 108, height: 108, borderRadius: 54, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  ring: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   ringInner: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: '#1A2836',
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#0D1F4A',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ringValue: { fontSize: 32, color: '#FFFFFF', letterSpacing: -0.5 },
-  ringOf: { fontSize: 17, color: 'rgba(255,255,255,0.55)' },
+  ringValue: { fontSize: 21, color: '#FFFFFF', letterSpacing: -0.5 },
+  ringOf: { fontSize: 12.5, color: 'rgba(255,255,255,0.55)' },
   heroProgressText: { flex: 1, minWidth: 0, gap: 4 },
-  heroProgressTitle: { fontSize: 18, color: '#FFFFFF' },
-  heroProgressHint: { fontSize: 14.5, color: 'rgba(255,255,255,0.65)' },
+  heroProgressTitle: { fontSize: 15, color: '#FFFFFF' },
+  heroProgressHint: { fontSize: 12.5, color: 'rgba(255,255,255,0.65)' },
   missingRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   missingPill: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 4,
-    height: 34,
-    paddingEnd: 10,
-    paddingStart: 13,
-    borderRadius: 17,
+    height: 28,
+    paddingEnd: 8,
+    paddingStart: 10,
+    borderRadius: 14,
     backgroundColor: '#FFFFFF',
     ...webOnly({ transition: 'background-color 150ms ease, transform 160ms cubic-bezier(0.23, 1, 0.32, 1)' }),
   },
   missingPillHover: { backgroundColor: '#E6F4FB' },
   missingPillPress: { transform: [{ scale: 0.96 }] },
-  missingPillText: { fontSize: 14.5, color: DESKTOP_COLORS.ink },
+  missingPillText: { fontSize: 13, color: DESKTOP_COLORS.ink },
 
   // Monthly report: next send date
   nextReport: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 14,
-    minHeight: 84,
-    marginEnd: 20,
-    paddingStart: 20,
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: DESKTOP_COLORS.borderSoft,
+    gap: 12,
+    width: '100%',
   },
   calTile: {
-    width: 56,
-    height: 56,
-    borderRadius: 13,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: DESKTOP_COLORS.surface,
     borderWidth: 1,
@@ -1673,12 +1658,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...webOnly({ boxShadow: '0 1px 2px rgba(16,24,40,0.06), 0 4px 10px rgba(16,24,40,0.06)' }),
   },
-  calTileTop: { alignSelf: 'stretch', height: 18, backgroundColor: DESKTOP_COLORS.brand, alignItems: 'center', justifyContent: 'center' },
+  calTileTop: { alignSelf: 'stretch', height: 14, backgroundColor: DESKTOP_COLORS.brand, alignItems: 'center', justifyContent: 'center' },
   calTileMonth: { fontSize: 10.5, color: '#FFFFFF' },
-  calTileDay: { fontSize: 24, lineHeight: 34, color: DESKTOP_COLORS.ink },
+  calTileDay: { fontSize: 18, lineHeight: 28, color: DESKTOP_COLORS.ink },
   nextReportText: { flex: 1, minWidth: 0, gap: 2 },
-  nextReportTitle: { fontSize: 16, color: DESKTOP_COLORS.ink },
-  nextReportHint: { fontSize: 14.5, color: DESKTOP_COLORS.inkMuted },
+  nextReportTitle: { fontSize: 14, color: DESKTOP_COLORS.ink },
+  nextReportHint: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
 
   // Branding: two upload slots beside a live letterhead
   brandingRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 16, alignItems: 'stretch' },

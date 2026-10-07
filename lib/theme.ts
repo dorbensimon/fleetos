@@ -6,7 +6,7 @@
  * whole app stays visually consistent.
  *
  * Rules from the spec:
- *   - #0075B3 is the ONLY accent colour (darkened from #0088CC for text contrast).
+ *   - #2F5BFF is the ONLY accent colour (the driver kit's blue; was #0075B3).
  *   - Cards are white on a #E4E4E4 background, separated by a soft
  *     shadow (never a border).
  *   - No emoji in the UI — vector icons (Ionicons) only.
@@ -29,8 +29,8 @@ export const COLORS = {
   field: '#FAFAFA',
 
   // the single accent
-  accent: '#0075B3', // 5.0:1 on white (WCAG AA); was #0088CC (3.9:1)
-  accentSoft: 'rgba(0, 136, 204, 0.10)',
+  accent: '#2F5BFF', // 5.2:1 on white (WCAG AA); was #0075B3
+  accentSoft: 'rgba(47,91,255, 0.10)',
 
   // hairlines (used sparingly — cards use shadow, not border)
   divider: '#ECECEC',

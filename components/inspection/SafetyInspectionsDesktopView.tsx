@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { DesktopModal } from '../desktop/DesktopModal';
 import { DesktopInput, DLtrText, DText, HoverPressable, StatusPill } from '../desktop/primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, type DesktopTone } from '../desktop/desktopTheme';
-import { Fact, GroupLabel, pageStyles } from '../desktop/record/RecordPage';
+import { Fact, GroupLabel, NIGHT_TONES, pageStyles } from '../desktop/record/RecordPage';
 import { InspectionRemindersCard } from './InspectionRemindersCard';
 import { defectsText } from './VehicleInspectionsCard';
 import { formatPlate } from '../../lib/plate';
@@ -94,20 +94,22 @@ export function SafetyInspectionsDesktopView({
 
   return (
     <ScrollView style={pageStyles.root} contentContainerStyle={pageStyles.content}>
-      <View style={[pageStyles.hero, pageStyles.enter]}>
+      <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
+        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
+        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
         <View style={styles.heroIcon}>
-          <Ionicons name="shield-checkmark" size={22} color={DESKTOP_COLORS.brand} />
+          <Ionicons name="shield-checkmark" size={22} color="#FFFFFF" />
         </View>
         <View style={pageStyles.heroIdentity}>
-          <DText weight="bold" style={pageStyles.heroName} accessibilityRole="header">{t('nav.safetyInspections')}</DText>
-          <DText style={pageStyles.heroSubText}>{t('inspection.listSubtitle')}</DText>
+          <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">{t('nav.safetyInspections')}</DText>
+          <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark]}>{t('inspection.listSubtitle')}</DText>
         </View>
         {rows && (
           <View style={pageStyles.facts}>
-            <Fact label={t('inspection.kpiLate')} value={String(late)} color={late ? DESKTOP_TONES.bad.fg : undefined} muted={!late} />
-            <Fact label={t('inspection.kpiSoon')} value={String(due.length - late)} color={due.length - late ? DESKTOP_TONES.warn.fg : undefined} muted={!(due.length - late)} />
-            <Fact label={t('inspection.kpiAwaiting')} value={String(count('awaiting'))} muted={!count('awaiting')} />
-            <Fact label={t('inspection.kpiDefects')} value={String(withDefects)} color={withDefects ? DESKTOP_TONES.bad.fg : undefined} muted={!withDefects} />
+            <Fact onDark label={t('inspection.kpiLate')} value={String(late)} color={late ? NIGHT_TONES.bad : undefined} muted={!late} />
+            <Fact onDark label={t('inspection.kpiSoon')} value={String(due.length - late)} color={due.length - late ? NIGHT_TONES.warn : undefined} muted={!(due.length - late)} />
+            <Fact onDark label={t('inspection.kpiAwaiting')} value={String(count('awaiting'))} muted={!count('awaiting')} />
+            <Fact onDark label={t('inspection.kpiDefects')} value={String(withDefects)} color={withDefects ? NIGHT_TONES.bad : undefined} muted={!withDefects} />
           </View>
         )}
         <HoverPressable
@@ -319,7 +321,7 @@ export function SafetyInspectionsDesktopView({
 }
 
 const styles = StyleSheet.create({
-  heroIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(0,136,204,0.10)', alignItems: 'center', justifyContent: 'center' },
+  heroIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
   toolbar: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, padding: 12, flexWrap: 'wrap', borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
   search: { flexGrow: 1, flexBasis: 220, justifyContent: 'center' },
   searchIcon: { position: 'absolute', start: 12, zIndex: 1 },

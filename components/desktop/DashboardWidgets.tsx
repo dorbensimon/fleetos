@@ -248,7 +248,7 @@ function HeaderAction({
 }) {
   return (
     <HoverPressable style={styles.headerAction} hoverStyle={styles.headerActionHover} pressStyle={styles.pressDown} onPress={onPress}>
-      <Ionicons name={icon} size={18} color={DESKTOP_COLORS.inkMuted} />
+      <Ionicons name={icon} size={17} color="rgba(255,255,255,0.8)" />
       <DText weight="semiBold" style={styles.headerActionText}>{label}</DText>
     </HoverPressable>
   );
@@ -261,18 +261,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 8,
-    height: 44,
-    paddingHorizontal: 16,
-    borderRadius: 14,
+    height: 38,
+    paddingHorizontal: 14,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
-    backgroundColor: DESKTOP_COLORS.surface,
+    // Sits on the dashboard's night header.
+    borderColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     ...webOnly({
-      boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
       transition: 'background-color 160ms ease, border-color 160ms ease, transform 120ms ease-out',
     }),
   },
-  headerActionHover: { backgroundColor: DESKTOP_COLORS.rowHover, borderColor: DESKTOP_COLORS.borderInput },
-  headerActionText: { fontSize: 15, color: DESKTOP_COLORS.ink },
+  headerActionHover: { backgroundColor: 'rgba(255,255,255,0.16)', borderColor: 'rgba(255,255,255,0.28)' },
+  headerActionText: { fontSize: 14, color: '#FFFFFF' },
   pressDown: { transform: [{ scale: 0.97 }] },
 });

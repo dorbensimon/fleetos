@@ -14,7 +14,6 @@ import { DesktopInput, DLtrText, DText, HoverPressable, StatusPill, prefersReduc
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktop/desktopTheme';
 import { OverflowMenu } from '../desktop/record/RecordKit';
 import { DetailRow, Fact, FieldEditDialog, GroupLabel, pageStyles, type FieldEditor } from '../desktop/record/RecordPage';
-import { CompanyFoldersPanel } from '../owner/CompanyFoldersPanel';
 import { NotesCard, OnboardingCard, PaymentsCard } from './OwnerCompanyTools';
 import type { CompanyUser } from './types';
 
@@ -146,8 +145,6 @@ export function CompanyDetailDesktop(p: Props) {
           {/* Main column */}
           <View style={[pageStyles.mainCell, styles.column]}>
             <OnboardingCard companyId={company.id} managerActive={p.admins.some((a) => !a.must_change_password)} drivers={p.drivers.length} />
-
-            <CompanyFoldersPanel companyId={company.id} />
 
             <UsersCard {...p} />
 

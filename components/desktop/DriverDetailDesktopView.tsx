@@ -22,12 +22,12 @@ import { DLtrText, DText, HoverPressable, prefersReducedMotion, StatusPill } fro
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { DocumentFolderUploadModal, EASE_OUT, OverflowMenu, useOwnerDocuments, type RecordDocumentFolder } from './record/RecordKit';
 import { expiryStatusText, FolderListRow } from './record/FolderDocuments';
-import { DetailRow, Fact, FieldEditDialog, GroupLabel, pageStyles, type FieldEditor, type TextFieldEditor } from './record/RecordPage';
+import { DetailRow, Fact, FieldEditDialog, GroupLabel, NIGHT_TONES, pageStyles, type FieldEditor, type TextFieldEditor } from './record/RecordPage';
 import { DriverLicenseModal } from './driver/DriverLicenseModal';
 import { LICENSE_SIDE_STORED_TITLE } from '../../lib/licenseSides';
 import { DRIVER_DOCUMENT_GROUPS } from '../../lib/driverDocumentFolders';
 import { DriverVehiclesCard } from './driver/DriverVehiclesCard';
-import { AddFolderButton, DriverSigningList, useDriverSigningFolders, type SigningSessionTarget } from './driver/DriverSigningSection';
+import { NewFormButton, DriverSigningList, useDriverSigningFolders, type SigningSessionTarget } from './driver/DriverSigningSection';
 import { t, dirIcon } from '../../lib/i18n';
 
 /**
@@ -237,7 +237,9 @@ export function DriverDetailDesktopView({
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       {/* Header */}
-      <View style={[styles.hero, !reduceMotion && styles.enter]}>
+      <View style={[styles.hero, styles.heroNight, !reduceMotion && styles.enter]}>
+        <View pointerEvents="none" style={[styles.heroGlow, styles.heroGlowBlue]} />
+        <View pointerEvents="none" style={[styles.heroGlow, styles.heroGlowCyan]} />
         <View style={[styles.heroIdentity, styles.heroWho]}>
           <View style={[styles.portrait, isArchived && styles.portraitMuted]}>
             <View style={styles.portraitInner}>
@@ -247,15 +249,15 @@ export function DriverDetailDesktopView({
           </View>
           <View style={styles.flex}>
             <View style={styles.heroStatusRow}>
-              <StatusPill tone={statusTone} label={statusLabel} />
+              <View style={styles.pillOnDark}><StatusPill tone={statusTone} label={statusLabel} /></View>
               <OverflowMenu items={menuItems} />
             </View>
-            <DText weight="bold" style={styles.heroName} numberOfLines={1}>{name}</DText>
+            <DText weight="bold" style={[styles.heroName, styles.heroNameOnDark]} numberOfLines={1}>{name}</DText>
             <View style={styles.heroSub}>
               {subParts.map((part, index) => (
                 <React.Fragment key={`${part}-${index}`}>
-                  {index > 0 && <DText style={styles.heroSubDot}>·</DText>}
-                  {part === driver?.phone ? <DLtrText style={styles.heroSubText}>{part}</DLtrText> : <DText style={styles.heroSubText}>{part}</DText>}
+                  {index > 0 && <DText style={[styles.heroSubDot, styles.heroSubDotOnDark]}>·</DText>}
+                  {part === driver?.phone ? <DLtrText style={[styles.heroSubText, styles.heroSubTextOnDark]}>{part}</DLtrText> : <DText style={[styles.heroSubText, styles.heroSubTextOnDark]}>{part}</DText>}
                 </React.Fragment>
               ))}
             </View>
@@ -263,9 +265,9 @@ export function DriverDetailDesktopView({
         </View>
 
         <View style={styles.facts}>
-          <Fact label={t('driver.licenseValidUntilLabel')} value={licenseExpiry ? formatDate(licenseExpiry) : t('common.notEntered')} color={licenseColor} muted={!licenseExpiry} />
-          <Fact label={t('driver.classes')} value={classesLabel ? classesLabel.replace(',', ', ') : t('common.notEnteredPl')} muted={!classesLabel} />
-          <Fact label={t('driver.tenure')} value={inCompany?.value ?? t('common.notEntered')} unit={inCompany?.unit} muted={!inCompany} />
+          <Fact onDark label={t('driver.licenseValidUntilLabel')} value={licenseExpiry ? formatDate(licenseExpiry) : t('common.notEntered')} color={licenseState === 'expired' ? NIGHT_TONES.bad : licenseState === 'soon' ? NIGHT_TONES.warn : undefined} muted={!licenseExpiry} />
+          <Fact onDark label={t('driver.classes')} value={classesLabel ? classesLabel.replace(',', ', ') : t('common.notEnteredPl')} muted={!classesLabel} />
+          <Fact onDark label={t('driver.tenure')} value={inCompany?.value ?? t('common.notEntered')} unit={inCompany?.unit} muted={!inCompany} />
         </View>
 
       </View>
@@ -501,7 +503,7 @@ export function DriverDetailDesktopView({
           <DText weight="bold" style={styles.docsTitle}>{t('signing.formsToSign')}</DText>
           <DText style={styles.mutedText}>{t('driver.formsHint')}</DText>
         </View>
-        {canSendSigning && <AddFolderButton companyId={companyId} onChanged={() => void signing.reload()} />}
+        {canSendSigning && <NewFormButton companyId={companyId} takenTitles={signing.folders.filter((folder) => folder.template).map((folder) => folder.title)} onChanged={() => void signing.reload()} />}
       </View>
       <View style={[styles.card, styles.listCard]}>
         <DriverSigningList
@@ -660,19 +662,19 @@ const LICENCE_INK = '#4A2F48';
 const styles = StyleSheet.create({
   ...pageStyles,
 
-  // Header portrait
-  heroWho: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14 },
   // "טפסים לחתימה" head with "+ הוסף תיקייה" beside it
   formsHead: { flexDirection: 'row-reverse', alignItems: 'flex-end', gap: 12 },
   formsHeadText: { flex: 1, minWidth: 0, gap: 1 },
 
+  // Header portrait
+  heroWho: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14 },
   portrait: {
     width: 60,
     height: 60,
     borderRadius: 30,
     padding: 3,
     backgroundColor: DESKTOP_COLORS.brand,
-    ...webOnly({ backgroundImage: 'conic-gradient(from 210deg, #0075B3, #5CC3F0, #0075B3)' }),
+    ...webOnly({ backgroundImage: 'conic-gradient(from 210deg, #2F5BFF, #5CC3F0, #2F5BFF)' }),
   },
   portraitMuted: { backgroundColor: '#C9D2DA', ...webOnly({ backgroundImage: 'none' }) },
   portraitInner: {
@@ -689,7 +691,7 @@ const styles = StyleSheet.create({
   portraitDot: { position: 'absolute', bottom: 1, start: 1, width: 15, height: 15, borderRadius: 8, borderWidth: 3, borderColor: '#FFFFFF' },
 
   // Rows
-  revealPill: { height: 22, paddingHorizontal: 8, borderRadius: 11, justifyContent: 'center', backgroundColor: 'rgba(0,136,204,0.09)', ...webOnly({ transition: 'background-color 150ms ease' }) },
+  revealPill: { height: 22, paddingHorizontal: 8, borderRadius: 11, justifyContent: 'center', backgroundColor: 'rgba(47,91,255,0.09)', ...webOnly({ transition: 'background-color 150ms ease' }) },
   revealText: { fontSize: 12.5, color: DESKTOP_COLORS.brand },
 
   // Licence card

@@ -368,7 +368,7 @@ export function FieldPlacer({
       <div className="sd-canvas">
         {fields.length === 0 ? (
           <div className="sd-tip sd-stage">
-            <Ionicons name="hand-left" size={22} color="#006A9E" />
+            <Ionicons name="hand-left" size={22} color="#2449E0" />
             <span>{t('field.startWith')}<b className="sd-b">{t('field.signature')}</b>{t('field.startWithSuffix')}</span>
           </div>
         ) : null}
