@@ -8,7 +8,7 @@ import { formatDate } from '../../lib/theme';
 import { ErrorState } from '../ui';
 import { DesktopModal } from './DesktopModal';
 import { DesktopDateField, DesktopInput, DLtrText, DText, HoverPressable, prefersReducedMotion, supportsFinePointerHoverMotion } from './primitives';
-import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, webOnly } from './desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from './desktopTheme';
 import { DocumentPreview } from './record/DocumentPreview';
 import { CARD_SHADOW, pageStyles } from './record/RecordPage';
 import { EASE_OUT } from './record/RecordKit';
@@ -27,8 +27,8 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const TILE_MIN = 226;
-const GAP = 20;
+const TILE_MIN = 190;
+const GAP = 14;
 
 /**
  * The company's standing paperwork (business licence, insurance, bank
@@ -76,10 +76,16 @@ export function CompanyDocumentsDesktopView({
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          <DText weight="extraBold" style={styles.title}>{t('companyDocs.title')}</DText>
-          <DText style={styles.subtitle}>{t('companyDocs.intro')}</DText>
+      {/* The night header shared with the driver and vehicle pages. */}
+      <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
+        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
+        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+        <View style={styles.heroIcon}>
+          <Ionicons name="folder-open" size={22} color="#FFFFFF" />
+        </View>
+        <View style={pageStyles.heroIdentity}>
+          <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">{t('companyDocs.title')}</DText>
+          <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark]}>{t('companyDocs.intro')}</DText>
         </View>
         {!empty && <AddButton onPress={() => setAdding(true)} />}
       </View>
@@ -198,7 +204,7 @@ function DocumentCard({
       >
         <View style={styles.stage}>
           <View style={[styles.sheet, lifts && hovered && styles.sheetLifted]}>
-            <DocumentPreview doc={doc} width={116} height={150} />
+            <DocumentPreview doc={doc} width={88} height={114} />
           </View>
           <View style={styles.kind}>
             <DText weight="bold" style={styles.kindText}>{kindOf(doc.mime_type)}</DText>
@@ -471,38 +477,35 @@ const SHEET_SHADOW_LIFTED = '0 2px 4px rgba(22,34,46,0.06), 0 18px 34px rgba(22,
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: DESKTOP_COLORS.canvas },
-  content: { width: '100%', maxWidth: 1180, alignSelf: 'center', paddingHorizontal: 32, paddingTop: 34, paddingBottom: 64, gap: 22 },
+  content: { width: '100%', maxWidth: 1160, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 16, paddingBottom: 48, gap: 14 },
 
-  header: { flexDirection: 'row-reverse', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' },
-  headerText: { flex: 1, minWidth: 280, gap: 6 },
-  title: { fontSize: 34, lineHeight: 40, letterSpacing: -0.8, color: DESKTOP_COLORS.ink },
-  subtitle: { fontSize: 16, lineHeight: 24, color: DESKTOP_COLORS.inkMuted },
+  heroIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
 
   addBtn: {
-    height: 48,
-    paddingEnd: 8,
-    paddingStart: 20,
-    borderRadius: 14,
+    height: 40,
+    paddingEnd: 6,
+    paddingStart: 14,
+    borderRadius: 10,
     backgroundColor: DESKTOP_COLORS.brand,
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 10,
     ...webOnly({
-      boxShadow: '0 1px 2px rgba(0,136,204,0.25), 0 8px 20px rgba(0,136,204,0.22)',
+      boxShadow: DESKTOP_BRAND_SHADOW,
       transition: 'background-color 150ms ease, transform 120ms ease-out',
     }),
   },
-  addBtnLarge: { height: 52, marginTop: 6 },
+  addBtnLarge: { height: 44, marginTop: 6 },
   addBtnHover: { backgroundColor: DESKTOP_COLORS.brandHover },
-  addBtnIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
-  addBtnText: { fontSize: 16, color: '#FFFFFF' },
+  addBtnIcon: { width: 28, height: 28, borderRadius: 8, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  addBtnText: { fontSize: 14.5, color: '#FFFFFF' },
 
   toolbar: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' },
   search: {
-    width: 380,
+    width: 320,
     maxWidth: '100%',
-    height: 46,
-    borderRadius: 13,
+    height: 40,
+    borderRadius: 10,
     backgroundColor: DESKTOP_COLORS.surface,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.border,
@@ -517,20 +520,20 @@ const styles = StyleSheet.create({
     minWidth: 0,
     height: '100%',
     fontFamily: DESKTOP_FONT.regular,
-    fontSize: 15.5,
+    fontSize: 14.5,
     color: DESKTOP_COLORS.ink,
     textAlign: textStart(),
     ...webOnly({ outlineStyle: 'none' }),
   },
   searchClear: { width: 20, height: 20, borderRadius: 10, backgroundColor: DESKTOP_COLORS.inkFaint, alignItems: 'center', justifyContent: 'center' },
   searchClearHover: { backgroundColor: DESKTOP_COLORS.inkMuted },
-  count: { fontSize: 14.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+  count: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
 
   grid: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'stretch', gap: GAP },
 
   card: {
     backgroundColor: DESKTOP_COLORS.surface,
-    borderRadius: 20,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.border,
     overflow: 'hidden',
@@ -542,7 +545,7 @@ const styles = StyleSheet.create({
   },
   cardOpen: { flex: 1 },
   stage: {
-    height: 200,
+    height: 146,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#EEF2F5',
@@ -591,26 +594,26 @@ const styles = StyleSheet.create({
   openHintOn: { opacity: 1, ...webOnly({ transform: 'translateY(0px)' }) },
   openHintText: { fontSize: 12.5, color: '#FFFFFF' },
 
-  cardBody: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14, gap: 6 },
-  cardTitle: { fontSize: 16.5, lineHeight: 22, letterSpacing: -0.15, color: DESKTOP_COLORS.ink },
+  cardBody: { paddingHorizontal: 14, paddingTop: 11, paddingBottom: 11, gap: 4 },
+  cardTitle: { fontSize: 15, lineHeight: 20, letterSpacing: -0.15, color: DESKTOP_COLORS.ink },
   dateRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  dateText: { fontSize: 14, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
-  description: { fontSize: 14, lineHeight: 20, color: DESKTOP_COLORS.inkMuted },
+  dateText: { fontSize: 13, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+  description: { fontSize: 13, lineHeight: 18, color: DESKTOP_COLORS.inkMuted },
 
   cardFooter: { flexDirection: 'row-reverse', alignItems: 'stretch', borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   footerDivider: { width: 1, backgroundColor: DESKTOP_COLORS.borderSoft },
   cardAction: {
     flex: 1,
-    height: 48,
+    height: 40,
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
     ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }),
   },
-  cardActionHover: { backgroundColor: 'rgba(0,136,204,0.07)' },
+  cardActionHover: { backgroundColor: 'rgba(47,91,255,0.07)' },
   cardActionDangerHover: { backgroundColor: DESKTOP_TONES.bad.bg },
-  cardActionText: { fontSize: 14.5 },
+  cardActionText: { fontSize: 13.5 },
 
   skeletonPulse: webOnly({
     animationKeyframes: { '0%': { opacity: 1 }, '50%': { opacity: 0.55 }, '100%': { opacity: 1 } },
@@ -635,7 +638,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.border,
     gap: 10,
-    ...webOnly({ boxShadow: CARD_SHADOW, backgroundImage: 'radial-gradient(80% 70% at 50% 0%, rgba(0,136,204,0.06) 0%, rgba(255,255,255,0) 70%)' }),
+    ...webOnly({ boxShadow: CARD_SHADOW, backgroundImage: 'radial-gradient(80% 70% at 50% 0%, rgba(47,91,255,0.06) 0%, rgba(255,255,255,0) 70%)' }),
   },
   emptyArt: { width: 180, height: 150, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   emptyPaper: {
@@ -670,8 +673,8 @@ const styles = StyleSheet.create({
     ...webOnly({ transition: `background-color 150ms ease, border-color 150ms ease, transform 200ms ${EASE_OUT}` }),
   },
   dropHover: { borderColor: DESKTOP_COLORS.brand, backgroundColor: '#F2F8FC' },
-  dropActive: { borderColor: DESKTOP_COLORS.brand, backgroundColor: 'rgba(0,136,204,0.08)', ...webOnly({ transform: 'scale(1.015)' }) },
-  dropChosen: { minHeight: 84, borderStyle: 'solid', borderColor: 'rgba(0,136,204,0.35)', backgroundColor: '#F2F8FC' },
+  dropActive: { borderColor: DESKTOP_COLORS.brand, backgroundColor: 'rgba(47,91,255,0.08)', ...webOnly({ transform: 'scale(1.015)' }) },
+  dropChosen: { minHeight: 84, borderStyle: 'solid', borderColor: 'rgba(47,91,255,0.35)', backgroundColor: '#F2F8FC' },
   dropError: { borderColor: DESKTOP_TONES.bad.fg },
   dropIcon: {
     width: 52,

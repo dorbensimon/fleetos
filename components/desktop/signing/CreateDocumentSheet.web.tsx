@@ -15,7 +15,7 @@ import {
 } from '../../../lib/companySigningTemplates';
 import { ConfirmAlert, Sheet, useSheetClose } from './Sheet.web';
 import { isFixedFolderTitle, sameDocumentTitle, TAKEN_TITLE_MESSAGE } from '../../../lib/signingSend';
-import { DocumentEditor, EditorPagePreview, initialEditorDraft, type DocumentEditorHandle, type EditorDraft } from './DocumentEditor.web';
+import { DocumentEditor, EditorPagePreview, editorDraftFromContent, initialEditorDraft, type DocumentEditorHandle, type EditorDraft } from './DocumentEditor.web';
 import { BusyState, FieldPlacer, PdfPageView, UploadDropzone } from './FieldPlacer.web';
 import { loadPdf, type LoadedPdf } from './pdf.web';
 import { FIELD_META } from './fieldMeta';
@@ -23,6 +23,7 @@ import { ChecklistBuilder, ChecklistPaperPreview } from './ChecklistBuilder.web'
 import {
   DRIVER_MEETING_TITLE,
   blankChecklistForm,
+  cleanForm,
   createChecklistTemplate,
   driverMeetingForm,
   filledItems,
@@ -33,12 +34,22 @@ import {
   STATUS_META,
   type ChecklistForm,
 } from '../../../lib/checklistForms';
+import {
+  createFormTemplate,
+  listFormTemplates,
+  updateFormTemplate,
+  type FormTemplate,
+} from '../../../lib/formTemplates';
 import { t, dirIcon } from '../../../lib/i18n';
 
 /**
- * "מסמך חדש": name it, choose to write or upload, place the fields, review and
- * save. Four calm steps in one sheet, each with one clear question and one
- * big button forward.
+ * "מסמך חדש": name it, choose to write or upload (or start from one of the
+ * owner's ready templates), place the fields, review and save. Four calm
+ * steps in one sheet, each with one clear question and one big button forward.
+ *
+ * The same window saves a new version of a form ("replace"), and, for the
+ * platform owner, builds one of the ready templates (`ownerTemplate`): written
+ * in the editor or as a checklist, never an uploaded file.
  */
 
 type Mode = 'editor' | 'upload' | 'checklist';
@@ -54,40 +65,70 @@ function fieldSummary(kinds: SigningFieldKind[]) {
   return [...counts.entries()];
 }
 
-/** A catalog folder the new form is made for: its name and kind are fixed. */
-export type FormFolder = { catalogId: string; title: string; kind: 'document' | 'checklist'; defaultRepeatMonths?: number | null };
+/** The platform owner building (or editing) one of the ready templates. */
+export type OwnerTemplateTarget = {
+  /** null: a new template. */
+  template: FormTemplate | null;
+  onSaved: (template: FormTemplate) => void;
+};
 
 export function CreateDocumentSheet({
   companyId,
   takenTitles = [],
-  folder,
   replace,
+  startTemplate,
+  ownerTemplate,
   onClosed,
   onCreated,
 }: {
+  /** The company the form is for; empty in owner mode. */
   companyId: string;
-  /** Names already used by the company's documents; a new one must differ. */
+  /** Names already used by the company's documents (or the other templates); a new one must differ. */
   takenTitles?: string[];
-  /** "צור טופס" inside a catalog folder. */
-  folder?: FormFolder;
-  /** "החלף טופס": a new version of this folder's form (same name, same kind). */
+  /** "החלף טופס": a new version of this form (same name, same kind). */
   replace?: SigningTemplate;
+  /** Opens with this ready template already picked ("השתמשו בשבלונה" on the page). */
+  startTemplate?: FormTemplate;
+  ownerTemplate?: OwnerTemplateTarget;
   onClosed: () => void;
   /** `pendingOld`: after a replace, drivers still waiting to sign the earlier version. */
-  onCreated: (template: SigningTemplate, pendingOld?: number) => void;
+  onCreated?: (template: SigningTemplate, pendingOld?: number) => void;
 }) {
   const { closing, close } = useSheetClose(onClosed);
-  // A folder's form keeps the folder's name and kind.
-  const lockedTitle = folder?.title ?? replace?.title ?? null;
-  const lockedKind = folder?.kind ?? (replace ? (replace.form_kind ?? 'document') : null);
-  const target: FormTarget | undefined = replace
-    ? { replace: { templateId: replace.id, expectedVersion: replace.version ?? 1 } }
-    : folder ? { catalogFolderId: folder.catalogId } : undefined;
+  const owner = !!ownerTemplate;
+  const editingTemplate = ownerTemplate?.template ?? null;
+  // A new version keeps the form's name and kind; an edited template keeps its kind.
+  const lockedTitle = replace?.title ?? null;
+  const lockedKind = replace ? (replace.form_kind ?? 'document') : editingTemplate?.kind ?? null;
   const [draftId, setDraftId] = useState(newDraftId);
   const [step, setStep] = useState<Step>(0);
-  const [title, setTitle] = useState(lockedTitle ?? '');
-  const [mode, setMode] = useState<Mode | null>(lockedKind === 'checklist' ? 'checklist' : null);
+  const [title, setTitle] = useState(lockedTitle ?? editingTemplate?.title ?? startTemplate?.title ?? '');
+  const [description, setDescription] = useState(editingTemplate?.description ?? '');
+  const [mode, setMode] = useState<Mode | null>(
+    lockedKind === 'checklist' || startTemplate?.kind === 'checklist'
+      ? 'checklist'
+      : editingTemplate || startTemplate
+        ? 'editor'
+        : replace?.editor_content ? 'editor' : null,
+  );
   const [nameError, setNameError] = useState(false);
+
+  // The owner's ready templates a company can start from (not for a new version or in owner mode).
+  const [templates, setTemplates] = useState<FormTemplate[]>(startTemplate ? [startTemplate] : []);
+  const [picked, setPicked] = useState<FormTemplate | null>(startTemplate ?? null);
+  useEffect(() => {
+    if (owner || replace) return;
+    let active = true;
+    listFormTemplates()
+      .then((rows) => active && setTemplates(startTemplate && !rows.some((row) => row.id === startTemplate.id) ? [startTemplate, ...rows] : rows))
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [owner, replace, startTemplate]);
+  const target: FormTarget | undefined = replace
+    ? { replace: { templateId: replace.id, expectedVersion: replace.version ?? 1 } }
+    : picked ? { sourceTemplateId: picked.id } : undefined;
 
   // editor
   const editorRef = useRef<DocumentEditorHandle>(null);
@@ -150,7 +191,29 @@ export function CreateDocumentSheet({
   // A fixed folder of the driver's file is a name too: two folders alike would confuse.
   const fixedFolderName = !lockedTitle && isFixedFolderTitle(title);
   const titleTaken = !lockedTitle && (fixedFolderName || takenTitles.some((taken) => sameDocumentTitle(taken, title)));
-  const takenMessage = fixedFolderName ? t('signing.fixedFolderName') : TAKEN_TITLE_MESSAGE();
+  const takenMessage = fixedFolderName ? t('signing.fixedFolderName') : owner ? t('templates.titleTaken') : TAKEN_TITLE_MESSAGE();
+
+  /** A ready template picked (or unpicked): its kind becomes the method, its name the form's name, and the content starts over from it. */
+  const pickTemplate = (template: FormTemplate | null) => {
+    if (template?.id === picked?.id) return;
+    if (template) {
+      setMode(template.kind === 'checklist' ? 'checklist' : 'editor');
+      // The name follows the template unless the manager already typed their own.
+      if (!title.trim() || (picked && title.trim() === picked.title) || title.trim() === DRIVER_MEETING_TITLE) setTitle(template.title);
+    }
+    setPicked(template);
+    setEditorDraft(null);
+    setChecklist(null);
+  };
+  const chooseMethod = (next: Mode) => {
+    if (picked) {
+      if (title.trim() === picked.title) setTitle('');
+      setPicked(null);
+      setEditorDraft(null);
+      setChecklist(null);
+    }
+    setMode(next);
+  };
   const canContinue =
     step === 0
       ? title.trim().length > 0 && !titleTaken && !!mode
@@ -170,13 +233,20 @@ export function CreateDocumentSheet({
         return;
       }
       if (!mode) return;
-      if (mode === 'editor' && editorDraft === null) setEditorDraft(initialEditorDraft(title.trim()));
+      if (mode === 'editor' && editorDraft === null) {
+        // A template, the text of the version being replaced, or a blank page.
+        const source = picked ?? editingTemplate;
+        const fromSource = source?.kind === 'document' ? editorDraftFromContent(source.content, title.trim(), source.title) : null;
+        const fromReplace = replace?.editor_content ? editorDraftFromContent(replace.editor_content) : null;
+        setEditorDraft(fromSource ?? fromReplace ?? initialEditorDraft(title.trim()));
+      }
       if (mode === 'checklist' && checklist === null) {
-        // A folder's form starts empty (or from the version it replaces).
-        if (replace) setChecklist(readForm(replace.form_content) ?? blankChecklistForm());
-        else if (folder) setChecklist({ ...blankChecklistForm(), repeatMonths: folder.defaultRepeatMonths ?? 0 });
+        const source = picked ?? editingTemplate;
+        if (source?.kind === 'checklist') setChecklist(readForm(source.content) ?? blankChecklistForm());
+        else if (replace) setChecklist(readForm(replace.form_content) ?? blankChecklistForm());
         else setChecklist(driverMeetingForm());
-        if (lockedTitle) setFromTemplate(false);
+        // "Started from the ready template" is the built-in meeting form, or the picked one.
+        setFromTemplate(!replace && !editingTemplate);
       }
       setStep(1);
     } else if (step === 1) {
@@ -195,6 +265,20 @@ export function CreateDocumentSheet({
     setSaving(true);
     setSaveError(null);
     try {
+      if (ownerTemplate) {
+        const input = {
+          title: title.trim(),
+          description: description.trim() || null,
+          // A template keeps where each field sits in the text (`slot`), so a company's copy opens the same.
+          content: mode === 'checklist' ? cleanForm(checklist!) : { blocks, fields: editorFields },
+        };
+        const savedTemplate = editingTemplate
+          ? await updateFormTemplate(editingTemplate.id, input)
+          : await createFormTemplate(mode === 'checklist' ? 'checklist' : 'document', input);
+        ownerTemplate.onSaved(savedTemplate);
+        setStep(3);
+        return;
+      }
       const saved =
         mode === 'editor'
           ? await createTemplateFromEditor(companyId, draftId, title.trim(), blocks, editorFields, target)
@@ -202,7 +286,7 @@ export function CreateDocumentSheet({
             ? await createChecklistTemplate(companyId, draftId, title.trim(), checklist!, target)
             : await createTemplateFromFields(companyId, draftId, title.trim(), fields, target);
       setCreated(saved.template);
-      onCreated(saved.template, saved.pendingOld);
+      onCreated?.(saved.template, saved.pendingOld);
       // A new version goes straight to "what to send" (the caller's window).
       if (replace) close();
       else setStep(3);
@@ -217,7 +301,9 @@ export function CreateDocumentSheet({
     setDraftId(newDraftId());
     setStep(0);
     setTitle('');
+    setDescription('');
     setMode(null);
+    setPicked(null);
     setEditorDraft(null);
     setEditorHasSignature(false);
     setBlocks([]);
@@ -249,7 +335,13 @@ export function CreateDocumentSheet({
         ) : null}
       </div>
       <div className="sd-sheet-title">
-        <strong className="sd-b">{replace ? t('folders.newVersionOf', { title: replace.title }) : step === 0 || !title.trim() ? (folder ? t('folders.createForm') : t('signing.newDocument')) : title.trim()}</strong>
+        <strong className="sd-b">
+          {replace
+            ? t('folders.newVersionOf', { title: replace.title })
+            : step === 0 || !title.trim()
+              ? owner ? (editingTemplate ? t('templates.editTemplate') : t('templates.newTemplate')) : t('signing.newDocument')
+              : title.trim()}
+        </strong>
         {step < 3 ? (
           <>
             <div className="sd-progress" aria-hidden="true">
@@ -307,12 +399,12 @@ export function CreateDocumentSheet({
             {saving ? (
               <>
                 <span className="sd-spinner" style={{ width: 22, height: 22, borderWidth: 3, borderColor: 'rgba(255,255,255,0.35)', borderTopColor: '#fff' }} />
-                {mode === 'checklist' ? t('signing.savingForm') : t('signing.savingDocument')}
+                {owner ? t('common.savingEllipsis') : mode === 'checklist' ? t('signing.savingForm') : t('signing.savingDocument')}
               </>
             ) : (
               <>
                 <Ionicons name="checkmark-circle" size={21} color="#fff" />
-                {mode === 'checklist' ? t('signing.saveForm') : t('signing.saveDocument')}
+                {owner ? t('templates.saveTemplate') : mode === 'checklist' ? t('signing.saveForm') : t('signing.saveDocument')}
               </>
             )}
           </button>
@@ -322,18 +414,21 @@ export function CreateDocumentSheet({
 
   return (
     <>
-      <Sheet closing={closing} onRequestClose={requestClose} label={t('signing.createNewForSigning')} head={head} foot={foot}>
+      <Sheet closing={closing} onRequestClose={requestClose} label={owner ? t('templates.newTemplate') : t('signing.createNewForSigning')} head={head} foot={foot}>
         {step === 0 ? (
           <div className="sd-start sd-stage" key="start">
             {lockedTitle ? (
               <>
                 <h2 className="sd-q sd-b">{lockedTitle}</h2>
-                <p className="sd-q-sub">{replace ? t('folders.replaceIntro') : t('folders.createIntro')}</p>
+                <p className="sd-q-sub">
+                  {t('folders.replaceIntro')}
+                  {replace?.editor_content ? ` ${t('templates.replaceOpensCurrent')}` : ''}
+                </p>
               </>
             ) : (
             <>
-            <h2 className="sd-q sd-b">{t('signing.whatName')}</h2>
-            <p className="sd-q-sub">{t('signing.nameVisibleToDriver')}</p>
+            <h2 className="sd-q sd-b">{owner ? t('templates.whatName') : t('signing.whatName')}</h2>
+            <p className="sd-q-sub">{owner ? t('templates.nameHint') : t('signing.nameVisibleToDriver')}</p>
             <input
               id="sd-doc-name"
               className="sd-name"
@@ -357,13 +452,26 @@ export function CreateDocumentSheet({
                 {takenMessage}
               </div>
             ) : null}
-            <div className="sd-chips" aria-label={t('signing.nameSuggestions')}>
-              {nameIdeas().map((idea) => (
-                <button key={idea} type="button" className="sd-chip" onClick={() => setTitle(idea)}>
-                  {idea}
-                </button>
-              ))}
-            </div>
+            {owner ? (
+              <label className="sd-desc">
+                <span className="sd-sb">{t('templates.descriptionLabel')}</span>
+                <textarea
+                  value={description}
+                  maxLength={300}
+                  rows={2}
+                  placeholder={t('templates.descriptionPlaceholder')}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </label>
+            ) : (
+              <div className="sd-chips" aria-label={t('signing.nameSuggestions')}>
+                {nameIdeas().map((idea) => (
+                  <button key={idea} type="button" className="sd-chip" onClick={() => setTitle(idea)}>
+                    {idea}
+                  </button>
+                ))}
+              </div>
+            )}
             </>
             )}
 
@@ -371,28 +479,30 @@ export function CreateDocumentSheet({
               {lockedKind !== 'checklist' ? (
               <>
               <ChoiceCard
-                selected={mode === 'editor'}
-                onPress={() => setMode('editor')}
+                selected={mode === 'editor' && !picked}
+                onPress={() => chooseMethod('editor')}
                 icon="create"
                 gradient="linear-gradient(160deg,#FFB340,#FF7A00)"
                 title={t('signing.method.write')}
                 text={t('signing.method.writeText')}
               />
+              {!owner ? (
               <ChoiceCard
-                selected={mode === 'upload'}
-                onPress={() => setMode('upload')}
+                selected={mode === 'upload' && !picked}
+                onPress={() => chooseMethod('upload')}
                 icon="cloud-upload"
-                gradient="linear-gradient(160deg,#35B8F0,#0075B3)"
+                gradient="linear-gradient(160deg,#35B8F0,#2F5BFF)"
                 title={t('signing.method.upload')}
                 text={t('signing.method.uploadText')}
               />
+              ) : null}
               </>
               ) : null}
               {!lockedKind || lockedKind === 'checklist' ? (
               <ChoiceCard
-                selected={mode === 'checklist'}
+                selected={mode === 'checklist' && !picked}
                 onPress={() => {
-                  setMode('checklist');
+                  chooseMethod('checklist');
                   if (!title.trim()) setTitle(DRIVER_MEETING_TITLE);
                 }}
                 icon="list"
@@ -403,6 +513,31 @@ export function CreateDocumentSheet({
               />
               ) : null}
             </div>
+
+            {!owner && !replace && templates.length ? (
+              <section className="sd-tpls" aria-labelledby="sd-tpls-title">
+                <div className="sd-tpls-head">
+                  <span className="sd-tpls-spark" aria-hidden="true">
+                    <Ionicons name="sparkles" size={18} color="#fff" />
+                  </span>
+                  <div>
+                    <h3 id="sd-tpls-title" className="sd-b">{t('templates.orStartFrom')}</h3>
+                    <p>{t('templates.copyHint')}</p>
+                  </div>
+                </div>
+                <div className="sd-tpl-list" role="radiogroup" aria-labelledby="sd-tpls-title">
+                  {templates.map((template, index) => (
+                    <TemplateChoice
+                      key={template.id}
+                      template={template}
+                      index={index}
+                      selected={picked?.id === template.id}
+                      onPress={() => pickTemplate(picked?.id === template.id ? null : template)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : null}
           </div>
         ) : null}
 
@@ -423,9 +558,11 @@ export function CreateDocumentSheet({
               form={checklist}
               onChange={setChecklist}
               fromTemplate={fromTemplate}
+              templateName={picked?.kind === 'checklist' ? picked.title : undefined}
               onStartFrom={(which) => {
                 setFromTemplate(which === 'template');
-                setChecklist(which === 'template' ? driverMeetingForm() : blankChecklistForm());
+                const source = picked?.kind === 'checklist' ? readForm(picked.content) : null;
+                setChecklist(which === 'template' ? source ?? driverMeetingForm() : blankChecklistForm());
               }}
             />
           </div>
@@ -473,8 +610,16 @@ export function CreateDocumentSheet({
                 </div>
                 <div className="sd-row">
                   <span>{t('signing.howCreated')}</span>
-                  <strong className="sd-sb">{mode === 'editor' ? t('signing.writtenHere') : mode === 'checklist' ? t('signing.method.checklist') : t('signing.uploadedFile')}</strong>
+                  <strong className="sd-sb">
+                    {picked ? t('templates.fromTemplate', { title: picked.title }) : mode === 'editor' ? t('signing.writtenHere') : mode === 'checklist' ? t('signing.method.checklist') : t('signing.uploadedFile')}
+                  </strong>
                 </div>
+                {owner ? (
+                  <div className="sd-row">
+                    <span>{t('templates.whoSees')}</span>
+                    <strong className="sd-sb">{t('templates.allCompanies')}</strong>
+                  </div>
+                ) : null}
                 {pdf && mode === 'upload' ? (
                   <div className="sd-row">
                     <span>{t('common.pages')}</span>
@@ -497,7 +642,7 @@ export function CreateDocumentSheet({
                     </div>
                   </>
                 ) : null}
-                <div className="sd-row">
+                <div className="sd-row" hidden={owner}>
                   <span>{t('signing.whoSigns')}</span>
                   <strong className="sd-sb">{mode === 'checklist' ? t('signing.officerThenDriver') : t('common.theDriver')}</strong>
                 </div>
@@ -536,14 +681,16 @@ export function CreateDocumentSheet({
                 <path d="M38 62 l15 15 l30 -32" />
               </svg>
             </div>
-            <h2 className="sd-xb">{mode === 'checklist' ? t('signing.formSaved') : t('signing.documentSaved')}</h2>
+            <h2 className="sd-xb">{owner ? t('templates.saved') : mode === 'checklist' ? t('signing.formSaved') : t('signing.documentSaved')}</h2>
             <p>
-              {mode === 'checklist'
-                ? t('signing.formReadyHint', { v1: created?.title ?? title.trim() })
-                : t('signing.documentReadyHint', { v1: created?.title ?? title.trim() })}
+              {owner
+                ? t('templates.savedHint', { title: title.trim() })
+                : mode === 'checklist'
+                  ? t('signing.formReadyHint', { v1: created?.title ?? title.trim() })
+                  : t('signing.documentReadyHint', { v1: created?.title ?? title.trim() })}
             </p>
-            <div className="sd-success-path sd-sb">
-              <Ionicons name="person" size={18} color="#0075B3" />
+            <div className="sd-success-path sd-sb" hidden={owner}>
+              <Ionicons name="person" size={18} color="#2F5BFF" />
               {t('driver.file')}
               <Ionicons name={dirIcon('chevron-back')} size={16} color="#8B98A4" />
               {t('signing.formsToSign')}
@@ -551,10 +698,10 @@ export function CreateDocumentSheet({
               {mode === 'checklist' ? t('meeting.new') : t('common.send')}
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-              {!lockedTitle ? (
+              {!lockedTitle && !editingTemplate ? (
                 <button type="button" className="sd-btn sd-btn-plain sd-btn-lg" onClick={startOver}>
                   <Ionicons name="add" size={20} color="currentColor" />
-                  {t('signing.createAnother')}
+                  {owner ? t('templates.createAnother') : t('signing.createAnother')}
                 </button>
               ) : null}
               <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={close} style={{ minWidth: 160 }}>
@@ -579,6 +726,30 @@ export function CreateDocumentSheet({
         />
       ) : null}
     </>
+  );
+}
+
+/** One of the owner's ready templates in the "start from a template" list. */
+function TemplateChoice({ template, index, selected, onPress }: { template: FormTemplate; index: number; selected: boolean; onPress: () => void }) {
+  const checklist = template.kind === 'checklist';
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      className={`sd-tpl${selected ? ' sd-selected' : ''}`}
+      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+      onClick={onPress}
+    >
+      <span className={`sd-tpl-icon${checklist ? ' sd-tpl-list-kind' : ''}`} aria-hidden="true">
+        <Ionicons name={checklist ? 'list' : 'document-text'} size={22} color="#fff" />
+      </span>
+      <span className="sd-tpl-text">
+        <strong className="sd-sb">{template.title}</strong>
+        <span>{template.description || (checklist ? t('templates.kindChecklist') : t('templates.kindDocument'))}</span>
+      </span>
+      <span className="sd-tpl-check" aria-hidden="true">{selected ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}</span>
+    </button>
   );
 }
 

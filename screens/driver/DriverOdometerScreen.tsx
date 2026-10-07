@@ -10,7 +10,7 @@ import type { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DesktopInput, DText, HoverPressable } from '../../components/desktop/primitives';
-import { DESKTOP_COLORS } from '../../components/desktop/desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_BRAND_SHADOW, webOnly } from '../../components/desktop/desktopTheme';
 import { t, getLocale } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 
@@ -65,7 +65,7 @@ const ds = StyleSheet.create({
   wrap: { padding: 24, maxWidth: 380, alignSelf: 'center', width: '100%' },
   card: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 8, padding: 16, gap: 12 },
   explain: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, lineHeight: 18 },
-  button: { height: 36, borderRadius: 7, backgroundColor: DESKTOP_COLORS.brand, alignItems: 'center', justifyContent: 'center' },
+  button: { height: 36, borderRadius: 7, backgroundColor: DESKTOP_COLORS.brand, alignItems: 'center', justifyContent: 'center', ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW }) },
   buttonDisabled: { backgroundColor: DESKTOP_COLORS.surfaceMuted, borderWidth: 1, borderColor: DESKTOP_COLORS.border },
   buttonText: { fontSize: 13, color: '#FFFFFF' },
 });

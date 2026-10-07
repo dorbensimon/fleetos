@@ -1,5 +1,4 @@
 import { buildSigningFolders, lastSignedAt, signingFolderStatus } from '../signingFolders';
-import type { CompanyFolder } from '../folderCatalog';
 import { missingPrefill } from '../../supabase/functions/_shared/signingPrefill';
 import type { SignatureRequest, SigningTemplate } from '../docuseal';
 const template = { id: 't1', title: 'בריאות', status: 'ready', company_id: null } as SigningTemplate;
@@ -45,25 +44,12 @@ test('safety officer inspections signed before and after the rename share one fo
   expect(folders[0].requests).toHaveLength(2);
 });
 
-const catalogFolder = (id: string, title: string, extra: Partial<CompanyFolder> = {}) => ({
-  id, title, kind: 'document', description: null, sort_order: 0, retired_at: null,
-  default_valid_months: null, default_lead_days: 30, default_repeat_months: null,
-  added: true, form: null, sameName: null, linkable: [], ...extra,
-} as CompanyFolder);
-
-test('an added catalog folder with no form shows empty for managers, catalog folders first in the owner order', () => {
-  const own = { ...template, id: 'own', title: 'אאא מסמך שלי' } as SigningTemplate;
-  const linked = { ...template, id: 'f2form', title: 'ביטוח', catalog_folder_id: 'c2' } as SigningTemplate;
-  const folders = buildSigningFolders([own, linked], [], [
-    catalogFolder('c1', 'תדריך'),
-    catalogFolder('c2', 'ביטוח', { form: { id: 'f2form', version: 1, updatedAt: '' } }),
-    catalogFolder('c3', 'לא נוסף', { added: false }),
-  ]);
-  expect(folders.map((f) => f.title)).toEqual(['תדריך', 'ביטוח', 'אאא מסמך שלי']);
-  expect(folders[0].emptyCatalog?.id).toBe('c1');
-  expect(signingFolderStatus(folders[0])).toBe('empty');
+test('folders are sorted by name', () => {
+  const own = { ...template, id: 't2', title: 'ת אחרון' } as SigningTemplate;
+  const first = { ...template, id: 't3', title: 'א ראשון' } as SigningTemplate;
+  expect(buildSigningFolders([own, first], []).map((folder) => folder.id)).toEqual(['t3', 't2']);
 });
-test('a driver (no catalog given) never gets empty catalog folders', () => {
+test('no forms and no requests: no folders', () => {
   expect(buildSigningFolders([], [])).toEqual([]);
 });
 test('a folder shows the date of its latest signed copy', () => {
@@ -74,9 +60,4 @@ test('a folder shows the date of its latest signed copy', () => {
   ] as SignatureRequest[]);
   expect(lastSignedAt(folder)).toBe('2026-10-05T20:29:00Z');
   expect(lastSignedAt(buildSigningFolders([template], [])[0])).toBeNull();
-});
-test('without the catalog (a driver), catalog folders still come before other folders', () => {
-  const own = { ...template, id: 't2', title: 'א אחר' } as SigningTemplate;
-  const linked = { ...template, id: 't3', title: 'ת קטלוג', catalog_folder_id: 'c1' } as SigningTemplate;
-  expect(buildSigningFolders([own, linked], []).map((folder) => folder.id)).toEqual(['t3', 't2']);
 });

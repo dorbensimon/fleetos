@@ -11,7 +11,7 @@ export const COLORS = {
   gray: '#666666',
   grayLight: '#979797',
   border: '#E2E2E2',
-  blue: '#0075B3',
+  blue: '#2F5BFF',
   red: '#C0392B',
   activeBg: '#E9F1EC',
   activeText: '#5C8A6E',

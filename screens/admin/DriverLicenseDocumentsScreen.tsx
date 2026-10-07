@@ -19,7 +19,7 @@ import { ActionRow, DK, DK_FONT, DKText, DriverPage, EditField, ErrorPanel, Hero
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable } from '../../components/desktop/primitives';
-import { DESKTOP_COLORS, DESKTOP_TONES } from '../../components/desktop/desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_TONES, DESKTOP_BRAND_SHADOW, webOnly } from '../../components/desktop/desktopTheme';
 import { t, textEnd } from '../../lib/i18n';
 import { LICENSE_SIDE_STORED_TITLE } from '../../lib/licenseSides';
 import { errorMessage } from '../../lib/requestError';
@@ -807,6 +807,7 @@ const desktopStyles = StyleSheet.create({
     backgroundColor: DESKTOP_COLORS.brand,
     alignItems: 'center',
     justifyContent: 'center',
+    ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW }),
   },
   saveButtonText: { fontSize: 13, color: '#FFFFFF' },
 });

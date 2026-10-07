@@ -24,9 +24,6 @@ type Props = {
   onOpenInsurance: (vehicleId: string) => void;
   onAssignDriver: (vehicleId: string) => void;
   onOpenLicenseDocs: (driverId: string) => void;
-  /** Catalog folders the company added that still have no form (lib/folderCatalog.ts). */
-  emptyFolders: { id: string; title: string }[];
-  onOpenFolders: () => void;
 };
 
 type Row = { key: string; title: string; detail: string; status: Status; onPress: () => void };
@@ -100,20 +97,6 @@ export function AttentionMobile(p: Props) {
             detail: t('attention.missingV1', { v1: missing.join(', ') }),
             status: 'missing',
             onPress: () => p.onOpenLicenseDocs(driver.id),
-          })),
-        },
-        {
-          key: 'folders',
-          icon: 'folder-open',
-          title: t('folders.attentionTitle'),
-          hint: t('folders.attentionHint'),
-          status: 'missing',
-          rows: p.emptyFolders.map((folder) => ({
-            key: folder.id,
-            title: folder.title,
-            detail: t('folders.noFormYet'),
-            status: 'missing',
-            onPress: p.onOpenFolders,
           })),
         },
       ].filter((g) => g.rows.length > 0) as Group[]

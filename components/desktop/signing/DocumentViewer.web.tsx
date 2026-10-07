@@ -271,7 +271,7 @@ const VIEWER_CSS = `
 .dv-root {
   --dv-ease: cubic-bezier(0.23, 1, 0.32, 1);
   --dv-drawer: cubic-bezier(0.32, 0.72, 0, 1);
-  --dv-tint: #0075B3;
+  --dv-tint: #2F5BFF;
   position: fixed; inset: 0; z-index: 10000;
   direction: var(--app-dir, rtl); color: #fff;
   font-family: 'Heebo_400Regular', system-ui, sans-serif;
@@ -288,8 +288,8 @@ const VIEWER_CSS = `
 .dv-backdrop {
   position: absolute; inset: 0;
   background:
-    radial-gradient(1100px 620px at 50% 12%, rgba(0,136,204,0.30), transparent 70%),
-    radial-gradient(700px 500px at 88% 100%, rgba(0,136,204,0.12), transparent 70%),
+    radial-gradient(1100px 620px at 50% 12%, rgba(47,91,255,0.30), transparent 70%),
+    radial-gradient(700px 500px at 88% 100%, rgba(47,91,255,0.12), transparent 70%),
     linear-gradient(180deg, #13202C 0%, #0C161F 100%);
 }
 .dv-backdrop::after {
@@ -350,13 +350,13 @@ const VIEWER_CSS = `
 .dv-ghost { background: rgba(255,255,255,0.08); }
 .dv-primary {
   width: 46px; padding: 0; justify-content: center;
-  background: linear-gradient(180deg, #1FA3E3 0%, var(--dv-tint) 60%, #0079B5 100%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 8px 22px -8px rgba(0,136,204,0.9);
+  background: var(--dv-tint);
+  box-shadow: 0 10px 24px rgba(47,91,255,0.32);
 }
 .dv-ghost:active:not(:disabled), .dv-primary:active:not(:disabled) { transform: scale(0.97); }
 @media (hover: hover) and (pointer: fine) {
   .dv-round:hover, .dv-ghost:hover:not(:disabled), .dv-zoom button:hover:not(:disabled) { background: rgba(255,255,255,0.16); }
-  .dv-primary:hover:not(:disabled) { box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 12px 28px -8px rgba(0,136,204,1); }
+  .dv-primary:hover:not(:disabled) { box-shadow: 0 14px 28px rgba(47,91,255,0.38); }
 }
 
 /* ---------- paper ---------- */
@@ -374,7 +374,7 @@ const VIEWER_CSS = `
 .dv-page canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .dv-page:not(.dv-drawn)::before, .dv-skeleton::before {
   content: ''; position: absolute; inset: 0;
-  background: linear-gradient(100deg, transparent 30%, rgba(0,136,204,0.08) 50%, transparent 70%) #F4F6F8;
+  background: linear-gradient(100deg, transparent 30%, rgba(47,91,255,0.08) 50%, transparent 70%) #F4F6F8;
   background-size: 220% 100%;
   animation: dv-shimmer 1.4s linear infinite;
 }

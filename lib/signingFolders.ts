@@ -1,7 +1,6 @@
 import type { SignatureRequest, SigningTemplate } from './docuseal';
 import { getLocale, t } from './i18n';
 import { INSPECTION_TITLE, LEGACY_INSPECTION_TITLE } from './inspectionTitle';
-import type { CompanyFolder } from './folderCatalog';
 
 /** A request's saved title, with inspections signed before the rename shown under the new name. */
 export function requestTitle(request: Pick<SignatureRequest, 'template_title'>): string | null {
@@ -13,20 +12,10 @@ export type SigningFolder = {
   title: string;
   template: SigningTemplate | null;
   requests: SignatureRequest[];
-  /** A catalog folder the company added that has no form yet (managers only). */
-  emptyCatalog?: CompanyFolder;
 };
 
-/** The id of an added catalog folder that still has no form. */
-export const emptyCatalogFolderId = (catalogId: string) => `catalog:${catalogId}`;
-
-/**
- * One folder per form, plus older requests grouped by their saved name.
- * `catalog` (managers only): the company's catalog folders. Added ones with no
- * form yet show as empty folders, and catalog folders come first, in the
- * owner's order; everything else follows by name.
- */
-export function buildSigningFolders(templates: SigningTemplate[], requests: SignatureRequest[], catalog: CompanyFolder[] = []): SigningFolder[] {
+/** One folder per form (every company form is a folder in each driver's file), plus older requests grouped by their saved name; by name. */
+export function buildSigningFolders(templates: SigningTemplate[], requests: SignatureRequest[]): SigningFolder[] {
   const folders = new Map<string, SigningFolder>(templates.map((template) => [template.id, {
     id: template.id, title: template.title, template, requests: [],
   }]));
@@ -38,18 +27,7 @@ export function buildSigningFolders(templates: SigningTemplate[], requests: Sign
     if (!folders.has(id)) folders.set(id, { id, title: request.template?.title || savedTitle || t('signing.previousDocument'), template: null, requests: [] });
     folders.get(id)!.requests.push(request);
   }
-  for (const folder of catalog) {
-    if (!folder.added || folder.form) continue;
-    const id = emptyCatalogFolderId(folder.id);
-    folders.set(id, { id, title: folder.title, template: null, requests: [], emptyCatalog: folder });
-  }
-  const order = new Map(catalog.map((folder, index) => [folder.id, index]));
-  const rank = (folder: SigningFolder) => {
-    const catalogId = folder.emptyCatalog?.id ?? folder.template?.catalog_folder_id;
-    // A driver gets no catalog: their catalog folders still come first, by name.
-    return catalogId ? order.get(catalogId) ?? Number.MAX_SAFE_INTEGER - 1 : Number.MAX_SAFE_INTEGER;
-  };
-  return [...folders.values()].sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title, 'he'));
+  return [...folders.values()].sort((a, b) => a.title.localeCompare(b.title, 'he'));
 }
 
 export function signingFolderStatus(folder: SigningFolder): 'empty' | 'pending' | 'completed' | 'failed' {

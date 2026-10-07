@@ -15,7 +15,7 @@ import {
   prefersReducedMotion,
 } from '../primitives';
 import { EASE_OUT } from './RecordKit';
-import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from '../desktopTheme';
 import { t, dirIcon } from '../../../lib/i18n';
 
 /**
@@ -388,17 +388,21 @@ export function GroupLabel({ children, action }: { children: string; action?: Re
 }
 
 /** One of the header's big numbers. */
-export function Fact({ label, value, unit, color, muted }: { label: string; value: string; unit?: string; color?: string; muted?: boolean }) {
+/** `onDark` is for a fact sitting on the night header (the vehicle card). */
+export function Fact({ label, value, unit, color, muted, onDark }: { label: string; value: string; unit?: string; color?: string; muted?: boolean; onDark?: boolean }) {
   return (
-    <View style={pageStyles.fact}>
-      <DText style={pageStyles.factLabel}>{label}</DText>
+    <View style={[pageStyles.fact, onDark && pageStyles.factOnDark]}>
+      <DText style={[pageStyles.factLabel, onDark && pageStyles.factLabelOnDark]}>{label}</DText>
       <View style={pageStyles.factValueRow}>
-        <DLtrText weight="bold" style={[pageStyles.factValue, muted && pageStyles.factValueMuted, color ? { color } : null]}>{value}</DLtrText>
-        {!!unit && <DText style={pageStyles.factUnit}>{unit}</DText>}
+        <DLtrText weight="bold" style={[pageStyles.factValue, onDark && pageStyles.factValueOnDark, muted && pageStyles.factValueMuted, muted && onDark && pageStyles.factLabelOnDark, color ? { color } : null]}>{value}</DLtrText>
+        {!!unit && <DText style={[pageStyles.factUnit, onDark && pageStyles.factLabelOnDark]}>{unit}</DText>}
       </View>
     </View>
   );
 }
+
+/** Expiry colours readable on the night header. */
+export const NIGHT_TONES = { bad: '#FF8A80', warn: '#FFC266' } as const;
 
 export const CARD_SHADOW = '0 1px 2px rgba(22,34,46,0.04), 0 2px 10px rgba(22,34,46,0.035)';
 
@@ -443,6 +447,23 @@ export const pageStyles = StyleSheet.create({
   factValue: { fontSize: 17, color: DESKTOP_COLORS.ink, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   factValueMuted: { fontSize: 14, color: DESKTOP_COLORS.inkFaint },
   factUnit: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
+  // The night header of the safety officer check (DK.night), with the same blue and cyan light.
+  heroNight: {
+    backgroundColor: '#12306E',
+    borderColor: 'transparent',
+    overflow: 'hidden',
+    ...webOnly({ backgroundImage: 'linear-gradient(180deg, #12306E 0%, #0B1C45 60%, #0A1626 100%)', boxShadow: '0 18px 40px -18px rgba(10,22,38,0.55)', isolation: 'isolate' }),
+  },
+  heroGlow: { position: 'absolute' },
+  heroGlowBlue: { width: 420, height: 420, top: -200, end: -150, ...webOnly({ backgroundImage: 'radial-gradient(closest-side, rgba(47,91,255,0.42), rgba(47,91,255,0.16) 55%, rgba(47,91,255,0) 100%)' }) },
+  heroGlowCyan: { width: 320, height: 320, bottom: -220, start: -80, ...webOnly({ backgroundImage: 'radial-gradient(closest-side, rgba(25,198,240,0.28), rgba(25,198,240,0) 100%)' }) },
+  heroNameOnDark: { color: '#FFFFFF' },
+  pillOnDark: { backgroundColor: '#FFFFFF', borderRadius: 999 },
+  heroSubTextOnDark: { color: 'rgba(255,255,255,0.7)' },
+  heroSubDotOnDark: { color: 'rgba(255,255,255,0.45)' },
+  factOnDark: { borderEndColor: 'rgba(255,255,255,0.14)' },
+  factLabelOnDark: { color: 'rgba(255,255,255,0.66)' },
+  factValueOnDark: { color: '#FFFFFF' },
 
   // Archived / attention
   archivedBanner: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 14, backgroundColor: '#EEF1F4', borderWidth: 1, borderColor: DESKTOP_COLORS.border },
@@ -489,7 +510,7 @@ export const pageStyles = StyleSheet.create({
   rowEditTextHover: { color: DESKTOP_COLORS.brand },
 
   // In-row editing — iOS-style: the field eases in, ✓ / ✕ spring up in turn.
-  rowEditing: { alignItems: 'flex-start', backgroundColor: 'rgba(0,136,204,0.035)', ...webOnly({ transition: 'background-color 220ms ease' }) },
+  rowEditing: { alignItems: 'flex-start', backgroundColor: 'rgba(47,91,255,0.035)', ...webOnly({ transition: 'background-color 220ms ease' }) },
   inlineLabel: { paddingTop: 7 },
   inlineField: { flex: 1, minWidth: 0, gap: 4 },
   inlineFieldIn: webOnly({
@@ -498,7 +519,7 @@ export const pageStyles = StyleSheet.create({
     animationTimingFunction: EASE_OUT,
     animationFillMode: 'backwards',
   }),
-  inlineInput: { height: 32, borderRadius: 8, fontSize: 14.5, borderColor: DESKTOP_COLORS.brand, ...webOnly({ boxShadow: '0 0 0 3px rgba(0,136,204,0.12)', outlineStyle: 'none' }) },
+  inlineInput: { height: 32, borderRadius: 8, fontSize: 14.5, borderColor: DESKTOP_COLORS.brand, ...webOnly({ boxShadow: '0 0 0 3px rgba(47,91,255,0.12)', outlineStyle: 'none' }) },
   inlineHint: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
   inlineError: { fontSize: 12.5, color: DESKTOP_TONES.bad.fg },
   inlineActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, },
@@ -518,7 +539,7 @@ export const pageStyles = StyleSheet.create({
 
   inlineMeta: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap' },
   mutedText: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,136,204,0.10)', alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(47,91,255,0.10)', alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
 
   // Section heads
@@ -526,14 +547,14 @@ export const pageStyles = StyleSheet.create({
   docsTitle: { fontSize: 18, letterSpacing: -0.2 },
 
   // Buttons
-  primaryBtn: { height: 40, paddingHorizontal: 16, borderRadius: 10, backgroundColor: DESKTOP_COLORS.brand, flexDirection: 'row-reverse', alignItems: 'center', gap: 8, ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
+  primaryBtn: { height: 40, paddingHorizontal: 16, borderRadius: 10, backgroundColor: DESKTOP_COLORS.brand, flexDirection: 'row-reverse', alignItems: 'center', gap: 8, ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW, transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
   primaryBtnHover: { backgroundColor: DESKTOP_COLORS.brandHover },
   primaryBtnText: { fontSize: 14.5, color: '#FFFFFF' },
   plainBtn: { height: 40, paddingHorizontal: 16, borderRadius: 10, backgroundColor: '#EEF1F4', flexDirection: 'row-reverse', alignItems: 'center', gap: 8, ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
   plainBtnHover: { backgroundColor: '#E5E9ED' },
   plainBtnText: { fontSize: 14.5, color: DESKTOP_COLORS.ink },
-  softBtn: { height: 34, paddingHorizontal: 12, borderRadius: 9, backgroundColor: 'rgba(0,136,204,0.09)', flexDirection: 'row-reverse', alignItems: 'center', gap: 6, ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
-  softBtnHover: { backgroundColor: 'rgba(0,136,204,0.15)' },
+  softBtn: { height: 34, paddingHorizontal: 12, borderRadius: 9, backgroundColor: 'rgba(47,91,255,0.09)', flexDirection: 'row-reverse', alignItems: 'center', gap: 6, ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
+  softBtnHover: { backgroundColor: 'rgba(47,91,255,0.15)' },
   softBtnText: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
   linkBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 2, height: 26, paddingHorizontal: 8, borderRadius: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },
   linkText: { fontSize: 13.5, color: DESKTOP_COLORS.brand },

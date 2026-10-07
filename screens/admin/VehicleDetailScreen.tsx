@@ -66,10 +66,15 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupMessage, setLookupMessage] = useState<string | null>(null);
 
+  // Only the newest load may write: a slow answer for the previous vehicle
+  // must not land on top of the one now open.
+  const loadRequest = useRef(0);
   const load = useCallback(async () => {
+    const requestId = ++loadRequest.current;
     const [loadedVehicle, loadedDrivers, loadedCompliance] = await Promise.all([getVehicle(vehicleId), loadVehicleDrivers(vehicleId), listCompliance('vehicle', vehicleId)]);
+    if (requestId !== loadRequest.current) return;
     setVehicle(loadedVehicle); setDrivers(loadedDrivers); setCompliance(loadedCompliance);
-    if (companyId) { const [deps, companyDrivers] = await Promise.all([listDepartments(companyId), listDrivers(companyId)]); setDepartments(deps); setDriverOptions(companyDrivers.map((d) => ({ value: d.id, label: d.full_name ?? t('common.unnamed') }))); }
+    if (companyId) { const [deps, companyDrivers] = await Promise.all([listDepartments(companyId), listDrivers(companyId)]); if (requestId !== loadRequest.current) return; setDepartments(deps); setDriverOptions(companyDrivers.map((d) => ({ value: d.id, label: d.full_name ?? t('common.unnamed') }))); }
   }, [companyId, vehicleId]);
   // The loader shows the first time only; coming back refreshes quietly
   // behind what is already on screen.
@@ -136,8 +141,8 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const visibleDocumentFolders = VEHICLE_DOCUMENT_FOLDERS.filter(
     (folder) => folder.category !== 'tachograph_calibration' || requiresTachograph(vehicle?.vehicle_type ?? 'car'),
   );
-  const archive = () => showAlert(t('common.moveToArchive'), t('vehicle.archiveConfirm', { v1: formatPlate(vehicle?.plate_number) }), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.moveToArchiveAction'), style: 'destructive', onPress: async () => { await archiveVehicle(vehicleId); navigation.goBack(); } }]);
-  const restore = () => showAlert(t('vehicle.unarchiveTitle'), t('vehicle.unarchiveConfirm', { v1: formatPlate(vehicle?.plate_number) }), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('vehicle.unarchiveAction'), onPress: async () => { await restoreVehicle(vehicleId); await load(); showToast(t('vehicle.unarchived')); } }]);
+  const archive = () => showAlert(t('common.moveToArchive'), t('vehicle.archiveConfirm', { v1: formatPlate(vehicle?.plate_number) }), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.moveToArchiveAction'), style: 'destructive', onPress: async () => { try { await archiveVehicle(vehicleId); navigation.goBack(); } catch (e: any) { showAlert(t('common.actionFailed'), String(errorMessage(e, t('common.tryAgain')))); } } }]);
+  const restore = () => showAlert(t('vehicle.unarchiveTitle'), t('vehicle.unarchiveConfirm', { v1: formatPlate(vehicle?.plate_number) }), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('vehicle.unarchiveAction'), onPress: async () => { try { await restoreVehicle(vehicleId); await load(); showToast(t('vehicle.unarchived')); } catch (e: any) { showAlert(t('common.actionFailed'), String(errorMessage(e, t('common.tryAgain')))); } } }]);
   const editMaintenance = () => { if (!vehicle) return; setMaintenance({ odometer: String(vehicle.odometer ?? ''), last_service_km: String(vehicle.last_service_km ?? ''), service_interval_km: vehicle.service_interval_km ? String(vehicle.service_interval_km) : '', next_service_km: vehicle.next_service_km ? String(vehicle.next_service_km) : '' }); setEditingMaintenance(true); };
   const saveMaintenance = async () => { setSavingMaintenance(true); try { await updateVehicle(vehicleId, { odometer: numberOrNull(maintenance.odometer) ?? 0, last_service_km: numberOrNull(maintenance.last_service_km) ?? 0, service_interval_km: numberOrNull(maintenance.service_interval_km), next_service_km: deriveNextServiceKm(numberOrNull(maintenance.last_service_km) ?? 0, numberOrNull(maintenance.service_interval_km)) ?? numberOrNull(maintenance.next_service_km) }); setEditingMaintenance(false); await load(); showToast(t('common.savedSuccessfully')); } catch (e: any) { showAlert(t('common.saveFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setSavingMaintenance(false); } };
   const removePermanently = () => showAlert(t('vehicle.deleteTitle'), t('vehicle.deleteConfirm', { v1: formatPlate(vehicle?.plate_number) }), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.deletePermanentlyAction'), style: 'destructive', onPress: async () => { try { if (!companyId) throw new Error(t('company.noLinkedCompany')); await deleteVehicle(vehicleId, companyId); navigation.goBack(); } catch (e: any) { showAlert(t('common.deleteFailed'), String(errorMessage(e, t('vehicle.cannotDelete')))); } } }]);

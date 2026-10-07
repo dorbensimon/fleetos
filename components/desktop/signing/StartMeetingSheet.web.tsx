@@ -81,7 +81,7 @@ export function StartMeetingSheet({
           </div>
         ) : drivers.length === 0 ? (
           <div className="sd-busy">
-            <Ionicons name="people" size={46} color="#0075B3" />
+            <Ionicons name="people" size={46} color="#2F5BFF" />
             <h3 className="sd-b">{t('driver.noActiveDrivers')}</h3>
           </div>
         ) : (
@@ -109,7 +109,7 @@ export function StartMeetingSheet({
                     close();
                   }}
                 >
-                  <Ionicons name="person-circle-outline" size={26} color="#0075B3" />
+                  <Ionicons name="person-circle-outline" size={26} color="#2F5BFF" />
                   <span className="sd-drv-name sd-sb">{d.name}</span>
                   {plan?.get(d.id) ? (
                     <>

@@ -326,10 +326,10 @@ const VIEWER_CSS = `
   #${VIEWER_ID} button:active { transform: scale(0.97); }
   #${VIEWER_ID} button:focus-visible { outline: 2px solid #19C6F0; outline-offset: 2px; }
   #${VIEWER_ID} .rv-back { background: rgba(255,255,255,0.12); color: #fff; }
-  #${VIEWER_ID} .rv-print { background: #0075B3; color: #fff; }
+  #${VIEWER_ID} .rv-print { background: #2F5BFF; color: #fff; }
   @media (hover: hover) and (pointer: fine) {
     #${VIEWER_ID} .rv-back:hover { background: rgba(255,255,255,0.2); }
-    #${VIEWER_ID} .rv-print:hover { background: #00649A; }
+    #${VIEWER_ID} .rv-print:hover { background: #2449E0; }
   }
   #${VIEWER_ID} iframe { flex: 1; width: 100%; border: 0; background: #f8fafc; }
   @media (max-width: 480px) { #${VIEWER_ID} .rv-label { display: none; } #${VIEWER_ID} button { padding: 0 12px; } }

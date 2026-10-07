@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   rowLast: { borderBottomWidth: 0 },
-  rowFocused: { backgroundColor: 'rgba(0,136,204,.045)' },
+  rowFocused: { backgroundColor: 'rgba(47,91,255,.045)' },
   focusRail: { width: 4, height: 22, borderRadius: 2, backgroundColor: 'transparent' },
   focusRailActive: { backgroundColor: COLORS.accent },
   label: { fontSize: FONT_SIZE.lg, fontFamily: FONT.semibold, color: BRAND.ink },

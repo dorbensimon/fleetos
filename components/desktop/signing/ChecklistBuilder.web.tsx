@@ -24,9 +24,9 @@ import { t } from '../../../lib/i18n';
 export const CHECKLIST_BUILDER_CSS = `
 .cl-work { zoom: 0.85; }
 .cl-work .sd-panel { max-height: calc((100vh - 150px) / 0.85); min-height: calc((100vh - 150px) / 0.85); }
-.cl-banner { width: 100%; max-width: 840px; display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 18px; background: linear-gradient(120deg, rgba(0,136,204,0.10), rgba(52,199,89,0.08)); }
+.cl-banner { width: 100%; max-width: 840px; display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 18px; background: linear-gradient(120deg, rgba(47,91,255,0.10), rgba(52,199,89,0.08)); }
 .cl-banner p { flex: 1; margin: 0; font-size: 15.5px; line-height: 1.5; color: var(--sd-ink); }
-.cl-banner-icon { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; background: linear-gradient(160deg, #35B8F0, #0075B3); }
+.cl-banner-icon { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; background: linear-gradient(160deg, #35B8F0, #2F5BFF); }
 .cl-sheet { position: relative; width: 794px; max-width: 100%; background: #fff; border-radius: 4px; padding: 56px 64px 64px; box-shadow: 0 1px 2px rgba(0,0,0,0.05), 0 12px 40px rgba(16,34,50,0.10); }
 .cl-title { margin: 0 0 12px; font-size: 26px; line-height: 1.3; }
 .cl-intro { width: 100%; resize: none; overflow: hidden; border: 0; outline: none; background: transparent; font: inherit; font-size: 16px; line-height: 1.7; color: var(--sd-ink-2); padding: 8px 10px; margin: 0 -10px 12px; border-radius: 10px; transition: background-color 150ms ease, box-shadow 150ms ease; }
@@ -35,12 +35,12 @@ export const CHECKLIST_BUILDER_CSS = `
 .cl-intro::placeholder { color: var(--sd-ink-3); }
 .cl-auto { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 22px; font-size: 14px; color: var(--sd-ink-3); }
 .cl-auto-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 9px; background: rgba(14,159,175,0.09); color: #0B7B87; font-size: 14px; }
-.cl-block { position: relative; border-radius: 16px; box-shadow: inset 0 0 0 1.5px rgba(0,117,179,0.22); padding: 16px 12px 12px; }
+.cl-block { position: relative; border-radius: 16px; box-shadow: inset 0 0 0 1.5px rgba(47,91,255,0.22); padding: 16px 12px 12px; }
 .cl-block-tab { position: absolute; top: -13px; inset-inline-start: 16px; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 8px; background: var(--sd-tint); color: #fff; font-size: 13px; }
 .cl-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px 10px; font-size: 14px; color: var(--sd-ink-3); }
 .cl-row { display: grid; grid-template-columns: 30px 28px minmax(0, 1fr) 40px; align-items: start; gap: 8px; padding: 10px 6px; border-radius: 12px; transition: background-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease; }
 .cl-row + .cl-row { box-shadow: 0 -1px 0 var(--sd-sep); }
-.cl-row:focus-within { background: rgba(0,136,204,0.04); }
+.cl-row:focus-within { background: rgba(47,91,255,0.04); }
 .cl-row.cl-drag-over { box-shadow: 0 -2px 0 #E8318A; }
 .cl-row.cl-dragging { opacity: 0.45; }
 .cl-move { display: flex; flex-direction: column; align-items: center; gap: 2px; }
@@ -59,9 +59,9 @@ export const CHECKLIST_BUILDER_CSS = `
 .cl-ghost-note { background: var(--sd-bg); color: var(--sd-ink-3); }
 .cl-del { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--sd-ink-3); transition: background-color 150ms ease, color 150ms ease; }
 @media (hover: hover) and (pointer: fine) { .cl-del:hover { background: rgba(255,69,58,0.1); color: #D92D20; } }
-.cl-add { width: 100%; margin-top: 8px; min-height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; color: var(--sd-tint-deep) !important; background: rgba(0,136,204,0.06) !important; box-shadow: inset 0 0 0 1.5px rgba(0,117,179,0.25); transition: background-color 150ms ease, transform 160ms var(--sd-ease); }
+.cl-add { width: 100%; margin-top: 8px; min-height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; color: var(--sd-tint-deep) !important; background: rgba(47,91,255,0.06) !important; box-shadow: inset 0 0 0 1.5px rgba(47,91,255,0.25); transition: background-color 150ms ease, transform 160ms var(--sd-ease); }
 .cl-add:active { transform: scale(0.99); }
-@media (hover: hover) and (pointer: fine) { .cl-add:hover { background: rgba(0,136,204,0.12) !important; } }
+@media (hover: hover) and (pointer: fine) { .cl-add:hover { background: rgba(47,91,255,0.12) !important; } }
 .cl-sigs { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 36px; }
 .cl-sig input { width: 100%; border: 0; outline: none; background: transparent; font: inherit; font-family: 'Heebo_600SemiBold', system-ui, sans-serif; font-size: 15px; color: var(--sd-ink); padding: 6px 8px; margin: 0 -8px 6px; border-radius: 8px; transition: background-color 150ms ease, box-shadow 150ms ease; }
 .cl-sig input:hover { background: var(--sd-bg); }
@@ -83,7 +83,7 @@ export const CHECKLIST_BUILDER_CSS = `
 .cl-repeat button { min-height: 44px; padding: 0 10px; border-radius: 12px; font-size: 15px; color: var(--sd-ink); background: var(--sd-bg); box-shadow: inset 0 0 0 1px var(--sd-sep); transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 100ms ease; }
 .cl-repeat button:active { transform: scale(0.97); }
 .cl-repeat button[aria-checked="true"] { background: var(--sd-tint); color: #fff; box-shadow: none; }
-@media (hover: hover) and (pointer: fine) { .cl-repeat button:hover:not([aria-checked="true"]) { background: rgba(0,136,204,0.08); } }
+@media (hover: hover) and (pointer: fine) { .cl-repeat button:hover:not([aria-checked="true"]) { background: rgba(47,91,255,0.08); } }
 @keyframes cl-row-in { from { opacity: 0; transform: translateY(-6px); } }
 .cl-row-new { animation: cl-row-in 220ms var(--sd-ease) both; }
 @media (prefers-reduced-motion: reduce) { .cl-row-new { animation: none; } .cl-switch::after { transition: none; } }
@@ -140,12 +140,15 @@ export function ChecklistBuilder({
   form,
   onChange,
   fromTemplate,
+  templateName,
   onStartFrom,
 }: {
   title: string;
   form: ChecklistForm;
   onChange: (form: ChecklistForm) => void;
   fromTemplate: boolean;
+  /** The owner's ready template the form started from; otherwise "the template" is the built-in meeting form. */
+  templateName?: string;
   onStartFrom: (which: 'template' | 'blank') => void;
 }) {
   const textRefs = useRef(new Map<string, HTMLTextAreaElement>());
@@ -205,7 +208,7 @@ export function ChecklistBuilder({
         <div className="cl-prow">
           <span className="cl-plabel sd-sb">{t('checklist.whoMarks')}</span>
           <div className="cl-fixed">
-            <Ionicons name="shield-checkmark" size={19} color="#0075B3" />
+            <Ionicons name="shield-checkmark" size={19} color="#2F5BFF" />
             <span>{t('checklist.managerOrOfficer')}</span>
           </div>
           <span className="cl-pnote">{t('checklist.driverOnlySigns')}</span>
@@ -240,7 +243,7 @@ export function ChecklistBuilder({
         <div className="cl-prow">
           <span className="cl-plabel sd-sb">{t('checklist.notePerItem')}</span>
           <div className="cl-fixed">
-            <Ionicons name="chatbox-ellipses-outline" size={19} color="#0075B3" />
+            <Ionicons name="chatbox-ellipses-outline" size={19} color="#2F5BFF" />
             <span>{t('checklist.canWriteOptional')}</span>
           </div>
         </div>
@@ -248,7 +251,7 @@ export function ChecklistBuilder({
         <div className="cl-prow">
           <span className="cl-plabel sd-sb">{t('checklist.signatures')}</span>
           <div className="cl-fixed">
-            <Ionicons name="create-outline" size={19} color="#0075B3" />
+            <Ionicons name="create-outline" size={19} color="#2F5BFF" />
             <span>{t('checklist.signOrder')}</span>
           </div>
           <span className="cl-pnote">{t('checklist.headingsEditable')}</span>
@@ -264,7 +267,7 @@ export function ChecklistBuilder({
           <p>
             {fromTemplate ? (
               <>
-                <strong className="sd-sb">{t('checklist.startedFromTemplate')}</strong> {t('checklist.canEditAnyItem')}
+                <strong className="sd-sb">{templateName ? t('templates.startedFrom', { title: templateName }) : t('checklist.startedFromTemplate')}</strong> {t('checklist.canEditAnyItem')}
               </>
             ) : (
               <>
@@ -273,7 +276,7 @@ export function ChecklistBuilder({
             )}
           </p>
           <button type="button" className={`sd-btn ${fromTemplate ? 'sd-btn-plain' : 'sd-btn-tinted'}`} onClick={() => onStartFrom(fromTemplate ? 'blank' : 'template')}>
-            {fromTemplate ? t('checklist.startBlank') : t('checklist.readyTemplate')}
+            {fromTemplate ? t('checklist.startBlank') : templateName ? t('templates.backToTemplate') : t('checklist.readyTemplate')}
           </button>
         </div>
 

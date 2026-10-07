@@ -14,7 +14,7 @@ import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable, StatusPill } from '../../components/desktop/primitives';
-import { DESKTOP_COLORS, DesktopTone } from '../../components/desktop/desktopTheme';
+import { DESKTOP_COLORS, DesktopTone, DESKTOP_BRAND_SHADOW, webOnly } from '../../components/desktop/desktopTheme';
 import { Ionicons } from '@expo/vector-icons';
 import { t, getLocale } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
@@ -206,7 +206,7 @@ const ds = StyleSheet.create({
   metaRowLast: {},
   metaLabel: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
   metaValue: { fontSize: 12.5 },
-  odometerButton: { marginTop: 10, height: 34, borderRadius: 6, backgroundColor: DESKTOP_COLORS.brand, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  odometerButton: { marginTop: 10, height: 34, borderRadius: 6, backgroundColor: DESKTOP_COLORS.brand, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW }) },
   odometerButtonText: { fontSize: 12.5, color: '#FFFFFF' },
 });
 

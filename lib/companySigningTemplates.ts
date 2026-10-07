@@ -3,7 +3,7 @@ import { requestErrorDetails } from './requestError';
 import { functionErrorMessage } from './functionError';
 import type { SigningTemplate } from './docuseal';
 import { t } from './i18n';
-import { callFunction } from './folderCatalog';
+import { callFunction } from './callFunction';
 
 /**
  * A company admin's own signing templates, created on desktop ("מסמכים חתומים").
@@ -139,15 +139,19 @@ export async function signedDocumentUrl(path: string): Promise<string> {
   return data.signedUrl;
 }
 
-/** Where a new form goes: a catalog folder, or in place of a folder's current form ("replace form"). */
-export type FormTarget = { catalogFolderId: string } | { replace: { templateId: string; expectedVersion: number } };
+/**
+ * Where a form goes: a new form started from one of the owner's templates
+ * (lib/formTemplates.ts; the company's edited copy is what is saved), or a new
+ * version of a company form in place ("replace form").
+ */
+export type FormTarget = { sourceTemplateId: string } | { replace: { templateId: string; expectedVersion: number } };
 /** A saved form; `pendingOld` = drivers still waiting to sign the version it replaced. */
 export type SavedForm = { template: SigningTemplate; pendingOld?: number };
 
 export function formTargetBody(target?: FormTarget): Record<string, unknown> {
   if (!target) return { action: 'create' };
   if ('replace' in target) return { action: 'replace', templateId: target.replace.templateId, expectedVersion: target.replace.expectedVersion };
-  return { action: 'create', catalogFolderId: target.catalogFolderId };
+  return { action: 'create', sourceTemplateId: target.sourceTemplateId };
 }
 
 export async function createTemplateFromFields(companyId: string, draftId: string, title: string, fields: PlacedSigningField[], target?: FormTarget): Promise<SavedForm> {
@@ -165,5 +169,30 @@ export async function createTemplateFromEditor(companyId: string, draftId: strin
     'company-signing-template',
     { ...formTargetBody(target), kind: 'editor', companyId, draftId, title, blocks, fields: payload },
     t('signing.saveDocumentFailed'),
+  );
+}
+
+/** An earlier version of a form, kept when it was replaced (migration 107/110). */
+export type FormVersion = {
+  version: number;
+  replaced_at: string;
+  source_file_path: string | null;
+  docuseal_template_id: number | null;
+};
+
+export async function listFormVersions(templateId: string): Promise<FormVersion[]> {
+  const { data, error } = await supabase.from('signing_template_versions')
+    .select('version, replaced_at, source_file_path, docuseal_template_id')
+    .eq('template_id', templateId)
+    .order('version', { ascending: false });
+  if (error) throw new Error(t('folders.versionsLoadFailed'));
+  return (data ?? []) as FormVersion[];
+}
+
+export async function restoreFormVersion(companyId: string, templateId: string, version: number, expectedVersion: number) {
+  return callFunction<{ template: SigningTemplate; pendingOld: number }>(
+    'company-signing-template',
+    { action: 'restore-version', companyId, templateId, version, expectedVersion },
+    t('folders.restoreFailed'),
   );
 }

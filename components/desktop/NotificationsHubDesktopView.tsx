@@ -20,8 +20,9 @@ import { notificationTone } from '../../lib/notificationLook';
 import type { NotificationPreferencesState } from '../../lib/useNotificationPreferences';
 import { LiquidGlassSwitch } from '../ui/LiquidGlassSwitch';
 import { DText, HoverPressable, prefersReducedMotion } from './primitives';
-import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, webOnly } from './desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from './desktopTheme';
 import { t, dirIcon, getLocale } from '../../lib/i18n';
+import { pageStyles } from './record/RecordPage';
 import { useCompany } from '../../lib/CompanyContext';
 import { SIGNING_LEAD_RULE, VALIDITY_MONTHS, useSigningRules, validityLabel } from '../../lib/signingRules';
 
@@ -230,11 +231,16 @@ export function NotificationsHubDesktopView({
   return (
     <View style={styles.root}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        {/* Title on the right, the view switch on the left. */}
-        <View style={styles.header}>
+        {/* The night header shared with the other desktop pages: title on the right, the view switch on the left. */}
+        <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
+          <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
+          <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+          <View style={styles.heroIcon}>
+            <Ionicons name="notifications" size={22} color="#FFFFFF" />
+          </View>
           <View style={styles.headingCopy}>
-            <DText weight="bold" style={styles.title} accessibilityRole="header">{t('notifications.title')}</DText>
-            <DText style={styles.subtitle}>{subtitle}</DText>
+            <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">{t('notifications.title')}</DText>
+            <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark]}>{subtitle}</DText>
           </View>
           <View style={styles.grow} />
           <SectionSwitch
@@ -498,7 +504,7 @@ function FeedRow({
       >
         {unread && <View pointerEvents="none" style={styles.unreadEdge} />}
         <View style={[styles.rowIcon, { backgroundColor: colors.bg }]}>
-          <Ionicons name={icon} size={20} color={colors.fg} />
+          <Ionicons name={icon} size={18} color={colors.fg} />
         </View>
         <View style={styles.rowText}>
           <DText weight={unread ? 'semiBold' : 'regular'} style={[styles.message, !unread && styles.messageRead]} numberOfLines={2}>
@@ -1094,7 +1100,7 @@ const NAVY = '#102536';
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { flex: 1 },
-  content: { paddingHorizontal: 32, paddingTop: 26, paddingBottom: 96, maxWidth: 1280, width: '100%', alignSelf: 'center', gap: 22 },
+  content: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 64, maxWidth: 1160, width: '100%', alignSelf: 'center', gap: 14 },
   grow: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
   headingCopy: { gap: 3, flexShrink: 1 },
   pressDown: { transform: [{ scale: 0.97 }] },
@@ -1105,14 +1111,12 @@ const styles = StyleSheet.create({
   }),
 
   // Header
-  header: { flexDirection: 'row-reverse', alignItems: 'center', gap: 16 },
-  title: { fontSize: 32, lineHeight: 40, letterSpacing: -0.8, color: DESKTOP_COLORS.ink },
-  subtitle: { fontSize: 15, color: DESKTOP_COLORS.inkMuted },
+  heroIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
   switch: {
     flexDirection: 'row-reverse',
-    padding: 4,
-    gap: 4,
-    borderRadius: 16,
+    padding: 3,
+    gap: 3,
+    borderRadius: 13,
     backgroundColor: DESKTOP_COLORS.surface,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.border,
@@ -1122,14 +1126,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 8,
-    height: 42,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 10,
     ...webOnly({ transition: `background-color 180ms ${EASE_OUT}` }),
   },
   switchItemHover: { backgroundColor: DESKTOP_COLORS.surfaceMuted },
-  switchItemActive: { backgroundColor: DESKTOP_COLORS.brand, ...webOnly({ boxShadow: '0 6px 16px rgba(0,117,179,0.28)' }) },
-  switchText: { fontSize: 15, color: DESKTOP_COLORS.inkMuted },
+  switchItemActive: { backgroundColor: DESKTOP_COLORS.brand, ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW }) },
+  switchText: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
   switchTextActive: { color: '#FFFFFF' },
   switchBadge: { minWidth: 24, height: 22, paddingHorizontal: 7, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EEF0F2' },
   switchBadgeActive: { backgroundColor: 'rgba(255,255,255,0.22)' },
@@ -1137,7 +1141,7 @@ const styles = StyleSheet.create({
   switchBadgeText: { fontSize: 12, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   switchBadgeTextOn: { color: '#FFFFFF' },
 
-  pane: { gap: 22 },
+  pane: { gap: 14 },
 
   // Feed toolbar
   toolbar: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, flexWrap: 'wrap' },
@@ -1146,9 +1150,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 7,
-    height: 40,
-    paddingHorizontal: 14,
-    borderRadius: 12,
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.border,
     backgroundColor: DESKTOP_COLORS.surface,
@@ -1156,7 +1160,7 @@ const styles = StyleSheet.create({
   },
   segmentItemHover: { backgroundColor: DESKTOP_COLORS.surfaceMuted, borderColor: '#CFD7DE' },
   segmentItemActive: { backgroundColor: NAVY, borderColor: NAVY },
-  segmentText: { fontSize: 14.5, color: DESKTOP_COLORS.ink },
+  segmentText: { fontSize: 13.5, color: DESKTOP_COLORS.ink },
   segmentTextActive: { color: '#FFFFFF' },
   segmentCount: { fontSize: 13, color: DESKTOP_COLORS.inkFaint, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   segmentCountActive: { color: 'rgba(255,255,255,0.7)' },
@@ -1169,23 +1173,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 40,
-    paddingHorizontal: 14,
-    borderRadius: 12,
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.border,
     backgroundColor: DESKTOP_COLORS.surface,
     ...webOnly({ transition: `background-color 160ms ${EASE_OUT}, border-color 160ms ${EASE_OUT}, transform 160ms ${EASE_OUT}` }),
   },
-  ghostButtonHover: { backgroundColor: BRAND_SOFT, borderColor: 'rgba(0,117,179,0.3)' },
-  ghostButtonText: { fontSize: 14.5, color: DESKTOP_COLORS.brand },
+  ghostButtonHover: { backgroundColor: BRAND_SOFT, borderColor: 'rgba(47,91,255,0.3)' },
+  ghostButtonText: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
 
   // Feed list
-  days: { gap: 26 },
-  day: { gap: 10 },
-  dayTitle: { fontSize: 14, color: DESKTOP_COLORS.inkMuted, paddingHorizontal: 6 },
+  days: { gap: 18 },
+  day: { gap: 8 },
+  dayTitle: { fontSize: 13, color: DESKTOP_COLORS.inkMuted, paddingHorizontal: 6 },
   list: {
-    borderRadius: 18,
+    borderRadius: 14,
     backgroundColor: DESKTOP_COLORS.surface,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.border,
@@ -1203,31 +1207,31 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 16,
-    minHeight: 84,
-    paddingVertical: 16,
-    paddingHorizontal: 22,
+    gap: 12,
+    minHeight: 64,
+    paddingVertical: 11,
+    paddingHorizontal: 18,
     ...webOnly({ transition: 'background-color 150ms ease' }),
   },
   rowUnread: { backgroundColor: '#F5F9FD' },
   rowHover: { backgroundColor: '#EEF5FA' },
   unreadEdge: { position: 'absolute', end: 0, top: 12, bottom: 12, width: 4, borderTopStartRadius: 4, borderBottomStartRadius: 4, backgroundColor: DESKTOP_COLORS.brand },
-  rowIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  rowText: { flex: 1, minWidth: 0, gap: 6 },
-  message: { fontSize: 16, lineHeight: 23, color: DESKTOP_COLORS.ink, maxWidth: 860 },
+  rowIcon: { width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  rowText: { flex: 1, minWidth: 0, gap: 3 },
+  message: { fontSize: 14.5, lineHeight: 21, color: DESKTOP_COLORS.ink, maxWidth: 860 },
   messageRead: { color: '#394755' },
   meta: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  metaTag: { fontSize: 13 },
-  metaText: { fontSize: 13.5, color: DESKTOP_COLORS.inkFaint },
-  metaAction: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
+  metaTag: { fontSize: 12.5 },
+  metaText: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
+  metaAction: { fontSize: 12.5, color: DESKTOP_COLORS.brand },
   metaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#B8C1C9' },
   rowActionSpace: { width: 84, flexShrink: 0 },
   rowActions: { position: 'absolute', start: 18, top: 0, bottom: 0, flexDirection: 'row', alignItems: 'center', gap: 4 },
   iconActionWrap: { position: 'relative', alignItems: 'center' },
   iconAction: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     ...webOnly({ transition: `background-color 150ms ease, transform 160ms ${EASE_OUT}` }),
@@ -1272,7 +1276,7 @@ const styles = StyleSheet.create({
     gap: 22,
     overflow: 'hidden',
     ...webOnly({
-      backgroundImage: 'radial-gradient(120% 140% at 100% 0%, rgba(0,136,204,0.35) 0%, rgba(16,37,54,0) 55%)',
+      backgroundImage: 'radial-gradient(120% 140% at 100% 0%, rgba(47,91,255,0.35) 0%, rgba(16,37,54,0) 55%)',
       boxShadow: '0 18px 44px rgba(16,37,54,0.22)',
     }),
   },
@@ -1308,15 +1312,15 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 10,
     borderRadius: 9,
-    backgroundColor: 'rgba(0,136,204,0.32)',
+    backgroundColor: 'rgba(47,91,255,0.32)',
     borderWidth: 1,
     borderColor: 'rgba(95,193,240,0.45)',
     ...webOnly({ transition: `background-color 150ms ease, transform 180ms ${EASE_OUT}` }),
   },
   markerMeeting: { backgroundColor: 'rgba(255,178,62,0.22)', borderColor: 'rgba(255,178,62,0.5)' },
   markerOff: { backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.12)', borderStyle: 'dashed' },
-  markerSelected: { backgroundColor: 'rgba(0,136,204,0.6)', borderColor: '#5FC1F0' },
-  markerHover: { backgroundColor: 'rgba(0,136,204,0.55)', transform: [{ translateY: -1 }] },
+  markerSelected: { backgroundColor: 'rgba(47,91,255,0.6)', borderColor: '#5FC1F0' },
+  markerHover: { backgroundColor: 'rgba(47,91,255,0.55)', transform: [{ translateY: -1 }] },
   markerIn: webOnly({
     animationKeyframes: { from: { opacity: 0, transform: [{ translateY: 6 }] }, to: { opacity: 1, transform: [{ translateY: 0 }] } },
     animationDuration: '320ms',
@@ -1338,7 +1342,7 @@ const styles = StyleSheet.create({
   ticks: { height: 20, marginTop: 8 },
   clusterRow: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
   clusterTitle: { fontSize: 14, color: 'rgba(255,255,255,0.7)', marginStart: 4 },
-  clusterChip: { height: 32, paddingHorizontal: 12, borderRadius: 16, justifyContent: 'center', backgroundColor: 'rgba(0,136,204,0.3)', borderWidth: 1, borderColor: 'rgba(95,193,240,0.4)', ...webOnly({ transition: 'background-color 150ms ease' }) },
+  clusterChip: { height: 32, paddingHorizontal: 12, borderRadius: 16, justifyContent: 'center', backgroundColor: 'rgba(47,91,255,0.3)', borderWidth: 1, borderColor: 'rgba(95,193,240,0.4)', ...webOnly({ transition: 'background-color 150ms ease' }) },
   tick: { position: 'absolute', width: 72, textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.5)' },
   tickEnd: { color: '#FF8A82' },
 
@@ -1362,7 +1366,7 @@ const styles = StyleSheet.create({
     backgroundColor: DESKTOP_COLORS.surface,
     ...webOnly({ transition: 'background-color 150ms ease, border-color 150ms ease' }),
   },
-  bulkChipHover: { backgroundColor: BRAND_SOFT, borderColor: 'rgba(0,117,179,0.3)' },
+  bulkChipHover: { backgroundColor: BRAND_SOFT, borderColor: 'rgba(47,91,255,0.3)' },
   bulkChipText: { fontSize: 13, color: DESKTOP_COLORS.ink },
   linkButton: { height: 32, paddingHorizontal: 10, borderRadius: 9, justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease' }) },
   linkButtonHover: { backgroundColor: BRAND_SOFT },
@@ -1387,7 +1391,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 2,
     borderColor: DESKTOP_COLORS.brand,
-    backgroundColor: 'rgba(0,136,204,0.08)',
+    backgroundColor: 'rgba(47,91,255,0.08)',
     opacity: 0,
     ...webOnly({ animationKeyframes: { '0%': { opacity: 1 }, '70%': { opacity: 1 }, '100%': { opacity: 0 } }, animationDuration: '1800ms', animationTimingFunction: 'ease-out' }),
   },

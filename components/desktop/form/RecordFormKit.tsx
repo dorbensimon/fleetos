@@ -14,7 +14,7 @@ import {
 import { BrandLoader } from '../../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { DLtrText, DText, HoverPressable, prefersReducedMotion } from '../primitives';
-import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from '../desktopTheme';
 import { t } from '../../../lib/i18n';
 
 /**
@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
     backgroundColor: DESKTOP_COLORS.ink,
     ...webOnly({
       backgroundImage:
-        'radial-gradient(90% 120% at 100% 0%, rgba(0,136,204,0.55) 0%, rgba(0,136,204,0) 55%), radial-gradient(70% 100% at 0% 100%, rgba(0,136,204,0.32) 0%, rgba(0,136,204,0) 60%), linear-gradient(160deg, #1D2E3D 0%, #16222E 60%)',
+        'radial-gradient(90% 120% at 100% 0%, rgba(47,91,255,0.55) 0%, rgba(47,91,255,0) 55%), radial-gradient(70% 100% at 0% 100%, rgba(47,91,255,0.32) 0%, rgba(47,91,255,0) 60%), linear-gradient(160deg, #1D2E3D 0%, #16222E 60%)',
       boxShadow: '0 2px 4px rgba(16,24,40,0.08), 0 24px 48px -12px rgba(22,34,46,0.35)',
     }),
   },
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
     start: 0,
     ...webOnly({
       backgroundImage:
-        'linear-gradient(115deg, rgba(255,255,255,0) 30%, rgba(255,255,255,0.75) 48%, rgba(255,255,255,0) 62%), repeating-radial-gradient(circle at 110% -20%, rgba(0,136,204,0.05) 0 1px, transparent 1px 9px)',
+        'linear-gradient(115deg, rgba(255,255,255,0) 30%, rgba(255,255,255,0.75) 48%, rgba(255,255,255,0) 62%), repeating-radial-gradient(circle at 110% -20%, rgba(47,91,255,0.05) 0 1px, transparent 1px 9px)',
     }),
   },
   ghostBar: { height: 10, borderRadius: 5, backgroundColor: 'rgba(22,34,46,0.08)' },
@@ -745,7 +745,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...webOnly({
-      boxShadow: '0 1px 2px rgba(0,136,204,0.2), 0 4px 12px rgba(0,136,204,0.2)',
+      boxShadow: '0 1px 2px rgba(47,91,255,0.2), 0 4px 12px rgba(47,91,255,0.2)',
       transition: 'background-color 240ms ease, box-shadow 240ms ease',
     }),
   },
@@ -777,14 +777,13 @@ const styles = StyleSheet.create({
     }),
   },
   tileArt: { alignItems: 'flex-end', paddingTop: 14 },
-  tileHover: { borderColor: 'rgba(0,136,204,0.45)', backgroundColor: '#F5FAFD' },
+  tileHover: { borderColor: 'rgba(47,91,255,0.45)', backgroundColor: '#F5FAFD' },
   tilePress: { transform: [{ scale: 0.97 }] },
   tileSelected: {
     borderColor: DESKTOP_COLORS.brand,
     backgroundColor: DESKTOP_COLORS.brand,
     ...webOnly({
-      backgroundImage: 'linear-gradient(160deg, #1AA0E0 0%, #0075B3 55%, #0075B0 100%)',
-      boxShadow: '0 1px 2px rgba(0,136,204,0.25), 0 8px 20px -6px rgba(0,136,204,0.55)',
+      boxShadow: DESKTOP_BRAND_SHADOW,
     }),
   },
   tileError: { borderColor: 'rgba(213,37,28,0.45)' },
@@ -881,7 +880,7 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 3,
     backgroundColor: DESKTOP_COLORS.brand,
-    ...webOnly({ backgroundImage: 'linear-gradient(90deg, #0075B3, #5FC1F0)' }),
+    ...webOnly({ backgroundImage: 'linear-gradient(90deg, #2F5BFF, #5FC1F0)' }),
   },
   dockFillReady: { backgroundColor: '#34C759', ...webOnly({ backgroundImage: 'linear-gradient(90deg, #1E9E4C, #34C759)' }) },
   dockCta: {
@@ -892,8 +891,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...webOnly({
-      backgroundImage: 'linear-gradient(160deg, #1AA0E0 0%, #0075B3 55%, #0075B0 100%)',
-      boxShadow: '0 1px 2px rgba(0,136,204,0.3), 0 8px 18px -8px rgba(0,136,204,0.65)',
+      boxShadow: DESKTOP_BRAND_SHADOW,
       transition: 'filter 150ms ease-out, transform 100ms ease-out, background-color 150ms ease-out',
     }),
   },

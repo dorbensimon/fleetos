@@ -66,6 +66,83 @@ export function initialEditorDraft(title: string): EditorDraft {
 let seq = 0;
 const newId = (prefix: string) => `${prefix}${Date.now().toString(36)}${(seq += 1)}`;
 
+/** Only what the editor itself makes is read back (the server keeps the same lists). */
+const SAFE_SIZES = new Set<number>(EDITOR_TEXT_SIZES.map((s) => s.px));
+const SAFE_COLORS = new Set<string>(EDITOR_TEXT_COLORS.map((c) => c.hex));
+const SAFE_KINDS = new Set<string>(Object.keys(FIELD_META));
+const SAFE_ALIGN = new Set(['center', 'left', 'justify']);
+
+/**
+ * A saved document (one of the owner's templates, or a form's current text)
+ * opened again in the editor: the block model turned back into the page's
+ * HTML, every text escaped, and its fields placed where they were. Fields
+ * set into a line get their blank back; the rest are pinned to their
+ * paragraph when the editor opens. A first heading that carried `fromTitle`
+ * takes `title` instead, so a renamed copy does not keep the old name.
+ */
+export function editorDraftFromContent(content: unknown, title?: string, fromTitle?: string): EditorDraft | null {
+  const value = content as { blocks?: unknown; fields?: unknown } | null;
+  if (!value || !Array.isArray(value.blocks) || !Array.isArray(value.fields)) return null;
+  const fields: EditorField[] = [];
+  const bySlot = new Map<string, EditorField>();
+  for (const raw of value.fields as EditorPlacedField[]) {
+    if (!raw || !SAFE_KINDS.has(raw.kind) || ![raw.x, raw.y, raw.w, raw.h].every((n) => typeof n === 'number' && Number.isFinite(n))) continue;
+    const field: EditorField = {
+      id: newId('f'),
+      kind: raw.kind,
+      ...(typeof raw.label === 'string' && raw.label.trim() ? { label: raw.label.trim().slice(0, 80) } : {}),
+      anchor: null,
+      x: clamp(raw.x, 0, PAGE_W - raw.w),
+      dy: Math.max(TOP_MIN, raw.y),
+      w: raw.w,
+      h: raw.h,
+    };
+    if (typeof raw.slot === 'string') bySlot.set(raw.slot, field);
+    fields.push(field);
+  }
+  const usedSlots = new Set<EditorField>();
+  const run = (item: unknown): string => {
+    const node = item as Record<string, unknown> | null;
+    if (!node || typeof node !== 'object') return '';
+    if (typeof node.slot === 'string') {
+      const field = bySlot.get(node.slot);
+      if (!field || usedSlots.has(field)) return '';
+      usedSlots.add(field);
+      field.slot = true;
+      return `<span class="sd-slot" data-fid="${field.id}" contenteditable="false" style="display: inline-block; vertical-align: middle; width: ${Math.round(field.w)}px; height: ${Math.round(field.h)}px; margin: 0 4px;"></span>\u200b`;
+    }
+    if (typeof node.text !== 'string') return '';
+    let html = escapeHtml(node.text).replace(/\n/g, '<br>');
+    const style: string[] = [];
+    if (typeof node.size === 'number' && SAFE_SIZES.has(node.size)) style.push(`font-size: ${node.size}px`);
+    if (typeof node.color === 'string' && SAFE_COLORS.has(node.color)) style.push(`color: ${node.color}`);
+    if (node.highlight === true) style.push(`background-color: ${EDITOR_HIGHLIGHT}`);
+    if (style.length) html = `<span style="${style.join('; ')}">${html}</span>`;
+    if (node.underline === true) html = `<u>${html}</u>`;
+    if (node.italic === true) html = `<i>${html}</i>`;
+    if (node.bold === true) html = `<b>${html}</b>`;
+    return html;
+  };
+  const line = (items: unknown) => (Array.isArray(items) ? items.map(run).join('') : '') || '<br>';
+  let renamed = false;
+  const html = (value.blocks as EditorBlock[]).map((block) => {
+    if (!block || typeof block !== 'object') return '';
+    if (block.type === 'hr') return '<hr>';
+    if (!['h1', 'h2', 'p', 'ul', 'ol'].includes(block.type) || !Array.isArray(block.content)) return '';
+    const align = block.align && SAFE_ALIGN.has(block.align) ? ` style="text-align: ${block.align}"` : '';
+    if (block.type === 'ul' || block.type === 'ol') return `<${block.type}${align}>${block.content.map((items) => `<li>${line(items)}</li>`).join('')}</${block.type}>`;
+    let first = line(block.content[0]);
+    if (!renamed && block.type === 'h1' && title && fromTitle && title !== fromTitle) {
+      const text = (block.content[0] ?? []).map((item) => ('text' in item ? item.text : '')).join('').trim();
+      if (text === fromTitle.trim()) first = escapeHtml(title);
+      renamed = true;
+    }
+    return `<${block.type}${align}>${first}</${block.type}>`;
+  }).join('');
+  // A field whose place in the text is gone floats at its spot like any other.
+  return { html: html || '<p><br></p>', fields };
+}
+
 /** One line of body text on the page (16px at 1.8 line height). */
 const LINE_H = Math.round(16 * 1.8);
 
@@ -527,6 +604,13 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
     el.innerHTML = initial.html;
     document.execCommand('defaultParagraphSeparator', false, 'p');
     measure();
+    // Fields of a reopened document (editorDraftFromContent) come with a page
+    // position only: pin each to the paragraph it stands on, so it moves with it.
+    if (fieldsRef.current.some((f) => !f.anchor && !f.slot)) {
+      const pinned = fieldsRef.current.map((f) => (f.anchor || f.slot ? f : { ...f, ...anchorAt(f.dy, f.h) }));
+      fieldsRef.current = pinned;
+      setFields(pinned);
+    }
     // Start typing on the line under the title.
     const target = el.querySelector('p') ?? el;
     const range = document.createRange();
@@ -900,7 +984,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
         <p className="sd-panel-sub">{t('editor.addFieldHelp')}</p>
 
         <button type="button" className="sd-area-btn" onMouseDown={keepSelection} onClick={insertSigningArea}>
-          <span className="sd-tool-icon" style={{ background: 'linear-gradient(160deg,#35B8F0,#0075B3)' }}>
+          <span className="sd-tool-icon" style={{ background: 'linear-gradient(160deg,#35B8F0,#2F5BFF)' }}>
             <Ionicons name="sparkles" size={18} color="#fff" />
           </span>
           <span className="sd-tool-text">

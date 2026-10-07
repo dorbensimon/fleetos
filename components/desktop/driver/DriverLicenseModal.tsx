@@ -12,7 +12,7 @@ import { expiryState, formatDate } from '../../../lib/theme';
 import { DesktopModal } from '../DesktopModal';
 import { LICENSE_SIDE_STORED_TITLE, type LicenseSide } from '../../../lib/licenseSides';
 import { DText, HoverPressable } from '../primitives';
-import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from '../desktopTheme';
 import { EditableDateField, EXPIRY_TONE_MAP, recordStyles, STATE_LABEL } from '../record/RecordKit';
 import { t } from '../../../lib/i18n';
 import { errorMessage } from '../../../lib/requestError';
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   requestTitle: { fontSize: 13 },
   requestLine: { fontSize: 12, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   requestBtn: { height: 30, paddingHorizontal: 14, borderRadius: 7, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'opacity 150ms ease, background-color 150ms ease, transform 120ms ease-out' }) },
-  approveBtn: { backgroundColor: DESKTOP_COLORS.brand },
+  approveBtn: { backgroundColor: DESKTOP_COLORS.brand, ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW }) },
   approveText: { fontSize: 12.5, color: '#FFFFFF' },
   rejectBtn: { borderWidth: 1, borderColor: DESKTOP_COLORS.borderInput, backgroundColor: DESKTOP_COLORS.surface },
   rejectText: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },

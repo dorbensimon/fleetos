@@ -91,7 +91,7 @@ export const GUIDES_CSS = `
 .sd-guide-v { width: 1px; margin-left: -0.5px; }
 .sd-guide-h { height: 1px; margin-top: -0.5px; }
 .sd-grid { position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background-image: linear-gradient(to right, rgba(0,117,179,0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,117,179,0.07) 1px, transparent 1px); }
+  background-image: linear-gradient(to right, rgba(47,91,255,0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(47,91,255,0.07) 1px, transparent 1px); }
 .sd-grid-margin { position: absolute; border: 1px dashed rgba(232,49,138,0.45); }
 .sd-grid-mid { position: absolute; background: none; }
 .sd-grid-mid-v { top: 0; bottom: 0; left: 50%; border-left: 1px dashed rgba(232,49,138,0.35); }

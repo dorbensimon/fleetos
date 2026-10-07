@@ -12,10 +12,8 @@ import { DText, HoverPressable, StatusPill } from '../desktop/primitives';
 import { DESKTOP_COLORS, webOnly } from '../desktop/desktopTheme';
 import { t, dirIcon, textStart } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
-import { listCompanyFolders, type CompanyFolder } from '../../lib/folderCatalog';
-import { AddCatalogFolderSheet, EmptyCatalogFolderSheet } from '../desktop/signing/FolderCatalogSheets';
 import { useSigningStyles } from '../desktop/signing/folderCss';
-import { CreateDocumentSheet, type FormFolder } from '../desktop/signing/CreateDocumentSheet';
+import { CreateDocumentSheet } from '../desktop/signing/CreateDocumentSheet';
 
 export function SigningFolders({ driverId, onOpen, desktop = false, title = t('signing.formsAndDocsToSign') }: { driverId: string; onOpen: (folder: SigningFolder) => void; desktop?: boolean; /** Phone section heading; none when the list opens a page. */ title?: string | null }) {
   const [folders, setFolders] = useState<SigningFolder[]>([]);
@@ -29,14 +27,12 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = t('s
   const shownFor = useRef<string | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [adding, setAdding] = useState(false);
-  const [emptyFolder, setEmptyFolder] = useState<CompanyFolder | null>(null);
-  const [creatingFor, setCreatingFor] = useState<FormFolder | null>(null);
+  // "+ טופס חדש": every form the company makes is a folder in each driver's file.
+  const [creating, setCreating] = useState(false);
   const reload = () => setReloadKey((key) => key + 1);
-  // The add-folder window's styles go on the page now, not in the frame it opens.
+  // The new-form window's styles go on the page now, not in the frame it opens.
   useSigningStyles();
-  // An empty catalog folder opens its own window; everything else opens the folder page.
-  const open = (folder: SigningFolder) => (folder.emptyCatalog ? setEmptyFolder(folder.emptyCatalog) : onOpen(folder));
+  const open = onOpen;
   useFocusEffect(useCallback(() => {
     let active = true;
     const quiet = shownFor.current === driverId;
@@ -45,37 +41,28 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = t('s
       try {
         const driver = await getDriver(driverId);
         if (!driver?.company_id) throw new Error(t('signing.noCompanyForDriver'));
-        const [templates, requests, catalog] = await Promise.all([
+        const [templates, requests] = await Promise.all([
           listSigningTemplates(driver.company_id),
           listDriverSigningRequests(driverId),
-          // Managers also see the catalog folders the company added with no form yet.
-          driverView ? Promise.resolve([] as CompanyFolder[]) : listCompanyFolders(driver.company_id).then((result) => result.folders).catch(() => [] as CompanyFolder[]),
         ]);
         if (active) setCompanyId(driver.company_id);
-        const all = buildSigningFolders(templates, requests, catalog);
+        const all = buildSigningFolders(templates, requests);
         if (active) { setFolders(driverView ? all.filter(folder => folder.requests.length > 0) : all); setError(''); shownFor.current = driverId; }
       } catch (err: any) { if (active && !quiet) setError(errorMessage(err, t('signing.foldersLoadFailed'))); }
       finally { if (active) setLoading(false); }
     })();
     return () => { active = false; };
-    // `reloadKey`: a folder added or linked here reloads the list.
+    // `reloadKey`: a form made here reloads the list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [driverId, driverView, reloadKey]));
 
-  const managerExtras = !driverView && companyId ? (
-    <>
-      {adding && <AddCatalogFolderSheet companyId={companyId} onClosed={() => setAdding(false)} onAdded={(folder, templateId) => { reload(); if (!templateId) setEmptyFolder({ ...folder, added: true }); }} />}
-      {emptyFolder && (
-        <EmptyCatalogFolderSheet
-          companyId={companyId}
-          folder={emptyFolder}
-          onCreate={() => setCreatingFor({ catalogId: emptyFolder.id, title: emptyFolder.title, kind: emptyFolder.kind, defaultRepeatMonths: emptyFolder.default_repeat_months })}
-          onClosed={() => setEmptyFolder(null)}
-          onChanged={reload}
-        />
-      )}
-      {creatingFor && <CreateDocumentSheet companyId={companyId} folder={creatingFor} onClosed={() => setCreatingFor(null)} onCreated={reload} />}
-    </>
+  const managerExtras = !driverView && companyId && creating ? (
+    <CreateDocumentSheet
+      companyId={companyId}
+      takenTitles={folders.filter((folder) => folder.template).map((folder) => folder.title)}
+      onClosed={() => setCreating(false)}
+      onCreated={reload}
+    />
   ) : null;
   if (desktop) {
     return <View style={desktopStyles.wrap}>
@@ -84,7 +71,7 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = t('s
         {loading ? <DText style={desktopStyles.message}>{t('signing.loadingFolders')}</DText> : error ? <DText style={desktopStyles.message}>{error}</DText> : folders.map((folder, index) => {
           const status = signingFolderStatus(folder);
           const tone = status === 'pending' ? 'warn' : status === 'completed' ? 'ok' : status === 'failed' ? 'bad' : 'neutral';
-          const label = folder.emptyCatalog ? t('folders.noFormShort') : status === 'pending' ? t('signing.pendingSignature') : status === 'completed' ? t('common.signedDone') : status === 'failed' ? t('status.needsAttention') : t('common.empty');
+          const label = status === 'pending' ? t('signing.pendingSignature') : status === 'completed' ? t('common.signedDone') : status === 'failed' ? t('status.needsAttention') : t('common.empty');
           return <HoverPressable
             key={folder.id}
             accessibilityLabel={`${folder.title}, ${label}`}
@@ -106,13 +93,13 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = t('s
         {!loading && !error && !folders.length && <DText style={desktopStyles.message}>{driverView ? t('signing.noneSentToYou') : t('signing.noTemplatesYet')}</DText>}
         {!driverView && !loading && companyId && (
           <HoverPressable
-            accessibilityLabel={t('folders.addButton')}
+            accessibilityLabel={t('templates.newFormButton')}
             style={[desktopStyles.row, folders.length > 0 && desktopStyles.divider]}
             hoverStyle={desktopStyles.rowHover}
-            onPress={() => setAdding(true)}
+            onPress={() => setCreating(true)}
           >
             <View style={desktopStyles.folder}><Ionicons name="add" size={21} color={DESKTOP_COLORS.brand} /></View>
-            <DText weight="semiBold" style={[desktopStyles.label, { flex: 1, color: DESKTOP_COLORS.brand }]}>{t('folders.addButton')}</DText>
+            <DText weight="semiBold" style={[desktopStyles.label, { flex: 1, color: DESKTOP_COLORS.brand }]}>{t('templates.newFormButton')}</DText>
           </HoverPressable>
         )}
       </View>
@@ -122,7 +109,6 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = t('s
 
   const meta = (folder: SigningFolder) => {
     const status = signingFolderStatus(folder);
-    if (folder.emptyCatalog) return { label: t('folders.noFormYet'), tone: 'missing' as const, icon: 'folder-open-outline' as const };
     return status === 'pending'
       ? { label: driverView ? t('signing.awaitingYourSignature') : t('common.awaitingDriverSignature'), tone: 'soon' as const, icon: 'time' as const }
       : status === 'completed'
@@ -149,14 +135,14 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = t('s
               icon={m.icon}
               tint={m.tone === 'missing' ? DK.accent : STATUS[m.tone].fg}
               title={folder.title}
-              subtitle={!signedLine(folder) || folder.emptyCatalog ? m.label : m.tone === 'ok' ? signedLine(folder)! : `${m.label} · ${signedLine(folder)}`}
+              subtitle={!signedLine(folder) ? m.label : m.tone === 'ok' ? signedLine(folder)! : `${m.label} · ${signedLine(folder)}`}
               onPress={() => open(folder)}
             />
           );
         })
       )}
       {!driverView && !loading && companyId && (
-        <ListRow first={!folders.length} icon="add-circle-outline" tint={DK.accent} title={t('folders.addButton')} subtitle={t('folders.addRowHint')} onPress={() => setAdding(true)} />
+        <ListRow first={!folders.length} icon="add-circle-outline" tint={DK.accent} title={t('templates.newFormButton')} subtitle={t('templates.newFormRowHint')} onPress={() => setCreating(true)} />
       )}
       {managerExtras}
     </KitSection>

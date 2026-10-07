@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     ...webOnly({ transition: 'background-color 150ms ease-out' }),
   },
   rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DESKTOP_COLORS.borderSoft },
-  rowUnread: { backgroundColor: 'rgba(0,136,204,0.04)' },
+  rowUnread: { backgroundColor: 'rgba(47,91,255,0.04)' },
   icon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   copy: { flex: 1, minWidth: 0, gap: 2 },
   message: { fontSize: 13, lineHeight: 18, color: DESKTOP_COLORS.ink },

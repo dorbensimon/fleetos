@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DText, HoverPressable, prefersReducedMotion } from '../desktop/primitives';
-import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktop/desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from '../desktop/desktopTheme';
 import { pageStyles } from '../desktop/record/RecordPage';
 import { LeadControl } from '../desktop/NotificationsHubDesktopView';
 import { LiquidGlassSwitch } from '../ui/LiquidGlassSwitch';
@@ -142,13 +142,13 @@ const styles = StyleSheet.create({
     ...webOnly({ transition: 'background-color 150ms ease, border-color 150ms ease, transform 120ms ease-out' }),
   },
   chipHover: { backgroundColor: DESKTOP_COLORS.rowHover, borderColor: DESKTOP_COLORS.borderInput },
-  chipOn: { backgroundColor: DESKTOP_COLORS.brand, borderColor: DESKTOP_COLORS.brand },
+  chipOn: { backgroundColor: DESKTOP_COLORS.brand, borderColor: DESKTOP_COLORS.brand, ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW }) },
   chipText: { fontSize: 13, color: DESKTOP_COLORS.ink },
   chipTextOn: { color: '#FFFFFF' },
   hint: { fontSize: 12.5, lineHeight: 18, color: DESKTOP_COLORS.inkMuted },
   error: { fontSize: 13, color: DESKTOP_TONES.bad.fg },
   alertRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
-  alertIcon: { width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(0,136,204,0.10)', alignItems: 'center', justifyContent: 'center' },
+  alertIcon: { width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(47,91,255,0.10)', alignItems: 'center', justifyContent: 'center' },
   alertIconOff: { backgroundColor: DESKTOP_COLORS.canvas },
   alertTitle: { fontSize: 14.5 },
 });

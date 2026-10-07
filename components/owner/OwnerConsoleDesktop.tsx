@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FolderCatalogManager } from './FolderCatalogManager';
+import { FormTemplatesManager } from './FormTemplatesManager';
 import { AnnouncementPanel, CollectedPanel } from './OwnerToolsPanels';
 import { Image, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,7 +53,7 @@ export function OwnerConsoleDesktop(p: Props) {
   const [sort, setSort] = useState<CompanySort>('health');
   const [search, setSearch] = useState('');
   const [menu, setMenu] = useState<CompanyHealth | null>(null);
-  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
 
   const companies = useMemo(() => p.overview?.companies ?? [], [p.overview]);
   const rows = useMemo(() => filterCompanies(companies, filter, search, sort), [companies, filter, search, sort]);
@@ -62,7 +62,7 @@ export function OwnerConsoleDesktop(p: Props) {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.page}>
-      {catalogOpen && <FolderCatalogManager onClosed={() => setCatalogOpen(false)} />}
+      {templatesOpen && <FormTemplatesManager onClosed={() => setTemplatesOpen(false)} />}
       <View style={[styles.header, enter(0)]}>
         <View style={styles.headerText}>
           <DText weight="extraBold" style={styles.title} accessibilityRole="header">
@@ -73,10 +73,10 @@ export function OwnerConsoleDesktop(p: Props) {
           </DText>
         </View>
         <View style={styles.headerActions}>
-          <HoverPressable style={styles.secondaryButton} hoverStyle={styles.secondaryButtonHover} onPress={() => setCatalogOpen(true)}>
-            <Ionicons name="folder-open-outline" size={16} color={DESKTOP_COLORS.ink} />
+          <HoverPressable style={styles.secondaryButton} hoverStyle={styles.secondaryButtonHover} onPress={() => setTemplatesOpen(true)}>
+            <Ionicons name="copy-outline" size={16} color={DESKTOP_COLORS.ink} />
             <DText weight="semiBold" style={styles.secondaryButtonText}>
-              {t('folders.catalogTitle')}
+              {t('templates.managerTitle')}
             </DText>
           </HoverPressable>
           <HoverPressable style={styles.secondaryButton} hoverStyle={styles.secondaryButtonHover} onPress={p.onExport} disabled={!p.overview}>

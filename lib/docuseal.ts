@@ -22,10 +22,12 @@ export type SigningTemplate = {
   /** 'checklist': a "רשימת סעיפים" form, filled in a meeting instead of sent as is (lib/checklistForms.ts). */
   form_kind?: 'document' | 'checklist';
   form_content?: unknown;
-  /** The catalog folder this form belongs to (lib/folderCatalog.ts); null for a company's own document. */
-  catalog_folder_id?: string | null;
-  /** Grows by one each time the folder's form is replaced. */
+  /** Grows by one each time the form is replaced ("replace form"). */
   version?: number;
+  /** The owner's template the form was started from (lib/formTemplates.ts); statistics only. */
+  source_template_id?: string | null;
+  /** A document written in the editor, as blocks + fields, so its next version opens with this text. */
+  editor_content?: unknown;
 };
 
 export type SignatureRequest = {

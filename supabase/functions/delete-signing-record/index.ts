@@ -207,11 +207,8 @@ Deno.serve(async (req) => {
       }
       if (action === 'company-delete' && isGlobal) return json({ error: 'אי אפשר למחוק מסמך מוכן מהמערכת' }, 403);
       const sourcePathCompanyId = template.company_id ?? GLOBAL_COMPANY_SENTINEL;
-      // A folder's form goes with its folder ("הסר תיקייה"); its earlier versions'
-      // DocuSeal templates hold drivers' signatures and are never deleted here.
-      if (template.catalog_folder_id && action !== 'restore') {
-        return json({ error: 'זה הטופס של תיקייה בתיק הנהג. כדי להפסיק להשתמש בו, הסירו את התיקייה.', code: 'catalog_form' }, 409);
-      }
+      // A form's earlier versions keep their DocuSeal templates: they hold
+      // drivers' signatures and are never deleted here.
 
       if (action === 'restore') {
         await adminClient.from('signing_templates').update({ archived_at: null, archived_by: userId }).eq('id', id);
