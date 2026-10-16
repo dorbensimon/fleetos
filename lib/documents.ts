@@ -212,6 +212,15 @@ export function storedFolderTitle(category: string, title: string): string {
   return key ? t(key, { lng: 'he' }) : title;
 }
 
+// שם הקובץ שנשמר: שם התיקייה ותאריך, במקום השם שהגיע מהמכשיר
+/** "בדיקת חורף 17.10.2026.jpg": the folder's title and the document's date (today when none). */
+export function uploadedFileName(title: string, mimeType: string, documentDate?: string | null, now = new Date()): string {
+  const iso = documentDate?.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const date = iso ? `${iso[3]}.${iso[2]}.${iso[1]}` : `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}`;
+  return safeFileName(`${title} ${date}.${extensionForMimeType(mimeType)}`, `document.${extensionForMimeType(mimeType)}`);
+}
+
 // מעלה קובץ שנבחר ושומר אותו ברשימת המסמכים
 /**
  * Uploads a picked file and records it in the `documents` table.
@@ -249,7 +258,7 @@ export async function uploadDocument(params: {
     ownerId: params.ownerId,
     category: params.category,
     title: params.title,
-    fileName: file.name,
+    fileName: uploadedFileName(params.title, file.mimeType, params.documentDate),
     mimeType: file.mimeType,
     bytes,
     complianceItemId: params.complianceItemId,

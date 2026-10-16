@@ -19,7 +19,6 @@ import {
   Pressy,
   Reveal,
   STATUS,
-  Segmented,
   useTabBarScroll,
   useTabBarSpace,
   type Status,
@@ -423,18 +422,6 @@ function Hero(p: Props) {
           value={drivers ? p.driverSearch : p.vehicleSearch}
           onChangeText={drivers ? p.onDriverSearch : p.onVehicleSearch}
           placeholder={drivers ? t('fleet.searchDriversMobile') : t('fleet.searchVehiclesMobile')}
-        />
-      </Reveal>
-
-      <Reveal index={4} style={styles.block}>
-        <Segmented<Mode>
-          onNight
-          value={p.mode}
-          onChange={p.onModeChange}
-          options={[
-            { value: 'drivers', label: t('common.drivers'), icon: 'people', count: p.driverTotal },
-            { value: 'vehicles', label: t('common.vehicles'), icon: 'car-sport', count: p.vehicleTotal },
-          ]}
         />
       </Reveal>
 

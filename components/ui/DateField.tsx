@@ -1,5 +1,5 @@
 // שדה תאריך שעובד בכל מקום
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform, Modal, Pressable, ScrollView, type StyleProp, type ViewStyle } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,7 +31,7 @@ function toIso(d: Date): string {
 const monthNames = () => [t('date.months.1'), t('date.months.2'), t('date.months.3'), t('date.months.4'), t('date.months.5'), t('date.months.6'), t('date.months.7'), t('date.months.8'), t('date.months.9'), t('date.months.10'), t('date.months.11'), t('date.months.12')];
 
 // בחירת תאריך בדפדפן (גלגלות)
-function WebDatePicker({ value, onConfirm, onClose }: { value: string | null; onConfirm: (iso: string) => void; onClose: () => void }) {
+function WebDatePicker({ value, title, onConfirm, onClose }: { value: string | null; title?: string; onConfirm: (iso: string) => void; onClose: () => void }) {
   const [draft, setDraft] = useState(() => value ? parseDateValue(value) : new Date());
   const [choosingYear, setChoosingYear] = useState(false);
   const daysInMonth = new Date(draft.getFullYear(), draft.getMonth() + 1, 0).getDate();
@@ -94,7 +94,7 @@ function WebDatePicker({ value, onConfirm, onClose }: { value: string | null; on
           <View style={styles.webSheetHeader}>
             <TouchableOpacity onPress={onClose}><AppText style={styles.sheetAction}>{t('common.cancel')}</AppText></TouchableOpacity>
             <TouchableOpacity onPress={() => setChoosingYear((current) => !current)} accessibilityRole="button" accessibilityLabel={t('date.chooseYear')}>
-              <AppText weight="bold" style={styles.sheetTitle}>{choosingYear ? t('date.chooseYear') : t('date.chooseDateAction')}</AppText>
+              <AppText weight="bold" style={styles.sheetTitle}>{choosingYear ? t('date.chooseYear') : title ?? t('date.chooseDateAction')}</AppText>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => onConfirm(toIso(draft))}><AppText weight="bold" style={styles.sheetAction}>{t('common.ok')}</AppText></TouchableOpacity>
           </View>
@@ -118,6 +118,22 @@ function WebDatePicker({ value, onConfirm, onClose }: { value: string | null; on
       </Pressable>
     </Modal>
   );
+}
+
+// שואל תאריך בחלון קופץ, למשל אחרי שבוחרים קובץ להעלאה
+/**
+ * Asks for a date in the bottom sheet: `await ask()` resolves to the chosen
+ * ISO date, or null when cancelled. Render `element` once in the screen.
+ */
+export function useDatePrompt(title: string) {
+  const [resolve, setResolve] = useState<((iso: string | null) => void) | null>(null);
+  const ask = useCallback(() => new Promise<string | null>((done) => setResolve(() => done)), []);
+  const finish = (iso: string | null) => {
+    resolve?.(iso);
+    setResolve(null);
+  };
+  const element = resolve ? <WebDatePicker value={null} title={title} onClose={() => finish(null)} onConfirm={finish} /> : null;
+  return { ask, element };
 }
 
 // שדה התאריך

@@ -12,6 +12,7 @@ import { chooseDocumentSource, pickDocumentSource, type DocumentSource } from '.
 import { showAlert } from '../../../lib/platformAlert';
 import { ExpiryState } from '../../../lib/theme';
 import { DesktopDateField, DesktopInput, DesktopSelect, DesktopSelectOption, DLtrText, DText, HoverPressable, popoverEnterStyle } from '../primitives';
+import { useDatePrompt } from '../../ui/DateField';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from '../desktopTheme';
 import { t, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../../lib/i18n';
 import { errorMessage } from '../../../lib/requestError';
@@ -584,10 +585,11 @@ export function DocumentFolderUploadModal({
 }) {
   const [expiryDate, setExpiryDate] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const expiryPrompt = useDatePrompt(t('documents.documentExpiry'));
 
   /** Uploads one file into the folder; resolves to whether it uploaded. */
-  const uploadFile = async (file: PickedFile): Promise<boolean> => {
-    if (folder.requiresExpiry && !expiryDate) {
+  const uploadFile = async (file: PickedFile, date = expiryDate): Promise<boolean> => {
+    if (folder.requiresExpiry && !date) {
       showAlert(t('documents.expiryMissing'), t('documents.chooseExpiryBeforeUpload'));
       return false;
     }
@@ -600,7 +602,7 @@ export function DocumentFolderUploadModal({
         category: folder.category,
         title: storedFolderTitle(folder.category, folder.title),
         file,
-        expiryDate: folder.requiresExpiry ? expiryDate : null,
+        expiryDate: folder.requiresExpiry ? date : null,
       });
       if (folder.requiresExpiry) setExpiryDate(null);
       await onChanged();
@@ -613,14 +615,14 @@ export function DocumentFolderUploadModal({
     }
   };
 
+  // File first, then (for dated folders) its expiry date.
   const addDocument = () => {
-    if (folder.requiresExpiry && !expiryDate) {
-      showAlert(t('documents.expiryMissing'), t('documents.chooseExpiryBeforeUpload'));
-      return;
-    }
     chooseDocumentSource(folder.title, async (source: DocumentSource) => {
       const file = await pickDocumentSource(source);
-      if (file) await uploadFile(file);
+      if (!file) return;
+      const date = folder.requiresExpiry ? await expiryPrompt.ask() : null;
+      if (folder.requiresExpiry && !date) return;
+      await uploadFile(file, date);
     });
   };
 
@@ -657,11 +659,7 @@ export function DocumentFolderUploadModal({
       onDeleted={onChanged}
       footer={
         <View style={styles.folderUploadRow}>
-          {folder.requiresExpiry && (
-            <View style={styles.folderExpiryField}>
-              <DesktopDateField value={expiryDate} onChange={setExpiryDate} placeholder={t('documents.documentExpiry')} />
-            </View>
-          )}
+          {expiryPrompt.element}
           <HoverPressable style={styles.folderUploadBtn} hoverStyle={styles.folderUploadBtnHover} pressStyle={styles.pressDown} onPress={addDocument} disabled={uploading}>
             <Ionicons name="cloud-upload-outline" size={13} color={DESKTOP_COLORS.brand} />
             <DText weight="semiBold" style={styles.folderUploadText}>{uploading ? t('common.uploading') : t('documents.uploadDocument')}</DText>
@@ -870,7 +868,6 @@ export const recordStyles = StyleSheet.create({
   folderTileMetaRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
   folderTileCount: { fontSize: 11, color: DESKTOP_COLORS.inkFaint },
   folderUploadRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
-  folderExpiryField: { width: 150 },
   folderUploadBtn: {
     height: 32,
     paddingHorizontal: 10,

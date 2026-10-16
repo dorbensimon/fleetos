@@ -158,9 +158,9 @@ export function VehicleDetailMobile(p: Props) {
                   onChange={p.onTab}
                   options={[
                     { value: 'general', label: t('vehicle.tab.details') },
-                    { value: 'drivers', label: t('common.drivers') },
-                    { value: 'maintenance', label: t('vehicle.tab.services') },
                     { value: 'documents', label: t('common.documents') },
+                    { value: 'maintenance', label: t('vehicle.tab.services') },
+                    { value: 'drivers', label: t('common.drivers') },
                   ]}
                 />
               </View>
