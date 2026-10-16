@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
   type NativeScrollEvent,
@@ -25,13 +24,12 @@ import type { RootStackParamList } from '../../navigation/types';
 import { BrandLogo } from '../ui/Brand';
 // Runtime-only uses: this file is imported by index.tsx itself.
 import { useReducedMotion } from './index';
-import { t, dirSign, isRTL } from '../../lib/i18n';
-import { countUnreadNotifications } from '../../lib/adminApi';
+import { t, dirSign } from '../../lib/i18n';
 
 /**
  * The phone's bottom bar, drawn like iOS 26's: a floating capsule of light
  * glass with a tab per main place for the role (the manager: home, drivers,
- * vehicles, notifications, menu; the driver: home, vehicle, documents, menu).
+ * vehicles, menu; the driver: home, vehicle, documents, menu; alerts live in the title bar).
  * It steps aside while the page scrolls down (the content gets the whole
  * screen) and comes back on the first scroll up, at the top of a page, and
  * on every new screen. Screens with their own pinned action (a save
@@ -273,8 +271,8 @@ export function HomeLogo() {
 // the drop follows the finger (tap or slide) and settles back into a platter
 // on the tab it lands on.
 
-type Glyph = 'home' | 'people' | 'car-sport' | 'notifications' | 'grid' | 'folder';
-type TabDef = { key: string; icon: Glyph; label: string; go: () => void; badge?: number };
+type Glyph = 'home' | 'people' | 'car-sport' | 'grid' | 'folder';
+type TabDef = { key: string; icon: Glyph; label: string; go: () => void };
 type Current = { name: Route; params?: Record<string, unknown> } | null;
 
 // הסרגל עצמו
@@ -288,7 +286,6 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
   const [current, setCurrent] = useState<Current>(null);
   const route = current?.name ?? null;
   const [keyboard, setKeyboard] = useState(false);
-  const [unread, setUnread] = useState(0);
 
   const home = profile?.role ? ROLE_ROUTES[profile.role] : null;
   const enabled = !isDesktop && !!home;
@@ -319,20 +316,6 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
       clearTimeout(timer);
     };
   }, [navigationRef, resetScroll]);
-
-  // The manager's notifications tab carries the unread count, refreshed on every screen change.
-  const companyId = profile?.company_id ?? null;
-  const isAdmin = profile?.role === 'admin';
-  useEffect(() => {
-    if (!enabled || !isAdmin || !companyId) return;
-    let alive = true;
-    countUnreadNotifications(companyId)
-      .then((n) => alive && setUnread(n))
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [enabled, isAdmin, companyId, route]);
 
   // A typed field needs the bottom of the screen for the keyboard.
   useEffect(() => {
@@ -395,22 +378,21 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
   const tabs: TabDef[] =
     profile?.role === 'admin'
       ? [
-          { key: 'home', icon: 'home', label: t('nav.home'), go: () => goTo('AdminHome', { mode: current?.params?.mode, list: false }) },
+          { key: 'menu', icon: 'grid', label: t('nav.menu'), go: () => goTo('Menu') },
           { key: 'drivers', icon: 'people', label: t('common.drivers'), go: () => goTo('AdminHome', { mode: 'drivers', list: true }) },
           { key: 'vehicles', icon: 'car-sport', label: t('common.vehicles'), go: () => goTo('AdminHome', { mode: 'vehicles', list: true }) },
-          { key: 'notifications', icon: 'notifications', label: t('notifications.title'), go: () => goTo('Notifications'), badge: unread },
-          { key: 'menu', icon: 'grid', label: t('nav.menu'), go: () => goTo('Menu') },
+          { key: 'home', icon: 'home', label: t('nav.home'), go: () => goTo('AdminHome', { mode: current?.params?.mode, list: false }) },
         ]
       : profile?.role === 'driver'
       ? [
-          { key: 'home', icon: 'home', label: t('nav.home'), go: () => goTo('DriverHome') },
+          { key: 'menu', icon: 'grid', label: t('nav.menu'), go: () => goTo('Menu') },
           { key: 'vehicle', icon: 'car-sport', label: t('driver.myVehicle'), go: () => goTo('DriverVehicle') },
           { key: 'documents', icon: 'folder', label: t('common.documents'), go: () => goTo('DriverDocuments') },
-          { key: 'menu', icon: 'grid', label: t('nav.menu'), go: () => goTo('Menu') },
+          { key: 'home', icon: 'home', label: t('nav.home'), go: () => goTo('DriverHome') },
         ]
       : [
-          { key: 'home', icon: 'home', label: t('nav.home'), go: () => home && goTo(home) },
           { key: 'menu', icon: 'grid', label: t('nav.menu'), go: () => goTo('Menu') },
+          { key: 'home', icon: 'home', label: t('nav.home'), go: () => home && goTo(home) },
         ];
 
   // Which tab the screen in front belongs to. The manager's drivers and
@@ -426,8 +408,6 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
       ? 'home'
       : route === 'Menu'
       ? 'menu'
-      : route === 'Notifications' && isAdmin
-      ? 'notifications'
       : route === 'DriverVehicle'
       ? 'vehicle'
       : route === 'DriverDocuments'
@@ -559,7 +539,7 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
   const slot = (barWidth - BAR_PAD * 2) / tabs.length;
   const translateY = rise.interpolate({ inputRange: [0, 1], outputRange: [reduce ? 0 : travel, 0] });
   const barScale = rise.interpolate({ inputRange: [0, 1], outputRange: [reduce ? 1 : 0.9, 1] });
-  // RTL: home sits on the right, the menu on the left.
+  // RTL: the menu sits on the right, home on the left.
   const lensX = Animated.multiply(lensAt, -slot * dirSign());
   const lensScaleX = Animated.add(
     Animated.add(lift.interpolate({ inputRange: [0, 1], outputRange: [1, LIFT_SCALE_X] }), stretch.interpolate({ inputRange: [0, 1], outputRange: [0, 0.14] })),
@@ -602,7 +582,6 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
                 key={tab.key}
                 icon={tab.icon}
                 label={tab.label}
-                badge={tab.badge}
                 selected={active === tab.key}
                 tint={Animated.multiply(
                   lensAt.interpolate({ inputRange: [i - 0.65, i - 0.35, i + 0.35, i + 0.65], outputRange: [0, 1, 1, 0], extrapolate: 'clamp' }),
@@ -651,7 +630,6 @@ const WEB_HIDDEN = Platform.OS === 'web' ? ({ 'aria-hidden': true } as object) :
 function TabButton({
   icon,
   label,
-  badge,
   selected,
   tint,
   magnify,
@@ -662,7 +640,6 @@ function TabButton({
 }: {
   icon: Glyph;
   label: string;
-  badge?: number;
   selected: boolean;
   tint: Animated.AnimatedMultiplication<number>;
   magnify: Animated.AnimatedMultiplication<number>;
@@ -673,7 +650,6 @@ function TabButton({
 }) {
   const [ring, setRing] = useState(false);
   const glyph = icon as IconName;
-  const count = badge && badge > 0 ? (badge > 99 ? '99+' : String(badge)) : null;
   const scale = magnify.interpolate({ inputRange: [0, 1], outputRange: [1, MAGNIFY] });
   const ink = tint.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
 
@@ -689,7 +665,7 @@ function TabButton({
       onFocus={(e) => setRing(isFocusVisible(e))}
       onBlur={() => setRing(false)}
       accessibilityRole="button"
-      accessibilityLabel={count ? `${label}, ${count}` : label}
+      accessibilityLabel={label}
       accessibilityState={{ selected }}
       style={[styles.tab, ring && styles.tabRing]}
       {...(Platform.OS === 'web' ? ({ 'aria-current': selected ? 'page' : undefined } as object) : {})}
@@ -703,11 +679,6 @@ function TabButton({
           <Animated.View style={[styles.over, { opacity: tint }]} {...WEB_HIDDEN}>
             <Ionicons name={glyph} size={24} color={TINT} />
           </Animated.View>
-          {!!count && (
-            <View style={[styles.badge, isRTL() ? styles.badgeRtl : styles.badgeLtr]}>
-              <Text style={styles.badgeText}>{count}</Text>
-            </View>
-          )}
         </View>
         <View>
           <Animated.Text style={[styles.tabLabel, { color: INK, opacity: ink }]} numberOfLines={1}>
@@ -839,19 +810,4 @@ const styles = StyleSheet.create({
       default: {},
     }),
   },
-  // מספר אדום על האייקון, כמו ב-iOS
-  badge: {
-    position: 'absolute',
-    top: -4,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 5,
-    backgroundColor: '#FF3B30',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeLtr: { left: 15 },
-  badgeRtl: { right: 15 },
-  badgeText: { color: '#FFFFFF', fontSize: 12, lineHeight: 15, fontWeight: '600', fontVariant: ['tabular-nums'] },
 });

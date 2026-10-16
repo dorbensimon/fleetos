@@ -6,7 +6,7 @@ import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, Card, ExpiryBadge, PrimaryButton, useToast } from './ui';
 import { DocumentFileRow } from './documents/DocumentFileRow';
-import { DateField } from './ui/DateField';
+import { DateField, useDatePrompt } from './ui/DateField';
 import { COLORS, EXPIRY_STYLE, RADIUS, SPACING, expiryState, formatDate } from '../lib/theme';
 import {
   ComplianceItem,
@@ -218,6 +218,7 @@ export function ComplianceSection({
     };
   }, [docs, folderAppearance]);
 
+  const expiryPrompt = useDatePrompt(t('documents.documentExpiry'));
   const setDraftDate = (def: ComplianceItemDef, field: 'expiry_date' | 'last_date', iso: string | null) => {
     setDrafts((prev) => ({ ...prev, [def.itemType]: { ...prev[def.itemType], [field]: iso } }));
   };
@@ -260,17 +261,9 @@ export function ComplianceSection({
     // being uploaded, rather than silently reusing a prior document's date.
     const requiresExpiryOnUpload = def.requiresExpiryOnUpload === true;
     const stagedExpiryDate = drafts[def.itemType]?.expiry_date ?? null;
-    if (requiresExpiryOnUpload && !stagedExpiryDate) {
-      // On the phone an in-app message (a browser alert can go unseen there); the desktop folder window is a modal that would cover it.
-      if (desktopModal) showAlert(t('documents.expiryMissing'), t('documents.chooseExpiryBeforeUpload'));
-      else showToast(t('documents.chooseExpiryBeforeUpload'), 'warning');
-      return false;
-    }
-    const uploadExpiryDate = requiresExpiryOnUpload
-      ? stagedExpiryDate
-      : items.get(def.itemType)?.expiry_date ?? null;
+    const keptExpiryDate = items.get(def.itemType)?.expiry_date ?? null;
 
-    const upload = async (file: PickedFile): Promise<boolean> => {
+    const upload = async (file: PickedFile, uploadExpiryDate: string | null): Promise<boolean> => {
       setBusyItem(def.itemType);
       try {
 
@@ -312,10 +305,15 @@ export function ComplianceSection({
       }
     };
 
-    if (picked) return upload(picked);
+    // The desktop folder window's own form already asked for the date.
+    if (picked) return upload(picked, requiresExpiryOnUpload ? stagedExpiryDate : keptExpiryDate);
+    // File first, then (for documents dated on upload) its expiry date.
     chooseDocumentSource(def.label, async (source: DocumentSource) => {
       const file = await pickDocumentSource(source);
-      if (file) await upload(file);
+      if (!file) return;
+      const expiryDate = requiresExpiryOnUpload ? await expiryPrompt.ask() : keptExpiryDate;
+      if (requiresExpiryOnUpload && !expiryDate) return;
+      await upload(file, expiryDate);
     });
     return false;
   };
@@ -375,15 +373,8 @@ export function ComplianceSection({
       ((draft.last_date !== undefined && draft.last_date !== (item?.last_date ?? null)) ||
         (draft.expiry_date !== undefined && draft.expiry_date !== (item?.expiry_date ?? null)));
 
-    if (def.requiresExpiryOnUpload) {
-      return (
-        <>
-          <View style={styles.desktopDateField}>
-            <DesktopDateField value={draft?.expiry_date ?? null} onChange={(iso) => setDraftDate(def, 'expiry_date', iso)} placeholder={t('compliance.newDocExpiry')} />
-          </View>
-        </>
-      );
-    }
+    // Asked for after the file is chosen (addDocument).
+    if (def.requiresExpiryOnUpload) return null;
 
     return (
       <>
@@ -416,16 +407,14 @@ export function ComplianceSection({
     const itemDocs = docs.filter((d) => d.title === def.storedTitle);
     const datesEachUpload = def.requiresExpiryOnUpload === true;
     const uploading = busyItem === def.itemType;
-    const stagedExpiry = drafts[def.itemType]?.expiry_date ?? null;
 
     const uploadButton = (
       <TouchableOpacity
-        style={[styles.uploadBtn, datesEachUpload && styles.uploadBtnPaired, datesEachUpload && !stagedExpiry && !uploading && styles.uploadBtnWaiting]}
+        style={styles.uploadBtn}
         activeOpacity={0.8}
         onPress={() => addDocument(def)}
         disabled={uploading}
         accessibilityRole="button"
-        accessibilityHint={datesEachUpload && !stagedExpiry ? t('documents.chooseExpiryBeforeUpload') : undefined}
       >
         {uploading ? (
           <>
@@ -464,24 +453,7 @@ export function ComplianceSection({
           />
         ))}
 
-        {datesEachUpload ? (
-          <View style={styles.newDocBlock}>
-            <AppText style={styles.newDocLabel}>{t('compliance.newDocHint')}</AppText>
-            <View style={styles.uploadRow}>
-              <View style={styles.uploadRowDate}>
-                <DateField
-                  value={stagedExpiry}
-                  onChange={(iso) => setDraftDate(def, 'expiry_date', iso)}
-                  placeholder={t('documents.documentExpiry')}
-                  style={styles.uploadRowDateBox}
-                />
-              </View>
-              {uploadButton}
-            </View>
-          </View>
-        ) : (
-          uploadButton
-        )}
+        {uploadButton}
       </View>
     );
   };
@@ -499,6 +471,7 @@ export function ComplianceSection({
     const openDef = listItems.find((def) => def.itemType === expanded);
     return (
       <>
+        {expiryPrompt.element}
         {listItems.map((def, index) => (
           <FolderListRow
             key={def.itemType}
@@ -542,6 +515,7 @@ export function ComplianceSection({
 
   return (
     <>
+      {expiryPrompt.element}
       {displayedGroups.map((group) => (
         <Card key={group.category} style={[styles.card, spacious && styles.cardSpacious, folderAppearance && styles.folderCard]}>
           {!folderAppearance && <View style={styles.groupHead}>
@@ -827,13 +801,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   uploadText: { fontFamily: DK_FONT.semibold, fontSize: 15, color: DK.accent },
-  uploadBtnPaired: { flex: 1, minHeight: 52, marginTop: 0 },
-  uploadBtnWaiting: { opacity: 0.6 },
-  newDocBlock: { gap: 6, marginTop: 4 },
-  newDocLabel: { fontFamily: DK_FONT.medium, fontSize: 13, color: DK.muted },
-  uploadRow: { flexDirection: 'row-reverse', alignItems: 'stretch', gap: 8 },
-  uploadRowDate: { flex: 1 },
-  uploadRowDateBox: { backgroundColor: DK.surface, borderColor: DK.hairline, borderWidth: StyleSheet.hairlineWidth },
   // תיקייה ריקה
   emptyFolder: { fontFamily: DK_FONT.medium, fontSize: 13.5, color: DK.faint, textAlign: 'right', paddingVertical: 4 },
 

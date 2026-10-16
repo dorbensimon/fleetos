@@ -48,6 +48,7 @@ import {
   deleteDocument,
   getDocumentUrl,
   downloadDocument,
+  uploadedFileName,
 } from '../documents';
 import { DocumentRow } from '../adminApi';
 
@@ -309,5 +310,12 @@ describe('downloadDocument', () => {
     (supabase.storage.from as jest.Mock).mockReturnValue({ createSignedUrl });
 
     await expect(downloadDocument(doc)).rejects.toThrow('לא ניתן להוריד את המסמך כרגע');
+  });
+});
+
+describe('uploadedFileName', () => {
+  it('names the file after its folder and date', () => {
+    expect(uploadedFileName('בדיקת חורף', 'image/jpeg', '2026-10-05')).toBe('בדיקת חורף 05.10.2026.jpg');
+    expect(uploadedFileName('בדיקת חורף', 'application/pdf', null, new Date(2026, 9, 17))).toBe('בדיקת חורף 17.10.2026.pdf');
   });
 });

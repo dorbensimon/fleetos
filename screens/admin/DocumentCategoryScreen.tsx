@@ -7,8 +7,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LoadingState, EmptyState, ErrorState, useToast } from '../../components/ui';
-import { DateField } from '../../components/ui/DateField';
+import { LoadingState, EmptyState, ErrorState } from '../../components/ui';
+import { useDatePrompt } from '../../components/ui/DateField';
 import { DocumentFileRow } from '../../components/documents/DocumentFileRow';
 import { Procedure6FormModal } from '../../components/documents/Procedure6FormModal';
 import { useCompany } from '../../lib/CompanyContext';
@@ -19,7 +19,7 @@ import { listDocuments, readPickedFileBase64, storedFolderTitle, uploadDocument,
 import { createProcedure6Report, Procedure6FormValues } from '../../lib/procedure6Report';
 import { chooseDocumentSource, confirmDeleteDocument, documentDisplayName, documentViewerMode, downloadDocumentWithAlert, getDocumentViewUrl, pickDocumentSource, type DocumentSource } from '../../lib/documentActions';
 import { RootStackParamList } from '../../navigation/types';
-import { DK, DriverPage, EditField, EmptyPanel, ErrorPanel, HeroTitle, KitSection, LoadingPanel, PrimaryAction, Reveal } from '../../components/driverKit';
+import { DK, DriverPage, EmptyPanel, ErrorPanel, HeroTitle, LoadingPanel, PrimaryAction, Reveal } from '../../components/driverKit';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable } from '../../components/desktop/primitives';
@@ -68,7 +68,6 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const { companyId, profile } = useCompany();
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
-  const { showToast } = useToast();
 
   // נוהל 6 replaces the plain "upload any file" flow with a structured
   // form that produces a PDF (see Procedure6FormModal) — drivers may only
@@ -80,7 +79,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [expiryDate, setExpiryDate] = useState<string | null>(null);
+  const expiryPrompt = useDatePrompt(t('documents.documentExpiry'));
   const [error, setError] = useState<string | null>(null);
   // תיקייה של רכב: מספר הרכב והדגם, כדי שיהיה ברור באיזה רכב נמצאים
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
@@ -126,19 +125,16 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
 
   const addDocument = async () => {
     if (!companyId) return;
-    if (requiresExpiry && !expiryDate) {
-      showToast(t('documents.chooseExpiryBeforeUpload'), 'warning');
-      return;
-    }
 
+    // File first, then (for dated folders) its expiry date, then the upload.
     chooseDocumentSource(title, async (source: DocumentSource) => {
+      const file = await pickDocumentSource(source);
+      if (!file) return;
+      const expiryDate = requiresExpiry ? await expiryPrompt.ask() : null;
+      if (requiresExpiry && !expiryDate) return;
       setUploading(true);
       try {
-        const file = await pickDocumentSource(source);
-        if (!file) return;
-
         await uploadDocument({ companyId, ownerType, ownerId, category, title: storedFolderTitle(category, title), file, expiryDate });
-        if (requiresExpiry) setExpiryDate(null);
         await load();
       } catch (err: any) {
         showAlert(t('common.uploadFailedShort'), errorMessage(err, t('common.tryAgain')));
@@ -210,12 +206,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
 
       {(!isProcedure6 || canCreateProcedure6) && (
         <>
-          {requiresExpiry && (
-            <View style={desktopStyles.expiryField}>
-              <DText weight="semiBold" style={desktopStyles.expiryLabel}>{t('documents.documentExpiry')}</DText>
-              <DateField value={expiryDate} onChange={setExpiryDate} placeholder={t('documents.chooseExpiryDate')} />
-            </View>
-          )}
+          {expiryPrompt.element}
           <HoverPressable
             style={desktopStyles.uploadBtn}
             hoverStyle={{ backgroundColor: DESKTOP_COLORS.brandHover }}
@@ -314,13 +305,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
               </Reveal>
             ))
           )}
-          {canAdd && requiresExpiry && (
-            <Reveal index={Math.min(docs.length, 8) + 1}>
-              <KitSection title={t('documents.nextDocument')}>
-                <EditField first label={t('documents.documentExpiry')} required editor={<DateField value={expiryDate} onChange={setExpiryDate} placeholder={t('documents.chooseExpiryDate')} />} hint={t('documents.expiryRequiredBeforeUpload')} />
-              </KitSection>
-            </Reveal>
-          )}
+          {expiryPrompt.element}
         </>
       )}
     </DriverPage>
@@ -336,8 +321,6 @@ const styles = StyleSheet.create({
 const desktopStyles = StyleSheet.create({
   wrap: { padding: 24, maxWidth: 560, alignSelf: 'center', width: '100%', gap: 14 },
   list: { gap: 10 },
-  expiryField: { gap: 6, marginTop: 4 },
-  expiryLabel: { fontSize: 13 },
   uploadBtn: {
     marginTop: 4,
     height: 36,
