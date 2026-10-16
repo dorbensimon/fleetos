@@ -1,3 +1,4 @@
+// פונקציית שרת: הוספת מנהל לחברה
 // Edge Function: add-company-admin
 // Called by the app (owner only) to add another admin to an existing company.
 // The owner chooses the admin's password directly (no random temp password).
@@ -6,6 +7,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { verifyOwner } from '../_shared/verifyOwner.ts';
 import { isValidTemporaryPassword } from '../_shared/accountSecurity.ts';
 
+// מקבל בקשה, בודק הרשאה ויוצר מנהל
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

@@ -1,3 +1,4 @@
+// שער אישור התנאים: אי אפשר להשתמש באפליקציה לפני שמאשרים
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +16,7 @@ import { t, dirIcon } from '../../lib/i18n';
 
 type State = 'checking' | 'accepted' | 'required' | 'error';
 
+// מציג את מסך האישור או את האפליקציה
 /**
  * Nobody signed in uses the app before accepting the terms of use and the
  * privacy policy — owner, manager or driver, on the phone and the desktop.
@@ -83,6 +85,7 @@ export function LegalConsentGate({
   );
 }
 
+// מסך האישור
 function ConsentScreen({ error, onRetry, onAccepted }: { error: RequestErrorDetails | null; onRetry: () => void; onAccepted: () => Promise<void> }) {
   const insets = useSafeAreaInsets();
   const [reading, setReading] = useState<LegalDocId | null>(null);
@@ -216,6 +219,7 @@ function ConsentScreen({ error, onRetry, onAccepted }: { error: RequestErrorDeta
   );
 }
 
+// עיצוב מסך האישור
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   hidden: { display: 'none' },

@@ -1,3 +1,4 @@
+// דוח בדיקות קצין בטיחות להורדה (PDF)
 import type { Company } from './supabase';
 import { daysBetween, dueText } from './meetingPlan';
 import { formatPlate } from './plate';
@@ -25,6 +26,7 @@ import { buildReportDocument, emptyState, esc, printOrShareReport, statusTag } f
 
 export type InspectionReportCategory = 'insp_quarter' | 'insp_awaiting' | 'insp_defects' | 'insp_due' | 'insp_never';
 
+// סוגי הדוח לבחירה
 export const INSPECTION_REPORT_CATEGORIES: { value: InspectionReportCategory; label: string; icon: string }[] = [
   { value: 'insp_quarter', label: 'בדיקות ב־3 החודשים האחרונים', icon: 'checkmark-done-outline' },
   { value: 'insp_awaiting', label: 'בדיקות שממתינות לחתימת הנהג', icon: 'time-outline' },
@@ -33,6 +35,7 @@ export const INSPECTION_REPORT_CATEGORIES: { value: InspectionReportCategory; la
   { value: 'insp_never', label: 'רכבים שעוד לא נבדקו', icon: 'car-outline' },
 ];
 
+// כותרת לכל סוג דוח
 const TITLES: Record<InspectionReportCategory, string> = {
   insp_quarter: 'דוח בדיקות קצין בטיחות ב־3 החודשים האחרונים',
   insp_awaiting: 'דוח בדיקות קצין בטיחות שממתינות לחתימת הנהג',
@@ -41,8 +44,10 @@ const TITLES: Record<InspectionReportCategory, string> = {
   insp_never: 'דוח רכבים שעוד לא עברו בדיקת קצין בטיחות',
 };
 
+// כמה ימים נחשבים 'בקרוב'
 const SOON_DAYS = 14;
 
+// התאריך לפני שלושה חודשים
 /** The date three months before today, YYYY-MM-DD. */
 function quarterStart(today: string): string {
   const [y, m, d] = today.split('-').map(Number);
@@ -55,6 +60,7 @@ function quarterStart(today: string): string {
 type Entry = { row: InspectionListRow; state: InspectionState };
 export type DefectLine = { row: InspectionListRow; text: string };
 
+// בוחר אילו שורות נכנסות לכל דוח
 /** Which rows belong in each report. Exported for the tests. */
 export function selectInspectionReport(
   category: InspectionReportCategory,
@@ -89,6 +95,7 @@ export function selectInspectionReport(
   return { entries: [], plan: data.plan.filter((p) => p.firstInspection), defects: [] };
 }
 
+// תגית לכל מצב בדיקה
 const STATE_TAG: Partial<Record<InspectionState, [string, 'accent' | 'accent2' | 'outline']>> = {
   completed: ['חתום', 'accent'],
   closed: ['נסגר בלי חתימת נהג', 'outline'],
@@ -96,14 +103,17 @@ const STATE_TAG: Partial<Record<InspectionState, [string, 'accent' | 'accent2' |
   requires_attention: ['דורש טיפול', 'accent2'],
 };
 
+// תאי הרכב בטבלה
 function vehicleCells(plate: string | null | undefined, label: string | null | undefined): string {
   return `<td class="ltr">${esc(plate ? formatPlate(plate) : null) || '—'}</td><td>${esc(label) || '—'}</td>`;
 }
 
+// שם הרכב בדוח
 function vehicleLabel(row: InspectionListRow): string {
   return [row.vehicle?.manufacturer, row.vehicle?.model].filter(Boolean).join(' ') || row.facts?.vehicle || '';
 }
 
+// בונה את ה-HTML של הדוח
 function buildHtml(company: Company, category: InspectionReportCategory, picked: ReturnType<typeof selectInspectionReport>, today: string): string {
   let head = '';
   let rows = '';
@@ -178,6 +188,7 @@ function buildHtml(company: Company, category: InspectionReportCategory, picked:
   });
 }
 
+// מפיק ומוריד את הדוח
 export async function exportInspectionsReport(company: Company, category: InspectionReportCategory): Promise<void> {
   const needsList = category === 'insp_quarter' || category === 'insp_awaiting' || category === 'insp_defects';
   const needsPlan = category === 'insp_defects' || category === 'insp_due' || category === 'insp_never';

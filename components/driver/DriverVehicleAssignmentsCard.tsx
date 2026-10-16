@@ -1,3 +1,4 @@
+// כרטיס הרכבים של נהג (טלפון)
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +11,7 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DK, DKText, Plate, Pressy, STATUS } from '../driverKit';
 import { t } from '../../lib/i18n';
 
+// הרכבים עם הוספה והסרה
 export function DriverVehicleAssignmentsCard({
   driverVehicles,
   availableVehicles,
@@ -135,6 +137,7 @@ export function DriverVehicleAssignmentsCard({
   );
 }
 
+// שואל לפני הסרת רכב
 export function confirmVehicleRemoval(
   assignment: DriverVehicleAssignment,
   onConfirm: () => void,
@@ -145,10 +148,12 @@ export function confirmVehicleRemoval(
   ]);
 }
 
+// עיצוב הכרטיס
 const styles = StyleSheet.create({
   card: { gap: 6 },
   infoLabel: { fontSize: 13, color: COLORS.textMuted },
   noVehicles: { fontSize: 13, color: COLORS.textFaint },
+  // שורת רכב
   vehicleRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -162,14 +167,17 @@ const styles = StyleSheet.create({
   badgeSecondary: { backgroundColor: COLORS.field },
   badgeText: { fontSize: 10.5, color: COLORS.textMuted },
   badgeTextPrimary: { color: COLORS.accent },
+  // שורת הוספה
   vehicleAddRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginTop: 4 },
   vehicleSelectWrap: { flex: 1, minHeight: 48, justifyContent: 'center' },
   confirmBtn: { marginTop: 0 },
 });
 
+// עיצוב הכרטיס בסגנון תיק הנהג
 const kit = StyleSheet.create({
   wrap: { gap: 10 },
   empty: { paddingVertical: 4 },
+  // שורת רכב
   row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, minHeight: 56 },
   main: { flex: 1 },
   mainRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },

@@ -1,3 +1,4 @@
+// טופס יצירה/עריכה של נהג - תצוגת מחשב
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +30,7 @@ export interface FormState {
 
 type StepKey = 'personal' | 'license' | 'access';
 
+// שם ושלב לכל שדה
 const FIELD_META: Record<DriverFormField, { label: string; step: StepKey }> = {
   full_name: { get label() { return t('common.fullName'); }, step: 'personal' },
   phone: { get label() { return t('common.phone'); }, step: 'personal' },
@@ -39,9 +41,11 @@ const FIELD_META: Record<DriverFormField, { label: string; step: StepKey }> = {
   password: { get label() { return t('common.password'); }, step: 'access' },
 };
 
+// כמה דרגות רישיון מוצגות כאריחים
 /** Up to this many license classes show as tiles; the full legacy list stays a dropdown. */
 const MAX_LICENSE_TILES = 8;
 
+// הטופס עם כרטיס נהג שמתמלא תוך כדי הקלדה
 /**
  * Desktop body of the driver create/edit form, in the shared record-form
  * design (form/RecordFormKit): the driver's card builds itself in the hero
@@ -301,6 +305,7 @@ export function DriverFormDesktopView({
   );
 }
 
+// כרטיס הנהג שמתמלא
 /** The driver as a card, filling in while the form is typed. Empty values show as soft placeholder bars. */
 function DriverCard({ form }: { form: FormState }) {
   const name = form.full_name.trim();
@@ -375,8 +380,10 @@ function DriverCard({ form }: { form: FormState }) {
   );
 }
 
+// עיצוב הטופס
 const styles = StyleSheet.create({
   tabular: webOnly({ fontVariantNumeric: 'tabular-nums' }),
+  // שורת הסיסמה
   passwordRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   passwordInput: { flex: 1 },
   passwordToggle: {
@@ -392,6 +399,7 @@ const styles = StyleSheet.create({
   passwordToggleHover: { backgroundColor: '#D6EDF9' },
   passwordToggleText: { fontSize: 15, color: DESKTOP_COLORS.brand },
 
+  // כרטיס הנהג
   // Driver card
   card: { flex: 1, padding: 18, justifyContent: 'space-between' },
   cardTop: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
@@ -405,6 +413,7 @@ const styles = StyleSheet.create({
   },
   cardBrandText: { fontSize: 13, letterSpacing: 0.4, color: DESKTOP_COLORS.inkMuted },
   cardClasses: { flexDirection: 'row', gap: 5 },
+  // תגית דרגת רישיון
   classBadge: {
     minWidth: 30,
     height: 26,

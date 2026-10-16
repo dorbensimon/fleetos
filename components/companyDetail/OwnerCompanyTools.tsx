@@ -1,3 +1,4 @@
+// כרטיסי הבעלים בדף חברה: צעדים ראשונים, תשלומים והערות פנימיות
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,8 +34,10 @@ import {
  * loads its own rows, so a failure in one leaves the others working.
  */
 
+// ספרות ברוחב אחיד
 const TABULAR = webOnly({ fontVariantNumeric: 'tabular-nums' });
 
+// שם החודש לתצוגה
 export const monthLabel = (period: string) =>
   new Date(`${period.slice(0, 10)}T12:00:00`).toLocaleDateString(getLocale(), { month: 'long', year: 'numeric' });
 
@@ -42,6 +45,7 @@ export const monthLabel = (period: string) =>
 /* Getting started                                                     */
 /* ------------------------------------------------------------------ */
 
+// כרטיס 'צעדים ראשונים' של חברה חדשה
 export function OnboardingCard({ companyId, managerActive, drivers }: { companyId: string; managerActive: boolean; drivers: number }) {
   const [steps, setSteps] = useState<OnboardingStep[] | null>(null);
   useEffect(() => {
@@ -92,8 +96,10 @@ export function OnboardingCard({ companyId, managerActive, drivers }: { companyI
 /* Payments                                                            */
 /* ------------------------------------------------------------------ */
 
+// שם אמצעי התשלום
 const methodLabel = (m: PaymentMethod | null) => (m ? t(`ownerTools.method.${m}`) : '');
 
+// כרטיס התשלומים
 export function PaymentsCard({ companyId, monthlyPrice }: { companyId: string; monthlyPrice: number | null }) {
   const [payments, setPayments] = useState<CompanyPayment[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -194,6 +200,7 @@ export function PaymentsCard({ companyId, monthlyPrice }: { companyId: string; m
   );
 }
 
+// חלון רישום תשלום
 function PaymentDialog({
   visible,
   companyId,
@@ -302,6 +309,7 @@ function PaymentDialog({
 /* Internal notes                                                      */
 /* ------------------------------------------------------------------ */
 
+// כרטיס ההערות הפנימיות
 export function NotesCard({ companyId }: { companyId: string }) {
   const [notes, setNotes] = useState<CompanyNote[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -398,6 +406,7 @@ export function NotesCard({ companyId }: { companyId: string }) {
   );
 }
 
+// כפתור מחיקה קטן
 function TrashButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <HoverPressable style={styles.iconBtn} hoverStyle={styles.iconBtnDanger} pressStyle={pageStyles.pressDown} onPress={onPress} accessibilityLabel={label} {...webOnly({ title: label })}>
@@ -406,13 +415,17 @@ function TrashButton({ label, onPress }: { label: string; onPress: () => void })
   );
 }
 
+// עיצוב הכרטיסים
 const styles = StyleSheet.create({
+  // כרטיס הצעדים הראשונים
   onboarding: { paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
   onboardingHead: { gap: 2 },
   onboardingCount: { fontSize: 15.5, color: DESKTOP_COLORS.ink, textAlign: 'right' },
+  // פס ההתקדמות
   progress: { height: 6, borderRadius: 3, backgroundColor: '#EEF1F4', overflow: 'hidden', flexDirection: 'row-reverse' },
   progressFill: { height: '100%', borderRadius: 3, backgroundColor: DESKTOP_COLORS.brand, ...webOnly({ transition: 'width 400ms ease' }) },
   steps: { gap: 8, marginTop: 2 },
+  // צעד ברשימה
   step: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   stepText: { fontSize: 14, color: DESKTOP_COLORS.ink },
   stepDone: { color: DESKTOP_COLORS.inkMuted, ...webOnly({ textDecorationLine: 'line-through' }) },
@@ -422,11 +435,13 @@ const styles = StyleSheet.create({
   payHead: { padding: 14, gap: 8, alignItems: 'flex-end' },
   monthState: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, alignSelf: 'stretch' },
   monthStateText: { fontSize: 13.5 },
+  // שורת תשלום
   payRow: { minHeight: 54, gap: 10 },
   rowTitle: { fontSize: 14, color: DESKTOP_COLORS.ink },
   amount: { fontSize: 14.5, color: DESKTOP_COLORS.ink },
   more: { paddingVertical: 10, alignItems: 'center' },
 
+  // אזור כתיבת הערה
   compose: { padding: 12, gap: 8 },
   textarea: {
     minHeight: 64,
@@ -443,6 +458,7 @@ const styles = StyleSheet.create({
   },
   textareaFocus: { borderColor: DESKTOP_COLORS.brand, ...webOnly({ boxShadow: '0 0 0 3px rgba(47,91,255,0.14)' }) },
   composeFoot: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  // שורת הערה
   noteRow: { alignItems: 'flex-start', paddingVertical: 12, gap: 8 },
   noteBody: { fontSize: 14, lineHeight: 21, color: DESKTOP_COLORS.ink, textAlign: 'right' },
   iconBtn: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease' }) },

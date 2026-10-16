@@ -1,7 +1,9 @@
+// לאן לשלוח משתמש אחרי כניסה לפי התפקיד שלו
 import { supabase, Profile, UserRole } from './supabase';
 import { RootStackParamList } from '../navigation/types';
 import { t } from './i18n';
 
+// המסך הראשי של כל תפקיד
 export const ROLE_ROUTES: Record<UserRole, keyof RootStackParamList> = {
   owner: 'OwnerHome',
   admin: 'AdminHome',
@@ -12,10 +14,12 @@ type RouteResult =
   | { ok: true; route: keyof RootStackParamList }
   | { ok: false; error: string };
 
+// האם הערך הוא תפקיד חוקי
 function isUserRole(role: unknown): role is UserRole {
   return role === 'owner' || role === 'admin' || role === 'driver';
 }
 
+// מוצא את המסך הראשי של המשתמש
 export async function resolveRouteForUser(userId: string): Promise<RouteResult> {
   const { data: profile, error: profileError } = await supabase
     .from('profiles')

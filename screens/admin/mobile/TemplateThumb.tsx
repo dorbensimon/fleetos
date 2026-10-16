@@ -1,3 +1,4 @@
+// תמונה קטנה של מסמך (טלפון)
 import React from 'react';
 import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -5,6 +6,7 @@ import { DK } from '../../../components/driverKit';
 import type { SigningTemplate } from '../../../lib/docuseal';
 import { thumbStyles } from './templateThumbStyles';
 
+// דף קטן עם סימן מסמך
 /**
  * A signing document drawn as a small sheet of paper. The native app has no
  * PDF renderer, so it shows the document mark; the web build draws the real

@@ -1,3 +1,4 @@
+// שיוך נהגים לרכבים: הוספה, הסרה, נהג ראשי ותור לפעולות שנכשלו בגלל אינטרנט
 /* ------------------------------------------------------------------ */
 /* Vehicle <-> driver assignments (vehicle_drivers)                    */
 /*                                                                      */
@@ -18,6 +19,7 @@ import { VehicleDriverAssignment, VehicleDriverWithProfile, DriverVehicleAssignm
 import { chunkIds } from './paging';
 import { t } from '../i18n';
 
+// המפתח שבו נשמר במכשיר תור הפעולות שעוד לא נשלחו לשרת
 const PENDING_ASSIGNMENT_OPERATIONS_KEY = 'fleetos.pending-assignment-operations.v1';
 
 type PendingAssignmentOperation =
@@ -29,6 +31,7 @@ type PendingAssignmentOperationInput =
   | { type: 'unassign'; assignmentId: string }
   | { type: 'primary'; vehicleId: string; assignmentId: string };
 
+// שגיאה שמסמנת שהפעולה נשמרה בתור ותישלח כשהאינטרנט יחזור
 export class PendingAssignmentSyncError extends Error {
   constructor() {
     super(t('sync.savedOffline'));
@@ -36,35 +39,42 @@ export class PendingAssignmentSyncError extends Error {
   }
 }
 
+// בודק אם שגיאה היא מסוג 'נשמר בתור'
 export function isPendingAssignmentSyncError(error: unknown): error is PendingAssignmentSyncError {
   return error instanceof PendingAssignmentSyncError;
 }
 
+// יוצר מזהה ייחודי לפעולה בתור
 const newOperationId = () =>
   'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
     const value = Math.floor(Math.random() * 16);
     return (char === 'x' ? value : (value & 0x3) | 0x8).toString(16);
   });
 
+// בודק אם השגיאה נגרמה מבעיית אינטרנט
 const isNetworkFailure = (error: any) =>
   !error?.code && /network|fetch|timeout|connection|offline|internet/i.test(String(error?.message ?? error));
 
+// מחזיר את מזהה המשתמש המחובר
 async function currentUserId() {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw error ?? new Error(t('sync.noUser'));
   return data.user.id;
 }
 
+// קורא מהמכשיר את תור הפעולות הממתינות
 async function readPendingOperations(): Promise<PendingAssignmentOperation[]> {
   const raw = await AsyncStorage.getItem(PENDING_ASSIGNMENT_OPERATIONS_KEY);
   if (!raw) return [];
   try { return JSON.parse(raw) as PendingAssignmentOperation[]; } catch { return []; }
 }
 
+// שומר במכשיר את תור הפעולות הממתינות
 async function savePendingOperations(operations: PendingAssignmentOperation[]) {
   await AsyncStorage.setItem(PENDING_ASSIGNMENT_OPERATIONS_KEY, JSON.stringify(operations));
 }
 
+// מכניס פעולה לתור אחרי כישלון אינטרנט, וזורק שגיאה אחרת
 async function queueAfterNetworkFailure(operation: PendingAssignmentOperationInput, originalError: any): Promise<never> {
   if (!isNetworkFailure(originalError)) throw originalError;
   const userId = await currentUserId();
@@ -75,6 +85,7 @@ async function queueAfterNetworkFailure(operation: PendingAssignmentOperationInp
   throw new PendingAssignmentSyncError();
 }
 
+// מבצע מול השרת פעולה אחת מהתור
 async function executePendingOperation(operation: PendingAssignmentOperation) {
   if (operation.type === 'assign') {
     const { error } = await supabase.rpc('assign_vehicle_driver', {
@@ -92,6 +103,7 @@ async function executePendingOperation(operation: PendingAssignmentOperation) {
   if (error) throw error;
 }
 
+// שולח לשרת את כל הפעולות שחיכו בתור
 /** Retries queued work only for the currently authenticated administrator. */
 export async function flushPendingAssignmentOperations() {
   const userId = await currentUserId();
@@ -104,6 +116,7 @@ export async function flushPendingAssignmentOperations() {
   await savePendingOperations(remaining);
 }
 
+// רשימת הנהגים הפעילים של רכב אחד, הנהג הראשי ראשון
 /** Active (unassigned_at is null) driver assignments for one vehicle, primary first. */
 export async function listActiveVehicleDrivers(vehicleId: string): Promise<VehicleDriverWithProfile[]> {
   const { data, error } = await supabase
@@ -129,6 +142,7 @@ export async function listActiveVehicleDrivers(vehicleId: string): Promise<Vehic
   });
 }
 
+// רשימת הנהגים הפעילים של הרבה רכבים בבת אחת (למסכי רשימה)
 /**
  * Same as `listActiveVehicleDrivers` but for many vehicles at once — used
  * by list screens (FleetScreen) so they don't issue one query per row.
@@ -177,6 +191,7 @@ export async function listActiveVehicleDriversForVehicles(
   return map;
 }
 
+// הרכבים שנהג נוהג בהם כרגע
 /** Active vehicles a driver currently drives (0–2), primary first. */
 export async function listActiveDriverVehicles(driverId: string): Promise<DriverVehicleAssignment[]> {
   const { data, error } = await supabase
@@ -196,6 +211,7 @@ export async function listActiveDriverVehicles(driverId: string): Promise<Driver
     });
 }
 
+// משייך נהג לרכב
 /**
  * Assigns a driver to a vehicle without touching any existing active
  * assignment — the DB trigger rejects a duplicate active pair or a 2nd
@@ -228,6 +244,7 @@ export async function assignDriverToVehicle(
   }
 }
 
+// מסיר נהג מרכב (מסמן תאריך סיום, לא מוחק)
 /**
  * Removes a driver from a vehicle — a soft delete (`unassigned_at`), never
  * a physical delete, so the assignment's history stays queryable.
@@ -237,6 +254,7 @@ export async function unassignVehicleDriver(assignmentId: string) {
   if (error) await queueAfterNetworkFailure({ type: 'unassign', assignmentId }, error);
 }
 
+// קובע נהג כנהג הראשי של הרכב
 /**
  * Makes one assignment the vehicle's primary driver — an explicit, separate
  * action from adding a driver (never an automatic side effect). Demotes

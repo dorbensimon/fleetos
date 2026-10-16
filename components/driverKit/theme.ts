@@ -1,8 +1,10 @@
+// צבעים, פינות, ריווחים, גופנים וצללים של ערכת הטלפון
 import { Platform, type ViewStyle } from 'react-native';
 import { daysUntilExpiry, expiryState, type ExpiryState } from '../../lib/theme';
 import { t, getLocale } from '../../lib/i18n';
 import { fontStack } from '../../lib/fontStack';
 
+// הצבעים
 /**
  * The icar phone kit's design tokens — the brand carried into every screen
  * on the phone, the driver's and the manager's alike (the desktop keeps its
@@ -41,10 +43,13 @@ export const DK = {
   glassBorder: 'rgba(255,255,255,0.22)',
 } as const;
 
+// עיגול פינות
 export const DK_RADIUS = { card: 28, inner: 18, chip: 12, pill: 999 } as const;
 
+// ריווחים
 export const DK_SPACE = { xs: 6, sm: 10, md: 16, lg: 20, xl: 28 } as const;
 
+// גופנים
 /** Heebo for display and numbers (geometric, like the wordmark), Assistant for reading. */
 export const DK_FONT = {
   display: fontStack('Heebo_800ExtraBold'),
@@ -56,6 +61,7 @@ export const DK_FONT = {
   bold: fontStack('Assistant_700Bold'),
 } as const;
 
+// צללים
 /** One light source, above: shadows are tinted with the brand ink, never black. */
 export const DK_SHADOW: ViewStyle = Platform.select<ViewStyle>({
   web: { boxShadow: '0 1px 2px rgba(10,22,38,0.04), 0 12px 32px rgba(10,22,38,0.07)' } as ViewStyle,
@@ -70,6 +76,7 @@ export const DK_SHADOW: ViewStyle = Platform.select<ViewStyle>({
 
 export type Status = 'ok' | 'soon' | 'expired' | 'missing';
 
+// צבעי מצב
 /** Status colours: `fg` is text-safe on white and on `soft`; `fill` is for bars and dots. */
 export const STATUS: Record<Status, { fg: string; fill: string; soft: string; label: string; icon: 'checkmark-circle' | 'time' | 'alert-circle' | 'help-circle' }> = {
   ok: { fg: '#0B7D57', fill: '#22C48A', soft: '#E4F7EF', get label() { return t('status.valid'); }, icon: 'checkmark-circle' },
@@ -78,14 +85,17 @@ export const STATUS: Record<Status, { fg: string; fill: string; soft: string; la
   missing: { fg: '#56657A', fill: '#C9D2DE', soft: '#EEF1F6', get label() { return t('status.missing'); }, icon: 'help-circle' },
 };
 
+// מצב לפי תוקף
 export function statusOf(state: ExpiryState): Status {
   return state === 'expired' ? 'expired' : state === 'soon' ? 'soon' : state === 'ok' ? 'ok' : 'missing';
 }
 
+// מצב לפי תאריך
 export function statusOfDate(date: string | null | undefined): Status {
   return statusOf(expiryState(date));
 }
 
+// כמה מהפס מלא לפי התוקף שנשאר
 /**
  * How much validity is left, as a bar length: a full year or more reads as
  * full, the last days drain it. Expired and missing keep a short sliver so
@@ -98,6 +108,7 @@ export function validityProgress(date: string | null | undefined): number {
   return Math.max(0.08, Math.min(1, days / 365));
 }
 
+// 'בעוד / היום / לפני' במילים
 /** "בעוד 12 ימים" / "היום" / "לפני 3 ימים" — plain words next to the date. */
 export function relativeDays(date: string | null | undefined): string | null {
   const days = daysUntilExpiry(date);

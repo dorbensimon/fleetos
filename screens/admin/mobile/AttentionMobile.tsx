@@ -1,3 +1,4 @@
+// 'דורש טיפול' בטלפון
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,8 +30,10 @@ type Props = {
 type Row = { key: string; title: string; detail: string; status: Status; onPress: () => void };
 type Group = { key: string; icon: IconName; title: string; hint: string; status: Status; rows: Row[] };
 
+// כמה פריטים מוצגים לפני 'עוד'
 const PREVIEW = 4;
 
+// הקבוצות לפי דחיפות
 /**
  * What in the fleet is waiting on the manager, most urgent first. Every
  * group names the drivers or vehicles behind its count, and each one opens
@@ -156,6 +159,7 @@ export function AttentionMobile(p: Props) {
   );
 }
 
+// כרטיס קבוצה
 function GroupCard({ group }: { group: Group }) {
   const [open, setOpen] = useState(false);
   const s = STATUS[group.status];
@@ -203,6 +207,7 @@ function GroupCard({ group }: { group: Group }) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { textAlign: 'center' },

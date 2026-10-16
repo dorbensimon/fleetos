@@ -1,3 +1,4 @@
+// כרטיסי הבעלים: הודעה לחברות וכסף שנגבה
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,7 +26,9 @@ import {
  * the subscriptions say should come in.
  */
 
+// ספרות ברוחב אחיד
 const TABULAR = webOnly({ fontVariantNumeric: 'tabular-nums' });
+// כמה זמן הודעה פעילה
 const DURATIONS: { days: number | null; label: () => string }[] = [
   { days: 1, label: () => t('ownerTools.forDay') },
   { days: 7, label: () => t('ownerTools.forWeek') },
@@ -33,6 +36,7 @@ const DURATIONS: { days: number | null; label: () => string }[] = [
   { days: null, label: () => t('ownerTools.untilRemoved') },
 ];
 
+// בחירה מתוך אפשרויות
 function Choice<T>({ options, value, onChange }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void }) {
   return (
     <View style={styles.choice} accessibilityRole="radiogroup">
@@ -55,6 +59,7 @@ function Choice<T>({ options, value, onChange }: { options: { value: T; label: s
   );
 }
 
+// כתיבה ופרסום הודעה
 export function AnnouncementPanel() {
   const [items, setItems] = useState<Announcement[] | null>(null);
   const [message, setMessage] = useState('');
@@ -177,8 +182,10 @@ export function AnnouncementPanel() {
   );
 }
 
+// כמה חודשים בגרף
 const MONTHS = 6;
 
+// גרף הכסף שנגבה בכל חודש
 /** Money in, per month, for the last six months; the dashed line is what the subscriptions add up to. */
 export function CollectedPanel({ expected }: { expected: number }) {
   const [months, setMonths] = useState<{ month: string; total: number }[] | null>(null);
@@ -252,7 +259,9 @@ export function CollectedPanel({ expected }: { expected: number }) {
   );
 }
 
+// עיצוב הכרטיסים
 const styles = StyleSheet.create({
+  // כרטיס
   panel: { backgroundColor: DESKTOP_COLORS.surface, borderRadius: 14, borderWidth: 1, borderColor: DESKTOP_COLORS.border, overflow: 'hidden' },
   titleRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 16, paddingBottom: 10 },
   title: { fontSize: 16, color: DESKTOP_COLORS.ink },
@@ -297,6 +306,7 @@ const styles = StyleSheet.create({
 
   head: { paddingHorizontal: 18, gap: 2 },
   value: { fontSize: 26, lineHeight: 32, color: DESKTOP_COLORS.ink, letterSpacing: -0.5, textAlign: 'right' },
+  // גרף
   chart: { flexDirection: 'row-reverse', alignItems: 'flex-end', height: 96, gap: 8, marginHorizontal: 18, marginTop: 14 },
   expected: { position: 'absolute', left: 0, right: 0, height: 0, borderTopWidth: 1.5, borderStyle: 'dashed', borderColor: DESKTOP_COLORS.inkFaint },
   slot: { flex: 1, height: '100%', justifyContent: 'flex-end' },

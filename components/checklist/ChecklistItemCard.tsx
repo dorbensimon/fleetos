@@ -1,3 +1,4 @@
+// כרטיס של סעיף אחד בטופס רשימת תיוג
 import React, { memo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -5,6 +6,7 @@ import { DK, DKText, KitInput, Pressy, Surface } from '../driverKit';
 import { CHECKLIST_LIMITS, STATUS_META, type ChecklistAnswer, type ChecklistItem, type ChecklistStatus } from '../../lib/checklistForms';
 import { t } from '../../lib/i18n';
 
+// סעיף: טקסט, כפתור לכל תשובה והערה
 /**
  * One item of the meeting: its text, one big button per answer (icon, word
  * and colour together, never colour alone), and an optional note.
@@ -114,15 +116,20 @@ export const ChecklistItemCard = memo(function ChecklistItemCard({
   );
 });
 
+// עיצוב כרטיס הסעיף
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  // הכרטיס
   card: { padding: 16, gap: 14, borderWidth: 1.5, borderColor: 'transparent' },
   head: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 12 },
+  // עיגול מספר הסעיף
   num: { width: 34, height: 34, borderRadius: 11, backgroundColor: DK.surfaceSunk, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   numText: { fontSize: 15, lineHeight: 20 },
   text: { flex: 1, fontSize: 17, lineHeight: 25 },
+  // שורת כפתורי התשובה
   options: { flexDirection: 'row-reverse', gap: 10 },
   optionsThree: { gap: 8 },
+  // כפתור תשובה
   option: {
     flex: 1,
     minHeight: 58,
@@ -143,6 +150,7 @@ const styles = StyleSheet.create({
   noteSaved: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 8, padding: 12, borderRadius: 14, backgroundColor: DK.surfaceSunk },
   noteIcon: { marginTop: 1 },
   noteEdit: { gap: 8 },
+  // תיבת ההערה
   noteInput: { minHeight: 88, paddingTop: 12, textAlignVertical: 'top' },
   noteDone: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 14, borderRadius: 999, backgroundColor: DK.accentSoft, alignSelf: 'flex-start' },
 });

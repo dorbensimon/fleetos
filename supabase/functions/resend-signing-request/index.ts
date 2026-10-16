@@ -1,13 +1,17 @@
+// פונקציית שרת: שליחה חוזרת של בקשת חתימה
 import { corsHeaders } from '../_shared/cors.ts';
 import { docusealFetch } from '../_shared/docuseal.ts';
 import { verifyUser } from '../_shared/verifyUser.ts';
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
+// זמן נעילה
 const LOCK_MINUTES = 5;
 
+// שולח שוב
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);

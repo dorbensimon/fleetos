@@ -1,3 +1,4 @@
+// ערכת העיצוב של הטלפון: כותרת כחולה, דף, כרטיסים, תגיות, לוחית וכפתורים
 import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -29,11 +30,14 @@ export * from './theme';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+// האם האנימציה רצה בטלפון
 const NATIVE_DRIVER = Platform.OS !== 'web';
+// עקומת אנימציה
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
 // ── Motion ────────────────────────────────────────────────────────────────
 
+// האם המשתמש ביקש פחות אנימציות
 export function useReducedMotion() {
   const [reduce, setReduce] = useState(false);
   useEffect(() => {
@@ -48,6 +52,7 @@ export function useReducedMotion() {
   return reduce;
 }
 
+// תוכן שנכנס במדורג מלמעלה למטה
 /**
  * Content arrives in a short cascade (fade + 14px rise, 280ms, 55ms apart)
  * so a screen reads top-down instead of popping in at once. Reduced motion
@@ -69,6 +74,7 @@ export function Reveal({ index = 0, children, style }: { index?: number; childre
   return <Animated.View style={[style, { opacity: ratio, transform: [{ translateY }] }]}>{children}</Animated.View>;
 }
 
+// כל משטח לחיץ: מתכווץ קצת בלחיצה
 /**
  * Every tappable surface: a quick press-in (scale .97, 110ms) and a spring
  * back, so a tap is felt immediately. A light haptic on native for actions.
@@ -129,6 +135,7 @@ export function Pressy({
   );
 }
 
+// האם להציג מסגרת מיקוד
 /** On the web, whether the browser itself would draw a focus ring here. */
 function isFocusVisible(event: unknown): boolean {
   if (Platform.OS !== 'web') return false;
@@ -140,12 +147,14 @@ function isFocusVisible(event: unknown): boolean {
   }
 }
 
+// סגנונות פריסה שעוברים לעטיפה
 const LAYOUT_KEYS = new Set([
   'flex', 'flexGrow', 'flexShrink', 'flexBasis', 'width', 'minWidth', 'maxWidth', 'alignSelf',
   'margin', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight', 'marginHorizontal', 'marginVertical',
   'position', 'top', 'bottom', 'left', 'right', 'zIndex',
 ]);
 
+// מפריד סגנונות פריסה משאר הסגנונות
 function splitLayout(style: StyleProp<ViewStyle>) {
   const flat = (StyleSheet.flatten(style) || {}) as Record<string, unknown>;
   const outer: Record<string, unknown> = {};
@@ -159,6 +168,7 @@ function splitLayout(style: StyleProp<ViewStyle>) {
 
 type Variant = 'display' | 'title' | 'heading' | 'body' | 'label' | 'caption' | 'micro' | 'number';
 
+// סגנונות הטקסט
 const VARIANTS: Record<Variant, TextStyle> = {
   display: { fontFamily: DK_FONT.display, fontSize: 34, lineHeight: 40, letterSpacing: -0.8 },
   title: { fontFamily: DK_FONT.title, fontSize: 22, lineHeight: 28, letterSpacing: -0.4 },
@@ -170,6 +180,7 @@ const VARIANTS: Record<Variant, TextStyle> = {
   number: { fontFamily: DK_FONT.numeric, fontSize: 16, lineHeight: 22, fontVariant: ['tabular-nums'] },
 };
 
+// טקסט בערכה
 export function DKText({
   variant = 'body',
   color = DK.ink,
@@ -191,8 +202,10 @@ export function DKText({
 
 // ── Night hero ────────────────────────────────────────────────────────────
 
+// הטבעת של הלוגו בכותרת
 const RING = require('../../images/icar-loader-ring.png');
 
+// הכותרת הכחולה הכהה בראש כל מסך בטלפון
 /**
  * The top of every driver screen: brand ink lit by the blue and cyan of the
  * logo, with the logo's own ring turning into place behind the content once
@@ -255,6 +268,7 @@ export function NightHero({
   );
 }
 
+// פס בצבע הכותרת מאחורי השעון
 /**
  * The night colour held behind the clock and battery while the page scrolls
  * (Home Screen app and native, where the page runs under the status bar),
@@ -265,6 +279,7 @@ export function StatusBand({ insetTop }: { insetTop: number }) {
   return <View pointerEvents="none" style={[styles.statusBand, { height: insetTop }]} />;
 }
 
+// כפתור עגול שקוף על הכותרת
 /** Round glass button on the night hero (48pt target). */
 export function HeroButton({ icon, onPress, label, badge = false }: { icon: IconName; onPress: () => void; label: string; badge?: boolean }) {
   return (
@@ -275,6 +290,7 @@ export function HeroButton({ icon, onPress, label, badge = false }: { icon: Icon
   );
 }
 
+// שורת הכותרת: חזרה, כותרת ופעולה
 /** Title row for inner screens: back on the right (RTL), title, optional action. */
 export function HeroTitle({
   title,
@@ -305,6 +321,7 @@ export function HeroTitle({
   );
 }
 
+// פס כהה דק לכלים במסך מלא
 /**
  * A slim night bar for full-height tools (signing, viewing a document):
  * back, the title on one line, an optional action — and nothing else, so
@@ -348,6 +365,7 @@ export function NightBar({
 
 // ── Page ──────────────────────────────────────────────────────────────────
 
+// מסגרת הדף: כותרת, גלילה ותחתית
 /**
  * Frame for every inner driver screen: the night hero with its title, and
  * the content rising over its lower edge on the cool canvas.
@@ -418,9 +436,11 @@ export function DriverPage({
   );
 }
 
+// אותה מסגרת בשם כללי
 /** The same frame, named for what it is now: every phone screen, driver's and manager's. */
 export const KitPage = DriverPage;
 
+// צבע כהה שמופיע כשמושכים את הדף למטה
 /**
  * Pulling a page down past its top shows what is behind the scroll view.
  * Night fills the upper half there, so the hero seems to stretch instead of
@@ -432,10 +452,12 @@ export function NightUnderlay() {
 
 // ── Surfaces ──────────────────────────────────────────────────────────────
 
+// כרטיס לבן
 export function Surface({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   return <View style={[styles.surface, style]}>{children}</View>;
 }
 
+// כותרת חלק
 export function SectionHeader({ title, trailing }: { title: string; trailing?: ReactNode }) {
   return (
     <View style={styles.sectionHeader}>
@@ -447,6 +469,7 @@ export function SectionHeader({ title, trailing }: { title: string; trailing?: R
   );
 }
 
+// תגית מצב
 export function StatusChip({ status, label, onNight = false }: { status: Status; label?: string; onNight?: boolean }) {
   const s = STATUS[status];
   return (
@@ -459,6 +482,7 @@ export function StatusChip({ status, label, onNight = false }: { status: Status;
   );
 }
 
+// מד תוקף: כותרת, תאריך ופס
 /**
  * A validity gauge: label and status on one line, the date under it, and a
  * bar that fills (from the right, in reading order) to how much validity is
@@ -524,6 +548,7 @@ export function Gauge({
   );
 }
 
+// לוחית רישוי ישראלית
 /** Israeli plate: yellow field, blue IL strip, number in reading order. */
 export function Plate({ number, size = 'md' }: { number: string; size?: 'sm' | 'md' | 'lg' }) {
   const lg = size === 'lg';
@@ -544,6 +569,7 @@ export function Plate({ number, size = 'md' }: { number: string; size?: 'sm' | '
   );
 }
 
+// שורה לחיצה עם אייקון
 /** A tappable list row with an icon tile (or its own `leading` art). 60pt tall for comfortable thumbs. */
 export function ListRow({
   icon,
@@ -603,6 +629,7 @@ export function ListRow({
   );
 }
 
+// כפתור ראשי כחול
 export function PrimaryAction({
   label,
   icon,
@@ -645,10 +672,12 @@ export function PrimaryAction({
   );
 }
 
+// עיצוב הערכה
 const styles = StyleSheet.create({
   focusRing: Platform.select({ web: { outlineStyle: 'solid', outlineWidth: 2, outlineColor: DK.accent, outlineOffset: 3, borderRadius: 16 } as any, default: {} }),
   disabled: { opacity: 0.45 },
 
+  // הכותרת הכהה
   hero: {
     overflow: 'hidden',
     borderBottomStartRadius: 36,
@@ -664,12 +693,14 @@ const styles = StyleSheet.create({
   // nothing inside their own box, so no edge can ever show (a CSS blur
   // filter is clipped to a hard square on iOS).
   glow: { position: 'absolute' },
+  // זוהר כחול
   glowBlue: {
     width: 420,
     height: 420,
     end: -170,
     backgroundImage: 'radial-gradient(closest-side, rgba(47,91,255,0.42), rgba(47,91,255,0.16) 55%, rgba(47,91,255,0) 100%)',
   } as any,
+  // זוהר תכלת
   glowCyan: {
     width: 320,
     height: 320,
@@ -680,6 +711,7 @@ const styles = StyleSheet.create({
   heroRing: { position: 'absolute' },
   statusBand: { position: 'absolute', top: 0, start: 0, end: 0, backgroundColor: DK.night[0] },
   heroContent: { paddingHorizontal: DK_SPACE.lg, width: '100%', maxWidth: 560, alignSelf: 'center' },
+  // כפתור עגול על הכותרת
   heroButton: {
     width: 48,
     height: 48,
@@ -716,6 +748,7 @@ const styles = StyleSheet.create({
   nightBarText: { flex: 1, gap: 1 },
   heroSubtitle: { marginTop: 6 },
 
+  // הדף
   page: { flex: 1, backgroundColor: DK.canvas },
   pageScroll: { flex: 1 },
   pageContent: { flexGrow: 1, backgroundColor: DK.canvas },
@@ -732,6 +765,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
 
+  // כרטיס לבן
   surface: {
     backgroundColor: DK.surface,
     borderRadius: DK_RADIUS.card,
@@ -745,6 +779,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 10,
   },
+  // תגית
   chip: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -754,6 +789,7 @@ const styles = StyleSheet.create({
     borderRadius: DK_RADIUS.pill,
   },
 
+  // מד התוקף
   gauge: { paddingHorizontal: DK_SPACE.lg, paddingVertical: 16, gap: 8 },
   gaugeDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: DK.hairline },
   gaugeTop: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
@@ -761,6 +797,7 @@ const styles = StyleSheet.create({
   track: { height: 6, borderRadius: 3, backgroundColor: '#E9EDF3', overflow: 'hidden' },
   trackFill: { ...StyleSheet.absoluteFill, borderRadius: 3, transformOrigin: 'right' },
 
+  // לוחית הרישוי
   plate: {
     flexDirection: 'row',
     borderRadius: 10,

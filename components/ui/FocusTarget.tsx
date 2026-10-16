@@ -1,3 +1,4 @@
+// הדגשת שדה שהתראה מפנה אליו
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, View, type ScrollView, type StyleProp, type ViewStyle } from 'react-native';
 
@@ -15,11 +16,15 @@ interface FocusContext {
   register: (id: string, node: View) => void;
 }
 
+// השדות להדגשה
 const Ctx = createContext<FocusContext>({ keys: [], register: () => {} });
 
+// עקומת אנימציה
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+// האם האנימציה רצה בטלפון
 const NATIVE_DRIVER = Platform.OS !== 'web';
 
+// רשימת השדות מטקסט
 /** "license_expiry,license_number" or ['license_expiry'] -> ['license_expiry', 'license_number']. */
 export function focusKeys(focus: string | readonly string[] | null | undefined): string[] {
   if (!focus) return [];
@@ -27,6 +32,7 @@ export function focusKeys(focus: string | readonly string[] | null | undefined):
   return list.map((key) => key.trim()).filter(Boolean);
 }
 
+// גולל לשדה
 function scrollToNode(node: View, scrollRef: RefObject<ScrollView | null> | undefined, reduce: boolean) {
   if (Platform.OS === 'web') {
     const element = node as unknown as { scrollIntoView?: (options: ScrollIntoViewOptions) => void };
@@ -44,6 +50,7 @@ function scrollToNode(node: View, scrollRef: RefObject<ScrollView | null> | unde
   );
 }
 
+// האם המשתמש ביקש פחות אנימציות
 function useReduceMotion() {
   const [reduce, setReduce] = useState(false);
   useEffect(() => {
@@ -58,6 +65,7 @@ function useReduceMotion() {
   return reduce;
 }
 
+// מנהל את ההדגשה במסך
 export function FocusTargetProvider({
   focus,
   scrollRef,
@@ -101,6 +109,7 @@ export function FocusTargetProvider({
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
+// עוטף שדה ומדגיש אותו כשצריך
 /**
  * Wraps one field or row. `id` may list several keys ("license_expiry,license")
  * when one row stands for more than one thing.
@@ -154,6 +163,7 @@ export function FocusTarget({
   );
 }
 
+// עיצוב הזוהר
 const styles = StyleSheet.create({
   glow: { borderWidth: 2, margin: -2 },
 });

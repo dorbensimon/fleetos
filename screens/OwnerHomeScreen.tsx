@@ -1,3 +1,4 @@
+// מסך הבית של הבעלים (חדר הבקרה)
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,12 +40,14 @@ import { errorMessage } from '../lib/requestError';
  * owns loading and the handlers the views and sheets call back into.
  */
 
+// מסדר שורת חברה
 function toCompanyRow(h: CompanyHealth): CompanyRow {
   return { ...h.company, admins: h.admins, drivers: h.drivers };
 }
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OwnerHome'>;
 
+// טוען נתונים ומציג מחשב או טלפון
 export default function OwnerHomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();

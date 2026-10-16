@@ -1,3 +1,4 @@
+// מציג מסמכים במחשב: עמודים גדולים עם הגדלה
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,14 +17,19 @@ import { errorMessage } from '../../../lib/requestError';
  * viewer inside the same stage.
  */
 
+// רמות ההגדלה
 const ZOOMS = [0.6, 0.8, 1, 1.25, 1.5, 2];
+// האם המשתמש ביקש פחות אנימציות
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+// תאריך קצר
 const day = (date: string) => new Date(date).toLocaleDateString(getLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
 
+// רוחב הדף לפי החלון
 function baseWidth() {
   return Math.max(320, Math.min(860, window.innerWidth - 200));
 }
 
+// עמוד אחד של PDF
 function Page({ pdf, number, width, index }: { pdf: LoadedPdf; number: number; width: number; index: number }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const token = useRef(0);
@@ -59,6 +65,7 @@ function Page({ pdf, number, width, index }: { pdf: LoadedPdf; number: number; w
   );
 }
 
+// המציג: כותרת, הורדה, הגדלה ועמודים
 export function DocumentViewer({
   src,
   title,
@@ -267,6 +274,7 @@ export function DocumentViewer({
   );
 }
 
+// עיצוב המציג (CSS)
 const VIEWER_CSS = `
 .dv-root {
   --dv-ease: cubic-bezier(0.23, 1, 0.32, 1);

@@ -1,3 +1,4 @@
+// אבני הבניין של דפי התיק במחשב: כותרת כחולה, מספרים גדולים ושורות פרטים
 import React, { useEffect, useRef, useState } from 'react';
 import { FocusTarget } from '../../ui/FocusTarget';
 import { StyleSheet, View } from 'react-native';
@@ -25,6 +26,7 @@ import { t, dirIcon } from '../../../lib/i18n';
  * shared page styles, so both pages look and behave the same.
  */
 
+// משאיר רק ספרות
 export const digitsOnly = (v: string) => v.replace(/\D/g, '');
 
 // ---------------------------------------------------------------------------
@@ -75,12 +77,14 @@ export type FieldEditor =
       onSave: (first: string | null, second: string | null) => Promise<string | null>;
     };
 
+// האם העורך ריק
 function isEmptyEditor(editor: FieldEditor) {
   if (editor.kind === 'monthYear') return !editor.year;
   if (editor.kind === 'selectPair') return !editor.raw[0] && !editor.raw[1];
   return !editor.raw;
 }
 
+// חלון עריכת שדה (תאריכים ובחירות)
 export function FieldEditDialog({ editor, onClose }: { editor: FieldEditor | null; onClose: () => void }) {
   const [text, setText] = useState('');
   const [choice, setChoice] = useState<string | null>(null);
@@ -212,6 +216,7 @@ export function FieldEditDialog({ editor, onClose }: { editor: FieldEditor | nul
   );
 }
 
+// שורת פרט עם 'עריכה'
 /**
  * One detail row: label, value, and a faint "עריכה" that turns blue on hover.
  * A row given `edit` (free text) turns into an input in place, with ✓ / ✕
@@ -378,6 +383,7 @@ export function DetailRow({
   return focusId ? <FocusTarget id={focusId} radius={6} tint={DESKTOP_COLORS.brand}>{row}</FocusTarget> : row;
 }
 
+// כותרת קבוצה
 export function GroupLabel({ children, action }: { children: string; action?: React.ReactNode }) {
   return (
     <View style={pageStyles.groupLabelRow}>
@@ -387,6 +393,7 @@ export function GroupLabel({ children, action }: { children: string; action?: Re
   );
 }
 
+// מספר גדול בכותרת
 /** One of the header's big numbers. */
 /** `onDark` is for a fact sitting on the night header (the vehicle card). */
 export function Fact({ label, value, unit, color, muted, onDark }: { label: string; value: string; unit?: string; color?: string; muted?: boolean; onDark?: boolean }) {
@@ -401,13 +408,18 @@ export function Fact({ label, value, unit, color, muted, onDark }: { label: stri
   );
 }
 
+// צבעי תוקף שקריאים על הכותרת הכהה
 /** Expiry colours readable on the night header. */
 export const NIGHT_TONES = { bad: '#FF8A80', warn: '#FFC266' } as const;
 
+// צל של כרטיס
 export const CARD_SHADOW = '0 1px 2px rgba(22,34,46,0.04), 0 2px 10px rgba(22,34,46,0.035)';
 
+// עיצוב דפי התיק (משמש גם בדפים אחרים)
 export const pageStyles = StyleSheet.create({
+  // הרקע של הדף
   root: { flex: 1, backgroundColor: DESKTOP_COLORS.canvas },
+  // אזור התוכן (רוחב 1160)
   content: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 48, maxWidth: 1160, width: '100%', alignSelf: 'center', gap: 12 },
   flex: { flex: 1, minWidth: 0 },
   pressDown: { transform: [{ scale: 0.97 }] },
@@ -419,6 +431,7 @@ export const pageStyles = StyleSheet.create({
     animationFillMode: 'backwards',
   }),
 
+  // הכותרת
   // Header
   hero: {
     flexDirection: 'row-reverse',
@@ -435,11 +448,13 @@ export const pageStyles = StyleSheet.create({
   },
   heroIdentity: { flex: 1, minWidth: 200, gap: 1 },
   heroStatusRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, marginBottom: 3 },
+  // השם בכותרת
   heroName: { fontSize: 21, letterSpacing: -0.2, lineHeight: 26 },
   heroSub: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
   heroSubText: { fontSize: 14, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   heroSubDot: { fontSize: 14, color: DESKTOP_COLORS.inkFaint },
 
+  // שורת המספרים הגדולים
   facts: { flexDirection: 'row-reverse' },
   fact: { paddingHorizontal: 16, gap: 0, borderEndWidth: 1, borderEndColor: DESKTOP_COLORS.border },
   factLabel: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
@@ -447,6 +462,7 @@ export const pageStyles = StyleSheet.create({
   factValue: { fontSize: 17, color: DESKTOP_COLORS.ink, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   factValueMuted: { fontSize: 14, color: DESKTOP_COLORS.inkFaint },
   factUnit: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
+  // הכותרת הכחולה הכהה
   // The night header of the safety officer check (DK.night), with the same blue and cyan light.
   heroNight: {
     backgroundColor: '#12306E',
@@ -455,7 +471,9 @@ export const pageStyles = StyleSheet.create({
     ...webOnly({ backgroundImage: 'linear-gradient(180deg, #12306E 0%, #0B1C45 60%, #0A1626 100%)', boxShadow: '0 18px 40px -18px rgba(10,22,38,0.55)', isolation: 'isolate' }),
   },
   heroGlow: { position: 'absolute' },
+  // זוהר כחול בפינה
   heroGlowBlue: { width: 420, height: 420, top: -200, end: -150, ...webOnly({ backgroundImage: 'radial-gradient(closest-side, rgba(47,91,255,0.42), rgba(47,91,255,0.16) 55%, rgba(47,91,255,0) 100%)' }) },
+  // זוהר תכלת בפינה
   heroGlowCyan: { width: 320, height: 320, bottom: -220, start: -80, ...webOnly({ backgroundImage: 'radial-gradient(closest-side, rgba(25,198,240,0.28), rgba(25,198,240,0) 100%)' }) },
   heroNameOnDark: { color: '#FFFFFF' },
   pillOnDark: { backgroundColor: '#FFFFFF', borderRadius: 999 },
@@ -465,10 +483,12 @@ export const pageStyles = StyleSheet.create({
   factLabelOnDark: { color: 'rgba(255,255,255,0.66)' },
   factValueOnDark: { color: '#FFFFFF' },
 
+  // פס 'בארכיון'
   // Archived / attention
   archivedBanner: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 14, backgroundColor: '#EEF1F4', borderWidth: 1, borderColor: DESKTOP_COLORS.border },
   archivedTitle: { fontSize: 14.5 },
   archivedText: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted },
+  // אזור 'דורש טיפול'
   attention: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 10, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 14, backgroundColor: '#FFF6EA', borderWidth: 1, borderColor: '#F6DDB9' },
   attentionIcon: { marginTop: 2 },
   attentionTitle: { fontSize: 14.5, color: '#7A3E00', marginBottom: 2 },
@@ -546,10 +566,12 @@ export const pageStyles = StyleSheet.create({
   docsHead: { marginTop: 10, paddingHorizontal: 4, gap: 1 },
   docsTitle: { fontSize: 18, letterSpacing: -0.2 },
 
+  // כפתור ראשי
   // Buttons
   primaryBtn: { height: 40, paddingHorizontal: 16, borderRadius: 10, backgroundColor: DESKTOP_COLORS.brand, flexDirection: 'row-reverse', alignItems: 'center', gap: 8, ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW, transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
   primaryBtnHover: { backgroundColor: DESKTOP_COLORS.brandHover },
   primaryBtnText: { fontSize: 14.5, color: '#FFFFFF' },
+  // כפתור פשוט
   plainBtn: { height: 40, paddingHorizontal: 16, borderRadius: 10, backgroundColor: '#EEF1F4', flexDirection: 'row-reverse', alignItems: 'center', gap: 8, ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
   plainBtnHover: { backgroundColor: '#E5E9ED' },
   plainBtnText: { fontSize: 14.5, color: DESKTOP_COLORS.ink },

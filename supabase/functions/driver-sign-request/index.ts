@@ -1,3 +1,4 @@
+// פונקציית שרת: הנהג חותם על משטח החתימה של האפליקציה
 import { corsHeaders } from '../_shared/cors.ts';
 import { docusealFetch } from '../_shared/docuseal.ts';
 import { signaturePng } from '../_shared/checklistDocument.ts';
@@ -15,35 +16,44 @@ import { verifyUser } from '../_shared/verifyUser.ts';
  *              field with today, completes the submitter, and stores the PDF.
  */
 
+// שדה התאריך בנייר המכתבים
 const LETTERHEAD_DATE_FIELD = 'תאריך המסמך';
+// כמה זמן נעילה בזמן חתימה
 const SIGN_LOCK_MINUTES = 3;
+// סוגי שדות חתימה
 const SIGN_TYPES = new Set(['signature', 'initials']);
 
 type TemplateField = { name?: string; type?: string; readonly?: boolean; submitter_uuid?: string; preferences?: Record<string, unknown> };
 type RemoteTemplate = { fields?: TemplateField[]; documents?: Array<{ url?: string }> };
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
+// המתנה
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// התאריך של היום בישראל
 function israelToday(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem' }).format(new Date());
 }
 
+// השדות שהנהג ממלא
 /** The fields the driver fills: everything the app did not fill for them. */
 function driverFields(template: RemoteTemplate): TemplateField[] {
   return (template.fields ?? []).filter((field) => !field.readonly
     && !(field.name && (field.name in PREFILL_LABELS || field.name === LETTERHEAD_DATE_FIELD)));
 }
 
+// האם צריך רק חתימה
 function isSignOnly(fields: TemplateField[]): boolean {
   return fields.length > 0
     && fields.some((field) => SIGN_TYPES.has(field.type ?? ''))
     && fields.every((field) => SIGN_TYPES.has(field.type ?? '') || field.type === 'date');
 }
 
+// טוען את התבנית
 async function loadTemplate(submissionId: number): Promise<RemoteTemplate | null> {
   const submission = await docusealFetch(`/submissions/${submissionId}`);
   if (!submission.ok) return null;
@@ -54,6 +64,7 @@ async function loadTemplate(submissionId: number): Promise<RemoteTemplate | null
   return await response.json() as RemoteTemplate;
 }
 
+// מקבל בקשה ושולח את החתימה
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);

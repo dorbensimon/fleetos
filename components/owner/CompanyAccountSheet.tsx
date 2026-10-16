@@ -1,3 +1,4 @@
+// עריכת המנוי של חברה (בעלים)
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { DK, DKText, EditField, KitSection, KitSheet, PrimaryAction, SheetActions, Surface } from '../driverKit';
@@ -26,6 +27,7 @@ import { t } from '../../lib/i18n';
 
 type Errors = Partial<Record<keyof AccountForm, string>>;
 
+// שדות המנוי
 export function AccountFields({
   form,
   errors,
@@ -138,6 +140,7 @@ export function AccountFields({
   );
 }
 
+// החלון
 export function CompanyAccountSheet({
   companyId,
   companyName,
@@ -212,6 +215,7 @@ export function CompanyAccountSheet({
   );
 }
 
+// עיצוב החלון
 const styles = StyleSheet.create({
   stack: { gap: 20 },
   block: { paddingHorizontal: 16, paddingVertical: 14, gap: 10 },

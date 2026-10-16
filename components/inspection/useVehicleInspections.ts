@@ -1,3 +1,4 @@
+// הבדיקות של רכב אחד
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -15,6 +16,7 @@ import { errorMessage } from '../../lib/requestError';
 
 export type VehicleInspectionEntry = { row: InspectionListRow; state: InspectionState };
 
+// מתי הבדיקה הבאה, הזזה שלה והיסטוריה
 /**
  * One vehicle's safety inspections, for its card: when the next one is due,
  * a way to move that date, and every inspection it had, newest first.

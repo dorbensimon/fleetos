@@ -1,3 +1,4 @@
+// דף 'הפרטים שלי' של המנהל - תצוגת מחשב
 import React from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { BrandLoader } from '../ui/BrandLoader';
@@ -11,6 +12,7 @@ import { t, dirIcon, textStart } from '../../lib/i18n';
 import { companyTypeLabel } from '../../lib/companyType';
 import { pageStyles } from './record/RecordPage';
 
+// הדף: כותרת כחולה וכרטיסי פרטים אישיים, חברה ואבטחה
 /**
  * Desktop body of the admin's own profile: an identity card plus grouped
  * detail cards (personal/company/security), in a single centered column
@@ -119,6 +121,7 @@ export function AdminProfileDesktopView({
   );
 }
 
+// כרטיס של קבוצת פרטים
 function Group({ title, icon, children }: { title?: string; icon?: React.ComponentProps<typeof Ionicons>['name']; children: React.ReactNode }) {
   return (
     <View style={styles.group}>
@@ -128,6 +131,7 @@ function Group({ title, icon, children }: { title?: string; icon?: React.Compone
   );
 }
 
+// שורת פרט לקריאה בלבד
 function StaticRow({
   icon,
   label,
@@ -148,6 +152,7 @@ function StaticRow({
   );
 }
 
+// שורת פרט שאפשר לערוך
 function EditableRow({
   icon,
   label,
@@ -191,14 +196,19 @@ function EditableRow({
   );
 }
 
+// עיצוב דף הפרטים
 const styles = StyleSheet.create({
+  // הרקע של הדף
   root: { flex: 1 },
+  // אזור התוכן (רוחב מקסימלי)
   content: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 48, gap: 16, maxWidth: 1160, width: '100%', alignSelf: 'center' },
+  // עיגול ראשי התיבות
   avatar: { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontSize: 20, textAlign: 'center' },
   identityMeta: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, paddingHorizontal: 18, borderStartWidth: 1, borderStartColor: 'rgba(255,255,255,0.14)' },
   identityMetaLabel: { fontSize: 12.5, color: 'rgba(255,255,255,0.7)' },
   activeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: DESKTOP_TONES.ok.fg },
+  // כפתור העריכה
   editButton: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -213,14 +223,17 @@ const styles = StyleSheet.create({
   pressDown: webOnly({ transform: 'scale(0.97)' }),
   editButtonText: { fontSize: 13, color: '#fff' },
 
+  // שתי העמודות
   workspace: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 20 },
   primaryColumn: { flex: 1, gap: 20 },
   sideColumn: { width: 330, gap: 20 },
+  // קבוצת פרטים
   group: { gap: 9 },
   groupHeading: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   groupTitle: { fontSize: 15, color: DESKTOP_COLORS.ink },
   groupCard: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 14, overflow: 'hidden' },
   detailGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap' },
+  // שורת פרט
   row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 16, minHeight: 58, paddingVertical: 10, width: '50%', borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
   rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
@@ -240,6 +253,7 @@ const styles = StyleSheet.create({
   memberValue: { fontSize: 13, color: DESKTOP_COLORS.ink, marginTop: 2 },
 
   inputWrap: { minWidth: 160, alignItems: 'flex-end' },
+  // תיבת עריכה
   input: {
     fontSize: 12.5,
     color: DESKTOP_COLORS.ink,

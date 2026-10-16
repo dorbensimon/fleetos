@@ -1,3 +1,4 @@
+// מסך הדוחות (טלפון)
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
@@ -22,6 +23,7 @@ import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reports'>;
+// בחירת סוג דוח והורדה
 export default function ReportsScreen({ navigation }: Props) {
   const { companyId, company } = useCompany(); const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
@@ -170,6 +172,7 @@ export default function ReportsScreen({ navigation }: Props) {
     </DriverPage>
   );
 }
+// עיצוב המסך
 const s = StyleSheet.create({
   segment: { marginTop: 18 },
   download: { width: 36, height: 36, borderRadius: 12, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },

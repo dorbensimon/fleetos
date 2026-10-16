@@ -1,3 +1,4 @@
+// מסך דף משפטי (תנאים, פרטיות, עוגיות, נגישות)
 import React from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +12,7 @@ import { t } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Legal'>;
 
+// המסך
 /**
  * A legal page — terms, privacy, cookies or the accessibility statement.
  * Reachable by address (/legal/privacy) without signing in, from the login

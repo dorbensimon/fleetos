@@ -1,9 +1,11 @@
+// מי רשאי לפתוח כל מסך
 import type { RootStackParamList } from '../navigation/types';
 import type { UserRole } from './supabase';
 
 type RouteName = keyof RootStackParamList;
 type Access = 'public' | readonly UserRole[];
 
+// הרשאות לכל מסך לפי תפקיד
 /**
  * Who may open each screen. Every screen is registered in one stack and on
  * web each one has its own URL, so the browser's back button, a bookmark or
@@ -60,10 +62,12 @@ const ROUTE_ACCESS: Record<RouteName, Access> = {
   DriverSigningDocuments: ['admin', 'driver'],
 };
 
+// האם המסך פתוח גם בלי התחברות
 export function isPublicRoute(name: string): boolean {
   return ROUTE_ACCESS[name as RouteName] === 'public';
 }
 
+// האם משתמש בתפקיד הזה יכול לפתוח את המסך
 /** Whether a signed-in user with `role` may be on the screen `name`. */
 export function canOpenRoute(role: UserRole, name: string): boolean {
   const access = ROUTE_ACCESS[name as RouteName];

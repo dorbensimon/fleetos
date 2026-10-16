@@ -1,3 +1,4 @@
+// פעמון ההתראות בסרגל העליון
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,7 +31,9 @@ import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktopTheme';
 import { HeaderMenuBackdrop, headerMenuEnter, headerMenuStyles, useHeaderMenu } from './headerMenu';
 import { t, dirIcon } from '../../lib/i18n';
 
+// כמה התראות מוצגות ברשימה הנפתחת
 const PREVIEW_COUNT = 6;
+// ספרות ברוחב אחיד
 const TABULAR = webOnly({ fontVariantNumeric: 'tabular-nums' });
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -49,6 +52,7 @@ type Feed<T> = {
   withRead: (item: T, at: string) => T;
 };
 
+// הפעמון של המנהל
 /**
  * The top bar's bell: the unread count on the badge, and a dropdown of the
  * latest notifications. A row opens the record it talks about (same rule as
@@ -86,6 +90,7 @@ export function NotificationsBell({ companyId, role }: { companyId: string; role
   return <Bell feed={feed} refreshKey={companyId} />;
 }
 
+// אייקון לכל התראת בעלים
 const OWNER_ICON: Record<OwnerNotification['notification_type'], IconName> = {
   owner_company_activated: 'rocket-outline',
   owner_admin_added: 'person-add-outline',
@@ -97,6 +102,7 @@ const OWNER_ICON: Record<OwnerNotification['notification_type'], IconName> = {
   owner_vehicle_limit: 'trending-up-outline',
 };
 
+// הפעמון של הבעלים
 export function OwnerNotificationsBell() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const feed: Feed<OwnerNotification> = {
@@ -126,6 +132,7 @@ export function OwnerNotificationsBell() {
   return <Bell feed={feed} refreshKey="owner" />;
 }
 
+// הפעמון: מספר לא נקראו ורשימה נפתחת
 function Bell<T extends { id: string }>({ feed, refreshKey }: { feed: Feed<T>; refreshKey: string }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const menu = useHeaderMenu('notifications');
@@ -319,7 +326,9 @@ function Bell<T extends { id: string }>({ feed, refreshKey }: { feed: Feed<T>; r
   );
 }
 
+// עיצוב הפעמון
 const styles = StyleSheet.create({
+  // כפתור הפעמון
   bell: {
     width: 32,
     height: 32,
@@ -333,6 +342,7 @@ const styles = StyleSheet.create({
   },
   bellHover: { backgroundColor: DESKTOP_COLORS.canvas },
   bellOpen: { backgroundColor: DESKTOP_COLORS.canvas },
+  // המספר האדום
   badge: {
     position: 'absolute',
     top: -6,
@@ -353,6 +363,7 @@ const styles = StyleSheet.create({
   state: { alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 32, paddingHorizontal: 18 },
   stateText: { fontSize: 13, color: DESKTOP_COLORS.inkMuted, textAlign: 'center' },
   retry: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  // שורת התראה
   row: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -368,5 +379,6 @@ const styles = StyleSheet.create({
   message: { fontSize: 13, lineHeight: 18, color: DESKTOP_COLORS.ink },
   messageSoft: { color: DESKTOP_COLORS.inkMuted },
   time: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint },
+  // נקודת 'לא נקרא'
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: DESKTOP_COLORS.brand },
 });

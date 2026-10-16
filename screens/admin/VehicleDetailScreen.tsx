@@ -1,3 +1,4 @@
+// תיק רכב
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FocusTargetProvider } from '../../components/ui/FocusTarget';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -30,6 +31,7 @@ import { errorMessage } from '../../lib/requestError';
 type Tab = 'general' | 'maintenance' | 'documents' | 'drivers' | 'licensing';
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleDetail'>;
 type MaintForm = { odometer: string; last_service_km: string; service_interval_km: string; next_service_km: string };
+// תיקיות המסמכים של רכב
 const VEHICLE_DOCUMENT_FOLDERS = [
   { category: 'safety_officer_approval', get title() { return t('folder.safetyOfficerApproval'); }, icon: 'shield-checkmark-outline', color: '#34C759', requiresExpiry: true },
   { category: 'tachograph_calibration', get title() { return t('folder.tachographValidity'); }, icon: 'speedometer-outline', color: '#5E5CE6', requiresExpiry: true },
@@ -39,11 +41,15 @@ const VEHICLE_DOCUMENT_FOLDERS = [
   { category: 'child_detection', get title() { return t('folder.childLeftBehind'); }, icon: 'eye-outline', color: '#AF52DE', requiresExpiry: true },
   { category: 'general', get title() { return t('folder.generalDocs'); }, icon: 'folder-open-outline', color: '#8E8E93', requiresExpiry: true },
 ] as const;
+// האם הערך הוא לשונית חוקית
 const isVehicleTab = (value: unknown): value is Tab => value === 'general' || value === 'maintenance' || value === 'documents' || value === 'drivers' || value === 'licensing';
+// מספר או ריק
 const numberOrNull = (value: string) => { const n = Number(value.replace(/[^\d.-]/g, '')); return Number.isFinite(n) ? n : null; };
+// טוען את נהגי הרכב
 // The batched variant also carries each driver's license expiry, shown next to the driver on the desktop card.
 const loadVehicleDrivers = async (vehicleId: string) => (await listActiveVehicleDriversForVehicles([vehicleId])).get(vehicleId) ?? [];
 
+// המסך: טעינה ופעולות, מחשב או טלפון
 export default function VehicleDetailScreen({ route, navigation }: Props) {
   const { vehicleId } = route.params;
   const { companyId } = useCompany();
@@ -295,4 +301,5 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   );
 }
 
+// עיצוב מצב ריק
 const s = StyleSheet.create({ empty: { padding: SPACING.xl, alignItems: 'center' } });

@@ -1,3 +1,4 @@
+// פונקציית שרת: שחזור נהג מהארכיון
 // Edge Function: restore-company-driver
 //
 // The exact inverse of archive-company-driver: brings a driver back to
@@ -8,12 +9,14 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
 
+// תשובת JSON
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
+// משחזר
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

@@ -1,8 +1,10 @@
+// מסך ישן - מעביר למקום החדש
 import { useEffect } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useCompany } from '../../lib/CompanyContext';
 import type { RootStackParamList } from '../../navigation/types';
 
+// מפנה לתיק הנהג
 /** Compatibility for old bookmarks. Sending now lives in the driver dossier. */
 export default function AdminDocumentSigningScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'AdminDocumentSigning'>) {
   const { profile, loading } = useCompany();

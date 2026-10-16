@@ -1,9 +1,11 @@
+// שורה עם כותרת וערך
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { DriverCardIcon } from './DriverCardIcon';
 import { DC_COLORS, DC_SPACING, DC_TYPO } from './driverCardTheme';
 import type { DriverCardValueRow } from './driverCardSections';
 import { textDirection } from '../../lib/i18n';
 
+// אייקון, כותרת וערך
 export function ListRowValue({
   row,
   showSeparator,
@@ -43,7 +45,9 @@ export function ListRowValue({
   return <View style={styles.row}>{content}</View>;
 }
 
+// עיצוב השורה
 const styles = StyleSheet.create({
+  // השורה
   row: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -53,6 +57,7 @@ const styles = StyleSheet.create({
   rowPressed: {
     backgroundColor: 'rgba(0,0,0,0.04)',
   },
+  // ריבוע האייקון
   iconSquare: {
     width: DC_SPACING.iconSquare,
     height: DC_SPACING.iconSquare,

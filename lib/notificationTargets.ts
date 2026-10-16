@@ -1,3 +1,4 @@
+// לאן כל התראה מובילה כשלוחצים עליה
 import type { NavigationProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../navigation/types';
 import type { Notification } from './adminApi/types';
@@ -31,13 +32,16 @@ export type NotificationTargetFields = Pick<
   'notification_type' | 'actor_id' | 'recipient_id' | 'vehicle_id' | 'folder_key' | 'message' | 'company_id' | 'signature_request_id'
 >;
 
+// שדות הרישיון שמסומנים יחד
 /** The three license fields, lit up together when a license request was reviewed. */
 export const LICENSE_FOCUS = 'license_number,license_classes,license_expiry';
 
+// האם ההתראה קשורה לרכב
 export function isVehicleNotificationType(type: string | null | undefined): boolean {
   return !!type && (type.startsWith('vehicle_') || isVehicleFolderNotification(type));
 }
 
+// היעד של התראה לנהג
 /**
  * A driver only sees notifications addressed to them; each opens the exact
  * place it talks about: the document to sign, the changed field, the
@@ -66,6 +70,7 @@ export function driverNotificationTarget(n: NotificationTargetFields): Notificat
   return null;
 }
 
+// היעד של התראה למנהל
 /**
  * Managers: vehicle alerts open that vehicle (and the folder of an expiry
  * alert), a document a driver uploaded opens that driver's folder, and a
@@ -162,6 +167,7 @@ export async function adminNotificationTarget<N extends NotificationTargetFields
   return null;
 }
 
+// היעד של התראה לפי סוג המשתמש
 export function notificationTarget<N extends NotificationTargetFields>(
   role: UserRole | null | undefined,
   n: N,
@@ -171,6 +177,7 @@ export function notificationTarget<N extends NotificationTargetFields>(
   return adminNotificationTarget(n, resolveVehicleId);
 }
 
+// פותח את המסך שההתראה מדברת עליו
 export function navigateToNotificationTarget(
   navigation: { navigate: NavigationProp<RootStackParamList>['navigate'] },
   target: NotificationTarget,

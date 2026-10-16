@@ -1,3 +1,4 @@
+// תיק נהג - תצוגת מחשב
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,23 +50,29 @@ import { t, dirIcon } from '../../lib/i18n';
 
 type DriverPatch = Partial<DriverDetails> & { full_name?: string | null; phone?: string | null };
 
+// תיקיית תמונות הרישיון
 const LICENSE_FOLDER = 'license_docs';
 
+// תיקיות המסמכים של הנהג
 /** Driver folders take uploads without an expiry date, as on the phone. */
 const DOCUMENT_FOLDERS = (): RecordDocumentFolder[] => DRIVER_DOCUMENT_GROUPS.flatMap((group) =>
   group.folders.map((folder) => ({ ...folder, requiresExpiry: false })),
 );
+// קבוצות התיקיות
 // The two short groups sit last, so the three columns end as evenly as possible.
 const DOCUMENT_GROUPS = [...DRIVER_DOCUMENT_GROUPS].sort((a, b) => b.folders.length - a.folders.length);
 
+// דרגות הרישיון לבחירה בחלון העריכה
 // The form's labels carry full weight/passenger limits; the edit window shows only the class and its name.
 const LICENSE_CLASS_SELECT = () => LICENSE_CLASS_OPTIONS.map((option) => ({ value: option.value, label: option.label.split(',')[0].trim() }));
 
+// צבע לפי מצב תוקף
 const EXPIRY_COLOR: Partial<Record<ExpiryState, string>> = {
   expired: DESKTOP_TONES.bad.fg,
   soon: DESKTOP_TONES.warn.fg,
 };
 
+// כמה חודשים עברו מתאריך
 /** Whole months from a date until today. */
 function monthsSince(date: string): number {
   const from = parseDateValue(date);
@@ -75,6 +82,7 @@ function monthsSince(date: string): number {
   return Math.max(0, months);
 }
 
+// כמה זמן עבר, במילים
 /** "7.5 שנים", "8 חודשים" — how long ago a date was, in plain words. */
 function tenure(date: string | null | undefined): { value: string; unit: string } | null {
   if (!date) return null;
@@ -84,8 +92,10 @@ function tenure(date: string | null | undefined): { value: string; unit: string 
   return { value: Number.isInteger(years) ? String(years) : years.toFixed(1), unit: years === 1 ? t('date.year') : t('common.years') };
 }
 
+// ראשי תיבות
 const initialsOf = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('') || '?';
 
+// התיק: כותרת, פרטים, רישיון, רכבים, מסמכים וטפסים
 export function DriverDetailDesktopView({
   driverId,
   companyId,
@@ -590,6 +600,7 @@ export function DriverDetailDesktopView({
   );
 }
 
+// הרישיון מצויר ככרטיס קטן
 /**
  * The driving licence drawn as a small card — the driver page's counterpart
  * of the vehicle page's licence plate. Tapping it opens the licence photos.
@@ -657,8 +668,10 @@ function LicenceCard({
   );
 }
 
+// צבע הטקסט של הרישיון
 const LICENCE_INK = '#4A2F48';
 
+// עיצוב תיק הנהג
 const styles = StyleSheet.create({
   ...pageStyles,
 
@@ -668,6 +681,7 @@ const styles = StyleSheet.create({
 
   // Header portrait
   heroWho: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14 },
+  // עיגול התמונה/ראשי התיבות
   portrait: {
     width: 60,
     height: 60,
@@ -696,6 +710,7 @@ const styles = StyleSheet.create({
 
   // Licence card
   licenceArea: { padding: 14, paddingBottom: 12 },
+  // כרטיס הרישיון
   licence: {
     height: 150,
     borderRadius: 12,
@@ -740,16 +755,19 @@ const styles = StyleSheet.create({
   licenceExpiry: { flexDirection: 'row-reverse', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 1, borderRadius: 999, backgroundColor: '#FFFFFF' },
   licenceExpiryText: { fontSize: 11.5, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
 
+  // שורת תמונות הרישיון
   photosRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, minHeight: 42, paddingHorizontal: 16, paddingVertical: 7, ...webOnly({ transition: 'background-color 150ms ease' }) },
   sideChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 3, height: 22, paddingHorizontal: 8, borderRadius: 11, backgroundColor: DESKTOP_TONES.ok.bg },
   sideChipMissing: { backgroundColor: '#EEF1F4' },
   sideChipText: { fontSize: 12.5, color: DESKTOP_TONES.ok.fg },
   sideChipTextMissing: { color: DESKTOP_COLORS.inkMuted },
 
+  // רשת התיקיות
   // Documents
   docsGrid: { alignItems: 'flex-start' },
   thirdCell: { flexGrow: 1, flexBasis: 280, minWidth: 0 },
 
+  // תחתית הדף
   footer: { flexDirection: 'row-reverse', justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 },
   footerText: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
 });

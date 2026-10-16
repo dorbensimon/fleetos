@@ -1,3 +1,4 @@
+// סריקת תמונת רישיון לזיהוי תאריך התוקף (בטלפון, בלי אינטרנט)
 import TextRecognition from '@react-native-ml-kit/text-recognition';
 import type { PickedFile } from './documents';
 import { extractExpiryDate } from './licenseDateExtraction';
@@ -10,6 +11,7 @@ export interface ScanResult {
   confidence: number; // 0-1
 }
 
+// מזהה בתמונת הרישיון את תאריך התוקף
 /**
  * Scans a picked license photo for its expiry date, entirely on-device via
  * Google ML Kit — no network call, no external service, no rate limit,

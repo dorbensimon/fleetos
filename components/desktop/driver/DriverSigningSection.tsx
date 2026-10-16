@@ -1,3 +1,4 @@
+// 'טפסים לחתימה' בתיק הנהג במחשב
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,13 +31,17 @@ import { useSigningStyles } from '../signing/folderCss';
 import { CreateDocumentSheet } from '../signing/CreateDocumentSheet';
 
 type FolderStatus = ReturnType<typeof signingFolderStatus>;
+// טקסט לכל מצב תיקייה
 const STATUS_LABEL: Record<FolderStatus, string> = { get pending() { return t('signing.pendingSignature'); }, get completed() { return t('common.signedDone'); }, get failed() { return t('status.needsAttention'); }, get empty() { return t('signing.notSentShort'); } };
 
+// תאריך ושעה קצרים
 const time = (date: string) => new Date(date).toLocaleString(getLocale(), { dateStyle: 'short', timeStyle: 'short' });
+// תאריך קצר
 const day = (date: string) => new Date(date).toLocaleDateString(getLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\./g, '/');
 
 export type SigningSessionTarget = Awaited<ReturnType<typeof getSigningSession>> & { title: string; requestId?: string; signedAt?: string };
 
+// טוען את תיקיות החתימה של הנהג
 /** Loads the driver's signing folders (company templates + the driver's requests). */
 export function useDriverSigningFolders(companyId: string | null | undefined, driverId: string) {
   const [folders, setFolders] = useState<SigningFolder[]>([]);
@@ -70,12 +75,14 @@ export function useDriverSigningFolders(companyId: string | null | undefined, dr
   return { folders, loading, error, reload };
 }
 
+// מתי נשלחה הבקשה הממתינה
 /** When the folder's pending request was sent, or null if nothing is waiting. */
 function lastSentAt(folder: SigningFolder) {
   const pending = folder.requests.find((item) => item.status === 'pending' && !!item.docuseal_submitter_slug);
   return pending ? pending.sent_at || pending.created_at : null;
 }
 
+// צבע לכל מצב
 const STATUS_COLOR: Record<FolderStatus, string> = {
   pending: DESKTOP_TONES.warn.fg,
   completed: DESKTOP_TONES.ok.fg,
@@ -83,6 +90,7 @@ const STATUS_COLOR: Record<FolderStatus, string> = {
   empty: DESKTOP_COLORS.inkFaint,
 };
 
+// רשימת הטפסים עם המצב של כל אחד
 /**
  * "טפסים לחתימה" on the desktop driver record: one list row per signing
  * template, with its status in words. A row opens a centered window that
@@ -183,6 +191,7 @@ export function DriverSigningList({
   );
 }
 
+// כפתור '+ טופס חדש'
 /**
  * "+ טופס חדש" beside the driver file's forms: every form the company makes
  * is a folder in each driver's file, so this opens "מסמך חדש" (from scratch or
@@ -209,6 +218,7 @@ export function NewFormButton({ companyId, takenTitles, onChanged }: { companyId
   );
 }
 
+// חלון התיקייה: שליחה, צפייה ורשימת העותקים
 function SigningFolderModal({
   companyId,
   driverId,
@@ -487,8 +497,10 @@ function SigningFolderModal({
   );
 }
 
+// עיצוב הטפסים
 const styles = StyleSheet.create({
   message: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted, paddingVertical: 14, paddingHorizontal: 16 },
+  // שורת טופס
   listRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 54, paddingHorizontal: 16, paddingVertical: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },
   listDivider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   listIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: DESKTOP_COLORS.canvas, alignItems: 'center', justifyContent: 'center' },
@@ -500,6 +512,7 @@ const styles = StyleSheet.create({
   listDot: { width: 7, height: 7, borderRadius: 4 },
   listStatusText: { fontSize: 13 },
   body: { paddingHorizontal: 18, paddingVertical: 16, gap: 12 },
+  // כפתור שליחה
   sendBtn: {
     flex: 1,
     height: 42,
@@ -531,6 +544,7 @@ const styles = StyleSheet.create({
   sendText: { fontSize: 14.5, color: DESKTOP_COLORS.brand },
   error: { fontSize: 13.5, color: DESKTOP_COLORS.danger },
   list: { borderWidth: 1, borderColor: DESKTOP_COLORS.borderSoft, borderRadius: 8, overflow: 'hidden' },
+  // שורת עותק
   row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10, ...webOnly({ transition: 'background-color 150ms ease' }) },
   rowText: { flex: 1, gap: 2 },
   rowTitle: { fontSize: 14.5 },

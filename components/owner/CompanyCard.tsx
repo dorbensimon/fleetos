@@ -1,3 +1,4 @@
+// כרטיס חברה ברשימת הבעלים
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +8,7 @@ import { t } from '../../lib/i18n';
 
 export type CompanyRow = Company & { admins: number; drivers: number };
 
+// שם, סטטוס, נתונים ותפריט
 export function CompanyCard({
   item,
   index,
@@ -60,7 +62,9 @@ export function CompanyCard({
   );
 }
 
+// עיצוב הכרטיס
 const styles = StyleSheet.create({
+  // הכרטיס
   card: {
     backgroundColor: COLORS.white,
     borderRadius: 14,
@@ -75,6 +79,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
+  // עיגול ראשי התיבות
   avatar: {
     width: 44,
     height: 44,
@@ -86,6 +91,7 @@ const styles = StyleSheet.create({
   cardBody: { flex: 1, gap: 5 },
   cardTopRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   cardName: { fontSize: 15.5, fontWeight: '600', color: COLORS.black, flexShrink: 1 },
+  // תגית הסטטוס
   badge: { paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 6 },
   badgeActive: { backgroundColor: COLORS.activeBg },
   badgeDisabled: { backgroundColor: COLORS.disabledBg },

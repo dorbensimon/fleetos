@@ -1,3 +1,5 @@
+// פרטי העסק שמופיעים בדפים המשפטיים
+// פרטי העסק (מה שחסר פשוט לא מוצג)
 /**
  * The business behind icar, as it appears in the legal pages. Details still
  * missing are `null` and are simply left out of the pages until filled in.
@@ -15,6 +17,7 @@ export const BUSINESS = {
   site: 'icar-app.com',
 } as const;
 
+// פרטי רכז הנגישות
 export const ACCESSIBILITY_COORDINATOR = {
   name: 'דור',
   phone: BUSINESS.phone,
@@ -22,6 +25,7 @@ export const ACCESSIBILITY_COORDINATOR = {
   email: BUSINESS.email,
 } as const;
 
+// שורה אחת עם פרטי העסק לתחתית הדף
 /** One line for footers: "טולוקס (Tolvex) · עוסק פטור 123456789 · כתובת". */
 export function businessLine(): string {
   return [
@@ -33,6 +37,7 @@ export function businessLine(): string {
     .join(' · ');
 }
 
+// פרטי העסק בתוך משפט
 /** The same details inside a sentence: "טולוקס (Tolvex), עוסק פטור מס׳ 123456789, כתובת". */
 export function businessSentence(): string {
   const type = BUSINESS.registrationNumber ? `${BUSINESS.type} מס׳ ${BUSINESS.registrationNumber}` : BUSINESS.type;

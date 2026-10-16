@@ -1,3 +1,4 @@
+// שליחת מסמך לחתימה לנהגים, ביטול ומחיקה
 import { assignSigningTemplate, deleteSigningRecord, listSignatureRequests } from './docuseal';
 import { listDrivers } from './adminApi/drivers';
 import { formatDate } from './theme';
@@ -20,26 +21,32 @@ export type SendRecipient = {
 };
 export type SendOutcome = { sent: number; failed: { name: string; reason: string }[] };
 
+// האם שני שמות מסמך זהים (בלי רווחים ואותיות גדולות)
 /** Two document names count as the same when they differ only in spaces or letter case. */
 export function sameDocumentTitle(a: string | null | undefined, b: string | null | undefined): boolean {
   const key = (value: string | null | undefined) => (value ?? '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('he');
   return !!key(a) && key(a) === key(b);
 }
 
+// הודעה כשהשם כבר תפוס
 export const TAKEN_TITLE_MESSAGE = () => t('signing.duplicateName');
 
+// האם השם תפוס על ידי תיקייה קבועה בתיק הנהג
 /** A name every driver's file already has as a fixed folder, such as "הצהרת בריאות". */
 export function isFixedFolderTitle(title: string | null | undefined): boolean {
   return DRIVER_COMPLIANCE.some((def) => sameDocumentTitle(def.storedTitle, title) || sameDocumentTitle(def.label, title));
 }
 
+// טקסט לכל מצב של נהג במסמך
 export const RECIPIENT_STATE_LABEL: Record<SendRecipient['state'], string> = { none: '', get pending() { return t('signing.pendingSignature'); }, get signed() { return t('signing.alreadySigned'); } };
 
+// 'נהג אחד' / 'X נהגים'
 /** "נהג אחד" / "3 נהגים". */
 export function driversCount(count: number): string {
   return count === 1 ? t('common.oneDriver') : t('common.driversCount', { count });
 }
 
+// איפה הנהג עומד במסמך ומה יקרה אם ייבחר
 /** Where a driver stands on this document, and what happens if picked: "חתם לאחרונה ב-23/09/2026 · יישלח שוב". */
 export function recipientNote(recipient: SendRecipient, picked: boolean): string {
   const label =
@@ -50,6 +57,7 @@ export function recipientNote(recipient: SendRecipient, picked: boolean): string
   return `${label} · ${recipient.state === 'pending' ? t('signing.willBeReplaced') : t('signing.willResend')}`;
 }
 
+// הנהגים הפעילים ומצב כל אחד במסמך
 /** The company's active drivers, by name, each with where they stand on this document and when they last signed it. */
 export async function loadSendRecipients(companyId: string, templateId: string): Promise<SendRecipient[]> {
   const [rows, requests] = await Promise.all([listDrivers(companyId), listSignatureRequests(companyId).catch(() => [])]);
@@ -73,6 +81,7 @@ export async function loadSendRecipients(companyId: string, templateId: string):
     .sort((a, b) => a.name.localeCompare(b.name, 'he'));
 }
 
+// שולח בקשה לכל נהג, אחד אחרי השני
 /**
  * One request per driver, through the same path as the driver's own file,
  * one after the other — so a failure for one driver never stops the rest.
@@ -97,12 +106,14 @@ export async function sendToRecipients(
   return result;
 }
 
+// כמה נהגים עוד לא חתמו
 /** How many drivers are still waiting to sign this document (their requests are cancelled with it). */
 export async function countWaitingSigners(companyId: string, templateId: string): Promise<number> {
   const requests = await listSignatureRequests(companyId).catch(() => []);
   return requests.filter((r) => r.template_id === templateId && r.status === 'pending').length;
 }
 
+// אזהרה לפני מחיקת מסמך
 export function deleteTemplateMessage(waiting: number, checklist = false): string {
   if (checklist) {
     const pending = waiting
@@ -116,16 +127,19 @@ export function deleteTemplateMessage(waiting: number, checklist = false): strin
   return t('signing.deleteTemplateMessage', { pending });
 }
 
+// מוחק מסמך של החברה
 /** Deletes a company's own document in one step; the server cancels requests still waiting. */
 export async function deleteCompanyTemplate(companyId: string, templateId: string): Promise<void> {
   await deleteSigningRecord(companyId, 'template', templateId, 'company-delete');
 }
 
+// מבטל בקשה שעוד לא נחתמה
 /** Withdraws a request the driver hasn't signed yet (sent by mistake). */
 export async function cancelSigningRequest(companyId: string, requestId: string): Promise<void> {
   await deleteSigningRecord(companyId, 'request', requestId, 'archive');
 }
 
+// מוחק מסמך של נהג לצמיתות
 /**
  * Deletes one document of one driver for good: pending or signed, the file,
  * the DocuSeal copy and its notifications. Nothing is kept.
@@ -134,6 +148,7 @@ export async function eraseSigningRequest(companyId: string, requestId: string):
   await deleteSigningRecord(companyId, 'request', requestId, 'erase');
 }
 
+// אזהרה לפני מחיקה
 /** The warning shown before deleting, in plain words. */
 export function eraseWarning(status: string, driverName: string | null | undefined): string {
   const who = driverName?.trim() || t('common.theDriver');

@@ -1,16 +1,20 @@
+// בונה את הדף שמציג את טופס החתימה של DocuSeal בתוך האפליקציה
 import type { RootStackParamList } from '../navigation/types';
 import { getLanguage } from './i18n';
 
+// מנקה ערך כדי שיהיה בטוח בתוך HTML
 /** Escapes a value for an HTML attribute. */
 export function attr(value: string) {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
+// מכין ערך בטוח לשימוש בתוך סקריפט
 /** A value as a script literal, safe inside an HTML <script> (no "</script>" can end it early). */
 export function scriptJson(value: unknown): string {
   return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
+// מאשר רק כתובות של DocuSeal
 /**
  * The DocuSeal host whose scripts the page loads. It arrives in the screen's
  * params, which a link can set, so only DocuSeal's own hosts are accepted.
@@ -19,8 +23,10 @@ export function docusealHost(host: string | null | undefined): string {
   return host && DOCUSEAL_HOST.test(host) ? host : 'cdn.docuseal.com';
 }
 
+// תבנית לכתובות המותרות של DocuSeal
 const DOCUSEAL_HOST = /^([a-z0-9-]+\.)*docuseal\.(com|eu)$/i;
 
+// משאיר רק כתובות מסמך בטוחות
 /**
  * The screen's params with a document address the page may open: a link can
  * set it, so only https, blob and data addresses are kept (never javascript:).
@@ -34,6 +40,7 @@ export function withSafeSrc<T extends { src?: string }>(params: T): T {
   }
 }
 
+// כתובת טופס החתימה, רק אם היא של DocuSeal
 /** A signing form's address, only when it is on DocuSeal: it too can come from a link. */
 export function docusealFormSrc(src: string | null | undefined): string {
   try {
@@ -44,6 +51,7 @@ export function docusealFormSrc(src: string | null | undefined): string {
   }
 }
 
+// עיצוב תיבת החתימה כמו משטח החתימה של האפליקציה
 /**
  * Documents with more than a signature to fill stay in DocuSeal's form; its
  * signature box is drawn like the app's own pad (components/checklist/
@@ -53,6 +61,7 @@ export function docusealFormSrc(src: string | null | undefined): string {
 export const SIGNATURE_PAD_CSS =
   'canvas{background:#fff!important;border:2px dashed rgba(47,91,255,.28)!important;border-radius:20px!important;min-height:190px;touch-action:none}';
 
+// שפת טופס החתימה לפי שפת האפליקציה
 /**
  * DocuSeal's own words on the signing form, in the app's language. It has
  * Hebrew, Arabic and English but no Russian, so Russian gets English. The
@@ -63,6 +72,7 @@ export function docusealFormLanguage(): string {
   return language === 'ru' ? 'en' : language;
 }
 
+// ה-HTML המלא של דף החתימה
 /**
  * The DocuSeal template builder or signing form page, inside the page head
  * (`base`) and the message bridge of the platform that shows it.

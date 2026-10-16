@@ -1,3 +1,5 @@
+// פקיעת בקשות חתימה שלא נחתמו
+// כמה זמן יש לחתום (48 שעות)
 export const SIGNING_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 export type ExpiringRequest = {
@@ -7,10 +9,12 @@ export type ExpiringRequest = {
   signed_file_path?: string | null;
 };
 
+// המועד האחרון לחתימה
 export function signingDeadline(sentAt: string): string {
   return new Date(Date.parse(sentAt) + SIGNING_WINDOW_MS).toISOString();
 }
 
+// האם הבקשה פגה בלי חתימה
 export function isUnsignedExpired(request: ExpiringRequest, now = Date.now()): boolean {
   if (request.status === 'completed' || request.completed_at || request.signed_file_path) return false;
   const deadline = Date.parse(request.expires_at || '');
@@ -24,6 +28,7 @@ export type RemoteSubmission = {
   submitters?: Array<{ status?: string; completed_at?: string | null }>;
 };
 
+// מה לעשות עם בקשה שפגה
 /** Pure decision, exercised before connecting any destructive adapter. Unknown
  * remote state is never evidence that an unsigned request is safe to remove. */
 export function expiryDecision(local: ExpiringRequest, remote: RemoteSubmission, now = Date.now()) {
@@ -38,6 +43,7 @@ export function expiryDecision(local: ExpiringRequest, remote: RemoteSubmission,
   return 'remove-unsigned' as const;
 }
 
+// מטפל בבקשות שפגו
 export async function processExpiry(
   local: ExpiringRequest,
   actions: {

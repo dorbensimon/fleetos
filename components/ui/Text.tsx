@@ -1,3 +1,4 @@
+// טקסט בסיסי של האפליקציה
 import React from 'react';
 import { Text as RNText, TextProps, StyleSheet } from 'react-native';
 import { COLORS, FONT } from '../../lib/theme';
@@ -13,6 +14,7 @@ export interface AppTextProps extends TextProps {
   weight?: 'regular' | 'semiBold' | 'bold';
 }
 
+// טקסט עם משקל גופן
 export function AppText({ weight = 'regular', style, ...rest }: AppTextProps) {
   return (
     <RNText
@@ -26,6 +28,7 @@ export function AppText({ weight = 'regular', style, ...rest }: AppTextProps) {
   );
 }
 
+// עיצוב הטקסט
 const styles = StyleSheet.create({
   base: {
     color: COLORS.text,

@@ -1,3 +1,4 @@
+// פונקציית שרת: סיום בחירת סיסמה
 // Edge Function: complete-password-setup
 //
 // Called by a user (driver/admin/owner) the first time they log in with a
@@ -17,12 +18,14 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyUser } from '../_shared/verifyUser.ts';
 
+// תשובת JSON
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
+// מסמן שהסיסמה נבחרה
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

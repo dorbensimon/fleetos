@@ -1,3 +1,4 @@
+// החלונות של דף החברה אצל הבעלים: פעולות על אדם, הוספת מנהל, סיסמה, הסרה ושליחת פרטים
 import React, { useState } from 'react';
 import { Linking, Platform, Share, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,12 +14,14 @@ import { t, textEnd } from '../../lib/i18n';
  * details to pass on afterwards.
  */
 
+// סיסמה זמנית אקראית מספרות
 function randomDigits(length: number): string {
   let out = '';
   for (let i = 0; i < length; i++) out += String(Math.floor(Math.random() * 10));
   return out;
 }
 
+// שורת שגיאה בחלון
 function ErrorLine({ message }: { message: string }) {
   if (!message) return null;
   return (
@@ -31,6 +34,7 @@ function ErrorLine({ message }: { message: string }) {
   );
 }
 
+// שדה סיסמה עם כפתור הגרלה
 function PasswordField({ value, onChange, error }: { value: string; onChange: (v: string) => void; error?: string }) {
   return (
     <KitSection
@@ -63,6 +67,7 @@ function PasswordField({ value, onChange, error }: { value: string; onChange: (v
 
 // ── A person's actions ───────────────────────────────────────────────────
 
+// חלון הפעולות על אדם
 export function UserActionsSheet({
   user,
   onClose,
@@ -102,8 +107,10 @@ export function UserActionsSheet({
 // ── Add a manager ────────────────────────────────────────────────────────
 
 export type NewAdminForm = { firstName: string; lastName: string; email: string; phone: string; password: string };
+// טופס מנהל חדש ריק
 export const EMPTY_NEW_ADMIN_FORM: NewAdminForm = { firstName: '', lastName: '', email: '', phone: '', password: '' };
 
+// חלון הוספת מנהל
 export function AddAdminSheet({
   visible,
   companyName,
@@ -186,6 +193,7 @@ export function AddAdminSheet({
 
 export type EditUserForm = { firstName: string; lastName: string; phone: string };
 
+// חלון עריכת פרטי אדם
 export function EditUserSheet({
   target,
   form,
@@ -248,6 +256,7 @@ export function EditUserSheet({
 
 // ── A new temporary password ─────────────────────────────────────────────
 
+// חלון סיסמה זמנית חדשה
 export function ResetPasswordSheet({
   target,
   password,
@@ -292,6 +301,7 @@ export function ResetPasswordSheet({
 
 // ── Remove a person ──────────────────────────────────────────────────────
 
+// חלון הסרת אדם
 export function RemoveUserSheet({
   target,
   removing,
@@ -331,6 +341,7 @@ export function RemoveUserSheet({
 
 export type Credentials = { title: string; subtitle: string; name: string; email: string; password: string; phone?: string | null };
 
+// ממיר מספר נייד לפורמט של וואטסאפ
 /** 050-1234567 → 972501234567 for a WhatsApp link, or null when it isn't an Israeli mobile. */
 export function whatsappNumber(phone: string | null | undefined): string | null {
   const digits = (phone ?? '').replace(/\D/g, '');
@@ -339,10 +350,12 @@ export function whatsappNumber(phone: string | null | undefined): string | null 
   return null;
 }
 
+// פותח וואטסאפ עם הודעה
 export function openWhatsapp(number: string, message: string) {
   void Linking.openURL(`https://wa.me/${number}?text=${encodeURIComponent(message)}`).catch(() => {});
 }
 
+// שליחת פרטי כניסה: שיתוף או העתקה
 /**
  * "שליחת הפרטים": the share menu where there is one; a computer browser
  * usually has none, so there it copies the message and says so.
@@ -367,6 +380,7 @@ export function useSendMessage(message: string) {
   };
 }
 
+// חלון פרטי הכניסה של מנהל חדש
 export function CredentialsSheet({ details, onClose }: { details: Credentials | null; onClose: () => void }) {
   const message = details
     ? t('users.shareCredentials', { name: details.name, email: details.email, password: details.password })
@@ -414,15 +428,18 @@ export function CredentialsSheet({ details, onClose }: { details: Credentials | 
   );
 }
 
+// עיצוב החלונות
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   grow: { flex: 1 },
   stack: { gap: 18 },
+  // שורת הכפתורים בתחתית
   footer: { gap: 10 },
   gap: { marginTop: 12 },
   list: { overflow: 'hidden' },
   pairRow: { flexDirection: 'row-reverse' },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },
+  // תיבת שגיאה
   errorBox: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14, backgroundColor: STATUS.expired.soft },
   linkChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, minHeight: 32, paddingHorizontal: 10, borderRadius: 999, backgroundColor: DK.accentSoft },
   sumRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 16, minHeight: 52 },

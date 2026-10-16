@@ -1,3 +1,4 @@
+// מסך המסמכים החתומים
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -20,6 +21,7 @@ import { t } from '../../lib/i18n';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'SignedDocuments'>;
 
+// בוחר מחשב או טלפון
 export default function SignedDocumentsScreen({ navigation, route }: Props) {
   const { company, loading: companyLoading } = useCompany();
   const isDesktop = useIsDesktop();
@@ -36,6 +38,7 @@ export default function SignedDocumentsScreen({ navigation, route }: Props) {
   return <SignedDocumentsPhone navigation={navigation} companyId={company?.id ?? null} companyLoading={companyLoading} openMeeting={openMeeting} onMeetingOpened={meetingOpened} />;
 }
 
+// הגרסה לטלפון
 function SignedDocumentsPhone({
   navigation, companyId, companyLoading, openMeeting, onMeetingOpened,
 }: { navigation: Props['navigation']; companyId: string | null; companyLoading: boolean; openMeeting?: string; onMeetingOpened: () => void }) {

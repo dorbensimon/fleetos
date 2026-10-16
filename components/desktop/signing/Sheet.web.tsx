@@ -1,7 +1,9 @@
+// חלון שעולה מלמטה בסגנון אייפון
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSigningStyles } from './folderCss';
 
+// סגירה עם אנימציה
 /**
  * An iOS-style page sheet: rises from the bottom over a dimmed, blurred
  * backdrop and sinks back on close. `requestClose` lets the caller confirm
@@ -21,6 +23,7 @@ export function useSheetClose(onClosed: () => void) {
   return { closing, close };
 }
 
+// החלון
 export function Sheet({
   closing,
   onRequestClose,
@@ -75,6 +78,7 @@ export function Sheet({
   );
 }
 
+// חלון 'לצאת בלי לשמור?'
 /** A small iOS alert for "leave without saving?" style questions. */
 export function ConfirmAlert({
   title,

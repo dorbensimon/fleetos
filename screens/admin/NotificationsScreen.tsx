@@ -1,3 +1,4 @@
+// מסך ההתראות
 import React, { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -32,6 +33,7 @@ import { errorMessage } from '../../lib/requestError';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
 
+// בוחר בין התראות חברה להתראות בעלים
 export default function NotificationsScreen(props: Props) {
   const { profile } = useCompany();
   // The owner's feed is about companies, not drivers: its own table and view.
@@ -39,6 +41,7 @@ export default function NotificationsScreen(props: Props) {
   return <CompanyNotificationsScreen {...props} />;
 }
 
+// ההתראות של מנהל
 function CompanyNotificationsScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
@@ -181,6 +184,7 @@ function CompanyNotificationsScreen({ navigation, route }: Props) {
   );
 }
 
+// ההתראות של הבעלים
 function OwnerNotificationsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();

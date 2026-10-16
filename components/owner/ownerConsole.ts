@@ -1,3 +1,4 @@
+// סינון ומיון חברות בחדר הבקרה
 import type { CompanyHealth, Tone } from '../../lib/platformOverview';
 import { t } from '../../lib/i18n';
 
@@ -6,6 +7,7 @@ import { t } from '../../lib/i18n';
 export type CompanyFilter = 'all' | 'attention' | 'ok' | 'off';
 export type CompanySort = 'health' | 'name' | 'activity' | 'size';
 
+// אפשרויות הסינון
 export const COMPANY_FILTERS: { value: CompanyFilter; label: string; tone?: Tone }[] = [
   { value: 'all', get label() { return t('owner.filter.all'); } },
   { value: 'attention', get label() { return t('owner.filter.needAttention'); }, tone: 'bad' },
@@ -13,8 +15,10 @@ export const COMPANY_FILTERS: { value: CompanyFilter; label: string; tone?: Tone
   { value: 'off', get label() { return t('owner.filter.disabled'); }, tone: 'off' },
 ];
 
+// סדר חומרה
 const TONE_ORDER: Record<Tone, number> = { bad: 0, warn: 1, ok: 2, off: 3 };
 
+// מסנן, מחפש וממיין חברות
 export function filterCompanies(rows: CompanyHealth[], filter: CompanyFilter, search: string, sort: CompanySort): CompanyHealth[] {
   const q = search.trim().toLowerCase();
   const out = rows.filter((r) => {

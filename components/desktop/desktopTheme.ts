@@ -1,3 +1,4 @@
+// עיצוב בסיסי למחשב: צבעים, גופנים ומידות
 import { Platform, TextStyle, ViewStyle } from 'react-native';
 import { fontStack } from '../../lib/fontStack';
 
@@ -8,6 +9,7 @@ import { fontStack } from '../../lib/fontStack';
  * fleet/driverCard themes untouched.
  */
 
+// צבעי המחשב
 export const DESKTOP_COLORS = {
   canvas: '#F4F6F8',
   surface: '#FFFFFF',
@@ -38,11 +40,13 @@ export const DESKTOP_COLORS = {
   danger: '#D92D20', // error text and badges: 4.8:1; was #FF453A (3.4:1)
 } as const;
 
+// הצל מתחת לכפתור ראשי
 /** The lift under every filled brand button — same as the driver kit's PrimaryAction ("הורדת המסמך"). */
 export const DESKTOP_BRAND_SHADOW = '0 10px 24px rgba(47,91,255,0.32)';
 
 export type DesktopTone = 'ok' | 'warn' | 'bad' | 'neutral';
 
+// צבעי רקע וטקסט לכל מצב
 export const DESKTOP_TONES: Record<DesktopTone, { bg: string; fg: string }> = {
   ok: { bg: 'rgba(52,199,89,0.13)', fg: '#187F3E' },
   warn: { bg: 'rgba(255,149,0,0.14)', fg: '#985700' },
@@ -50,8 +54,10 @@ export const DESKTOP_TONES: Record<DesktopTone, { bg: string; fg: string }> = {
   neutral: { bg: 'rgba(142,142,147,0.16)', fg: '#5C6773' },
 };
 
+// צבעים לעיגולי ראשי תיבות
 export const DESKTOP_AVATAR_COLORS = ['#0088CC', '#5856D6', '#FF9500', '#34C759', '#FF453A', '#5AC8FA'];
 
+// משקלי הגופן
 export const DESKTOP_FONT = {
   regular: fontStack('Heebo_400Regular'),
   medium: fontStack('Heebo_500Medium'),
@@ -60,9 +66,12 @@ export const DESKTOP_FONT = {
   extraBold: fontStack('Heebo_800ExtraBold'),
 } as const;
 
+// רוחב תפריט הצד
 export const DESKTOP_SIDEBAR_WIDTH = 232;
+// גובה הסרגל העליון
 export const DESKTOP_HEADER_HEIGHT = 48;
 
+// סגנונות שקיימים רק בדפדפן (סמן, צל...)
 /** Web-only style keys (cursor, outline) that React Native's types don't know about. */
 export const webOnly = (style: Record<string, unknown>): ViewStyle & TextStyle =>
   (Platform.OS === 'web' ? style : {}) as ViewStyle & TextStyle;

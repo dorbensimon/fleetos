@@ -1,3 +1,4 @@
+// שדה תאריך שעובד בכל מקום
 import React, { useEffect, useRef, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform, Modal, Pressable, ScrollView, type StyleProp, type ViewStyle } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -19,14 +20,17 @@ import { t } from '../../lib/i18n';
  * null, so callers never deal with Date objects or locale parsing.
  */
 
+// תאריך לפורמט שנה-חודש-יום
 function toIso(d: Date): string {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
+// שמות החודשים
 const monthNames = () => [t('date.months.1'), t('date.months.2'), t('date.months.3'), t('date.months.4'), t('date.months.5'), t('date.months.6'), t('date.months.7'), t('date.months.8'), t('date.months.9'), t('date.months.10'), t('date.months.11'), t('date.months.12')];
 
+// בחירת תאריך בדפדפן (גלגלות)
 function WebDatePicker({ value, onConfirm, onClose }: { value: string | null; onConfirm: (iso: string) => void; onClose: () => void }) {
   const [draft, setDraft] = useState(() => value ? parseDateValue(value) : new Date());
   const [choosingYear, setChoosingYear] = useState(false);
@@ -116,6 +120,7 @@ function WebDatePicker({ value, onConfirm, onClose }: { value: string | null; on
   );
 }
 
+// שדה התאריך
 export function DateField({
   value,
   onChange,
@@ -229,8 +234,10 @@ export function DateField({
   );
 }
 
+// עיצוב בחירת התאריך
 const styles = StyleSheet.create({
   ...PICKER_FIELD_STYLES,
+  // החלון שעולה
   webSheet: {
     width: '100%',
     backgroundColor: COLORS.card,
@@ -243,6 +250,7 @@ const styles = StyleSheet.create({
   webSheetHeader: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
   sheetTitle: { color: COLORS.text, fontSize: 16 },
   sheetAction: { color: COLORS.accent, fontSize: 15 },
+  // עמודות יום/חודש/שנה
   pickerColumns: { flexDirection: 'row-reverse', gap: 8, height: 208 },
   pickerColumn: { flex: 1, backgroundColor: COLORS.field, borderRadius: RADIUS.md },
   pickerColumnContent: { paddingVertical: 76 },
@@ -258,6 +266,7 @@ const styles = StyleSheet.create({
   yearOptionTextActive: { color: COLORS.accent },
 });
 
+// עיצוב התיבה בטלפון
 const kit = StyleSheet.create({
   box: { height: undefined, minHeight: 52, borderRadius: 16, backgroundColor: DK.surfaceSunk, borderColor: 'transparent' },
   boxError: { borderColor: '#FF4D5E' },

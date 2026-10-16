@@ -1,3 +1,4 @@
+// 'דורש טיפול' - תצוגת מחשב
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,7 @@ export type AttentionRow = {
   detail: string;
 };
 
+// סיכום ורשת כרטיסים של מה שדורש טיפול
 export function AttentionDesktopView({ rows, total }: { rows: AttentionRow[]; total: number }) {
   const tone: DesktopTone = total === 0 ? 'ok' : total >= 5 ? 'bad' : 'warn';
   const toneColors = DESKTOP_TONES[tone];
@@ -59,8 +61,10 @@ export function AttentionDesktopView({ rows, total }: { rows: AttentionRow[]; to
   );
 }
 
+// עיצוב העמוד
 const styles = StyleSheet.create({
   wrap: { padding: 24, gap: 20, maxWidth: 920 },
+  // שורת הסיכום
   summary: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -75,7 +79,9 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', gap: 8, paddingVertical: 48 },
   emptyTitle: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
 
+  // רשת הכרטיסים
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  // כרטיס
   card: {
     flexBasis: 300,
     flexGrow: 1,

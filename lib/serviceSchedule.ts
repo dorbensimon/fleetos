@@ -1,3 +1,5 @@
+// חישוב הטיפול הבא של רכב
+// הק"מ של הטיפול הבא: הטיפול האחרון + המרווח
 /**
  * Service schedule rule, shared by every screen that edits maintenance data:
  * the next service is due at the last service's odometer reading plus the
@@ -14,6 +16,7 @@ export function deriveNextServiceKm(lastServiceKm: number, serviceIntervalKm: nu
   return lastServiceKm + serviceIntervalKm;
 }
 
+// הק"מ של הטיפול הבא להצגה
 /**
  * The next-service reading to display for a vehicle. Prefers the derived
  * value, so rows saved before this rule existed (next = odometer + interval)

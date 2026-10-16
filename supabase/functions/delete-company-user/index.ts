@@ -1,3 +1,4 @@
+// פונקציית שרת: מחיקת משתמש
 // Edge Function: delete-company-user
 // Called by the app (owner only) to fully remove a single admin or driver
 // account: Auth user + profile row. Deleting an admin does NOT delete the
@@ -10,6 +11,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyOwner } from '../_shared/verifyOwner.ts';
 
+// מקבל בקשה ומוחק
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

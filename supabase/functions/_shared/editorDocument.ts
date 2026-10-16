@@ -1,3 +1,4 @@
+// מסמכים מהעורך בשרת: בדיקה, ניקוי ובניית ה-HTML
 /**
  * A document written in the in-app editor (components/desktop/signing/DocumentEditor.web.tsx),
  * as the browser sends it: a small block model plus pixel field positions,
@@ -7,15 +8,20 @@
  * (the platform owner's templates), so both check a document the same way.
  */
 
+// תפקיד החותם
 export const SIGNER_ROLE = 'נהג';
+// מקסימום שדות
 export const MAX_FIELDS = 120;
+// מקסימום פסקאות
 export const MAX_BLOCKS = 400;
+// מקסימום תווים
 export const MAX_TEXT = 60_000;
 
 export type FieldKind =
   | 'signature' | 'date' | 'checkbox' | 'text'
   | 'driver_full_name' | 'driver_national_id' | 'driver_phone' | 'driver_license_number' | 'company_name';
 
+// שדות שמתמלאים לבד
 export const PREFILL_KINDS: Record<string, string> = {
   driver_full_name: 'שם הנהג',
   driver_national_id: 'תעודת זהות',
@@ -23,29 +29,37 @@ export const PREFILL_KINDS: Record<string, string> = {
   driver_license_number: 'מספר רישיון',
   company_name: 'שם החברה',
 };
+// סוגי השדות המותרים
 export const FIELD_KINDS = new Set<string>(['signature', 'date', 'checkbox', 'text', ...Object.keys(PREFILL_KINDS)]);
 
 export type Inline = { text: string; bold?: boolean; italic?: boolean; underline?: boolean; size?: number; color?: string; highlight?: boolean };
 /** A field set into a line of text: the `slot` of an EditorField. */
 export type SlotRun = { slot: string };
+// גדלי טקסט מותרים
 /** The editor's text sizes, colours and marker (lib/companySigningTemplates.ts); anything else is ignored. */
 const TEXT_SIZES = new Set([13, 20, 24]);
+// צבעים מותרים
 const TEXT_COLORS = new Set(['#5C6773', '#0088CC', '#D92D20', '#12805C']);
+// צבע ההדגשה
 const HIGHLIGHT = '#FFF1A8';
+// תבנית מזהה מקום בשורה
 const SLOT_ID = /^[a-z0-9]{1,40}$/i;
 /** `slot`: the field sits inside a line of text, where an inline `{ slot }` run names it. */
 export type EditorField = { kind: FieldKind; label?: string; x: number; y: number; w: number; h: number; slot?: string };
 export type Block = { type: 'h1' | 'h2' | 'p' | 'ul' | 'ol' | 'hr'; align?: 'right' | 'center' | 'left' | 'justify'; content: Array<Array<Inline | SlotRun>> };
 
+// מנקה טקסט ל-HTML
 export function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// מנקה כותרת שדה
 export function cleanLabel(label: unknown, fallback: string): string {
   const text = typeof label === 'string' ? label.replace(/\s+/g, ' ').trim().slice(0, 80) : '';
   return text || fallback;
 }
 
+// שם השדה ב-DocuSeal
 /**
  * DocuSeal field names: a signature or date shared across the document is one
  * value the driver fills once; every checkbox and free-text field is its own.
@@ -62,6 +76,7 @@ export function fieldIdentity(kind: FieldKind, label: unknown, counters: Record<
   return { name, type: kind === 'checkbox' ? 'checkbox' : 'text', title: base };
 }
 
+// איך ערך שמולא נראה
 /**
  * How DocuSeal writes a filled value: the size of the document's own text,
  * right-aligned for Hebrew, and dates as 27/09/2026 (not DocuSeal's US
@@ -69,14 +84,17 @@ export function fieldIdentity(kind: FieldKind, label: unknown, counters: Record<
  * 09/27/2026.
  */
 export const TEXT_LOOK = { font_size: 16, align: 'right', valign: 'center' } as const;
+// פורמט התאריך
 export const DATE_FORMAT = 'DD/MM/YYYY';
 
+// העיצוב של שדה
 function fieldLook(type: string): string {
   if (type === 'text') return ` font-size="${TEXT_LOOK.font_size}" align="${TEXT_LOOK.align}" valign="${TEXT_LOOK.valign}"`;
   if (type === 'date') return ` font-size="${TEXT_LOOK.font_size}" align="${TEXT_LOOK.align}" valign="${TEXT_LOOK.valign}" format="${DATE_FORMAT}"`;
   return '';
 }
 
+// מידות הדף
 /**
  * The editor's page geometry and type sizes (lib/companySigningTemplates.ts
  * EDITOR_PAGE and the `.sd-paper-page` / `.sd-doc` styles). Fields arrive as
@@ -84,11 +102,13 @@ function fieldLook(type: string): string {
  */
 export const PAGE = { width: 794, height: 1123, padX: 72, padY: 64, headerH: 72, headerGap: 32 };
 
+// שדה התאריך בנייר המכתבים
 /** The date on the letterhead: read-only for the driver; DocuSeal stamps it with the day the document is signed. */
 const LETTERHEAD_DATE_FIELD = 'תאריך המסמך';
 
 export type Letterhead = { name: string; logoUrl: string | null };
 
+// מצייר את נייר המכתבים
 /** The company's letterhead, drawn exactly like the editor's `.sd-lh` (same box sizes, so the text below starts at the same spot). */
 function renderLetterhead({ name, logoUrl }: Letterhead): string {
   const logo = logoUrl
@@ -100,6 +120,7 @@ function renderLetterhead({ name, logoUrl }: Letterhead): string {
 </div>`;
 }
 
+// קורא את השדות ובודק אותם
 export function parseEditorFields(raw: unknown): EditorField[] | null {
   if (!Array.isArray(raw) || raw.length === 0 || raw.length > MAX_FIELDS) return null;
   const fields: EditorField[] = [];
@@ -117,6 +138,7 @@ export function parseEditorFields(raw: unknown): EditorField[] | null {
   return fields;
 }
 
+// בונה מחדש את הפסקאות רק ממה שמותר
 /**
  * The block model rebuilt from only what the editor can make: the stored copy
  * (a template, or a form's current text) never carries anything else.
@@ -161,6 +183,7 @@ export function cleanEditorBlocks(raw: unknown): Block[] | null {
   return textLength > MAX_TEXT ? null : blocks;
 }
 
+// בונה את ה-HTML של המסמך
 export function renderEditorDocument(raw: unknown, fields: EditorField[], letterhead: Letterhead): string | null {
   if (!Array.isArray(raw) || raw.length === 0 || raw.length > MAX_BLOCKS) return null;
   const counters: Record<string, number> = {};
@@ -265,6 +288,7 @@ export function renderEditorDocument(raw: unknown, fields: EditorField[], letter
 </html>`;
 }
 
+// בודק ומנקה מסמך שלם לשמירה
 /**
  * A whole editor document, checked and cleaned for storing: the blocks, the
  * fields, at least one signature, and a document that renders. null when any

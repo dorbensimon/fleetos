@@ -1,9 +1,11 @@
+// משטח הציור של החתימה בטלפון (בתוך WebView)
 import React, { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { SIGNATURE_INK_JS } from './signatureInk';
 import type { SignatureSurfaceProps } from './SignatureSurface.types';
 
+// הדף הקטן שמכיל את משטח הציור
 /**
  * The signature surface on the phone: the web pad's own canvas code in a
  * small local WebView, so a finger draws the same smooth line everywhere.
@@ -22,6 +24,7 @@ window.pad = createInk(document.getElementById('c'),
 true;
 </script></body></html>`;
 
+// משטח הציור
 export function SignatureSurface({ onChange, onDrawing, clearKey, label }: SignatureSurfaceProps) {
   const webRef = useRef<WebView>(null);
   const source = useMemo(() => ({ html: HTML }), []);
@@ -64,6 +67,7 @@ export function SignatureSurface({ onChange, onDrawing, clearKey, label }: Signa
   );
 }
 
+// עיצוב המשטח
 const styles = StyleSheet.create({
   web: { backgroundColor: 'transparent' },
 });

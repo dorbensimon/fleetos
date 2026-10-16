@@ -1,3 +1,4 @@
+// כרטיס סעיף בבדיקת קצין בטיחות (טלפון)
 import React, { memo, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +13,7 @@ import {
 } from '../../lib/inspections';
 import { t } from '../../lib/i18n';
 
+// טקסט, שלושה כפתורי תשובה והערה
 /**
  * One item of a vehicle inspection: its text, three big buttons (icon, word
  * and colour together, never colour alone), and a line about the item.
@@ -137,13 +139,16 @@ export const InspectionItemCard = memo(function InspectionItemCard({
   );
 });
 
+// עיצוב הכרטיס
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  // הכרטיס
   card: { padding: 16, gap: 14, borderWidth: 1.5, borderColor: 'transparent' },
   head: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 12 },
   num: { width: 34, height: 34, borderRadius: 11, backgroundColor: DK.surfaceSunk, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   numText: { fontSize: 15, lineHeight: 20 },
   text: { flex: 1, fontSize: 17, lineHeight: 25 },
+  // כפתורי התשובה
   options: { flexDirection: 'row-reverse', gap: 8 },
   option: {
     flex: 1,
@@ -165,6 +170,7 @@ const styles = StyleSheet.create({
   noteDefect: { backgroundColor: STATUS.expired.soft },
   noteIcon: { marginTop: 1 },
   noteEdit: { gap: 8 },
+  // תיבת ההערה
   noteInput: { minHeight: 88, paddingTop: 12, textAlignVertical: 'top' },
   noteDone: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 14, borderRadius: 999, backgroundColor: DK.accentSoft, alignSelf: 'flex-start' },
 });

@@ -1,5 +1,7 @@
+// הוצאת הודעת השגיאה מתשובת השרת
 type FunctionResponse = { error?: unknown; context?: { json?: () => Promise<unknown> } } | null | undefined;
 
+// ההודעה שהשרת שלח למשתמש
 /** Extracts the server's user-facing error from a Supabase Edge Function call. */
 export async function functionErrorMessage(
   error: FunctionResponse,

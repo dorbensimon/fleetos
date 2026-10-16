@@ -1,3 +1,4 @@
+// הפרופיל של הנהג
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../../components/ui/BrandLoader';
@@ -62,9 +63,11 @@ interface ProfileDraft {
 
 type DraftErrors = Partial<Record<'full_name' | 'phone' | 'home_phone' | 'national_id', string>>;
 
+// דרגות רישיון לבחירה
 // Same short class labels as the manager's inline editor on the driver card.
 const LICENSE_CLASS_SELECT = () => LICENSE_CLASS_OPTIONS.map((option) => ({ value: option.value, label: option.label.split(',')[0].trim() }));
 
+// ממלא את הטופס מנתוני הנהג
 function draftFromDriver(driver: DriverRow | null): ProfileDraft {
   const license = splitLicenseClasses(driver?.license_classes);
   return {
@@ -84,6 +87,7 @@ function draftFromDriver(driver: DriverRow | null): ProfileDraft {
   };
 }
 
+// בודק את הטופס
 function validateDraft(draft: ProfileDraft): DraftErrors {
   const errors: DraftErrors = {};
   if (!draft.full_name.trim()) errors.full_name = t('validation.required');
@@ -94,6 +98,7 @@ function validateDraft(draft: ProfileDraft): DraftErrors {
   return errors;
 }
 
+// רק השדות שהשתנו
 /** Only the fields that actually changed, so saving an untouched form writes nothing and notifies no one. */
 function changedFields(driver: DriverRow, draft: ProfileDraft): DriverPatch {
   const next: DriverPatch = {
@@ -116,8 +121,10 @@ function changedFields(driver: DriverRow, draft: ProfileDraft): DriverPatch {
   ) as DriverPatch;
 }
 
+// רק ספרות
 const onlyDigits = (value: string, max: number) => value.replace(/\D/g, '').slice(0, max);
 
+// המסך: פרטים ועריכה
 export default function DriverProfileScreen({ navigation, route }: Props) {
   const { profile, company, companyId, loading: profileLoading } = useCompany();
   const { showToast } = useToast();
@@ -505,6 +512,7 @@ export default function DriverProfileScreen({ navigation, route }: Props) {
   );
 }
 
+// עיצוב בטלפון
 const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   alignRight: { textAlign: textStart() },
@@ -518,6 +526,7 @@ const styles = StyleSheet.create({
   footerCancel: { flex: 1 },
 });
 
+// עיצוב במחשב
 const ds = StyleSheet.create({
   wrap: { padding: 24, maxWidth: 520, alignSelf: 'center', width: '100%', gap: 6 },
   headRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },

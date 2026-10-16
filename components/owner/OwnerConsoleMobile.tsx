@@ -1,3 +1,4 @@
+// חדר הבקרה של הבעלים - תצוגת טלפון
 import React, { useMemo, useState } from 'react';
 import { FormTemplatesManager } from './FormTemplatesManager';
 import { FlatList, Image, RefreshControl, StatusBar, StyleSheet, View } from 'react-native';
@@ -41,9 +42,13 @@ import { fontStack } from '../../lib/fontStack';
  * being used and its security state. Counts only, like desktop.
  */
 
+// צבע מילוי לכל מצב
 const TONE_FILL: Record<Tone, string> = { ok: STATUS.ok.fill, warn: STATUS.soon.fill, bad: STATUS.expired.fill, off: STATUS.missing.fill };
+// צבע טקסט לכל מצב
 const TONE_FG: Record<Tone, string> = { ok: STATUS.ok.fg, warn: STATUS.soon.fg, bad: STATUS.expired.fg, off: STATUS.missing.fg };
+// צבע רקע רך לכל מצב
 const TONE_SOFT: Record<Tone, string> = { ok: STATUS.ok.soft, warn: STATUS.soon.soft, bad: STATUS.expired.soft, off: STATUS.missing.soft };
+// טקסט לכל מצב
 const TONE_LABEL: Record<Tone, string> = { get ok() { return t('owner.health.ok'); }, get warn() { return t('owner.health.warn'); }, get bad() { return t('owner.health.bad'); }, get off() { return t('owner.health.off'); } };
 
 type Props = {
@@ -71,6 +76,7 @@ type Entry =
   | { kind: 'empty' }
   | { kind: 'company'; row: CompanyHealth; index: number };
 
+// המסך: כותרת, כרטיסי חברות ותחתית
 export function OwnerConsoleMobile(p: Props) {
   const [filter, setFilter] = useState<CompanyFilter>('all');
   const [search, setSearch] = useState('');
@@ -189,6 +195,7 @@ export function OwnerConsoleMobile(p: Props) {
   );
 }
 
+// הכותרת עם חיפוש ומספרים
 function Hero(p: Props & { search: string; onSearch: (v: string) => void; onAttention: () => void }) {
   const totals = p.overview?.totals;
   const issues = p.overview?.issues ?? [];
@@ -258,6 +265,7 @@ function Hero(p: Props & { search: string; onSearch: (v: string) => void; onAtte
   );
 }
 
+// כרטיס חברה
 function CompanyCard({ row, onPress, onMenu }: { row: CompanyHealth; onPress: () => void; onMenu: () => void }) {
   const c = row.company;
   const issue = row.issues[0];
@@ -324,6 +332,7 @@ function CompanyCard({ row, onPress, onMenu }: { row: CompanyHealth; onPress: ()
   );
 }
 
+// תחתית: הכנסות ואבטחה
 function Footer({ overview, onOpen, onExport }: { overview: PlatformOverview; onOpen: (id: string) => void; onExport: () => void }) {
   const days = overview.activityByDay;
   const max = Math.max(1, ...days.map((d) => d.count));
@@ -408,6 +417,7 @@ function Footer({ overview, onOpen, onExport }: { overview: PlatformOverview; on
   );
 }
 
+// כרטיס הכנסות
 function Revenue({ overview, onOpen, onExport }: { overview: PlatformOverview; onOpen: (id: string) => void; onExport: () => void }) {
   const totals = overview.totals;
   const segments = [
@@ -476,6 +486,7 @@ function Revenue({ overview, onOpen, onExport }: { overview: PlatformOverview; o
   );
 }
 
+// שורת אבטחה
 function SecurityLine({
   icon,
   tone,
@@ -504,6 +515,7 @@ function SecurityLine({
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   screen: { flex: 1, backgroundColor: DK.canvas },
@@ -514,6 +526,7 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 },
   heroSlot: { width: 48, height: 48 },
   block: { marginTop: 16 },
+  // שורת המספרים
   stats: { flexDirection: 'row-reverse', gap: 8, marginTop: 12 },
 
   attention: {
@@ -535,6 +548,7 @@ const styles = StyleSheet.create({
   chartBar: { width: '100%', borderRadius: 3, backgroundColor: '#A9BCFF' },
   cell: { paddingHorizontal: DK_SPACE.md, paddingBottom: 12 },
 
+  // כרטיס חברה
   card: { padding: DK_SPACE.md, gap: 12 },
   cardOff: { backgroundColor: DK.surfaceSunk },
   cardTop: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
@@ -560,6 +574,7 @@ const styles = StyleSheet.create({
   sectionGap: { marginTop: 22 },
   chartBox: { padding: DK_SPACE.md },
   chartHead: { gap: 2 },
+  // גרף
   chart: { flexDirection: 'row-reverse', alignItems: 'flex-end', height: 80, gap: 3, marginTop: 14 },
   barSlot: { flex: 1, height: '100%', justifyContent: 'flex-end' },
   barEmpty: { backgroundColor: '#E3E8F0' },

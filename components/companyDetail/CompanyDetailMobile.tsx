@@ -1,3 +1,4 @@
+// דף חברה אצל הבעלים - תצוגת טלפון
 import React, { useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +38,7 @@ import { COMPANY_TYPES, companyTypeLabel } from '../../lib/companyType';
  * and switching it off or deleting it at the very bottom.
  */
 
+// כמה נהגים מוצגים לפני 'עוד'
 const DRIVERS_PREVIEW = 6;
 
 type Props = {
@@ -65,6 +67,7 @@ type Props = {
   onDelete: () => void;
 };
 
+// הדף כולו: פרטי החברה, מנוי, אנשים ופעולות
 export function CompanyDetailMobile(p: Props) {
   const [allDrivers, setAllDrivers] = useState(false);
   const active = p.company.status === 'active';
@@ -282,6 +285,7 @@ export function CompanyDetailMobile(p: Props) {
   );
 }
 
+// שורת אדם ברשימה
 function PersonRow({ user, first, onPress }: { user: CompanyUser; first: boolean; onPress: () => void }) {
   return (
     <ListRow
@@ -294,20 +298,25 @@ function PersonRow({ user, first, onPress }: { user: CompanyUser; first: boolean
   );
 }
 
+// עיצוב דף החברה בטלפון
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   tabular: { fontVariant: ['tabular-nums'] },
+  // שורת המספרים
   stats: { flexDirection: 'row-reverse', gap: 8, marginTop: 16 },
   heroLogo: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#FFFFFF' },
+  // פס הודעה
   banner: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: DK_SPACE.md, backgroundColor: STATUS.soon.soft },
   linkChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, minHeight: 32, paddingHorizontal: 10, borderRadius: 999, backgroundColor: DK.accentSoft },
   cardTitle: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, paddingHorizontal: DK_SPACE.md, paddingTop: 14 },
   accountHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: DK_SPACE.md, paddingTop: 6, paddingBottom: DK_SPACE.md },
+  // רשימה
   list: { overflow: 'hidden' },
   more: { alignItems: 'center', justifyContent: 'center', minHeight: 52 },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },
   block: { paddingHorizontal: DK_SPACE.md, paddingVertical: 12, gap: 10 },
   logoRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, padding: DK_SPACE.md },
+  // תיבת הלוגו
   logoBox: { width: 52, height: 52, borderRadius: 16, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   logoImage: { width: 52, height: 52 },
 });

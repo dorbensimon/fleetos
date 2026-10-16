@@ -1,3 +1,4 @@
+// שדה שעה
 import React, { useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform, TextInput, Modal, Pressable } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -15,12 +16,14 @@ import { t } from '../../lib/i18n';
  * module there). The value is always exchanged as "HH:MM" (24h) or null.
  */
 
+// שעה לפורמט HH:MM
 function toHHMM(d: Date): string {
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
   return `${hh}:${mm}`;
 }
 
+// HH:MM לשעה
 function fromHHMM(value: string): Date {
   const [h, m] = value.split(':').map(Number);
   const d = new Date();
@@ -28,6 +31,7 @@ function fromHHMM(value: string): Date {
   return d;
 }
 
+// קורא שעה שהוקלדה
 /** Accepts partial typing (e.g. "9:5") as long as it resolves to a valid HH:MM. */
 function parseTypedTime(text: string): string | null {
   const match = text.trim().match(/^(\d{1,2}):(\d{1,2})$/);
@@ -38,6 +42,7 @@ function parseTypedTime(text: string): string | null {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+// שדה השעה
 export function TimeField({
   value,
   onChange,
@@ -161,6 +166,7 @@ export function TimeField({
   );
 }
 
+// עיצוב השדה בדפדפן
 const styles = StyleSheet.create({
   ...PICKER_FIELD_STYLES,
   webInput: {
@@ -171,4 +177,5 @@ const styles = StyleSheet.create({
   },
 });
 
+// עיצוב התיבה בטלפון
 const kitBox = { height: undefined, minHeight: 52, borderRadius: 16, backgroundColor: DK.surfaceSunk, borderColor: 'transparent' } as const;

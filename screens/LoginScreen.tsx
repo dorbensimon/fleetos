@@ -1,3 +1,4 @@
+// מסך הכניסה: לוח מחוונים של משאית שמתניע
 import React, { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -32,6 +33,7 @@ import { fontStack } from '../lib/fontStack';
  * .impeccable/surfaces/screens-loginscreen-tsx.md.
  */
 
+// צבעי לוח המחוונים
 const CLUSTER = {
   ground: '#0B1016',
   groundDeep: '#070A0E',
@@ -52,6 +54,7 @@ const CLUSTER = {
   green: '#34C759',
 };
 
+// גופנים
 const FONT = {
   regular: fontStack('Heebo_400Regular'),
   medium: fontStack('Heebo_500Medium'),
@@ -60,26 +63,34 @@ const FONT = {
   extraBold: fontStack('Heebo_800ExtraBold'),
 };
 
+// עקומת אנימציה
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+// עקומת אנימציה
 const EASE_IN_OUT = Easing.bezier(0.65, 0, 0.35, 1);
+// איפה המחוג נח בסרק
 /** Where the revs needle rests once the engine is idling. */
 const IDLE_REVS = 0.09;
+// מתחת לרוחב הזה הפריסה הצרה
 /**
  * The wide cluster needs two gauges of at least ~200px beside the 392px
  * display; below this width the phone stack is used (also on iPads in portrait).
  */
 const WIDE_MIN_WIDTH = 1000;
 
+// קישורים לדפים המשפטיים
 const LOGIN_LEGAL_LINKS = [
   { doc: 'terms', get label() { return t('legal.terms'); } },
   { doc: 'privacy', get label() { return t('legal.privacyPolicyShort'); } },
   { doc: 'cookies', get label() { return t('legal.cookies'); } },
   { doc: 'accessibility', get label() { return t('legal.accessibilityStatement'); } },
 ] as const;
+// הגודל הכי קטן של שעון
 /** Smallest gauge (px) the phone layout will shrink to so the login fits the screen. */
 const GAUGE_MIN = 124;
+// רוחב המסך האמצעי
 const DISPLAY_WIDTH = 392;
 
+// עיצוב דפדפן (בחירה, סמן, מילוי אוטומטי)
 /** The browser parts React Native cannot style: selection, caret, autofill, scrollbars. */
 const WEB_CSS = `
 #cluster-login ::selection { background: rgba(95,193,240,0.32); color: ${CLUSTER.ink}; }
@@ -99,6 +110,7 @@ const WEB_CSS = `
 #cluster-login ::-webkit-scrollbar-thumb { background: #1D2733; border-radius: 5px; }
 `;
 
+// האם המשתמש ביקש פחות אנימציות
 function useReducedMotion(): boolean | null {
   const [reduced, setReduced] = useState<boolean | null>(null);
   useEffect(() => {
@@ -115,6 +127,7 @@ function useReducedMotion(): boolean | null {
   return reduced;
 }
 
+// השעה הנוכחית
 function currentClock(): string {
   const now = new Date();
   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -125,9 +138,12 @@ function currentClock(): string {
 // turns the needle, so the backlight always follows the needle exactly.
 // ---------------------------------------------------------------------------
 
+// זווית השעון
 const SWEEP = 240;
+// זווית ההתחלה
 const START_ANGLE = -120;
 
+// שעון עם מחוג
 function Gauge({
   size,
   value,
@@ -232,6 +248,7 @@ function Gauge({
 // lights. All of them light for a moment during the ignition self-test.
 // ---------------------------------------------------------------------------
 
+// נורית אזהרה
 function TellTale({ icon, lit, tone, label }: { icon: keyof typeof Ionicons.glyphMap; lit: boolean; tone: string; label: string }) {
   return (
     <View
@@ -266,6 +283,7 @@ interface ClusterFieldProps {
   short?: boolean;
 }
 
+// שדה כניסה בלוח
 function ClusterField({
   label,
   value,
@@ -368,6 +386,7 @@ function ClusterField({
 // fields are filled and pulses while signing in.
 // ---------------------------------------------------------------------------
 
+// כפתור ההתנעה (כניסה)
 function StartButton({ onPress, loading, ready, size }: { onPress: () => void; loading: boolean; ready: boolean; size: number }) {
   const press = useRef(new Animated.Value(1)).current;
   const pulse = useRef(new Animated.Value(1)).current;
@@ -430,6 +449,7 @@ function StartButton({ onPress, loading, ready, size }: { onPress: () => void; l
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
+// המסך: מייל, סיסמה וכניסה
 export default function LoginScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const wide = width >= WIDE_MIN_WIDTH;
@@ -835,8 +855,10 @@ export default function LoginScreen({ navigation }: Props) {
   );
 }
 
+// עיצוב מסך הכניסה
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  // המסך
   container: { flex: 1, backgroundColor: CLUSTER.ground },
   scrollContent: {
     flexGrow: 1,
@@ -888,10 +910,12 @@ const styles = StyleSheet.create({
   binnacleShort: { paddingTop: 14 },
   clusterWrap: { width: '100%', maxWidth: 1080, alignItems: 'center' },
   clusterWrapCompact: { maxWidth: 520 },
+  // אזור כפתור ההתנעה
   startDock: { alignItems: 'center' },
   gaugeRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 16 },
   gaugeRowShort: { marginBottom: 10 },
 
+  // שעון
   gauge: {
     backgroundColor: '#0F161E',
     borderWidth: 1,
@@ -924,6 +948,7 @@ const styles = StyleSheet.create({
     fontFamily: FONT.semiBold,
     fontVariant: ['tabular-nums'],
   },
+  // מחוג
   needle: {
     position: 'absolute',
     width: 3.5,
@@ -958,6 +983,7 @@ const styles = StyleSheet.create({
   readoutLabel: { color: CLUSTER.inkMuted, fontFamily: FONT.medium },
   readoutValue: { color: CLUSTER.ink, fontFamily: FONT.bold, fontVariant: ['tabular-nums'], marginTop: 1 },
 
+  // המסך האמצעי
   display: {
     alignItems: 'stretch',
     paddingHorizontal: 24,

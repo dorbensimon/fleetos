@@ -1,3 +1,4 @@
+// 'דורש טיפול' של הנהג
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,12 +35,14 @@ type Props = {
   onHome: () => void;
 };
 
+// טקסט 'פג'
 export function expiredDetail(date: string | null) {
   const days = daysUntilExpiry(date);
   if (days == null) return t('status.expiredLong');
   return days < -1 ? t('expiry.expiredDaysAgo', { days: -days }) : relativeDays(date)!;
 }
 
+// טקסט 'בקרוב'
 export function soonDetail(date: string | null) {
   const days = daysUntilExpiry(date);
   if (days == null) return t('status.approaching');
@@ -49,6 +52,7 @@ export function soonDetail(date: string | null) {
   return days > 1 ? t('driver.attention.expiresInDays', { days }) : t('expiry.expiredDaysAgo', { days: -days });
 }
 
+// מה מחכה לנהג לפי דחיפות
 /**
  * Everything that is waiting on the driver, in order of urgency: what has
  * already lapsed, the forms to sign, then what lapses soon. Each card says
@@ -137,6 +141,7 @@ export function DriverAttentionMobile(p: Props) {
   );
 }
 
+// מספר בסיכום
 function Tally({ count, label, tone }: { count: number; label: string; tone: Status }) {
   const active = count > 0;
   return (
@@ -151,6 +156,7 @@ function Tally({ count, label, tone }: { count: number; label: string; tone: Sta
   );
 }
 
+// כרטיס משימה
 function TaskCard({ task }: { task: AttentionTask }) {
   const s = STATUS[task.status];
   return (
@@ -183,6 +189,7 @@ function TaskCard({ task }: { task: AttentionTask }) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   section: { gap: 12 },

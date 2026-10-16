@@ -1,3 +1,4 @@
+// בדיקות קצין בטיחות בתיק רכב (טלפון)
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,18 +14,22 @@ import { useVehicleInspections } from './useVehicleInspections';
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 
+// כמה בדיקות קודמות מוצגות
 const HISTORY_SHOWN = 5;
 
+// התאריך הכי רחוק לבדיקה הבאה (שלוש שנים)
 /** The latest day the server accepts for a vehicle's next inspection: three years ahead. */
 export function latestNextDue(today = todayIso()): string {
   const [y, m, d] = today.split('-').map(Number);
   return `${y + 3}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
+// מספר הליקויים במילים
 export function defectsText(count: number): string {
   return count === 1 ? t('inspection.oneDefect') : t('inspection.defectsCount', { count });
 }
 
+// הבדיקה הבאה והיסטוריה
 /**
  * "בדיקות בטיחות" in a vehicle's card on the phone: when the next inspection
  * is due (and a way to move it), whether the last one found defects, a button
@@ -132,6 +137,7 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived }: { com
   );
 }
 
+// עיצוב הכרטיס
 const styles = StyleSheet.create({
   wrap: { gap: 12 },
   flex: { flex: 1 },

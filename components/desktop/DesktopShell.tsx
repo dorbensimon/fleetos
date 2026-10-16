@@ -1,3 +1,4 @@
+// המסגרת של כל דף במחשב: תפריט צד, סרגל עליון ואזור התוכן
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,18 +32,21 @@ type NavItem = {
   badge?: number;
 };
 
+// שם התפקיד לתצוגה
 const ROLE_LABEL: Record<string, string> = {
   get owner() { return t('role.owner'); },
   get admin() { return t('role.admin'); },
   get driver() { return t('role.driver'); },
 };
 
+// הפריטים בתחתית התפריט של המנהל
 // Pinned to the bottom of an admin's sidebar, just above company settings.
 const ADMIN_FOOTER_ITEMS: NavItem[] = [
   { key: 'Notifications', get label() { return t('notifications.title'); }, icon: 'notifications' },
   { key: 'CompanyDocuments', get label() { return t('nav.companyDocuments'); }, icon: 'folder-open' },
 ];
 
+// התפריט, הסרגל העליון והתוכן
 export function DesktopShell({
   active,
   breadcrumbs,
@@ -277,6 +281,7 @@ export function DesktopShell({
   );
 }
 
+// פריט בתפריט הצד
 function SidebarItem({ item, active, onPress }: { item: NavItem; active: boolean; onPress: () => void }) {
   const color = active ? DESKTOP_COLORS.sidebarActiveText : DESKTOP_COLORS.sidebarText;
   return (
@@ -300,10 +305,14 @@ function SidebarItem({ item, active, onPress }: { item: NavItem; active: boolean
   );
 }
 
+// עיצוב המסגרת
 const styles = StyleSheet.create({
+  // כל המסך
   root: { flex: 1, flexDirection: 'row-reverse', backgroundColor: DESKTOP_COLORS.canvas, overflow: 'hidden' },
 
+  // תפריט הצד הכהה
   sidebar: { width: DESKTOP_SIDEBAR_WIDTH, flexShrink: 0, backgroundColor: DESKTOP_COLORS.sidebarBg },
+  // הלוגו בראש התפריט
   brandRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -314,6 +323,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: DESKTOP_COLORS.sidebarDivider,
   },
+  // שם החברה והתפקיד
   companyBlock: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -334,6 +344,7 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   navSectionSpaced: { paddingTop: 16 },
+  // פריט בתפריט
   navItem: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -344,6 +355,7 @@ const styles = StyleSheet.create({
     borderEndWidth: 2,
     borderEndColor: 'transparent',
   },
+  // הפריט הנבחר
   navItemActive: { backgroundColor: DESKTOP_COLORS.sidebarActiveBg, borderEndColor: DESKTOP_COLORS.brand },
   navItemHover: { backgroundColor: DESKTOP_COLORS.sidebarHoverBg },
   navLabel: { flex: 1, color: DESKTOP_COLORS.sidebarText, fontSize: 13 },
@@ -366,7 +378,9 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
 
+  // האזור שליד התפריט
   main: { flex: 1, minWidth: 0 },
+  // הסרגל העליון
   header: {
     height: DESKTOP_HEADER_HEIGHT,
     flexShrink: 0,
@@ -379,6 +393,7 @@ const styles = StyleSheet.create({
     borderBottomColor: DESKTOP_COLORS.border,
     zIndex: 20,
   },
+  // שביל הניווט (חשבון / הגדרות)
   breadcrumbs: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   crumb: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
   crumbInteractive: { color: DESKTOP_COLORS.inkMuted, textDecorationLine: 'underline', textDecorationColor: 'transparent' },
@@ -386,6 +401,7 @@ const styles = StyleSheet.create({
   crumbCurrent: { color: DESKTOP_COLORS.ink },
   headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   headerDivider: { width: 1, height: 20, backgroundColor: DESKTOP_COLORS.border },
+  // המשתמש בפינה
   user: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   userAvatar: {
     width: 26,
@@ -399,5 +415,6 @@ const styles = StyleSheet.create({
   userName: { fontSize: 12, lineHeight: 15 },
   userRole: { fontSize: 10.5, color: DESKTOP_COLORS.inkFaint, lineHeight: 13 },
 
+  // אזור התוכן
   body: { flex: 1, minHeight: 0 },
 });

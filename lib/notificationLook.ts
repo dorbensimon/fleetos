@@ -1,3 +1,4 @@
+// איך התראה נראית במחשב: אייקון, דחיפות וזמן
 import type { Ionicons } from '@expo/vector-icons';
 import type { Notification } from './adminApi/types';
 import { isVehicleFolderNotification } from './vehicleFolderAlerts';
@@ -8,6 +9,7 @@ import { t } from './i18n';
  * one place, so the notifications page and the top-bar bell agree.
  */
 
+// לפני כמה זמן (במילים)
 export function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
@@ -19,6 +21,7 @@ export function timeAgo(iso: string): string {
   return days === 1 ? t('time.yesterday') : t('time.daysAgo', { days });
 }
 
+// אייקון לפי סוג ההתראה
 export function notificationIcon(type: string | null): keyof typeof Ionicons.glyphMap {
   if (type === 'signature_request_assigned') return 'create-outline';
   if (type === 'signature_request_completed') return 'checkmark-done-outline';
@@ -36,6 +39,7 @@ export function notificationIcon(type: string | null): keyof typeof Ionicons.gly
   return 'person-outline';
 }
 
+// דחיפות ההתראה (צבע)
 /**
  * Row urgency. Folder expiry messages are written by the daily scan
  * (supabase/sql/90_vehicle_folder_expiry_notifications.sql): an expired

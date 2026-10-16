@@ -1,7 +1,10 @@
+// פונקציית שרת: שליחת התראות פוש
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
+// הכתובת של Expo
 const EXPO_PUSH_ENDPOINT = 'https://exp.host/--/api/v2/push/send';
+// כמה בכל סבב
 const BATCH_SIZE = 100;
 
 type NotificationRow = {
@@ -25,6 +28,7 @@ type Outgoing = {
   data: Record<string, unknown>;
 };
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -32,12 +36,14 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
+// מחלק לקבוצות
 function chunks<T>(items: T[], size: number): T[][] {
   const result: T[][] = [];
   for (let index = 0; index < items.length; index += size) result.push(items.slice(index, index + size));
   return result;
 }
 
+// שולח
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);

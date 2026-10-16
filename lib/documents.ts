@@ -1,3 +1,4 @@
+// מסמכים: בחירה, צילום, העלאה, רשימה, צפייה, הורדה ומחיקה
 import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -11,6 +12,7 @@ import { extensionForMimeType, isAllowedDocumentMimeType } from './fileTypes';
 import { downloadRemoteFileOnWeb, readBlobUrlAsBase64 } from './webDownload';
 import { t } from './i18n';
 
+// תיקיית האחסון הפרטית של המסמכים
 /**
  * Documents live in a PRIVATE storage bucket, unlike company logos.
  * They contain ID numbers, licences and insurance papers, so they are
@@ -18,7 +20,9 @@ import { t } from './i18n';
  * signed URL each time one needs to be opened.
  */
 const BUCKET = 'documents';
+// כמה זמן קישור צפייה תקף (10 דקות)
 const SIGNED_URL_TTL_SECONDS = 60 * 10;
+// גודל מסמך מקסימלי (20MB)
 const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024;
 
 export interface PickedFile {
@@ -30,11 +34,13 @@ export interface PickedFile {
   height?: number;
 }
 
+// מנקה את הקידומת מקובץ מקודד
 function rawBase64(value: string): string {
   const separator = value.indexOf(',');
   return value.startsWith('data:') && separator >= 0 ? value.slice(separator + 1) : value;
 }
 
+// קורא קובץ שנבחר כטקסט מקודד
 export async function readPickedFileBase64(file: PickedFile): Promise<string> {
   if (file.base64) return rawBase64(file.base64);
   // expo-file-system's File class is an unimplemented stub on web — a
@@ -43,6 +49,7 @@ export async function readPickedFileBase64(file: PickedFile): Promise<string> {
   return rawBase64(await new File(file.uri).base64());
 }
 
+// פותח את גלריית התמונות
 /** Opens the photo library, for scans and photographed paperwork. */
 export async function pickImage(): Promise<PickedFile | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -68,6 +75,7 @@ export async function pickImage(): Promise<PickedFile | null> {
   };
 }
 
+// פותח את המצלמה
 /** Opens the camera directly. */
 export async function captureImage(): Promise<PickedFile | null> {
   const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -88,6 +96,7 @@ export async function captureImage(): Promise<PickedFile | null> {
   };
 }
 
+// פותח את בוחר הקבצים
 /**
  * Opens the system file picker, for PDFs already on the device.
  *
@@ -115,6 +124,7 @@ export async function pickFile(): Promise<PickedFile | null> {
   };
 }
 
+// שומר את הקובץ באחסון ואת השורה בטבלה
 /** Shared tail of uploadDocument/uploadGeneratedDocument — writes the bytes, then the row. */
 async function storeDocumentBytes(params: {
   companyId: string;
@@ -170,6 +180,7 @@ async function storeDocumentBytes(params: {
   return data as DocumentRow;
 }
 
+// שם התיקייה לפי קטגוריה
 // Each document folder's name, by category.
 const FOLDER_TITLE_KEY: Record<string, string> = {
   accompanying_drivers: 'folder.companionDrivers',
@@ -190,6 +201,7 @@ const FOLDER_TITLE_KEY: Record<string, string> = {
   winter_inspection: 'folder.winterCheck',
 };
 
+// השם שבו נשמר קובץ שהועלה לתיקייה
 /**
  * The title a file uploaded to a folder is stored under: the folder's Hebrew
  * name, in every UI language. Stored data, and the server quotes it in its
@@ -200,6 +212,7 @@ export function storedFolderTitle(category: string, title: string): string {
   return key ? t(key, { lng: 'he' }) : title;
 }
 
+// מעלה קובץ שנבחר ושומר אותו ברשימת המסמכים
 /**
  * Uploads a picked file and records it in the `documents` table.
  *
@@ -246,6 +259,7 @@ export async function uploadDocument(params: {
   });
 }
 
+// שומר קובץ שהאפליקציה יצרה (כמו PDF של דוח)
 /**
  * Records an app-generated file (e.g. a PDF built with expo-print) as a
  * document, bypassing the picker/MIME-allowlist path used for user uploads.
@@ -277,6 +291,7 @@ export async function uploadGeneratedDocument(params: {
   });
 }
 
+// רשימת המסמכים של רכב/נהג/חברה
 export async function listDocuments(
   ownerType: OwnerType,
   ownerId: string,
@@ -296,6 +311,7 @@ export async function listDocuments(
   return (data ?? []) as DocumentRow[];
 }
 
+// מוחק את המסמך ואת הקובץ
 /** Removes both the row and the underlying file. */
 export async function deleteDocument(doc: DocumentRow) {
   const { error } = await supabase.from('documents').delete().eq('id', doc.id);
@@ -303,6 +319,7 @@ export async function deleteDocument(doc: DocumentRow) {
   await supabase.storage.from(BUCKET).remove([doc.file_path]);
 }
 
+// קישור זמני לצפייה או הורדה
 /** Short-lived URL for viewing or downloading a document. */
 export async function getDocumentUrl(doc: DocumentRow): Promise<string | null> {
   const { data, error } = await supabase.storage
@@ -313,6 +330,7 @@ export async function getDocumentUrl(doc: DocumentRow): Promise<string | null> {
   return data.signedUrl;
 }
 
+// מוריד מסמך למכשיר ופותח שיתוף
 /**
  * Downloads a document to the device and opens the share sheet, so the
  * user can save it wherever they want (Files, gallery, another app) —

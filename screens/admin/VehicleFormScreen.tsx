@@ -1,3 +1,4 @@
+// טופס יצירה/עריכה של רכב
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
@@ -24,6 +25,7 @@ import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleForm'>;
+// טופס ריק
 const EMPTY: FormState = {
   plate_number: '',
   vehicle_type: '',
@@ -43,8 +45,10 @@ const EMPTY: FormState = {
   department_id: null,
 };
 
+// שדות חובה
 const REQUIRED_FIELDS = ['plate_number', 'vehicle_type', 'status'] as const;
 
+// סוגי רכב
 const VEHICLE_TYPE_OPTIONS = [
   { value: 'car', get label() { return t('vehicle.type.car'); }, get description() { return t('vehicle.typeDesc.car'); } },
   { value: 'minibus', get label() { return t('vehicle.typeOpt.commercial'); }, get description() { return t('vehicle.typeDesc.upTo35'); } },
@@ -52,17 +56,20 @@ const VEHICLE_TYPE_OPTIONS = [
   { value: 'bus', get label() { return t('vehicle.type.bus'); }, get description() { return t('vehicle.typeDesc.passengers'); } },
 ] as const satisfies readonly { value: VehicleType; label: string; description: string }[];
 
+// מצבי רכב
 const STATUS_OPTIONS = [
   { value: 'active', get label() { return t('vehicle.status.active'); }, color: COLORS.okText, bg: 'rgba(48,164,108,.12)' },
   { value: 'maintenance', get label() { return t('vehicle.status.maintenance'); }, color: COLORS.warnText, bg: 'rgba(240,166,30,.14)' },
   { value: 'disabled', get label() { return t('vehicle.status.disabled'); }, color: '#6B7A88', bg: 'rgba(107,122,136,.14)' },
 ] as const satisfies readonly { value: VehicleStatus; label: string; color: string; bg: string }[];
 
+// סוגי עסקה
 const DEAL_TYPE_OPTIONS = () => Object.entries(ACQUISITION_TYPE_LABELS).map(([value, label]) => ({
   value: value as AcquisitionType,
   label,
 }));
 
+// חודשים
 const MONTH_OPTIONS = () => [
   t('date.months.1'),
   t('date.months.2'),
@@ -78,6 +85,7 @@ const MONTH_OPTIONS = () => [
   t('date.months.12'),
 ].map((label, index) => ({ value: String(index + 1).padStart(2, '0'), label }));
 
+// שנים לבחירה
 function yearOptions(): { value: string; label: string }[] {
   const currentYear = new Date().getFullYear();
   const years: { value: string; label: string }[] = [];
@@ -87,6 +95,7 @@ function yearOptions(): { value: string; label: string }[] {
   return years;
 }
 
+// מספר מטקסט
 function num(value: string): number | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
@@ -94,11 +103,13 @@ function num(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+// ק"מ מעוצב
 function formatKm(value: string): string {
   const digits = value.replace(/\D/g, '');
   return digits ? Number(digits).toLocaleString() : '';
 }
 
+// בודק את הטופס
 function validateVehicleForm(form: FormState): Record<string, string> {
   const errors: Record<string, string> = {};
   const plateDigits = form.plate_number.replace(/\D/g, '');
@@ -135,6 +146,7 @@ function validateVehicleForm(form: FormState): Record<string, string> {
   return errors;
 }
 
+// המסך: שדות, חיפוש במאגר ושמירה
 export default function VehicleFormScreen({ route, navigation }: Props) {
   const vehicleId = route.params?.vehicleId;
   const isEdit = !!vehicleId;
@@ -573,6 +585,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   );
 }
 
+// אייקון לכל סוג רכב
 const TYPE_ICONS: Record<VehicleType, React.ComponentProps<typeof Ionicons>['name']> = {
   car: 'car-sport',
   minibus: 'bus-outline',
@@ -580,6 +593,7 @@ const TYPE_ICONS: Record<VehicleType, React.ComponentProps<typeof Ionicons>['nam
   bus: 'bus',
 };
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { textAlign: 'center' },
@@ -587,10 +601,12 @@ const styles = StyleSheet.create({
   preview: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 18 },
   glassChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, backgroundColor: DK.glass, borderWidth: 1, borderColor: DK.glassBorder },
   dot: { width: 8, height: 8, borderRadius: 4 },
+  // פס ההתקדמות
   progress: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, marginTop: 16 },
   progressTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.14)', overflow: 'hidden', flexDirection: 'row-reverse' },
   progressFill: { height: '100%', borderRadius: 3, backgroundColor: DK.mint },
   footer: { gap: 6 },
+  // בחירת סוג רכב
   types: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10, padding: 14 },
   type: { width: '47%', flexGrow: 1, minHeight: 96, borderRadius: 18, padding: 12, gap: 2, justifyContent: 'center', backgroundColor: DK.surfaceSunk },
   typeActive: { backgroundColor: DK.accent },

@@ -1,3 +1,4 @@
+// רכיבים משותפים לתיק רכב ותיק נהג במחשב
 import React, { useEffect, useState } from 'react';
 import { Image, Modal, Pressable, StyleSheet, View, type ImageStyle } from 'react-native';
 import { BrandLoader } from '../../ui/BrandLoader';
@@ -25,10 +26,13 @@ import { errorMessage } from '../../../lib/requestError';
  * spread it into its own `StyleSheet.create` alongside page-only styles.
  */
 
+// עקומת אנימציה
 export const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
 
+// צבע לכל מצב תוקף
 export const EXPIRY_TONE_MAP: Record<ExpiryState, DesktopTone> = { ok: 'ok', soon: 'warn', expired: 'bad', missing: 'neutral', optional: 'neutral' };
 
+// טקסט לכל מצב תוקף
 export const STATE_LABEL: Record<ExpiryState, string> = { get ok() { return t('status.valid'); }, get soon() { return t('status.aboutToExpire'); }, get expired() { return t('status.expiredLong'); }, get missing() { return t('status.missing'); }, get optional() { return t('status.ok'); } };
 
 export type RecordMenuItem = {
@@ -39,6 +43,7 @@ export type RecordMenuItem = {
   disabled?: boolean;
 };
 
+// תפריט '⋯' לפעולות נדירות
 /** "⋯" header menu — keeps rare or destructive actions out of the always-visible action row. */
 export function OverflowMenu({ items }: { items: RecordMenuItem[] }) {
   const triggerRef = React.useRef<View>(null);
@@ -85,6 +90,7 @@ export function OverflowMenu({ items }: { items: RecordMenuItem[] }) {
   );
 }
 
+// תגית מצב שלחיצה עליה פותחת בחירה
 /**
  * Status pill that doubles as its own picker: click it, choose from a short
  * menu anchored under it. The current value carries a checkmark; saving is
@@ -169,6 +175,7 @@ export function StatusPicker<T extends string>({
   );
 }
 
+// לוחית רישוי קטנה
 export function PlateBadge({ plate }: { plate: string }) {
   return (
     <View {...fixedLayoutProps} style={[styles.plateBadge, FIXED_LAYOUT_STYLE]}>
@@ -180,6 +187,7 @@ export function PlateBadge({ plate }: { plate: string }) {
   );
 }
 
+// חלק עם כותרת
 export function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={styles.section}>
@@ -189,6 +197,7 @@ export function Section({ title, children }: { title: string; children: React.Re
   );
 }
 
+// שדה לקריאה
 export function Field({ label, value, ltr, compact }: { label: string; value: string; ltr?: boolean; compact?: boolean }) {
   const TextComponent = ltr ? DLtrText : DText;
   return (
@@ -200,6 +209,7 @@ export function Field({ label, value, ltr, compact }: { label: string; value: st
 }
 
 
+// שמירה שתמיד עוצרת את הטעינה
 /** A save that throws instead of returning its message must still end the spinner. */
 async function runSave(save: () => Promise<string | null>): Promise<string | null> {
   try {
@@ -209,6 +219,7 @@ async function runSave(save: () => Promise<string | null>): Promise<string | nul
   }
 }
 
+// מעטפת לשדה שאפשר לערוך
 /**
  * Shell shared by every per-field editor below — a single field in
  * {@link Field}'s read layout that can be clicked into an inline editor with
@@ -283,6 +294,7 @@ export function EditableFieldShell({
   );
 }
 
+// שדה טקסט שאפשר לערוך
 export function EditableTextField({
   label,
   value,
@@ -350,6 +362,7 @@ export function EditableTextField({
   );
 }
 
+// שדה בחירה שאפשר לערוך
 export function EditableSelectField<T extends string>({
   label,
   value,
@@ -391,6 +404,7 @@ export function EditableSelectField<T extends string>({
   );
 }
 
+// שדה תאריך שאפשר לערוך
 export function EditableDateField({
   label,
   value,
@@ -428,6 +442,7 @@ export function EditableDateField({
   );
 }
 
+// תמונה שמופיעה בהדרגה
 /** Thumbnail that fades in once its bytes have loaded, instead of popping in. */
 export function FadeInImage({ uri, hovered, signedVisual = false }: { uri: string; hovered: boolean; signedVisual?: boolean }) {
   const [loaded, setLoaded] = useState(false);
@@ -450,6 +465,7 @@ export type RecordDocumentFolder = {
   requiresExpiry: boolean;
 };
 
+// אריח תיקייה
 /**
  * One folder tile: an image preview of the folder's newest photo when it has
  * one, otherwise the folder icon, then the title and a `meta` line (expiry
@@ -498,6 +514,7 @@ export function FolderTile({
   );
 }
 
+// כל המסמכים של רכב/נהג
 /** Every document of one owner, plus a preview image URL per category (its first image). */
 export function useOwnerDocuments(ownerType: OwnerType, ownerId: string) {
   const [docs, setDocs] = useState<DocumentRow[]>([]);
@@ -530,6 +547,7 @@ export function useOwnerDocuments(ownerType: OwnerType, ownerId: string) {
   return { docs, thumbnails, reload };
 }
 
+// המסמך האחרון בקטגוריה
 /** The newest document of a category, or null. */
 export function latestDocumentOf(docs: DocumentRow[], category: string): DocumentRow | null {
   return docs.reduce<DocumentRow | null>(
@@ -538,6 +556,7 @@ export function latestDocumentOf(docs: DocumentRow[], category: string): Documen
   );
 }
 
+// חלון תיקייה עם העלאה
 /**
  * The centered folder modal with its upload control — lists the folder's
  * documents and uploads new ones into it (with an expiry date when the
@@ -653,13 +672,18 @@ export function DocumentFolderUploadModal({
   );
 }
 
+// עיצוב משותף לתיקים
 export const recordStyles = StyleSheet.create({
   pressDown: { transform: [{ scale: 0.97 }] },
+  // הדף
   root: { flex: 1 },
+  // אזור התוכן
   content: { padding: 22, paddingBottom: 48, maxWidth: 1440, width: '100%', alignSelf: 'center' },
+  // העמודות
   columns: { width: '100%', flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 16, marginTop: 14 },
   mainColumn: { flex: 1, gap: 14, minWidth: 0 },
   sideColumn: { width: 300, flexShrink: 0, gap: 12, marginTop: 31, ...webOnly({ position: 'sticky', top: 0 }) },
+  // כרטיס
   panel: {
     backgroundColor: DESKTOP_COLORS.surface,
     borderWidth: 1,
@@ -675,6 +699,7 @@ export const recordStyles = StyleSheet.create({
   complianceLabel: { fontSize: 13 },
   complianceDate: { fontSize: 12, color: DESKTOP_COLORS.inkFaint, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   complianceStatus: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
+  // פס אזהרה
   alertBanner: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 12, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10 },
   alertTitle: { fontSize: 13 },
   alertItems: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8, flex: 1 },
@@ -684,6 +709,7 @@ export const recordStyles = StyleSheet.create({
   alertItemDetail: { fontSize: 12, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
 
   iconAction: { width: 40, height: 40, borderWidth: 1, borderColor: DESKTOP_COLORS.borderInput, borderRadius: 12, backgroundColor: DESKTOP_COLORS.surface, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
+  // תפריט נפתח
   menu: { position: 'absolute', minWidth: 170, padding: 4, backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 8, ...webOnly({ boxShadow: '0 8px 24px -6px rgba(22,34,46,0.18)' }) },
   // The menu opens under a trigger at the inline end of the header, so it grows from that corner.
   menuOrigin: webOnly({ transformOrigin: 'top left' }),
@@ -705,6 +731,7 @@ export const recordStyles = StyleSheet.create({
   statusOptionLabel: { flex: 1 },
   menuItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, height: 34, paddingHorizontal: 10, borderRadius: 6, ...webOnly({ transition: 'background-color 150ms ease' }) },
 
+  // כותרת התיק
   recordHeader: {
     minHeight: 76,
     backgroundColor: DESKTOP_COLORS.surface,
@@ -861,4 +888,5 @@ export const recordStyles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: DESKTOP_COLORS.borderInput, marginTop: 3 },  menuItemText: { color: DESKTOP_COLORS.ink },
 });
 
+// קיצור לעיצוב המשותף
 const styles = recordStyles;

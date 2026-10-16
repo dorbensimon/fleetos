@@ -1,9 +1,11 @@
+// תפריט '⋯' של חברה
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { DK, KitSheet, ListRow, STATUS, Surface } from '../driverKit';
 import { CompanyRow } from './CompanyCard';
 import { t } from '../../lib/i18n';
 
+// פתיחה, מנוי, הפעלה/כיבוי ומחיקה
 /** The "⋯" menu of a company: open it, its subscription, switch it off or on, or delete it. */
 export function CompanyActionsSheet({
   company,
@@ -43,6 +45,7 @@ export function CompanyActionsSheet({
   );
 }
 
+// עיצוב התפריט
 const styles = StyleSheet.create({
   list: { overflow: 'hidden', backgroundColor: DK.surface },
   gap: { marginTop: 12 },

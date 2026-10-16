@@ -1,14 +1,17 @@
+// פונקציית שרת: מחיקת רכב
 // Edge Function: delete-company-vehicle
 // Permanently removes one vehicle and its non-FK-owned records/files.
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
 
+// תשובת JSON
 const json = (body: unknown, status: number) => new Response(JSON.stringify(body), {
   status,
   headers: { ...corsHeaders, 'Content-Type': 'application/json' },
 });
 
+// מקבל בקשה ומוחק
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'השיטה אינה נתמכת' }, 405);

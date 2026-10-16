@@ -1,3 +1,4 @@
+// תיק רכב בטלפון
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -77,12 +78,15 @@ type Props = {
   onDelete: () => void;
 };
 
+// ק"מ מעוצב
 const km = (n: number | null | undefined) => (n == null ? null : t('unit.kmValue', { v1: n.toLocaleString(getLocale()) }));
+// ק"מ בהקלדה
 const formatKm = (value: string) => {
   const digits = value.replace(/\D/g, '');
   return digits ? Number(digits).toLocaleString(getLocale()) : '';
 };
 
+// הכותרת עם הרכב ולשוניות
 /**
  * A vehicle's record on the phone: plate, model and its three vital signs
  * on the night; below, four tabs — the details, who drives it, service and
@@ -178,6 +182,7 @@ export function VehicleDetailMobile(p: Props) {
   );
 }
 
+// תוכן הלשונית
 function renderTab(p: Props, v: Vehicle) {
   const archived = v.status === 'archived';
   if (p.tab === 'drivers') {
@@ -284,6 +289,7 @@ function renderTab(p: Props, v: Vehicle) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   flex2: { flex: 2 },

@@ -1,3 +1,4 @@
+// הגדרות הטיפוסים של הנתונים: רכב, נהג, התראה, מסמך ועוד
 export type VehicleStatus = 'active' | 'maintenance' | 'disabled' | 'archived';
 export type VehicleType = 'car' | 'minibus' | 'bus' | 'truck';
 export type AcquisitionType = 'purchase' | 'leasing' | 'rental';

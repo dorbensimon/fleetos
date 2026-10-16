@@ -1,3 +1,4 @@
+// פונקציית שרת: עדכונים מ-DocuSeal (נחתם / סורב)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
@@ -19,6 +20,7 @@ type DocuSealWebhook = {
   data?: WebhookData;
 };
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -26,6 +28,7 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
+// השוואה בטוחה
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let result = 0;
@@ -35,10 +38,12 @@ function timingSafeEqual(a: string, b: string): boolean {
   return result === 0;
 }
 
+// בייטים ל-hex
 function hex(bytes: ArrayBuffer): string {
   return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+// בודק שההודעה באמת מ-DocuSeal
 async function verifySignature(rawBody: string, header: string | null): Promise<boolean> {
   const secret = Deno.env.get('DOCUSEAL_WEBHOOK_HMAC_SECRET');
   if (!secret || !header) return false;
@@ -62,6 +67,7 @@ async function verifySignature(rawBody: string, header: string | null): Promise<
   return timingSafeEqual(hex(signed), signature);
 }
 
+// המצב החדש לפי האירוע
 function statusForEvent(eventType: string, data: WebhookData): 'completed' | 'declined' | null {
   if (eventType === 'form.completed' || data.status === 'completed' || data.submission?.status === 'completed') {
     return 'completed';
@@ -72,6 +78,7 @@ function statusForEvent(eventType: string, data: WebhookData): 'completed' | 'de
   return null;
 }
 
+// מקבל עדכון ומעדכן את הבקשה
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);

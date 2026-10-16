@@ -1,3 +1,4 @@
+// בדיקות קצין בטיחות בשרת: בדיקת הרשימה, ליקויים וה-PDF
 /**
  * "בדיקות בטיחות" (lib/inspections.ts on the app side): the inspection list's
  * server-side checks and the HTML DocuSeal turns into the PDF.
@@ -10,13 +11,19 @@
  * in the driver's place.
  */
 
+// תפקיד הקצין
 export const OFFICER_ROLE = 'החברה';
+// תפקיד הנהג
 export const DRIVER_ROLE = 'נהג';
+// שם שדה חתימת הקצין
 export const OFFICER_FIELD = 'חתימת קצין הבטיחות';
+// שם שדה חתימת הנהג
 export const DRIVER_FIELD = 'חתימת הנהג';
 
+// שם המסמך
 export const INSPECTION_TITLE = 'בדיקת קצין בטיחות לרכב';
 
+// מגבלות הבדיקה
 export const INSPECTION_LIMITS = {
   groups: 12,
   items: 80,
@@ -28,6 +35,7 @@ export const INSPECTION_LIMITS = {
   closedNote: 300,
 } as const;
 
+// הנוסח המשפטי
 export const DISCLAIMER =
   'בדיקה זו נעשית במבט חיצוני בלבד ואינה מחליפה טיפול או בדיקה במוסך. על הנהג לדווח מיד לממונה על כל תקלה, או חשד לתקלה, שעלולה לפגוע בבטיחות הנסיעה.';
 
@@ -38,10 +46,14 @@ export type InspectionForm = {
 };
 export type InspectionAnswers = Record<string, { status: InspectionStatus | null; note: string }>;
 
+// טקסט לכל תשובה
 const STATUS_LABEL: Record<InspectionStatus, string> = { ok: 'תקין', not_ok: 'לא תקין', na: 'לא רלוונטי' };
+// התשובות האפשריות
 const STATUSES: InspectionStatus[] = ['ok', 'not_ok', 'na'];
+// תבנית מזהה
 const ID = /^[A-Za-z0-9_-]{1,40}$/;
 
+// רשימת הבדיקה המוכנה
 /**
  * The ready-made list, in the order you walk around a vehicle. The same list
  * is in lib/inspections.ts (DEFAULT_INSPECTION_FORM); keep the two in step.
@@ -92,10 +104,12 @@ export const DEFAULT_INSPECTION_FORM: InspectionForm = {
   ],
 };
 
+// טקסט בשורה אחת
 function oneLine(value: unknown, max: number): string {
   return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '';
 }
 
+// קורא את הרשימה ובודק אותה
 /** A list as a company saved it, or null if anything is off. */
 export function parseInspectionForm(raw: unknown): InspectionForm | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -128,10 +142,12 @@ export function parseInspectionForm(raw: unknown): InspectionForm | null {
   return { version: 1, groups };
 }
 
+// כל הסעיפים
 export function formItems(form: InspectionForm): Array<{ id: string; text: string }> {
   return form.groups.flatMap((group) => group.items);
 }
 
+// קורא את התשובות
 /** Answers for the list's own items only; an unknown status or item is dropped. */
 export function parseInspectionAnswers(raw: unknown, form: InspectionForm): InspectionAnswers {
   const answers: InspectionAnswers = {};
@@ -147,6 +163,7 @@ export function parseInspectionAnswers(raw: unknown, form: InspectionForm): Insp
   return answers;
 }
 
+// קורא ליקויים חופשיים
 /** Free defects: short lines, empty ones dropped. */
 export function parseExtraDefects(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -156,6 +173,7 @@ export function parseExtraDefects(raw: unknown): string[] {
     .slice(0, INSPECTION_LIMITS.extraDefects);
 }
 
+// למה הקצין עוד לא יכול לחתום
 /** Why the officer cannot sign yet, or null. Every item marked; every "לא תקין" says what is wrong. */
 export function inspectionProblem(form: InspectionForm, answers: InspectionAnswers): string | null {
   const items = formItems(form);
@@ -166,16 +184,19 @@ export function inspectionProblem(form: InspectionForm, answers: InspectionAnswe
   return null;
 }
 
+// מספר הליקויים
 export function defectCount(form: InspectionForm, answers: InspectionAnswers, extra: string[]): number {
   return formItems(form).filter((item) => answers[item.id]?.status === 'not_ok').length + extra.length;
 }
 
+// האם הערך הוא תאריך
 export function isIsoDay(value: unknown): value is string {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
 }
 
+// מוסיף חודשים
 /** YYYY-MM-DD plus whole months; the 31st lands on the month's last day. */
 export function addMonths(day: string, months: number): string {
   const [y, m, d] = day.split('-').map(Number);
@@ -185,11 +206,13 @@ export function addMonths(day: string, months: number): string {
   return target.toISOString().slice(0, 10);
 }
 
+// תאריך כיום/חודש/שנה
 export function dayText(value: string | null | undefined): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value ?? '');
   return match ? `${match[3]}/${match[2]}/${match[1]}` : '';
 }
 
+// מנקה טקסט ל-HTML
 function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -219,6 +242,7 @@ type RenderInput = {
   closedNote?: { text: string; by: string; on: string } | null;
 };
 
+// מספר רישוי עם מקפים
 /** Israeli plate in its usual groups: 12-345-67 / 123-45-678. */
 export function formatPlate(plate: string): string {
   const digits = plate.replace(/\D/g, '');
@@ -227,6 +251,7 @@ export function formatPlate(plate: string): string {
   return plate;
 }
 
+// האם התאריך עבר או קרוב (מודפס באדום)
 /** A date that has passed, or is within 30 days of the inspection, is printed in red. */
 function dueSoon(date: string | null, from: string): boolean {
   if (!date) return false;
@@ -235,6 +260,7 @@ function dueSoon(date: string | null, from: string): boolean {
   return date <= limit.toISOString().slice(0, 10);
 }
 
+// בונה את דף הבדיקה ל-PDF
 /**
  * The page matches the checklist meeting's document (A4 at 96dpi, the same
  * letterhead), so every company document looks like one family.

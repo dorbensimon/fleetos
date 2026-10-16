@@ -1,3 +1,5 @@
+// צבעי מסכי הבעלים
+// הצבעים
 /**
  * OwnerHomeScreen and its extracted sub-components predate lib/theme.ts
  * and use their own local palette rather than the shared design system —
@@ -20,4 +22,5 @@ export const COLORS = {
   fieldBg: '#FAFAFA',
 };
 
+// צבעים לעיגולי ראשי תיבות
 export const AVATAR_PALETTE = ['#0088CC', '#000000', '#666666', '#979797'];

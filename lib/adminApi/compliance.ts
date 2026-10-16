@@ -1,7 +1,9 @@
+// תוקף מסמכים ורישיונות של רכבים ונהגים: קריאה ושמירה
 import { supabase } from '../supabase';
 import { ComplianceItem, OwnerType } from './types';
 import { chunkIds, fetchAllPages } from './paging';
 
+// רשימת פריטי התוקף של רכב או נהג אחד
 export async function listCompliance(
   ownerType: OwnerType,
   ownerId: string
@@ -16,6 +18,7 @@ export async function listCompliance(
   return (data ?? []) as ComplianceItem[];
 }
 
+// פריטי התוקף של הרבה רכבים/נהגים בבת אחת
 /** Compliance rows for many owners at once — used by the list screens. */
 export async function listComplianceForOwners(
   ownerType: OwnerType,
@@ -47,6 +50,7 @@ export async function listComplianceForOwners(
   return map;
 }
 
+// יוצר או מעדכן פריט תוקף
 /** Creates or updates the row for one tracked item. */
 export async function upsertCompliance(payload: {
   companyId: string;

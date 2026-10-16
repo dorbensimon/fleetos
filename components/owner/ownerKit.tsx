@@ -1,3 +1,4 @@
+// רכיבים קטנים של הבעלים
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +13,7 @@ import { t } from '../../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+// צבעים לכל מצב מנוי
 export const ACCOUNT_TONE: Record<AccountTone, { fg: string; fill: string; soft: string }> = {
   ok: STATUS.ok,
   warn: STATUS.soon,
@@ -19,6 +21,7 @@ export const ACCOUNT_TONE: Record<AccountTone, { fg: string; fill: string; soft:
   off: STATUS.missing,
 };
 
+// בחירה כתגיות
 /** One-of-many choice as chips that wrap; tapping the chosen one again clears it when `clearable`. */
 export function ChoiceChips<T extends string>({
   options,
@@ -59,6 +62,7 @@ export function ChoiceChips<T extends string>({
   );
 }
 
+// תגית מצב מנוי
 /** A soft pill that says where an account stands. */
 export function TonePill({ tone, label }: { tone: AccountTone; label: string }) {
   const toneKey = ACCOUNT_TONE[tone];
@@ -72,6 +76,7 @@ export function TonePill({ tone, label }: { tone: AccountTone; label: string }) 
   );
 }
 
+// עיצוב התגיות
 const styles = StyleSheet.create({
   row: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
   chip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7, minHeight: 44, paddingHorizontal: 16, borderRadius: 999, borderWidth: 1.5 },

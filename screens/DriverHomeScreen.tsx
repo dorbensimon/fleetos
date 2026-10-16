@@ -1,3 +1,4 @@
+// מסך הבית של הנהג
 import React from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -18,6 +19,7 @@ import { DESKTOP_COLORS, DESKTOP_TONES } from '../components/desktop/desktopThem
 import { t, textStart } from '../lib/i18n';
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverHome'>;
 
+// מה דורש טיפול, הרכב, המסמכים והמנהל
 export default function DriverHomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
@@ -145,16 +147,20 @@ export default function DriverHomeScreen({ navigation }: Props) {
   );
 }
 
+// עיצוב בטלפון
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: DK.canvas },
   night: { backgroundColor: DK.night[0], alignItems: 'center', justifyContent: 'center' },
 });
 
+// עיצוב במחשב
 const ds = StyleSheet.create({
   wrap: { padding: 24, maxWidth: 820, alignSelf: 'center', width: '100%' },
+  // העמודות
   columns: { flexDirection: 'row-reverse', gap: 16, alignItems: 'flex-start' },
   mainCol: { flex: 2, gap: 16 },
   sideCol: { flex: 1, gap: 16, minWidth: 220 },
+  // כרטיס
   card: {
     backgroundColor: DESKTOP_COLORS.surface,
     borderWidth: 1,
@@ -170,6 +176,7 @@ const ds = StyleSheet.create({
   noVehicleLine: { paddingVertical: 24, alignItems: 'center' },
   noVehicleText: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
   tilesRow: { flexDirection: 'row-reverse', gap: 16 },
+  // אריח
   tile: {
     flex: 1,
     backgroundColor: DESKTOP_COLORS.surface,

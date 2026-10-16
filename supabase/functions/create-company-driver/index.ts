@@ -1,3 +1,4 @@
+// פונקציית שרת: יצירת נהג עם חשבון כניסה
 // Edge Function: create-company-driver
 //
 // Called by a fleet admin (or the platform owner) to add a driver.
@@ -10,12 +11,14 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
 import { isValidTemporaryPassword } from '../_shared/accountSecurity.ts';
 
+// תשובת JSON
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
+// השדות המותרים של נהג
 const DRIVER_DETAILS_FIELDS = [
   'department_id', 'employee_number', 'national_id', 'birth_date', 'address',
   'home_phone', 'marital_status', 'education', 'employment_start_date',
@@ -23,6 +26,7 @@ const DRIVER_DETAILS_FIELDS = [
   'status', 'notes',
 ] as const;
 
+// משאיר רק שדות מותרים
 function pickDriverDetails(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   const source = value as Record<string, unknown>;
@@ -33,6 +37,7 @@ function pickDriverDetails(value: unknown): Record<string, unknown> {
   );
 }
 
+// נהג בארכיון עם אותו מייל
 /**
  * Name of the archived driver in this company holding `email`, or null.
  *
@@ -67,6 +72,7 @@ async function findArchivedDriverByEmail(
   return null;
 }
 
+// מקבל בקשה ויוצר נהג
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

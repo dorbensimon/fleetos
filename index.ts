@@ -1,9 +1,11 @@
+// מפעיל את האפליקציה
 import { createElement, useEffect, useState, type ComponentType } from 'react';
 import { View } from 'react-native';
 import { registerRootComponent } from 'expo';
 import { loadStoredLanguage } from './lib/i18n';
 import { BrandLoader } from './components/ui/BrandLoader';
 
+// טוען את השפה ואז את האפליקציה
 // The saved language is read before the app's screens are loaded, so every
 // screen — including strings and styles its modules build at load time —
 // starts in the user's language. On web the read is synchronous; on native

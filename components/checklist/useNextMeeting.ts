@@ -1,8 +1,10 @@
+// המילוי הבא של נהג בטופס חוזר
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { readForm } from '../../lib/checklistForms';
 import { loadMeetingPlan, setNextMeetingDate, type PlanRow } from '../../lib/meetingPlan';
 import type { SigningTemplate } from '../../lib/docuseal';
 
+// מתי המילוי הבא ואיך להזיז אותו
 /**
  * One driver's next meeting on one repeating form, for the driver's folder:
  * when it is due, and a way to move it. Null on a one-time form.

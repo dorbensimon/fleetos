@@ -1,9 +1,11 @@
+// רכבים: רשימה, פרטים, יצירה, עדכון, ארכיון ומחיקה
 import { supabase } from '../supabase';
 import { Vehicle } from './types';
 import { functionErrorMessage } from '../functionError';
 import { fetchAllPages } from './paging';
 import { t } from '../i18n';
 
+// רשימת הרכבים של החברה
 export async function listVehicles(companyId: string, includeArchived = false): Promise<Vehicle[]> {
   return fetchAllPages<Vehicle>(async (from, to) => {
     let query = supabase.from('vehicles').select('*').eq('company_id', companyId);
@@ -12,6 +14,7 @@ export async function listVehicles(companyId: string, includeArchived = false): 
   });
 }
 
+// מביא רכב אחד לפי מזהה
 export async function getVehicle(vehicleId: string): Promise<Vehicle | null> {
   const { data, error } = await supabase
     .from('vehicles')
@@ -29,25 +32,30 @@ export async function getVehicle(vehicleId: string): Promise<Vehicle | null> {
   return data as Vehicle;
 }
 
+// יוצר רכב חדש
 export async function createVehicle(payload: Partial<Vehicle> & { company_id: string; plate_number: string }) {
   const { data, error } = await supabase.from('vehicles').insert(payload).select().single();
   if (error) throw error;
   return data as Vehicle;
 }
 
+// מעדכן פרטי רכב
 export async function updateVehicle(vehicleId: string, patch: Partial<Vehicle>) {
   const { error } = await supabase.from('vehicles').update(patch).eq('id', vehicleId);
   if (error) throw error;
 }
 
+// מעביר רכב לארכיון
 export async function archiveVehicle(vehicleId: string) {
   await updateVehicle(vehicleId, { status: 'archived' });
 }
 
+// מחזיר רכב מהארכיון
 export async function restoreVehicle(vehicleId: string) {
   await updateVehicle(vehicleId, { status: 'active' });
 }
 
+// מוחק רכב לצמיתות
 export async function deleteVehicle(vehicleId: string, companyId: string) {
   const { data, error } = await supabase.functions.invoke('delete-company-vehicle', {
     body: { vehicleId, companyId },

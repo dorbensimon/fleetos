@@ -1,3 +1,4 @@
+// פונקציית שרת: העברת נהג לארכיון וחסימת הכניסה
 // Edge Function: archive-company-driver
 //
 // Moves one driver to the archive. Archiving is not just a list filter —
@@ -14,15 +15,18 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
 
+// משך החסימה (קבוע עד שחזור)
 // Effectively permanent; lifted explicitly on restore.
 const BAN_DURATION = '876000h';
 
+// תשובת JSON
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
+// מקבל בקשה ומעביר לארכיון
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

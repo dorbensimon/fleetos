@@ -1,3 +1,4 @@
+// חתימה על מסמך במשטח החתימה
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -15,6 +16,7 @@ import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverSignDocument'>;
 
+// קריאה וחתימה
 /**
  * A document that only needs the driver's signature, signed on the same pad
  * the manager signs a meeting on: read it, sign in the box, send.
@@ -105,6 +107,7 @@ export default function DriverSignDocumentScreen({ navigation, route }: Props) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   block: { padding: 16, gap: 12 },
   readRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },

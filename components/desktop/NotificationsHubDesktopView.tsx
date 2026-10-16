@@ -1,3 +1,4 @@
+// דף ההתראות - תצוגת מחשב: רשימה והגדרות
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,6 +42,7 @@ type Section = 'feed' | 'settings';
 type Filter = 'all' | 'unread' | 'vehicles' | 'drivers' | 'signing';
 type IconName = keyof typeof Ionicons.glyphMap;
 
+// שם לכל סינון
 const FILTER_LABEL: Record<Filter, string> = {
   get all() { return t('common.all'); },
   get unread() { return t('notifications.unread'); },
@@ -49,6 +51,7 @@ const FILTER_LABEL: Record<Filter, string> = {
   get signing() { return t('notifications.cat.signing'); },
 };
 
+// הקטגוריה של סוג התראה
 function categoryOf(type: string | null): Filter | null {
   if (!type) return null;
   if (type.startsWith('vehicle_')) return 'vehicles';
@@ -57,8 +60,10 @@ function categoryOf(type: string | null): Filter | null {
   return null;
 }
 
+// יום במילישניות
 const DAY_MS = 86_400_000;
 
+// קבוצת יום (היום, אתמול...)
 function dayGroupOf(iso: string, now: Date): string {
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const ratio = new Date(iso).getTime();
@@ -68,6 +73,7 @@ function dayGroupOf(iso: string, now: Date): string {
   return new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso));
 }
 
+// אייקון לכל סוג התראה
 const TYPE_ICON: Partial<Record<NotificationType, IconName>> = {
   signature_expiry: 'hourglass-outline',
   driver_profile_update: 'person-outline',
@@ -99,8 +105,10 @@ const TYPE_ICON: Partial<Record<NotificationType, IconName>> = {
 
 type SettingsGroup = NotificationGroup;
 
+// שם קצר בלי 'תוקף'
 const shortLabel = withoutValidity;
 
+// הדף: כותרת כחולה, רשימת ההתראות והגדרות
 export function NotificationsHubDesktopView({
   items,
   unreadIds,
@@ -402,6 +410,7 @@ export function NotificationsHubDesktopView({
   );
 }
 
+// מתג התראות/הגדרות
 /** The two views, as one pill switch — the same shape as the dashboard's drivers/vehicles switch. */
 function SectionSwitch({
   section,
@@ -446,6 +455,7 @@ function SectionSwitch({
   );
 }
 
+// שורת התראה
 function FeedRow({
   n,
   first,
@@ -539,6 +549,7 @@ function FeedRow({
   );
 }
 
+// כפתור אייקון קטן
 /** A quiet square icon button that names itself on hover. */
 function IconAction({ icon, label, onPress, disabled }: { icon: IconName; label: string; onPress: () => void; disabled?: boolean }) {
   const [hover, setHover] = useState(false);
@@ -567,6 +578,7 @@ function IconAction({ icon, label, onPress, disabled }: { icon: IconName; label:
   );
 }
 
+// כרטיס מצב (טעינה, ריק, שגיאה)
 function StateCard({ icon, title, hint, action }: { icon: IconName; title: string; hint?: string; action?: { label: string; onPress: () => void } }) {
   return (
     <View style={styles.stateCard}>
@@ -586,10 +598,14 @@ function StateCard({ icon, title, hint, action }: { icon: IconName; title: strin
 // Settings
 // ---------------------------------------------------------------------------
 
+// הקצה של ציר הזמן (90 יום)
 const AXIS_MAX = 90;
+// הסימונים על ציר הזמן
 const AXIS_TICKS = [90, 60, 30, 14, 7, 0];
+// גובה מסלול בציר הזמן
 const LANE_HEIGHT = 34;
 
+// הסבר ציר הזמן
 /**
  * When each vehicle alert goes out, on one line: the far right is 90 days
  * ahead, the far left is the day it expires. Close labels stack in lanes.
@@ -602,6 +618,7 @@ const TIMELINE_LABEL: Partial<Record<NotificationType, string>> = {
   get company_carrier_license_expiry() { return t('notifications.cat.carrierLicense'); },
 };
 
+// ציר זמן שמראה מתי כל התראה יוצאת
 function LeadTimeline({ prefs, onPick, reduceMotion }: { prefs: NotificationPreferencesState; onPick: (type: NotificationType) => void; reduceMotion: boolean }) {
   const [width, setWidth] = useState(0);
   const [openDays, setOpenDays] = useState<number | null>(null);
@@ -739,6 +756,7 @@ function LeadTimeline({ prefs, onPick, reduceMotion }: { prefs: NotificationPref
   );
 }
 
+// חלק בהגדרות
 function SettingsSection({
   group,
   prefs,
@@ -836,6 +854,7 @@ function SettingsSection({
   );
 }
 
+// כרטיס של סוג התראה עם מתג
 function TypeCard({
   item,
   compact,
@@ -902,6 +921,7 @@ function TypeCard({
   );
 }
 
+// הגדרות תוקף והתראה למסמכי חתימה
 /**
  * Every signing document of the company, on its own: how long a signature
  * stays good and when its alert goes out (lib/signingRules.ts, migration 105).
@@ -977,6 +997,7 @@ function SigningRulesSection() {
   );
 }
 
+// בחירת 'כמה זמן מראש' עם + ו-
 /**
  * One type's lead time: − value + with the unit in words, and a few presets.
  * Steps and typing settle for a moment before saving, so a run of clicks is one save.
@@ -1093,13 +1114,19 @@ export function LeadControl({
   );
 }
 
+// עקומת אנימציה
 const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
+// כחול רך
 const BRAND_SOFT = '#E6F2F9';
+// כחול כהה
 const NAVY = '#102536';
 
+// עיצוב דף ההתראות
 const styles = StyleSheet.create({
+  // הדף
   root: { flex: 1 },
   scroll: { flex: 1 },
+  // אזור התוכן
   content: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 64, maxWidth: 1160, width: '100%', alignSelf: 'center', gap: 14 },
   grow: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
   headingCopy: { gap: 3, flexShrink: 1 },
@@ -1112,6 +1139,7 @@ const styles = StyleSheet.create({
 
   // Header
   heroIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  // המתג התראות/הגדרות
   switch: {
     flexDirection: 'row-reverse',
     padding: 3,
@@ -1143,8 +1171,10 @@ const styles = StyleSheet.create({
 
   pane: { gap: 14 },
 
+  // שורת הסינון
   // Feed toolbar
   toolbar: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, flexWrap: 'wrap' },
+  // מתג הסינון
   segment: { flexDirection: 'row-reverse', gap: 6, flexWrap: 'wrap' },
   segmentItem: {
     flexDirection: 'row-reverse',
@@ -1184,6 +1214,7 @@ const styles = StyleSheet.create({
   ghostButtonHover: { backgroundColor: BRAND_SOFT, borderColor: 'rgba(47,91,255,0.3)' },
   ghostButtonText: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
 
+  // קבוצות לפי יום
   // Feed list
   days: { gap: 18 },
   day: { gap: 8 },
@@ -1204,6 +1235,7 @@ const styles = StyleSheet.create({
     animationTimingFunction: EASE_OUT,
     animationFillMode: 'both',
   }),
+  // שורת התראה
   row: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -1213,6 +1245,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     ...webOnly({ transition: 'background-color 150ms ease' }),
   },
+  // שורה שלא נקראה
   rowUnread: { backgroundColor: '#F5F9FD' },
   rowHover: { backgroundColor: '#EEF5FA' },
   unreadEdge: { position: 'absolute', end: 0, top: 12, bottom: 12, width: 4, borderTopStartRadius: 4, borderBottomStartRadius: 4, backgroundColor: DESKTOP_COLORS.brand },

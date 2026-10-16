@@ -1,3 +1,4 @@
+// כל הנתונים למסך הבית של הנהג
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCompany } from './CompanyContext';
@@ -11,17 +12,21 @@ import { errorMessage } from './requestError';
 export type Severity = 'danger' | 'warning' | 'success';
 export type OverviewItem = { title: string; detail: string; severity: Severity; item: ComplianceItem; target: string | null };
 
+// סדר חומרה
 const RANK: Record<Severity, number> = { danger: 0, warning: 1, success: 2 };
 
+// חומרה לפי מצב תוקף
 function severityFor(state: ExpiryState): Severity {
   return state === 'expired' ? 'danger' : state === 'soon' ? 'warning' : 'success';
 }
 
+// האם הנהג יכול לחתום על הבקשה עכשיו
 /** A request the driver can sign right now. */
 export function isAwaitingSignature(request: SignatureRequest) {
   return request.status === 'pending' && !!request.docuseal_submitter_slug;
 }
 
+// טוען את הנהג, הרכב, התוקף והמסמכים לחתימה
 /**
  * Everything the driver's home and "requires attention" screens show: the
  * driver, their primary vehicle and its validity items, the forms waiting

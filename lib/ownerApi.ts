@@ -1,28 +1,35 @@
+// פעולות הבעלים: חברות, מנהלים ונתונים לחדר הבקרה
 import { supabase, Company } from './supabase';
 import { ACTIVITY_DAYS, type PlatformRows } from './platformOverview';
 import type { CompanyAccount } from './companyAccount';
 
+// רשימת כל החברות
 /** Platform-owner data access. Keeps Supabase details out of OwnerHomeScreen. */
 export function listCompanies() {
   return supabase.from('companies').select('*').order('created_at', { ascending: false });
 }
 
+// תפקידי המשתמשים בכל החברות
 export function listCompanyProfileRoles() {
   return supabase.from('profiles').select('company_id, role').not('company_id', 'is', null);
 }
 
+// משנה סטטוס של חברה
 export function updateCompanyStatus(companyId: string, status: Company['status']) {
   return supabase.from('companies').update({ status }).eq('id', companyId);
 }
 
+// מוחק חברה
 export function deleteOwnedCompany(companyId: string, confirmName: string) {
   return supabase.functions.invoke('delete-company', { body: { companyId, confirmName } });
 }
 
+// יוצר מנהל לחברה
 export function createCompanyAdmin(body: Record<string, unknown>) {
   return supabase.functions.invoke('create-company-admin', { body });
 }
 
+// כל הנתונים לחדר הבקרה של הבעלים
 /**
  * Every row the owner's control room aggregates, fetched in parallel. Each
  * select names only the columns the counts need — no drivers' names, ID

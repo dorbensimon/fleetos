@@ -1,3 +1,4 @@
+// טעינת דוחות הטפסים
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { DriverRow } from '../../lib/adminApi';
 import {
@@ -17,6 +18,7 @@ import { errorMessage } from '../../lib/requestError';
 
 export type FormReportsState = ReturnType<typeof useFormReports>;
 
+// רשימת הטפסים והדוחות של הטופס שנבחר
 /**
  * "טפסים לנהגים" in the reports: first the company's checklist forms, then
  * the chosen form's reports with how many rows each one has. Shared by the

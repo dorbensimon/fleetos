@@ -1,3 +1,4 @@
+// מסך חתימה/צפייה במסמך של DocuSeal (דפדפן)
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { BrandLoader } from '../components/ui/BrandLoader';
@@ -21,6 +22,7 @@ import { safeFileName } from '../lib/fileNames';
 type Props = NativeStackScreenProps<RootStackParamList, 'DocusealWebView'>;
 type IframeMessage = { type?: 'completed' | 'declined' | 'saved' | 'error' };
 
+// בונה את הדף שמוצג
 function buildHtml(params: RootStackParamList['DocusealWebView']) {
   const bridge = `<script>
     const send = (type, detail) => window.parent.postMessage({ source: 'fleetos-docuseal', type, detail }, window.location.origin);
@@ -69,6 +71,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
   return docusealEmbedHtml(params, base, bridge);
 }
 
+// המסך
 export default function DocusealWebViewScreen({ navigation, route }: Props) {
   const { companyId, profile } = useCompany();
   const insets = useSafeAreaInsets();
@@ -298,16 +301,20 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
   );
 }
 
+// עיצוב המסגרת
 const iframeStyle = { border: 0, width: '100%', height: '100%', display: 'block' } as const;
+// עיצוב הטופס מתחת לכותרת
 // Pinned to the box under the header. DocuSeal docks its signature pad and
 // submit button at the bottom of this element, so it must end exactly where
 // the screen does — a 100dvh minimum pushed that button below the fold.
 const directFormStyle = { display: 'block', position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, minWidth: 0, overflowY: 'auto' } as const;
+// עיצוב טופס החתימה של הנהג
 // DocuSeal's own inputs at 16px (below that iPhone zooms in on focus), and
 // its buttons in the icar blue with thumb-sized height.
 const DRIVER_FORM_CSS =
   'input,textarea,select{font-size:16px!important}' +
   '.base-button{background-color:#2F5BFF!important;border-color:#2F5BFF!important;color:#FFFFFF!important;min-height:52px;border-radius:16px!important}';
+// עיצוב המסך
 const styles = StyleSheet.create({
   driverScreen: { backgroundColor: DK.canvas },
   barActions: { flexDirection: 'row-reverse', gap: 8 },

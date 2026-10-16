@@ -1,3 +1,4 @@
+// רשימת הנהגים/הרכבים בדשבורד - תצוגת מחשב
 import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -74,10 +75,13 @@ export interface FleetDesktopViewProps<LF extends string, SF extends string> {
   onRestoreVehicle: (vehicleId: string) => void;
 }
 
+// מתחת לגובה הזה הדף מצטופף
 /** Below this window height the page tightens its padding so the list keeps its room. */
 const COMPACT_HEIGHT = 820;
+// מתחת לרוחב הזה הכפתורים מצטמצמים
 const TIGHT_DOCK_WIDTH = 900;
 
+// אריחי הסינון של נהגים
 const DRIVER_CARDS: Record<string, Omit<FilterCard<string>, 'value' | 'count'>> = {
   all: { get label() { return t('fleet.filter.allDrivers'); }, get hint() { return t('fleet.filter.allDriversHint'); }, icon: 'people' },
   soon: { get label() { return t('fleet.filter.aboutToExpire'); }, get hint() { return t('fleet.filter.aboutToExpireHint'); }, icon: 'time', tone: 'warn' },
@@ -85,6 +89,7 @@ const DRIVER_CARDS: Record<string, Omit<FilterCard<string>, 'value' | 'count'>> 
   no_vehicle: { get label() { return t('fleet.filter.noVehicle'); }, get hint() { return t('fleet.filter.noVehicleHint'); }, icon: 'car-outline', tone: 'neutral' },
 };
 
+// אריחי הסינון של רכבים
 const VEHICLE_CARDS: Record<string, Omit<FilterCard<string>, 'value' | 'count'>> = {
   all: { get label() { return t('fleet.filter.allVehicles'); }, get hint() { return t('fleet.filter.excludingArchive'); }, icon: 'car-sport' },
   active: { get label() { return t('fleet.filter.active'); }, get hint() { return t('fleet.filter.activeHint'); }, icon: 'checkmark-circle', tone: 'ok' },
@@ -92,6 +97,7 @@ const VEHICLE_CARDS: Record<string, Omit<FilterCard<string>, 'value' | 'count'>>
   disabled: { get label() { return t('fleet.filter.disabled'); }, get hint() { return t('fleet.filter.disabledHint'); }, icon: 'pause-circle', tone: 'neutral' },
 };
 
+// צבע לכל מצב רכב
 const VEHICLE_STATUS_TONE: Record<string, DesktopTone> = {
   active: 'ok',
   maintenance: 'warn',
@@ -99,6 +105,7 @@ const VEHICLE_STATUS_TONE: Record<string, DesktopTone> = {
   archived: 'neutral',
 };
 
+// כמה זמן עד הפקיעה, במילים
 /** Plain words instead of a bare date: how long until (or since) it expires. */
 function expiryWords(date: string | null | undefined): { tone: DesktopTone; label: string } {
   const days = daysUntilExpiry(date);
@@ -109,6 +116,7 @@ function expiryWords(date: string | null | undefined): { tone: DesktopTone; labe
   return { tone: 'ok', label: t('status.valid') };
 }
 
+// מצב הצהרת הבריאות במילים
 /** Health declaration: valid, expiring, expired, waiting for signature or never signed. */
 function healthWords(info: HealthDeclarationInfo | undefined): { tone: DesktopTone; label: string; sub: string } {
   if (info?.expiresAt) {
@@ -120,6 +128,7 @@ function healthWords(info: HealthDeclarationInfo | undefined): { tone: DesktopTo
   return { tone: 'neutral', label: t('signing.notSigned'), sub: '' };
 }
 
+// מצב הטיפול הבא
 function serviceInfo(vehicle: Vehicle): { tone: DesktopTone; label: string } {
   const nextServiceKm = nextServiceKmOf(vehicle);
   if (nextServiceKm == null) return { tone: 'neutral', label: '—' };
@@ -128,16 +137,19 @@ function serviceInfo(vehicle: Vehicle): { tone: DesktopTone; label: string } {
   return { tone: km <= SERVICE_WARN_KM ? 'warn' : 'neutral', label: t('vehicle.serviceInKm', { km: km.toLocaleString() }) };
 }
 
+// האות הראשונה של שם
 function initialOf(name: string | null | undefined): string {
   return (name ?? '').trim().charAt(0) || '?';
 }
 
+// מספר במילים ('נהג אחד' / '12 נהגים')
 /** "נהג אחד" / "12 נהגים": the count's wording comes whole from each language's file. */
 function countWords(n: number, one: string, many: string): string {
   return n === 1 ? one : many;
 }
 
 
+// אייקון לכל מצב
 /** Status words as an icon plus text, so colour is never the only signal. */
 const TONE_ICON: Record<DesktopTone, React.ComponentProps<typeof Ionicons>['name']> = {
   ok: 'checkmark-circle',
@@ -146,6 +158,7 @@ const TONE_ICON: Record<DesktopTone, React.ComponentProps<typeof Ionicons>['name
   neutral: 'remove-circle-outline',
 };
 
+// החיפוש, הסינון והטבלה
 export function FleetDesktopView<LF extends string, SF extends string>(props: FleetDesktopViewProps<LF, SF>) {
   const { mode } = props;
   const isDrivers = mode === 'drivers';
@@ -575,6 +588,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
 
 type Column = { label: string; flex: number; min: number };
 
+// עמודות טבלת הנהגים
 const DRIVER_COLUMNS: Column[] = [
   { get label() { return t('role.driver'); }, flex: 1.7, min: 184 },
   { get label() { return t('common.mobilePhone'); }, flex: 1, min: 120 },
@@ -586,6 +600,7 @@ const DRIVER_COLUMNS: Column[] = [
   { get label() { return t('signing.pendingSignature'); }, flex: 0.9, min: 106 },
 ];
 
+// עמודות טבלת הרכבים
 const VEHICLE_COLUMNS: Column[] = [
   { get label() { return t('vehicle.vehicle'); }, flex: 1.6, min: 210 },
   { get label() { return t('vehicle.primaryDriver'); }, flex: 1.3, min: 140 },
@@ -594,18 +609,24 @@ const VEHICLE_COLUMNS: Column[] = [
   { get label() { return t('common.status'); }, flex: 0.7, min: 104 },
 ];
 
+// ריווח צד של שורה
 const ROW_INSET = 10;
+// ריווח פנימי של שורה
 const ROW_PADDING = 14;
+// רוחב החץ בסוף השורה
 const CHEVRON_WIDTH = 24;
 
+// רוחב עמודה
 function colStyle(column: Column) {
   return { flexGrow: column.flex, flexShrink: 0, flexBasis: 0, minWidth: column.min };
 }
 
+// הרוחב המינימלי של הטבלה
 function tableMinWidth(columns: Column[]) {
   return columns.reduce((sum, c) => sum + c.min, 0) + CHEVRON_WIDTH + 2 * (ROW_INSET + ROW_PADDING);
 }
 
+// שורת הכותרות של הטבלה
 function TableHeader({ columns }: { columns: Column[] }) {
   return (
     <View style={[styles.row, styles.headerRow]}>
@@ -621,6 +642,7 @@ function TableHeader({ columns }: { columns: Column[] }) {
   );
 }
 
+// שורה בטבלה (לחיצה פותחת את התיק)
 /** One clickable line: zebra striped, lights up on hover and the arrow leans toward the details. */
 function TableRow({
   index,
@@ -658,6 +680,7 @@ function TableRow({
   );
 }
 
+// מדגיש את מילת החיפוש
 /** Marks where the search term appears, so it is obvious why a row matched. */
 function Highlight({
   text,
@@ -689,6 +712,7 @@ function Highlight({
   );
 }
 
+// טקסט נתונים (טלפון, ת.ז) או 'לא הוזן'
 /** Latin data (phone, ID, licence number), or a quiet "not entered". */
 function DataText({ value, query }: { value: string | null | undefined; query: string }) {
   if (!value) {
@@ -701,6 +725,7 @@ function DataText({ value, query }: { value: string | null | undefined; query: s
   return <Highlight text={value} query={query} weight="medium" style={styles.cellValue} ltr />;
 }
 
+// מצב עם אייקון וטקסט
 function Status({ tone, label }: { tone: DesktopTone; label: string }) {
   const loud = tone === 'warn' || tone === 'bad';
   const iconColor = tone === 'neutral' ? DESKTOP_COLORS.inkFaint : DESKTOP_TONES[tone].fg;
@@ -715,6 +740,7 @@ function Status({ tone, label }: { tone: DesktopTone; label: string }) {
   );
 }
 
+// תגית צבעונית
 function Pill({ tone, label }: { tone: DesktopTone; label: string }) {
   return (
     <View style={[styles.pill, { backgroundColor: TONE_SOFT[tone] }]}>
@@ -725,6 +751,7 @@ function Pill({ tone, label }: { tone: DesktopTone; label: string }) {
   );
 }
 
+// לוחית רישוי צהובה
 /** Israeli plate: yellow with the blue IL strip — reads as "a vehicle number" before the digits do. */
 function Plate({ plate, small, query = '' }: { plate: string; small?: boolean; query?: string }) {
   const text = formatPlate(plate);
@@ -743,6 +770,7 @@ function Plate({ plate, small, query = '' }: { plate: string; small?: boolean; q
   );
 }
 
+// שורות טעינה
 function SkeletonRows({ columns }: { columns: Column[] }) {
   return (
     <View style={styles.rowsContent} accessibilityLabel={t('common.loading')} aria-busy>
@@ -767,6 +795,7 @@ function SkeletonRows({ columns }: { columns: Column[] }) {
   );
 }
 
+// מצב ריק / אין תוצאות
 function EmptyState({
   icon,
   iconTone,
@@ -807,6 +836,7 @@ function EmptyState({
   );
 }
 
+// צבעי רקע רכים למצבים
 /** Opaque soft tints behind status text (the theme's translucent ones turn muddy on the zebra rows). */
 const TONE_SOFT: Record<DesktopTone, string> = {
   ok: '#E7F5EC',
@@ -815,20 +845,26 @@ const TONE_SOFT: Record<DesktopTone, string> = {
   neutral: '#EEF0F2',
 };
 
+// כחול רך
 const BRAND_SOFT = '#E6F2F9';
+// עקומת אנימציה
 const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
 
+// עיצוב הרשימה
 const styles = StyleSheet.create({
   defectMark: { flexDirection: 'row-reverse', marginTop: 3 },
   pressDown: { transform: [{ scale: 0.97 }] },
+  // הדף
   root: { flex: 1, paddingTop: 16, paddingHorizontal: 24, paddingBottom: 18, gap: 12 },
   rootCompact: { paddingTop: 12, paddingBottom: 12, gap: 10 },
 
+  // שורת החיפוש והכפתורים
   toolbar: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, zIndex: 1 },
   grow: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
   searchWrap: { flexGrow: 0, flexShrink: 1, flexBasis: 400, minWidth: 240, justifyContent: 'center' },
   searchWrapTight: { flexBasis: 280, minWidth: 180 },
   searchIcon: { position: 'absolute', end: 15, zIndex: 1 },
+  // תיבת החיפוש
   search: {
     height: 40,
     borderRadius: 10,
@@ -878,6 +914,7 @@ const styles = StyleSheet.create({
   },
   clearHover: { backgroundColor: TONE_SOFT.neutral },
 
+  // כפתור משני
   ghostButton: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -909,6 +946,7 @@ const styles = StyleSheet.create({
     backgroundColor: TONE_SOFT.neutral,
   },
   countBadgeText: { fontSize: 12, lineHeight: 15, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+  // כפתור ראשי (הוספה)
   primaryButton: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -931,6 +969,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: { color: '#FFFFFF', fontSize: 14.5 },
 
+  // כרטיס הטבלה
   listCard: {
     flex: 1,
     minHeight: 0,
@@ -982,9 +1021,11 @@ const styles = StyleSheet.create({
   stateHint: { fontSize: 15, color: DESKTOP_COLORS.inkMuted, textAlign: 'center', marginBottom: 12 },
 
   tableScroll: { flex: 1, minHeight: 0, ...webOnly({ overflowX: 'auto', overflowY: 'hidden' }) },
+  // הטבלה
   table: { flex: 1, minHeight: 0, width: '100%' },
   rows: { flex: 1 },
   rowsContent: { paddingTop: 6, paddingBottom: 12 },
+  // שורה
   row: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -995,8 +1036,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     ...webOnly({ transition: `background-color 150ms ${EASE_OUT}` }),
   },
+  // שורה בצבע מתחלף
   // Zebra striping: every second row sits on a faint grey so the eye can follow a line across the columns.
   rowAlt: { backgroundColor: '#F8FAFB' },
+  // שורה כשהעכבר מעליה
   rowHover: { backgroundColor: '#EDF3F8' },
   rowPressed: { backgroundColor: '#E3ECF3' },
   rowChevron: { width: CHEVRON_WIDTH, flexShrink: 0, alignItems: 'flex-start' },

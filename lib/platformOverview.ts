@@ -1,3 +1,4 @@
+// סיכום נתוני כל החברות לחדר הבקרה של הבעלים
 import type { Company } from './supabase';
 import type { ComplianceItem, Vehicle, VehicleDriverWithProfile } from './adminApi';
 import { vehicleAttentionGroups } from './vehicleAttention';
@@ -87,17 +88,22 @@ export type PlatformOverview = {
   activityByDay: { day: string; count: number }[];
 };
 
+// כמה ימים אחורה בודקים פעילות
 export const ACTIVITY_DAYS = 30;
+// אחרי כמה ימים בלי פעילות חברה נחשבת רדומה
 const IDLE_DAYS = 30;
 
+// מפתח של יום
 function dayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// יחיד או רבים לפי מספר
 function plural(n: number, one: string, many: string): string {
   return n === 1 ? one : `${n} ${many}`;
 }
 
+// מקבץ שורות לפי מפתח
 function groupBy<T>(rows: T[], key: (row: T) => string | null | undefined): Map<string, T[]> {
   const map = new Map<string, T[]>();
   for (const row of rows) {
@@ -110,6 +116,7 @@ function groupBy<T>(rows: T[], key: (row: T) => string | null | undefined): Map<
   return map;
 }
 
+// בונה את הסיכום מכל הנתונים
 export function buildPlatformOverview(rows: PlatformRows, now: Date = new Date()): PlatformOverview {
   const profilesBy = groupBy(rows.profiles, (p) => p.company_id);
   const driversBy = groupBy(
@@ -275,6 +282,7 @@ export function buildPlatformOverview(rows: PlatformRows, now: Date = new Date()
   };
 }
 
+// מתי נראה לאחרונה, במילים
 /** "עכשיו", "לפני 3 שעות", "אתמול", "לפני 12 ימים", or the date once it's old. */
 export function lastSeenLabel(iso: string | null, now: Date = new Date()): string {
   if (!iso) return t('time.notThisMonth');

@@ -1,3 +1,4 @@
+// תיקיות הטפסים לחתימה בתיק הנהג
 import { useCallback, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -15,6 +16,7 @@ import { errorMessage } from '../../lib/requestError';
 import { useSigningStyles } from '../desktop/signing/folderCss';
 import { CreateDocumentSheet } from '../desktop/signing/CreateDocumentSheet';
 
+// רשימת התיקיות (טלפון או מחשב)
 export function SigningFolders({ driverId, onOpen, desktop = false, title = t('signing.formsAndDocsToSign') }: { driverId: string; onOpen: (folder: SigningFolder) => void; desktop?: boolean; /** Phone section heading; none when the list opens a page. */ title?: string | null }) {
   const [folders, setFolders] = useState<SigningFolder[]>([]);
   const [error, setError] = useState('');
@@ -148,13 +150,16 @@ export function SigningFolders({ driverId, onOpen, desktop = false, title = t('s
     </KitSection>
   );
 }
+// עיצוב הודעה
 const s = StyleSheet.create({
   message: { textAlign: 'center', padding: 20 },
 });
 
+// עיצוב הרשימה במחשב
 const desktopStyles = StyleSheet.create({
   wrap: { gap: 8 },
   title: { fontSize: 15, color: DESKTOP_COLORS.ink, letterSpacing: -0.1 },
+  // הכרטיס
   card: {
     backgroundColor: DESKTOP_COLORS.surface,
     borderWidth: 1,
@@ -163,6 +168,7 @@ const desktopStyles = StyleSheet.create({
     overflow: 'hidden',
     ...webOnly({ boxShadow: '0 12px 30px -22px rgba(22, 34, 46, 0.32)' }),
   },
+  // שורת תיקייה
   row: {
     minHeight: 60,
     flexDirection: 'row-reverse',

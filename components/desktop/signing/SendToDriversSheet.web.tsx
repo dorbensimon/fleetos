@@ -1,3 +1,4 @@
+// שליחת מסמך לנהגים
 import React, { useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { SigningTemplate } from '../../../lib/docuseal';
@@ -11,6 +12,7 @@ import { t } from '../../../lib/i18n';
  * "מסמכים חתומים" (see lib/signingSend.ts; the phone has the same flow).
  */
 
+// בחירת נהגים ושליחה
 export function SendToDriversSheet({ companyId, template, onClosed }: { companyId: string; template: SigningTemplate; onClosed: () => void }) {
   const { closing, close } = useSheetClose(onClosed);
   const [drivers, setDrivers] = useState<SendRecipient[] | null>(null);

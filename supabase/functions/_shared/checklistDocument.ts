@@ -1,3 +1,4 @@
+// טופסי רשימת סעיפים בשרת: בדיקה, תשובות וה-PDF
 /**
  * "רשימת סעיפים" forms (lib/checklistForms.ts on the app side): the form
  * model's server-side checks and the HTML DocuSeal turns into the PDF.
@@ -8,12 +9,18 @@
  * driver signs second, on the same device or later in their own app.
  */
 
+// תפקיד החותם מטעם החברה
 export const OFFICER_ROLE = 'החברה';
+// תפקיד הנהג
 export const DRIVER_ROLE = 'נהג';
+// שם שדה חתימת החברה
 export const OFFICER_FIELD = 'חתימת החברה';
+// שם שדה חתימת הנהג
 export const DRIVER_FIELD = 'חתימת הנהג';
 
+// מגבלות הטופס
 export const LIMITS = { items: 60, itemText: 400, intro: 1000, note: 500, label: 60, officerName: 80 } as const;
+// כותרות ברירת מחדל לחתימות
 const DEFAULT_LABELS = { officer: 'חתימת קצין הבטיחות', driver: 'חתימת הנהג' };
 
 export type Status = 'done' | 'not_done' | 'na';
@@ -28,13 +35,17 @@ export type Form = {
 };
 export type Answers = Record<string, { status: Status | null; note: string }>;
 
+// טקסט לכל תשובה
 const STATUS_LABEL: Record<Status, string> = { done: 'בוצע', not_done: 'לא בוצע', na: 'לא רלוונטי' };
+// תבנית מזהה סעיף
 const ITEM_ID = /^[A-Za-z0-9_-]{1,40}$/;
 
+// טקסט בשורה אחת ובאורך מוגבל
 function oneLine(value: unknown, max: number): string {
   return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '';
 }
 
+// קורא את הטופס ובודק אותו
 /** The form as the admin saved it, or null if anything is off. */
 export function parseForm(raw: unknown): Form | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -65,13 +76,16 @@ export function parseForm(raw: unknown): Form | null {
   };
 }
 
+// מקסימום חודשים בין מילויים
 export const MAX_REPEAT_MONTHS = 24;
 
+// כל כמה חודשים
 /** 0 (one time) or a whole number of months up to two years. */
 export function repeatMonthsOf(value: unknown): number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_REPEAT_MONTHS ? value : 0;
 }
 
+// מוסיף חודשים לתאריך
 /** YYYY-MM-DD plus whole months; the 31st lands on the month's last day. */
 export function addMonths(day: string, months: number): string {
   const [y, m, d] = day.split('-').map(Number);
@@ -81,6 +95,7 @@ export function addMonths(day: string, months: number): string {
   return target.toISOString().slice(0, 10);
 }
 
+// קורא את התשובות
 /** Answers for the form's own items only; an unknown status or item is dropped. */
 export function parseAnswers(raw: unknown, form: Form): Answers {
   const answers: Answers = {};
@@ -97,21 +112,25 @@ export function parseAnswers(raw: unknown, form: Form): Answers {
   return answers;
 }
 
+// האם כל הסעיפים נענו
 export function everyItemAnswered(form: Form, answers: Answers): boolean {
   return form.items.every((item) => !!answers[item.id]?.status);
 }
 
+// האם הערך הוא תאריך
 export function isIsoDay(value: unknown): value is string {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
 }
 
+// תאריך כיום/חודש/שנה
 function day(value: string): string {
   const [y, m, d] = value.split('-');
   return `${d}/${m}/${y}`;
 }
 
+// מנקה טקסט ל-HTML
 function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -132,6 +151,7 @@ type RenderInput = {
   };
 };
 
+// בונה את דף הטופס ל-PDF
 /**
  * The page matches the documents written in the in-app editor (A4 at 96dpi,
  * the same letterhead), so every company document looks like one family.
@@ -248,6 +268,7 @@ ${intro}
 </html>`;
 }
 
+// בודק תמונת חתימה
 /** A PNG the app drew, as a data URL DocuSeal takes for a signature value. Null when it is not a sane PNG. */
 export function signaturePng(value: unknown): string | null {
   if (typeof value !== 'string') return null;

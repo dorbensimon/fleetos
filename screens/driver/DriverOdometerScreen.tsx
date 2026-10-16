@@ -1,3 +1,4 @@
+// מסך עדכון קילומטראז'
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../../components/ui/BrandLoader';
@@ -15,6 +16,7 @@ import { t, getLocale } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverOdometer'>;
+// המסך
 export default function DriverOdometerScreen({ navigation, route }: Props) {
   const isDesktop = useIsDesktop();
   const insets = useSafeAreaInsets();
@@ -61,6 +63,7 @@ export default function DriverOdometerScreen({ navigation, route }: Props) {
   );
 }
 
+// עיצוב במחשב
 const ds = StyleSheet.create({
   wrap: { padding: 24, maxWidth: 380, alignSelf: 'center', width: '100%' },
   card: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 8, padding: 16, gap: 12 },

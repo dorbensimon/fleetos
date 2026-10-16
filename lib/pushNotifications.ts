@@ -1,3 +1,4 @@
+// התראות פוש לטלפון: רישום, ביטול ופתיחה
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
@@ -10,6 +11,7 @@ import { notificationTarget, type NotificationTarget } from './notificationTarge
 import { markOwnerNotificationRead } from './ownerNotifications';
 import { t } from './i18n';
 
+// המפתח שבו נשמר אסימון הפוש במכשיר
 const STORED_TOKEN_KEY = 'fleetos_expo_push_token';
 
 Notifications.setNotificationHandler({
@@ -24,11 +26,13 @@ Notifications.setNotificationHandler({
 /** Called with the record the tapped notification is about, or null for the notifications page. */
 type Navigate = (target: NotificationTarget | null) => void;
 
+// מזהה הפרויקט של Expo
 function projectId(): string | undefined {
   return Constants.easConfig?.projectId
     ?? Constants.expoConfig?.extra?.eas?.projectId;
 }
 
+// התפקיד של המשתמש המחובר
 async function currentUserRole(): Promise<UserRole | null> {
   const { data: sessionData } = await supabase.auth.getSession();
   const userId = sessionData.session?.user.id;
@@ -45,6 +49,7 @@ async function currentUserRole(): Promise<UserRole | null> {
     : null;
 }
 
+// פותח את המסך של התראה שנלחצה
 async function openNotification(
   response: Notifications.NotificationResponse,
   navigate: Navigate,
@@ -81,6 +86,7 @@ async function openNotification(
   navigate(target);
 }
 
+// רושם את המכשיר לקבלת התראות
 /** Registers this physical device. Push permissions can always be changed later in iOS Settings. */
 export async function registerForPushNotifications(): Promise<void> {
   if (Platform.OS === 'web' || !Device.isDevice) return;
@@ -108,6 +114,7 @@ export async function registerForPushNotifications(): Promise<void> {
   await AsyncStorage.setItem(STORED_TOKEN_KEY, expoPushToken);
 }
 
+// מבטל את רישום המכשיר ביציאה
 /** Removes this device when the user signs out, so a shared device never receives their alerts. */
 export async function unregisterPushNotifications(): Promise<void> {
   const expoPushToken = await AsyncStorage.getItem(STORED_TOKEN_KEY);
@@ -121,6 +128,7 @@ export async function unregisterPushNotifications(): Promise<void> {
   }
 }
 
+// מאזין ללחיצות על התראות
 export function listenForPushNotificationResponses(navigate: Navigate) {
   const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
     void openNotification(response, navigate);

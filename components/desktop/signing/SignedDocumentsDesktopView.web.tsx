@@ -1,3 +1,4 @@
+// דף 'מסמכים חתומים' במחשב: הטפסים של החברה, שבלונות ומילויים
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { getSigningTemplateSourceUrl, listSigningTemplates, type SigningTemplate } from '../../../lib/docuseal';
@@ -28,7 +29,9 @@ import { t } from '../../../lib/i18n';
  * shared documents the system provides, and the "new document" flow.
  */
 
+// זיכרון של PDF שכבר נטענו
 const pdfCache = new Map<string, Promise<LoadedPdf>>();
+// טוען את ה-PDF של טופס
 function templatePdf(template: SigningTemplate): Promise<LoadedPdf> {
   let cached = pdfCache.get(template.id);
   if (!cached) {
@@ -42,8 +45,10 @@ function templatePdf(template: SigningTemplate): Promise<LoadedPdf> {
   return cached;
 }
 
+// האם המשתמש ביקש פחות אנימציות
 const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
+// כרטיס טופס
 function TemplateCard({ template, index, fresh, onOpen }: { template: SigningTemplate; index: number; fresh?: boolean; onOpen: () => void }) {
   const cardRef = useRef<HTMLButtonElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -130,6 +135,7 @@ function TemplateCard({ template, index, fresh, onOpen }: { template: SigningTem
   );
 }
 
+// חלון תצוגה מקדימה של טופס עם פעולות
 function PreviewSheet({
   template,
   companyId,
@@ -296,6 +302,7 @@ function PreviewSheet({
   );
 }
 
+// ציור בכותרת
 function HeroArt() {
   return (
     <div className="sd-art" aria-hidden="true">
@@ -321,6 +328,7 @@ function HeroArt() {
   );
 }
 
+// הדף כולו
 export function SignedDocumentsDesktopView({
   companyId,
   openMeetingTemplateId,

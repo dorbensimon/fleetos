@@ -1,3 +1,4 @@
+// סרגל הלשוניות הצף בתחתית הטלפון
 import React, { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -36,22 +37,32 @@ import { t, dirSign } from '../../lib/i18n';
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 type Route = keyof RootStackParamList;
 
+// האם האנימציה רצה בטלפון
 const NATIVE_DRIVER = Platform.OS !== 'web';
+// עקומת אנימציה
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
+// גובה הסרגל
 const BAR_HEIGHT = 62;
+// רוחב הסרגל
 const BAR_WIDTH = 228;
+// ריווח פנימי
 const BAR_PAD = 5;
+// מקום שהדף משאיר מתחת לתוכן
 /** Room a page leaves under its content so the bar never covers its end. */
 export const TAB_BAR_SPACE = 76;
 
+// מסכים בלי סרגל
 /** Screens that own the whole screen or have no signed-in user yet. */
 const HIDDEN_ROUTES = new Set<Route>(['Login', 'SetPassword', 'DocusealWebView', 'DriverSignDocument', 'ChecklistMeeting']);
 
+// כמה גלילה למטה מסתירה את הסרגל
 // Distance a finger must travel one way before the bar reacts, so a
 // jittery thumb or a list's own settle doesn't make it flicker.
 const HIDE_AFTER = 28;
+// כמה גלילה למעלה מחזירה אותו
 const SHOW_AFTER = 14;
+// ליד ראש הדף הסרגל תמיד מוצג
 // Near the top of a page the bar always shows.
 const TOP_ZONE = 48;
 
@@ -68,8 +79,10 @@ type TabBarContextValue = {
   hold: () => () => void;
 };
 
+// מצב הסרגל המשותף
 const TabBarContext = createContext<TabBarContextValue | null>(null);
 
+// מנהל את הסתרת והצגת הסרגל
 export function TabBarProvider({ children }: { children: ReactNode }) {
   const shown = useRef(new Animated.Value(0)).current;
   const [present, setPresent] = useState(false);
@@ -141,6 +154,7 @@ export function TabBarProvider({ children }: { children: ReactNode }) {
   return <TabBarContext.Provider value={value}>{children}</TabBarContext.Provider>;
 }
 
+// מחבר גלילה של מסך לסרגל
 /**
  * Props for a phone screen's main scroller so the bar can follow it. The
  * web hears every scroller already, so there this is empty.
@@ -163,11 +177,13 @@ export function useTabBarScroll(): {
   return { onScroll, scrollEventThrottle: 16 };
 }
 
+// כמה מקום להשאיר בתחתית
 /** Extra bottom room a page needs so its last item clears the bar. */
 export function useTabBarSpace(): number {
   return useContext(TabBarContext)?.present ? TAB_BAR_SPACE : 0;
 }
 
+// כמה להרים כפתור צף מעל הסרגל
 /**
  * A distance something floating (the add button) rises by while the bar is
  * shown, so it rides above the bar and settles back when the bar leaves.
@@ -178,6 +194,7 @@ export function useTabBarLift(distance = TAB_BAR_SPACE): Animated.AnimatedInterp
   return lift ?? 0;
 }
 
+// מסתיר את הסרגל במסך מסוים
 /**
  * Keeps the bar away while the calling screen is the one in front — for a
  * page whose own pinned action sits at the bottom.
@@ -211,6 +228,7 @@ export function useTabBarHold(active: boolean) {
 
 type Tab = 'home' | 'menu';
 
+// הסרגל עצמו
 export function MobileTabBar({ navigationRef }: { navigationRef: NavigationContainerRefWithCurrent<RootStackParamList> }) {
   const ctx = useContext(TabBarContext);
   const isDesktop = useIsDesktop();
@@ -409,6 +427,7 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
   );
 }
 
+// אפקט הזכוכית של הסרגל
 /** The glass itself: a live blur of the page behind, smoked, with light on its upper edge. */
 function Glass() {
   return (
@@ -434,6 +453,7 @@ function Glass() {
   );
 }
 
+// כפתור לשונית
 function TabButton({
   icon,
   label,
@@ -511,6 +531,7 @@ function TabButton({
   );
 }
 
+// האם להציג מסגרת מיקוד
 function isFocusVisible(event: unknown): boolean {
   if (Platform.OS !== 'web') return false;
   const target = (event as { nativeEvent?: { target?: unknown } })?.nativeEvent?.target;
@@ -521,6 +542,7 @@ function isFocusVisible(event: unknown): boolean {
   }
 }
 
+// עיצוב הסרגל
 const styles = StyleSheet.create({
   host: {
     position: 'absolute',
@@ -540,6 +562,7 @@ const styles = StyleSheet.create({
       default: { shadowColor: DK.nightInk, shadowOpacity: 0.34, shadowRadius: 24, shadowOffset: { width: 0, height: 14 }, elevation: 14 },
     }),
   },
+  // הסרגל
   bar: {
     width: BAR_WIDTH,
     height: BAR_HEIGHT,
@@ -569,6 +592,7 @@ const styles = StyleSheet.create({
       default: {},
     }),
   },
+  // העדשה שזזה מתחת ללשונית הנבחרת
   lens: {
     position: 'absolute',
     top: BAR_PAD,
@@ -588,6 +612,7 @@ const styles = StyleSheet.create({
     }),
   },
   lensSheen: { backgroundColor: 'rgba(255,255,255,0.14)' },
+  // לשונית
   tab: {
     flex: 1,
     borderRadius: (BAR_HEIGHT - BAR_PAD * 2) / 2,

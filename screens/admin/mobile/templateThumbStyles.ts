@@ -1,9 +1,12 @@
+// עיצוב משותף לתמונות המסמכים
 import { StyleSheet } from 'react-native';
 import { DK } from '../../../components/driverKit';
 
+// מידות התמונה
 /** Shared by TemplateThumb.tsx and TemplateThumb.web.tsx (a platform file can't import its sibling by name). */
 export const THUMB = { width: 46, height: 60 };
 
+// עיצוב הדף הקטן
 export const thumbStyles = StyleSheet.create({
   paper: {
     ...THUMB,

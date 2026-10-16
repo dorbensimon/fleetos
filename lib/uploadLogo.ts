@@ -1,3 +1,4 @@
+// העלאת לוגו של חברה
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import { Platform } from 'react-native';
@@ -7,8 +8,10 @@ import { extensionForMimeType, isAllowedLogoMimeType } from './fileTypes';
 import { readBlobUrlAsBase64 } from './webDownload';
 import { t } from './i18n';
 
+// גודל לוגו מקסימלי (5MB)
 const MAX_LOGO_BYTES = 5 * 1024 * 1024;
 
+// בוחר תמונה ומעלה כלוגו
 export async function pickAndUploadLogo(): Promise<string | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
@@ -30,6 +33,7 @@ export async function pickAndUploadLogo(): Promise<string | null> {
   return uploadCompanyLogoImage(asset.uri, asset.mimeType || 'image/jpeg');
 }
 
+// מעלה תמונה ומחזיר קישור ציבורי
 /**
  * Uploads a picked image to the `company-logos` bucket and returns its public
  * URL. `folder` scopes it to a company (admins may only write their own

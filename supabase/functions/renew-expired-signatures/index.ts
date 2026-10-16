@@ -1,3 +1,4 @@
+// פונקציית שרת יומית: חידוש חתימות שפג תוקפן
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { assignSigningTemplate } from '../_shared/signingAssign.ts';
 
@@ -7,14 +8,17 @@ import { assignSigningTemplate } from '../_shared/signingAssign.ts';
  * the cron secret from Vault gets in.
  */
 
+// תשובת JSON
 const json = (body: Record<string, unknown>, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { 'Content-Type': 'application/json' },
 });
 
 type Due = { company_id: string; template_id: string; driver_id: string; request_id: string; driver_name: string; title: string; expires_on: string };
 
+// תאריך קצר
 const shortDate = (iso: string) => iso.split('-').reverse().join('/');
 
+// שולח בקשות חדשות
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);

@@ -1,3 +1,4 @@
+// שליחת מסמך לחתימה לנהג (משותף לכמה פונקציות)
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { docusealFetch } from './docuseal.ts';
 import { missingPrefill, type TemplateField } from './signingPrefill.ts';
@@ -16,11 +17,14 @@ type DocuSealSubmitter = {
   created_at?: string;
 };
 
+// כמה זמן נעילה בזמן יצירה
 const PROVISIONING_LOCK_MINUTES = 10;
 
+// שדה התאריך בנייר המכתבים
 /** The read-only date on a company letterhead (company-signing-template). */
 const LETTERHEAD_DATE_FIELD = 'תאריך המסמך';
 
+// מוצא חותם קיים ב-DocuSeal
 async function findRemoteSubmitter(externalId: string): Promise<DocuSealSubmitter | null> {
   const response = await docusealFetch(`/submitters?external_id=${encodeURIComponent(externalId)}&limit=1`);
   if (!response.ok) throw new Error('DocuSeal submitter lookup failed');
@@ -33,6 +37,7 @@ export type AssignResult =
   | { created: number; failed: string[]; failureMessage: string; sent: Map<string, string> }
   | { error: string; status: number };
 
+// יוצר בקשת חתימה לנהג
 export async function assignSigningTemplate(
   admin: SupabaseClient,
   { companyId, templateId, ids, callerId, actorName, driverMessage }: {

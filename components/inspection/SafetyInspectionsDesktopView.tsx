@@ -1,3 +1,4 @@
+// דף בדיקות קצין בטיחות - תצוגת מחשב
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,8 +22,10 @@ import { t, dirIcon } from '../../lib/i18n';
 
 export type InspectionFilter = 'all' | 'awaiting' | 'defects' | 'draft' | 'cancelled';
 
+// צבע לכל מצב
 const STATE_TONE: Record<string, DesktopTone> = { ok: 'ok', soon: 'warn', expired: 'bad', missing: 'neutral', info: 'neutral' };
 
+// הכותרת הכחולה עם המספרים, לשוניות וטבלת הבדיקות
 /**
  * "בדיקות בטיחות" on the desktop: the numbers that matter on top, every
  * inspection in a searchable table, and beside it the vehicles that are due
@@ -320,12 +323,16 @@ export function SafetyInspectionsDesktopView({
   );
 }
 
+// עיצוב הדף
 const styles = StyleSheet.create({
+  // האייקון בכותרת
   heroIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  // שורת החיפוש
   toolbar: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, padding: 12, flexWrap: 'wrap', borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
   search: { flexGrow: 1, flexBasis: 220, justifyContent: 'center' },
   searchIcon: { position: 'absolute', start: 12, zIndex: 1 },
   searchInput: { paddingStart: 34 },
+  // הלשוניות
   tabs: { flexDirection: 'row-reverse', gap: 2, padding: 3, borderRadius: 10, backgroundColor: DESKTOP_COLORS.canvas },
   tab: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, height: 30, paddingHorizontal: 10, borderRadius: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },
   tabHover: { backgroundColor: 'rgba(22,34,46,0.05)' },
@@ -334,8 +341,10 @@ const styles = StyleSheet.create({
   tabTextOn: { color: DESKTOP_COLORS.ink },
   tabCount: { fontSize: 12, color: DESKTOP_COLORS.inkFaint, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   tabCountOn: { color: DESKTOP_COLORS.brand },
+  // כותרות הטבלה
   tableHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, height: 36, paddingHorizontal: 16, backgroundColor: DESKTOP_COLORS.surfaceMuted, borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
   th: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
+  // שורה בטבלה
   tr: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 54, paddingHorizontal: 16, paddingVertical: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },
   td: { fontSize: 14, color: DESKTOP_COLORS.ink, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   colDate: { width: 88 },
@@ -354,6 +363,7 @@ const styles = StyleSheet.create({
   stateTitle: { fontSize: 15, textAlign: 'center' },
   stateText: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted, textAlign: 'center' },
   pad: { padding: 16 },
+  // מצב 'הכול תקין'
   allGood: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, padding: 16 },
   allGoodIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: DESKTOP_TONES.ok.bg, alignItems: 'center', justifyContent: 'center' },
   allGoodTitle: { fontSize: 14.5 },

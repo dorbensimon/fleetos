@@ -1,3 +1,4 @@
+// בודק שהקורא הוא הבעלים
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyUser } from './verifyUser.ts';
 

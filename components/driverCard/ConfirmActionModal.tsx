@@ -1,3 +1,4 @@
+// חלון 'בטוח?' לפני פעולה
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { AppText, PrimaryButton } from '../ui';
@@ -7,6 +8,7 @@ import { DRIVER_MODAL_BASE, modalKit } from './driverModalStyles';
 import { EditField, KitSheet, PrimaryAction, SheetActions } from '../driverKit';
 import { t } from '../../lib/i18n';
 
+// ביטול ואישור, אפשר לדרוש הקלדת טקסט
 /**
  * Generic "are you sure?" confirmation modal — cancel + confirm side by side.
  *
@@ -128,6 +130,7 @@ export function ConfirmActionModal({
   );
 }
 
+// עיצוב החלון
 const styles = StyleSheet.create({
   ...DRIVER_MODAL_BASE,
   input: {

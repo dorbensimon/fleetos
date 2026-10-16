@@ -1,3 +1,4 @@
+// שורת סעיף בבדיקת קצין בטיחות (מחשב)
 import React, { memo, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,6 +13,7 @@ import {
 } from "../../lib/inspections";
 import { t } from "../../lib/i18n";
 
+// מספר, טקסט, תשובות והערה בשורה
 /**
  * The desktop take on InspectionItemCard: one table row per item, with the
  * number, the text, three compact choices and a note button side by side.
@@ -191,8 +193,10 @@ export const InspectionItemRow = memo(function InspectionItemRow({
   );
 });
 
+// עיצוב השורה
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  // השורה
   row: { paddingVertical: 12, paddingHorizontal: 18, gap: 10 },
   divider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -209,6 +213,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   text: { flex: 1, fontSize: 15, lineHeight: 22 },
+  // כפתורי התשובה
   options: { flexDirection: "row-reverse", gap: 6 },
   option: {
     flexDirection: "row-reverse",

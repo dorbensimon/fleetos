@@ -1,3 +1,4 @@
+// דוח מלא על נהג אחד (PDF)
 import { Company } from './supabase';
 import { DocumentRow, DriverRow } from './adminApi';
 import { DRIVER_DOCUMENT_GROUPS, LICENSE_DOCS_CATEGORY } from './driverDocumentFolders';
@@ -8,6 +9,7 @@ import { formatPlate } from './plate';
 import { formatPhone } from './phone';
 import { buildReportDocument, emptyState, esc, printOrShareReport, statusTag, TagTone } from './reportTemplate';
 
+// מצב הרישיון וצבע
 function licenseStatus(driver: DriverRow): { label: string; tone: TagTone } {
   const state = expiryState(driver.license_expiry);
   if (state === 'expired') return { label: 'פג תוקף', tone: 'accent2' };
@@ -16,6 +18,7 @@ function licenseStatus(driver: DriverRow): { label: string; tone: TagTone } {
   return { label: 'בתוקף', tone: 'accent' };
 }
 
+// טקסט וצבע לכל מצב חתימה
 const SIGNING_STATUS_LABELS: Record<SignatureRequest['status'], { label: string; tone: TagTone }> = {
   pending: { label: 'ממתין לחתימה', tone: 'outline' },
   completed: { label: 'נחתם', tone: 'accent' },
@@ -24,12 +27,16 @@ const SIGNING_STATUS_LABELS: Record<SignatureRequest['status'], { label: string;
   failed: { label: 'נכשל', tone: 'accent2' },
 };
 
+// שורת שדה בדוח
 const field = (label: string, valueHtml: string) =>
   `<div class="meta-col"><div class="meta-label">${esc(label)}</div><div class="meta-value">${valueHtml || '—'}</div></div>`;
+// שורת שדה משמאל לימין (מספרים)
 const ltrField = (label: string, value: string | null | undefined) =>
   `<div class="meta-col"><div class="meta-label">${esc(label)}</div><div class="meta-value ltr">${esc(value) || '—'}</div></div>`;
+// תאריך או ריק
 const dateOrDash = (value: string | null | undefined) => (value ? esc(formatDate(value)) : '');
 
+// בונה את ה-HTML של הדוח
 function buildHtml(
   company: Company,
   driver: DriverRow,
@@ -142,6 +149,7 @@ function buildHtml(
   });
 }
 
+// מפיק ומוריד את דוח הנהג
 export async function exportDriverSnapshotReport(
   company: Company,
   driver: DriverRow,

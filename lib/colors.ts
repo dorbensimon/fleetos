@@ -1,3 +1,4 @@
+// צבעים, צללים וגופן משותפים לכל האפליקציה
 import { fontStack } from './fontStack';
 /**
  * The shared color system for the app. Originated as the fleet-home-only
@@ -12,6 +13,7 @@ import { fontStack } from './fontStack';
  * assumed by this move.
  */
 
+// פלטת הצבעים הראשית
 export const FLEET_COLORS = {
   // brand blue — the hero gradient
   primary: '#0a84ff',
@@ -55,6 +57,7 @@ export const FLEET_COLORS = {
   plateYellow: '#f7d117',
 } as const;
 
+// הצללים של כרטיסים וכפתורים
 export const FLEET_SHADOWS = {
   card: {
     shadowColor: '#08245e',
@@ -93,6 +96,7 @@ export const FLEET_SHADOWS = {
   },
 } as const;
 
+// הגופן הראשי (Heebo)
 // Heebo (400–800) is already loaded app-wide in App.tsx, alongside the
 // Assistant weights the rest of the admin app uses via `AppText`'s
 // default. Applied as a style override on individual `AppText` elements —
@@ -105,6 +109,7 @@ export const FLEET_FONT = {
   black: fontStack('Heebo_800ExtraBold'),
 } as const;
 
+// צבע לפי מצב תוקף (תקין, בקרוב, פג, חסר)
 export function severityFor(state: 'ok' | 'soon' | 'expired' | 'missing' | 'optional') {
   if (state === 'expired') return FLEET_COLORS.danger;
   if (state === 'soon') return FLEET_COLORS.warning;

@@ -1,3 +1,4 @@
+// סוגי השדות במסמך חתימה
 import type { Ionicons } from '@expo/vector-icons';
 import type { SigningFieldKind } from '../../../lib/companySigningTemplates';
 import { t } from '../../../lib/i18n';
@@ -13,6 +14,7 @@ export type FieldMeta = {
   size: { w: number; h: number };
 };
 
+// שם, אייקון וצבע לכל סוג שדה
 export const FIELD_META: Record<SigningFieldKind, FieldMeta> = {
   signature: { get label() { return t('field.signature'); }, get hint() { return t('field.signatureHint'); }, icon: 'create', color: '#0088CC', size: { w: 0.26, h: 0.065 } },
   date: { get label() { return t('field.date'); }, get hint() { return t('field.dateHint'); }, icon: 'calendar', color: '#FF9500', size: { w: 0.17, h: 0.032 } },
@@ -25,5 +27,7 @@ export const FIELD_META: Record<SigningFieldKind, FieldMeta> = {
   company_name: { get label() { return t('company.name'); }, get hint() { return t('field.autoFilled'); }, icon: 'business', color: '#0E9FAF', auto: true, size: { w: 0.24, h: 0.032 } },
 };
 
+// שדות שהנהג ממלא
 export const DRIVER_FIELDS: SigningFieldKind[] = ['signature', 'date', 'checkbox', 'text'];
+// שדות שמתמלאים לבד (שם, ת.ז, טלפון)
 export const AUTO_FIELDS: SigningFieldKind[] = ['driver_full_name', 'driver_national_id', 'driver_phone', 'driver_license_number', 'company_name'];

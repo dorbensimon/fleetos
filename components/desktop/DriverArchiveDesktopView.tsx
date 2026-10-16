@@ -1,3 +1,4 @@
+// ארכיון הנהגים - תצוגת מחשב
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +8,7 @@ import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES } from './desktopTheme';
 import { t } from '../../lib/i18n';
 
+// טבלה: שם, תאריך העברה לארכיון, שחזור ומחיקה
 /**
  * Desktop body of the driver archive: a dense table (name, archived-at,
  * restore/delete) instead of a scrolling card stack. Purely presentational
@@ -80,8 +82,10 @@ export function DriverArchiveDesktopView({
   );
 }
 
+// עיצוב הטבלה
 const styles = StyleSheet.create({
   wrap: { padding: 24, maxWidth: 920 },
+  // הטבלה
   table: {
     backgroundColor: DESKTOP_COLORS.surface,
     borderWidth: 1,
@@ -89,6 +93,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
   },
+  // שורת נהג
   row: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -115,6 +120,7 @@ const styles = StyleSheet.create({
   meta: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint },
 
   actions: { flexDirection: 'row-reverse', gap: 6 },
+  // כפתור פעולה
   actionButton: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

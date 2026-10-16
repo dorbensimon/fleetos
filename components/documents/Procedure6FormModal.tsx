@@ -1,3 +1,4 @@
+// טופס נוהל 6
 import React, { useState } from 'react';
 import { Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { BrandLoader } from '../ui/BrandLoader';
@@ -23,6 +24,7 @@ type Props = {
   onSubmit: (values: Procedure6FormValues, photo: PickedFile | null) => Promise<void>;
 };
 
+// החלון עם שדות הטופס ותמונה
 export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
   const insets = useSafeAreaInsets();
   const desktop = useIsDesktop();
@@ -208,10 +210,12 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
   );
 }
 
+// עיצוב הטופס
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.screen },
   containerKit: { backgroundColor: DK.canvas },
   kitSave: { marginTop: SPACING.lg },
+  // כותרת
   header: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -231,6 +235,7 @@ const styles = StyleSheet.create({
     maxWidth: CONTENT_MAX_WIDTH,
     alignSelf: 'center',
   },
+  // כרטיס השדות
   formCard: { gap: SPACING.md },
   multiline: { height: 96, paddingTop: 12, textAlignVertical: 'top' },
   photoAddBtn: {

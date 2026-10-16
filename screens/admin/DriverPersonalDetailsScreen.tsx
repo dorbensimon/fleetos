@@ -1,3 +1,4 @@
+// פרטים אישיים של נהג
 import React, { useCallback, useRef, useState } from 'react';
 import { ScrollView, View, StyleSheet } from 'react-native';
 import { FocusTargetProvider } from '../../components/ui/FocusTarget';
@@ -39,6 +40,7 @@ import { errorMessage } from '../../lib/requestError';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverPersonalDetails'>;
 
+// המסך: פרטים ועריכה
 export default function DriverPersonalDetailsScreen({ route, navigation }: Props) {
   const { driverId, focus } = route.params;
   const scrollRef = useRef<ScrollView>(null);
@@ -283,11 +285,13 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
   );
 }
 
+// עיצוב בטלפון
 const styles = StyleSheet.create({
   pad: { padding: 16 },
   footer: { textAlign: 'center' },
 });
 
+// עיצוב במחשב
 const desktopStyles = StyleSheet.create({
   wrap: { padding: 24, maxWidth: 560, alignSelf: 'center', width: '100%', gap: 10 },
   editButton: {

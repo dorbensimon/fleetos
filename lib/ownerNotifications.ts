@@ -1,3 +1,4 @@
+// התראות של הבעלים
 import { supabase } from './supabase';
 import { t } from './i18n';
 
@@ -31,9 +32,11 @@ export type OwnerNotification = {
   created_at: string;
 };
 
+// כמה ימים התראה נשארת
 /** Older than this drops off the feed. */
 const FEED_DAYS = 60;
 
+// רשימת ההתראות
 export async function listOwnerNotifications(): Promise<OwnerNotification[]> {
   const since = new Date(Date.now() - FEED_DAYS * 86_400_000).toISOString();
   const { data, error } = await supabase
@@ -46,6 +49,7 @@ export async function listOwnerNotifications(): Promise<OwnerNotification[]> {
   return (data ?? []) as OwnerNotification[];
 }
 
+// כמה לא נקראו
 export async function countUnreadOwnerNotifications(): Promise<number> {
   const since = new Date(Date.now() - FEED_DAYS * 86_400_000).toISOString();
   const { count, error } = await supabase
@@ -57,16 +61,19 @@ export async function countUnreadOwnerNotifications(): Promise<number> {
   return count ?? 0;
 }
 
+// מסמן התראה כנקראה
 export async function markOwnerNotificationRead(id: string) {
   const { error } = await supabase.from('owner_notifications').update({ read_at: new Date().toISOString() }).eq('id', id).is('read_at', null);
   if (error) throw error;
 }
 
+// מסמן הכול כנקרא
 export async function markAllOwnerNotificationsRead() {
   const { error } = await supabase.from('owner_notifications').update({ read_at: new Date().toISOString() }).is('read_at', null);
   if (error) throw error;
 }
 
+// מה קורה כשלוחצים על ההתראה, במילים
 /** What a tap on the notification does, in words; every owner alert opens its company. */
 export function ownerActionLabel(n: OwnerNotification): string | null {
   if (!n.company_id) return null;

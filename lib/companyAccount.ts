@@ -1,3 +1,4 @@
+// חשבון לקוח של חברה (אצל הבעלים): סטטוס, תוכנית, תשלום ותאריכים
 import { daysUntilExpiry } from './theme';
 import { t, getLocale } from './i18n';
 
@@ -31,6 +32,7 @@ export type CompanyAccount = {
 
 export type AccountTone = 'ok' | 'warn' | 'bad' | 'off';
 
+// הסטטוסים האפשריים של חשבון
 export const ACCOUNT_STATUSES: { value: AccountStatus; label: string; tone: AccountTone }[] = [
   { value: 'trial', get label() { return t('account.status.trial'); }, tone: 'warn' },
   { value: 'active', get label() { return t('account.status.paying'); }, tone: 'ok' },
@@ -38,35 +40,42 @@ export const ACCOUNT_STATUSES: { value: AccountStatus; label: string; tone: Acco
   { value: 'cancelled', get label() { return t('common.cancelled'); }, tone: 'off' },
 ];
 
+// התוכניות האפשריות
 export const ACCOUNT_PLANS: { value: AccountPlan; label: string }[] = [
   { value: 'basic', get label() { return t('account.plan.basic'); } },
   { value: 'pro', get label() { return t('account.plan.pro'); } },
   { value: 'enterprise', get label() { return t('account.plan.enterprise'); } },
 ];
 
+// מחזורי חיוב (חודשי/שנתי)
 export const BILLING_CYCLES: { value: BillingCycle; label: string }[] = [
   { value: 'monthly', get label() { return t('account.billing.monthly'); } },
   { value: 'yearly', get label() { return t('account.billing.yearly'); } },
 ];
 
+// שם הסטטוס בטקסט
 export function statusLabel(status: AccountStatus | null | undefined): string {
   return ACCOUNT_STATUSES.find((s) => s.value === status)?.label ?? t('common.notSet');
 }
 
+// צבע הסטטוס
 export function statusTone(status: AccountStatus | null | undefined): AccountTone {
   return ACCOUNT_STATUSES.find((s) => s.value === status)?.tone ?? 'off';
 }
 
+// שם התוכנית בטקסט
 export function planLabel(plan: AccountPlan | null | undefined): string {
   return ACCOUNT_PLANS.find((p) => p.value === plan)?.label ?? t('account.noPlan');
 }
 
+// מציג סכום בשקלים
 /** ₪1,250, or "—" when no price was entered. */
 export function formatMoney(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return '—';
   return `₪${Math.round(value).toLocaleString(getLocale())}`;
 }
 
+// מציג סכום מקוצר (K)
 /** ₪1.7K / ₪12K: the same money in a tile that has room for five characters. */
 export function formatMoneyCompact(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return '—';
@@ -75,12 +84,14 @@ export function formatMoneyCompact(value: number | null | undefined): string {
   return `₪${k < 10 ? (Math.round(k * 10) / 10).toString() : Math.round(k).toString()}K`;
 }
 
+// כמה כסף החשבון מכניס בחודש
 /** Monthly revenue the account brings in right now: paying (or overdue) accounts only. */
 export function accountMrr(account: CompanyAccount | null | undefined): number {
   if (!account || (account.status !== 'active' && account.status !== 'overdue')) return 0;
   return Number(account.monthly_price ?? 0) || 0;
 }
 
+// התאריך החשוב הבא של החשבון, במילים
 /** The one date that matters next for this account, in words. */
 export function accountNextStep(account: CompanyAccount | null | undefined): { label: string; tone: AccountTone } | null {
   if (!account) return null;
@@ -120,11 +131,13 @@ export type AccountForm = {
   notes: string;
 };
 
+// תאריך בעוד כמה ימים
 function isoIn(days: number, now: Date = new Date()): string {
   const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// טופס חשבון ריק
 export function emptyAccountForm(now: Date = new Date()): AccountForm {
   return {
     status: 'trial',
@@ -141,6 +154,7 @@ export function emptyAccountForm(now: Date = new Date()): AccountForm {
   };
 }
 
+// ממלא את הטופס מחשבון קיים
 export function accountToForm(account: CompanyAccount | null): AccountForm {
   if (!account) return emptyAccountForm();
   return {
@@ -158,8 +172,10 @@ export function accountToForm(account: CompanyAccount | null): AccountForm {
   };
 }
 
+// תבנית לבדיקת תאריך
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+// בודק את הטופס ומחזיר שגיאות
 /** Field errors keyed by AccountForm field; empty when the form can be saved. */
 export function validateAccountForm(form: AccountForm): Partial<Record<keyof AccountForm, string>> {
   const errors: Partial<Record<keyof AccountForm, string>> = {};
@@ -174,6 +190,7 @@ export function validateAccountForm(form: AccountForm): Partial<Record<keyof Acc
   return errors;
 }
 
+// הופך את הטופס לנתונים לשמירה
 export function formToAccountInput(form: AccountForm): CompanyAccountInput {
   const text = (v: string) => v.trim() || null;
   return {

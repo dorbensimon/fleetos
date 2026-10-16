@@ -1,3 +1,4 @@
+// הנחת שדות חתימה על מסמך שהועלה
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { PlacedSigningField, SigningFieldKind } from '../../../lib/companySigningTemplates';
@@ -16,19 +17,28 @@ import { t, textStart } from '../../../lib/i18n';
  * renamed or removed. Positions are fractions of the page, as DocuSeal stores them.
  */
 
+// מגביל מספר לטווח
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+// מידות דף A4
 const A4 = { width: 595, height: 842 };
+// השוליים הרגילים של דף
 /** The page's middle and the usual A4 margins, as page fractions, for the smart guides. */
 const MARGIN = { x: EDITOR_PAGE.padX / EDITOR_PAGE.width, y: EDITOR_PAGE.padY / EDITOR_PAGE.height };
+// קווי העזר של הדף
 const PAGE_LINES = { v: [0.5, MARGIN.x, 1 - MARGIN.x], h: [0.5, MARGIN.y, 1 - MARGIN.y], width: 1, height: 1 };
+// רשת של סנטימטר
 /** A one-centimetre grid on an A4 page (21 × 29.7 cm). */
 const GRID_CELL = { x: 1 / 21, y: 1 / 29.7 };
+// מרחק הצמדה לקו
 /** How close, in screen pixels, a field has to come to a line to snap to it. */
 const SNAP_PX = 6;
 
+// מונה למזהים
 let fieldSeq = 0;
+// מזהה לשדה חדש
 const newFieldId = () => `f${Date.now().toString(36)}${(fieldSeq += 1)}`;
 
+// גודל ברירת מחדל לשדה
 function defaultSize(kind: SigningFieldKind, page: { width: number; height: number }) {
   const { w, h } = FIELD_META[kind].size;
   return { w: clamp((w * A4.width) / page.width, 0.02, 0.9), h: clamp((h * A4.height) / page.height, 0.012, 0.3) };
@@ -36,6 +46,7 @@ function defaultSize(kind: SigningFieldKind, page: { width: number; height: numb
 
 // ---------------------------------------------------------------- dropzone
 
+// אזור גרירת קובץ להעלאה
 export function UploadDropzone({ onFile, error }: { onFile: (file: File) => void; error?: string | null }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
@@ -87,6 +98,7 @@ export function UploadDropzone({ onFile, error }: { onFile: (file: File) => void
   );
 }
 
+// מצב 'עובד על זה'
 export function BusyState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="sd-busy sd-stage" role="status" aria-live="polite">
@@ -115,6 +127,7 @@ type PageProps = {
   showGrid?: boolean;
 };
 
+// עמוד PDF עם השדות עליו
 export function PdfPageView({ pdf, pageNumber, fields, selectedId, readOnly, onSelect, onMoveStart, onFieldChange, onRemove, onDropField, registerPage, showGrid }: PageProps) {
   const [guides, setGuides] = useState<Guide[]>([]);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -232,6 +245,7 @@ export function PdfPageView({ pdf, pageNumber, fields, selectedId, readOnly, onS
 
 // ---------------------------------------------------------------- the placer
 
+// המסך: עמודים באמצע וכפתורי שדות בצד
 export function FieldPlacer({
   pdf,
   fields,

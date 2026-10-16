@@ -1,3 +1,4 @@
+// עדכון קילומטראז' בטלפון
 import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +16,7 @@ type Props = {
   onBack: () => void;
 };
 
+// מספר גדול והפרש מהקריאה הקודמת
 /**
  * One number, big and centred, with the difference from the last reading
  * shown live — and the rule ("only up") explained before it's broken, then
@@ -98,6 +100,7 @@ export function DriverOdometerMobile(p: Props) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   card: { paddingVertical: 26, paddingHorizontal: DK_SPACE.lg, gap: 16 },

@@ -1,3 +1,4 @@
+// חיפוש נתוני רכב במאגר הציבורי
 import { functionErrorMessage } from './functionError';
 import { supabase } from './supabase';
 import { t } from './i18n';
@@ -15,6 +16,7 @@ type VehicleRegistryResponse =
   | { found: false }
   | { found: true; vehicle: VehicleRegistryDetails };
 
+// מביא נתוני רכב לפי מספר רישוי (דרך השרת)
 /** Reads public vehicle data through the authenticated server-side lookup. */
 export async function lookupVehicleRegistry(plateNumber: string): Promise<VehicleRegistryDetails | null> {
   const plate = plateNumber.replace(/\D/g, '');

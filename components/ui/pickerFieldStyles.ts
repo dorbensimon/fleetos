@@ -1,7 +1,9 @@
+// עיצוב משותף לשדות בחירה
 import type { TextStyle, ViewStyle } from 'react-native';
 import { COLORS, RADIUS } from '../../lib/theme';
 import { textEnd } from '../../lib/i18n';
 
+// התיבה והחלון של בחירת תאריך/שעה/אפשרות
 /** The field box and the iOS picker sheet, shared by DateField, TimeField and Select. */
 export const PICKER_FIELD_STYLES = {
   box: {

@@ -1,3 +1,4 @@
+// בדיקת תקינות של טופס נהג
 import { isValidIsraeliPhone } from './phone';
 import { parseDateValue } from './theme';
 import { isValidEmail, isValidTemporaryPassword } from './validation';
@@ -15,6 +16,7 @@ export type DriverFormValidationState = {
 
 export type DriverFormField = keyof DriverFormValidationState;
 
+// שדות חובה ביצירת נהג
 const CREATE_REQUIRED_FIELDS = [
   'full_name',
   'phone',
@@ -25,6 +27,7 @@ const CREATE_REQUIRED_FIELDS = [
   'password',
 ] as const satisfies readonly DriverFormField[];
 
+// שדות חובה בעריכת נהג
 // Unlike creation, editing an existing driver shouldn't block on fields a
 // legacy record never had filled in (see validateDriverForm) — only name
 // and phone stay required here.
@@ -33,10 +36,12 @@ const EDIT_REQUIRED_FIELDS = [
   'phone',
 ] as const satisfies readonly DriverFormField[];
 
+// שדות החובה לפי יצירה או עריכה
 export function getRequiredDriverFields(isEdit: boolean): readonly DriverFormField[] {
   return isEdit ? EDIT_REQUIRED_FIELDS : CREATE_REQUIRED_FIELDS;
 }
 
+// כמה שדות חובה כבר מולאו
 export function countFilledRequiredDriverFields(
   form: DriverFormValidationState,
   isEdit: boolean
@@ -44,6 +49,7 @@ export function countFilledRequiredDriverFields(
   return getRequiredDriverFields(isEdit).filter((field) => form[field].trim().length > 0).length;
 }
 
+// בודק תעודת זהות ישראלית
 export function isValidIsraeliNationalId(value: string | null | undefined): boolean {
   const digits = (value ?? '').replace(/\D/g, '');
   if (!/^\d{9}$/.test(digits)) return false;
@@ -59,6 +65,7 @@ export function isValidIsraeliNationalId(value: string | null | undefined): bool
   return checksum % 10 === 0;
 }
 
+// האם התאריך בעתיד
 export function isFutureDateOnly(value: string | null | undefined): boolean {
   if (!value) return false;
   const target = parseDateValue(value);
@@ -71,6 +78,7 @@ export function isFutureDateOnly(value: string | null | undefined): boolean {
   return target.getTime() > today.getTime();
 }
 
+// מציג תאריך עם נקודות
 export function formatDateDots(value: string | null | undefined): string {
   if (!value) return '';
   const date = parseDateValue(value);
@@ -81,6 +89,7 @@ export function formatDateDots(value: string | null | undefined): string {
   return `${day}.${month}.${date.getFullYear()}`;
 }
 
+// הופך תאריך לפורמט שנה-חודש-יום
 export function dateOnlyIsoFromLocalDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -88,6 +97,7 @@ export function dateOnlyIsoFromLocalDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+// בודק את כל הטופס ומחזיר שגיאות
 export function validateDriverForm(
   form: DriverFormValidationState,
   isEdit: boolean

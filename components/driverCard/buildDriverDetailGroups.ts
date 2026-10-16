@@ -1,3 +1,4 @@
+// בונה את קבוצות הפרטים של תיק הנהג
 import type { DriverRow } from '../../lib/adminApi';
 import { formatPhone } from '../../lib/phone';
 import {
@@ -7,11 +8,13 @@ import {
 } from './driverCardSections';
 import { t } from '../../lib/i18n';
 
+// מסתיר חלק מתעודת הזהות
 export function maskNationalId(id: string | null | undefined): string {
   if (!id || id.length < 6) return id ?? '—';
   return `${id.slice(0, 3)}•••${id.slice(-3)}`;
 }
 
+// קבוצות הפרטים להצגה
 export function buildDriverDetailGroups(
   driver: DriverRow | null,
   licenseStatus: 'expired' | 'verified' | 'pending',

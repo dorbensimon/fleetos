@@ -1,3 +1,4 @@
+// התראות לתיקיות הרכב (טסט, ביטוח וכו')
 /**
  * Vehicle folders that raise expiry notifications — the client-side mirror
  * of the daily scan in supabase/sql/90_vehicle_folder_expiry_notifications.sql.
@@ -18,6 +19,7 @@ export interface VehicleFolderAlert {
   source: VehicleFolderSource;
 }
 
+// רשימת התיקיות שיש להן התראה
 export const VEHICLE_FOLDER_ALERTS: VehicleFolderAlert[] = [
   { folderKey: 'vehicle_license', notificationType: 'vehicle_license_expiry', get label() { return t('folder.vehicleLicense'); }, source: 'compliance' },
   { folderKey: 'operating_license', notificationType: 'vehicle_operating_license_expiry', get label() { return t('folder.operatingLicense'); }, source: 'compliance' },
@@ -32,13 +34,17 @@ export const VEHICLE_FOLDER_ALERTS: VehicleFolderAlert[] = [
   { folderKey: 'child_detection', notificationType: 'vehicle_child_detection_expiry', get label() { return t('folder.childLeftBehind'); }, source: 'document' },
 ];
 
+// חיפוש לפי סוג התראה
 const BY_TYPE = new Map(VEHICLE_FOLDER_ALERTS.map((alert) => [alert.notificationType, alert]));
+// חיפוש לפי תיקייה
 const BY_KEY = new Map(VEHICLE_FOLDER_ALERTS.map((alert) => [alert.folderKey, alert]));
 
+// האם ההתראה שייכת לתיקיית רכב
 export function isVehicleFolderNotification(type: string | null | undefined): boolean {
   return !!type && BY_TYPE.has(type);
 }
 
+// מוצא תיקייה לפי מפתח
 export function vehicleFolderByKey(folderKey: string | null | undefined): VehicleFolderAlert | null {
   return (folderKey && BY_KEY.get(folderKey)) || null;
 }

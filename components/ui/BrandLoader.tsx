@@ -1,3 +1,4 @@
+// אנימציית הטעינה: קשת כחולה שמסתובבת סביב הלוגו
 import { ReactNode, useEffect, useRef } from 'react';
 import { Animated, Easing, Image, Platform, StyleProp, View, ViewStyle } from 'react-native';
 import { t } from '../../lib/i18n';
@@ -18,22 +19,34 @@ import { t } from '../../lib/i18n';
  * in that one colour; anything else keeps the brand gradient and mint dot.
  */
 
+// צבע הטבעת
 const RING = require('../../images/icar-loader-ring.png');
+// צבע הנקודה
 const MINT = '#2EE6A8';
+// צבע הקשת
 const BLUE = '#2E6BFF';
 
+// מיקום הנקודה (רוחב)
 const DOT_X = 0.7373;
+// מיקום הנקודה (גובה)
 const DOT_Y = 0.3005;
+// גודל הנקודה
 const DOT_R = 0.105;
+// מרכז הסיבוב (רוחב)
 const CX = 0.48; // the mark's visual centre
+// מרכז הסיבוב (גובה)
 const CY = 0.47;
+// רדיוס הקשת
 const ARC_R = 0.6; // arc radius, of size: clears the dot
 
+// זמן סיבוב
 const ARC_MS = 1100;
+// זמן הברק
 const SHEEN_MS = 1800;
 
 // ── Web: CSS keyframes ────────────────────────────────────────────────────
 
+// האנימציה בדפדפן (CSS)
 /** The loader's stylesheet. public/index.html embeds the same text for the
  *  pre-JS splash (kept equal by __tests__/brandLoaderSplash.test.ts). */
 export function loaderCss(): string {
@@ -58,6 +71,7 @@ export function loaderCss(): string {
   );
 }
 
+// גודל ומיקום הקשת
 const arcBox = (px: number) => {
   const d = 2 * ARC_R * px;
   return {
@@ -69,6 +83,7 @@ const arcBox = (px: number) => {
   };
 };
 
+// הטוען לפני שהאתר נטען
 /** Static markup of a loader, for the pre-JS splash in public/index.html. */
 export function loaderSplashHtml(px: number, ringSrc: string): string {
   const r = DOT_R * px;
@@ -86,6 +101,7 @@ export function loaderSplashHtml(px: number, ringSrc: string): string {
   );
 }
 
+// מוסיף את האנימציה לדף
 function injectCss() {
   if (typeof document === 'undefined' || document.querySelector('style[data-icar-loader-css]')) return;
   const el = document.createElement('style');
@@ -94,6 +110,7 @@ function injectCss() {
   document.head.appendChild(el);
 }
 
+// מסנכרן את כל הטוענים בדף
 /** Every web loader runs on one clock that starts with the page, so loaders
  *  on screen move together and the pre-JS splash hands over to the app's
  *  boot screen mid-motion without a jump. */
@@ -112,6 +129,7 @@ type Props = {
   testID?: string;
 };
 
+// האם הצבע בהיר
 function isLight(color?: string): boolean {
   if (!color) return false;
   const c = color.trim().toLowerCase();
@@ -138,8 +156,10 @@ function isLight(color?: string): boolean {
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.75;
 }
 
+// האם זה דפדפן
 const IS_WEB = Platform.OS === 'web';
 
+// הטוען
 export function BrandLoader({
   size = 'small',
   color,

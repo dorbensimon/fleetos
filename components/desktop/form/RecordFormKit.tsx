@@ -1,3 +1,4 @@
+// רכיבים משותפים לטפסי יצירה במחשב (נהג, רכב)
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -31,13 +32,18 @@ import { t } from '../../../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+// עקומת אנימציה
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+// קפיץ לאנימציה בלי קפיצה
 /** Critically damped (ratio ≈ 1, response ≈ 0.35s): glides and settles with no bounce. */
 const SPRING = { stiffness: 320, damping: 36, mass: 1, useNativeDriver: false } as const;
+// הצל של הכרטיסים
 const PANEL_SHADOW = '0 1px 2px rgba(16,24,40,0.04), 0 6px 20px rgba(16,24,40,0.05)';
+// ריווח מעל חלק כשגוללים אליו
 /** Room above a section when the page scrolls to it. */
 const JUMP_OFFSET = 20;
 
+// האם המשתמש ביקש פחות אנימציות
 export function useReducedMotion(): boolean {
   const [reduce, setReduce] = useState(prefersReducedMotion);
   useEffect(() => {
@@ -48,6 +54,7 @@ export function useReducedMotion(): boolean {
   return reduce;
 }
 
+// גלילה לחלק בטופס
 /** Section offsets, measured on layout, so steps and the dock can scroll the page to a section. */
 export function useSectionJump<K extends string>() {
   const scrollRef = useRef<ScrollView>(null);
@@ -66,6 +73,7 @@ export function useSectionJump<K extends string>() {
   return { scrollRef, track, jump };
 }
 
+// הדף הנגלל והסרגל הצף בתחתית
 /** The scrolling page and the dock that floats over its bottom edge. */
 export function RecordFormPage({
   scrollRef,
@@ -94,6 +102,7 @@ export interface FormStep<K extends string> {
   filled: number;
 }
 
+// הכותרת הכהה עם השלבים וכרטיס חי
 /**
  * The dark opening scene: what is being created, its steps (each one a
  * button to its section), and on the left the live card of the record.
@@ -166,6 +175,7 @@ export function RecordHero<K extends string>({
   );
 }
 
+// אנימציית כניסה של הכותרת
 /** The hero rises in on first paint; reduced motion only fades it in. */
 export function heroEnter() {
   const reduce = prefersReducedMotion();
@@ -179,6 +189,7 @@ export function heroEnter() {
   });
 }
 
+// הכרטיס הלבן שמתמלא בכותרת
 /**
  * The white card that stands for the record in the hero. It leans back a
  * little, and straightens up under a fine pointer. A light sheen runs across
@@ -211,11 +222,13 @@ export function LiveCard({ children, label }: { children: React.ReactNode; label
   );
 }
 
+// פס אפור במקום ערך שעוד לא הוקלד
 /** Placeholder bar for a card value that has not been typed yet. */
 export function GhostBar({ width, dark }: { width: number; dark?: boolean }) {
   return <View style={[styles.ghostBar, dark && styles.ghostBarDark, { width }]} />;
 }
 
+// חלק ממוספר בטופס (המספר הופך ל-V כשהושלם)
 /** A numbered block of the form. Its number turns into a green check once its required fields are in. */
 export function FormSection({
   index,
@@ -267,6 +280,7 @@ export function FormSection({
   );
 }
 
+// כרטיס לבן לשדות
 /** iOS inset-grouped platter; rows sit 1px up so the first hairline hides under its edge. */
 export function FormPanel({ children }: { children: React.ReactNode }) {
   return (
@@ -276,6 +290,7 @@ export function FormPanel({ children }: { children: React.ReactNode }) {
   );
 }
 
+// שדה: כותרת ותיבה
 /** One field as a row: label on the right, the box on the left; on a narrow window the box drops under its label. */
 export function FormCell({
   label,
@@ -322,6 +337,7 @@ export interface ChoiceTile<T extends string> {
   dot?: string;
 }
 
+// אפשרויות כאריחים גדולים
 /**
  * A handful of options as big tiles you can see all at once — nothing hides
  * in a dropdown. One is chosen at a time; it fills with the brand color.
@@ -379,11 +395,16 @@ export function ChoiceTiles<T extends string>({
   );
 }
 
+// רוחב המתג
 const SWITCH_W = 46;
+// גובה המתג
 const SWITCH_H = 28;
+// גודל הכפתור במתג
 const KNOB = 24;
+// כמה הכפתור נמתח
 const KNOB_STRETCH = 5;
 
+// מתג בסגנון אייפון
 function AppleSwitch({ value, pressed }: { value: boolean; pressed: boolean }) {
   const on = useRef(new Animated.Value(value ? 1 : 0)).current;
   const press = useRef(new Animated.Value(0)).current;
@@ -419,6 +440,7 @@ function AppleSwitch({ value, pressed }: { value: boolean; pressed: boolean }) {
   );
 }
 
+// שורה שכולה מתג
 /** A whole-row toggle: the label, what it means right now, and the switch are one target. */
 export function FormToggleRow({
   title,
@@ -455,6 +477,7 @@ export function FormToggleRow({
   );
 }
 
+// הערת הסבר בתוך חלק
 /** A quiet explanatory note inside a section, in place of fields that are not available yet. */
 export function FormNote({ icon, title, text }: { icon: IconName; title: string; text: string }) {
   return (
@@ -470,6 +493,7 @@ export function FormNote({ icon, title, text }: { icon: IconName; title: string;
   );
 }
 
+// הסרגל הצף: מה חסר וכפתור היצירה
 /**
  * The floating dock. It always tells what is left — each missing field is a
  * button to it — and holds the single create button. While fields are
@@ -564,6 +588,7 @@ export function CreateDock({
   );
 }
 
+// עיצוב משותף לחלקים, כרטיסים ושדות
 /** Sections, grouped panels, rows and toggle rows — shared with the company settings page. */
 export const FORM_PAGE_STYLES = {
   scroll: { flex: 1 },
@@ -603,10 +628,13 @@ export const FORM_PAGE_STYLES = {
   toggleCaptionOn: { color: DESKTOP_TONES.ok.fg },
 } satisfies Record<string, ViewStyle | TextStyle>;
 
+// עיצוב ערכת הטופס
 const styles = StyleSheet.create({
   ...FORM_PAGE_STYLES,
   tabular: webOnly({ fontVariantNumeric: 'tabular-nums' }),
+  // הדף
   root: { flex: 1, backgroundColor: DESKTOP_COLORS.canvas },
+  // אזור התוכן
   page: {
     paddingTop: 32,
     paddingHorizontal: 28,
@@ -616,6 +644,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
 
+  // הכותרת הכהה
   // Hero
   hero: {
     marginBottom: 48,
@@ -660,6 +689,7 @@ const styles = StyleSheet.create({
   eyebrowText: { fontSize: 14, color: '#9FD8F5' },
   heroTitle: { marginTop: 16, fontSize: 40, lineHeight: 46, letterSpacing: -1.1, color: '#FFFFFF' },
   heroSubtitle: { marginTop: 10, fontSize: 17, lineHeight: 26, color: 'rgba(255,255,255,0.7)', maxWidth: 480 },
+  // רשימת השלבים
   steps: { marginTop: 28, flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
   step: {
     flexGrow: 1,
@@ -706,6 +736,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
 
+  // הכרטיס החי
   // Live card
   liveCard: {
     width: 340,
@@ -758,8 +789,10 @@ const styles = StyleSheet.create({
   cellControl: { flexGrow: 1, flexBasis: 280, minWidth: 0, maxWidth: 560, gap: 6 },
   cellHint: { fontSize: 14, lineHeight: 20, color: DESKTOP_COLORS.inkFaint },
 
+  // רשת האריחים
   // Choice tiles
   tiles: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 },
+  // אריח בחירה
   tile: {
     flexGrow: 1,
     flexBasis: 118,

@@ -1,3 +1,4 @@
+// דוח רכבים להורדה (PDF)
 import { Company } from './supabase';
 import { Vehicle, ComplianceItem, VehicleDriverWithProfile } from './adminApi';
 import { daysUntilExpiry, formatDate } from './theme';
@@ -21,6 +22,7 @@ import { buildReportDocument, emptyState, esc, printOrShareReport, statusTag, Ta
 
 export type VehicleReportCategory = 'all' | 'insurance' | 'test' | 'service' | 'issues';
 
+// סוגי הדוח לבחירה
 export const VEHICLE_REPORT_CATEGORIES: { value: VehicleReportCategory; label: string; icon: string }[] = [
   { value: 'all', label: 'כל הרכבים', icon: 'car-outline' },
   { value: 'issues', label: 'רכבים עם חריגה', icon: 'warning' },
@@ -29,6 +31,7 @@ export const VEHICLE_REPORT_CATEGORIES: { value: VehicleReportCategory; label: s
   { value: 'service', label: 'טיפול קרוב / באיחור', icon: 'build-outline' },
 ];
 
+// כותרת לכל סוג דוח
 const CATEGORY_TITLES: Record<VehicleReportCategory, string> = {
   all: 'דוח כלל הרכבים',
   issues: 'דוח רכבים עם חריגה',
@@ -51,6 +54,7 @@ interface VehicleSummary {
   driverName: string | null;
 }
 
+// מסכם כל רכב לשורה בדוח
 function summarize(
   vehicle: Vehicle,
   compliance: Map<string, ComplianceItem[]>,
@@ -90,6 +94,7 @@ function summarize(
   };
 }
 
+// מסנן רכבים לפי סוג הדוח
 function filterVehicles(
   summaries: VehicleSummary[],
   category: VehicleReportCategory
@@ -108,6 +113,7 @@ function filterVehicles(
   }
 }
 
+// ממיר צבע למצב
 function toneStatusKey(tone: string): 'ok' | 'soon' | 'expired' | 'missing' {
   if (tone === TONE_BAD) return 'expired';
   if (tone === TONE_WARN) return 'soon';
@@ -115,6 +121,7 @@ function toneStatusKey(tone: string): 'ok' | 'soon' | 'expired' | 'missing' {
   return 'missing';
 }
 
+// טקסט לכל מצב
 const STATUS_LABELS: Record<'ok' | 'soon' | 'expired' | 'missing', string> = {
   ok: 'תקין',
   soon: 'מתקרב מועד',
@@ -122,6 +129,7 @@ const STATUS_LABELS: Record<'ok' | 'soon' | 'expired' | 'missing', string> = {
   missing: 'חסר נתונים',
 };
 
+// צבע לכל מצב
 function statusTone(statusKey: 'ok' | 'soon' | 'expired' | 'missing'): TagTone {
   if (statusKey === 'expired') return 'accent2';
   if (statusKey === 'soon') return 'outline';
@@ -129,6 +137,7 @@ function statusTone(statusKey: 'ok' | 'soon' | 'expired' | 'missing'): TagTone {
   return 'accent';
 }
 
+// בונה את ה-HTML של הדוח
 function buildHtml(company: Company, summaries: VehicleSummary[], category: VehicleReportCategory): string {
   const rows = summaries
     .map((s) => {
@@ -193,6 +202,7 @@ function buildHtml(company: Company, summaries: VehicleSummary[], category: Vehi
   });
 }
 
+// מפיק ומוריד את הדוח
 export async function exportVehiclesReport(
   company: Company,
   vehicles: Vehicle[],

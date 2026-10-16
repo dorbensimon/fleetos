@@ -1,3 +1,4 @@
+// "דורש טיפול": אוסף את כל מה שפג תוקף או חסר בחברה
 import { supabase } from '../supabase';
 import { listDrivers } from './drivers';
 import { listVehicles } from './vehicles';
@@ -22,6 +23,7 @@ export type AttentionDetails = {
   missingLicenseDocuments: { driver: DriverRow; missing: string[] }[];
 };
 
+// מביא את כל הפריטים שדורשים טיפול בחברה
 export async function getAttentionDetails(companyId: string): Promise<AttentionDetails> {
   const [drivers, allVehicles] = await Promise.all([listDrivers(companyId), listVehicles(companyId, true)]);
   const vehicles = allVehicles.filter((v) => v.status !== 'archived');
@@ -64,6 +66,7 @@ export async function getAttentionDetails(companyId: string): Promise<AttentionD
   };
 }
 
+// סופר את הפריטים שדורשים טיפול לפי סוג
 export function summarizeAttention(details: AttentionDetails): AttentionSummary {
   return {
     license: details.licenseDrivers.length,
@@ -73,6 +76,7 @@ export function summarizeAttention(details: AttentionDetails): AttentionSummary 
   };
 }
 
+// מביא רק את הסיכום (מספרים) של מה שדורש טיפול
 export async function getAttentionSummary(companyId: string): Promise<AttentionSummary> {
   return summarizeAttention(await getAttentionDetails(companyId));
 }

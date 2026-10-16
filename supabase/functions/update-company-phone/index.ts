@@ -1,3 +1,4 @@
+// פונקציית שרת: עדכון טלפון של חברה
 // Edge Function: update-company-phone
 // Lets an admin (or the owner) update their own company's phone number.
 // `companies` RLS only grants UPDATE to the platform owner, so a company
@@ -11,8 +12,10 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
 
+// תבנית טלפון
 const PHONE_RE = /^0([23489]|5[0-9]|7[0-9])\d{6,7}$/;
 
+// מעדכן
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

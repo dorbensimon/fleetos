@@ -1,3 +1,4 @@
+// מסך התיק של הנהג
 import React, { useCallback, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -31,6 +32,7 @@ import { errorMessage } from '../../lib/requestError';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverDocuments'>;
 
+// טוען ומציג מחשב או טלפון
 export default function DriverDocumentsScreen({ navigation }: Props) {
   const { companyId, profile, loading: profileLoading } = useCompany();
   const insets = useSafeAreaInsets();
@@ -204,6 +206,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
   );
 }
 
+// עיצוב במחשב
 const desktopStyles = StyleSheet.create({
   wrap: { padding: 24, maxWidth: 520, alignSelf: 'center', width: '100%', gap: 12 },
   headRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },

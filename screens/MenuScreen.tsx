@@ -1,3 +1,4 @@
+// מסך התפריט
 import React from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,12 +20,14 @@ import { t } from '../lib/i18n';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'Menu'>;
 
+// שם התפקיד
 const ROLE_LABEL: Record<string, string> = {
   get owner() { return t('role.owner'); },
   get admin() { return t('role.fleetManager'); },
   get driver() { return t('role.driver'); },
 };
 
+// המסך
 export default function MenuScreen({ navigation }: Props) {
   const { profile, company } = useCompany();
   const isDesktop = useIsDesktop();

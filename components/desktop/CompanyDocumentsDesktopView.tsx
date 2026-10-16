@@ -1,3 +1,4 @@
+// מסמכי החברה - תצוגת מחשב (מדף של מסמכים עם תצוגה מקדימה)
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, TextInput, View, type LayoutChangeEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,20 +17,28 @@ import { t, textStart } from '../../lib/i18n';
 
 export type CompanyDocumentDraft = { title: string; date: string; description: string; file: PickedFile };
 
+// שם המסמך
 /** A company document's name: its title, else its file name. */
 export const titleOf = (doc: DocumentRow) => doc.title?.trim() || doc.file_name || t('documents.untitled');
+// סוג הקובץ (PDF/תמונה)
 const kindOf = (mime: string | null | undefined) => (mime?.includes('pdf') ? 'PDF' : mime?.startsWith('image/') ? t('common.image') : t('common.file'));
+// מספר המסמכים במילים
 const countLabel = (count: number) => (count === 1 ? t('documents.oneDocument') : t('documents.countN', { count }));
+// שם קובץ בלי סיומת
 const withoutExtension = (name: string) => name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
 
+// התאריך של היום
 function todayIso(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// רוחב מינימלי של כרטיס מסמך
 const TILE_MIN = 190;
+// רווח בין הכרטיסים
 const GAP = 14;
 
+// הדף: כותרת, חיפוש ורשת המסמכים
 /**
  * The company's standing paperwork (business licence, insurance, bank
  * letters) as a shelf of real first-page miniatures — the desktop take on
@@ -143,6 +152,7 @@ export function CompanyDocumentsDesktopView({
   );
 }
 
+// כפתור 'הוספת מסמך'
 function AddButton({ onPress, large }: { onPress: () => void; large?: boolean }) {
   return (
     <HoverPressable
@@ -158,6 +168,7 @@ function AddButton({ onPress, large }: { onPress: () => void; large?: boolean })
   );
 }
 
+// אנימציית כניסה לכרטיס
 function enterStyle(index: number) {
   if (Platform.OS !== 'web') return null;
   const reduce = prefersReducedMotion();
@@ -172,6 +183,7 @@ function enterStyle(index: number) {
   });
 }
 
+// כרטיס מסמך עם תצוגה מקדימה ופעולות
 function DocumentCard({
   doc,
   index,
@@ -233,6 +245,7 @@ function DocumentCard({
   );
 }
 
+// כפתור פעולה בכרטיס
 function CardAction({ icon, label, onPress, danger, a11y }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; danger?: boolean; a11y: string }) {
   const color = danger ? DESKTOP_TONES.bad.fg : DESKTOP_COLORS.brand;
   return (
@@ -249,6 +262,7 @@ function CardAction({ icon, label, onPress, danger, a11y }: { icon: keyof typeof
   );
 }
 
+// כרטיס טעינה
 function SkeletonCard({ width }: { width: number }) {
   return (
     <View style={[styles.card, { width }]} accessibilityLabel={t('companyDocs.loading')}>
@@ -264,6 +278,7 @@ function SkeletonCard({ width }: { width: number }) {
   );
 }
 
+// מצב ריק: עוד אין מסמכים
 function EmptyShelf({ onAdd }: { onAdd: () => void }) {
   return (
     <View style={[styles.empty, enterStyle(0)]}>
@@ -285,6 +300,7 @@ function EmptyShelf({ onAdd }: { onAdd: () => void }) {
   );
 }
 
+// חלון הוספת מסמך
 function AddDocumentDialog({
   visible,
   onClose,
@@ -472,15 +488,21 @@ function AddDocumentDialog({
   );
 }
 
+// הצל של דף המסמך
 const SHEET_SHADOW = '0 1px 2px rgba(22,34,46,0.06), 0 6px 16px rgba(22,34,46,0.08)';
+// הצל כשהעכבר מעל
 const SHEET_SHADOW_LIFTED = '0 2px 4px rgba(22,34,46,0.06), 0 18px 34px rgba(22,34,46,0.16)';
 
+// עיצוב דף מסמכי החברה
 const styles = StyleSheet.create({
+  // הרקע של הדף
   root: { flex: 1, backgroundColor: DESKTOP_COLORS.canvas },
+  // אזור התוכן
   content: { width: '100%', maxWidth: 1160, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 16, paddingBottom: 48, gap: 14 },
 
   heroIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
 
+  // כפתור ההוספה
   addBtn: {
     height: 40,
     paddingEnd: 6,
@@ -500,7 +522,9 @@ const styles = StyleSheet.create({
   addBtnIcon: { width: 28, height: 28, borderRadius: 8, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   addBtnText: { fontSize: 14.5, color: '#FFFFFF' },
 
+  // שורת החיפוש
   toolbar: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' },
+  // תיבת החיפוש
   search: {
     width: 320,
     maxWidth: '100%',
@@ -529,8 +553,10 @@ const styles = StyleSheet.create({
   searchClearHover: { backgroundColor: DESKTOP_COLORS.inkMuted },
   count: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
 
+  // רשת הכרטיסים
   grid: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'stretch', gap: GAP },
 
+  // כרטיס מסמך
   card: {
     backgroundColor: DESKTOP_COLORS.surface,
     borderRadius: 14,
@@ -544,6 +570,7 @@ const styles = StyleSheet.create({
     ...webOnly({ boxShadow: '0 2px 4px rgba(22,34,46,0.04), 0 14px 32px rgba(22,34,46,0.09)' }),
   },
   cardOpen: { flex: 1 },
+  // אזור התצוגה המקדימה
   stage: {
     height: 146,
     alignItems: 'center',
@@ -553,6 +580,7 @@ const styles = StyleSheet.create({
     borderBottomColor: DESKTOP_COLORS.borderSoft,
     ...webOnly({ backgroundImage: 'radial-gradient(120% 90% at 50% 0%, #FFFFFF 0%, #F1F4F7 55%, #E8EDF1 100%)' }),
   },
+  // הדף הקטן של המסמך
   sheet: {
     borderRadius: 6,
     ...webOnly({
@@ -594,12 +622,14 @@ const styles = StyleSheet.create({
   openHintOn: { opacity: 1, ...webOnly({ transform: 'translateY(0px)' }) },
   openHintText: { fontSize: 12.5, color: '#FFFFFF' },
 
+  // גוף הכרטיס (שם ותאריך)
   cardBody: { paddingHorizontal: 14, paddingTop: 11, paddingBottom: 11, gap: 4 },
   cardTitle: { fontSize: 15, lineHeight: 20, letterSpacing: -0.15, color: DESKTOP_COLORS.ink },
   dateRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
   dateText: { fontSize: 13, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   description: { fontSize: 13, lineHeight: 18, color: DESKTOP_COLORS.inkMuted },
 
+  // פעולות בתחתית הכרטיס
   cardFooter: { flexDirection: 'row-reverse', alignItems: 'stretch', borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   footerDivider: { width: 1, backgroundColor: DESKTOP_COLORS.borderSoft },
   cardAction: {
@@ -629,6 +659,7 @@ const styles = StyleSheet.create({
   noResultsTitle: { fontSize: 18, color: DESKTOP_COLORS.ink, textAlign: 'center' },
   noResultsText: { fontSize: 15, color: DESKTOP_COLORS.inkMuted, textAlign: 'center' },
 
+  // מצב ריק
   empty: {
     alignItems: 'center',
     paddingVertical: 56,
@@ -658,6 +689,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 22, letterSpacing: -0.4, color: DESKTOP_COLORS.ink, textAlign: 'center' },
   emptyText: { fontSize: 16, lineHeight: 24, color: DESKTOP_COLORS.inkMuted, textAlign: 'center', maxWidth: 440 },
 
+  // טופס ההוספה
   form: { paddingHorizontal: 22, paddingTop: 18, paddingBottom: 22, gap: 18 },
   drop: {
     minHeight: 150,

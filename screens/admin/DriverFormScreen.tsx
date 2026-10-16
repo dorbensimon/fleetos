@@ -1,3 +1,4 @@
+// טופס יצירה/עריכה של נהג
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
@@ -24,6 +25,7 @@ import { t } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverForm'>;
 
+// דרגות רישיון לנהג חדש
 const NEW_DRIVER_LICENSE_OPTIONS = [
   { value: 'B', label: 'B', get description() { return t('license.classDesc.private'); } },
   { value: 'C1', label: 'C1', get description() { return t('license.classDesc.cargo12'); } },
@@ -34,6 +36,7 @@ const NEW_DRIVER_LICENSE_OPTIONS = [
   { value: '1', label: '1', get description() { return t('license.classDesc.tractor'); } },
 ] as const;
 
+// טופס ריק
 const EMPTY: FormState = {
   full_name: '',
   phone: '',
@@ -49,6 +52,7 @@ const EMPTY: FormState = {
   showPassword: false,
 };
 
+// המסך: שדות, בדיקה ושמירה
 export default function DriverFormScreen({ route, navigation }: Props) {
   const driverId = route.params?.driverId;
   const isEdit = !!driverId;
@@ -409,6 +413,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { textAlign: 'center' },

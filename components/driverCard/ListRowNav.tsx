@@ -1,3 +1,4 @@
+// שורה שלחיצה עליה פותחת מסך
 import { Pressable, View, Text, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { DriverCardIcon } from './DriverCardIcon';
@@ -5,6 +6,7 @@ import { DC_BADGE_TONE, DC_COLORS, DC_SPACING, DC_TYPO } from './driverCardTheme
 import type { DriverCardNavRow } from './driverCardSections';
 import { dirIcon, textDirection } from '../../lib/i18n';
 
+// אייקון, כותרת וחץ
 export function ListRowNav({
   row,
   showSeparator,
@@ -43,7 +45,9 @@ export function ListRowNav({
   );
 }
 
+// עיצוב השורה
 const styles = StyleSheet.create({
+  // השורה
   row: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -53,6 +57,7 @@ const styles = StyleSheet.create({
   rowPressed: {
     backgroundColor: 'rgba(0,0,0,0.04)',
   },
+  // ריבוע האייקון
   iconSquare: {
     width: DC_SPACING.iconSquare,
     height: DC_SPACING.iconSquare,

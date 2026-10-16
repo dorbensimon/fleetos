@@ -1,3 +1,4 @@
+// עיצוב תיק הנהג: צבעים, גופנים וריווח
 import { fontStack } from '../../lib/fontStack';
 /**
  * Design tokens for the new "כרטיס נהג" (Driver Card) screen.
@@ -8,6 +9,7 @@ import { fontStack } from '../../lib/fontStack';
  * single-accent design system. Do not reuse these tokens elsewhere.
  */
 
+// הצבעים
 export const DC_COLORS = {
   bg: '#F2F2F7',
   surface: '#FFFFFF',
@@ -34,6 +36,7 @@ export type DriverCardTint = keyof Pick<
   'blue' | 'green' | 'orange' | 'red' | 'purple' | 'teal' | 'indigo' | 'gray'
 >;
 
+// הגופנים
 export const DC_FONT = {
   extraBold: fontStack('Heebo_800ExtraBold'),
   bold: fontStack('Heebo_700Bold'),
@@ -42,6 +45,7 @@ export const DC_FONT = {
   regular: fontStack('Heebo_400Regular'),
 } as const;
 
+// סגנונות טקסט
 export const DC_TYPO = {
   largeTitle: { fontFamily: DC_FONT.extraBold, fontSize: 32, letterSpacing: -0.8 },
   navTitle: { fontFamily: DC_FONT.semiBold, fontSize: 16, letterSpacing: -0.3 },
@@ -59,6 +63,7 @@ export const DC_TYPO = {
   footer: { fontFamily: DC_FONT.regular, fontSize: 12.5, letterSpacing: 0 },
 } as const;
 
+// ריווחים
 export const DC_SPACING = {
   screenPaddingH: 16,
   groupRadius: 12,
@@ -74,6 +79,7 @@ export const DC_SPACING = {
   listBottomPadding: 34,
 } as const;
 
+// צבעי תגיות
 export const DC_BADGE_TONE = {
   muted: { color: DC_COLORS.labelTertiary, fontWeight: '400' as const },
   warn: { color: DC_COLORS.orange, fontWeight: '600' as const },

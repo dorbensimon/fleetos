@@ -1,3 +1,4 @@
+// תיקיות מסמכים בתיק רכב/נהג: רשימה וחלון תיקייה
 import React, { useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../../ui/BrandLoader';
@@ -30,13 +31,16 @@ import { t, dirIcon } from '../../../lib/i18n';
  * - `gallery` — free-form folders: every file as an equal miniature.
  */
 
+// עקומת אנימציה
 // Same curve as RecordKit's EASE_OUT; not imported, since RecordKit imports this file.
 const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
 
 export type FolderLayout = 'versions' | 'gallery';
 
+// ממיין מהחדש לישן
 const newestFirst = (docs: DocumentRow[]) => [...docs].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 
+// כמה ימים עד תאריך
 function daysUntil(date: string): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -45,6 +49,7 @@ function daysUntil(date: string): number {
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
+// מצב התוקף במילים
 export function expiryStatusText(state: ExpiryState, expiry: string | null): string {
   if (state === 'expired') return t('status.expiredLong');
   if (state === 'soon' && expiry) {
@@ -55,6 +60,7 @@ export function expiryStatusText(state: ExpiryState, expiry: string | null): str
   return t('documents.notUploaded');
 }
 
+// המצב של תיקייה לפי המסמך האחרון
 /** The status a folder shows: the expiry of its newest document. */
 export function folderStatus(docs: DocumentRow[]): { state: ExpiryState; expiry: string | null; count: number } {
   const latest = newestFirst(docs)[0] ?? null;
@@ -62,14 +68,17 @@ export function folderStatus(docs: DocumentRow[]): { state: ExpiryState; expiry:
   return { state: latest.expiry_date ? expiryState(latest.expiry_date) : 'optional', expiry: latest.expiry_date, count: docs.length };
 }
 
+// צבע לכל מצב
 const STATE_COLOR: Partial<Record<ExpiryState, string>> = {
   ok: DESKTOP_TONES.ok.fg,
   soon: DESKTOP_TONES.warn.fg,
   expired: DESKTOP_TONES.bad.fg,
 };
 
+// מספר הקבצים במילים
 const countLabel = (count: number) => (count === 0 ? t('documents.noFileYet') : count === 1 ? t('documents.oneFile') : t('documents.filesCount', { count }));
 
+// שורת תיקייה ברשימה
 export function FolderListRow({
   title,
   icon,
@@ -132,11 +141,13 @@ export function FolderListRow({
   );
 }
 
+// האם יש עכבר
 /** Pointer devices reveal a tile's actions on hover; touch screens always show them. */
 function canHover(): boolean {
   return typeof window !== 'undefined' && !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
 }
 
+// אזור ההעלאה בתחתית חלון התיקייה
 /**
  * The upload area at the bottom of a folder window, in two plain steps:
  * choose a file (drag it onto the dashed box, or click the box), then press
@@ -267,6 +278,7 @@ export function FolderUploadBar({
   );
 }
 
+// אריח קובץ בתיקיית תמונות
 /** One file in a gallery folder: its miniature, name and upload date. Download and delete appear on hover. */
 function GalleryTile({ doc, index, onDelete }: { doc: DocumentRow; index: number; onDelete: () => void }) {
   const [hovered, setHovered] = useState(false);
@@ -295,6 +307,7 @@ function GalleryTile({ doc, index, onDelete }: { doc: DocumentRow; index: number
   );
 }
 
+// כפתור באריח
 function TileAction({ icon, label, onPress, danger }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; danger?: boolean }) {
   return (
     <HoverPressable style={styles.tileAction} hoverStyle={danger ? styles.iconBtnDangerHover : styles.tileActionHover} pressStyle={styles.pressDown} onPress={onPress} accessibilityLabel={label}>
@@ -303,6 +316,7 @@ function TileAction({ icon, label, onPress, danger }: { icon: keyof typeof Ionic
   );
 }
 
+// כפתור קטן
 function SmallAction({ icon, label, onPress, danger }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; danger?: boolean }) {
   return (
     <HoverPressable style={styles.iconBtn} hoverStyle={danger ? styles.iconBtnDangerHover : styles.rowHover} pressStyle={styles.pressDown} onPress={onPress} accessibilityLabel={label}>
@@ -311,12 +325,14 @@ function SmallAction({ icon, label, onPress, danger }: { icon: keyof typeof Ioni
   );
 }
 
+// שורת התאריך של מסמך
 function docDateLine(doc: DocumentRow, current: boolean): { prefix: string; date: string } {
   if (!doc.expiry_date) return { prefix: t('documents.uploadedOnPrefix'), date: formatDate(doc.created_at) };
   if (current) return { prefix: expiryState(doc.expiry_date) === 'expired' ? t('documents.expiredOnPrefix') : t('documents.validUntilPrefix'), date: formatDate(doc.expiry_date) };
   return { prefix: t('documents.wasValidUntilPrefix'), date: formatDate(doc.expiry_date) };
 }
 
+// מציג את שורת התאריך
 function DateLine({ doc, current }: { doc: DocumentRow; current: boolean }) {
   const { prefix, date } = docDateLine(doc, current);
   return (
@@ -327,6 +343,7 @@ function DateLine({ doc, current }: { doc: DocumentRow; current: boolean }) {
   );
 }
 
+// חלון התיקייה: המסמך הנוכחי, ישנים והעלאה
 export function FolderDocumentsModal({
   title,
   docs,
@@ -432,6 +449,7 @@ export function FolderDocumentsModal({
   );
 }
 
+// תגית 'נוכחי'
 function CurrentTag({ doc }: { doc: DocumentRow }) {
   const state = doc.expiry_date ? expiryState(doc.expiry_date) : 'optional';
   const color = STATE_COLOR[state] ?? DESKTOP_COLORS.inkMuted;
@@ -439,11 +457,13 @@ function CurrentTag({ doc }: { doc: DocumentRow }) {
   return <DText weight="semiBold" style={[styles.currentTag, { color }]}>{label}</DText>;
 }
 
+// עיצוב התיקיות
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   pressDown: { transform: [{ scale: 0.97 }] },
   disabled: { opacity: 0.6 },
 
+  // שורת תיקייה
   row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 54, paddingHorizontal: 16, paddingVertical: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },
   rowDivider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
@@ -462,6 +482,7 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', gap: 8, paddingVertical: 22, borderRadius: 12, backgroundColor: DESKTOP_COLORS.surfaceMuted },
   emptyText: { fontSize: 15, color: DESKTOP_COLORS.inkMuted },
 
+  // המסמך הנוכחי
   current: { flexDirection: 'row-reverse', gap: 16, padding: 16, borderRadius: 14, borderWidth: 1, borderColor: DESKTOP_COLORS.border, backgroundColor: '#FBFCFD' },
   currentText: { flex: 1, minWidth: 0, gap: 2 },
   currentTag: { fontSize: 13.5 },
@@ -483,11 +504,14 @@ const styles = StyleSheet.create({
   olderLabel: { fontSize: 15, color: DESKTOP_COLORS.inkMuted },
   countPill: { minWidth: 24, height: 22, paddingHorizontal: 7, borderRadius: 11, backgroundColor: DESKTOP_COLORS.canvas, alignItems: 'center', justifyContent: 'center' },
   countPillText: { fontSize: 13, color: DESKTOP_COLORS.ink },
+  // רשימת המסמכים הישנים
   olderList: { borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 12, overflow: 'hidden', maxHeight: 290, ...webOnly({ overflowY: 'auto' }) },
   olderRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10 },
   olderName: { fontSize: 15 },
 
+  // רשת התמונות
   gallery: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, maxHeight: 360, marginHorizontal: -6, ...webOnly({ overflowY: 'auto' }) },
+  // אריח תמונה
   tile: { width: '24%', flexGrow: 0, alignItems: 'center', paddingTop: 10, paddingBottom: 8, paddingHorizontal: 6, borderRadius: 12, ...webOnly({ transition: 'background-color 150ms ease' }) },
   tileHover: { backgroundColor: DESKTOP_COLORS.canvas },
   tileEnter: webOnly({

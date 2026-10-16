@@ -1,3 +1,4 @@
+// מסך הרכב של הנהג
 import React, { useCallback, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -29,6 +30,7 @@ import { errorMessage } from '../../lib/requestError';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverVehicle'>;
 
+// טוען ומציג מחשב או טלפון
 export default function DriverVehicleScreen({ navigation, route }: Props) {
   const focus = route.params?.focus;
   const { profile, loading: profileLoading } = useCompany();
@@ -133,10 +135,12 @@ export default function DriverVehicleScreen({ navigation, route }: Props) {
   );
 }
 
+// צבע לפי תוקף
 function toneFor(state: ReturnType<typeof expiryState>): DesktopTone {
   return state === 'expired' ? 'bad' : state === 'soon' ? 'warn' : state === 'missing' ? 'neutral' : 'ok';
 }
 
+// כרטיס הרכב במחשב
 function DesktopVehicleCard({
   vehicle,
   isPrimary,
@@ -195,6 +199,7 @@ function DesktopVehicleCard({
   );
 }
 
+// עיצוב במחשב
 const ds = StyleSheet.create({
   wrap: { padding: 24, maxWidth: 420, alignSelf: 'center', width: '100%', gap: 16 },
   card: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 8, padding: 16, gap: 4 },

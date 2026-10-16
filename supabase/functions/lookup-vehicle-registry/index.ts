@@ -1,6 +1,8 @@
+// פונקציית שרת: חיפוש רכב במאגר הממשלתי
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyUser } from '../_shared/verifyUser.ts';
 
+// המאגרים לחיפוש
 // Israel's vehicle registry (data.gov.il) splits vehicles across several
 // datasets by category — a single resource never covers the whole fleet.
 // The fleet here includes cars, minibuses, buses and trucks, so every
@@ -10,6 +12,7 @@ const VEHICLE_RESOURCE_IDS = [
   'cf29862d-ca25-4691-84f6-1be60dcb4a1e', // כלי רכב ציבוריים (אוטובוסים, מיניבוסים)
   'cd3acc5c-03c3-4c89-9c54-d40f93c0d790', // כלי רכב מעל 3.5 טון (משאיות)
 ];
+// כמה זמן מחכים לתשובה
 const LOOKUP_TIMEOUT_MS = 8_000;
 
 type RegistryRecord = {
@@ -27,6 +30,7 @@ type RegistryResponse = {
   result?: { records?: RegistryRecord[] };
 };
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -34,22 +38,26 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
+// טקסט או ריק
 function optionalText(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+// שנה או ריק
 function optionalYear(value: unknown): number | null {
   const year = typeof value === 'number' ? value : Number(value);
   const currentYear = new Date().getUTCFullYear();
   return Number.isInteger(year) && year >= 1900 && year <= currentYear ? year : null;
 }
 
+// תאריך או ריק
 function optionalIsoDate(value: unknown): string | null {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const parsed = new Date(`${value}T12:00:00Z`);
   return Number.isNaN(parsed.getTime()) ? null : value;
 }
 
+// מחפש ומחזיר את נתוני הרכב
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'השיטה אינה נתמכת' }, 405);

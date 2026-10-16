@@ -1,13 +1,17 @@
+// החיבור לשרת Supabase
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import type { CompanyType } from './companyType';
 
+// כתובת השרת
 const SUPABASE_URL =
   process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://lnflftptzrfuzfecmhho.supabase.co';
+// המפתח הציבורי
 const SUPABASE_ANON_KEY =
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_4UJaMSQubyVg7h-vD-OwEg_37kBN7Bx';
 
+// הלקוח שדרכו מדברים עם השרת
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     storage: AsyncStorage,

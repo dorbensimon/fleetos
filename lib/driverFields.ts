@@ -1,6 +1,8 @@
+// שדות טופס הנהג: דרגות רישיון, מצב משפחתי, השכלה ומחלקות
 import type { Department, DriverRow } from './adminApi';
 import { t } from './i18n';
 
+// דרגות הרישיון לבחירה
 export const LICENSE_CLASS_OPTIONS = [
   { value: 'A2', get label() { return t('license.class.A2'); } },
   { value: 'A1', get label() { return t('license.class.A1'); } },
@@ -17,6 +19,7 @@ export const LICENSE_CLASS_OPTIONS = [
   { value: 'PERMIT', get label() { return t('license.class.machinery'); } },
 ];
 
+// אפשרויות מצב משפחתי
 // Stored as the Hebrew label itself (the columns are plain text), so the
 // value never changes with the UI language; only the label shown is translated.
 const MARITAL_STATUS_KEYS: Record<string, string> = {
@@ -28,6 +31,7 @@ const MARITAL_STATUS_KEYS: Record<string, string> = {
   'אלמן/ה': 'driver.marital.widowed',
 };
 
+// אפשרויות השכלה
 const EDUCATION_KEYS: Record<string, string> = {
   'יסודית': 'driver.edu.elementary',
   'תיכונית ללא בגרות': 'driver.edu.highSchool',
@@ -37,6 +41,7 @@ const EDUCATION_KEYS: Record<string, string> = {
   'תואר שני ומעלה': 'driver.edu.master',
 };
 
+// הטקסט להצגה של ערך שמור, בשפת הממשק
 /** The label for a stored marital status or education value, in the UI language. */
 export function storedValueLabel(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -44,12 +49,15 @@ export function storedValueLabel(value: string | null | undefined): string | nul
   return key ? t(key) : value;
 }
 
+// רשימת מצב משפחתי לבחירה
 export const MARITAL_STATUS_OPTIONS = Object.entries(MARITAL_STATUS_KEYS)
   .map(([value, key]) => ({ value, get label() { return t(key); } }));
 
+// רשימת השכלה לבחירה
 export const EDUCATION_OPTIONS = Object.entries(EDUCATION_KEYS)
   .map(([value, key]) => ({ value, get label() { return t(key); } }));
 
+// מוסיף לרשימה ערך שמור שלא נמצא בה
 /** Keeps a saved value that is not in the list selectable, so it is never shown as empty. */
 export function optionsWithCurrent(
   options: { value: string; label: string }[],
@@ -70,6 +78,7 @@ export interface DriverEditableFields {
   department_id: string | null;
 }
 
+// מפריד דרגת רישיון ראשית ומשנית
 export function splitLicenseClasses(value: string | null | undefined): { primary: string; secondary: string } {
   const [primary, secondary] = (value ?? '')
     .split(',')
@@ -82,6 +91,7 @@ export function splitLicenseClasses(value: string | null | undefined): { primary
   };
 }
 
+// מחבר דרגות רישיון לשמירה
 export function joinLicenseClasses(primary: string, secondary: string): string {
   return [primary, secondary]
     .map((item) => item.trim())
@@ -89,14 +99,17 @@ export function joinLicenseClasses(primary: string, secondary: string): string {
     .join(', ');
 }
 
+// שם המחלקה לפי מזהה
 export function departmentNameById(departments: Department[], departmentId: string | null | undefined): string | null {
   return departments.find((department) => department.id === departmentId)?.name ?? null;
 }
 
+// רשימת המחלקות לבחירה
 export function departmentOptions(departments: Department[]): { value: string; label: string }[] {
   return departments.map((department) => ({ value: department.id, label: department.name }));
 }
 
+// הודעת אזהרה לפני מחיקת מחלקה
 /** True when a save failed because the selected department was deleted (by someone else) while the form was open. */
 /** The delete warning, naming what is still tagged with the department: it stays without one. */
 export function departmentDeleteMessage(name: string, usage: { vehicles: number; drivers: number }): string {
@@ -110,10 +123,12 @@ export function departmentDeleteMessage(name: string, usage: { vehicles: number;
     : `למחוק את "${name}"?`;
 }
 
+// האם השמירה נכשלה כי המחלקה נמחקה בינתיים
 export function isStaleDepartmentError(message: string | null | undefined): boolean {
   return !!message && message.includes('department_id_fkey');
 }
 
+// ממלא את טופס העריכה מנתוני הנהג
 export function driverEditableFieldsFromRow(driver: DriverRow | null | undefined): DriverEditableFields {
   const license = splitLicenseClasses(driver?.license_classes);
   return {

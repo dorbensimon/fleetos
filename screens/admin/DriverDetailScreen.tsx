@@ -1,3 +1,4 @@
+// תיק נהג
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
@@ -35,6 +36,7 @@ import { t } from '../../lib/i18n';
 import { hasBothLicenseSides } from '../../lib/licenseSides';
 import { errorMessage } from '../../lib/requestError';
 
+// מתי האפליקציה עלתה
 const APP_STARTED_AT_MS = Date.now();
 
 /**
@@ -45,6 +47,7 @@ const APP_STARTED_AT_MS = Date.now();
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverDetail'>;
 
+// המסך: טעינה ופעולות, מחשב או טלפון
 export default function DriverDetailScreen({ route, navigation }: Props) {
   const { driverId } = route.params;
   const { companyId, company, profile } = useCompany();

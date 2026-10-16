@@ -1,3 +1,4 @@
+// פונקציית שרת: תיקון מייל כניסה
 // Edge Function: update-user-email
 //
 // Called by an admin (or the owner) to correct a driver/admin's login
@@ -12,12 +13,14 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
 import { mayManageAccount } from '../_shared/accountSecurity.ts';
 
+// תשובת JSON
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
+// מעדכן
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

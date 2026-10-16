@@ -1,3 +1,4 @@
+// בודק שהקורא רשאי לנהל את החברה
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifyUser } from './verifyUser.ts';
 
@@ -5,6 +6,7 @@ type AccessResult =
   | { ok: true; adminClient: SupabaseClient; callerId: string; callerRole: string }
   | { ok: false; status: number; error: string };
 
+// מנהל החברה או הבעלים
 /**
  * Verifies the caller may manage `targetCompanyId`.
  *

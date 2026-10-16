@@ -1,3 +1,4 @@
+// פונקציית שרת: מייל הכניסה של משתמש
 // Edge Function: get-user-email
 //
 // Returns one user's login email. Client-side queries can't reach
@@ -7,12 +8,14 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
 
+// תשובת JSON
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
+// מחזיר את המייל
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

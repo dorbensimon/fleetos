@@ -1,3 +1,4 @@
+// כרטיס הרכבים של נהג בתיק הנהג
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,9 +24,11 @@ import { errorMessage } from '../../../lib/requestError';
 
 type Row = { assignmentId: string | null; vehicleId: string; plate: string; name: string; isPrimary: boolean };
 
+// שם הרכב
 const vehicleName = (v: Pick<Vehicle, 'manufacturer' | 'model'> | null | undefined) =>
   [v?.manufacturer, v?.model].filter(Boolean).join(' ');
 
+// הרכבים שהנהג נוהג בהם, עם הוספה והסרה
 /**
  * The vehicles a driver drives, managed from the driver's own page — the
  * mirror of the drivers list on a vehicle page. Rows open the vehicle; the
@@ -205,6 +208,7 @@ export function DriverVehiclesCard({
   );
 }
 
+// לוחית רישוי קטנה
 function MiniPlate({ plate }: { plate: string }) {
   return (
     <View {...fixedLayoutProps} style={[styles.miniPlate, FIXED_LAYOUT_STYLE]} accessibilityRole="image" accessibilityLabel={t('vehicle.numberLabel', { plate })}>
@@ -216,8 +220,10 @@ function MiniPlate({ plate }: { plate: string }) {
   );
 }
 
+// עיצוב הכרטיס
 const styles = StyleSheet.create({
   empty: { padding: 16 },
+  // שורת רכב
   row: { flexDirection: 'row-reverse', alignItems: 'center', paddingStart: 10 },
   rowMain: { flex: 1, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 16, paddingVertical: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },
   rowText: { flex: 1, minWidth: 0, gap: 1 },
@@ -225,8 +231,10 @@ const styles = StyleSheet.create({
   remove: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
   removeHover: { backgroundColor: DESKTOP_TONES.bad.bg },
   disabled: { opacity: 0.45 },
+  // שורת הוספה
   addRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12 },
   addSelect: { flex: 1, minWidth: 0 },
+  // לוחית קטנה
   miniPlate: { flexDirection: 'row', alignItems: 'stretch', height: 28, borderRadius: 5, borderWidth: 1.5, borderColor: '#16222E', overflow: 'hidden', backgroundColor: '#F7C600', ...webOnly({ backgroundImage: 'linear-gradient(180deg, #FFD83A, #F2C200)' }) },
   miniPlateBand: { width: 14, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 3, backgroundColor: '#1A55A6' },
   miniPlateBandText: { fontSize: 6.5, color: '#FFFFFF' },

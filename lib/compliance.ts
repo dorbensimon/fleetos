@@ -1,3 +1,4 @@
+// תוקף מסמכים: חישוב תאריכים, מצב (תקין/בקרוב/פג), והרשימה של מה עוקבים
 import type { ComplianceItem } from './adminApi';
 import { daysUntilExpiry, expiryState, ExpiryState, formatDate, parseDateValue } from './theme';
 import { t } from './i18n';
@@ -45,8 +46,10 @@ export interface ComplianceItemDef {
   validityDays?: number;
 }
 
+// יום אחד במילישניות
 const DAY_MS = 86_400_000;
 
+// הופך תאריך לפורמט שנה-חודש-יום
 function toIsoDate(date: Date): string {
   const yyyy = String(date.getFullYear());
   const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -54,6 +57,7 @@ function toIsoDate(date: Date): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// מוסיף ימים לתאריך
 function addDays(value: string, days: number): string {
   const date = parseDateValue(value);
   date.setHours(12, 0, 0, 0);
@@ -61,6 +65,7 @@ function addDays(value: string, days: number): string {
   return toIsoDate(date);
 }
 
+// התאריך שעד אליו הפריט בתוקף
 export function complianceTargetDate(
   def: ComplianceItemDef,
   item: ComplianceItem | null | undefined
@@ -72,6 +77,7 @@ export function complianceTargetDate(
   return null;
 }
 
+// המצב של הפריט: תקין, בקרוב, פג או חסר
 export function complianceBadgeState(
   def: ComplianceItemDef,
   item: ComplianceItem | null | undefined
@@ -82,6 +88,7 @@ export function complianceBadgeState(
   return 'missing';
 }
 
+// הטקסט שמוצג למצב
 export function complianceBadgeLabel(
   def: ComplianceItemDef,
   item: ComplianceItem | null | undefined
@@ -91,6 +98,7 @@ export function complianceBadgeLabel(
   return t('status.missing');
 }
 
+// כמה ימים נשארו עד שיפוג
 export function complianceRemainingDays(
   def: ComplianceItemDef,
   item: ComplianceItem | null | undefined
@@ -101,6 +109,7 @@ export function complianceRemainingDays(
   return null;
 }
 
+// שמות הקטגוריות
 export const CATEGORY_LABELS: Record<ComplianceCategory, string> = {
   get licensing() { return t('common.licensing'); },
   get insurance() { return t('compliance.cat.insurance'); },
@@ -110,6 +119,7 @@ export const CATEGORY_LABELS: Record<ComplianceCategory, string> = {
   get general() { return t('folder.generalDocs'); },
 };
 
+// אייקון לכל קטגוריה
 /** Ionicons name per category — no emoji anywhere in the UI. */
 export const CATEGORY_ICONS: Record<ComplianceCategory, string> = {
   licensing: 'document-text-outline',
@@ -120,6 +130,7 @@ export const CATEGORY_ICONS: Record<ComplianceCategory, string> = {
   general: 'folder-open-outline',
 };
 
+// הפריטים שעוקבים אחריהם ברכב
 export const VEHICLE_COMPLIANCE: ComplianceItemDef[] = [
   { itemType: 'vehicle_license', category: 'licensing', storedTitle: 'רישיון רכב', get label() { return t('folder.vehicleLicense'); }, requiresExpiryOnUpload: true },
   { itemType: 'operating_license', category: 'licensing', storedTitle: 'רישיון הפעלה', get label() { return t('folder.operatingLicense'); }, requiresExpiryOnUpload: true },
@@ -130,6 +141,7 @@ export const VEHICLE_COMPLIANCE: ComplianceItemDef[] = [
   { itemType: 'annual_test', category: 'inspection', storedTitle: 'טסט שנתי', get label() { return t('folder.annualTest'); }, tracksLastDate: true, validityDays: 365, requiresExpiryOnUpload: true },
 ];
 
+// פריטי רכב ישנים שכבר לא מוצגים
 /**
  * These categories were superseded by the vehicle document folders above.
  * Existing database rows are deliberately retained, but must not reappear in
@@ -143,10 +155,12 @@ const RETIRED_VEHICLE_COMPLIANCE_ITEM_TYPES = new Set([
   'safety_officer',
 ]);
 
+// האם פריט רכב הוא מהסוג הישן
 export function isRetiredVehicleComplianceItem(itemType: string): boolean {
   return RETIRED_VEHICLE_COMPLIANCE_ITEM_TYPES.has(itemType);
 }
 
+// הפריטים שעוקבים אחריהם בנהג
 export const DRIVER_COMPLIANCE: ComplianceItemDef[] = [
   { itemType: 'health_declaration', category: 'health', storedTitle: 'הצהרת בריאות', get label() { return t('compliance.item.healthDeclaration'); } },
 
@@ -156,10 +170,12 @@ export const DRIVER_COMPLIANCE: ComplianceItemDef[] = [
   { itemType: 'rp_certificate', category: 'training', storedTitle: 'תוקף ר.פ', get label() { return t('compliance.item.publicServiceLicense'); } },
 ];
 
+// רשימת הפריטים לרכב או לנהג
 export function complianceCatalog(ownerType: 'vehicle' | 'driver'): ComplianceItemDef[] {
   return ownerType === 'vehicle' ? VEHICLE_COMPLIANCE : DRIVER_COMPLIANCE;
 }
 
+// מוצא את ההגדרה של פריט
 export function findComplianceDef(
   ownerType: 'vehicle' | 'driver',
   itemType: string
@@ -167,6 +183,7 @@ export function findComplianceDef(
   return complianceCatalog(ownerType).find((d) => d.itemType === itemType);
 }
 
+// מקבץ פריטים לפי קטגוריה
 /** Groups a catalogue into the sections the detail screens render. */
 export function groupByCategory(defs: ComplianceItemDef[]) {
   const order: ComplianceCategory[] = [
@@ -193,6 +210,7 @@ export function groupByCategory(defs: ComplianceItemDef[]) {
     }));
 }
 
+// שמות סוגי רכב
 export const VEHICLE_TYPE_LABELS: Record<string, string> = {
   get car() { return t('vehicle.type.car'); },
   get minibus() { return t('vehicle.type.minibus'); },
@@ -200,6 +218,7 @@ export const VEHICLE_TYPE_LABELS: Record<string, string> = {
   get truck() { return t('vehicle.type.truck'); },
 };
 
+// שמות מצבי רכב
 export const VEHICLE_STATUS_LABELS: Record<string, string> = {
   get active() { return t('vehicle.status.active'); },
   get maintenance() { return t('vehicle.status.maintenance'); },
@@ -207,6 +226,7 @@ export const VEHICLE_STATUS_LABELS: Record<string, string> = {
   get archived() { return t('common.archived'); },
 };
 
+// שמות סוגי רכישה (קנייה/ליסינג/השכרה)
 export const ACQUISITION_TYPE_LABELS: Record<string, string> = {
   get purchase() { return t('vehicle.ownership.purchase'); },
   get leasing() { return t('vehicle.ownership.leasing'); },

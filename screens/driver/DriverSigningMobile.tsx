@@ -1,3 +1,4 @@
+// המסמכים לחתימה בטלפון
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,8 +25,10 @@ type Props = {
   onOpenRequest: (request: SignatureRequest) => void;
 };
 
+// תאריך ושעה
 const time = (date: string) => new Date(date).toLocaleString(getLocale(), { dateStyle: 'short', timeStyle: 'short' });
 
+// מצב וטקסט לכל תיקייה
 const FOLDER_STATUS: Record<ReturnType<typeof signingFolderStatus>, { status: Status; label: string }> = {
   pending: { status: 'soon', get label() { return t('signing.awaitingYourSignature'); } },
   completed: { status: 'ok', get label() { return t('common.signedDone'); } },
@@ -33,6 +36,7 @@ const FOLDER_STATUS: Record<ReturnType<typeof signingFolderStatus>, { status: St
   empty: { status: 'missing', get label() { return t('common.empty'); } },
 };
 
+// מה לחתום קודם ומה כבר נחתם
 /**
  * What the driver has to sign, first and loudest; what's signed, calmly
  * below. Each document says in words what it's waiting for.
@@ -73,6 +77,7 @@ export function DriverSigningMobile(p: Props) {
   );
 }
 
+// רשימת התיקיות
 function FolderList(p: Props) {
   if (p.folders.length === 0) {
     return (
@@ -132,6 +137,7 @@ function FolderList(p: Props) {
   );
 }
 
+// תוכן תיקייה
 function FolderView(p: Props) {
   if (!p.folder) {
     return (
@@ -198,6 +204,7 @@ function FolderView(p: Props) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { textAlign: 'center' },

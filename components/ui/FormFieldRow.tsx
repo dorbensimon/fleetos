@@ -1,3 +1,4 @@
+// שורת שדה בטופס (טלפון)
 import React from 'react';
 import { StyleProp, StyleSheet, TextInput, TextStyle, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,6 +35,7 @@ export interface FormFieldRowProps<K extends string> {
   errorStyle?: StyleProp<TextStyle>;
 }
 
+// כותרת, תיבה ושגיאה
 export function FormFieldRow<K extends string>({
   label,
   value,
@@ -85,7 +87,9 @@ export function FormFieldRow<K extends string>({
   );
 }
 
+// עיצוב השורה
 const styles = StyleSheet.create({
+  // השורה
   row: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -102,6 +106,7 @@ const styles = StyleSheet.create({
   focusRailActive: { backgroundColor: COLORS.accent },
   label: { fontSize: FONT_SIZE.lg, fontFamily: FONT.semibold, color: BRAND.ink },
   labelFocused: { color: COLORS.accent },
+  // התיבה
   input: { flex: 1, fontSize: FONT_SIZE.xl, fontFamily: FONT.medium, padding: 0, color: BRAND.ink, textAlign: textStart() },
   ltrInput: { textAlign: 'left', writingDirection: 'ltr' },
   checkBadge: {

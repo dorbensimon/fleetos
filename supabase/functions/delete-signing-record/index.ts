@@ -1,20 +1,24 @@
+// פונקציית שרת: מחיקת תבנית או בקשת חתימה
 import { corsHeaders } from '../_shared/cors.ts';
 import { docusealFetch } from '../_shared/docuseal.ts';
 import { isSignedRequestPath, isSigningTemplateSourcePath } from '../_shared/signingPaths.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
 import { verifyUser } from '../_shared/verifyUser.ts';
 
+// מזהה התבניות הכלליות
 // Matches the sentinel used for global templates' storage paths (see
 // import-docuseal-templates) — storage policies require a uuid-shaped first
 // path segment, so global rows have no real company to key their files by.
 const GLOBAL_COMPANY_SENTINEL = '00000000-0000-0000-0000-000000000000';
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
 type SignedRequest = { id: string; company_id: string; driver_id: string; docuseal_submitter_id: number | null; signed_file_path: string | null };
 
+// שומר את ה-PDF החתום
 /** Stores a signed request's PDF from DocuSeal; the stored path, or null when it is not ready. */
 // deno-lint-ignore no-explicit-any
 async function storeSignedPdf(db: any, request: SignedRequest): Promise<string | null> {
@@ -39,6 +43,7 @@ async function storeSignedPdf(db: any, request: SignedRequest): Promise<string |
   }
 }
 
+// מקבל בקשה ומוחק
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);
