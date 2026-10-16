@@ -1,5 +1,5 @@
 // מסך הבית של המנהל בטלפון
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, RefreshControl, StatusBar, StyleSheet, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -13,7 +13,6 @@ import {
   ListEndAction,
   GlassSearch,
   HeroButton,
-  HeroStat,
   LoadingPanel,
   NightHero,
   NightUnderlay,
@@ -80,6 +79,9 @@ type Props = {
 
   onNotifications: () => void;
   onAttention: () => void;
+  onReports: () => void;
+  /** Set by the phone bar: 'list' scrolls to the list, 'top' back to the top. */
+  scrollTo?: 'list' | 'top';
   onArchive: () => void;
   onOpenDriver: (id: string) => void;
   onOpenVehicle: (id: string) => void;
@@ -173,8 +175,7 @@ function useFloatingAdd(rowCount: number, bottomPadding: number) {
 // הכותרת, הסינון והרשימה
 /**
  * The fleet manager's home. The night carries the company, what needs
- * attention, the drivers/vehicles switch and three live counts that double
- * as filters; below, the list itself with its filters pinned while it
+ * attention, the reports export, the search and the drivers/vehicles switch; below, the list itself with its filters pinned while it
  * scrolls, and the action to add at its end, floating once the first rows have scrolled past.
  */
 export function FleetMobile(p: Props) {
@@ -197,6 +198,14 @@ export function FleetMobile(p: Props) {
   const tabBarSpace = useTabBarSpace();
   const bottomPadding = p.insetBottom + 24 + tabBarSpace;
   const floatingAdd = useFloatingAdd(items.length, bottomPadding);
+  const listRef = useRef<FlatList<Entry>>(null);
+
+  // The bar's home tab returns to the top; drivers/vehicles leave the page where it is.
+  useEffect(() => {
+    if (p.scrollTo !== 'top') return;
+    const timer = setTimeout(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }), 60);
+    return () => clearTimeout(timer);
+  }, [p.scrollTo]);
 
   const clear = () => {
     if (drivers) {
@@ -339,6 +348,7 @@ export function FleetMobile(p: Props) {
       <View style={styles.flex}>
         <NightUnderlay />
         <FlatList
+          ref={listRef}
           data={data}
           keyExtractor={(entry) => (entry.kind === 'driver' || entry.kind === 'vehicle' ? entry.item.id : entry.kind)}
           renderItem={renderItem}
@@ -350,7 +360,9 @@ export function FleetMobile(p: Props) {
           onLayout={floatingAdd.onLayout}
           onContentSizeChange={floatingAdd.onContentSizeChange}
           ListHeaderComponent={
-            <View onLayout={floatingAdd.measureHeader}>
+            <View
+              onLayout={floatingAdd.measureHeader}
+            >
               <Hero {...p} />
             </View>
           }
@@ -373,24 +385,6 @@ export function FleetMobile(p: Props) {
 // הכותרת הכהה
 function Hero(p: Props) {
   const drivers = p.mode === 'drivers';
-  const stats: { label: string; value: number; dot?: string; filter: string }[] = drivers
-    ? [
-        { label: t('common.drivers'), value: p.driverCounts.all, filter: 'all' },
-        { label: t('fleet.licenseExpired'), value: p.driverCounts.expired, dot: STATUS.expired.fill, filter: 'expired' },
-        { label: t('status.aboutToExpire'), value: p.driverCounts.soon, dot: STATUS.soon.fill, filter: 'soon' },
-      ]
-    : [
-        { label: t('common.vehicles'), value: p.vehicleCounts.all, filter: 'all' },
-        { label: t('fleet.insuranceExpired'), value: p.vehicleCounts.insurance, dot: STATUS.expired.fill, filter: 'insurance' },
-        { label: t('vehicle.noDriver'), value: p.vehicleCounts.noDriver, dot: STATUS.soon.fill, filter: 'no_driver' },
-      ];
-  const active = drivers ? p.driverFilter : p.vehicleFilter;
-  const pick = (filter: string) => {
-    const next = active === filter && filter !== 'all' ? 'all' : filter;
-    if (drivers) p.onDriverFilter(next as DriverFilter);
-    else p.onVehicleFilter(next as VehicleFilter);
-  };
-
   return (
     <NightHero insetTop={0}>
       <View style={styles.topBar}>
@@ -420,7 +414,19 @@ function Hero(p: Props) {
         </Reveal>
       )}
 
-      <Reveal index={2} style={styles.block}>
+      <Reveal index={2}>
+        <ReportsPanel onPress={p.onReports} />
+      </Reveal>
+
+      <Reveal index={3} style={styles.block}>
+        <GlassSearch
+          value={drivers ? p.driverSearch : p.vehicleSearch}
+          onChangeText={drivers ? p.onDriverSearch : p.onVehicleSearch}
+          placeholder={drivers ? t('fleet.searchDriversMobile') : t('fleet.searchVehiclesMobile')}
+        />
+      </Reveal>
+
+      <Reveal index={4} style={styles.block}>
         <Segmented<Mode>
           onNight
           value={p.mode}
@@ -432,20 +438,28 @@ function Hero(p: Props) {
         />
       </Reveal>
 
-      <Reveal index={3} style={styles.stats}>
-        {stats.map((s) => (
-          <HeroStat key={s.filter} value={s.value} label={s.label} dot={s.dot} active={active === s.filter && s.filter !== 'all'} onPress={() => pick(s.filter)} />
-        ))}
-      </Reveal>
-
-      <Reveal index={4} style={styles.block}>
-        <GlassSearch
-          value={drivers ? p.driverSearch : p.vehicleSearch}
-          onChangeText={drivers ? p.onDriverSearch : p.onVehicleSearch}
-          placeholder={drivers ? t('fleet.searchDriversMobile') : t('fleet.searchVehiclesMobile')}
-        />
-      </Reveal>
     </NightHero>
+  );
+}
+
+// שורת ייצוא הדוחות, באותו מראה של 'דורש טיפול'
+/** Opens the reports export, styled as a sibling of the attention line. */
+function ReportsPanel({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressy onPress={onPress} accessibilityLabel={t('reports.export')} pressScale={0.98}>
+      <View style={[styles.attention, styles.reports]}>
+        <Ionicons name="stats-chart" size={18} color={DK.onNight} />
+        <View style={styles.flex}>
+          <DKText variant="micro" color={DK.onNightMuted}>
+            {t('reports.export')}
+          </DKText>
+          <DKText variant="label" color={DK.onNight} numberOfLines={1}>
+            {t('menu.reportsSubtitle')}
+          </DKText>
+        </View>
+        <Ionicons name={dirIcon('chevron-back')} size={18} color={DK.onNightFaint} />
+      </View>
+    </Pressy>
   );
 }
 
@@ -494,8 +508,6 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 },
   heroSlot: { width: 48, height: 48 },
   block: { marginTop: 16 },
-  // שורת המספרים
-  stats: { flexDirection: 'row-reverse', gap: 8, marginTop: 12 },
 
   attention: {
     marginTop: 20,
@@ -509,6 +521,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  reports: { marginTop: 10 },
   attentionDot: { width: 10, height: 10, borderRadius: 5 },
   attentionValue: { fontFamily: fontStack('Heebo_800ExtraBold'), fontSize: 34, lineHeight: 38, letterSpacing: -1, fontVariant: ['tabular-nums'] },
 

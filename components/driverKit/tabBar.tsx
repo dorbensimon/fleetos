@@ -7,27 +7,31 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   View,
+  useWindowDimensions,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { NavigationContext, StackActions, type NavigationContainerRefWithCurrent } from '@react-navigation/native';
+import { CommonActions, NavigationContext, StackActions, type NavigationContainerRefWithCurrent } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCompany } from '../../lib/CompanyContext';
 import { ROLE_ROUTES } from '../../lib/session';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import type { RootStackParamList } from '../../navigation/types';
-import { DK, DK_FONT } from './theme';
+import { BrandLogo } from '../ui/Brand';
 // Runtime-only uses: this file is imported by index.tsx itself.
-import { DKText, useReducedMotion } from './index';
-import { t, dirSign } from '../../lib/i18n';
+import { useReducedMotion } from './index';
+import { t, dirSign, isRTL } from '../../lib/i18n';
+import { countUnreadNotifications } from '../../lib/adminApi';
 
 /**
- * The phone's bottom bar: home and the menu, on every signed-in screen.
+ * The phone's bottom bar, drawn like iOS 26's: a floating capsule of light
+ * glass with a tab per main place for the role (the manager: home, drivers,
+ * vehicles, notifications, menu; the driver: home, vehicle, documents, menu).
  * It steps aside while the page scrolls down (the content gets the whole
  * screen) and comes back on the first scroll up, at the top of a page, and
  * on every new screen. Screens with their own pinned action (a save
@@ -44,10 +48,30 @@ const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
 // גובה הסרגל
 const BAR_HEIGHT = 62;
-// רוחב הסרגל
-const BAR_WIDTH = 228;
+// הרוחב המרבי של הסרגל
+const BAR_MAX_WIDTH = 440;
+// המרווח מקצות המסך
+const BAR_SIDE = 21;
 // ריווח פנימי
-const BAR_PAD = 5;
+const BAR_PAD = 4;
+// צבע הלשונית הנבחרת (הכחול של iOS)
+const TINT = '#007AFF';
+// צבע לשונית שלא נבחרה
+const INK = '#1C1C1E';
+// הגופן של המערכת (SF באייפון), כמו בסרגל המקורי
+const SYSTEM_FONT = Platform.OS === 'web' ? '-apple-system, BlinkMacSystemFont, system-ui, sans-serif' : undefined;
+// קפיצי התנועה של הבועה (תגובה ושיכוך כמו ב-iOS)
+/** Lifting into a drop: response 0.3s, damping 0.8. */
+const SPRING_LIFT = { stiffness: 440, damping: 34, mass: 1 };
+/** Travelling between tabs: response 0.35s, damping 0.8. */
+const SPRING_SLIDE = { stiffness: 320, damping: 29, mass: 1 };
+/** Settling back into the platter: response 0.4s, damping 0.75 (a soft squash). */
+const SPRING_SETTLE = { stiffness: 250, damping: 24, mass: 1 };
+// כמה הבועה גדלה כשהיא מורמת, וכמה האייקון שמתחתיה מוגדל
+const LIFT_SCALE_X = 1.16;
+const LIFT_SCALE_Y = 1.36;
+const MAGNIFY = 1.16;
+
 // מקום שהדף משאיר מתחת לתוכן
 /** Room a page leaves under its content so the bar never covers its end. */
 export const TAB_BAR_SPACE = 76;
@@ -219,14 +243,39 @@ export function useTabBarHold(active: boolean) {
   }, [active, focused, hold]);
 }
 
+// הלוגו באמצע הכותרת: לחיצה מחזירה למסך הבית
+/** The logo in the middle of a phone title bar (a row of buttons); a tap goes home, like the bar's home tab. */
+export function HomeLogo() {
+  const navigation = useContext(NavigationContext);
+  const { profile } = useCompany();
+  const isDesktop = useIsDesktop();
+  const home = profile?.role ? ROLE_ROUTES[profile.role] : null;
+  if (isDesktop || !navigation || !home) return null;
+  const goHome = () => {
+    const routes = navigation.getState()?.routes ?? [];
+    if (routes.some((r) => r.name === home)) navigation.dispatch(StackActions.popTo(home));
+    else navigation.reset({ index: 0, routes: [{ name: home }] });
+  };
+  return (
+    <View style={styles.homeLogo} pointerEvents="box-none">
+      <Pressable onPress={goHome} accessibilityRole="button" accessibilityLabel={t('nav.home')} hitSlop={10}>
+        <BrandLogo height={20} onDark />
+      </Pressable>
+    </View>
+  );
+}
+
 // ── The bar ───────────────────────────────────────────────────────────────
 //
-// A capsule of smoked glass floating over the page. The selected tab sits
-// under a lens of brand-tinted glass; moving between tabs, the lens flows
-// across like a drop (it stretches on the way and settles round), a touch
-// swells it, and the arriving icon springs into place.
+// A capsule of clear glass floating over the page, as in iOS 26. The selected
+// tab rests on a soft gray platter. Touching the bar lifts the platter into a
+// clear drop of glass, bigger than the bar, that magnifies the tab under it;
+// the drop follows the finger (tap or slide) and settles back into a platter
+// on the tab it lands on.
 
-type Tab = 'home' | 'menu';
+type Glyph = 'home' | 'people' | 'car-sport' | 'notifications' | 'grid' | 'folder';
+type TabDef = { key: string; icon: Glyph; label: string; go: () => void; badge?: number };
+type Current = { name: Route; params?: Record<string, unknown> } | null;
 
 // הסרגל עצמו
 export function MobileTabBar({ navigationRef }: { navigationRef: NavigationContainerRefWithCurrent<RootStackParamList> }) {
@@ -235,8 +284,11 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
   const { profile } = useCompany();
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
-  const [route, setRoute] = useState<Route | null>(null);
+  const { width: screenWidth } = useWindowDimensions();
+  const [current, setCurrent] = useState<Current>(null);
+  const route = current?.name ?? null;
   const [keyboard, setKeyboard] = useState(false);
+  const [unread, setUnread] = useState(0);
 
   const home = profile?.role ? ROLE_ROUTES[profile.role] : null;
   const enabled = !isDesktop && !!home;
@@ -251,10 +303,11 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
   useEffect(() => {
     const sync = () => {
       if (!navigationRef.isReady()) return;
-      const name = (navigationRef.getCurrentRoute()?.name ?? null) as Route | null;
-      setRoute((prev) => {
-        if (prev !== name) resetScroll?.();
-        return name;
+      const now = navigationRef.getCurrentRoute();
+      const name = (now?.name ?? null) as Route | null;
+      setCurrent((prev) => {
+        if (prev?.name !== name) resetScroll?.();
+        return name ? { name, params: now?.params as Record<string, unknown> | undefined } : null;
       });
     };
     sync();
@@ -266,6 +319,20 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
       clearTimeout(timer);
     };
   }, [navigationRef, resetScroll]);
+
+  // The manager's notifications tab carries the unread count, refreshed on every screen change.
+  const companyId = profile?.company_id ?? null;
+  const isAdmin = profile?.role === 'admin';
+  useEffect(() => {
+    if (!enabled || !isAdmin || !companyId) return;
+    let alive = true;
+    countUnreadNotifications(companyId)
+      .then((n) => alive && setUnread(n))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [enabled, isAdmin, companyId, route]);
 
   // A typed field needs the bottom of the screen for the keyboard.
   useEffect(() => {
@@ -312,81 +379,205 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
     ).start();
   }, [shown, rise, visible]);
 
-  const active: Tab | null = route === home ? 'home' : route === 'Menu' ? 'menu' : null;
-  const lensAt = useRef(new Animated.Value(active === 'menu' ? 1 : 0)).current;
+  // Goes to a tab's screen: back through the stack when it is already under us
+  // (its scroll and filters stay as they were), otherwise forward to it.
+  const goTo = (name: Route, params?: object) => {
+    if (!navigationRef.isReady()) return;
+    const routes = navigationRef.getRootState()?.routes ?? [];
+    const nav = navigationRef as unknown as { navigate: (n: Route, p?: object) => void };
+    // Already in front: just hand it the new params.
+    if (navigationRef.getCurrentRoute()?.name === name) navigationRef.dispatch({ ...CommonActions.setParams(params ?? {}), source: navigationRef.getCurrentRoute()?.key });
+    else if (name === home && !routes.some((r) => r.name === home)) navigationRef.reset({ index: 0, routes: [{ name: home, params } as never] });
+    else if (routes.some((r) => r.name === name)) navigationRef.dispatch(StackActions.popTo(name, params));
+    else nav.navigate(name, params);
+  };
+
+  const tabs: TabDef[] =
+    profile?.role === 'admin'
+      ? [
+          { key: 'home', icon: 'home', label: t('nav.home'), go: () => goTo('AdminHome', { mode: current?.params?.mode, list: false }) },
+          { key: 'drivers', icon: 'people', label: t('common.drivers'), go: () => goTo('AdminHome', { mode: 'drivers', list: true }) },
+          { key: 'vehicles', icon: 'car-sport', label: t('common.vehicles'), go: () => goTo('AdminHome', { mode: 'vehicles', list: true }) },
+          { key: 'notifications', icon: 'notifications', label: t('notifications.title'), go: () => goTo('Notifications'), badge: unread },
+          { key: 'menu', icon: 'grid', label: t('nav.menu'), go: () => goTo('Menu') },
+        ]
+      : profile?.role === 'driver'
+      ? [
+          { key: 'home', icon: 'home', label: t('nav.home'), go: () => goTo('DriverHome') },
+          { key: 'vehicle', icon: 'car-sport', label: t('driver.myVehicle'), go: () => goTo('DriverVehicle') },
+          { key: 'documents', icon: 'folder', label: t('common.documents'), go: () => goTo('DriverDocuments') },
+          { key: 'menu', icon: 'grid', label: t('nav.menu'), go: () => goTo('Menu') },
+        ]
+      : [
+          { key: 'home', icon: 'home', label: t('nav.home'), go: () => home && goTo(home) },
+          { key: 'menu', icon: 'grid', label: t('nav.menu'), go: () => goTo('Menu') },
+        ];
+
+  // Which tab the screen in front belongs to. The manager's drivers and
+  // vehicles are the home screen's own lists, opened from the tab.
+  const active: string | null =
+    route === 'AdminHome'
+      ? String(current?.params?.list) === 'true'
+        ? current?.params?.mode === 'vehicles'
+          ? 'vehicles'
+          : 'drivers'
+        : 'home'
+      : route === home
+      ? 'home'
+      : route === 'Menu'
+      ? 'menu'
+      : route === 'Notifications' && isAdmin
+      ? 'notifications'
+      : route === 'DriverVehicle'
+      ? 'vehicle'
+      : route === 'DriverDocuments'
+      ? 'documents'
+      : null;
+  const activeIndex = Math.max(0, tabs.findIndex((tab) => tab.key === active));
+  const activeRef = useRef(activeIndex);
+  activeRef.current = activeIndex;
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
+
+  // The selection, iOS 26 style. `lensAt` is where it sits, in tab units (it
+  // slides through fractions). `lift` takes it from the resting gray platter
+  // (0) to a clear drop of glass bigger than the bar (1): it lifts on touch,
+  // travels, and settles back down into the platter where it lands.
+  const lensAt = useRef(new Animated.Value(activeIndex)).current;
   const lensOn = useRef(new Animated.Value(active ? 1 : 0)).current;
+  const lift = useRef(new Animated.Value(0)).current;
   const stretch = useRef(new Animated.Value(0)).current;
-  const swell = useRef(new Animated.Value(0)).current;
+  const touching = useRef(false);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const barRef = useRef<View>(null);
+  const barLeft = useRef(0);
+  const centers = useRef<number[]>([]);
+
+  const fx = useRef({
+    slideTo: (_i: number) => {},
+    raise: () => {},
+    settleSoon: (_ms: number) => {},
+    indexAtX: (_x: number): number => 0,
+  }).current;
+  fx.slideTo = (index) =>
+    reduce ? lensAt.setValue(index) : Animated.spring(lensAt, { toValue: index, ...SPRING_SLIDE, useNativeDriver: NATIVE_DRIVER }).start();
+  fx.raise = () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    if (!reduce) Animated.spring(lift, { toValue: 1, ...SPRING_LIFT, useNativeDriver: NATIVE_DRIVER }).start();
+  };
+  fx.settleSoon = (ms) => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => {
+      if (touching.current) return;
+      fx.slideTo(activeRef.current);
+      Animated.spring(lift, { toValue: 0, ...SPRING_SETTLE, useNativeDriver: NATIVE_DRIVER }).start();
+    }, ms);
+  };
+  // The finger's place on the bar, in tab units.
+  fx.indexAtX = (pageX) => {
+    const [c0, c1] = centers.current;
+    if (c0 == null || c1 == null || c0 === c1) return activeRef.current;
+    const at = (pageX - barLeft.current - c0) / (c1 - c0);
+    return Math.min(tabsRef.current.length - 1, Math.max(0, at));
+  };
+  const measureBar = () => barRef.current?.measure((_x, _y, _w, _h, pageX) => (barLeft.current = pageX));
+
+  useEffect(() => () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+  }, []);
+
   const lastActive = useRef(active);
   useEffect(() => {
     const from = lastActive.current;
     lastActive.current = active;
-    if (active) {
-      Animated.spring(lensAt, {
-        toValue: active === 'menu' ? 1 : 0,
-        useNativeDriver: NATIVE_DRIVER,
-        stiffness: reduce ? 900 : 320,
-        damping: reduce ? 80 : 30,
-        mass: 1,
-      }).start();
-      // Tab to tab, the lens pulls long in flight and rounds off as it lands.
-      if (from && from !== active && !reduce) {
-        stretch.setValue(0);
-        Animated.sequence([
-          Animated.timing(stretch, { toValue: 1, duration: 130, easing: Easing.out(Easing.quad), useNativeDriver: NATIVE_DRIVER }),
-          Animated.spring(stretch, { toValue: 0, stiffness: 260, damping: 14, mass: 1, useNativeDriver: NATIVE_DRIVER }),
-        ]).start();
-      }
-    }
     Animated.timing(lensOn, { toValue: active ? 1 : 0, duration: 220, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER }).start();
-  }, [active, lensAt, lensOn, stretch, reduce]);
+    if (!active) return;
+    fx.slideTo(activeIndex);
+    if (!from || from === active || reduce) return;
+    // Tab to tab, the drop pulls long in flight and rounds off as it lands.
+    stretch.setValue(0);
+    Animated.sequence([
+      Animated.timing(stretch, { toValue: 1, duration: 120, easing: Easing.out(Easing.quad), useNativeDriver: NATIVE_DRIVER }),
+      Animated.spring(stretch, { toValue: 0, ...SPRING_SETTLE, useNativeDriver: NATIVE_DRIVER }),
+    ]).start();
+    // Changed by the finger or from elsewhere (back, a link): lift, travel, settle.
+    fx.raise();
+    fx.settleSoon(280);
+  }, [active, activeIndex, lensOn, stretch, reduce, fx]);
 
-  const press = (down: boolean) => {
-    if (reduce) return;
-    (down
-      ? Animated.timing(swell, { toValue: 1, duration: 140, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER })
-      : Animated.spring(swell, { toValue: 0, stiffness: 380, damping: 18, mass: 1, useNativeDriver: NATIVE_DRIVER })
-    ).start();
-  };
+  // Sliding a finger along the bar drags the drop with it, like iOS. Plain
+  // pointer events: the web responder drops moves that start on a button.
+  const dragging = useRef<{ id: number; x: number; on: boolean } | null>(null);
+  const swallowClick = useRef(false);
+  const dragHandlers =
+    Platform.OS === 'web'
+      ? {
+          onPointerDown: (e: { pointerId: number; clientX: number }) => {
+            dragging.current = { id: e.pointerId, x: e.clientX, on: false };
+            measureBar();
+          },
+          onPointerMove: (e: { pointerId: number; clientX: number; currentTarget: Element }) => {
+            const d = dragging.current;
+            if (!d || d.id !== e.pointerId) return;
+            if (!d.on) {
+              if (Math.abs(e.clientX - d.x) < 8) return;
+              d.on = true;
+              touching.current = true;
+              e.currentTarget.setPointerCapture?.(e.pointerId);
+              fx.raise();
+            }
+            lensAt.setValue(fx.indexAtX(e.clientX));
+          },
+          onPointerUp: (e: { pointerId: number; clientX: number }) => {
+            const d = dragging.current;
+            dragging.current = null;
+            if (!d?.on || d.id !== e.pointerId) return;
+            touching.current = false;
+            // The click that follows the lift belongs to the drag, not to a tab.
+            swallowClick.current = true;
+            setTimeout(() => (swallowClick.current = false), 0);
+            const i = Math.round(fx.indexAtX(e.clientX));
+            fx.slideTo(i);
+            tabsRef.current[i]?.go();
+            fx.settleSoon(i === activeRef.current ? 120 : 400);
+          },
+          onPointerCancel: () => {
+            if (!dragging.current?.on) return void (dragging.current = null);
+            dragging.current = null;
+            touching.current = false;
+            fx.settleSoon(0);
+          },
+        }
+      : {};
 
   if (!ctx || !enabled || !shown || !home) return null;
 
   const bottom = Math.max(insets.bottom - 8, 14);
   const travel = BAR_HEIGHT + bottom + 24;
 
-  const goHome = () => {
-    if (!navigationRef.isReady()) return;
-    const routes = navigationRef.getRootState()?.routes ?? [];
-    if (route === home) return;
-    // Back through the stack when home is under us (its scroll and filters
-    // stay as they were); otherwise start over from home.
-    if (routes.some((r) => r.name === home)) navigationRef.dispatch(StackActions.popTo(home));
-    else navigationRef.reset({ index: 0, routes: [{ name: home }] });
-  };
-
-  const goMenu = () => {
-    if (!navigationRef.isReady() || route === 'Menu') return;
-    const routes = navigationRef.getRootState()?.routes ?? [];
-    if (routes.some((r) => r.name === 'Menu')) navigationRef.dispatch(StackActions.popTo('Menu'));
-    else navigationRef.navigate('Menu');
-  };
-
-  const slot = (BAR_WIDTH - BAR_PAD * 2) / 2;
+  const barWidth = Math.min(screenWidth - BAR_SIDE * 2, BAR_MAX_WIDTH);
+  const slot = (barWidth - BAR_PAD * 2) / tabs.length;
   const translateY = rise.interpolate({ inputRange: [0, 1], outputRange: [reduce ? 0 : travel, 0] });
   const barScale = rise.interpolate({ inputRange: [0, 1], outputRange: [reduce ? 1 : 0.9, 1] });
   // RTL: home sits on the right, the menu on the left.
-  const lensX = lensAt.interpolate({ inputRange: [0, 1], outputRange: [0, -slot * dirSign()] });
+  const lensX = Animated.multiply(lensAt, -slot * dirSign());
   const lensScaleX = Animated.add(
-    Animated.add(lensOn.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }), stretch.interpolate({ inputRange: [0, 1], outputRange: [0, 0.34] })),
-    swell.interpolate({ inputRange: [0, 1], outputRange: [0, 0.08] })
+    Animated.add(lift.interpolate({ inputRange: [0, 1], outputRange: [1, LIFT_SCALE_X] }), stretch.interpolate({ inputRange: [0, 1], outputRange: [0, 0.14] })),
+    lensOn.interpolate({ inputRange: [0, 1], outputRange: [-0.2, 0] })
   );
   const lensScaleY = Animated.add(
-    Animated.add(lensOn.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }), stretch.interpolate({ inputRange: [0, 1], outputRange: [0, -0.16] })),
-    swell.interpolate({ inputRange: [0, 1], outputRange: [0, 0.12] })
+    Animated.add(lift.interpolate({ inputRange: [0, 1], outputRange: [1, LIFT_SCALE_Y] }), stretch.interpolate({ inputRange: [0, 1], outputRange: [0, -0.06] })),
+    lensOn.interpolate({ inputRange: [0, 1], outputRange: [-0.2, 0] })
   );
-  const sheen = swell.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  const platterOpacity = Animated.multiply(lensOn, lift.interpolate({ inputRange: [0, 1], outputRange: [1, 0], extrapolate: 'clamp' }));
+  const glassOpacity = lift.interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolate: 'clamp' });
+  // A tab is tinted as the selection passes over it, magnified while the drop is lifted.
+  const shownSel = Animated.add(lensOn, lift).interpolate({ inputRange: [0, 1, 2], outputRange: [0, 1, 1], extrapolate: 'clamp' });
 
   return (
+    <>
+    {/* iOS "scroll edge": the page softly blurs and fades under the bar. */}
+    {Platform.OS === 'web' ? <Animated.View pointerEvents="none" style={[styles.edge, { height: BAR_HEIGHT + bottom + 28, opacity: shown }]} /> : null}
     <Animated.View
       pointerEvents={visible ? 'box-none' : 'none'}
       style={[styles.host, { bottom, opacity: shown, transform: [{ translateY }, { scale: barScale }] }]}
@@ -395,111 +586,96 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
       importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
     >
       <View style={styles.shadow}>
-        <View style={styles.bar}>
+        <View ref={barRef} onLayout={measureBar} style={[styles.bar, { width: barWidth }]} {...(dragHandlers as object)}>
           <Glass />
           <Animated.View
             pointerEvents="none"
-            style={[
-              styles.lens,
-              { width: slot, opacity: lensOn, transform: [{ translateX: lensX }, { scaleX: lensScaleX }, { scaleY: lensScaleY }] },
-            ]}
+            style={[styles.lens, { width: slot, transform: [{ translateX: lensX }, { scaleX: lensScaleX }, { scaleY: lensScaleY }] }]}
           >
-            <LinearGradient
-              colors={['rgba(140,168,255,0.55)', 'rgba(47,91,255,0.38)']}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-            {/* The rim light across the lens's upper edge. */}
-            <LinearGradient
-              colors={['rgba(255,255,255,0.42)', 'rgba(255,255,255,0)']}
-              start={{ x: 0.5, y: 0 }}
-              end={{ x: 0.5, y: 0.5 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <Animated.View style={[StyleSheet.absoluteFill, styles.lensSheen, { opacity: sheen }]} />
+            <Animated.View style={[styles.lensFill, styles.platter, { opacity: platterOpacity }]} />
+            <Animated.View style={[styles.lensFill, styles.drop, { opacity: glassOpacity }]} />
           </Animated.View>
-          <TabButton icon="home" label={t('nav.home')} selected={active === 'home'} onPress={goHome} onPressChange={press} reduce={reduce} />
-          <TabButton icon="grid" label={t('nav.menu')} selected={active === 'menu'} onPress={goMenu} onPressChange={press} reduce={reduce} />
+          {tabs.map((tab, i) => {
+            const near = lensAt.interpolate({ inputRange: [i - 1, i, i + 1], outputRange: [0, 1, 0], extrapolate: 'clamp' });
+            return (
+              <TabButton
+                key={tab.key}
+                icon={tab.icon}
+                label={tab.label}
+                badge={tab.badge}
+                selected={active === tab.key}
+                tint={Animated.multiply(
+                  lensAt.interpolate({ inputRange: [i - 0.65, i - 0.35, i + 0.35, i + 0.65], outputRange: [0, 1, 1, 0], extrapolate: 'clamp' }),
+                  shownSel
+                )}
+                magnify={Animated.multiply(near, lift)}
+                onPress={() => !swallowClick.current && tab.go()}
+                onPressIn={() => {
+                  measureBar();
+                  touching.current = true;
+                  fx.raise();
+                  fx.slideTo(i);
+                }}
+                onPressOut={() => {
+                  touching.current = false;
+                  fx.settleSoon(160);
+                }}
+                onCenter={(x) => (centers.current[i] = x)}
+              />
+            );
+          })}
         </View>
       </View>
     </Animated.View>
+    </>
   );
 }
 
 // אפקט הזכוכית של הסרגל
-/** The glass itself: a live blur of the page behind, smoked, with light on its upper edge. */
+/** The glass itself: a live blur of the page behind, with light caught on its rim. */
 function Glass() {
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.glassClip]}>
       {Platform.OS !== 'web' ? (
-        <BlurView tint={Platform.OS === 'ios' ? 'systemChromeMaterialDark' : 'dark'} intensity={70} style={StyleSheet.absoluteFill} />
+        <BlurView tint={Platform.OS === 'ios' ? 'systemChromeMaterialLight' : 'light'} intensity={80} style={StyleSheet.absoluteFill} />
       ) : null}
-      <LinearGradient
-        colors={['rgba(30,52,104,0.74)', 'rgba(10,22,38,0.86)']}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      {/* A soft specular bloom where light would strike the capsule. */}
-      <LinearGradient
-        colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0)']}
-        start={{ x: 0.2, y: 0 }}
-        end={{ x: 0.55, y: 0.75 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <View style={[StyleSheet.absoluteFill, styles.glassTint]} />
       <View style={[StyleSheet.absoluteFill, styles.glassRim]} />
     </View>
   );
 }
 
+const WEB_HIDDEN = Platform.OS === 'web' ? ({ 'aria-hidden': true } as object) : {};
+
 // כפתור לשונית
 function TabButton({
   icon,
   label,
+  badge,
   selected,
+  tint,
+  magnify,
   onPress,
-  onPressChange,
-  reduce,
+  onPressIn,
+  onPressOut,
+  onCenter,
 }: {
-  icon: 'home' | 'grid';
+  icon: Glyph;
   label: string;
+  badge?: number;
   selected: boolean;
+  tint: Animated.AnimatedMultiplication<number>;
+  magnify: Animated.AnimatedMultiplication<number>;
   onPress: () => void;
-  onPressChange: (down: boolean) => void;
-  reduce: boolean;
+  onPressIn: () => void;
+  onPressOut: () => void;
+  onCenter: (x: number) => void;
 }) {
-  const squeeze = useRef(new Animated.Value(1)).current;
-  const pop = useRef(new Animated.Value(selected ? 1 : 0)).current;
   const [ring, setRing] = useState(false);
-
-  // The arriving icon springs up into the lens; the leaving one settles.
-  const wasSelected = useRef(selected);
-  useEffect(() => {
-    if (wasSelected.current === selected) return;
-    wasSelected.current = selected;
-    if (reduce) {
-      pop.setValue(selected ? 1 : 0);
-      return;
-    }
-    if (selected) {
-      pop.setValue(0);
-      Animated.spring(pop, { toValue: 1, stiffness: 340, damping: 13, mass: 1, useNativeDriver: NATIVE_DRIVER }).start();
-    } else {
-      Animated.timing(pop, { toValue: 0, duration: 180, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER }).start();
-    }
-  }, [selected, pop, reduce]);
-
-  const to = (value: number) =>
-    (value < 1
-      ? Animated.timing(squeeze, { toValue: value, duration: 110, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER })
-      : Animated.spring(squeeze, { toValue: 1, stiffness: 420, damping: 16, mass: 1, useNativeDriver: NATIVE_DRIVER })
-    ).start();
-
-  const iconScale = Animated.multiply(squeeze, pop.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }));
-  const iconLift = pop.interpolate({ inputRange: [0, 1], outputRange: [0, -1] });
-  const color = selected ? '#FFFFFF' : 'rgba(255,255,255,0.58)';
-  const glyph = (selected ? icon : `${icon}-outline`) as IconName;
+  const glyph = icon as IconName;
+  const count = badge && badge > 0 ? (badge > 99 ? '99+' : String(badge)) : null;
+  const scale = magnify.interpolate({ inputRange: [0, 1], outputRange: [1, MAGNIFY] });
+  const ink = tint.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
 
   return (
     <Pressable
@@ -507,25 +683,40 @@ function TabButton({
         if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
         onPress();
       }}
-      onPressIn={() => {
-        if (!reduce) to(0.86);
-        if (selected) onPressChange(true);
-      }}
-      onPressOut={() => {
-        to(1);
-        onPressChange(false);
-      }}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      onLayout={(e) => onCenter(e.nativeEvent.layout.x + e.nativeEvent.layout.width / 2)}
       onFocus={(e) => setRing(isFocusVisible(e))}
       onBlur={() => setRing(false)}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={count ? `${label}, ${count}` : label}
       accessibilityState={{ selected }}
       style={[styles.tab, ring && styles.tabRing]}
       {...(Platform.OS === 'web' ? ({ 'aria-current': selected ? 'page' : undefined } as object) : {})}
     >
-      <Animated.View style={[styles.tabInner, { transform: [{ translateY: iconLift }, { scale: iconScale }] }]}>
-        <Ionicons name={glyph} size={22} color={color} />
-        <DKText style={[styles.tabLabel, { color, fontFamily: selected ? DK_FONT.bold : DK_FONT.semibold }]}>{label}</DKText>
+      <Animated.View style={[styles.tabInner, { transform: [{ scale }] }]}>
+        {/* The blue copy fades in over the black one as the selection passes. */}
+        <View>
+          <Animated.View style={{ opacity: ink }}>
+            <Ionicons name={glyph} size={24} color={INK} />
+          </Animated.View>
+          <Animated.View style={[styles.over, { opacity: tint }]} {...WEB_HIDDEN}>
+            <Ionicons name={glyph} size={24} color={TINT} />
+          </Animated.View>
+          {!!count && (
+            <View style={[styles.badge, isRTL() ? styles.badgeRtl : styles.badgeLtr]}>
+              <Text style={styles.badgeText}>{count}</Text>
+            </View>
+          )}
+        </View>
+        <View>
+          <Animated.Text style={[styles.tabLabel, { color: INK, opacity: ink }]} numberOfLines={1}>
+            {label}
+          </Animated.Text>
+          <Animated.Text style={[styles.tabLabel, styles.over, { color: TINT, opacity: tint }]} numberOfLines={1} {...WEB_HIDDEN}>
+            {label}
+          </Animated.Text>
+        </View>
       </Animated.View>
     </Pressable>
   );
@@ -544,6 +735,7 @@ function isFocusVisible(event: unknown): boolean {
 
 // עיצוב הסרגל
 const styles = StyleSheet.create({
+  homeLogo: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' },
   host: {
     position: 'absolute',
     start: 0,
@@ -556,15 +748,12 @@ const styles = StyleSheet.create({
   shadow: {
     borderRadius: BAR_HEIGHT / 2,
     ...Platform.select({
-      web: {
-        boxShadow: '0 22px 48px -8px rgba(10,22,38,0.42), 0 6px 16px rgba(10,22,38,0.20), 0 0 0 0.5px rgba(10,22,38,0.35)',
-      } as object,
-      default: { shadowColor: DK.nightInk, shadowOpacity: 0.34, shadowRadius: 24, shadowOffset: { width: 0, height: 14 }, elevation: 14 },
+      web: { boxShadow: '0 6px 24px rgba(0,0,0,0.10), 0 0 1px rgba(0,0,0,0.10)' } as object,
+      default: { shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
     }),
   },
   // הסרגל
   bar: {
-    width: BAR_WIDTH,
     height: BAR_HEIGHT,
     borderRadius: BAR_HEIGHT / 2,
     padding: BAR_PAD,
@@ -572,46 +761,54 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     ...Platform.select({
       web: {
-        backdropFilter: 'blur(24px) saturate(185%)',
-        WebkitBackdropFilter: 'blur(24px) saturate(185%)',
+        touchAction: 'none',
+        backdropFilter: 'blur(12px) saturate(190%) brightness(1.05)',
+        WebkitBackdropFilter: 'blur(12px) saturate(190%) brightness(1.05)',
       } as object,
       default: {},
     }),
   },
   glassClip: { borderRadius: BAR_HEIGHT / 2, overflow: 'hidden' },
+  // זכוכית בהירה כמו ב-iOS
+  glassTint: { backgroundColor: Platform.OS === 'web' ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.35)' },
   glassRim: {
     borderRadius: BAR_HEIGHT / 2,
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(0,0,0,0.08)',
     ...Platform.select({
       web: {
         borderWidth: 0,
+        // Liquid Glass edge: light caught on the upper-left and lower-right rims, a faint glow inside.
         boxShadow:
-          'inset 0 1px 0.5px rgba(255,255,255,0.38), inset 0 -1px 1px rgba(255,255,255,0.07), inset 0 0 0 0.5px rgba(255,255,255,0.16)',
+          'inset 1px 1.5px 0 rgba(255,255,255,0.9), inset -1px -1px 0 rgba(255,255,255,0.55), inset 0 0 0 0.5px rgba(0,0,0,0.06), inset 0 0 14px rgba(255,255,255,0.45)',
       } as object,
       default: {},
     }),
   },
-  // העדשה שזזה מתחת ללשונית הנבחרת
+  // הבועה שמאחורי הלשונית הנבחרת
   lens: {
     position: 'absolute',
     top: BAR_PAD,
     end: BAR_PAD,
     bottom: BAR_PAD,
-    borderRadius: (BAR_HEIGHT - BAR_PAD * 2) / 2,
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    borderColor: 'rgba(200,215,255,0.34)',
+  },
+  lensFill: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: (BAR_HEIGHT - BAR_PAD * 2) / 2 },
+  // במנוחה: משטח אפור עדין
+  platter: { backgroundColor: 'rgba(118,118,128,0.14)' },
+  // מורמת: טיפת זכוכית שקופה עם אור על השוליים
+  drop: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
     ...Platform.select({
       web: {
-        borderWidth: 0,
         boxShadow:
-          '0 6px 18px -4px rgba(47,91,255,0.55), inset 0 1px 0.5px rgba(255,255,255,0.55), inset 0 -1px 1px rgba(255,255,255,0.12), inset 0 0 0 0.5px rgba(200,215,255,0.35)',
+          'inset 1.5px 2px 1px -0.5px rgba(255,255,255,0.95), inset -1.5px -2px 1px -0.5px rgba(255,255,255,0.7), inset 0 0 0 0.5px rgba(255,255,255,0.8), inset 0 0 12px rgba(255,255,255,0.4), 0 6px 18px rgba(0,0,0,0.13), 0 0 0 0.5px rgba(0,0,0,0.05)',
+        backdropFilter: 'saturate(180%) brightness(1.06)',
+        WebkitBackdropFilter: 'saturate(180%) brightness(1.06)',
       } as object,
-      default: { shadowColor: DK.accent, shadowOpacity: 0.45, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
+      default: { shadowColor: '#000', shadowOpacity: 0.13, shadowRadius: 9, shadowOffset: { width: 0, height: 6 } },
     }),
   },
-  lensSheen: { backgroundColor: 'rgba(255,255,255,0.14)' },
+  over: { position: 'absolute', top: 0, left: 0, right: 0, textAlign: 'center', alignItems: 'center' },
   // לשונית
   tab: {
     flex: 1,
@@ -622,6 +819,39 @@ const styles = StyleSheet.create({
     web: { outlineStyle: 'solid', outlineWidth: 2, outlineColor: '#8CA8FF', outlineOffset: -2 } as object,
     default: {},
   }) as object,
-  tabInner: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  tabLabel: { fontSize: 11.5, lineHeight: 14, letterSpacing: 0.3 },
+  tabInner: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1 },
+  tabLabel: { fontSize: 10, lineHeight: 12, fontWeight: '500', fontFamily: SYSTEM_FONT, letterSpacing: 0.1 },
+  edge: {
+    position: 'absolute',
+    start: 0,
+    end: 0,
+    bottom: 0,
+    zIndex: 49,
+    ...Platform.select({
+      web: {
+        position: 'fixed',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        backgroundImage: 'linear-gradient(to top, rgba(242,244,248,0.75), rgba(242,244,248,0))',
+        maskImage: 'linear-gradient(to top, #000 45%, transparent)',
+        WebkitMaskImage: 'linear-gradient(to top, #000 45%, transparent)',
+      } as object,
+      default: {},
+    }),
+  },
+  // מספר אדום על האייקון, כמו ב-iOS
+  badge: {
+    position: 'absolute',
+    top: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 5,
+    backgroundColor: '#FF3B30',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeLtr: { left: 15 },
+  badgeRtl: { right: 15 },
+  badgeText: { color: '#FFFFFF', fontSize: 12, lineHeight: 15, fontWeight: '600', fontVariant: ['tabular-nums'] },
 });
