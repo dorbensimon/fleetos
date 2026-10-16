@@ -1,3 +1,4 @@
+// 'הפרטים שלי' של המנהל
 import React, { useCallback, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
@@ -42,6 +43,7 @@ import { errorMessage } from '../../lib/requestError';
 /** The logged-in admin's own details, reached from the hamburger menu. */
 type Props = NativeStackScreenProps<RootStackParamList, 'AdminProfile'>;
 
+// המסך: פרטים ועריכה
 export default function AdminProfileScreen({ navigation }: Props) {
   const { profile, company, refresh } = useCompany();
   const { showToast } = useToast();
@@ -264,6 +266,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1, gap: 3 },
   alignRight: { textAlign: textStart() },

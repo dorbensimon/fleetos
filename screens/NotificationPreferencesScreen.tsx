@@ -1,3 +1,4 @@
+// מסך הגדרות ההתראות
 import React, { useEffect } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ import { useNotificationPreferences } from '../lib/useNotificationPreferences';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'NotificationPreferences'>;
 
+// בוחר תצוגת מחשב או טלפון
 export default function NotificationPreferencesScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();

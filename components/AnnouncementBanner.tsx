@@ -1,3 +1,4 @@
+// פס הודעה מהבעלים לחברות: פס למעלה במחשב, כרטיס צף בטלפון
 import React, { useEffect, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,8 +15,10 @@ import { DText, HoverPressable } from './desktop/primitives';
  * hides that one message on this browser; a new message shows again.
  */
 
+// המפתח שבו נשמר שהמשתמש סגר את ההודעה
 const DISMISSED_KEY = 'icar.announcement.dismissed';
 
+// קורא איזו הודעה המשתמש כבר סגר
 function readDismissed(): string | null {
   try {
     return Platform.OS === 'web' ? window.localStorage.getItem(DISMISSED_KEY) : null;
@@ -24,6 +27,7 @@ function readDismissed(): string | null {
   }
 }
 
+// מציג את ההודעה הפעילה עם כפתור סגירה
 export function AnnouncementBanner({ inline }: { inline?: boolean }) {
   const { profile } = useCompany();
   const isDesktop = useIsDesktop();
@@ -68,11 +72,16 @@ export function AnnouncementBanner({ inline }: { inline?: boolean }) {
   );
 }
 
+// עיצוב פס ההודעה
 const styles = StyleSheet.create({
+  // הבסיס של הפס
   base: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 14 },
+  // צבע להודעת מידע
   info: { backgroundColor: '#EEF2FF', borderColor: 'rgba(47,91,255,0.18)' },
+  // צבע להודעה חשובה
   warn: { backgroundColor: '#FFF6E5', borderColor: 'rgba(217,119,6,0.25)' },
   inline: { borderBottomWidth: 1 },
+  // כרטיס צף בטלפון
   float: {
     position: 'absolute',
     left: 12,
@@ -83,6 +92,7 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web' ? ({ boxShadow: '0 8px 24px rgba(22,34,46,0.14)' } as object) : { elevation: 6 }),
   },
   text: { flex: 1, fontSize: 14.5, lineHeight: 21, color: '#16222E', textAlign: 'right' },
+  // כפתור הסגירה
   close: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   closeHover: { backgroundColor: 'rgba(22,34,46,0.06)' },
 });

@@ -1,3 +1,4 @@
+// הוספת חברה חדשה (בעלים)
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { openWhatsapp, useSendMessage, whatsappNumber } from '../companyDetail/CompanyDetailSheets';
@@ -23,18 +24,21 @@ export { emptyOwnerCompanyForm, type OwnerCompanyForm } from '../../lib/newCompa
 
 type FieldErrors = Record<string, string>;
 
+// שלבי ההוספה
 const STEPS: { title: string; subtitle: string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
   { get title() { return t('owner.theCompany'); }, get subtitle() { return t('addCompany.step.companyHint'); }, icon: 'business' },
   { get title() { return t('addCompany.step.manager'); }, get subtitle() { return t('addCompany.step.managerHint'); }, icon: 'person' },
   { get title() { return t('addCompany.step.subscription'); }, get subtitle() { return t('addCompany.step.subscriptionHint'); }, icon: 'card' },
 ];
 
+// סיסמה זמנית אקראית
 function randomDigits(length: number): string {
   let out = '';
   for (let i = 0; i < length; i++) out += String(Math.floor(Math.random() * 10));
   return out;
 }
 
+// החלון עם השלבים
 export function AddCompanySheet({
   visible,
   form,
@@ -263,6 +267,7 @@ export function AddCompanySheet({
   );
 }
 
+// מחוון השלבים
 function Stepper({ step, onJump }: { step: CompanyStep; onJump: (s: CompanyStep) => void }) {
   return (
     <View style={styles.stepper} accessibilityLabel={t('addCompany.stepTitle', { v1: step + 1, title: STEPS[step].title })}>
@@ -299,6 +304,7 @@ function Stepper({ step, onJump }: { step: CompanyStep; onJump: (s: CompanyStep)
   );
 }
 
+// סיכום לפני יצירה
 function Summary({ form }: { form: OwnerCompanyForm }) {
   const lines: [string, string][] = [
     [t('owner.col.company'), [form.name.trim(), companyTypeLabel(form.companyType)].filter(Boolean).join(' ')],
@@ -321,6 +327,7 @@ function Summary({ form }: { form: OwnerCompanyForm }) {
   );
 }
 
+// פרטי הכניסה של המנהל החדש
 /** After creation: the sign-in details, ready to pass on to the new manager. */
 export function CompanyCreatedSheet({
   visible,
@@ -392,6 +399,7 @@ export function CompanyCreatedSheet({
   );
 }
 
+// עיצוב החלון
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   grow: { flex: 1 },
@@ -402,12 +410,14 @@ const styles = StyleSheet.create({
   pairRow: { flexDirection: 'row-reverse' },
   errorBox: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14, backgroundColor: STATUS.expired.soft },
 
+  // מחוון השלבים
   stepper: { flexDirection: 'row-reverse', gap: 8, marginBottom: 18 },
   stepItem: { flex: 1, gap: 8 },
   stepBar: { height: 4, borderRadius: 2, backgroundColor: DK.hairline },
   stepBarOn: { backgroundColor: DK.accent },
   stepLabel: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5 },
 
+  // כרטיס הלוגו
   logoCard: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, padding: 14 },
   logoBox: { width: 60, height: 60, borderRadius: 18, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   logoImage: { width: 60, height: 60 },

@@ -1,3 +1,4 @@
+// חלון הודעה שעובד גם בדפדפן
 import { Alert, Platform } from 'react-native';
 
 type AlertButton = {
@@ -6,6 +7,7 @@ type AlertButton = {
   style?: 'default' | 'cancel' | 'destructive';
 };
 
+// מציג הודעה עם כפתורים (בדפדפן משתמש בחלון של הדפדפן)
 /**
  * react-native-web ships Alert.alert() as a total no-op (no dialog UI), so on
  * web a confirm button's onPress — including navigation wired to it, like a

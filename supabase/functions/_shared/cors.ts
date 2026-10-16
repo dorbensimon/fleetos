@@ -1,3 +1,5 @@
+// כותרות CORS שמאפשרות לאתר לקרוא לפונקציות
+// הכותרות
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   // Browser calls to Edge Functions first send an OPTIONS preflight. Keep this

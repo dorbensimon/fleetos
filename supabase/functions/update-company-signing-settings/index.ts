@@ -1,6 +1,8 @@
+// פונקציית שרת: שמירת הגדרות החתימה
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -8,11 +10,13 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
+// בודק מספר שלם בטווח
 function wholeNumber(value: unknown, minimum: number, maximum: number): number | null {
   const number = typeof value === 'number' ? value : Number(value);
   return Number.isInteger(number) && number >= minimum && number <= maximum ? number : null;
 }
 
+// שומר
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);

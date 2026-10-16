@@ -1,3 +1,4 @@
+// התיקיות הקבועות בתיק הנהג
 import type { Ionicons } from '@expo/vector-icons';
 import { t } from './i18n';
 
@@ -14,6 +15,7 @@ export interface DriverDocumentFolder {
   icon: keyof typeof Ionicons.glyphMap;
 }
 
+// קבוצות התיקיות בתיק הנהג
 export const DRIVER_DOCUMENT_GROUPS: { title: string; folders: DriverDocumentFolder[] }[] = [
   {
     get title() { return t('folder.licensingAndDocs'); },
@@ -42,5 +44,6 @@ export const DRIVER_DOCUMENT_GROUPS: { title: string; folders: DriverDocumentFol
   },
 ];
 
+// הקטגוריה של תמונות הרישיון (קדימה ואחורה)
 /** Category of the license front/back photos. */
 export const LICENSE_DOCS_CATEGORY = 'license_docs';

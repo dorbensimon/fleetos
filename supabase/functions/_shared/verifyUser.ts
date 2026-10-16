@@ -1,3 +1,4 @@
+// בודק את המשתמש המחובר
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { mayUseAuthenticatedCapabilities } from './accountSecurity.ts';
 
@@ -16,6 +17,7 @@ type UserResult =
     }
   | { ok: false; status: number; error: string };
 
+// מחזיר את המשתמש לפי האסימון
 export async function verifyUser(
   authHeader: string | null,
   options: { allowPendingPasswordSetup?: boolean } = {},

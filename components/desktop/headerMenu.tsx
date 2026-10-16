@@ -1,3 +1,4 @@
+// תפריטים נפתחים מהסרגל העליון
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { prefersReducedMotion } from './primitives';
@@ -12,8 +13,10 @@ import { t } from '../../lib/i18n';
 
 type HeaderMenuSlot = { openId: string | null; setOpenId: (id: string | null) => void };
 
+// מי מהתפריטים פתוח
 const HeaderMenuContext = createContext<HeaderMenuSlot | null>(null);
 
+// מנהל שרק תפריט אחד פתוח בכל רגע
 export function HeaderMenuProvider({ children }: { children: React.ReactNode }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const value = useMemo(() => ({ openId, setOpenId }), [openId]);
@@ -28,6 +31,7 @@ export function HeaderMenuProvider({ children }: { children: React.ReactNode }) 
   return <HeaderMenuContext.Provider value={value}>{children}</HeaderMenuContext.Provider>;
 }
 
+// פתוח/סגור של תפריט אחד
 /** Open state of one top-bar dropdown. Outside the shell it falls back to its own state. */
 export function useHeaderMenu(id: string) {
   const shared = useContext(HeaderMenuContext);
@@ -37,11 +41,13 @@ export function useHeaderMenu(id: string) {
   return { open, setOpen, toggle: () => setOpen(!open), close: () => setOpen(false) };
 }
 
+// שכבה שקופה: לחיצה בחוץ סוגרת
 /** Transparent full-window layer under an open dropdown: a click outside closes it. */
 export function HeaderMenuBackdrop({ onClose }: { onClose: () => void }) {
   return <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel={t('common.close')} />;
 }
 
+// אנימציית פתיחה של תפריט
 /** Dropdown drops from its trigger: short fade + slight scale, opacity only when motion is reduced. */
 export function headerMenuEnter() {
   const reduced = prefersReducedMotion();
@@ -58,10 +64,12 @@ export function headerMenuEnter() {
   });
 }
 
+// העיצוב המשותף של התפריטים
 /** The shared look of every top-bar dropdown. */
 export const headerMenuStyles = StyleSheet.create({
   wrap: { position: 'relative' },
   wrapOpen: { zIndex: 40 },
+  // התפריט עצמו
   menu: {
     position: 'absolute',
     top: 40,
@@ -74,6 +82,7 @@ export const headerMenuStyles = StyleSheet.create({
     overflow: 'hidden',
     ...webOnly({ boxShadow: '0 12px 32px rgba(16,34,50,0.18), 0 2px 6px rgba(16,34,50,0.06)' }),
   },
+  // כותרת התפריט
   head: {
     flexDirection: 'row-reverse',
     alignItems: 'flex-start',
@@ -99,6 +108,7 @@ export const headerMenuStyles = StyleSheet.create({
   rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
 });
 
+// עיצוב השכבה השקופה
 const styles = StyleSheet.create({
   backdrop: { ...webOnly({ position: 'fixed', top: 0, end: 0, bottom: 0, start: 0, cursor: 'default' }) },
 });

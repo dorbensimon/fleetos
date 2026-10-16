@@ -1,3 +1,4 @@
+// עדכון רישיון נהג: נהג שולח, מנהל מאשר או דוחה
 import { supabase } from './supabase';
 
 export interface LicenseUpdateData {
@@ -19,6 +20,7 @@ export interface LicenseUpdateRequest {
   created_at: string;
 }
 
+// שולח עדכון רישיון (מנהל - מיד, נהג - ממתין לאישור)
 /**
  * Submits a license update. A manager's submission (RLS: can_manage_company)
  * applies immediately; a driver's own submission is staged as 'pending'
@@ -36,6 +38,7 @@ export async function submitLicenseUpdate(driverId: string, data: LicenseUpdateD
   return (result as { status: LicenseUpdateOutcome }).status;
 }
 
+// מסדר שורת בקשה מהשרת
 function mapLicenseUpdateRequestRow(row: any): LicenseUpdateRequest {
   return {
     id: row.id,
@@ -49,9 +52,11 @@ function mapLicenseUpdateRequestRow(row: any): LicenseUpdateRequest {
   };
 }
 
+// העמודות שמביאים
 const LICENSE_UPDATE_REQUEST_COLUMNS =
   'id, driver_id, requested_license_number, requested_license_expiry, requested_license_classes, status, created_at, profiles:driver_id(full_name)';
 
+// בקשות עדכון רישיון שממתינות לאישור
 /** Pending license update requests for the caller's company (managers only — RLS-enforced). */
 export async function listPendingLicenseUpdateRequests(): Promise<LicenseUpdateRequest[]> {
   const { data, error } = await supabase
@@ -63,6 +68,7 @@ export async function listPendingLicenseUpdateRequests(): Promise<LicenseUpdateR
   return (data ?? []).map(mapLicenseUpdateRequestRow);
 }
 
+// בקשת העדכון הממתינה של נהג מסוים
 /** The one pending license update request for a specific driver, if any (managers only — RLS-enforced). */
 export async function getPendingLicenseUpdateForDriver(driverId: string): Promise<LicenseUpdateRequest | null> {
   const { data, error } = await supabase
@@ -77,6 +83,7 @@ export async function getPendingLicenseUpdateForDriver(driverId: string): Promis
   return data ? mapLicenseUpdateRequestRow(data) : null;
 }
 
+// מאשר או דוחה בקשת עדכון
 /** Approves or rejects a pending request; approval writes driver_details. Managers only — RLS-enforced. */
 export async function reviewLicenseUpdateRequest(requestId: string, approve: boolean): Promise<void> {
   const { error } = await supabase.rpc('review_license_update_request', {

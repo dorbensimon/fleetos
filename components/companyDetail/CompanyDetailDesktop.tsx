@@ -1,3 +1,4 @@
+// דף חברה אצל הבעלים - תצוגת מחשב
 import React, { useMemo, useState } from 'react';
 import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,8 +46,10 @@ type Props = {
   onRemoveUser: (user: CompanyUser) => void;
 };
 
+// ראשי תיבות של שם
 const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? '').join('');
 
+// הדף כולו: כותרת, משתמשים, מנוי, תשלומים והערות
 export function CompanyDetailDesktop(p: Props) {
   const { company, account, health } = p;
   const active = company.status === 'active';
@@ -232,6 +235,7 @@ export function CompanyDetailDesktop(p: Props) {
   );
 }
 
+// מה דורש טיפול בחברה (או 'הכול תקין')
 /** What needs the owner in this company (the control room's own checks), or a calm "all good". */
 function Attention({ health, active }: { health: CompanyHealth | null; active: boolean }) {
   if (!health || !active) return null;
@@ -266,6 +270,7 @@ function Attention({ health, active }: { health: CompanyHealth | null; active: b
   );
 }
 
+// טבלת המנהלים והנהגים עם חיפוש ופעולות
 /** Managers and drivers in one table: a switch between them, search, and the actions on every row. */
 function UsersCard(p: Props) {
   const [tab, setTab] = useState<'admin' | 'driver'>(p.admins.length === 0 ? 'admin' : 'driver');
@@ -388,6 +393,7 @@ function UsersCard(p: Props) {
   );
 }
 
+// כפתור אייקון בשורה
 function IconAction({ icon, label, onPress, danger }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; danger?: boolean }) {
   return (
     <HoverPressable
@@ -403,6 +409,7 @@ function IconAction({ icon, label, onPress, danger }: { icon: keyof typeof Ionic
   );
 }
 
+// כרטיס המנוי: סטטוס, מחיר ותאריך הבא
 /** The subscription, standing on its own on the side: status, price and the next date. */
 function AccountCard({ account, onEdit }: { account: CompanyAccount | null; onEdit: () => void }) {
   const next = accountNextStep(account);
@@ -440,6 +447,7 @@ function AccountCard({ account, onEdit }: { account: CompanyAccount | null; onEd
   );
 }
 
+// שורת פעולה (כמו מחיקת חברה)
 function ActionRow({ icon, title, caption, onPress, danger, first }: { icon: keyof typeof Ionicons.glyphMap; title: string; caption: string; onPress: () => void; danger?: boolean; first?: boolean }) {
   const color = danger ? DESKTOP_COLORS.danger : DESKTOP_COLORS.ink;
   return (
@@ -453,15 +461,20 @@ function ActionRow({ icon, title, caption, onPress, danger, first }: { icon: key
   );
 }
 
+// עיצוב דף החברה
 const styles = StyleSheet.create({
+  // הכותרת העליונה
   hero: { paddingVertical: 16, paddingHorizontal: 20, gap: 24 },
   who: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14 },
+  // הלוגו
   logo: { width: 56, height: 56, borderRadius: 14, borderWidth: 1, borderColor: DESKTOP_COLORS.border, backgroundColor: DESKTOP_COLORS.surface },
   logoEmpty: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(47,91,255,0.08)', borderColor: 'transparent' },
   logoText: { fontSize: 20, color: DESKTOP_COLORS.brand },
   heroActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  // עמודה
   column: { gap: 16 },
 
+  // פס 'הכול תקין'
   okBanner: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 10, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 14, backgroundColor: DESKTOP_TONES.ok.bg, borderWidth: 1, borderColor: 'rgba(18,183,106,0.18)' },
   okTitle: { fontSize: 14.5, color: DESKTOP_TONES.ok.fg },
   okText: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted },
@@ -469,13 +482,16 @@ const styles = StyleSheet.create({
   issueDetail: { color: '#8A5A1E' },
   issueExtra: { marginTop: 4, color: '#8A5A1E' },
 
+  // סרגל הכלים מעל הטבלה
   toolbar: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: 12 },
+  // מתג מנהלים/נהגים
   segment: { flexDirection: 'row-reverse', padding: 3, borderRadius: 10, backgroundColor: '#EEF1F4' },
   segmentItem: { height: 30, paddingHorizontal: 14, borderRadius: 8, justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease, box-shadow 150ms ease' }) },
   segmentItemOn: { backgroundColor: DESKTOP_COLORS.surface, ...webOnly({ boxShadow: '0 1px 2px rgba(22,34,46,0.1), 0 1px 6px rgba(22,34,46,0.06)' }) },
   segmentHover: { backgroundColor: 'rgba(22,34,46,0.05)' },
   segmentText: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   segmentTextOn: { color: DESKTOP_COLORS.ink },
+  // תיבת החיפוש
   search: { flex: 1, minWidth: 200, justifyContent: 'center' },
   searchIcon: { position: 'absolute', end: 11, zIndex: 1 },
   searchInput: { height: 36, borderRadius: 10, paddingEnd: 32 },
@@ -484,6 +500,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, color: DESKTOP_TONES.warn.fg },
   chipTextOn: { color: '#FFFFFF' },
 
+  // שורת משתמש
   userRow: { minHeight: 58, gap: 14 },
   userName: { flex: 1.3, minWidth: 0, gap: 1 },
   userTitle: { fontSize: 14.5, color: DESKTOP_COLORS.ink },
@@ -493,6 +510,7 @@ const styles = StyleSheet.create({
   phone: { width: 110 },
   status: { width: 96, alignItems: 'flex-end' },
   rowActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 2 },
+  // כפתור אייקון
   iconBtn: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
   iconBtnHover: { backgroundColor: '#EEF1F4' },
   iconBtnDanger: { backgroundColor: 'rgba(217,45,32,0.08)' },
@@ -503,6 +521,7 @@ const styles = StyleSheet.create({
   next: { fontSize: 13.5, marginTop: 4 },
   accountFoot: { paddingHorizontal: 16, paddingVertical: 10, gap: 4 },
 
+  // שורת פעולה
   actionRow: { minHeight: 60, alignItems: 'center' },
   actionTitle: { fontSize: 14.5 },
   dangerHover: { backgroundColor: 'rgba(217,45,32,0.05)' },

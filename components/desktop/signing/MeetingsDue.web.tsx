@@ -1,11 +1,14 @@
+// 'מילויים שצריך לקיים': נהגים שהמילוי שלהם באיחור או בקרוב
 import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { formatIsoDay } from '../../../lib/checklistForms';
 import { dueState, dueText, type DueState, type PlanRow } from '../../../lib/meetingPlan';
 import { t } from '../../../lib/i18n';
 
+// כמה שורות מוצגות לפני 'עוד'
 const COLLAPSED = 5;
 
+// אייקון וצבע לכל מצב
 const MARK: Record<DueState, { icon: 'alert' | 'time' | 'calendar'; color: string; soft: string }> = {
   late: { icon: 'alert', color: '#D92D20', soft: 'rgba(255,69,58,0.12)' },
   today: { icon: 'time', color: '#B25E00', soft: 'rgba(255,149,0,0.14)' },
@@ -13,6 +16,7 @@ const MARK: Record<DueState, { icon: 'alert' | 'time' | 'calendar'; color: strin
   later: { icon: 'calendar', color: '#2F5BFF', soft: 'rgba(47,91,255,0.1)' },
 };
 
+// תגית 'באיחור / היום / בעוד'
 /** "באיחור של 5 ימים" / "היום" / "בעוד 3 ימים", as a coloured pill with a word. */
 export function WhenPill({ nextDue }: { nextDue: string }) {
   const state = dueState(nextDue);
@@ -24,6 +28,7 @@ export function WhenPill({ nextDue }: { nextDue: string }) {
   );
 }
 
+// הרשימה
 /**
  * "מפגשים שצריך לקיים": drivers whose meeting on a repeating form is late or
  * due within two weeks, most urgent first. One button opens the meeting.

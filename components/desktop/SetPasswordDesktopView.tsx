@@ -1,3 +1,4 @@
+// בחירת סיסמה - תצוגת מחשב
 import React, { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import { BrandLoader } from '../ui/BrandLoader';
@@ -22,6 +23,7 @@ type Props = {
   onCancel: () => void;
 };
 
+// לוח אבטחה וטופס סיסמה חדשה
 /** Desktop-only security workspace. The mobile flow remains in SetPasswordScreen. */
 export function SetPasswordDesktopView({
   voluntary,
@@ -127,10 +129,12 @@ export function SetPasswordDesktopView({
   );
 }
 
+// שורת הבטחה (למה זה בטוח)
 function Assurance({ icon, title, detail }: { icon: React.ComponentProps<typeof Ionicons>['name']; title: string; detail: string }) {
   return <View style={styles.assurance}><View style={styles.assuranceIcon}><Ionicons name={icon} size={18} color={DESKTOP_COLORS.brand} /></View><View style={styles.assuranceCopy}><DText weight="semiBold" style={styles.assuranceTitle}>{title}</DText><DText style={styles.assuranceDetail}>{detail}</DText></View></View>;
 }
 
+// שדה סיסמה עם כפתור הצגה
 function PasswordField({ label, value, placeholder, visible, focused, error, onChangeText, onFocus, onBlur, onToggle }: {
   label: string; value: string; placeholder: string; visible: boolean; focused: boolean; error?: string;
   onChangeText: (value: string) => void; onFocus: () => void; onBlur: () => void; onToggle: () => void;
@@ -138,9 +142,12 @@ function PasswordField({ label, value, placeholder, visible, focused, error, onC
   return <View style={styles.field}><DText weight="semiBold" style={styles.label}>{label}</DText><View style={[styles.inputWrap, focused && styles.inputWrapFocused, !!error && styles.inputWrapError]}><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={DESKTOP_COLORS.inkFaint} secureTextEntry={!visible} autoCapitalize="none" textAlign="right" onFocus={onFocus} onBlur={onBlur} style={styles.input} /><HoverPressable style={styles.visibilityButton} hoverStyle={styles.visibilityButtonHover} onPress={onToggle} accessibilityLabel={visible ? t('password.hide') : t('password.show')}><Ionicons name={visible ? 'eye-outline' : 'eye-off-outline'} size={18} color={DESKTOP_COLORS.inkMuted} /></HoverPressable></View>{!!error && <DText style={styles.fieldError}>{error}</DText>}</View>;
 }
 
+// עיצוב דף הסיסמה
 const styles = StyleSheet.create({
+  // הדף
   page: { flex: 1, backgroundColor: DESKTOP_COLORS.canvas, justifyContent: 'center', padding: 40 },
   workspace: { width: '100%', maxWidth: 1160, alignSelf: 'center', flexDirection: 'row-reverse', alignItems: 'stretch', gap: 24 },
+  // לוח האבטחה בצד
   securityPanel: { flex: 1, minHeight: 530, borderRadius: 16, backgroundColor: DESKTOP_COLORS.ink, padding: 38, justifyContent: 'center', ...webOnly({ boxShadow: '0 18px 42px rgba(22,34,46,0.16)' }) },
   // Pinned to the panel's top corner so the centred security copy doesn't move.
   brand: { position: 'absolute', top: 34, end: 38 },
@@ -153,14 +160,18 @@ const styles = StyleSheet.create({
   assuranceIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.09)', alignItems: 'center', justifyContent: 'center' },
   assuranceCopy: { flex: 1 }, assuranceTitle: { color: '#fff', fontSize: 13.5 }, assuranceDetail: { color: '#AAB9C5', fontSize: 12, marginTop: 1 },
   helpText: { color: '#AAB9C5', fontSize: 11.5, lineHeight: 18, marginTop: 25 },
+  // כרטיס הטופס
   formSurface: { width: 470, borderRadius: 16, padding: 38, backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, justifyContent: 'center' },
   formHeading: { marginBottom: 28 }, title: { fontSize: 26, letterSpacing: -0.4, color: DESKTOP_COLORS.ink }, subtitle: { color: DESKTOP_COLORS.inkMuted, fontSize: 13.5, lineHeight: 21, marginTop: 7 },
   field: { marginBottom: 18 }, label: { fontSize: 13, color: DESKTOP_COLORS.ink, marginBottom: 8 },
+  // תיבת הסיסמה
   inputWrap: { flexDirection: 'row-reverse', alignItems: 'center', height: 50, paddingHorizontal: 8, borderRadius: 12, backgroundColor: DESKTOP_COLORS.surfaceMuted, borderWidth: 1, borderColor: DESKTOP_COLORS.borderInput, ...webOnly({ transition: 'border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease' }) },
   inputWrapFocused: { backgroundColor: '#fff', borderColor: DESKTOP_COLORS.brand, ...webOnly({ boxShadow: '0 0 0 3px rgba(47,91,255,0.14)' }) }, inputWrapError: { borderColor: DESKTOP_TONES.bad.fg },
   input: { flex: 1, height: '100%', paddingHorizontal: 8, fontSize: 14, color: DESKTOP_COLORS.ink, ...webOnly({ outlineStyle: 'none' }) }, visibilityButton: { width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }, visibilityButtonHover: { backgroundColor: DESKTOP_COLORS.canvas, ...webOnly({ outlineWidth: 2, outlineStyle: 'solid', outlineColor: DESKTOP_COLORS.brand, outlineOffset: 2 }) }, fieldError: { color: DESKTOP_TONES.bad.fg, fontSize: 11.5, marginTop: 6 },
+  // רשימת הדרישות לסיסמה
   requirements: { flexDirection: 'row-reverse', gap: 18, marginTop: 1, marginBottom: 24 }, requirement: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 }, requirementText: { color: DESKTOP_COLORS.inkFaint, fontSize: 11.5 }, requirementTextMet: { color: DESKTOP_TONES.ok.fg },
   errorCallout: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, borderRadius: 10, backgroundColor: DESKTOP_TONES.bad.bg, padding: 11, marginBottom: 16 }, generalError: { flex: 1, color: DESKTOP_TONES.bad.fg, fontSize: 12, textAlign: textStart() },
+  // כפתור השמירה
   submitButton: { height: 50, borderRadius: 12, backgroundColor: DESKTOP_COLORS.brand, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW }) }, submitButtonHover: { backgroundColor: DESKTOP_COLORS.brandHover }, submitButtonDisabled: { opacity: 0.72 }, submitText: { color: '#fff', fontSize: 14 },
   cancelButton: { alignSelf: 'center', marginTop: 14, paddingHorizontal: 10, minHeight: 36, justifyContent: 'center', borderRadius: 8 }, cancelButtonHover: { opacity: 0.68, ...webOnly({ outlineWidth: 2, outlineStyle: 'solid', outlineColor: DESKTOP_COLORS.brand, outlineOffset: 2 }) }, cancelText: { color: DESKTOP_COLORS.inkMuted, fontSize: 12.5 }, pressDown: webOnly({ transform: 'scale(0.97)' }),
 });

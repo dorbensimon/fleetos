@@ -1,3 +1,4 @@
+// מסך 'דורש טיפול' של הנהג
 import React, { useMemo } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +12,7 @@ import { t, getLocale } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverAttention'>;
 
+// המסך
 /** Opened from the home screen's "דורש טיפול" panel. */
 export default function DriverAttentionScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();

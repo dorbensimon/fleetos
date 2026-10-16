@@ -1,3 +1,5 @@
+// עיצוב מסכי 'מסמכים חתומים' במחשב
+// העיצוב (CSS)
 /**
  * Stylesheet for the desktop "מסמכים חתומים" screens (web only). These screens
  * are DOM-heavy (a rich-text editor, PDF canvases, drag and drop), so they use

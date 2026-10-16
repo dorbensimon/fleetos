@@ -1,3 +1,4 @@
+// כרטיסי נהג ורכב ברשימה בטלפון
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,17 +10,21 @@ import { nextServiceKmOf } from '../../../lib/serviceSchedule';
 import { formatPlate } from '../../../lib/plate';
 import { t, getLocale } from '../../../lib/i18n';
 
+// מתי האפליקציה עלתה
 const APP_STARTED_AT_MS = Date.now();
+// כמה ק"מ לפני טיפול מזהירים
 const SERVICE_WARN_KM = 1000;
 
 type Health = { label: string; value: string; note: string; status: Status; progress: number };
 
+// מצב לפי ימים
 function daysStatus(days: number | null): Status {
   if (days == null) return 'missing';
   if (days < 0) return 'expired';
   return days <= 30 ? 'soon' : 'ok';
 }
 
+// טקסט לפי ימים
 function daysNote(days: number | null) {
   if (days == null) return t('status.missing');
   if (days === Number.POSITIVE_INFINITY) return t('fleet.byLastInspection');
@@ -28,6 +33,7 @@ function daysNote(days: number | null) {
   return t('common.daysV1', { v1: days.toLocaleString(getLocale()) });
 }
 
+// ביטוח, טסט וטיפול של רכב
 /** Insurance, annual test and service for one vehicle, each as a status the card can draw. */
 export function vehicleHealth(vehicle: Vehicle, items: ComplianceItem[] | undefined): { rows: Health[]; worst: Status; bad: string[] } {
   const insurance = items?.find((c) => c.item_type === 'insurance_mandatory')?.expiry_date ?? null;
@@ -69,11 +75,13 @@ export function vehicleHealth(vehicle: Vehicle, items: ComplianceItem[] | undefi
   return { rows, worst, bad };
 }
 
+// מצב לפי תאריך
 function statusFromExpiry(date: string | null): Status {
   const state = expiryState(date);
   return state === 'expired' ? 'expired' : state === 'soon' ? 'soon' : state === 'ok' ? 'ok' : 'missing';
 }
 
+// שורת הרישיון
 function licenseLine(expiry: string | null): { text: string; status: Status } {
   const status = statusFromExpiry(expiry);
   const days = daysUntilExpiry(expiry);
@@ -83,6 +91,7 @@ function licenseLine(expiry: string | null): { text: string; status: Status } {
   return { text: t('driver.licenseValidUntilV', { expiry: formatDate(expiry) }), status };
 }
 
+// כרטיס נהג
 /**
  * A driver in the fleet list: who, whether their license is good, the car
  * they drive, and anything waiting on them — with a call button in reach.
@@ -181,6 +190,7 @@ export function DriverFleetCard({
   );
 }
 
+// כרטיס רכב
 /**
  * A vehicle in the fleet list: plate and model up top, then its insurance,
  * annual test and service as three small gauges in the colour of their state.
@@ -289,11 +299,13 @@ export function VehicleFleetCard({
   );
 }
 
+// עיצוב הכרטיסים
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   flexShrink: { flexShrink: 1 },
   center: { textAlign: 'center' },
   inline: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  // כרטיס
   card: { padding: 14, gap: 12, borderRadius: 24 },
   cardAlert: { borderWidth: 1, borderColor: 'rgba(255,77,94,0.28)' },
   cardArchived: { opacity: 0.92 },
@@ -322,6 +334,7 @@ const styles = StyleSheet.create({
 
   vehicleTop: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 2 },
   statusChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, flexShrink: 0, maxWidth: '55%' },
+  // שורת הביטוח/טסט/טיפול
   health: { flexDirection: 'row-reverse', backgroundColor: DK.surfaceSunk, borderRadius: 18, paddingVertical: 12 },
   healthCell: { flex: 1, paddingHorizontal: DK_SPACE.sm, gap: 3 },
   healthDivider: { borderEndWidth: StyleSheet.hairlineWidth, borderEndColor: 'rgba(10,22,38,0.1)' },

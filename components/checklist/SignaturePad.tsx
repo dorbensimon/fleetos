@@ -1,3 +1,4 @@
+// משטח חתימה ביד
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -5,6 +6,7 @@ import { DK, DKText, Pressy, STATUS } from '../driverKit';
 import { SignatureSurface } from './SignatureSurface';
 import { t } from '../../lib/i18n';
 
+// תיבה לבנה עם קו לחתימה וכפתור ניקוי
 /**
  * A hand signature: a large white box with a line to sign on, "חתמו כאן"
  * until the first stroke, and a clear button. The signature is handed up as
@@ -81,8 +83,10 @@ export function SignaturePad({
   );
 }
 
+// עיצוב משטח החתימה
 const styles = StyleSheet.create({
   wrap: { gap: 8 },
+  // התיבה הלבנה
   box: {
     height: 190,
     borderRadius: 20,
@@ -93,9 +97,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   boxSigned: { borderStyle: 'solid', borderColor: 'rgba(11,125,87,0.35)' },
+  // הקו שעליו חותמים
   line: { position: 'absolute', start: 24, end: 24, bottom: 46, height: 1.5, backgroundColor: 'rgba(10,22,38,0.18)' },
   placeholder: { position: 'absolute', top: 0, start: 0, end: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', gap: 6, paddingBottom: 22 },
   tools: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between' },
   state: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  // כפתור הניקוי
   clear: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 14, borderRadius: 999, backgroundColor: DK.accentSoft },
 });

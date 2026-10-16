@@ -1,3 +1,4 @@
+// פונקציית שרת ישנה של קטלוג התיקיות (מחזירה רשימות ריקות)
 import { corsHeaders } from '../_shared/cors.ts';
 
 /**
@@ -7,10 +8,12 @@ import { corsHeaders } from '../_shared/cors.ts';
  * instead of an error; delete this function once that site is gone.
  */
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
+// מחזיר רשימות ריקות
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);

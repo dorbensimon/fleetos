@@ -1,3 +1,4 @@
+// קווי עזר והצמדה בבוני המסמכים
 import React, { useCallback, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { Guide } from './snapMath';
@@ -13,6 +14,7 @@ import { t } from '../../../lib/i18n';
 
 export { snapMove, snapResize, type Guide, type PageLines, type SnapRect } from './snapMath';
 
+// הקווים שמופיעים בזמן גרירה
 /**
  * The guide lines over a page. `unit` turns page units into CSS: 'px' for
  * the editor page, '%' (fractions × 100) for an uploaded PDF page.
@@ -37,6 +39,7 @@ export function GuideLines({ guides, unit }: { guides: Guide[]; unit: 'px' | '%'
   );
 }
 
+// קווי העזר הקבועים של הדף
 /**
  * The page's "קווי עזר" when switched on: the margins as a dashed frame, the
  * middle as a dashed cross, and a light one-centimetre grid.
@@ -52,8 +55,10 @@ export function PageGrid({ margins, cell, unit, middleH = true }: { margins: { x
   );
 }
 
+// המפתח שבו נשמר אם קווי העזר דולקים
 const GRID_KEY = 'sd-show-guides';
 
+// האם קווי העזר דולקים
 /** Whether "קווי עזר" is on, remembered in this browser for next time. */
 export function useGuidesToggle(): [boolean, () => void] {
   const [on, setOn] = useState(() => {
@@ -76,6 +81,7 @@ export function useGuidesToggle(): [boolean, () => void] {
   return [on, toggle];
 }
 
+// המתג של קווי העזר
 /** The "קווי עזר" switch in a builder's side panel. */
 export function GuidesToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
@@ -86,6 +92,7 @@ export function GuidesToggle({ on, onToggle }: { on: boolean; onToggle: () => vo
   );
 }
 
+// עיצוב הקווים
 export const GUIDES_CSS = `
 .sd-guide { position: absolute; z-index: 6; pointer-events: none; background: #E8318A; }
 .sd-guide-v { width: 1px; margin-left: -0.5px; }

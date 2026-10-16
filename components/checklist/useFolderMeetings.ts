@@ -1,8 +1,10 @@
+// המילויים של נהג בתיקיית טופס רשימת תיוג
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSigningTemplateSourceUrl, type SignatureRequest, type SigningTemplate } from '../../lib/docuseal';
 import { isChecklistTemplate, listDriverMeetings, type MeetingRow } from '../../lib/checklistForms';
 import { t } from '../../lib/i18n';
 
+// טיוטות בתהליך ושיוך בקשות חתימה למילויים
 /**
  * A driver's meetings on one "רשימת סעיפים" folder: drafts still being
  * filled, and which signing request belongs to which meeting (so a request
@@ -48,6 +50,7 @@ export function useFolderMeetings(driverId: string | null | undefined, template:
   return { checklist, drafts, byRequest, reload };
 }
 
+// הטופס הריק כ-PDF לצפייה
 /** The blank form as a PDF, for "צפייה" on a checklist folder. */
 export async function checklistPreviewTarget(template: SigningTemplate, title: string) {
   const src = await getSigningTemplateSourceUrl(template);

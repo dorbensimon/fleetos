@@ -1,3 +1,4 @@
+// בחירת שפה בהגדרות המערכת
 import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +8,7 @@ import { DK, DK_SPACE, DKText, KitSection, Pressy } from './driverKit';
 import { DText, HoverPressable } from './desktop/primitives';
 import { DESKTOP_COLORS } from './desktop/desktopTheme';
 
+// השפה שנבחרה והחלפה שלה
 /**
  * The user's own language choice, in system settings. Each language
  * is shown in its own name. The choice is kept on this device and on the
@@ -23,11 +25,13 @@ function useLanguageChoice() {
   return { current, pending, choose };
 }
 
+// סימן V או טעינה בסוף השורה
 function Trailing({ selected, busy, color }: { selected: boolean; busy: boolean; color: string }) {
   if (busy) return <ActivityIndicator size="small" color={color} />;
   return selected ? <Ionicons name="checkmark" size={20} color={color} /> : null;
 }
 
+// רשימת השפות בטלפון
 /** Phone layout: a section in the system settings screen. */
 export function LanguageSection() {
   const { current, pending, choose } = useLanguageChoice();
@@ -57,6 +61,7 @@ export function LanguageSection() {
   );
 }
 
+// רשימת השפות במחשב
 /** Desktop layout: the rows of a card in the system settings page. */
 export function LanguageRows() {
   const { current, pending, choose } = useLanguageChoice();
@@ -84,13 +89,17 @@ export function LanguageRows() {
   );
 }
 
+// עיצוב שורות השפה
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  // שורה בטלפון
   mobileRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: DK_SPACE.md },
   mobileRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },
+  // שורה במחשב
   row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 16, minHeight: 46 },
   rowDivider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
   label: { flex: 1, fontSize: 13, color: DESKTOP_COLORS.ink },
+  // השפה הנבחרת
   labelSelected: { color: DESKTOP_COLORS.brand },
 });

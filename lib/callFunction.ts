@@ -1,5 +1,7 @@
+// קריאה לפונקציות השרת (Edge Functions) עם הודעת שגיאה בעברית
 import { supabase } from './supabase';
 
+// שגיאה מהשרת, עם קוד השגיאה שהשרת שלח
 /** An error from the server, with its machine-readable `code` when it sent one. */
 export class FunctionActionError extends Error {
   code?: string;
@@ -11,6 +13,7 @@ export class FunctionActionError extends Error {
   }
 }
 
+// קורא לפונקציית שרת ומחזיר את התשובה או זורק שגיאה ברורה
 /** Calls an Edge Function and keeps the server's Hebrew message and `code` on failure. */
 export async function callFunction<T>(name: string, body: Record<string, unknown>, fallback: string): Promise<T> {
   const { data, error } = await supabase.functions.invoke(name, { body });

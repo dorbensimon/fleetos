@@ -1,3 +1,4 @@
+// רשימה נפתחת כחלון שעולה מלמטה
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,8 +11,11 @@ import { PICKER_FIELD_STYLES } from './pickerFieldStyles';
 import { DK, DK_FONT, DK_SHADOW } from '../driverKit/theme';
 import { t, dirIcon, textStart } from '../../lib/i18n';
 
+// זמן פתיחה
 const ENTER_MS = 340;
+// זמן סגירה
 const EXIT_MS = 220;
+// עקומת אנימציה
 const SHEET_EASE = Easing.bezier(0.32, 0.72, 0, 1);
 
 export interface SelectOption<T extends string> {
@@ -19,6 +23,7 @@ export interface SelectOption<T extends string> {
   label: string;
 }
 
+// תיבת הבחירה
 /**
  * Dropdown built on a modal sheet rather than the platform picker, so it
  * looks and behaves identically on iOS, Android and web.
@@ -69,6 +74,7 @@ export interface ChoiceSheetOption<T extends string> extends SelectOption<T> {
   icon?: React.ComponentProps<typeof Ionicons>['name'];
 }
 
+// החלון עם האפשרויות
 /**
  * The sheet that rises from the bottom with a list to choose from — the
  * one behind `Select`, usable on its own (e.g. "which vehicle to open").
@@ -192,13 +198,16 @@ export function ChoiceSheet<T extends string>({
   );
 }
 
+// עיצוב הבחירה
 const styles = StyleSheet.create({
+  // התיבה
   box: PICKER_FIELD_STYLES.box,
   boxError: PICKER_FIELD_STYLES.boxError,
   value: { flex: 1, fontSize: 15 },
   placeholder: PICKER_FIELD_STYLES.placeholder,
 
   scrim: { backgroundColor: 'rgba(10, 24, 38, 0.38)' },
+  // החלון
   sheet: {
     position: 'absolute',
     start: SPACING.sm,
@@ -220,6 +229,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.fieldBorder,
     marginBottom: SPACING.xs,
   },
+  // אפשרות
   option: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -234,6 +244,7 @@ const styles = StyleSheet.create({
   clearText: { flex: 1, fontSize: 15, color: COLORS.textFaint },
 });
 
+// עיצוב בטלפון
 const kit = StyleSheet.create({
   box: { height: undefined, minHeight: 52, borderRadius: 16, backgroundColor: DK.surfaceSunk, borderColor: 'transparent' },
   boxError: { borderColor: '#FF4D5E' },

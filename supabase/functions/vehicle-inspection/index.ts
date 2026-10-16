@@ -1,3 +1,4 @@
+// פונקציית שרת: בדיקות קצין בטיחות (שמירה, חתימות, סגירה, ביטול)
 import { corsHeaders } from '../_shared/cors.ts';
 import { docusealFetch } from '../_shared/docuseal.ts';
 import { signaturePng } from '../_shared/checklistDocument.ts';
@@ -46,12 +47,16 @@ import {
  * Only the company's managers (and the platform owner) reach any of these.
  */
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
+// תבנית מזהה
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// זמן נעילה בחתימה
 const SIGN_LOCK_MINUTES = 3;
+// מקסימום ק"מ
 const MAX_ODOMETER = 9_999_999;
 
 type Submitter = { id?: number; submission_id?: number; slug?: string; role?: string; external_id?: string | null; sent_at?: string | null; created_at?: string };
@@ -77,32 +82,39 @@ type Inspection = {
   file_path: string | null;
 };
 
+// טקסט בשורה אחת
 function oneLine(value: unknown, max: number): string {
   return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '';
 }
 
+// התאריך של היום בישראל
 /** Today in Israel, as YYYY-MM-DD. */
 function israelToday(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
+// ק"מ או ריק
 /** A whole number of kilometres, or null. */
 function odometerOrNull(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > MAX_ODOMETER) return null;
   return value;
 }
 
+// המתנה
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// נתיב קובץ בדיקה שנסגרה בלי נהג
 /** The finished inspection closed without the driver lives beside the vehicle, in the evidence folder managers cannot change. */
 function closedFilePath(companyId: string, vehicleId: string, inspectionId: string): string {
   return `${companyId}/vehicle/${vehicleId}/signed/inspection-${inspectionId}.pdf`;
 }
 
+// נתיב קובץ שהנהג חתם
 function driverSignedPath(companyId: string, driverId: string, requestId: string): string {
   return `${companyId}/driver/${driverId}/signed/${requestId}.pdf`;
 }
 
+// מקבל בקשה ומבצע את הפעולה
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);
@@ -668,12 +680,14 @@ Deno.serve(async (req) => {
   }
 });
 
+// מוסיף ימים
 function addDays(day: string, days: number): string {
   const date = new Date(`${day}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
 
+// נייר המכתבים של החברה
 function letterheadOf(company: { name?: string | null; logo_url?: string | null } | null) {
   const logosPrefix = `${Deno.env.get('SUPABASE_URL') ?? ''}/storage/v1/object/public/company-logos/`;
   return {
@@ -682,17 +696,20 @@ function letterheadOf(company: { name?: string | null; logo_url?: string | null 
   };
 }
 
+// הגדרות הבדיקות של החברה
 async function companySettings(db: Db, companyId: string): Promise<{ repeatMonths: number; form: InspectionForm | null }> {
   const { data } = await db.from('vehicle_inspection_settings').select('repeat_months, form').eq('company_id', companyId).maybeSingle();
   const months = typeof data?.repeat_months === 'number' ? data.repeat_months : 1;
   return { repeatMonths: months, form: data?.form ? parseInspectionForm(data.form) : null };
 }
 
+// הרשימה שבדיקה מתחילה ממנה
 /** The list a new inspection starts from: the company's own, or the ready-made one. */
 async function companyForm(db: Db, companyId: string): Promise<InspectionForm> {
   return (await companySettings(db, companyId)).form ?? DEFAULT_INSPECTION_FORM;
 }
 
+// ה-PDF הגמור מ-DocuSeal
 /** The submitter's finished PDF, waiting a few seconds for DocuSeal to render it. */
 async function submitterDocument(submitterId: number): Promise<{ url: string | null; completedAt: string | null }> {
   let url: string | null = null;
@@ -713,6 +730,7 @@ async function submitterDocument(submitterId: number): Promise<{ url: string | n
   return { url, completedAt };
 }
 
+// שומר PDF
 async function storePdf(db: Db, url: string, path: string): Promise<boolean> {
   try {
     const pdf = await fetch(url);
@@ -724,6 +742,7 @@ async function storePdf(db: Db, url: string, path: string): Promise<boolean> {
   }
 }
 
+// איפה נשמר ה-PDF הגמור
 /**
  * Where the finished PDF is stored, fetching it from DocuSeal first if it
  * was not ready when the inspection finished. 'pending' while the driver
@@ -758,6 +777,7 @@ async function finishedDocumentPath(db: Db, inspection: Inspection): Promise<str
   return path;
 }
 
+// קובע את הבדיקה הבאה
 /**
  * After the officer signs: the vehicle's next inspection is this one's date
  * plus the company's months. An inspection older than one already signed
@@ -788,6 +808,7 @@ async function scheduleNextInspection(db: Db, inspection: { id: string; company_
   return nextDue;
 }
 
+// מחזיר את התאריך אחרי ביטול
 /** A cancelled inspection gives the vehicle back the date it had before it. */
 async function restoreScheduleAfterCancellation(db: Db, inspectionId: string, userId: string, now: string): Promise<boolean> {
   const { data: schedule, error: readError } = await db.from('vehicle_inspection_schedule').select('manual_next_due')
@@ -804,6 +825,7 @@ async function restoreScheduleAfterCancellation(db: Db, inspectionId: string, us
   return !error;
 }
 
+// מוחק הגשה ב-DocuSeal
 async function discardSubmission(submissionId: number): Promise<boolean> {
   try {
     const response = await docusealFetch(`/submissions/${submissionId}`, { method: 'DELETE' });
@@ -818,6 +840,7 @@ async function discardSubmission(submissionId: number): Promise<boolean> {
   }
 }
 
+// מנקה בקשה שנכשלה
 async function cleanupProvisionedRequest(db: Db, requestId: string, submitter: Submitter) {
   const submissionId = submitter.submission_id;
   if (!submissionId) return;
@@ -837,6 +860,7 @@ async function cleanupProvisionedRequest(db: Db, requestId: string, submitter: S
   }).eq('id', requestId).eq('status', 'pending');
 }
 
+// שולח הודעה לנהג
 /**
  * Tells the driver there is an inspection to sign. When the officer signs it
  * goes out once; a reminder a manager asks for goes out again, at most once

@@ -1,3 +1,4 @@
+// תיקיית מסמכים של נהג
 import React, { useCallback, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { BrandLoader } from '../../components/ui/BrandLoader';
@@ -35,6 +36,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DocumentCategory'>;
 
 type HeroIcon = keyof typeof Ionicons.glyphMap;
 
+// אייקון לכל תיקייה
 // These categories are all reached from the driver's dossier. Giving each one
 // a distinct icon keeps the shared page recognisable while preserving one
 // consistent navigation and document-management flow.
@@ -58,6 +60,7 @@ const CATEGORY_HERO_ICONS: Record<string, HeroIcon> = {
   child_detection: 'eye-outline',
 };
 
+// המסך: מסמכים, העלאה ותוקף
 export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const { ownerType, ownerId, category, title, allowDelete = true, requiresExpiry = false } = route.params;
   const { companyId, profile } = useCompany();
@@ -315,10 +318,12 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   );
 }
 
+// עיצוב בטלפון
 const styles = StyleSheet.create({
   heroIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: DK.glass, borderWidth: 1, borderColor: DK.glassBorder, alignItems: 'center', justifyContent: 'center' },
 });
 
+// עיצוב במחשב
 const desktopStyles = StyleSheet.create({
   wrap: { padding: 24, maxWidth: 560, alignSelf: 'center', width: '100%', gap: 14 },
   list: { gap: 10 },

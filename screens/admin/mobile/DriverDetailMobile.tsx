@@ -1,3 +1,4 @@
+// תיק נהג בטלפון
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +33,7 @@ import { t, dirIcon } from '../../../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+// אייקון לכל שורה
 const ICONS: Record<DriverCardIconKey, IconName> = {
   phone: 'call',
   email: 'mail',
@@ -84,6 +86,7 @@ type Props = {
   onRestore: () => void;
 };
 
+// הכותרת עם הנהג ואחריה כל השורות
 /**
  * A driver's record on the phone: who they are and how to reach them on
  * the night, then everything on file in short groups — each row says what
@@ -243,6 +246,7 @@ export function DriverDetailMobile(p: Props) {
   );
 }
 
+// שורה בתיק
 function GroupRow({ row, first, busy, onPress }: { row: DriverCardRow; first: boolean; busy: boolean; onPress: () => void }) {
   if (row.kind === 'value') {
     return (
@@ -278,6 +282,7 @@ function GroupRow({ row, first, busy, onPress }: { row: DriverCardRow; first: bo
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   bar: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },

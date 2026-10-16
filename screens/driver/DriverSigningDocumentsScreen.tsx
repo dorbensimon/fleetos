@@ -1,3 +1,4 @@
+// המסמכים לחתימה של הנהג
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -27,8 +28,10 @@ import { t, dirIcon, getLocale } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverSigningDocuments'>;
+// תאריך ושעה
 const time = (date: string) => new Date(date).toLocaleString(getLocale(), { dateStyle: 'short', timeStyle: 'short' });
 
+// המסך: רשימה, חתימה ובקשות
 export default function DriverSigningDocumentsScreen({ navigation, route }: Props) {
   const { profile, loading: profileLoading } = useCompany();
   const driverId = profile?.role === 'driver' ? profile.id : route.params?.driverId;
@@ -531,6 +534,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
     </DriverPage>
   );
 }
+// עיצוב בטלפון
 const styles = StyleSheet.create({
   flex: { flex: 1, gap: 2 },
   grow: { flex: 1 },
@@ -543,6 +547,7 @@ const styles = StyleSheet.create({
   resume: { minHeight: 44, paddingHorizontal: 16, borderRadius: 14, backgroundColor: DK.accent, alignItems: 'center', justifyContent: 'center' },
 });
 
+// עיצוב במחשב
 const ds = StyleSheet.create({
   wrap: { padding: 24, maxWidth: 520, alignSelf: 'center', width: '100%', gap: 12 },
   next: { marginBottom: -12 },

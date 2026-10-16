@@ -1,8 +1,10 @@
+// פונקציית שרת: תצוגה מקדימה של תבנית
 import { corsHeaders } from '../_shared/cors.ts';
 import { docusealFetch } from '../_shared/docuseal.ts';
 import { isSigningTemplateSourcePath } from '../_shared/signingPaths.ts';
 import { verifyUser } from '../_shared/verifyUser.ts';
 
+// מזהה התבניות הכלליות
 // Matches the sentinel used for global templates' storage paths (see
 // import-docuseal-templates) — storage policies require a uuid-shaped first
 // path segment, so global rows have no real company to key their files by.
@@ -16,6 +18,7 @@ type DocuSealTemplate = {
   }>;
 };
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -23,6 +26,7 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
+// מחזיר את פרטי התצוגה
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);

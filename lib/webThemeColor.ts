@@ -1,3 +1,4 @@
+// מתאים את צבע סרגל הדפדפן העליון לצבע המסך
 import { Platform } from 'react-native';
 
 /**
@@ -16,10 +17,12 @@ import { Platform } from 'react-native';
  * same colour is also painted on <html> and <body>, which only show there.
  */
 
+// צבע ברירת מחדל
 const FALLBACK = '#eef2f7';
 
 type Rgba = { r: number; g: number; b: number; a: number };
 
+// קורא צבע מטקסט
 function parseColor(value: string): Rgba | null {
   const m = value.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+%?))?\s*\)/);
   if (!m) return null;
@@ -28,9 +31,11 @@ function parseColor(value: string): Rgba | null {
   return { r: +m[1], g: +m[2], b: +m[3], a };
 }
 
+// הופך צבע לקוד hex
 const toHex = ({ r, g, b }: Rgba) =>
   '#' + [r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
 
+// הצבע שרכיב צובע
 /** An opaque colour an element paints itself, or null. */
 function paintedColor(el: Element): string | null {
   const style = getComputedStyle(el);
@@ -44,6 +49,7 @@ function paintedColor(el: Element): string | null {
   return bg && bg.a >= 0.9 ? toHex(bg) : null;
 }
 
+// הצבע הראשון בראש המסך
 /**
  * First opaque colour painted at (x, 1), topmost layer first.
  *
@@ -72,23 +78,28 @@ function colorAtTop(x: number): string | null {
   return body && body.a >= 0.9 ? toHex(body) : null;
 }
 
+// המזהה של פס הסטטוס
 // ── Home Screen app status strip ──────────────────────────────────────────
 // Opened from the iPhone Home Screen the app runs under a transparent status
 // bar with white symbols (public/index.html). On screens whose top is light,
 // those symbols would vanish, so a brand-blue strip sits behind them there.
 const STRIP_ID = 'icar-status-strip';
+// צבע פס הסטטוס
 const STRIP_COLOR = '#2f5bff';
 
+// האם האתר פתוח כאפליקציה ממסך הבית
 const isStandalone = () =>
   (navigator as Navigator & { standalone?: boolean }).standalone === true ||
   window.matchMedia?.('(display-mode: standalone)').matches === true;
 
+// האם הצבע בהיר
 function isLight(hex: string) {
   const n = parseInt(hex.slice(1), 16);
   const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.6;
 }
 
+// מעדכן את פס הסטטוס
 function syncStatusStrip(topColor: string) {
   if (!isStandalone()) return;
   let strip = document.getElementById(STRIP_ID);
@@ -104,6 +115,7 @@ function syncStatusStrip(topColor: string) {
   strip.style.backgroundColor = isLight(topColor) ? STRIP_COLOR : 'transparent';
 }
 
+// מחיל את הצבע
 function apply() {
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (!meta) return;
@@ -115,6 +127,7 @@ function apply() {
   syncStatusStrip(color);
 }
 
+// דוגם שוב את הצבע אחרי מעבר מסך
 /**
  * Re-sample after the new screen has painted, and once more after
  * transitions/data have settled.

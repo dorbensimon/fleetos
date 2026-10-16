@@ -1,3 +1,4 @@
+// עורך המסמכים: כתיבת טקסט על דף A4 והנחת שדות חתימה
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { EDITOR_HIGHLIGHT, EDITOR_PAGE, EDITOR_TEXT_COLORS, EDITOR_TEXT_SIZES, type EditorBlock, type EditorInline, type EditorPlacedField, type SigningFieldKind } from '../../../lib/companySigningTemplates';
@@ -46,32 +47,46 @@ export type EditorSnapshot = { draft: EditorDraft; blocks: EditorBlock[]; placed
 export type DocumentEditorHandle = { snapshot: () => EditorSnapshot };
 
 const { width: PAGE_W, height: PAGE_H, padX: PAD_X, padY: PAD_Y, headerH: HEADER_H, headerGap: HEADER_GAP } = EDITOR_PAGE;
+// שדות נשארים מתחת לנייר המכתבים
 /** Fields stay below the letterhead. */
 const TOP_MIN = PAD_Y + HEADER_H + HEADER_GAP / 2;
+// מגביל מספר לטווח
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+// פיקסלים בסנטימטר
 /** An A4 page is 21cm wide, so this many page pixels make a centimetre. */
 const PX_PER_CM = PAGE_W / 21;
+// מרחק הצמדה לקו
 /** How close, in page pixels, a dragged field has to come to a line to snap to it. */
 const SNAP_PX = 6;
+// פיקסלים לסנטימטרים
 const cm = (px: number) => (Math.round((px / PX_PER_CM) * 10) / 10).toLocaleString(getLocale());
 type Rect = { l: number; t: number; r: number; b: number };
 
+// מנקה טקסט ל-HTML
 const escapeHtml = (value: string) =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+// מסמך חדש עם כותרת
 export function initialEditorDraft(title: string): EditorDraft {
   return { html: `<h1>${escapeHtml(title)}</h1><p><br></p>`, fields: [] };
 }
 
+// מונה למזהים
 let seq = 0;
+// מזהה חדש
 const newId = (prefix: string) => `${prefix}${Date.now().toString(36)}${(seq += 1)}`;
 
+// גדלי טקסט מותרים
 /** Only what the editor itself makes is read back (the server keeps the same lists). */
 const SAFE_SIZES = new Set<number>(EDITOR_TEXT_SIZES.map((s) => s.px));
+// צבעים מותרים
 const SAFE_COLORS = new Set<string>(EDITOR_TEXT_COLORS.map((c) => c.hex));
+// סוגי שדות מותרים
 const SAFE_KINDS = new Set<string>(Object.keys(FIELD_META));
+// יישורים מותרים
 const SAFE_ALIGN = new Set(['center', 'left', 'justify']);
 
+// פותח שוב מסמך שמור בעורך
 /**
  * A saved document (one of the owner's templates, or a form's current text)
  * opened again in the editor: the block model turned back into the page's
@@ -143,15 +158,18 @@ export function editorDraftFromContent(content: unknown, title?: string, fromTit
   return { html: html || '<p><br></p>', fields };
 }
 
+// גובה שורת טקסט
 /** One line of body text on the page (16px at 1.8 line height). */
 const LINE_H = Math.round(16 * 1.8);
 
+// גודל ברירת מחדל לשדה
 /** Default size in page pixels: as tall as a line of text, so a field sits in the text like a word; a checkbox is a small square on the line. */
 function sizeOf(kind: SigningFieldKind) {
   if (kind === 'checkbox') return { w: 22, h: 22 };
   return { w: Math.round(FIELD_META[kind].size.w * PAGE_W), h: LINE_H };
 }
 
+// שורות 'אזור החתימה המוכן'
 /** The lines the "ready signing area" writes, each followed by its field. */
 const signingArea = (): [SigningFieldKind, string][] => [
   ['driver_full_name', t('editor.block.driverName')],
@@ -162,11 +180,16 @@ const signingArea = (): [SigningFieldKind, string][] => [
 
 type Marks = { bold?: boolean; italic?: boolean; underline?: boolean; size?: number; color?: string; highlight?: boolean };
 
+// גודל טקסט רגיל
 const BODY_SIZE = 16;
+// צבע טקסט רגיל
 const BODY_COLOR = '#111111';
+// גדלים מותרים
 const SIZE_SET = new Set<number>(EDITOR_TEXT_SIZES.map((s) => s.px));
+// צבעים מותרים
 const COLOR_SET = new Set<string>(EDITOR_TEXT_COLORS.map((c) => c.hex));
 
+// צבע לקוד hex
 /** "rgb(0, 136, 204)" or "#0075B3" as "#0075B3"; null for transparent or unknown. */
 function toHex(value: string): string | null {
   const v = value.trim();
@@ -176,6 +199,7 @@ function toHex(value: string): string | null {
   return `#${[m[1], m[2], m[3]].map((n) => Number(n).toString(16).padStart(2, '0')).join('')}`.toUpperCase();
 }
 
+// הגודל, הצבע וההדגשה של קטע טקסט
 /** The size, colour and marker an element sets on its text, on top of what it inherits. */
 function styledMarks(el: HTMLElement, marks: Marks): Pick<Marks, 'size' | 'color' | 'highlight'> {
   let { size, color, highlight } = marks;
@@ -192,9 +216,11 @@ function styledMarks(el: HTMLElement, marks: Marks): Pick<Marks, 'size' | 'color
   return { size, color, highlight };
 }
 
+// האם לשני קטעים אותו עיצוב
 const sameMarks = (a: Marks, b: Marks) =>
   !!a.bold === !!b.bold && !!a.italic === !!b.italic && !!a.underline === !!b.underline && a.size === b.size && a.color === b.color && !!a.highlight === !!b.highlight;
 
+// אוסף את קטעי הטקסט בשורה
 function inlines(node: Node, marks: Marks, out: EditorInline[]) {
   node.childNodes.forEach((child) => {
     if (child.nodeType === Node.TEXT_NODE) {
@@ -225,6 +251,7 @@ function inlines(node: Node, marks: Marks, out: EditorInline[]) {
   });
 }
 
+// מאחד קטעים עם אותו עיצוב
 /** Joins neighbouring runs with the same marks and drops empty ones. */
 function compact(items: EditorInline[]): EditorInline[] {
   const out: EditorInline[] = [];
@@ -243,6 +270,7 @@ function compact(items: EditorInline[]): EditorInline[] {
   return out;
 }
 
+// היישור של פסקה
 function alignOf(el: HTMLElement): EditorBlock['align'] {
   const value = el.style.textAlign || el.getAttribute('align') || '';
   if (value === 'center') return 'center';
@@ -251,6 +279,7 @@ function alignOf(el: HTMLElement): EditorBlock['align'] {
   return 'right';
 }
 
+// הופך את תוכן העורך לנתונים לשמירה
 export function serializeEditor(root: HTMLElement): EditorBlock[] {
   const blocks: EditorBlock[] = [];
   let loose: EditorInline[] = [];
@@ -299,15 +328,19 @@ export function serializeEditor(root: HTMLElement): EditorBlock[] {
 
 
 type StyleKind = 'size' | 'color' | 'hl';
+// שם התכונה לכל סוג עיצוב
 const STYLE_PROP = { size: 'fontSize', color: 'color', hl: 'backgroundColor' } as const;
+// קידומת לסימון זמני
 const MARKER = 'fleet-';
 
+// ערך העיצוב
 function styleValue(kind: StyleKind, value: string) {
   if (kind === 'size') return `${value}px`;
   if (kind === 'color') return `#${value}`;
   return value === '1' ? EDITOR_HIGHLIGHT : 'transparent';
 }
 
+// מחליף סימונים זמניים בעיצוב אמיתי
 /**
  * The browser marks a styled selection with a stand-in font name
  * ("fleet-size-20"); this swaps each mark for a span with the real style and
@@ -332,6 +365,7 @@ function applyStyleMarks(root: HTMLElement) {
   });
 }
 
+// מוציא קו מפריד מתוך פסקה
 /** A divider line belongs between paragraphs, never inside one. */
 function liftDividers(root: HTMLElement) {
   root.querySelectorAll('hr').forEach((hr) => {
@@ -341,9 +375,11 @@ function liftDividers(root: HTMLElement) {
   });
 }
 
+// שומר על הסימון כשלוחצים על כפתור בסרגל
 /** Toolbar buttons keep the editor's selection: mousedown would otherwise move focus off the page. */
 const keepSelection = (event: React.MouseEvent) => event.preventDefault();
 
+// כפתור בסרגל הכלים
 function Tb({ on, label, onPress, children }: { on?: boolean; label: string; onPress: () => void; children: React.ReactNode }) {
   return (
     <button type="button" className={`sd-tb${on ? ' sd-on' : ''}`} title={label} aria-label={label} aria-pressed={on} onMouseDown={keepSelection} onClick={onPress}>
@@ -352,6 +388,7 @@ function Tb({ on, label, onPress, children }: { on?: boolean; label: string; onP
   );
 }
 
+// כפתור בסרגל שפותח רשימה
 /** A toolbar button that opens a short list of choices under it. */
 function TbMenu({ label, open, onToggle, onClose, button, children }: { label: string; open: boolean; onToggle: () => void; onClose: () => void; button: React.ReactNode; children: React.ReactNode }) {
   const wrap = useRef<HTMLDivElement>(null);
@@ -385,6 +422,7 @@ function TbMenu({ label, open, onToggle, onClose, button, children }: { label: s
   );
 }
 
+// פריט ברשימה
 function MenuItem({ on, onPress, children }: { on: boolean; onPress: () => void; children: React.ReactNode }) {
   return (
     <button type="button" role="menuitemradio" aria-checked={on} className={`sd-menu-item${on ? ' sd-on' : ''}`} onClick={onPress}>
@@ -394,12 +432,14 @@ function MenuItem({ on, onPress, children }: { on: boolean; onPress: () => void;
   );
 }
 
+// התאריך של היום על המסמך
 /** Today as the document shows it: 23/09/2026. */
 export function letterheadDate(date = new Date()) {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
 }
 
+// נייר המכתבים: לוגו, שם ותאריך
 /**
  * The company's letterhead at the top of the first page: logo and name on the
  * right, the date on the left. It is not part of the editable text; the server
@@ -432,6 +472,7 @@ export function Letterhead() {
 
 type ToolState = { block: string; bold: boolean; italic: boolean; underline: boolean; ul: boolean; ol: boolean; align: string; size: number; color: string; highlight: boolean };
 
+// העורך עצמו: סרגל כלים, דף ושדות
 export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: EditorDraft; onSignatureChange?: (has: boolean) => void }>(function DocumentEditor(
   { initial, onSignatureChange },
   ref,
@@ -1180,6 +1221,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
   );
 });
 
+// תצוגת קריאה של העמוד הראשון
 /** A read-only look at the first page with its fields, for the review step. */
 export function EditorPagePreview({ html, fields }: { html: string; fields: EditorPlacedField[] }) {
   return (
@@ -1197,6 +1239,7 @@ export function EditorPagePreview({ html, fields }: { html: string; fields: Edit
   );
 }
 
+// שדה בחלונית הצד לגרירה לדף
 /** A field in the side panel: drag it onto the page, or click it to drop it into view. */
 export function FieldTool({
   kind,

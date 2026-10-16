@@ -1,3 +1,4 @@
+// הגדרות התראות: אילו התראות פעילות וכמה זמן מראש
 import { supabase } from './supabase';
 import { VEHICLE_FOLDER_ALERTS, isVehicleFolderNotification } from './vehicleFolderAlerts';
 import { t, getLocale } from './i18n';
@@ -60,6 +61,7 @@ export interface NotificationTypeInfo {
   description: string;
 }
 
+// שם בלי המילה 'תוקף' (למקומות צפופים)
 /** A label without its "validity" wording, for compact places ("תוקף ביטוח חובה" → "ביטוח חובה"). */
 export function withoutValidity(label: string): string {
   const [prefix, suffix = ''] = t('prefs.validityOf', { label: '\u0000' }).split('\u0000');
@@ -69,6 +71,7 @@ export function withoutValidity(label: string): string {
   return short || label;
 }
 
+// מתג לכל תיקיית רכב
 /** One toggle per vehicle folder (see lib/vehicleFolderAlerts.ts and migration 90). */
 const vehicleFolderTypes = (descriptionKey: string): NotificationTypeInfo[] =>
   VEHICLE_FOLDER_ALERTS.map((folder) => ({
@@ -80,6 +83,7 @@ const vehicleFolderTypes = (descriptionKey: string): NotificationTypeInfo[] =>
     get description() { return t(descriptionKey); },
   }));
 
+// סוגי ההתראות של מנהל, עם הסבר
 /** Hebrew label + short explanation shown per toggle, in the PRD's table order. */
 export const ADMIN_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
   {
@@ -140,6 +144,7 @@ export const ADMIN_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
   },
 ];
 
+// סוגי ההתראות של נהג
 export const DRIVER_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
   {
     type: 'signature_request_assigned',
@@ -179,6 +184,7 @@ export const DRIVER_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
   ...vehicleFolderTypes('prefs.type.myVehicleFolderDesc'),
 ];
 
+// סוגי ההתראות של הבעלים
 /**
  * The owner's alerts (migration 102): about companies and their managers,
  * never about drivers. Grouped in notificationGroups by OWNER_GROUP_OF.
@@ -226,6 +232,7 @@ export const OWNER_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
   },
 ];
 
+// קבוצה לכל התראת בעלים
 const OWNER_GROUP_OF: Partial<Record<NotificationType, 'customers' | 'billing' | 'compliance'>> = {
   owner_company_activated: 'customers',
   owner_company_not_activated: 'customers',
@@ -237,6 +244,7 @@ const OWNER_GROUP_OF: Partial<Record<NotificationType, 'customers' | 'billing' |
   owner_carrier_license_expiry: 'compliance',
 };
 
+// כל סוגי ההתראות
 export const NOTIFICATION_TYPES: NotificationTypeInfo[] = [
   ...ADMIN_NOTIFICATION_TYPES,
   ...DRIVER_NOTIFICATION_TYPES,
@@ -250,6 +258,7 @@ interface NotificationPreferenceRow {
   enabled: boolean;
 }
 
+// אילו התראות פעילות למשתמש (ברירת מחדל: הכול פעיל)
 /**
  * Returns a full map of all 6 known types → enabled state for this user.
  * Types with no row in the table default to `true` (see the PRD's default
@@ -276,6 +285,7 @@ export async function getPreferences(userId: string): Promise<NotificationPrefer
   return defaults;
 }
 
+// מפעיל או מכבה התראה אחת
 /**
  * Sets a single preference immediately (no batch/save step, per the PRD's
  * "no separate save button" acceptance criterion). Upserts on the
@@ -297,6 +307,7 @@ export async function setPreference(
   if (error) throw error;
 }
 
+// מפעיל או מכבה כמה התראות יחד
 /** Sets several types at once ("turn all on/off"), in one request. */
 export async function setPreferences(
   userId: string,
@@ -314,15 +325,19 @@ export async function setPreferences(
   if (error) throw error;
 }
 
+// כמה ימים לפני פקיעת תיקיית רכב מתריעים
 /**
  * Company-wide lead time for vehicle folder expiry alerts (migration 90):
  * how many days before a folder expires the "about to expire" alert goes
  * out. One value per company, shared by all its admins and drivers.
  */
 export const DEFAULT_VEHICLE_EXPIRY_LEAD_DAYS = 20;
+// מינימום ימים
 export const MIN_VEHICLE_EXPIRY_LEAD_DAYS = 1;
+// מקסימום ימים
 export const MAX_VEHICLE_EXPIRY_LEAD_DAYS = 90;
 
+// מביא כמה ימים מראש מתריעים
 export async function getVehicleExpiryLeadDays(companyId: string): Promise<number> {
   const { data, error } = await supabase
     .from('companies')
@@ -333,6 +348,7 @@ export async function getVehicleExpiryLeadDays(companyId: string): Promise<numbe
   return (data as { vehicle_expiry_lead_days: number | null }).vehicle_expiry_lead_days ?? DEFAULT_VEHICLE_EXPIRY_LEAD_DAYS;
 }
 
+// שומר כמה ימים מראש מתריעים
 /** Company rows are owner-only under RLS; admins go through this narrow RPC. */
 export async function setVehicleExpiryLeadDays(companyId: string, days: number): Promise<void> {
   const { error } = await supabase.rpc('set_vehicle_expiry_lead_days', { p_company_id: companyId, p_days: days });
@@ -357,8 +373,10 @@ export interface LeadRule {
   presets: number[];
 }
 
+// כללי בחירת הימים לתיקיות
 const FOLDER_LEAD_RULE: LeadRule = { unit: 'days', min: 1, max: 90, step: 1, presets: [7, 14, 30, 60] };
 
+// כללי 'כמה זמן מראש' לכל סוג
 export const LEAD_RULES: Partial<Record<NotificationType, LeadRule>> = {
   ...Object.fromEntries(VEHICLE_FOLDER_ALERTS.map((folder) => [folder.notificationType, FOLDER_LEAD_RULE])),
   driver_meeting_due: { unit: 'days', min: 1, max: 30, step: 1, presets: [3, 7, 14, 30] },
@@ -369,9 +387,12 @@ export const LEAD_RULES: Partial<Record<NotificationType, LeadRule>> = {
   vehicle_odometer_stale: { unit: 'idle', min: 7, max: 90, step: 1, presets: [14, 30, 45, 60] },
 };
 
+// ברירת מחדל למילויים (ימים)
 export const MEETING_LEAD_DEFAULT = 7;
+// ברירת מחדל לטיפול (ק"מ)
 export const SERVICE_LEAD_KM_DEFAULT = 1000;
 
+// ברירות מחדל לסוגים בלי ערך משלהם
 /** What a type without its own value uses (migrations 100 and 101); folders use the company default. */
 const FIXED_LEAD_DEFAULTS: Partial<Record<NotificationType, number>> = {
   driver_meeting_due: MEETING_LEAD_DEFAULT,
@@ -382,6 +403,7 @@ const FIXED_LEAD_DEFAULTS: Partial<Record<NotificationType, number>> = {
   vehicle_odometer_stale: 30,
 };
 
+// הטקסט של 'כמה זמן מראש'
 /** "20 ימים לפני", "1,000 ק״מ לפני הטיפול", "30 ימים בלי עדכון". */
 export function leadPhrase(value: number, rule: LeadRule): string {
   if (rule.unit === 'km') return t('prefs.timing.kmBefore', { v1: value.toLocaleString(getLocale()) });
@@ -389,6 +411,7 @@ export function leadPhrase(value: number, rule: LeadRule): string {
   return value === 1 ? t('prefs.timing.oneDayBefore') : t('prefs.timing.daysBefore', { value });
 }
 
+// המילה שאחרי המספר (ימים/ק"מ)
 /** The words after the number in a lead editor. */
 export function leadUnitWord(value: number, rule: LeadRule): string {
   if (rule.unit === 'km') return t('prefs.timing.kmBeforeUnit');
@@ -396,6 +419,7 @@ export function leadUnitWord(value: number, rule: LeadRule): string {
   return value === 1 ? t('prefs.timing.dayBeforeUnit') : t('prefs.timing.daysBeforeUnit');
 }
 
+// הסבר לקוראי מסך לכפתורי + ו-
 /** Which way "+" moves the alert, for screen readers. */
 export function leadStepLabels(rule: LeadRule): { up: string; down: string } {
   return rule.unit === 'idle' ? { up: t('prefs.timing.waitLonger'), down: t('prefs.timing.waitLess') } : { up: t('prefs.timing.earlier'), down: t('prefs.timing.later') };
@@ -410,6 +434,7 @@ export interface NotificationGroup {
   compact?: boolean;
 }
 
+// קבוצה לכל התראת מנהל
 const ADMIN_GROUP_OF: Partial<Record<NotificationType, NotificationGroup['key']>> = {
   driver_profile_update: 'drivers',
   driver_document_upload: 'drivers',
@@ -424,6 +449,7 @@ const ADMIN_GROUP_OF: Partial<Record<NotificationType, NotificationGroup['key']>
   vehicle_safety_check_due: 'care',
 };
 
+// החלקים של דף הגדרות ההתראות
 /** The settings page's sections, the same on the phone and the desktop. */
 export function notificationGroups(types: NotificationTypeInfo[], isDriver: boolean, isOwner = false): NotificationGroup[] {
   if (isOwner) {
@@ -470,6 +496,7 @@ export interface NotificationLeads {
   perType: boolean;
 }
 
+// מחשב את 'כמה זמן מראש' לכל סוג
 function resolveLeads(folderDefault: number, own: Record<string, unknown>, perType: boolean): NotificationLeads {
   const values: Partial<Record<NotificationType, number>> = {};
   const custom = new Set<NotificationType>();
@@ -486,6 +513,7 @@ function resolveLeads(folderDefault: number, own: Record<string, unknown>, perTy
   return { values, custom, perType };
 }
 
+// מביא את 'כמה זמן מראש' של החברה
 export async function getNotificationLeads(companyId: string): Promise<NotificationLeads> {
   const { data, error } = await supabase
     .from('companies')
@@ -501,6 +529,7 @@ export async function getNotificationLeads(companyId: string): Promise<Notificat
   return resolveLeads(days, {}, false);
 }
 
+// שומר 'כמה זמן מראש' לסוג אחד
 /** Sets one type's own lead time (admins, through the RPC from migration 100). */
 export async function setNotificationLead(companyId: string, type: NotificationType, value: number): Promise<void> {
   const { error } = await supabase.rpc('set_notification_lead', { p_company_id: companyId, p_type: type, p_value: value });

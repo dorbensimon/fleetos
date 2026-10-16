@@ -1,5 +1,7 @@
+// האם רכב חייב טכוגרף
 import type { VehicleType } from './adminApi';
 
+// משאיות ואוטובוסים חייבים טכוגרף
 /**
  * The current fleet model distinguishes heavy goods vehicles and buses, but
  * does not store gross vehicle weight or a paid-passenger-service flag.

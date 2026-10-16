@@ -1,3 +1,4 @@
+// רשימת כל המסכים והפרמטרים שכל מסך מקבל
 export type RootStackParamList = {
   Login: undefined;
   /** A legal page (terms, privacy, cookies, accessibility), open to everyone, signed in or not. */

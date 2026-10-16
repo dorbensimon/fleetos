@@ -1,3 +1,4 @@
+// 'מילוי חדש': בחירת נהג וטופס
 import React, { useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { SigningTemplate } from '../../../lib/docuseal';
@@ -9,6 +10,7 @@ import { Sheet, useSheetClose } from './Sheet.web';
 import { WhenPill } from './MeetingsDue.web';
 import { t, dirIcon, textStart } from '../../../lib/i18n';
 
+// החלון
 /**
  * "מפגש חדש" from "מסמכים חתומים": pick the one driver the meeting is with,
  * and the meeting opens. A "רשימת סעיפים" form is never sent as is; it is

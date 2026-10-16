@@ -1,3 +1,4 @@
+// טיפוסים של דף החברה
 export interface CompanyUser {
   id: string;
   role: 'admin' | 'driver';

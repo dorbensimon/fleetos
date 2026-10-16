@@ -1,3 +1,5 @@
+// קוד הציור של החתימה, משותף לדפדפן ולטלפון
+// הקוד שמצייר קו חלק לפי תנועת האצבע/העכבר
 /**
  * The drawing code shared by the signature surface on the web (a canvas in
  * the page) and on the phone (the same canvas inside a WebView). It is kept

@@ -1,3 +1,4 @@
+// המסמכים לחתימה של החברה: העלאה, עורך, שדות, נוסחים
 import { supabase } from './supabase';
 import { requestErrorDetails } from './requestError';
 import { functionErrorMessage } from './functionError';
@@ -40,6 +41,7 @@ export type EditorInline =
   /** A field set into the line of text (the id of an EditorPlacedField with the same `slot`). */
   | { slot: string };
 
+// גדלי הטקסט בעורך המסמכים
 /**
  * The editor's page is an A4 sheet at 96dpi. The server renders the same page
  * size, margins and type sizes, so a field dropped on the editor lands on the
@@ -57,6 +59,7 @@ export const EDITOR_TEXT_SIZES = [
   { px: 20, get label() { return t('editor.size.large'); } },
   { px: 24, get label() { return t('editor.size.xlarge'); } },
 ] as const;
+// צבעי הטקסט בעורך
 export const EDITOR_TEXT_COLORS = [
   { hex: '#111111', get label() { return t('editor.color.black'); } },
   { hex: '#5C6773', get label() { return t('editor.color.gray'); } },
@@ -64,8 +67,10 @@ export const EDITOR_TEXT_COLORS = [
   { hex: '#D92D20', get label() { return t('editor.color.red'); } },
   { hex: '#12805C', get label() { return t('editor.color.green'); } },
 ] as const;
+// צבע ההדגשה בעורך
 export const EDITOR_HIGHLIGHT = '#FFF1A8';
 
+// מידות עמוד A4 בעורך
 export const EDITOR_PAGE = { width: 794, height: 1123, padX: 72, padY: 64, headerH: 72, headerGap: 32 } as const;
 
 /** A field dropped freely on an editor page. Pixels from the page's top-left corner. */
@@ -88,10 +93,12 @@ export type EditorBlock = {
   content: EditorInline[][];
 };
 
+// מזהה לטיוטה חדשה
 export function newDraftId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(16)}-0000-4000-8000-${Math.random().toString(16).slice(2, 14).padEnd(12, '0')}`;
 }
 
+// קורא לפונקציית השרת של המסמכים
 async function invoke<T>(body: Record<string, unknown>, fallback: string): Promise<T> {
   const { data, error } = await supabase.functions.invoke('company-signing-template', { body });
   // Transport errors come back in English; show the Hebrew fallback instead.
@@ -99,6 +106,7 @@ async function invoke<T>(body: Record<string, unknown>, fallback: string): Promi
   return data as T;
 }
 
+// סוגי הקבצים שאפשר להעלות
 const EXTENSIONS: Record<string, string> = {
   'application/pdf': 'pdf',
   'image/png': 'png',
@@ -106,6 +114,7 @@ const EXTENSIONS: Record<string, string> = {
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
 };
 
+// סוג הקובץ שנבחר (או כלום אם לא נתמך)
 export function uploadExtension(file: File): string | null {
   const byType = EXTENSIONS[file.type];
   if (byType) return byType;
@@ -114,6 +123,7 @@ export function uploadExtension(file: File): string | null {
   return ext && ['pdf', 'png', 'jpg', 'docx'].includes(ext) ? ext : null;
 }
 
+// מעלה קובץ ומחזיר את ה-PDF של הטיוטה
 /** Uploads the picked file and returns the path of the draft's PDF (Word and images are converted on the server). */
 export async function uploadSigningDraft(companyId: string, draftId: string, file: File): Promise<string> {
   const ext = uploadExtension(file);
@@ -133,6 +143,7 @@ export async function uploadSigningDraft(companyId: string, draftId: string, fil
   return pdfPath;
 }
 
+// קישור זמני לצפייה במסמך
 export async function signedDocumentUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from('documents').createSignedUrl(path, 60 * 30);
   if (error || !data?.signedUrl) throw new Error(t('common.openFileFailed'));
@@ -148,12 +159,14 @@ export type FormTarget = { sourceTemplateId: string } | { replace: { templateId:
 /** A saved form; `pendingOld` = drivers still waiting to sign the version it replaced. */
 export type SavedForm = { template: SigningTemplate; pendingOld?: number };
 
+// למי המסמך מיועד, בפורמט לשרת
 export function formTargetBody(target?: FormTarget): Record<string, unknown> {
   if (!target) return { action: 'create' };
   if ('replace' in target) return { action: 'replace', templateId: target.replace.templateId, expectedVersion: target.replace.expectedVersion };
   return { action: 'create', sourceTemplateId: target.sourceTemplateId };
 }
 
+// יוצר מסמך מקובץ שהועלה עם שדות שהונחו עליו
 export async function createTemplateFromFields(companyId: string, draftId: string, title: string, fields: PlacedSigningField[], target?: FormTarget): Promise<SavedForm> {
   const payload = fields.map(({ kind, label, page, x, y, w, h }) => ({ kind, label, page, x, y, w, h }));
   return callFunction<SavedForm>(
@@ -163,6 +176,7 @@ export async function createTemplateFromFields(companyId: string, draftId: strin
   );
 }
 
+// יוצר מסמך מהעורך
 export async function createTemplateFromEditor(companyId: string, draftId: string, title: string, blocks: EditorBlock[], fields: EditorPlacedField[], target?: FormTarget): Promise<SavedForm> {
   const payload = fields.map(({ kind, label, x, y, w, h }) => ({ kind, label, x, y, w, h }));
   return callFunction<SavedForm>(
@@ -180,6 +194,7 @@ export type FormVersion = {
   docuseal_template_id: number | null;
 };
 
+// היסטוריית הנוסחים של טופס
 export async function listFormVersions(templateId: string): Promise<FormVersion[]> {
   const { data, error } = await supabase.from('signing_template_versions')
     .select('version, replaced_at, source_file_path, docuseal_template_id')
@@ -189,6 +204,7 @@ export async function listFormVersions(templateId: string): Promise<FormVersion[
   return (data ?? []) as FormVersion[];
 }
 
+// מחזיר נוסח קודם של טופס
 export async function restoreFormVersion(companyId: string, templateId: string, version: number, expectedVersion: number) {
   return callFunction<{ template: SigningTemplate; pendingOld: number }>(
     'company-signing-template',

@@ -1,3 +1,4 @@
+// חלון איפוס סיסמה לנהג
 import { Modal, Pressable, TextInput, TouchableOpacity, View } from 'react-native';
 import { AppText, PrimaryButton } from '../ui';
 import { COLORS } from '../../lib/theme';
@@ -6,6 +7,7 @@ import { modalKit as kit, modalStyles as styles } from './driverModalStyles';
 import { EditField, FieldMessage, KitSheet, PrimaryAction, SheetActions } from '../driverKit';
 import { t } from '../../lib/i18n';
 
+// החלון
 export function ResetDriverPasswordModal({
   visible,
   driverName,

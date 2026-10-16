@@ -1,5 +1,7 @@
+// תשובה לכתובות ישנות שהוסרו
 import { corsHeaders } from './cors.ts';
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -7,6 +9,7 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
+// מחזיר 'הוסר' לכתובת ישנה
 /**
  * Keeps the retired endpoint names backward-compatible while preventing their
  * identical 410 handlers from drifting apart.

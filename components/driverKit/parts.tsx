@@ -1,3 +1,4 @@
+// חלקים נוספים בערכת הטלפון: שדות, אריחים, הודעות, חיפוש, מתג, חלון תחתון
 import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -29,12 +30,16 @@ import { t, dirIcon, textStart, textDirection, dirSign, getLocale } from '../../
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+// האם האנימציה רצה בטלפון
 const NATIVE_DRIVER = Platform.OS !== 'web';
+// עקומת אנימציה
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+// עקומת אנימציה לחלון שעולה
 const EASE_DRAWER = Easing.bezier(0.32, 0.72, 0, 1);
 
 // ── Sections and lines ────────────────────────────────────────────────────
 
+// חלק עם כותרת
 /** A quiet heading above a white surface — the unit every settings-style screen is built from. */
 export function KitSection({
   title,
@@ -66,6 +71,7 @@ export function KitSection({
   );
 }
 
+// שורת מידע: אייקון, כותרת וערך
 /** A read-only line: icon tile, label, value. Empty values say so in words. */
 export function InfoLine({
   icon,
@@ -117,6 +123,7 @@ export function InfoLine({
   return focusId ? <FocusTarget id={focusId} tint={DK.accent}>{line}</FocusTarget> : line;
 }
 
+// תיבת טקסט
 /** A 52pt text input in the kit's look: sunk at rest, white with a blue ring while typing. */
 export function KitInput({ ltr, hasError, style, onFocus, onBlur, ...rest }: TextInputProps & { ltr?: boolean; hasError?: boolean }) {
   const [focused, setFocused] = useState(false);
@@ -138,6 +145,7 @@ export function KitInput({ ltr, hasError, style, onFocus, onBlur, ...rest }: Tex
   );
 }
 
+// שדה עריכה: כותרת, תיבה ושגיאה
 /** An editable field inside a surface: label above, the input, and its error or hint under it. */
 export function EditField({
   label,
@@ -208,6 +216,7 @@ export function EditField({
   return focusId ? <FocusTarget id={focusId} tint={DK.accent}>{field}</FocusTarget> : field;
 }
 
+// שגיאה או רמז מתחת לשדה
 export function FieldMessage({ error, hint }: { error?: string | null; hint?: string | null }) {
   if (error) {
     return (
@@ -229,6 +238,7 @@ export function FieldMessage({ error, hint }: { error?: string | null; hint?: st
 
 // ── Small pieces ──────────────────────────────────────────────────────────
 
+// תגית מספר
 /** A count beside a row or on a button; hidden at zero. */
 export function CountPill({ count, tone = 'accent' }: { count: number; tone?: 'accent' | 'soon' | 'expired' | 'muted' }) {
   if (!count) return null;
@@ -243,6 +253,7 @@ export function CountPill({ count, tone = 'accent' }: { count: number; tone?: 'a
   );
 }
 
+// ריבוע ראשי תיבות
 /** A person's initial on a rounded square. */
 export function Avatar({ name, size = 48, tone = 'soft' }: { name?: string | null; size?: number; tone?: 'soft' | 'accent' | 'night' | 'muted' }) {
   const initial = (name || '?').trim().charAt(0) || '?';
@@ -265,6 +276,7 @@ export function Avatar({ name, size = 48, tone = 'soft' }: { name?: string | nul
   );
 }
 
+// אריח פעולה
 /** A square action tile: icon, an optional big value, title and caption. Two per row. */
 export function Tile({
   icon,
@@ -312,11 +324,13 @@ export function Tile({
   );
 }
 
+// רשת אריחים, שניים בשורה
 /** A two-per-row grid for `Tile`s. */
 export function TileGrid({ children }: { children: ReactNode }) {
   return <View style={styles.tiles}>{children}</View>;
 }
 
+// הודעה צבעונית בתוך הדף
 /** An inline message in the colour of its meaning, with an optional action. */
 export function Banner({
   tone = 'soon',
@@ -362,6 +376,7 @@ export function Banner({
   );
 }
 
+// מצב ריק
 /** A calm, composed empty state: icon, what's missing, what will fill it. */
 export function EmptyPanel({
   icon,
@@ -406,6 +421,7 @@ export function EmptyPanel({
   );
 }
 
+// מצב טעינה
 export function LoadingPanel() {
   return (
     <Surface>
@@ -414,6 +430,7 @@ export function LoadingPanel() {
   );
 }
 
+// מצב שגיאה עם 'נסו שוב'
 export function ErrorPanel({ message, hint, onRetry }: { message?: string; hint?: string; onRetry?: () => void }) {
   return (
     <Surface>
@@ -422,6 +439,7 @@ export function ErrorPanel({ message, hint, onRetry }: { message?: string; hint?
   );
 }
 
+// שורת פעולה ברוחב מלא
 /** A full-width row inside a surface for one clear action (sign out, archive, delete). */
 export function ActionRow({
   icon,
@@ -465,6 +483,7 @@ export function ActionRow({
 
 // ── On the night hero ─────────────────────────────────────────────────────
 
+// חיפוש שקוף על הכותרת
 /** Search on the night hero: frosted glass, white text, a clear button once there's a query. */
 export function GlassSearch({
   value,
@@ -502,6 +521,7 @@ export function GlassSearch({
   );
 }
 
+// מספר גדול על הכותרת
 /** A big number on frosted glass with what it counts; taps through when it leads somewhere. */
 export function HeroStat({
   value,
@@ -543,6 +563,7 @@ export function HeroStat({
   );
 }
 
+// מתג בין אפשרויות
 /**
  * A two-or-more way switch. The thumb slides under the chosen option
  * (spring, no bounce) so the change reads as one object moving.
@@ -617,6 +638,7 @@ export function Segmented<T extends string>({
 
 // ── On the canvas ─────────────────────────────────────────────────────────
 
+// כפתורי סינון
 /**
  * Horizontal filter pills, first option at the right. The chosen one is
  * ink with white text — the only dark pill in the row.
@@ -668,6 +690,7 @@ export function FilterPills<T extends string>({
   );
 }
 
+// כפתור צף כחול (הוספה)
 /**
  * The one floating action on a list screen: a blue disc that sits above the
  * home indicator. `visible` fades it in and out, for a screen that shows it
@@ -704,6 +727,7 @@ export function Fab({ icon = 'add', label, onPress, bottom, visible = true }: { 
   );
 }
 
+// אותו כפתור בסוף הרשימה
 /** The same action as the floating one, sitting in place at the end of a list. */
 export function ListEndAction({ icon = 'add', label, onPress }: { icon?: IconName; label: string; onPress: () => void }) {
   return (
@@ -720,6 +744,7 @@ export function ListEndAction({ icon = 'add', label, onPress }: { icon?: IconNam
 
 // ── Sheet ─────────────────────────────────────────────────────────────────
 
+// חלון שעולה מלמטה
 /**
  * A bottom sheet on the phone (rises with the iOS drawer curve, 300ms;
  * the scrim fades), a centred dialog on the desktop. Closing reverses the
@@ -817,11 +842,13 @@ export function KitSheet({
   );
 }
 
+// שני כפתורים בתחתית החלון
 /** Two buttons side by side at the foot of a sheet: the safe choice and the one that acts. */
 export function SheetActions({ children }: { children: ReactNode }) {
   return <View style={styles.sheetActions}>{children}</View>;
 }
 
+// עיצוב החלקים
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   flexShrink: { flexShrink: 1 },
@@ -836,6 +863,7 @@ const styles = StyleSheet.create({
   ltrValue: { textAlign: textStart() },
 
   field: { paddingHorizontal: DK_SPACE.md, paddingVertical: 12, gap: 8 },
+  // תיבת טקסט
   input: {
     minHeight: 52,
     borderRadius: 16,
@@ -862,17 +890,20 @@ const styles = StyleSheet.create({
 
   tiles: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 12 },
   tileWrap: { width: '48%', flexGrow: 1 },
+  // אריח
   tile: { minHeight: 162, padding: 16, justifyContent: 'space-between', borderRadius: 24 },
   tileHighlight: { borderWidth: 1.5, borderColor: 'rgba(224,122,0,0.35)' },
   tileTop: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
   tileIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   tileText: { gap: 2, marginTop: 14 },
 
+  // הודעה
   banner: { borderRadius: 20, paddingVertical: 14, paddingHorizontal: 16, gap: 10 },
   bannerRow: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 10 },
   bannerIcon: { marginTop: 1 },
   bannerAction: { alignSelf: 'flex-start', minHeight: 40, paddingHorizontal: 14, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.7)', alignItems: 'center', justifyContent: 'center' },
 
+  // מצב ריק
   empty: { alignItems: 'center', gap: 10, paddingVertical: 34, paddingHorizontal: 26 },
   emptyIcon: { width: 68, height: 68, borderRadius: 23, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   emptyAction: {
@@ -889,6 +920,7 @@ const styles = StyleSheet.create({
 
   actionRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: DK_SPACE.md, paddingVertical: 10 },
 
+  // חיפוש
   search: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

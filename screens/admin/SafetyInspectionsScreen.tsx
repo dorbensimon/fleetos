@@ -1,3 +1,4 @@
+// רשימת בדיקות קצין בטיחות
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -51,6 +52,7 @@ import { errorMessage } from '../../lib/requestError';
 type Props = NativeStackScreenProps<RootStackParamList, 'SafetyInspections'>;
 type Filter = 'all' | 'awaiting' | 'draft' | 'defects' | 'cancelled';
 
+// טוען ומציג מחשב או טלפון
 export default function SafetyInspectionsScreen({ navigation }: Props) {
   const { company } = useCompany();
   const companyId = company?.id ?? '';
@@ -217,6 +219,7 @@ export default function SafetyInspectionsScreen({ navigation }: Props) {
   return body;
 }
 
+// חיפוש על רקע בהיר
 function GlassSearchLight({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <View style={styles.pickSearch}>
@@ -225,6 +228,7 @@ function GlassSearchLight({ value, onChange }: { value: string; onChange: (v: st
   );
 }
 
+// עיצוב בטלפון
 const styles = StyleSheet.create({
   hero: { gap: 14 },
   list: { paddingVertical: 4 },

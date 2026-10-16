@@ -1,3 +1,4 @@
+// שליחת מסמך לנהגים בטלפון
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +9,7 @@ import { driversCount, loadSendRecipients, recipientNote, sendToRecipients, type
 import { requestErrorDetails, type RequestErrorDetails } from '../../../lib/requestError';
 import { t } from '../../../lib/i18n';
 
+// המצב והפעולות של השליחה
 /**
  * "שליחה לנהגים" on the phone: the desktop sheet's flow (lib/signingSend.ts)
  * in the kit. It lives inside the document's sheet rather than a sheet of its
@@ -77,6 +79,7 @@ export function useSendToDrivers(companyId: string, template: SigningTemplate | 
 
 export type SendState = ReturnType<typeof useSendToDrivers>;
 
+// בחירת הנהגים
 export function SendBody({ s }: { s: SendState }) {
   if (s.outcome) {
     const ok = s.outcome.sent > 0;
@@ -181,6 +184,7 @@ export function SendBody({ s }: { s: SendState }) {
   );
 }
 
+// כפתורי השליחה
 export function SendFooter({ s, onCancel, onDone }: { s: SendState; onCancel: () => void; onDone: () => void }) {
   if (s.outcome) return <PrimaryAction label={t('common.done')} onPress={onDone} />;
   const count = s.picked.size;
@@ -198,6 +202,7 @@ export function SendFooter({ s, onCancel, onDone }: { s: SendState; onCancel: ()
   );
 }
 
+// כפתור בחירה מהירה
 function QuickChip({ icon, label, muted, disabled, onPress }: { icon?: React.ComponentProps<typeof Ionicons>['name']; label: string; muted?: boolean; disabled?: boolean; onPress: () => void }) {
   const fg = muted ? DK.inkSoft : DK.accent;
   return (
@@ -210,6 +215,7 @@ function QuickChip({ icon, label, muted, disabled, onPress }: { icon?: React.Com
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   flex2: { flex: 2 },

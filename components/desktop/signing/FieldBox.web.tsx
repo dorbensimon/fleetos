@@ -1,3 +1,4 @@
+// שדה על הדף: גרירה, שינוי גודל ובחירה
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { SigningFieldKind } from '../../../lib/companySigningTemplates';
@@ -10,10 +11,12 @@ import { t } from '../../../lib/i18n';
  * owns the geometry; this only reports pointer deltas in screen pixels.
  */
 
+// סוג הגרירה של שדה
 export const FIELD_DRAG_TYPE = 'application/x-fleetos-field';
 
 type Box = { left: string; top: string; width: string; height: string };
 
+// עוקב אחרי העכבר עד שחרור
 /** Follows one pointer until release, reporting the distance moved (after a 3px dead zone). */
 export function trackPointer(event: React.PointerEvent, onStart: () => void, onDelta: (dx: number, dy: number) => void, onEnd?: () => void) {
   const target = event.currentTarget as HTMLElement;
@@ -51,6 +54,7 @@ export function trackPointer(event: React.PointerEvent, onStart: () => void, onD
   target.addEventListener('pointercancel', onUp);
 }
 
+// השדה על הדף
 export function FieldBox({
   kind,
   label,
@@ -152,6 +156,7 @@ export function FieldBox({
   );
 }
 
+// כרטיס הצד של השדה הנבחר
 /** The side panel card for the selected field: what it is, an optional caption, and delete. */
 export function FieldInspector({
   kind,

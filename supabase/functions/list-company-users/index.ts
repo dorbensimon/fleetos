@@ -1,3 +1,4 @@
+// פונקציית שרת: רשימת המשתמשים של חברה
 // Edge Function: list-company-users
 // Called by the app (owner only) to list admins/drivers of a company, including their email
 // (email lives in auth.users, which the client can never query directly).
@@ -5,6 +6,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyOwner } from '../_shared/verifyOwner.ts';
 
+// מחזיר את הרשימה
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

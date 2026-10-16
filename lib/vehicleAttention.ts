@@ -1,3 +1,4 @@
+// מה דורש טיפול ברכבים
 import type { ComplianceItem, Vehicle, VehicleDriverWithProfile } from './adminApi';
 import { formatPlate } from './plate';
 import { daysUntilExpiry, formatDate } from './theme';
@@ -31,11 +32,13 @@ export type VehicleAttentionGroup = {
   items: VehicleAttentionItem[];
 };
 
+// שם הרכב (יצרן ודגם)
 /** "טויוטה קורולה", or "רכב ללא דגם" when neither is known. */
 export function vehicleName(vehicle: Vehicle): string {
   return [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || t('vehicle.noModel');
 }
 
+// מתי פג, במילים
 /** "פג היום", "פג אתמול", "פג לפני 12 ימים" — then the date itself. */
 function expiredWords(date: string): string {
   const days = Math.abs(daysUntilExpiry(date) ?? 0);
@@ -43,10 +46,12 @@ function expiredWords(date: string): string {
   return `${when} · ${formatDate(date)}`;
 }
 
+// תאריך הפקיעה של פריט ברכב
 function expiryOf(compliance: ComplianceItem[] | undefined, itemType: string): string | null {
   return compliance?.find((c) => c.item_type === itemType)?.expiry_date ?? null;
 }
 
+// מקבץ את בעיות הרכבים לפי סוג
 export function vehicleAttentionGroups(
   vehicles: Vehicle[],
   compliance: Map<string, ComplianceItem[]>,
@@ -88,6 +93,7 @@ export function vehicleAttentionGroups(
   return groups.filter((g) => g.items.length > 0);
 }
 
+// כמה רכבים וכמה בעיות פתוחות
 /** Distinct vehicles and open problems — one vehicle can have several. */
 export function vehicleAttentionTotals(groups: VehicleAttentionGroup[]): { vehicles: number; issues: number } {
   const vehicles = new Set(groups.flatMap((g) => g.items.map((i) => i.vehicleId)));

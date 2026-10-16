@@ -1,8 +1,11 @@
+// הצהרת בריאות: תוקף שנה מיום החתימה
 import type { SignatureRequest } from './docuseal';
 
+// כמה ימים הצהרה בתוקף
 /** A signed health declaration is treated as valid for one year from signing. */
 export const HEALTH_DECLARATION_VALID_DAYS = 365;
 
+// שם המסמך
 const TITLE = 'הצהרת בריאות';
 
 export interface HealthDeclarationInfo {
@@ -14,10 +17,12 @@ export interface HealthDeclarationInfo {
   pending: boolean;
 }
 
+// שם המסמך של בקשת חתימה
 function titleOf(request: SignatureRequest): string {
   return request.template?.title || request.template_title || '';
 }
 
+// מוסיף ימים לתאריך
 function addDays(iso: string, days: number): string {
   const date = new Date(iso);
   date.setDate(date.getDate() + days);
@@ -25,6 +30,7 @@ function addDays(iso: string, days: number): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+// הצהרת הבריאות האחרונה של כל נהג
 /**
  * The health declaration of each driver, read from the signed documents whose
  * title contains "הצהרת בריאות". The most recent signing wins.

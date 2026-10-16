@@ -1,3 +1,4 @@
+// הגדרות בדיקות קצין בטיחות: כל כמה זמן ורשימת הסעיפים
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,11 +53,13 @@ import { errorMessage } from '../../lib/requestError';
 type Props = NativeStackScreenProps<RootStackParamList, 'SafetyInspectionSettings'>;
 type Busy = '' | 'repeat' | 'list' | 'reset';
 
+// העתק של הרשימה
 const copyForm = (form: InspectionForm): InspectionForm => ({
   version: 1,
   groups: form.groups.map((group) => ({ ...group, items: group.items.map((item) => ({ ...item })) })),
 });
 
+// מזיז פריט ברשימה
 function move<T>(list: T[], from: number, to: number): T[] {
   if (to < 0 || to >= list.length) return list;
   const next = [...list];
@@ -65,6 +68,7 @@ function move<T>(list: T[], from: number, to: number): T[] {
   return next;
 }
 
+// המסך: עריכת הקבוצות והסעיפים ושמירה
 export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
   const { company } = useCompany();
   const companyId = company?.id ?? '';
@@ -566,6 +570,7 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
   return body;
 }
 
+// כפתור אייקון במחשב
 function DeskIcon({
   icon,
   label,
@@ -592,6 +597,7 @@ function DeskIcon({
   );
 }
 
+// כפתור אייקון בטלפון
 function IconButton({
   icon,
   label,
@@ -612,6 +618,7 @@ function IconButton({
   );
 }
 
+// עיצוב בטלפון
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   repeat: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8, padding: 14 },
@@ -631,7 +638,9 @@ const styles = StyleSheet.create({
   add: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, minHeight: 44, alignSelf: 'flex-end', paddingHorizontal: 4 },
 });
 
+// עיצוב במחשב
 const desk = StyleSheet.create({
+  // כפתור חזרה בכותרת
   back: { width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease' }) },
   backHover: { backgroundColor: 'rgba(255,255,255,0.2)' },
   actions: { flexDirection: 'row-reverse', gap: 8 },
@@ -641,11 +650,13 @@ const desk = StyleSheet.create({
   bannerOk: { backgroundColor: DESKTOP_TONES.ok.bg },
   bannerBad: { backgroundColor: DESKTOP_TONES.bad.bg },
   bannerText: { fontSize: 14, flex: 1 },
+  // רשימת הקבוצות
   groups: { gap: 12 },
   groupHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 12, backgroundColor: DESKTOP_COLORS.surfaceMuted, borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
   groupNum: { width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(47,91,255,0.10)', alignItems: 'center', justifyContent: 'center' },
   groupNumText: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
   groupTitle: { flex: 1, fontSize: 15, fontWeight: '600' },
+  // שורת סעיף
   item: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, paddingVertical: 6, paddingHorizontal: 12 },
   itemNum: { width: 28, textAlign: 'center', fontSize: 13, color: DESKTOP_COLORS.inkFaint, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   itemInput: { flex: 1, borderColor: 'transparent', backgroundColor: 'transparent' },

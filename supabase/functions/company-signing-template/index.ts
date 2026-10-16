@@ -1,3 +1,4 @@
+// פונקציית שרת: המסמכים לחתימה של החברה (העלאה, עורך, נוסחים, שבלונות)
 import { corsHeaders } from '../_shared/cors.ts';
 import { docusealFetch } from '../_shared/docuseal.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
@@ -34,20 +35,25 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 type PlacedField = { kind: FieldKind; label?: string; page: number; x: number; y: number; w: number; h: number };
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
+// תבנית מזהה
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// שם בלי רווחים ואותיות גדולות
 /** Names that differ only in spaces or letter case count as the same name. */
 function titleKey(value: string | null | undefined): string {
   return (value ?? '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('he');
 }
 
+// שמות התיקיות הקבועות בתיק הנהג
 /** The fixed folders of every driver's file (lib/compliance.ts DRIVER_COMPLIANCE); a document may not take their names. */
 const FIXED_DRIVER_FOLDERS = ['הצהרת בריאות', 'הדרכות תקופתיות', 'נוהל 6 (הסעת ילדים)', 'נוהל 6', 'רישיון מנוף', 'תוקף ר.פ'];
 
+// האם הטיוטה כבר בשימוש
 /** Is this draft folder already a form, or one of a form's earlier versions? */
 async function draftInUse(adminClient: SupabaseClient, folder: string): Promise<boolean> {
   const prefix = `${folder}/%`;
@@ -59,6 +65,7 @@ async function draftInUse(adminClient: SupabaseClient, folder: string): Promise<
   return Boolean(templates.data?.length || versions.data?.length);
 }
 
+// נהגים שממתינים על נוסח ישן
 /** Drivers still waiting to sign an earlier version of the form. */
 async function pendingOnOlderVersion(adminClient: SupabaseClient, templateId: string, version: number): Promise<number> {
   const { count } = await adminClient.from('signature_requests')
@@ -72,6 +79,7 @@ type ReplaceResult =
   | { ok: true; template: Record<string, unknown>; pendingOld: number }
   | { ok: false; status: number; error: string; code?: string };
 
+// מחליף לנוסח חדש
 async function replaceVersion(
   adminClient: SupabaseClient, companyId: string, replacing: { id: string; version: number },
   docusealId: number | null, path: string, fileName: string, form: unknown, editorContent: unknown, actor: string,
@@ -90,10 +98,12 @@ async function replaceVersion(
   return { ok: true, template: template ?? {}, pendingOld: await pendingOnOlderVersion(adminClient, replacing.id, version as number) };
 }
 
+// תיקיית הטיוטה
 function draftFolder(companyId: string, draftId: string) {
   return `${companyId}/signing-templates/${draftId}`;
 }
 
+// מזהה סוג קובץ לפי התוכן
 function sniff(bytes: Uint8Array): 'pdf' | 'png' | 'jpeg' | 'docx' | null {
   if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return 'pdf';
   if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'png';
@@ -102,12 +112,14 @@ function sniff(bytes: Uint8Array): 'pdf' | 'png' | 'jpeg' | 'docx' | null {
   return null;
 }
 
+// קידוד base64
 function toBase64(bytes: Uint8Array): string {
   let binary = '';
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(binary);
 }
 
+// תמונה ל-PDF
 async function imageToPdf(bytes: Uint8Array, kind: 'png' | 'jpeg'): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const image = kind === 'png' ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
@@ -124,11 +136,13 @@ type RemoteTemplate = {
   documents?: Array<{ url?: string }>;
 };
 
+// מוחק תבנית ב-DocuSeal
 async function deleteRemoteTemplate(id: number | undefined) {
   if (!id) return;
   await docusealFetch(`/templates/${id}`, { method: 'DELETE' }).catch(() => null);
 }
 
+// Word ל-PDF
 /** DocuSeal converts the Word file; we keep only its PDF and discard the throwaway template. */
 async function docxToPdf(bytes: Uint8Array, name: string): Promise<Uint8Array> {
   const response = await docusealFetch('/templates/docx', {
@@ -148,6 +162,7 @@ async function docxToPdf(bytes: Uint8Array, name: string): Promise<Uint8Array> {
   }
 }
 
+// עיצוב השדות
 /** The same look for fields placed on an uploaded PDF (sizes in PDF points). */
 function fieldPreferences(type: string): Record<string, unknown> | undefined {
   if (type === 'text') return { font_size: 12, align: TEXT_LOOK.align, valign: TEXT_LOOK.valign };
@@ -155,6 +170,7 @@ function fieldPreferences(type: string): Record<string, unknown> | undefined {
   return undefined;
 }
 
+// קורא את השדות
 function parseFields(raw: unknown): PlacedField[] | null {
   if (!Array.isArray(raw) || raw.length === 0 || raw.length > MAX_FIELDS) return null;
   const fields: PlacedField[] = [];
@@ -171,6 +187,7 @@ function parseFields(raw: unknown): PlacedField[] | null {
   return fields;
 }
 
+// נייר המכתבים של החברה
 /** The letterhead comes from the company's own record, never from the request. */
 async function companyLetterhead(adminClient: SupabaseClient, companyId: string): Promise<Letterhead> {
   const { data: company } = await adminClient.from('companies').select('name, logo_url').eq('id', companyId).single();
@@ -179,6 +196,7 @@ async function companyLetterhead(adminClient: SupabaseClient, companyId: string)
   return { name: (company?.name ?? '').trim() || 'החברה', logoUrl };
 }
 
+// HTML ל-PDF
 /** DocuSeal renders the HTML to a PDF; we keep only the PDF and discard the throwaway template. */
 async function htmlToPdf(html: string): Promise<Uint8Array> {
   const response = await docusealFetch('/templates/html', {
@@ -198,6 +216,7 @@ async function htmlToPdf(html: string): Promise<Uint8Array> {
   }
 }
 
+// יוצר תבנית מ-PDF
 async function createFromPdf(
   title: string, folderName: string, externalId: string, pdfUrl: string, fields: PlacedField[], pageSizes: Array<{ width: number; height: number }>,
 ): Promise<RemoteTemplate> {
@@ -251,6 +270,7 @@ async function createFromPdf(
   throw new Error('DocuSeal placed the fields in an unexpected position');
 }
 
+// מקבל בקשה ומבצע את הפעולה
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);

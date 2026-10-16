@@ -1,8 +1,11 @@
+// פונקציית שרת: תזכורות במייל לחתימה
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { docusealFetch } from '../_shared/docuseal.ts';
 
+// כמה בכל סבב
 const BATCH_SIZE = 50;
+// זמן נעילה
 const LOCK_MINUTES = 5;
 
 type DueRequest = {
@@ -20,6 +23,7 @@ type CompanySigningSettings = {
   max_email_reminders: number;
 };
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -27,10 +31,12 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
+// תאריך אחרי כמה שעות
 function dateAfterHours(now: Date, hours: number): string {
   return new Date(now.getTime() + hours * 60 * 60 * 1000).toISOString();
 }
 
+// שולח תזכורות
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);

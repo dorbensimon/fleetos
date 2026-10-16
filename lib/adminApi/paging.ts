@@ -1,3 +1,5 @@
+// הבאת רשימות ארוכות מהשרת בחלקים (עמודים)
+// כמה שורות מביאים בכל בקשה
 /**
  * Supabase limits an unbounded select response. List screens must therefore
  * fetch deterministic pages instead of silently treating the first page as
@@ -5,6 +7,7 @@
  */
 export const ADMIN_LIST_PAGE_SIZE = 200;
 
+// מחלק רשימת מזהים לקבוצות קטנות
 export function chunkIds(ids: string[], size = ADMIN_LIST_PAGE_SIZE): string[][] {
   const chunks: string[][] = [];
   for (let index = 0; index < ids.length; index += size) {
@@ -13,6 +16,7 @@ export function chunkIds(ids: string[], size = ADMIN_LIST_PAGE_SIZE): string[][]
   return chunks;
 }
 
+// מביא עמוד אחרי עמוד עד שכל הרשימה הגיעה
 export async function fetchAllPages<T>(
   fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
   pageSize = ADMIN_LIST_PAGE_SIZE

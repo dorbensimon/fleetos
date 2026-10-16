@@ -1,3 +1,4 @@
+// בניית טופס רשימת סעיפים במחשב
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -21,6 +22,7 @@ import { t } from '../../../lib/i18n';
  * straight on the sheet; Enter adds the next one.
  */
 
+// עיצוב הבונה (CSS)
 export const CHECKLIST_BUILDER_CSS = `
 .cl-work { zoom: 0.85; }
 .cl-work .sd-panel { max-height: calc((100vh - 150px) / 0.85); min-height: calc((100vh - 150px) / 0.85); }
@@ -90,12 +92,14 @@ export const CHECKLIST_BUILDER_CSS = `
 @media (max-width: 1100px) { .cl-sheet { padding: 40px 36px 48px; } .cl-sigs { grid-template-columns: 1fr; gap: 18px; } }
 `;
 
+// מגדיל תיבת טקסט לפי התוכן
 function autoGrow(el: HTMLTextAreaElement | null) {
   if (!el) return;
   el.style.height = 'auto';
   el.style.height = `${el.scrollHeight}px`;
 }
 
+// תיבת טקסט שגדלה
 function GrowingText({
   value,
   onChange,
@@ -135,6 +139,7 @@ function GrowingText({
   );
 }
 
+// הבונה: כותרת, סעיפים, חתימות וכל כמה זמן
 export function ChecklistBuilder({
   title,
   form,
@@ -428,6 +433,7 @@ export function ChecklistBuilder({
   );
 }
 
+// בחירת 'כל כמה זמן'
 /** "כל כמה זמן": one big button per choice. */
 export function RepeatChoice({ value, onChange, labelledBy, disabled }: { value: number; onChange: (months: number) => void; labelledBy?: string; disabled?: boolean }) {
   const options: { months: number; label: string }[] = REPEAT_OPTIONS.some((o) => o.months === value)
@@ -452,6 +458,7 @@ export function RepeatChoice({ value, onChange, labelledBy, disabled }: { value:
   );
 }
 
+// הטופס כדף מודפס קטן
 /** The saved form as a small printed page, for the review step. */
 export function ChecklistPaperPreview({ title, form }: { title: string; form: ChecklistForm }) {
   const items = filledItems(form);

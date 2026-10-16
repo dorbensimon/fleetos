@@ -1,3 +1,4 @@
+// הגדרות החברה בטלפון
 import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,8 +28,10 @@ type Props = {
   onDiscard: () => void;
 };
 
+// רק ספרות
 const digits = (v: string, max = 10) => v.replace(/\D/g, '').slice(0, max);
 
+// כל החלקים אחד אחרי השני
 /**
  * The company's settings on the phone: the same sections as the desktop,
  * one after another. Nothing saves until "שמירה"; the bar that offers it
@@ -129,6 +132,7 @@ export function CompanySettingsMobile(p: Props) {
   );
 }
 
+// תיבת לוגו/חותמת
 function ImageSlot({ title, icon, uri, onPick, onClear }: { title: string; icon: React.ComponentProps<typeof Ionicons>['name']; uri: string | null; onPick: () => void; onClear: () => void }) {
   return (
     <View style={styles.slot}>
@@ -160,6 +164,7 @@ function ImageSlot({ title, icon, uri, onPick, onClear }: { title: string; icon:
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { textAlign: 'center' },

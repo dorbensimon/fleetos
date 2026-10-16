@@ -1,6 +1,8 @@
+// קריאה וציור של PDF בדפדפן (pdf.js)
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 
+// גרסת pdf.js
 /**
  * pdf.js for the desktop signed-documents screens (web only). The worker is
  * served from the CDN at the exact installed version, since Metro doesn't
@@ -15,6 +17,7 @@ export type LoadedPdf = {
   pages: { width: number; height: number }[];
 };
 
+// טוען PDF מכתובת
 export async function loadPdf(url: string): Promise<LoadedPdf> {
   const doc = await pdfjs.getDocument({ url }).promise;
   const pages = await Promise.all(
@@ -27,6 +30,7 @@ export async function loadPdf(url: string): Promise<LoadedPdf> {
   return { doc, pages };
 }
 
+// מצייר עמוד
 /** Draws one page into `canvas` at `cssWidth`, sharp on high-density screens. */
 export async function renderPage(doc: PDFDocumentProxy, pageNumber: number, canvas: HTMLCanvasElement, cssWidth: number) {
   const page = await doc.getPage(pageNumber);
@@ -40,6 +44,7 @@ export async function renderPage(doc: PDFDocumentProxy, pageNumber: number, canv
   await page.render({ canvas, canvasContext: context, viewport }).promise;
 }
 
+// תמונה קטנה של העמוד הראשון
 /**
  * First page of a PDF as a PNG data URL, `cssWidth` wide — small previews in
  * document folders. Loads only page 1, never the whole file's page list.

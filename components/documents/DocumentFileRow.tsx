@@ -1,3 +1,4 @@
+// שורת קובץ שהועלה
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,7 @@ type Props = {
   onDelete?: (doc: DocumentRow) => void;
 };
 
+// לחיצה פותחת, בסוף הורדה ומחיקה
 /** One uploaded file: open it by tapping the row; download and delete sit at its end. */
 export function DocumentFileRow({ doc, variant = 'compact', showDate = false, showExpiry = false, onOpen, onDownload, onDelete }: Props) {
   const isCard = variant === 'card';
@@ -61,8 +63,10 @@ export function DocumentFileRow({ doc, variant = 'compact', showDate = false, sh
   );
 }
 
+// עיצוב השורה
 const styles = StyleSheet.create({
   base: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  // השורה ככרטיס
   card: { padding: 12, borderRadius: 20, backgroundColor: DK.surface, ...DK_SHADOW },
   compact: { padding: 8, borderRadius: 16, backgroundColor: DK.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: DK.hairline },
   info: { flex: 1 },
@@ -71,6 +75,7 @@ const styles = StyleSheet.create({
   iconCompact: { width: 36, height: 36, borderRadius: 11 },
   text: { flex: 1, gap: 2 },
   meta: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  // כפתור פעולה
   action: { width: 44, height: 44, borderRadius: 14, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
   actionDanger: { backgroundColor: STATUS.expired.soft },
 });

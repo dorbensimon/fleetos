@@ -1,3 +1,4 @@
+// הרכב של הנהג בטלפון
 import React, { useRef } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -45,9 +46,11 @@ type Props = {
   focus?: string;
 };
 
+// פריטים שתמיד מוצגים
 /** Insurance and the annual test always show — as "missing" when absent. */
 const ALWAYS = ['insurance_mandatory', 'annual_test'];
 
+// שורות התוקף
 function rowsFor(compliance: ComplianceItem[]) {
   const types = [
     ...ALWAYS,
@@ -68,6 +71,7 @@ function rowsFor(compliance: ComplianceItem[]) {
   });
 }
 
+// הרכב, התוקף והקילומטראז'
 export function DriverVehicleMobile(p: Props) {
   const many = p.assignments.length > 1;
   const scrollRef = useRef<ScrollView>(null);
@@ -178,6 +182,7 @@ export function DriverVehicleMobile(p: Props) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   card: { paddingBottom: DK_SPACE.lg },

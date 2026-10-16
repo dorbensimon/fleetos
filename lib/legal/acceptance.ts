@@ -1,6 +1,8 @@
+// אישור תנאי השימוש ומדיניות הפרטיות על ידי המשתמש
 import { Platform } from 'react-native';
 import { supabase } from '../supabase';
 
+// גרסת התנאים הנוכחית (משנים אותה כשהתנאים משתנים)
 /**
  * The version of the terms of use and privacy policy a user must accept
  * before using the app. Bump it (a new date) whenever either changes in
@@ -8,6 +10,7 @@ import { supabase } from '../supabase';
  */
 export const LEGAL_VERSION = '2026-09-25';
 
+// האם המשתמש כבר אישר את הגרסה הנוכחית
 export async function hasAcceptedCurrentTerms(userId: string): Promise<boolean> {
   const { data, error } = await supabase
     .from('legal_acceptances')
@@ -19,6 +22,7 @@ export async function hasAcceptedCurrentTerms(userId: string): Promise<boolean> 
   return (data?.length ?? 0) > 0;
 }
 
+// שומר שהמשתמש אישר את התנאים
 export async function recordTermsAcceptance(): Promise<void> {
   const userAgent = Platform.OS === 'web' && typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 400) : null;
   const { error } = await supabase

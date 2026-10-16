@@ -1,3 +1,4 @@
+// דוח נהגים להורדה (PDF)
 import { Company } from './supabase';
 import { DriverRow } from './adminApi';
 import { expiryState, formatDate } from './theme';
@@ -7,6 +8,7 @@ import { buildReportDocument, emptyState, esc, printOrShareReport, statusTag, Ta
 
 export type ReportCategory = 'all' | 'soon' | 'expired' | 'no_vehicle';
 
+// סוגי הדוח לבחירה
 export const REPORT_CATEGORIES: { value: ReportCategory; label: string; icon: string }[] = [
   { value: 'all', label: 'כל הנהגים', icon: 'people-outline' },
   { value: 'soon', label: 'רישיון קרוב לפוג', icon: 'hourglass-outline' },
@@ -14,6 +16,7 @@ export const REPORT_CATEGORIES: { value: ReportCategory; label: string; icon: st
   { value: 'no_vehicle', label: 'ללא רכב משויך', icon: 'ban-outline' },
 ];
 
+// כותרת לכל סוג דוח
 const CATEGORY_TITLES: Record<ReportCategory, string> = {
   all: 'דוח כלל הנהגים',
   soon: 'דוח נהגים עם רישיון קרוב לפוג',
@@ -21,6 +24,7 @@ const CATEGORY_TITLES: Record<ReportCategory, string> = {
   no_vehicle: 'דוח נהגים ללא רכב משויך',
 };
 
+// מסנן את הנהגים לפי סוג הדוח
 function filterDrivers(drivers: DriverRow[], category: ReportCategory): DriverRow[] {
   switch (category) {
     case 'soon':
@@ -34,6 +38,7 @@ function filterDrivers(drivers: DriverRow[], category: ReportCategory): DriverRo
   }
 }
 
+// מצב הרישיון בטקסט
 function licenseStatusLabel(d: DriverRow): string {
   const state = expiryState(d.license_expiry);
   if (state === 'expired') return 'פג תוקף';
@@ -42,6 +47,7 @@ function licenseStatusLabel(d: DriverRow): string {
   return 'בתוקף';
 }
 
+// צבע מצב הרישיון
 function licenseStatusTone(d: DriverRow): TagTone {
   const state = expiryState(d.license_expiry);
   if (state === 'expired') return 'accent2';
@@ -50,6 +56,7 @@ function licenseStatusTone(d: DriverRow): TagTone {
   return 'accent';
 }
 
+// בונה את ה-HTML של הדוח
 function buildHtml(company: Company, drivers: DriverRow[], category: ReportCategory): string {
   const rows = drivers
     .map(
@@ -107,6 +114,7 @@ function buildHtml(company: Company, drivers: DriverRow[], category: ReportCateg
   });
 }
 
+// מפיק ומוריד את דוח הנהגים
 export async function exportDriversReport(
   company: Company,
   drivers: DriverRow[],

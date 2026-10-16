@@ -1,16 +1,20 @@
+// פונקציית שרת: סנכרון תבניות מ-DocuSeal
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { docusealFetch } from '../_shared/docuseal.ts';
 import { verifyUser } from '../_shared/verifyUser.ts';
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
+// מזהה התבניות הכלליות
 // Every company reads and sends the same global templates; none has its own.
 // Global rows carry no real company, but storage policies require the first
 // path segment to be a uuid, so this sentinel stands in for "no company".
 const GLOBAL_COMPANY_SENTINEL = '00000000-0000-0000-0000-000000000000';
+// שם התיקייה ב-DocuSeal
 // Fixed folder name, not derived from a human-typed company name, so this
 // match can never go stale the way per-company folder matching did.
 const GLOBAL_FOLDER_NAME = 'FleetOS-Global';
@@ -24,6 +28,7 @@ type RemoteTemplate = {
   documents?: Array<{ url?: string; filename?: string }>;
 };
 
+// כל התבניות ב-DocuSeal
 async function listAllTemplates(): Promise<RemoteTemplate[]> {
   const templates: RemoteTemplate[] = [];
   let after: number | null = null;
@@ -41,6 +46,7 @@ async function listAllTemplates(): Promise<RemoteTemplate[]> {
   throw new Error('Template pagination exceeded safe limit');
 }
 
+// מעביר לארכיון תבניות שנמחקו
 /** Missing provider templates are archived locally; reconciliation never
  * deletes submissions or signed evidence. */
 async function archiveOrphanedGlobalTemplates(adminClient: SupabaseClient, remoteIds: Set<number>): Promise<number> {
@@ -56,6 +62,7 @@ async function archiveOrphanedGlobalTemplates(adminClient: SupabaseClient, remot
   return missing.length;
 }
 
+// מסנכרן
 /**
  * Templates built directly in DocuSeal, inside the fixed "FleetOS-Global"
  * folder, apply to every company. No company creates its own templates

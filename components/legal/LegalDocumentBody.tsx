@@ -1,3 +1,4 @@
+// גוף של דף משפטי לקריאה
 import React from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import { ActionRow, DK, DKText, KitSection, ListRow, Reveal, Surface } from '../driverKit';
@@ -5,6 +6,7 @@ import { BUSINESS, businessLine } from '../../lib/legal/business';
 import { LEGAL_DOC_ORDER, LEGAL_DOCUMENTS, type LegalDocId, type LegalDocument } from '../../lib/legal/documents';
 import { t } from '../../lib/i18n';
 
+// אייקון לכל דף
 const DOC_ICONS: Record<LegalDocId, React.ComponentProps<typeof ListRow>['icon']> = {
   terms: 'document-text',
   privacy: 'lock-closed',
@@ -12,6 +14,7 @@ const DOC_ICONS: Record<LegalDocId, React.ComponentProps<typeof ListRow>['icon']
   accessibility: 'accessibility',
 };
 
+// כל הסעיפים ופרטי יצירת קשר
 /**
  * One legal document laid out for reading: every section on its own
  * surface, then a way to reach us and the other documents.
@@ -83,6 +86,7 @@ export function LegalDocumentBody({
 
 export { DOC_ICONS as LEGAL_DOC_ICONS };
 
+// עיצוב הדף
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   section: { padding: 18, gap: 10 },

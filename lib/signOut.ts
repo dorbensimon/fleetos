@@ -1,7 +1,10 @@
+// יציאה מהחשבון
 import { supabase } from './supabase';
 
+// כמה זמן מחכים לשרת ביציאה
 const GLOBAL_SIGN_OUT_TIMEOUT_MS = 6000;
 
+// מוציא את המשתמש מהמכשיר תמיד, גם אם השרת לא עונה
 /**
  * Signs the user out on this device, always. The regular sign-out also
  * revokes the session on the server; when that call fails or hangs (a weak

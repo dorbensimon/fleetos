@@ -1,3 +1,4 @@
+// חלון הדוחות - תצוגת מחשב
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../ui/BrandLoader';
@@ -16,6 +17,7 @@ import type { FormReportsState } from '../reports/useFormReports';
 
 type Category = { value: string; label: string; hint?: string; icon: string };
 
+// קבוצות הדוחות (נהגים, רכבים, בדיקות, טפסים)
 export function ReportsDesktopView({
   open,
   onToggle,
@@ -96,6 +98,7 @@ export function ReportsDesktopView({
   );
 }
 
+// שלב 1: בחירת טופס
 /** Step one of "טפסים לנהגים": the company's forms. */
 function FormList({ forms, onGoToForms }: { forms: FormReportsState; onGoToForms: () => void }) {
   if (forms.formsError) {
@@ -138,6 +141,7 @@ function FormList({ forms, onGoToForms }: { forms: FormReportsState; onGoToForms
   );
 }
 
+// שלב 2: הטופס שנבחר עם חזרה
 /** Step two: the chosen form, with a way back when there are others. */
 function FormHeader({ forms }: { forms: FormReportsState }) {
   return (
@@ -156,6 +160,7 @@ function FormHeader({ forms }: { forms: FormReportsState }) {
   );
 }
 
+// קבוצת דוחות נפתחת
 function ReportGroup({
   icon, title, subtitle, open, onPress, categories, exportingCategory, onSelect, body, header, error, onRetry,
 }: {
@@ -232,10 +237,12 @@ function ReportGroup({
   );
 }
 
+// עיצוב חלון הדוחות
 const styles = StyleSheet.create({
   wrap: { padding: 24, gap: 14, maxWidth: 640 },
   hint: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint, marginBottom: 4 },
 
+  // קבוצת דוחות
   group: {
     backgroundColor: DESKTOP_COLORS.surface,
     borderWidth: 1,
@@ -264,6 +271,7 @@ const styles = StyleSheet.create({
   groupSubtitle: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint },
 
   categoryList: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
+  // שורת דוח
   categoryRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -275,6 +283,7 @@ const styles = StyleSheet.create({
   categoryLabel: { flex: 1, fontSize: 12.5 },
   categoryHint: { fontSize: 12, color: DESKTOP_COLORS.inkFaint },
 
+  // מספר השורות בדוח
   count: { minWidth: 24, height: 20, paddingHorizontal: 7, borderRadius: 10, backgroundColor: DESKTOP_COLORS.borderSoft, alignItems: 'center', justifyContent: 'center' },
   countHot: { backgroundColor: '#FFF1DC' },
   countText: { fontSize: 11.5, color: DESKTOP_COLORS.inkMuted },
@@ -282,6 +291,7 @@ const styles = StyleSheet.create({
   stateRow: { paddingHorizontal: 16, paddingVertical: 14, gap: 8, alignItems: 'flex-end' },
   stateText: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, textAlign: 'right' },
   pickHint: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4, textAlign: 'right' },
+  // שורת טופס
   formRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 16, minHeight: 52, paddingVertical: 8 },
   formHeader: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 16, minHeight: 52, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
   formTitle: { fontSize: 13, textAlign: 'right' },

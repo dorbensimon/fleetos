@@ -1,3 +1,4 @@
+// הגדרת המאפיינים של משטח החתימה
 export type SignatureSurfaceProps = {
   /** A cropped transparent PNG (data URL) once there is enough ink to count as a signature, otherwise null. */
   onChange: (png: string | null, inkLength: number) => void;

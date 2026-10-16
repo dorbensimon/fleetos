@@ -1,3 +1,4 @@
+// מסך חתימה/צפייה במסמך של DocuSeal (טלפון)
 import { useState } from 'react';
 import { Image, Platform, StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../components/ui/BrandLoader';
@@ -16,6 +17,7 @@ import { errorMessage } from '../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DocusealWebView'>;
 
+// בונה את הדף שמוצג
 function buildHtml(params: RootStackParamList['DocusealWebView']) {
   const bridge = `<script>
     const send = (type, detail) => window.ReactNativeWebView.postMessage(JSON.stringify({ type, detail }));
@@ -79,6 +81,7 @@ function buildHtml(params: RootStackParamList['DocusealWebView']) {
   return docusealEmbedHtml(params, base, bridge);
 }
 
+// המסך
 export default function DocusealWebViewScreen({ navigation, route }: Props) {
   const { companyId } = useCompany();
   const insets = useSafeAreaInsets();
@@ -214,6 +217,7 @@ export default function DocusealWebViewScreen({ navigation, route }: Props) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   kitScreen: { backgroundColor: DK.canvas },
   imageWrap: { flex: 1, backgroundColor: COLORS.screen },

@@ -1,3 +1,4 @@
+// דוח חדר הבקרה של הבעלים
 import { buildReportDocument, emptyState, esc, printOrShareReport, statusTag, type TagTone } from './reportTemplate';
 import { formatDate } from './theme';
 import { accountNextStep, formatMoney, planLabel, statusLabel, statusTone, type AccountTone } from './companyAccount';
@@ -9,8 +10,10 @@ import { lastSeenLabel, type PlatformOverview } from './platformOverview';
  * Counts, dates and money only. No driver is named.
  */
 
+// דוח לקוחות: כל החברות, שורה לכל אחת
 const TAG: Record<AccountTone, TagTone> = { ok: 'accent', warn: 'outline', bad: 'accent2', off: 'neutral' };
 
+// בונה את ה-HTML של הדוח
 export function buildPlatformReport(overview: PlatformOverview): string {
   const rows = [...overview.companies]
     .sort((a, b) => b.mrr - a.mrr || a.company.name.localeCompare(b.company.name, 'he'))
@@ -66,6 +69,7 @@ export function buildPlatformReport(overview: PlatformOverview): string {
   });
 }
 
+// מפיק ומוריד את הדוח
 export function exportPlatformReport(overview: PlatformOverview): Promise<void> {
   return printOrShareReport(buildPlatformReport(overview), 'דוח לקוחות');
 }

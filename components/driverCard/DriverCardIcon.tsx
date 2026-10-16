@@ -1,6 +1,8 @@
+// אייקונים של תיק הנהג
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { DriverCardIconKey } from './driverCardSections';
 
+// אייקונים מסוג Feather
 const FEATHER_MAP: Partial<Record<DriverCardIconKey, keyof typeof Feather.glyphMap>> = {
   phone: 'phone',
   message: 'message-circle',
@@ -19,11 +21,13 @@ const FEATHER_MAP: Partial<Record<DriverCardIconKey, keyof typeof Feather.glyphM
   key: 'key',
 };
 
+// אייקונים מסוג MaterialCommunity
 const MCI_MAP: Partial<Record<DriverCardIconKey, keyof typeof MaterialCommunityIcons.glyphMap>> = {
   car: 'car',
   cap: 'school',
 };
 
+// האייקון לפי מפתח
 export function DriverCardIcon({
   icon,
   size,

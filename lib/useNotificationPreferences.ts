@@ -1,3 +1,4 @@
+// טעינה ושמירה של הגדרות ההתראות במסך
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useToast } from '../components/ui';
@@ -21,6 +22,7 @@ import { isVehicleFolderNotification } from './vehicleFolderAlerts';
 import { t } from './i18n';
 import { errorMessage } from './requestError';
 
+// מתגי ההתראות ו'כמה זמן מראש' של המשתמש
 /**
  * The signed-in user's notification toggles plus the company's lead time
  * for each timed alert (admins only) — shared by the phone preferences

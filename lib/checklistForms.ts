@@ -1,3 +1,4 @@
+// טפסי רשימת תיוג (כמו מפגש שיחה עם נהג): בנייה, מילוי, חתימה ושמירה
 import { supabase } from './supabase';
 import { functionErrorMessage } from './functionError';
 import type { SigningTemplate } from './docuseal';
@@ -39,6 +40,7 @@ export type ChecklistForm = {
 export type ChecklistAnswer = { status: ChecklistStatus | null; note: string };
 export type ChecklistAnswers = Record<string, ChecklistAnswer>;
 
+// מגבלות הטופס: אורך טקסט ומספר סעיפים
 export const CHECKLIST_LIMITS = {
   items: 60,
   itemText: 400,
@@ -48,6 +50,7 @@ export const CHECKLIST_LIMITS = {
   officerName: 80,
 } as const;
 
+// האפשרויות של 'כל כמה זמן' ממלאים את הטופס
 /** The choices offered for "how often"; the server accepts any 0-24. */
 export const REPEAT_OPTIONS = [
   { months: 0, get label() { return t('frequency.once'); } },
@@ -57,14 +60,18 @@ export const REPEAT_OPTIONS = [
   { months: 12, get label() { return t('frequency.yearly'); } },
 ] as const;
 
+// טקסט ל'כל כמה זמן' לפי מספר חודשים
 export function repeatLabel(months: number): string {
   return REPEAT_OPTIONS.find((o) => o.months === months)?.label ?? (months > 0 ? t('frequency.everyNMonths', { months }) : t('frequency.once'));
 }
 
+// כותרות ברירת מחדל לשורות החתימה
 export const DEFAULT_LABELS = { officer: 'חתימת קצין הבטיחות', driver: 'חתימת הנהג' } as const;
 
+// השם של טופס מפגש שיחה עם נהג
 /** The ready-made "מפגש שיחה עם נהג", as safety officers already fill it on paper. */
 export const DRIVER_MEETING_TITLE = 'מפגש שיחה עם נהג';
+// הסעיפים המוכנים של מפגש שיחה עם נהג
 export const DRIVER_MEETING_ITEMS = [
   'התקיים מפגש בין הנהג לקצין הבטיחות בתעבורה, ובו בוצעו הפעולות הבאות',
   'בוצעה שיחה פתוחה על מצבו המקצועי, הכלכלי, הרפואי והמשפחתי של הנהג',
@@ -77,10 +84,12 @@ export const DRIVER_MEETING_ITEMS = [
   'וודא שהנהג בקיא בדרישות החוק לגבי שעות עבודה ומנוחה',
 ] as const;
 
+// יוצר מזהה לסעיף חדש
 export function newItemId(): string {
   return `i${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// טופס מפגש עם נהג מוכן מראש
 export function driverMeetingForm(): ChecklistForm {
   return {
     version: 1,
@@ -93,19 +102,23 @@ export function driverMeetingForm(): ChecklistForm {
   };
 }
 
+// טופס ריק
 export function blankChecklistForm(): ChecklistForm {
   return { version: 1, intro: '', items: [{ id: newItemId(), text: '' }], allowNa: false, labels: { ...DEFAULT_LABELS }, repeatMonths: 0 };
 }
 
+// קורא את מספר החודשים בבטחה
 function repeatMonthsOf(value: unknown): number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 24 ? value : 0;
 }
 
+// התשובות האפשריות ליד כל סעיף
 /** The answers offered next to each item, in reading order. */
 export function statusOptions(form: Pick<ChecklistForm, 'allowNa'>): ChecklistStatus[] {
   return form.allowNa ? ['done', 'not_done', 'na'] : ['done', 'not_done'];
 }
 
+// מילים, אייקונים וצבעים לכל תשובה
 /**
  * Words, icons and colours for each answer. Colour is never alone: every
  * answer is also spelled out and has its own icon.
@@ -116,20 +129,24 @@ export const STATUS_META: Record<ChecklistStatus, { label: string; icon: 'checkm
   na: { get label() { return t('status.notRelevant'); }, icon: 'remove', fg: '#56657A', soft: '#EEF1F6', fill: '#8593A6' },
 };
 
+// רק הסעיפים שיש בהם טקסט
 /** Items with text; an empty row the admin left in the builder is not part of the form. */
 export function filledItems(form: Pick<ChecklistForm, 'items'>): ChecklistItem[] {
   return form.items.filter((item) => item.text.trim().length > 0);
 }
 
+// כמה סעיפים כבר נענו
 export function answeredCount(form: Pick<ChecklistForm, 'items'>, answers: ChecklistAnswers): number {
   return filledItems(form).filter((item) => !!answers[item.id]?.status).length;
 }
 
+// האם כל הסעיפים נענו
 export function allAnswered(form: Pick<ChecklistForm, 'items'>, answers: ChecklistAnswers): boolean {
   const items = filledItems(form);
   return items.length > 0 && items.every((item) => !!answers[item.id]?.status);
 }
 
+// למה אי אפשר לשמור את הטופס עדיין (או כלום אם הכול תקין)
 /** Why the form cannot be saved yet, in plain words, or null when it can. */
 export function formProblem(title: string, form: ChecklistForm): string | null {
   if (!title.trim()) return t('checklist.formNameMissing');
@@ -141,6 +158,7 @@ export function formProblem(title: string, form: ChecklistForm): string | null {
   return null;
 }
 
+// הטופס כפי שנשמר: בלי רווחים מיותרים ובלי שורות ריקות
 /** The form as saved: trimmed, without empty rows. */
 export function cleanForm(form: ChecklistForm): ChecklistForm {
   return {
@@ -156,6 +174,7 @@ export function cleanForm(form: ChecklistForm): ChecklistForm {
   };
 }
 
+// קורא טופס שמור בזהירות
 /** Reads a stored form defensively; anything unexpected becomes null. */
 export function readForm(value: unknown): ChecklistForm | null {
   if (!value || typeof value !== 'object') return null;
@@ -178,6 +197,7 @@ export function readForm(value: unknown): ChecklistForm | null {
   };
 }
 
+// האם המסמך הוא טופס רשימת תיוג
 export function isChecklistTemplate(template: Pick<SigningTemplate, 'form_kind'> | null | undefined): boolean {
   return template?.form_kind === 'checklist';
 }
@@ -206,6 +226,7 @@ export type MeetingRow = {
 /** Where a meeting stands, from its own row and its signature request. */
 export type MeetingState = 'draft' | 'awaiting_driver' | 'completed' | 'requires_attention' | 'cancelled';
 
+// המצב של מילוי (טיוטה, ממתין לנהג, הושלם...)
 export function meetingState(meeting: Pick<MeetingRow, 'status'>, requestStatus?: string | null): MeetingState {
   if (meeting.status === 'cancelled' || requestStatus === 'cancelled') return 'cancelled';
   if (meeting.status === 'draft') return 'draft';
@@ -213,6 +234,7 @@ export function meetingState(meeting: Pick<MeetingRow, 'status'>, requestStatus?
   return requestStatus === 'completed' ? 'completed' : 'awaiting_driver';
 }
 
+// הטקסט שמוצג לכל מצב של מילוי
 export const MEETING_STATE_LABEL: Record<MeetingState, string> = {
   get draft() { return t('checklist.draftNotSigned'); },
   get awaiting_driver() { return t('common.awaitingDriverSignature'); },
@@ -221,24 +243,28 @@ export const MEETING_STATE_LABEL: Record<MeetingState, string> = {
   get cancelled() { return t('common.cancelled'); },
 };
 
+// התאריך של היום בפורמט שנה-חודש-יום
 /** Today in the device's calendar, as YYYY-MM-DD. */
 export function todayIso(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
+// מציג תאריך כיום/חודש/שנה
 /** "26/09/2026" from YYYY-MM-DD, without time-zone drift. */
 export function formatIsoDay(value: string | null | undefined): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value ?? '');
   return match ? `${match[3]}/${match[2]}/${match[1]}` : '';
 }
 
+// קורא לפונקציית השרת של המילויים
 async function invoke<T>(body: Record<string, unknown>, fallback: string): Promise<T> {
   const { data, error } = await supabase.functions.invoke('checklist-meeting', { body });
   if (error || data?.error) throw new Error(await functionErrorMessage(error, data, fallback, false));
   return data as T;
 }
 
+// רשימת המילויים של נהג
 export async function listDriverMeetings(driverId: string): Promise<MeetingRow[]> {
   const { data, error } = await supabase
     .from('checklist_meetings')
@@ -249,12 +275,14 @@ export async function listDriverMeetings(driverId: string): Promise<MeetingRow[]
   return (data ?? []) as MeetingRow[];
 }
 
+// מביא מילוי אחד
 export async function getMeeting(meetingId: string): Promise<MeetingRow | null> {
   const { data, error } = await supabase.from('checklist_meetings').select('*').eq('id', meetingId).maybeSingle();
   if (error) throw error;
   return (data as MeetingRow | null) ?? null;
 }
 
+// מביא את הטופס (כותרת וסעיפים) למילוי
 /** A company form to hold a meeting on: its title and its items. */
 export async function getChecklistTemplate(templateId: string): Promise<{ id: string; title: string; companyId: string | null; form: ChecklistForm } | null> {
   const { data, error } = await supabase
@@ -268,6 +296,7 @@ export async function getChecklistTemplate(templateId: string): Promise<{ id: st
   return form ? { id: data.id, title: data.title, companyId: data.company_id, form } : null;
 }
 
+// האם הנהג כבר חתם
 /** The driver's side of a signed meeting: 'pending' until the driver signs. */
 export async function getRequestStatus(requestId: string): Promise<string | null> {
   const { data, error } = await supabase.from('signature_requests').select('status').eq('id', requestId).maybeSingle();
@@ -275,6 +304,7 @@ export async function getRequestStatus(requestId: string): Promise<string | null
   return data?.status ?? null;
 }
 
+// שמות שחתמו לאחרונה, לבחירה מהירה
 /** Names that already signed meetings in this company, most recent first, for one-tap reuse. */
 export async function recentOfficerNames(companyId: string): Promise<string[]> {
   const { data, error } = await supabase
@@ -296,6 +326,7 @@ export async function recentOfficerNames(companyId: string): Promise<string[]> {
 
 type MeetingInput = { answers: ChecklistAnswers; officerName: string; meetingDate: string };
 
+// מתחיל או שומר מילוי בתהליך
 /** Starts a meeting (or saves one in progress). The server keeps its own copy of the form. */
 export async function saveMeetingDraft(
   companyId: string,
@@ -306,6 +337,7 @@ export async function saveMeetingDraft(
   return meeting;
 }
 
+// הקצין חותם והמסמך מחכה לנהג
 /**
  * The officer signs. The document is created with the officer's signature
  * already on it and waits for the driver. `notifyDriver` sends the driver an
@@ -319,21 +351,25 @@ export async function signMeeting(
   return invoke({ action: 'sign', companyId, meetingId, ...input }, t('common.saveSignatureFailed'));
 }
 
+// הנהג חותם על המכשיר של המנהל
 /** The driver signs on the manager's device. */
 export async function driverSignMeeting(companyId: string, meetingId: string, driverSignature: string): Promise<{ status: 'completed'; filePending: boolean }> {
   return invoke({ action: 'driver-sign', companyId, meetingId, driverSignature }, t('common.saveDriverSignatureFailed'));
 }
 
+// שולח לנהג הודעה לחתום
 /** Sends the driver a notice for a meeting the officer already signed. */
 export async function notifyMeetingDriver(companyId: string, meetingId: string): Promise<void> {
   await invoke({ action: 'notify', companyId, meetingId }, t('common.sendToDriverFailed'));
 }
 
+// מוחק מילוי בכל שלב
 /** Deletes a meeting at any stage, with its document, everywhere. */
 export async function cancelMeeting(companyId: string, meetingId: string): Promise<void> {
   await invoke({ action: 'cancel', companyId, meetingId }, t('checklist.deleteMeetingFailed'));
 }
 
+// יוצר טופס רשימת תיוג חדש בחברה
 export async function createChecklistTemplate(companyId: string, draftId: string, title: string, form: ChecklistForm, target?: FormTarget): Promise<SavedForm> {
   return callFunction<SavedForm>(
     'company-signing-template',

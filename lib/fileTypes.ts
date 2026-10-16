@@ -1,3 +1,5 @@
+// סוגי הקבצים המותרים להעלאה
+// סוג קובץ ← סיומת
 const DOCUMENT_MIME_TO_EXTENSION: Record<string, string> = {
   'application/pdf': 'pdf',
   'image/jpeg': 'jpg',
@@ -7,19 +9,24 @@ const DOCUMENT_MIME_TO_EXTENSION: Record<string, string> = {
   'image/heif': 'heif',
 };
 
+// סוגי התמונות המותרים ללוגו
 const LOGO_MIME_TYPES = new Set(Object.keys(DOCUMENT_MIME_TO_EXTENSION).filter((mime) => mime.startsWith('image/')));
+// סוגי הקבצים המותרים למסמך
 const DOCUMENT_MIME_TYPES = new Set(Object.keys(DOCUMENT_MIME_TO_EXTENSION));
 
+// האם מותר להעלות קובץ כזה כמסמך
 export function isAllowedDocumentMimeType(mimeType: string): boolean {
   return DOCUMENT_MIME_TYPES.has(mimeType.toLowerCase());
 }
 
+// האם מותר להעלות תמונה כזו כלוגו
 export function isAllowedLogoMimeType(mimeType: string): boolean {
   // Signing PDFs can embed PNG/JPEG directly and convert WEBP safely on the
   // server. HEIC/HEIF have no reliable decoder in the Edge runtime.
   return LOGO_MIME_TYPES.has(mimeType.toLowerCase()) && !['image/heic', 'image/heif'].includes(mimeType.toLowerCase());
 }
 
+// הסיומת המתאימה לסוג הקובץ
 /** Returns a server-safe extension that agrees with an already validated MIME type. */
 export function extensionForMimeType(mimeType: string): string {
   return DOCUMENT_MIME_TO_EXTENSION[mimeType.toLowerCase()] ?? 'bin';

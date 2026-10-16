@@ -1,7 +1,9 @@
+// תיקיות המסמכים החתומים בתיק הנהג
 import type { SignatureRequest, SigningTemplate } from './docuseal';
 import { getLocale, t } from './i18n';
 import { INSPECTION_TITLE, LEGACY_INSPECTION_TITLE } from './inspectionTitle';
 
+// השם של בקשת חתימה (כולל שמות ישנים)
 /** A request's saved title, with inspections signed before the rename shown under the new name. */
 export function requestTitle(request: Pick<SignatureRequest, 'template_title'>): string | null {
   return request.template_title === LEGACY_INSPECTION_TITLE ? INSPECTION_TITLE : request.template_title ?? null;
@@ -14,6 +16,7 @@ export type SigningFolder = {
   requests: SignatureRequest[];
 };
 
+// בונה תיקייה לכל טופס של החברה
 /** One folder per form (every company form is a folder in each driver's file), plus older requests grouped by their saved name; by name. */
 export function buildSigningFolders(templates: SigningTemplate[], requests: SignatureRequest[]): SigningFolder[] {
   const folders = new Map<string, SigningFolder>(templates.map((template) => [template.id, {
@@ -30,6 +33,7 @@ export function buildSigningFolders(templates: SigningTemplate[], requests: Sign
   return [...folders.values()].sort((a, b) => a.title.localeCompare(b.title, 'he'));
 }
 
+// מצב התיקייה: ריקה, ממתינה, חתומה או נכשלה
 export function signingFolderStatus(folder: SigningFolder): 'empty' | 'pending' | 'completed' | 'failed' {
   if (folder.requests.some((r) => r.status === 'pending' && r.docuseal_submitter_slug)) return 'pending';
   const latest = folder.requests[0];
@@ -37,6 +41,7 @@ export function signingFolderStatus(folder: SigningFolder): 'empty' | 'pending' 
   return folder.requests.some((r) => r.status === 'completed') ? 'completed' : 'empty';
 }
 
+// מתי נחתם העותק האחרון
 /** When the folder's most recent signed copy was signed, or null if none was. */
 export function lastSignedAt(folder: SigningFolder): string | null {
   let latest: string | null = null;
@@ -48,6 +53,7 @@ export function lastSignedAt(folder: SigningFolder): string | null {
   return latest;
 }
 
+// 'נחתם ב...' לעותק האחרון
 /** "נחתם ב־05/10/2026" for the folder's latest signed copy, or null. */
 export function signedOnLabel(folder: SigningFolder): string | null {
   const at = lastSignedAt(folder);

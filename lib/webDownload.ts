@@ -1,6 +1,8 @@
+// הורדה ושיתוף של קבצים בדפדפן
 import { Platform } from 'react-native';
 import { t } from './i18n';
 
+// מוריד קובץ בדפדפן
 /**
  * Browser downloads cannot use Expo's native cache/share-sheet flow. Keep the
  * browser-only DOM work here so callers can share one download path on every
@@ -24,6 +26,7 @@ export async function downloadRemoteFileOnWeb(url: string, fileName: string): Pr
   return true;
 }
 
+// פותח שיתוף לקובץ (וואטסאפ, מייל...)
 /**
  * Hands a file to the device's share sheet (WhatsApp, mail, AirDrop…).
  * Resolves to false where the browser can't share files, so the caller can
@@ -40,6 +43,7 @@ export async function shareFileOnWeb(file: File, title: string): Promise<boolean
   return true;
 }
 
+// קורא קובץ שנבחר בדפדפן
 /**
  * expo-file-system's File class is an unimplemented stub on web, so a picker
  * result's blob: URL must be read back into base64 through the DOM instead.

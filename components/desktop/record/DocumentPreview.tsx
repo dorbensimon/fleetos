@@ -1,3 +1,4 @@
+// תצוגה מקדימה של מסמך (גרסת טלפון - מלבן ריק)
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -5,6 +6,7 @@ import type { DocumentRow } from '../../../lib/adminApi';
 import { documentIconName } from '../../../lib/documentActions';
 import { DESKTOP_COLORS } from '../desktopTheme';
 
+// מלבן במקום תצוגה מקדימה
 /**
  * Native fallback of the desktop document miniature (see DocumentPreview.web):
  * the desktop record pages only render on web, so this is just the paper
@@ -18,6 +20,7 @@ export function DocumentPreview({ doc, width, height }: { doc: DocumentRow; widt
   );
 }
 
+// עיצוב המלבן
 const styles = StyleSheet.create({
   paper: {
     borderRadius: 5,

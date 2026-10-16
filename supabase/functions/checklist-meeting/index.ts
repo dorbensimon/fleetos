@@ -1,3 +1,4 @@
+// פונקציית שרת: מילויי טפסי רשימת סעיפים (שמירה, חתימות, ביטול)
 import { corsHeaders } from '../_shared/cors.ts';
 import { docusealFetch } from '../_shared/docuseal.ts';
 import { isSignedRequestPath } from '../_shared/signingPaths.ts';
@@ -39,24 +40,30 @@ import {
  * Only the company's managers (and the platform owner) reach any of these.
  */
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
+// תבנית מזהה
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// כמה זמן נעילה בזמן חתימה
 const SIGN_LOCK_MINUTES = 3;
 
 type Submitter = { id?: number; submission_id?: number; slug?: string; role?: string; external_id?: string | null; sent_at?: string | null; created_at?: string };
 
+// טקסט בשורה אחת
 function oneLine(value: unknown, max: number): string {
   return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '';
 }
 
+// התאריך של היום בישראל
 /** Today in Israel, as YYYY-MM-DD. */
 function israelToday(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
+// תאריך המילוי (עד שנה אחורה)
 /** A meeting may be dated up to a year back (entered late), never in the future. */
 function meetingDateOrNull(value: unknown): string | null {
   if (!isIsoDay(value)) return null;
@@ -66,13 +73,16 @@ function meetingDateOrNull(value: unknown): string | null {
   return value <= today && value >= yearAgo.toISOString().slice(0, 10) ? value : null;
 }
 
+// תאריך כיום/חודש/שנה
 function dayText(value: string): string {
   const [y, m, d] = value.split('-');
   return `${d}/${m}/${y}`;
 }
 
+// המתנה
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// מקבל בקשה ומבצע את הפעולה
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);
@@ -501,6 +511,7 @@ Deno.serve(async (req) => {
   }
 });
 
+// קובע את המילוי הבא
 /**
  * After the officer signs: the driver's next meeting on a repeating form is
  * this meeting's date plus the form's months. The template decides how often
@@ -536,6 +547,7 @@ async function scheduleNextMeeting(db: any, meeting: { id: string; company_id: s
   return nextDue;
 }
 
+// מוחק הגשה שנוצרה ב-DocuSeal
 async function discardProvisionedSubmission(submissionId: number): Promise<boolean> {
   try {
     const response = await docusealFetch(`/submissions/${submissionId}`, { method: 'DELETE' });
@@ -550,6 +562,7 @@ async function discardProvisionedSubmission(submissionId: number): Promise<boole
   }
 }
 
+// מנקה בקשה שנכשלה
 // deno-lint-ignore no-explicit-any
 async function cleanupProvisionedRequest(db: any, requestId: string, submitter: Submitter) {
   const submissionId = submitter.submission_id;
@@ -571,6 +584,7 @@ async function cleanupProvisionedRequest(db: any, requestId: string, submitter: 
   }).eq('id', requestId).eq('status', 'pending');
 }
 
+// מחזיר את התזמון אחרי ביטול
 // deno-lint-ignore no-explicit-any
 async function restoreScheduleAfterCancellation(db: any, meetingId: string, userId: string, now: string): Promise<boolean> {
   const { data: schedule, error: readError } = await db.from('checklist_schedule').select('manual_next_due')
@@ -589,6 +603,7 @@ async function restoreScheduleAfterCancellation(db: any, meetingId: string, user
   return !error;
 }
 
+// שולח הודעה לנהג
 // deno-lint-ignore no-explicit-any
 async function notifyDriver(db: any, companyId: string, actorId: string, actorName: string | null, driverId: string, requestId: string, title: string) {
   const { data: existing } = await db.from('notifications').select('id').eq('signature_request_id', requestId).eq('recipient_id', driverId).limit(1);

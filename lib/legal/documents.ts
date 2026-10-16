@@ -1,3 +1,4 @@
+// תוכן הדפים המשפטיים: פרטיות, תנאי שימוש, עוגיות ונגישות
 import { ACCESSIBILITY_COORDINATOR, BUSINESS, businessSentence } from './business';
 
 /**
@@ -21,17 +22,21 @@ export type LegalDocument = {
   sections: LegalSection[];
 };
 
+// תאריך העדכון האחרון של הדפים
 export const LEGAL_UPDATED = '25 בספטמבר 2026';
 
+// מה המנהל מאשר כשהוא מוסיף נהג
 /** What a manager confirms when adding a driver (the company answers for informing its drivers). */
 export const DRIVER_DATA_NOTICE = 'אני מאשר/ת שהנהג יודע שהפרטים שלו יישמרו ב־icar לצורך ניהול הצי, כמתואר במדיניות הפרטיות';
 
+// שורות יצירת הקשר
 const contactLines = [
   `טלפון: ${BUSINESS.phone}`,
   `דוא״ל: ${BUSINESS.email}`,
   ...(BUSINESS.address ? [`כתובת: ${BUSINESS.address}`] : []),
 ];
 
+// מדיניות הפרטיות
 const privacy: LegalDocument = {
   id: 'privacy',
   title: 'מדיניות פרטיות',
@@ -164,6 +169,7 @@ const privacy: LegalDocument = {
   ],
 };
 
+// תנאי השימוש
 const terms: LegalDocument = {
   id: 'terms',
   title: 'תנאי שימוש',
@@ -277,6 +283,7 @@ const terms: LegalDocument = {
   ],
 };
 
+// מדיניות העוגיות
 const cookies: LegalDocument = {
   id: 'cookies',
   title: 'מדיניות עוגיות',
@@ -321,6 +328,7 @@ const cookies: LegalDocument = {
   ],
 };
 
+// הצהרת הנגישות
 const accessibility: LegalDocument = {
   id: 'accessibility',
   title: 'הצהרת נגישות',
@@ -374,10 +382,13 @@ const accessibility: LegalDocument = {
   ],
 };
 
+// כל הדפים המשפטיים לפי מזהה
 export const LEGAL_DOCUMENTS: Record<LegalDocId, LegalDocument> = { privacy, terms, cookies, accessibility };
 
+// סדר הדפים בתפריט
 export const LEGAL_DOC_ORDER: LegalDocId[] = ['terms', 'privacy', 'cookies', 'accessibility'];
 
+// האם הערך הוא מזהה של דף משפטי
 export function isLegalDocId(v: unknown): v is LegalDocId {
   return v === 'privacy' || v === 'terms' || v === 'cookies' || v === 'accessibility';
 }

@@ -1,3 +1,4 @@
+// פונקציית שרת: איפוס סיסמה
 // Edge Function: reset-user-password
 // Called by the app (owner, or an admin resetting a user in their own
 // company) to reset an admin/driver's password directly.
@@ -7,6 +8,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
 import { isValidTemporaryPassword, mayManageAccount } from '../_shared/accountSecurity.ts';
 
+// מאפס
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

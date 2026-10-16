@@ -1,3 +1,4 @@
+// מסמכי רישיון נהיגה של נהג
 import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Image, Modal, Animated, Platform, Easing } from 'react-native';
 import { BrandLoader } from '../../components/ui/BrandLoader';
@@ -33,10 +34,14 @@ import { errorMessage } from '../../lib/requestError';
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverLicenseDocuments'>;
 
 type Side = 'front' | 'back';
+// שם כל צד
 const SIDE_TITLE: Record<Side, string> = { get front() { return t('documents.frontSide'); }, get back() { return t('documents.backSide'); } };
+// זמן אנימציית החלון
 const SHEET_ANIM_MS = 280;
+// עקומת אנימציה
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
+// המסך: תמונות, תוקף ובקשות עדכון
 export default function DriverLicenseDocumentsScreen({ route, navigation }: Props) {
   const { driverId } = route.params;
   const { companyId, profile } = useCompany();
@@ -546,6 +551,7 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
   );
 }
 
+// אריח של צד הרישיון
 function SideTile({
   phone = false,
   label,
@@ -624,6 +630,7 @@ function SideTile({
   );
 }
 
+// פעולה בחלון
 function SheetAction({ label, onPress, bold }: { label: string; onPress: () => void; bold?: boolean }) {
   return (
     <Pressable
@@ -635,12 +642,14 @@ function SheetAction({ label, onPress, bold }: { label: string; onPress: () => v
   );
 }
 
+// תאריך כיום/חודש/שנה
 function formatDdMmYyyy(iso: string): string {
   const [y, m, d] = iso.split('-');
   if (!y || !m || !d) return iso;
   return `${d}/${m}/${y}`;
 }
 
+// עיצוב בטלפון
 const styles = StyleSheet.create({
   kitTiles: { flexDirection: 'row-reverse', gap: 12, padding: 14 },
   kitFooter: { textAlign: 'center', paddingHorizontal: 12 },
@@ -767,6 +776,7 @@ const styles = StyleSheet.create({
   viewerActionText: { color: '#FFFFFF', fontFamily: DC_TYPO.badge.fontFamily, fontSize: 12.5 },
 });
 
+// עיצוב במחשב
 const desktopStyles = StyleSheet.create({
   wrap: { padding: 24, maxWidth: 460, alignSelf: 'center', width: '100%', gap: 16 },
   editButton: {

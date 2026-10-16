@@ -1,3 +1,4 @@
+// מסך הבית של הנהג בטלפון
 import React, { useMemo } from 'react';
 import { ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -62,6 +63,7 @@ type Summary =
   | { kind: 'clear' }
   | { kind: 'none' };
 
+// השורה הכי חשובה: מה פג הבא
 /** The one line that matters most: what expires next, or what already has. */
 function summarize(items: { label: string; date: string | null }[], signatures: number): Summary {
   const dated = items.filter((i) => !!i.date).map((i) => ({ ...i, days: daysUntilExpiry(i.date) as number }));
@@ -74,6 +76,7 @@ function summarize(items: { label: string; date: string | null }[], signatures: 
   return { kind: 'next', days: next.days, label: next.label, status: statusOfDate(next.date) };
 }
 
+// הרכב, התוקף, המסמכים והמנהל
 /**
  * The driver's home: the car and what's due on it, up top on the night;
  * the full validity picture, quick actions and the fleet manager below.
@@ -282,6 +285,7 @@ export function DriverHomeMobile(p: Props) {
   );
 }
 
+// שורת 'דורש טיפול'
 function attentionLine(expired: number, first: string | null, signatures: number) {
   const docs = signatures === 1 ? t('driver.oneDocWaiting') : t('driver.docsWaiting', { signatures });
   if (!expired) return docs;
@@ -290,6 +294,7 @@ function attentionLine(expired: number, first: string | null, signatures: number
   return t('driver.lapsedAnd', { lapsed, v1: signatures === 1 ? t('driver.oneDocToSign') : t('driver.docsToSignN', { signatures }) });
 }
 
+// כרטיס הסיכום
 function SummaryPanel({ summary, onPress }: { summary: Summary; onPress?: () => void }) {
   if (summary.kind === 'none') return null;
   const tone: Status = summary.kind === 'attention' ? (summary.expired ? 'expired' : 'soon') : summary.kind === 'clear' ? 'ok' : summary.status;
@@ -361,6 +366,7 @@ function SummaryPanel({ summary, onPress }: { summary: Summary; onPress?: () => 
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: DK.canvas },
   scroll: { flex: 1 },

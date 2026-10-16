@@ -1,6 +1,8 @@
+// עיצוב החלונות הצפים של התיקיות
 import { useLayoutEffect } from 'react';
 import { SIGNING_CSS } from './signingCss';
 
+// העיצוב (CSS)
 /**
  * The floating window of the folder catalog ("הוסף תיקייה", an empty folder,
  * versions): the same look as every other window of the signing screens
@@ -158,6 +160,7 @@ textarea.fc-input { min-height: 84px; resize: vertical; line-height: 1.5; }
 }
 `;
 
+// מוסיף את העיצוב לדף פעם אחת
 /**
  * Puts the signing screens' styles on the page once. The folder windows also
  * open from screens that never loaded them (the driver file, the phone).

@@ -1,3 +1,4 @@
+// כלי הבעלים: תשלומים, הערות פנימיות, הודעות לחברות והתקדמות חברה חדשה
 import { supabase } from './supabase';
 
 /**
@@ -8,6 +9,7 @@ import { supabase } from './supabase';
  */
 
 export type PaymentMethod = 'transfer' | 'card' | 'check' | 'cash' | 'other';
+// אמצעי התשלום
 export const PAYMENT_METHODS: PaymentMethod[] = ['transfer', 'card', 'check', 'cash', 'other'];
 
 export type CompanyPayment = {
@@ -32,17 +34,21 @@ export type Announcement = {
   ends_at: string | null;
 };
 
+// העמודות של תשלום
 const PAYMENT_COLUMNS = 'id, company_id, period, amount, paid_on, method, note';
+// מסדר שורת תשלום
 const toPayment = (row: any): CompanyPayment => ({ ...row, amount: Number(row.amount) });
 
 /* ---------------- payments ---------------- */
 
+// התשלומים של חברה
 export async function listCompanyPayments(companyId: string): Promise<CompanyPayment[]> {
   const { data, error } = await supabase.from('company_payments').select(PAYMENT_COLUMNS).eq('company_id', companyId).order('period', { ascending: false }).order('paid_on', { ascending: false });
   if (error) throw error;
   return (data ?? []).map(toPayment);
 }
 
+// כל התשלומים מחודש מסוים (לגרף ההכנסות)
 /** Every payment since `sinceMonth` (YYYY-MM-01), for the revenue chart. */
 export async function listPaymentsSince(sinceMonth: string): Promise<CompanyPayment[]> {
   const { data, error } = await supabase.from('company_payments').select(PAYMENT_COLUMNS).gte('period', sinceMonth);
@@ -50,21 +56,25 @@ export async function listPaymentsSince(sinceMonth: string): Promise<CompanyPaym
   return (data ?? []).map(toPayment);
 }
 
+// רושם תשלום
 export async function addCompanyPayment(input: Omit<CompanyPayment, 'id'>): Promise<void> {
   const { error } = await supabase.from('company_payments').insert(input);
   if (error) throw error;
 }
 
+// מוחק תשלום
 export async function deleteCompanyPayment(id: string): Promise<void> {
   const { error } = await supabase.from('company_payments').delete().eq('id', id);
   if (error) throw error;
 }
 
+// המפתח של החודש
 /** YYYY-MM-01 of a date, in local time. */
 export function monthKey(d: Date = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
+// כמה שולם בכל חודש
 /** The last `count` months, oldest first, each with what was paid for it. */
 export function paidByMonth(payments: Pick<CompanyPayment, 'period' | 'amount'>[], count: number, now: Date = new Date()): { month: string; total: number }[] {
   const months: { month: string; total: number }[] = [];
@@ -79,17 +89,20 @@ export function paidByMonth(payments: Pick<CompanyPayment, 'period' | 'amount'>[
 
 /* ---------------- notes ---------------- */
 
+// ההערות הפנימיות על חברה
 export async function listCompanyNotes(companyId: string): Promise<CompanyNote[]> {
   const { data, error } = await supabase.from('company_notes').select('id, body, created_at').eq('company_id', companyId).order('created_at', { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
 
+// מוסיף הערה
 export async function addCompanyNote(companyId: string, body: string): Promise<void> {
   const { error } = await supabase.from('company_notes').insert({ company_id: companyId, body: body.trim() });
   if (error) throw error;
 }
 
+// מוחק הערה
 export async function deleteCompanyNote(id: string): Promise<void> {
   const { error } = await supabase.from('company_notes').delete().eq('id', id);
   if (error) throw error;
@@ -97,8 +110,10 @@ export async function deleteCompanyNote(id: string): Promise<void> {
 
 /* ---------------- announcements ---------------- */
 
+// העמודות של הודעה
 const ANNOUNCEMENT_COLUMNS = 'id, message, tone, audience, starts_at, ends_at';
 
+// רשימת ההודעות (בעלים)
 /** The owner's list: live and past, newest first. */
 export async function listAnnouncements(): Promise<Announcement[]> {
   const { data, error } = await supabase.from('system_announcements').select(ANNOUNCEMENT_COLUMNS).order('starts_at', { ascending: false }).limit(20);
@@ -106,6 +121,7 @@ export async function listAnnouncements(): Promise<Announcement[]> {
   return (data ?? []) as Announcement[];
 }
 
+// ההודעה שהמשתמש רואה עכשיו
 /** What a signed-in user sees now (RLS returns only live ones meant for them). */
 export async function liveAnnouncement(): Promise<Announcement | null> {
   const { data, error } = await supabase.from('system_announcements').select(ANNOUNCEMENT_COLUMNS).order('starts_at', { ascending: false }).limit(1);
@@ -114,10 +130,12 @@ export async function liveAnnouncement(): Promise<Announcement | null> {
   return row && isLive(row) ? row : null;
 }
 
+// האם ההודעה פעילה עכשיו
 export function isLive(a: Pick<Announcement, 'starts_at' | 'ends_at'>, now: Date = new Date()): boolean {
   return new Date(a.starts_at) <= now && (!a.ends_at || new Date(a.ends_at) > now);
 }
 
+// מפרסם הודעה לחברות
 export async function publishAnnouncement(input: Pick<Announcement, 'message' | 'tone' | 'audience'> & { days: number | null }): Promise<void> {
   // One live message at a time: publishing ends the one before it.
   await endAnnouncements();
@@ -126,6 +144,7 @@ export async function publishAnnouncement(input: Pick<Announcement, 'message' | 
   if (error) throw error;
 }
 
+// מסיים את ההודעות הפעילות
 export async function endAnnouncements(): Promise<void> {
   const now = new Date().toISOString();
   const { error } = await supabase.from('system_announcements').update({ ends_at: now }).or(`ends_at.is.null,ends_at.gt.${now}`).lte('starts_at', now);
@@ -136,6 +155,7 @@ export async function endAnnouncements(): Promise<void> {
 
 export type OnboardingStep = { key: 'manager' | 'drivers' | 'form' | 'signed'; done: boolean };
 
+// איפה חברה חדשה עומדת בצעדים הראשונים
 /**
  * Where a new company stands: a manager signed in, drivers were added, a form
  * exists in the driver file, and a first document was signed.

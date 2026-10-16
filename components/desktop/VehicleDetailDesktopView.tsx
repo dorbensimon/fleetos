@@ -1,3 +1,4 @@
+// תיק רכב - תצוגת מחשב
 import React, { useEffect, useState } from 'react';
 import { FocusTarget } from '../ui/FocusTarget';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -49,6 +50,7 @@ import { DetailRow, Fact, FieldEditDialog, GroupLabel, NIGHT_TONES, digitsOnly, 
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { t, dirIcon, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../lib/i18n';
 
+// מצבי הרכב שאפשר לבחור
 /** Statuses an admin can pick from the header pill; archiving has its own action. */
 const STATUS_OPTIONS: { value: VehicleStatus; label: string; tone: DesktopTone }[] = [
   { value: 'active', label: VEHICLE_STATUS_LABELS.active, tone: 'ok' },
@@ -86,16 +88,19 @@ export type VehicleDocumentFolder = {
   requiresExpiry: boolean;
 };
 
+// סוגי הרכב לבחירה
 const VEHICLE_TYPE_OPTIONS = (): DesktopSelectOption<VehicleType>[] => Object.entries(VEHICLE_TYPE_LABELS).map(([value, label]) => ({
   value: value as VehicleType,
   label,
 }));
 
+// סוגי הרכישה לבחירה
 const ACQUISITION_TYPE_OPTIONS = (): DesktopSelectOption<AcquisitionType>[] => Object.entries(ACQUISITION_TYPE_LABELS).map(([value, label]) => ({
   value: value as AcquisitionType,
   label,
 }));
 
+// פריטים שיכולים להציג אזהרה
 /** Compliance items that can raise the attention notice. */
 const ALERT_COMPLIANCE_TYPES = [
   { itemType: 'vehicle_license', get label() { return t('folder.vehicleLicense'); } },
@@ -104,8 +109,10 @@ const ALERT_COMPLIANCE_TYPES = [
   { itemType: 'insurance_comprehensive', get label() { return t('folder.comprehensiveInsurance'); } },
 ];
 
+// מספר ק"מ מעוצב
 const km = (n: number) => n.toLocaleString();
 
+// לוחית הרישוי הגדולה
 /**
  * The Israeli licence plate, large, sitting on the page's own surface colour.
  * It rests slightly tilted and straightens to face the viewer on hover.
@@ -144,6 +151,7 @@ function LicensePlate({ plate }: { plate: string }) {
 
 // ---------------------------------------------------------------------------
 
+// התיק: כותרת, פרטים, תחזוקה, נהגים, מסמכים ובדיקות
 export function VehicleDetailDesktopView({
   vehicle,
   department,
@@ -649,6 +657,7 @@ export function VehicleDetailDesktopView({
   );
 }
 
+// שורת נהג ברכב
 function DriverRow({ driver, first, onPress }: { driver: VehicleDriverWithProfile; first: boolean; onPress: () => void }) {
   const fullName = driver.full_name ?? t('common.unnamed');
   const initials = fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('');
@@ -677,10 +686,12 @@ function DriverRow({ driver, first, onPress }: { driver: VehicleDriverWithProfil
   );
 }
 
+// עיצוב תיק הרכב
 const styles = StyleSheet.create({
   ...pageStyles,
 
   plateWrap: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  // לוחית הרישוי
   plate: {
     flexDirection: 'row',
     alignItems: 'stretch',
@@ -711,9 +722,11 @@ const styles = StyleSheet.create({
   lookupNote: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#F3FAF6', borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   lookupNoteText: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted },
 
+  // כרטיס התחזוקה
   // Maintenance
   maintCard: { flexDirection: 'column' },
   maintTop: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 },
+  // שורת הקילומטראז'
   odoRow: { flexDirection: 'row-reverse', alignItems: 'baseline', gap: 6 },
   odoValue: { fontSize: 28, lineHeight: 33, letterSpacing: -0.5, color: DESKTOP_COLORS.ink, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   odoUnit: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
@@ -722,6 +735,7 @@ const styles = StyleSheet.create({
   progressValue: { fontSize: 13.5, color: DESKTOP_COLORS.ink, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   // Fills from the right (RTL). Animated via scaleX, never width.
   progressFill: { width: '100%', height: '100%', borderRadius: 4, ...webOnly({ transformOrigin: 'right center', transition: `transform 500ms ${EASE_OUT}` }) },
+  // פס ההתקדמות לטיפול הבא
   progressTrack: { height: 6, borderRadius: 3, backgroundColor: DESKTOP_COLORS.borderSoft, overflow: 'hidden' },
   progressFillEnter: webOnly({
     animationKeyframes: { from: { transform: [{ scaleX: 0 }] } },
@@ -735,8 +749,10 @@ const styles = StyleSheet.create({
   maintRows: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   maintButton: { marginHorizontal: 16, marginBottom: 14, marginTop: 'auto', justifyContent: 'center' },
 
+  // כרטיס הנהגים
   // Drivers
   driversCard: { paddingHorizontal: 0 },
+  // שורת נהג
   driverRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 9, ...webOnly({ transition: 'background-color 150ms ease' }) },
   driverName: { fontSize: 14.5 },
   driverLicense: { fontSize: 13, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },

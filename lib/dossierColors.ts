@@ -1,3 +1,5 @@
+// צבעי 'תיק נהג' (כחול וכהה) למסכים שנפתחים מתיק הנהג
+// הכחול של תיק הנהג
 /**
  * The "driver dossier" world's own blue/ink pair — used on the back/edit
  * buttons and hero icon of every screen opened from a driver's dossier
@@ -8,5 +10,7 @@
  * those files with no shared source, so this is the source now.
  */
 export const DOSSIER_BLUE = '#0A7FD0';
+// כחול בהיר
 export const DOSSIER_BLUE_LIGHT = '#3FA9E8';
+// צבע הטקסט הכהה
 export const DOSSIER_INK = '#0E1E2B';

@@ -1,3 +1,4 @@
+// כרטיס 'המילוי הבא' בתיק הנהג
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +10,7 @@ import { DuePill } from './DuePill';
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 
+// התאריך, כמה זמן נשאר, ובחירת תאריך אחר
 /**
  * "המפגש הבא" in a driver's folder on a repeating form: the date, how far off
  * it is, and a date picker to move it for this driver only.
@@ -74,6 +76,7 @@ export function NextMeetingCard({
   );
 }
 
+// עיצוב הכרטיס
 const styles = StyleSheet.create({
   card: { gap: 10, marginBottom: 12, padding: 16 },
   top: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },

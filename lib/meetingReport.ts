@@ -1,3 +1,4 @@
+// דוחות לכל טופס: מולא, לא הסתיים, צריך עכשיו, לא מולא
 import { supabase } from './supabase';
 import type { Company } from './supabase';
 import type { DriverRow } from './adminApi';
@@ -33,6 +34,7 @@ export type ReportMeeting = {
 
 export type FormReportData = { meetings: ReportMeeting[]; plan: PlanRow[] };
 
+// רשימת הטפסים של החברה
 /** The company's checklist forms, by name. */
 export async function listReportForms(companyId: string): Promise<ReportForm[]> {
   const templates = await listSigningTemplates(companyId);
@@ -42,6 +44,7 @@ export async function listReportForms(companyId: string): Promise<ReportForm[]> 
     .sort((a, b) => a.title.localeCompare(b.title, 'he') || a.createdAt.localeCompare(b.createdAt));
 }
 
+// המילויים והתזמון של טופס אחד
 /** One form's fills (draft or signed) and, for a repeating form, its plan. */
 export async function loadFormReportData(companyId: string, form: ReportForm): Promise<FormReportData> {
   const [rows, plan] = await Promise.all([
@@ -64,6 +67,7 @@ export async function loadFormReportData(companyId: string, form: ReportForm): P
   return { meetings, plan: plan.filter((row) => row.templateId === form.id) };
 }
 
+// ארבעת הדוחות של הטופס
 /** The four reports for this form; a one-time form has no "due". */
 export function formReportCategories(form: ReportForm): { value: FormReportCategory; label: string; hint?: string; icon: string }[] {
   const months = form.repeatMonths;
@@ -76,6 +80,7 @@ export function formReportCategories(form: ReportForm): { value: FormReportCateg
   ];
 }
 
+// תאריך לפני כמה חודשים
 /** `months` months before `today` (same day, clamped to the month's end), YYYY-MM-DD. */
 export function monthsBefore(today: string, months: number): string {
   const [y, m, d] = today.split('-').map(Number);
@@ -95,6 +100,7 @@ export type FormReportPick = {
   open: Map<string, Stuck>;
 };
 
+// בוחר אילו שורות נכנסות לכל דוח
 /** Which rows belong in each report. Exported for the tests. */
 export function selectFormReport(
   category: FormReportCategory,
@@ -141,17 +147,20 @@ export function selectFormReport(
   return pick;
 }
 
+// כמה שורות יש בדוח
 /** How many rows the report has: the number shown beside it and the total in the file. */
 export function formReportCount(category: FormReportCategory, pick: FormReportPick): number {
   return category === 'due' ? pick.plan.length : category === 'never' ? pick.drivers.length : pick.meetings.length;
 }
 
+// הסבר מה לעשות לכל מצב תקוע
 const OPEN_NOTE: Record<Stuck, string> = {
   draft: 'יש טיוטה פתוחה',
   awaiting_driver: 'ממתין לחתימת הנהג',
   requires_attention: 'לא הושלם — ראו דוח ״לא הושלמו״',
 };
 
+// תאי המצב בטבלה
 function stuckCells(meeting: ReportMeeting, state: MeetingState): string {
   const status = meeting.request?.status;
   if (state === 'draft') return `<td>${statusTag('הקצין עוד לא חתם', 'outline')}</td><td>להמשיך את הטיוטה מתיק הנהג</td>`;
@@ -160,10 +169,12 @@ function stuckCells(meeting: ReportMeeting, state: MeetingState): string {
   return `<td>${statusTag(label, 'accent2')}</td><td>לבטל מתיק הנהג ולמלא מחדש</td>`;
 }
 
+// תאי הנהג בטבלה
 function driverCells(d: DriverRow | undefined, fallbackName: string): string {
   return `<td>${esc(d?.full_name ?? fallbackName) || '—'}</td><td class="ltr">${esc(d?.national_id) || '—'}</td>`;
 }
 
+// תדירות הטופס בעברית
 /** The report is always in Hebrew, whatever the app language. */
 function frequencyHe(months: number): string {
   if (months === 0) return 'טופס חד-פעמי';
@@ -173,11 +184,13 @@ function frequencyHe(months: number): string {
   return `טופס חוזר כל ${months} חודשים`;
 }
 
+// כותרת הדוח
 export function formReportTitle(form: ReportForm, category: FormReportCategory): string {
   const label = formReportCategories(form).find((c) => c.value === category)?.label ?? '';
   return `${form.title} — ${label}`;
 }
 
+// בונה את ה-HTML של הדוח
 function buildHtml(company: Company, form: ReportForm, category: FormReportCategory, drivers: DriverRow[], data: FormReportData, pick: FormReportPick, today: string): string {
   const byId = new Map(drivers.map((d) => [d.id, d]));
   const plan = new Map(data.plan.map((row) => [row.driverId, row]));
@@ -246,6 +259,7 @@ function buildHtml(company: Company, form: ReportForm, category: FormReportCateg
   });
 }
 
+// מפיק ומוריד את הדוח
 export async function exportFormReport(company: Company, drivers: DriverRow[], form: ReportForm, data: FormReportData, category: FormReportCategory): Promise<void> {
   const today = todayIso();
   const pick = selectFormReport(category, form, data, drivers, today);

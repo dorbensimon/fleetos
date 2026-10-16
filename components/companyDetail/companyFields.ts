@@ -1,3 +1,4 @@
+// שדות טופס החברה אצל הבעלים
 /** The company's editable details, as the phone's details form holds them. */
 export type CompanyEditableFields = {
   name: string;

@@ -1,9 +1,11 @@
+// מחיקת חברה לצמיתות (צריך להקליד את השם)
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { DK, DKText, KitInput, KitSheet, PrimaryAction, SheetActions, STATUS } from '../driverKit';
 import { CompanyRow } from './CompanyCard';
 import { t } from '../../lib/i18n';
 
+// החלון
 /**
  * Deleting a company for good. The owner types the company's name to
  * unlock the button, so it never happens by a stray tap.
@@ -64,6 +66,7 @@ export function DeleteCompanyModal({
   );
 }
 
+// עיצוב החלון
 const styles = StyleSheet.create({
   grow: { flex: 1 },
   field: { gap: 10 },

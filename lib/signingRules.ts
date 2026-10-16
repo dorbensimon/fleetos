@@ -1,3 +1,4 @@
+// כללי חתימה: תוקף מסמך והתראה לפני פקיעה
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import { listSigningTemplates } from './docuseal';
@@ -21,10 +22,14 @@ export interface SigningRuleRow {
   leadDays: number;
 }
 
+// אפשרויות התוקף בחודשים
 export const VALIDITY_MONTHS = [0, 6, 12, 24, 36] as const;
+// כמה ימים לפני פקיעה מתריעים
 export const SIGNING_LEAD_DEFAULT = 30;
+// כללי בחירת הימים
 export const SIGNING_LEAD_RULE: LeadRule = { unit: 'days', min: 1, max: 90, step: 1, presets: [7, 14, 30, 60] };
 
+// טקסט לתוקף
 export function validityLabel(months: number | null): string {
   if (!months) return t('signingRules.noExpiry');
   if (months === 6) return t('signingRules.halfYear');
@@ -33,6 +38,7 @@ export function validityLabel(months: number | null): string {
   return t('signingRules.monthsValue', { value: months });
 }
 
+// טוען ושומר את כללי החתימה של החברה
 export function useSigningRules(companyId: string | null, enabled: boolean) {
   const [rows, setRows] = useState<SigningRuleRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);

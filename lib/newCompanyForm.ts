@@ -1,3 +1,4 @@
+// טופס יצירת חברה חדשה (בעלים)
 import { isValidIsraeliPhone } from './phone';
 import { isValidEmail, isValidTemporaryPassword } from './validation';
 import { emptyAccountForm, validateAccountForm, type AccountForm } from './companyAccount';
@@ -22,6 +23,7 @@ export type OwnerCompanyForm = {
   account: AccountForm;
 };
 
+// טופס ריק
 export function emptyOwnerCompanyForm(): OwnerCompanyForm {
   return {
     name: '',
@@ -42,6 +44,7 @@ export type CompanyStep = 0 | 1 | 2;
 
 type FieldErrors = Record<string, string>;
 
+// בודק שלב בטופס ומחזיר שגיאות
 /** The errors that stop a step; empty when it may move on. */
 export function validateCompanyStep(step: CompanyStep, form: OwnerCompanyForm): FieldErrors {
   const errors: FieldErrors = {};

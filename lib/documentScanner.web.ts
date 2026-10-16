@@ -1,3 +1,4 @@
+// סריקת תמונת רישיון לזיהוי תאריך התוקף (בדפדפן, בלי העלאה)
 import type { PickedFile } from './documents';
 import { readPickedFileBase64 } from './documents';
 import { extractExpiryDate } from './licenseDateExtraction';
@@ -10,6 +11,7 @@ export interface ScanResult {
   confidence: number; // 0-1
 }
 
+// מזהה בתמונת הרישיון את תאריך התוקף
 /**
  * Scans a picked license photo for its expiry date, entirely in the browser
  * via Tesseract.js — no upload, no external service, no rate limit, since a

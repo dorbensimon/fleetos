@@ -1,3 +1,4 @@
+// הגדרות החברה
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useToast } from '../../components/ui';
@@ -26,8 +27,10 @@ import { t } from '../../lib/i18n';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanySettings'>;
 
+// רק ספרות
 const digits = (v: string | null | undefined) => (v ?? '').replace(/\D/g, '');
 
+// ממלא את הטופס מנתוני החברה
 function formFromCompany(company: Company | null): CompanySettingsForm {
   return {
     name: company?.name ?? '',
@@ -56,6 +59,7 @@ function formFromCompany(company: Company | null): CompanySettingsForm {
   };
 }
 
+// בודק את הטופס
 function validate(form: CompanySettingsForm): Record<string, string> {
   const e: Record<string, string> = {};
   const phone = (key: string, v: string) => {
@@ -87,6 +91,7 @@ function validate(form: CompanySettingsForm): Record<string, string> {
   return e;
 }
 
+// המסך: טעינה, בדיקה ושמירה
 export default function CompanySettingsScreen({ navigation }: Props) {
   const { company, refresh } = useCompany();
   const isDesktop = useIsDesktop();

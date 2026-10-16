@@ -1,3 +1,4 @@
+// כרטיס תזכורות הבדיקות (מחשב)
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,8 +13,10 @@ import { INSPECTION_REPEAT_OPTIONS, saveInspectionSettings } from '../../lib/ins
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 
+// סוג ההתראה
 const TYPE = 'vehicle_safety_check_due' as const;
 
+// כל כמה זמן בודקים ומתי מתריעים
 /**
  * Everything about when safety inspections come up, in one desktop card:
  * how often each vehicle is checked (company), whether I get the alert (me),
@@ -123,11 +126,13 @@ export function InspectionRemindersCard({
   );
 }
 
+// עיצוב הכרטיס
 const styles = StyleSheet.create({
   section: { padding: 16, gap: 10 },
   divider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   head: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   headText: { fontSize: 14.5 },
+  // כפתורי הבחירה
   chips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 },
   chip: {
     flexDirection: 'row-reverse',
@@ -147,6 +152,7 @@ const styles = StyleSheet.create({
   chipTextOn: { color: '#FFFFFF' },
   hint: { fontSize: 12.5, lineHeight: 18, color: DESKTOP_COLORS.inkMuted },
   error: { fontSize: 13, color: DESKTOP_TONES.bad.fg },
+  // שורת ההתראה
   alertRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   alertIcon: { width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(47,91,255,0.10)', alignItems: 'center', justifyContent: 'center' },
   alertIconOff: { backgroundColor: DESKTOP_COLORS.canvas },

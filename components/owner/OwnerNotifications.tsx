@@ -1,3 +1,4 @@
+// התראות הבעלים: טלפון ומחשב
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,7 @@ import { t, dirIcon } from '../../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+// אייקון לכל סוג
 const TYPE_ICON: Record<OwnerNotificationType, IconName> = {
   owner_company_activated: 'rocket',
   owner_admin_added: 'person-add',
@@ -32,6 +34,7 @@ const TYPE_ICON: Record<OwnerNotificationType, IconName> = {
   owner_vehicle_limit: 'trending-up',
 };
 
+// צבע לכל דחיפות
 const TONE_COLOR: Record<OwnerNotification['tone'], string> = {
   info: DK.accent,
   good: STATUS.ok.fg,
@@ -39,8 +42,10 @@ const TONE_COLOR: Record<OwnerNotification['tone'], string> = {
   bad: STATUS.expired.fg,
 };
 
+// סוגי התראות של חיוב
 const BILLING: OwnerNotificationType[] = ['owner_trial_ending', 'owner_renewal_due', 'owner_vehicle_limit'];
 
+// קבוצת יום
 function dayGroup(iso: string): string {
   const d = new Date(iso);
   const today = new Date();
@@ -52,6 +57,7 @@ function dayGroup(iso: string): string {
   return t('time.earlier');
 }
 
+// מקבץ התראות לפי יום
 function grouped(items: OwnerNotification[]) {
   const groups: { title: string; rows: OwnerNotification[] }[] = [];
   for (const n of items) {
@@ -76,6 +82,7 @@ type FeedProps = {
 
 // ── Phone ─────────────────────────────────────────────────────────────────
 
+// ההתראות בטלפון
 export function OwnerNotificationsMobile(
   p: FeedProps & { insetTop: number; insetBottom: number; onSettings: () => void; onBack: () => void; refreshing?: boolean; onRefresh?: () => void },
 ) {
@@ -194,6 +201,7 @@ export function OwnerNotificationsMobile(
 // ── Desktop ───────────────────────────────────────────────────────────────
 
 type Filter = 'all' | 'unread' | 'customers' | 'billing';
+// אפשרויות הסינון
 const FILTERS: { value: Filter; label: string }[] = [
   { value: 'all', get label() { return t('common.all'); } },
   { value: 'unread', get label() { return t('notifications.unread'); } },
@@ -201,6 +209,7 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'billing', get label() { return t('owner.notif.subscriptions'); } },
 ];
 
+// האם התראה מתאימה לסינון
 function matches(n: OwnerNotification, filter: Filter, unreadIds: Set<string>): boolean {
   if (filter === 'unread') return unreadIds.has(n.id);
   if (filter === 'billing') return BILLING.includes(n.notification_type);
@@ -208,6 +217,7 @@ function matches(n: OwnerNotification, filter: Filter, unreadIds: Set<string>): 
   return true;
 }
 
+// צבעים במחשב
 const DESK_TONE: Record<OwnerNotification['tone'], { bg: string; fg: string }> = {
   info: { bg: '#E6F2F9', fg: DESKTOP_COLORS.brand },
   good: DESKTOP_TONES.ok,
@@ -215,6 +225,7 @@ const DESK_TONE: Record<OwnerNotification['tone'], { bg: string; fg: string }> =
   bad: DESKTOP_TONES.bad,
 };
 
+// ההתראות וההגדרות במחשב
 export function OwnerNotificationsDesktop(p: FeedProps & { prefs: NotificationPreferencesState }) {
   const [filter, setFilter] = useState<Filter>('all');
   const rows = useMemo(() => p.items.filter((n) => matches(n, filter, p.unreadIds)), [p.items, filter, p.unreadIds]);
@@ -374,6 +385,7 @@ export function OwnerNotificationsDesktop(p: FeedProps & { prefs: NotificationPr
   );
 }
 
+// עיצוב בטלפון
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { textAlign: 'center' },
@@ -393,7 +405,9 @@ const styles = StyleSheet.create({
   emptyIcon: { width: 64, height: 64, borderRadius: 22, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
 });
 
+// עיצוב במחשב
 const d = StyleSheet.create({
+  // הדף
   page: { padding: 28, paddingBottom: 48, gap: 20, width: '100%', maxWidth: 1240, alignSelf: 'center' },
   center: { paddingVertical: 48, alignItems: 'center' },
   header: { flexDirection: 'row-reverse', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' },
@@ -416,6 +430,7 @@ const d = StyleSheet.create({
 
   columns: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' },
   panel: { backgroundColor: DESKTOP_COLORS.surface, borderRadius: 14, borderWidth: 1, borderColor: DESKTOP_COLORS.border, overflow: 'hidden' },
+  // רשימת ההתראות
   feed: { flex: 1, minWidth: 420 },
   settings: { width: 380, flexGrow: 1, maxWidth: 520, paddingBottom: 8 },
 
@@ -440,6 +455,7 @@ const d = StyleSheet.create({
   onDarkSoft: { color: 'rgba(255,255,255,0.75)' },
 
   groupTitle: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 6 },
+  // שורת התראה
   item: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 12, paddingHorizontal: 18, paddingVertical: 12, marginHorizontal: 6, borderRadius: 10 },
   itemUnread: { backgroundColor: '#F3F8FC' },
   itemHover: { backgroundColor: DESKTOP_COLORS.rowHover },

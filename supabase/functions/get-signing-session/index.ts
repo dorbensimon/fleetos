@@ -1,12 +1,15 @@
+// פונקציית שרת: פתיחת חלון חתימה
 import { corsHeaders } from '../_shared/cors.ts';
 import { safeDocusealAppUrl, safeDocusealHost, signDocuSealJwt } from '../_shared/docuseal.ts';
 import { isSignedRequestPath } from '../_shared/signingPaths.ts';
 import { verifyUser } from '../_shared/verifyUser.ts';
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
+// מחזיר את פרטי החלון
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);

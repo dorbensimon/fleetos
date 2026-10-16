@@ -1,3 +1,4 @@
+// חלונות צפים של טופס: 'מה לשלוח' אחרי נוסח חדש, והיסטוריית נוסחים
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,8 +16,10 @@ import { t, getLocale } from '../../../lib/i18n';
  * bottom sheet on a phone (folderCss.ts).
  */
 
+// הודעת שגיאה
 const errorText = (error: unknown, fallback: string) => (error instanceof Error && error.message ? error.message : fallback);
 
+// החלון הצף עצמו
 /** The floating window itself: backdrop, Escape, focus, no page scroll behind it. */
 export function FloatWindow({
   closing,
@@ -71,6 +74,7 @@ export function FloatWindow({
   );
 }
 
+// אנימציית תיקייה שנפתחת
 /** A folder dropping in, its front opening and a green "+" popping in. `done` closes it on a check. */
 export function FolderHero({ done = false }: { done?: boolean }) {
   return (
@@ -89,6 +93,7 @@ export function FolderHero({ done = false }: { done?: boolean }) {
 
 // ── After a new version: what to send ───────────────────────────────
 
+// אחרי נוסח חדש: למי לשלוח
 export function AfterReplaceSheet({
   companyId,
   template,
@@ -170,6 +175,7 @@ export function AfterReplaceSheet({
 
 // ── Version history ─────────────────────────────────────────────────
 
+// היסטוריית הנוסחים עם שחזור
 export function FormVersionsSheet({
   companyId,
   template,

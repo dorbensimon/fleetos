@@ -1,3 +1,4 @@
+// הגדרות מערכת: שפה ודפים משפטיים
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -16,6 +17,7 @@ import { t, dirIcon } from '../lib/i18n';
 type Props = NativeStackScreenProps<RootStackParamList, 'SystemSettings'>;
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+// שורות הדפים המשפטיים
 const LEGAL_ROWS: { doc: RootStackParamList['Legal']['doc']; icon: IconName; label: () => string }[] = [
   { doc: 'terms', icon: 'document-text', label: () => t('legal.terms') },
   { doc: 'privacy', icon: 'lock-closed', label: () => t('legal.privacyPolicyShort') },
@@ -23,6 +25,7 @@ const LEGAL_ROWS: { doc: RootStackParamList['Legal']['doc']; icon: IconName; lab
   { doc: 'accessibility', icon: 'accessibility', label: () => t('legal.accessibilityStatement') },
 ];
 
+// המסך
 /**
  * "הגדרות מערכת", for every role: the app's language, and the terms,
  * privacy, cookies and accessibility pages.
@@ -89,11 +92,14 @@ export default function SystemSettingsScreen({ navigation }: Props) {
   );
 }
 
+// עיצוב במחשב
 const ds = StyleSheet.create({
   heroIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  // שתי העמודות
   columns: { flexDirection: 'row-reverse', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 },
   column: { flexGrow: 1, flexBasis: 360, minWidth: 0 },
   sectionTitle: { fontSize: 14, color: DESKTOP_COLORS.ink, marginTop: 4, marginBottom: 8 },
+  // כרטיס
   card: { backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 14, overflow: 'hidden' },
   row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 16, minHeight: 46 },
   rowDivider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },

@@ -1,3 +1,4 @@
+// ראש הדשבורד: כותרת כחולה, מתג נהגים/רכבים, אריחי סינון ו'דורש טיפול'
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, LayoutChangeEvent, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,13 +34,18 @@ export type FilterCard<T extends string> = {
   tone?: DesktopTone;
 };
 
+// ספרות ברוחב אחיד
 const TABULAR = webOnly({ fontVariantNumeric: 'tabular-nums' });
+// קפיץ לאנימציה בלי קפיצה
 /** Critically damped: the selection glides and settles with no bounce. */
 const SPRING = { stiffness: 340, damping: 37, mass: 1, useNativeDriver: false } as const;
+// עקומת אנימציה
 const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
 
+// כחול רך
 const BRAND_SOFT = '#E6F2F9';
 
+// צבעי מילוי לאריח נבחר
 /** Solid fills for a selected card — dark enough for white text. */
 const TONE_FILL: Record<DesktopTone | 'brand', string> = {
   brand: DESKTOP_COLORS.brand,
@@ -49,6 +55,7 @@ const TONE_FILL: Record<DesktopTone | 'brand', string> = {
   neutral: '#66727F',
 };
 
+// ברכה לפי שעה
 function greetingFor(hour: number): string {
   if (hour >= 5 && hour < 12) return t('greeting.morning');
   if (hour >= 12 && hour < 17) return t('greeting.afternoon');
@@ -60,6 +67,7 @@ function greetingFor(hour: number): string {
 /* Header                                                              */
 /* ------------------------------------------------------------------ */
 
+// הכותרת הכחולה עם הברכה והכפתורים
 export function FleetHeader() {
   const { profile } = useCompany();
   const now = new Date();
@@ -90,6 +98,7 @@ export function FleetHeader() {
 /* Segmented control: drivers / vehicles                               */
 /* ------------------------------------------------------------------ */
 
+// המיקום והרוחב של כל חלק במתג
 /** Offset from the right edge and width of `value` in a row-reverse strip, once every width before it is known. */
 function frameOf<T extends string>(order: T[], widths: Partial<Record<T, number>>, value: T) {
   const index = order.indexOf(value);
@@ -104,11 +113,13 @@ function frameOf<T extends string>(order: T[], widths: Partial<Record<T, number>
   return width == null ? null : { x, width };
 }
 
+// נהגים / רכבים
 const MODES: { value: FleetMode; label: string; icon: IconName }[] = [
   { value: 'drivers', get label() { return t('common.drivers'); }, icon: 'people' },
   { value: 'vehicles', get label() { return t('common.vehicles'); }, icon: 'car-sport' },
 ];
 
+// המתג נהגים/רכבים
 /** Segmented control: a dark thumb glides to the chosen segment on a critically damped spring. */
 export function ModeSwitch({
   mode,
@@ -209,9 +220,11 @@ type FilterCardsProps<T extends string> = {
   onSelect: (value: T) => void;
 };
 
+// מתחת לרוחב הזה ההסברים באריחים נעלמים
 /** Below this row width the one-line explanations drop so the labels and numbers keep their room. */
 const TILE_HINT_MIN_ROW = 820;
 
+// אריחי הסינון
 /**
  * Filter tiles: every status is both a number and a filter. The chosen tile
  * fills with its tone and gets a check mark, so the current view is never in
@@ -221,6 +234,7 @@ export function FilterCards<T extends string>(props: FilterCardsProps<T>) {
   return <TileRow key={props.animKey} {...props} />;
 }
 
+// שורת אריחים
 function TileRow<T extends string>({ cards, selected, loading, onSelect }: FilterCardsProps<T>) {
   const [rowWidth, setRowWidth] = useState(0);
   const showHints = rowWidth === 0 || rowWidth >= TILE_HINT_MIN_ROW;
@@ -233,6 +247,7 @@ function TileRow<T extends string>({ cards, selected, loading, onSelect }: Filte
   );
 }
 
+// אריח סינון עם מספר
 function FilterTile<T extends string>({
   card,
   index,
@@ -297,6 +312,7 @@ function FilterTile<T extends string>({
   );
 }
 
+// מספר שמתגלגל לערך החדש
 /** Rolls a number from its previous value to the new one (ease-out quart); instant when motion is reduced. */
 function CountUp({ value, style }: { value: number | null; style: React.ComponentProps<typeof DText>['style'] }) {
   const [shown, setShown] = useState(0);
@@ -332,6 +348,7 @@ function CountUp({ value, style }: { value: number | null; style: React.Componen
 /* Needs attention                                                     */
 /* ------------------------------------------------------------------ */
 
+// תפריט 'דורש טיפול'
 /**
  * "Needs attention" lives in the top bar next to the notifications bell: a
  * red pill with the number of vehicles that drops down every problem,
@@ -411,6 +428,7 @@ export function AttentionMenu({
   );
 }
 
+// קבוצה בתפריט 'דורש טיפול'
 function AttentionGroupSection({
   group,
   first,
@@ -473,6 +491,7 @@ function AttentionGroupSection({
   );
 }
 
+// אייקון לכל קבוצה
 const GROUP_ICON: Record<VehicleAttentionGroup['kind'], IconName> = {
   insurance: 'shield-outline',
   registration: 'document-text-outline',
@@ -483,6 +502,7 @@ const GROUP_ICON: Record<VehicleAttentionGroup['kind'], IconName> = {
 /* Motion: CSS keyframes on web, transform + opacity only              */
 /* ------------------------------------------------------------------ */
 
+// אנימציית כניסה
 export function enter(order: number) {
   const reduced = prefersReducedMotion();
   return webOnly({
@@ -496,6 +516,7 @@ export function enter(order: number) {
   });
 }
 
+// כרטיסים נכנסים אחד אחרי השני
 /** Cards rise in one after another; opacity only when motion is reduced. */
 function enterCard(index: number) {
   const reduced = prefersReducedMotion();
@@ -513,6 +534,7 @@ function enterCard(index: number) {
   });
 }
 
+// שורות נכנסות אחת אחרי השנייה
 export function enterRow(index: number) {
   if (prefersReducedMotion()) return false;
   return webOnly({
@@ -527,9 +549,11 @@ export function enterRow(index: number) {
   });
 }
 
+// עיצוב ראש הדשבורד
 const styles = StyleSheet.create({
   headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
 
+  // המתג
   segmented: {
     flexDirection: 'row-reverse',
     padding: 3,
@@ -545,6 +569,7 @@ const styles = StyleSheet.create({
     backgroundColor: DESKTOP_COLORS.ink,
     ...webOnly({ boxShadow: '0 6px 14px -6px rgba(22,34,46,0.55), inset 0 1px 0 rgba(255,255,255,0.12)' }),
   },
+  // חלק במתג
   segment: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -572,7 +597,9 @@ const styles = StyleSheet.create({
   segmentCountOn: { backgroundColor: 'rgba(255,255,255,0.16)' },
   segmentCountText: { fontSize: 12, lineHeight: 15, color: DESKTOP_COLORS.inkMuted, textAlign: 'center' },
 
+  // שורת האריחים
   tiles: { flexDirection: 'row-reverse', gap: 12 },
+  // אריח
   tile: {
     flex: 1,
     minWidth: 0,
@@ -627,6 +654,7 @@ const styles = StyleSheet.create({
   tileText: { flex: 1, minWidth: 0, gap: 1 },
   tileLabel: { fontSize: 14, lineHeight: 18, color: DESKTOP_COLORS.ink, ...webOnly({ transition: 'color 280ms ease' }) },
   tileHint: { fontSize: 12, lineHeight: 16, color: DESKTOP_COLORS.inkFaint, ...webOnly({ transition: 'color 280ms ease' }) },
+  // המספר באריח
   tileCount: {
     fontSize: 21,
     lineHeight: 24,
@@ -637,6 +665,7 @@ const styles = StyleSheet.create({
   onWhite: { color: '#FFFFFF' },
   onWhiteSoft: { color: 'rgba(255,255,255,0.88)' },
 
+  // קבוצה ב'דורש טיפול'
   group: { paddingVertical: 12 },
   groupDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DESKTOP_COLORS.border },
   groupHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 18 },
@@ -645,6 +674,7 @@ const styles = StyleSheet.create({
   groupCount: { minWidth: 24, height: 22, paddingHorizontal: 7, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   groupCountText: { fontSize: 12.5, textAlign: 'center' },
   issueList: { marginTop: 6 },
+  // שורת בעיה
   issue: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -674,6 +704,7 @@ const styles = StyleSheet.create({
   issueDetail: { fontSize: 12 },
   issueAction: { flexDirection: 'row-reverse', alignItems: 'center', gap: 2 },
   issueActionText: { fontSize: 12.5, color: DESKTOP_COLORS.brand },
+  // כפתור 'דורש טיפול'
   attentionPill: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

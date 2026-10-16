@@ -1,3 +1,4 @@
+// טופס יצירה/עריכה של רכב - תצוגת מחשב
 import React from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import { BrandLoader } from '../ui/BrandLoader';
@@ -48,6 +49,7 @@ export interface FormState {
 type StepKey = 'identity' | 'details' | 'assign' | 'drivers';
 type MciName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
+// אייקון לכל סוג רכב
 const TYPE_ART: Record<VehicleType, MciName> = {
   car: 'car-side',
   minibus: 'van-utility',
@@ -55,12 +57,14 @@ const TYPE_ART: Record<VehicleType, MciName> = {
   bus: 'bus-side',
 };
 
+// צבע נקודת המצב
 const STATUS_DOT: Partial<Record<VehicleStatus, string>> = {
   active: '#34C759',
   maintenance: '#FF9500',
   disabled: '#8B98A4',
 };
 
+// שם צבע בעברית ← דוגמת צבע
 /** Common Hebrew color names → a swatch for the card. Anything else shows without one. */
 const COLOR_SWATCH: [RegExp, string][] = [
   [/לבן|שנהב/, '#FFFFFF'],
@@ -75,8 +79,10 @@ const COLOR_SWATCH: [RegExp, string][] = [
   [/חום|בז/, '#8A6A4F'],
 ];
 
+// דוגמת הצבע לשם צבע
 const swatchFor = (color: string) => COLOR_SWATCH.find(([re]) => re.test(color))?.[1];
 
+// הטופס עם כרטיס רכב שמתמלא
 /**
  * Desktop body of the vehicle create/edit form — the same record-form design
  * as DriverFormDesktopView (form/RecordFormKit): the vehicle's card, with its
@@ -388,6 +394,7 @@ export function VehicleFormDesktopView({
   );
 }
 
+// שדה מספר רישוי בצורת לוחית
 /** The plate field drawn as an Israeli plate: yellow, the blue IL band, big black digits. */
 function PlateInput({ value, onChange, hasError }: { value: string; onChange: (v: string) => void; hasError?: boolean }) {
   return (
@@ -408,6 +415,7 @@ function PlateInput({ value, onChange, hasError }: { value: string; onChange: (v
   );
 }
 
+// כרטיס הרכב שמתמלא
 /** The vehicle as a card, filling in while the form is typed. */
 function VehicleCard({ form, typeLabel, statusLabel }: { form: FormState; typeLabel?: string; statusLabel?: string }) {
   const plate = formatPlate(form.plate_number);
@@ -469,6 +477,7 @@ function VehicleCard({ form, typeLabel, statusLabel }: { form: FormState; typeLa
   );
 }
 
+// עיצוב הטופס
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   pairRow: { flexDirection: 'row-reverse', gap: 10 },
@@ -484,6 +493,7 @@ const styles = StyleSheet.create({
   colorSwatchEmpty: { borderStyle: 'dashed', borderColor: DESKTOP_COLORS.borderInput },
 
   plateRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'center', gap: 10 },
+  // לוחית הקלדה
   plate: {
     flexGrow: 1,
     flexBasis: 240,
@@ -514,6 +524,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     writingDirection: 'ltr',
   },
+  // כפתור חיפוש במאגר
   lookup: {
     height: 60,
     flexDirection: 'row-reverse',
@@ -552,6 +563,7 @@ const styles = StyleSheet.create({
     ...webOnly({ boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 6px 20px rgba(16,24,40,0.05)' }),
   },
 
+  // כרטיס הרכב
   // Vehicle card
   card: { flex: 1, padding: 18, justifyContent: 'space-between' },
   cardPlate: {

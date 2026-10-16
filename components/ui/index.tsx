@@ -1,3 +1,4 @@
+// רכיבי בסיס: מסך, כרטיס, כותרת, תגית, כפתורים, שדות ומצבים
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -30,6 +31,7 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DK, DK_FONT, DK_SHADOW, STATUS } from '../driverKit/theme';
 import { t, dirIcon, textEnd } from '../../lib/i18n';
 
+// האם להשתמש בעיצוב הטלפון
 /**
  * On the phone these primitives take the icar kit's look (the same one the
  * driver screens are built from); the desktop keeps its own.
@@ -41,6 +43,7 @@ function usePhone() {
 export { AppText } from './Text';
 export { ToastProvider, useToast } from './Toast';
 
+// כפתור חזרה
 /** The single compact back affordance used in app navigation headers. */
 export function BackButton({
   onPress,
@@ -70,6 +73,7 @@ export function BackButton({
 /* Screen                                                              */
 /* ------------------------------------------------------------------ */
 
+// מסך
 export function Screen({ style, contentStyle, children, ...rest }: ViewProps & { contentStyle?: StyleProp<ViewStyle> }) {
   return (
     <View {...rest} style={[styles.screen, style]}>
@@ -82,6 +86,7 @@ export function Screen({ style, contentStyle, children, ...rest }: ViewProps & {
 /* Card — white surface lifted by a shadow, never a border             */
 /* ------------------------------------------------------------------ */
 
+// כרטיס לבן
 export function Card({ style, ...rest }: ViewProps) {
   const phone = usePhone();
   return <View {...rest} style={[styles.card, phone && kit.card, style]} />;
@@ -91,6 +96,7 @@ export function Card({ style, ...rest }: ViewProps) {
 /* Screen header                                                       */
 /* ------------------------------------------------------------------ */
 
+// כותרת מסך
 export function ScreenHeader({
   title,
   subtitle,
@@ -124,6 +130,7 @@ export function ScreenHeader({
 /* Badge                                                               */
 /* ------------------------------------------------------------------ */
 
+// תגית
 export function Badge({
   label,
   bg,
@@ -143,6 +150,7 @@ export function Badge({
   );
 }
 
+// תגית לפי תוקף
 /** Badge driven by an expiry date's state. */
 export function ExpiryBadge({ state, label }: { state: ExpiryState; label?: string }) {
   const s = EXPIRY_STYLE[state];
@@ -153,6 +161,7 @@ export function ExpiryBadge({ state, label }: { state: ExpiryState; label?: stri
 /* Buttons                                                             */
 /* ------------------------------------------------------------------ */
 
+// כפתור ראשי
 export function PrimaryButton({
   label,
   icon,
@@ -203,6 +212,7 @@ export function PrimaryButton({
   );
 }
 
+// כפתור משני
 export function SecondaryButton({
   label,
   icon,
@@ -232,6 +242,7 @@ export function SecondaryButton({
 /* Form field                                                          */
 /* ------------------------------------------------------------------ */
 
+// שדה עם כותרת
 export function Field({
   label,
   error,
@@ -264,6 +275,7 @@ export function Field({
   );
 }
 
+// מסגרת מיקוד בשדות
 /** Focus ring for the phone's inputs (white with a blue edge while typing). */
 function useFocusRing(rest: TextInputProps) {
   const [focused, setFocused] = useState(false);
@@ -280,6 +292,7 @@ function useFocusRing(rest: TextInputProps) {
   };
 }
 
+// תיבת טקסט
 export function Input({ style, hasError, ...rest }: TextInputProps & { hasError?: boolean }) {
   const phone = usePhone();
   const ring = useFocusRing(rest);
@@ -303,6 +316,7 @@ export function Input({ style, hasError, ...rest }: TextInputProps & { hasError?
   );
 }
 
+// תיבת טקסט משמאל לימין
 /** LTR input for emails, phone numbers and plate numbers. */
 export function InputLtr({ style, hasError, ...rest }: TextInputProps & { hasError?: boolean }) {
   const phone = usePhone();
@@ -333,6 +347,7 @@ export function InputLtr({ style, hasError, ...rest }: TextInputProps & { hasErr
 /* States                                                              */
 /* ------------------------------------------------------------------ */
 
+// מצב טעינה
 /**
  * Full-area loading: the icar loader, centred. It appears only after a short
  * beat, so data that arrives quickly never flashes a loader on screen.
@@ -350,6 +365,7 @@ export function LoadingState({ size = 48 }: { size?: number }) {
   );
 }
 
+// מצב ריק
 export function EmptyState({
   icon = 'file-tray-outline',
   title,
@@ -377,6 +393,7 @@ export function EmptyState({
   );
 }
 
+// מצב שגיאה
 /**
  * Shown when a load() call fails (network error, Supabase RLS/permission
  * error, etc) instead of silently falling through to an EmptyState/"not
@@ -426,6 +443,7 @@ export function ErrorState({
   );
 }
 
+// שורה עם מתג
 /**
  * A labelled on/off row with an explanation line — used by the settings
  * screen's notification toggles. Saves immediately on change; the caller
@@ -468,6 +486,7 @@ export function ToggleRow({
   );
 }
 
+// שורת מידע
 /** A labelled value, used all over the detail screens. */
 export function InfoRow({
   label,
@@ -493,10 +512,13 @@ export function InfoRow({
 
 /* ------------------------------------------------------------------ */
 
+// עיצוב הרכיבים
 const styles = StyleSheet.create({
+  // מסך
   screen: { flex: 1, backgroundColor: COLORS.screen },
   screenContent: { flex: 1, width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' },
 
+  // כרטיס
   card: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
@@ -504,6 +526,7 @@ const styles = StyleSheet.create({
     ...CARD_SHADOW,
   },
 
+  // כותרת
   header: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -541,6 +564,7 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontSize: 11 },
 
+  // כפתור ראשי
   primaryBtn: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -575,6 +599,7 @@ const styles = StyleSheet.create({
   fieldOptional: { color: COLORS.textFaint, fontFamily: FONT.regular },
   fieldError: { fontSize: 11.5, color: COLORS.dangerText },
 
+  // תיבת טקסט
   input: {
     height: 48,
     borderRadius: RADIUS.md,
@@ -636,6 +661,7 @@ const styles = StyleSheet.create({
   infoValue: { fontSize: 13.5, flexShrink: 1, textAlign: textEnd() },
 });
 
+// עיצוב הרכיבים בטלפון
 /* The phone's look — the icar kit (components/driverKit). */
 const kit = StyleSheet.create({
   backButton: {

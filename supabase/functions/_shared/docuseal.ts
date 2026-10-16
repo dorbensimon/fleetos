@@ -1,11 +1,15 @@
+// חיבור ל-DocuSeal מהשרת
+// ממיר טקסט לבייטים
 const encoder = new TextEncoder();
 
+// קידוד base64url
 function base64Url(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
+// חותם אסימון ל-DocuSeal
 export async function signDocuSealJwt(payload: Record<string, unknown>): Promise<string> {
   const secret = Deno.env.get('DOCUSEAL_API_KEY');
   if (!secret) throw new Error('DOCUSEAL_API_KEY is not configured');
@@ -24,6 +28,7 @@ export async function signDocuSealJwt(payload: Record<string, unknown>): Promise
   return `${unsigned}.${base64Url(new Uint8Array(signature))}`;
 }
 
+// קריאה ל-API של DocuSeal
 export async function docusealFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const apiKey = Deno.env.get('DOCUSEAL_API_KEY');
   if (!apiKey) throw new Error('DOCUSEAL_API_KEY is not configured');
@@ -39,11 +44,13 @@ export async function docusealFetch(path: string, init: RequestInit = {}): Promi
   });
 }
 
+// כתובת DocuSeal המאושרת
 export function safeDocusealHost(): string {
   const apiUrl = Deno.env.get('DOCUSEAL_API_URL') || 'https://api.docuseal.com';
   return apiUrl.includes('.eu') ? 'cdn.docuseal.eu' : 'cdn.docuseal.com';
 }
 
+// כתובת האפליקציה של DocuSeal
 export function safeDocusealAppUrl(): string {
   const apiUrl = Deno.env.get('DOCUSEAL_API_URL') || 'https://api.docuseal.com';
   return apiUrl.includes('.eu') ? 'https://docuseal.eu' : 'https://docuseal.com';

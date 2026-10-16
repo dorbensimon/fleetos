@@ -1,3 +1,4 @@
+// מילוי טופס רשימת תיוג עם נהג (סעיפים, חתימות)
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Image, Platform, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -73,9 +74,12 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ChecklistMeeting'>;
 type Step = 'fill' | 'officer' | 'choose' | 'handoff' | 'driver' | 'done' | 'sent';
 type Busy = '' | 'save' | 'next' | 'sign' | 'driver' | 'notify' | 'open';
 
+// עקומת אנימציה
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+// השם הפרטי
 const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
 
+// המסך: הסעיפים, חתימת קצין וחתימת נהג
 export default function ChecklistMeetingScreen({ navigation, route }: Props) {
   // What the screen was opened with. Once a draft exists the address points
   // at it (a refresh resumes the same meeting), without loading it again.
@@ -743,6 +747,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
 
 // ── pieces ───────────────────────────────────────────────────────────────
 
+// פס התקדמות
 function Progress({ marked, total }: { marked: number; total: number }) {
   const reduce = useReducedMotion();
   const value = total ? marked / total : 0;
@@ -767,6 +772,7 @@ function Progress({ marked, total }: { marked: number; total: number }) {
   );
 }
 
+// מי חתם ומתי
 function SignedBy({ image, label, name, date }: { image: string | null; label: string; name: string; date: string }) {
   return (
     <Surface style={styles.signedBy}>
@@ -790,6 +796,7 @@ function SignedBy({ image, label, name, date }: { image: string | null; label: s
   );
 }
 
+// כפתור בחירה
 function Choice({
   icon,
   tone,
@@ -838,6 +845,7 @@ function Choice({
   );
 }
 
+// אנימציית V בסיום
 /** The one moment of delight: a ring settles in and the tick draws on. */
 function SuccessTick({ tone }: { tone: 'ok' | 'accent' }) {
   const reduce = useReducedMotion();
@@ -883,6 +891,7 @@ function SuccessTick({ tone }: { tone: 'ok' | 'accent' }) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { textAlign: 'center' },
@@ -899,10 +908,12 @@ const styles = StyleSheet.create({
     borderColor: DK.glassBorder,
   },
   who: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, marginTop: 4 },
+  // פס ההתקדמות
   progress: { marginTop: 18, gap: 8, padding: 14, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
   progressRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
   progressTrack: { height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.16)', overflow: 'hidden', flexDirection: 'row-reverse' },
   progressFill: { height: '100%', borderRadius: 4, backgroundColor: DK.mint },
+  // תחתית עם הכפתורים
   footer: { gap: 10 },
   need: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6 },
   sheetStack: { gap: 10 },
@@ -929,6 +940,7 @@ const styles = StyleSheet.create({
   choice: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, padding: 18, borderRadius: 24, backgroundColor: DK.surface, minHeight: 112 },
   choiceIcon: { width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   tag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, alignSelf: 'flex-end', marginTop: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: DK.accentSoft },
+  // מסך החתימה הכהה
   night: { flex: 1, backgroundColor: DK.night[1] },
   nightBody: { flex: 1, paddingHorizontal: 24, justifyContent: 'space-between', width: '100%', maxWidth: 560, alignSelf: 'center' },
   nightMid: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },

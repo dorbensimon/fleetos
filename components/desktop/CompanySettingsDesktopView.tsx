@@ -1,3 +1,4 @@
+// הגדרות החברה - תצוגת מחשב
 import React, { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -74,6 +75,7 @@ export interface CompanySettingsForm {
 type SectionKey = 'details' | 'contact' | 'report' | 'people' | 'safety' | 'branding';
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+// חלקי הדף (פרטים, תקשורת, דוח, אנשי קשר, קציני בטיחות, לוגו)
 const SECTIONS: {
   key: SectionKey;
   label: string;
@@ -118,10 +120,14 @@ const SECTIONS: {
   },
 ];
 
+// צבע הרקע
 // The grouped background is the app's own canvas, so the page flows with the rest of the site.
 const GROUPED_BG = DESKTOP_COLORS.canvas;
+// הצל של הכרטיסים
 const PANEL_SHADOW = '0 1px 2px rgba(16,24,40,0.04), 0 6px 20px rgba(16,24,40,0.05)';
+// עקומת אנימציה
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+// קפיץ לאנימציות בלי קפיצה
 /** Critically damped (ratio ≈ 1, response ≈ 0.35s): glides and settles with no bounce. */
 const SPRING = {
   stiffness: 320,
@@ -129,9 +135,12 @@ const SPRING = {
   mass: 1,
   useNativeDriver: false,
 } as const;
+// גובה פריט בתפריט הצד
 const NAV_STEP = 46; // item height 42 + gap 4
+// הריווח בראש הדף
 const PAGE_TOP = 24; // the page's top padding; section offsets are measured inside the form column
 
+// הדף: תפריט צד, כותרת החברה, כל החלקים וכפתור שמירה צף
 export function CompanySettingsDesktopView({
   form,
   errors,
@@ -439,6 +448,7 @@ export function CompanySettingsDesktopView({
   );
 }
 
+// לאיזה חלק שייכת כל שגיאה
 /** Error keys belong to the section that renders their field. */
 const SECTION_OF_ERROR: [RegExp, SectionKey][] = [
   [/^(name|businessId)$/, 'details'],
@@ -448,10 +458,12 @@ const SECTION_OF_ERROR: [RegExp, SectionKey][] = [
   [/^officer\d/, 'safety'],
 ];
 
+// כמה שגיאות יש בחלק
 function sectionErrorCount(errors: Record<string, string>, key: SectionKey): number {
   return Object.keys(errors).filter((e) => SECTION_OF_ERROR.some(([re, s]) => s === key && re.test(e))).length;
 }
 
+// תפריט הצד עם סימון החלק הנוכחי
 /**
  * Section menu. One white "platter" glides between items on a critically
  * damped spring — it follows clicks and the page scroll alike, so the eye
@@ -524,6 +536,7 @@ function SectionNav({
   );
 }
 
+// חלק בטופס עם כותרת
 /** A titled block of the one-page form. Sections float up once, staggered, when the page opens. */
 function Section({
   k,
@@ -575,6 +588,7 @@ function Section({
   );
 }
 
+// כרטיס לבן שמחזיק שדות
 /**
  * iOS inset-grouped list: a white rounded platter whose fields are rows
  * split by inset hairlines. The rows sit 1px up so the first row's line
@@ -596,6 +610,7 @@ function Panel({ title, icon, half, children }: { title?: string; icon?: IconNam
   );
 }
 
+// שדה: כותרת ותיבה
 /** One field as an iOS form row: the label on the right, the box on the left; on a narrow window the box drops under its label. */
 function Cell({
   label,
@@ -629,6 +644,7 @@ function Cell({
   );
 }
 
+// שדה מייל
 function EmailCell({
   label,
   value,
@@ -669,6 +685,7 @@ function EmailCell({
  */
 type CapsuleMode = 'hidden' | 'dirty' | 'errors' | 'saving' | 'saved';
 
+// כפתור השמירה הצף
 function SaveCapsule({
   dirty,
   saving,
@@ -776,6 +793,7 @@ function SaveCapsule({
   );
 }
 
+// מספר שעולה בהדרגה (לעיגול ההשלמה)
 /** Eases a number toward its target (ease-out cubic), for the completion ring. */
 function useCountUp(target: number, duration = 900): number {
   const [value, setValue] = useState(0);
@@ -803,6 +821,7 @@ function useCountUp(target: number, duration = 900): number {
   return value;
 }
 
+// הכותרת הכחולה: שם החברה, פרטים ועיגול 'חסרים עוד'
 /**
  * The company's identity card, on top of the form: a deep ink platter lit
  * by a brand glow, the company as it is being typed, and a completion ring.
@@ -915,6 +934,7 @@ function CompanyOverview({ form, onJump }: { form: CompanySettingsForm; onJump: 
   );
 }
 
+// תגית פרט בכותרת
 function HeroChip({ icon, value, ltr, empty = t('common.notEntered') }: { icon: IconName; value: string; ltr?: boolean; empty?: string }) {
   const Text = ltr && value ? DLtrText : DText;
   return (
@@ -927,6 +947,7 @@ function HeroChip({ icon, value, ltr, empty = t('common.notEntered') }: { icon: 
   );
 }
 
+// מתי הדוח החודשי הבא נשלח
 /** When the monthly report goes out next — the 1st of next month. */
 function NextReportRow({ email }: { email: string }) {
   const now = new Date();
@@ -950,6 +971,7 @@ function NextReportRow({ email }: { email: string }) {
   );
 }
 
+// תצוגה מקדימה של מסמך עם הלוגו והחותמת
 /**
  * A live miniature of a company document: the logo in the letterhead, the
  * company's details under it, and the stamp beside the signature — so it's
@@ -999,6 +1021,7 @@ function LetterheadPreview({ form }: { form: CompanySettingsForm }) {
   );
 }
 
+// שדה טלפון ישראלי
 /**
  * Israeli phone input. The form keeps digits only; the field shows them the
  * way people write them (052-6765344, 03-1234567) and formats as you type.
@@ -1030,6 +1053,7 @@ function PhoneInput({
   );
 }
 
+// משאיר רק תווים מותרים במייל
 /** Characters an address may hold. Everything else (Hebrew, spaces, emoji) is dropped as it's typed. */
 function sanitizeEmail(raw: string): string {
   const cleaned = raw.replace(/[^A-Za-z0-9._%+\-@]/g, '').toLowerCase();
@@ -1037,6 +1061,7 @@ function sanitizeEmail(raw: string): string {
   return at === -1 ? cleaned : cleaned.slice(0, at + 1) + cleaned.slice(at + 1).replace(/@/g, '');
 }
 
+// שדה מייל שמסנן תווים לא חוקיים
 /**
  * Email input that only accepts address characters. When a keystroke is
  * dropped (typically a Hebrew keyboard layout), it says so instead of
@@ -1077,18 +1102,25 @@ function EmailField({
   return render(input, error ?? (blocked ? t('validation.emailEnglishOnly') : undefined));
 }
 
+// רוחב המתג
 /**
  * iOS-style switch. The knob stretches the moment it's pressed, then glides
  * across on a critically damped spring (no bounce — the tap carries no
  * momentum). Reduced-motion users get an instant change.
  */
 const SWITCH_W = 46;
+// גובה המתג
 const SWITCH_H = 28;
+// גודל הכפתור העגול במתג
 const KNOB = 24;
+// כמה הכפתור נמתח בלחיצה
 const KNOB_STRETCH = 5;
+// צבע מתג דולק
 const SWITCH_ON = '#34C759';
+// צבע מתג כבוי
 const SWITCH_OFF = 'rgba(120,120,128,0.2)';
 
+// מתג בסגנון אייפון
 function AppleSwitch({ value, pressed }: { value: boolean; pressed: boolean }) {
   const on = useRef(new Animated.Value(value ? 1 : 0)).current;
   const press = useRef(new Animated.Value(0)).current;
@@ -1149,6 +1181,7 @@ function AppleSwitch({ value, pressed }: { value: boolean; pressed: boolean }) {
   );
 }
 
+// שורה שכולה מתג
 /** A whole-row toggle: the label, its current meaning, and the switch are one target. */
 function ToggleRow({
   title,
@@ -1187,6 +1220,7 @@ function ToggleRow({
   );
 }
 
+// תיבת העלאת לוגו/חותמת
 function ImageSlot({
   title,
   uri,
@@ -1245,19 +1279,26 @@ function ImageSlot({
   );
 }
 
+// עיצוב דף הגדרות החברה
 const styles = StyleSheet.create({
   ...FORM_PAGE_STYLES,
+  // הרקע של הדף
   root: { flex: 1, flexDirection: 'row-reverse', backgroundColor: GROUPED_BG },
   tabular: webOnly({ fontVariantNumeric: 'tabular-nums' }),
+  // ריווח בין החלקים
   // Compact sizes for this page (the shared form kit stays as is).
   // Fields sit in a grid inside each panel: label above a short box, two or
   // three to a row, so a panel stays short and no box stretches across the page.
   section: { marginBottom: 24 },
   sectionHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, marginBottom: 10, paddingHorizontal: 2 },
+  // כותרת חלק
   sectionTitle: { fontSize: 16, letterSpacing: -0.2, lineHeight: 21 },
   sectionHint: { fontSize: 12.5, lineHeight: 17, color: DESKTOP_COLORS.inkMuted },
+  // כרטיס לבן
   panel: { ...FORM_PAGE_STYLES.panel, borderRadius: 12 },
+  // רשת השדות בכרטיס
   rows: { flexDirection: 'row-reverse', flexWrap: 'wrap', columnGap: 16, rowGap: 12, padding: 16 },
+  // שדה ברשת
   cell: { flexGrow: 1, flexBasis: 220, maxWidth: 320, minWidth: 0, gap: 5 },
   cellLabel: { fontSize: 13, lineHeight: 18, color: DESKTOP_COLORS.inkMuted, textAlign: 'right' },
   required: { color: DESKTOP_COLORS.danger, fontSize: 13 },
@@ -1265,6 +1306,7 @@ const styles = StyleSheet.create({
   toggleTitle: { fontSize: 14 },
   toggleCaption: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
 
+  // תפריט הצד
   // Section menu — an iOS Settings sidebar: a white list whose blue
   // selection platter glides with the page scroll.
   nav: {},
@@ -1295,6 +1337,7 @@ const styles = StyleSheet.create({
       boxShadow: DESKTOP_BRAND_SHADOW,
     }),
   },
+  // פריט בתפריט
   navItem: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -1330,6 +1373,7 @@ const styles = StyleSheet.create({
   navErrorText: { fontSize: 13, color: '#FFFFFF' },
   navErrorTextActive: { color: DESKTOP_TONES.bad.fg },
 
+  // פריסת הדף: תפריט ותוכן
   // Form column
   page: {
     flexDirection: 'row-reverse',
@@ -1342,7 +1386,9 @@ const styles = StyleSheet.create({
     maxWidth: 1260,
     alignSelf: 'center',
   },
+  // עמודת התפריט (נשארת במקום בגלילה)
   navColumn: { width: 240, flexShrink: 0, ...webOnly({ position: 'sticky', top: 24 }) },
+  // עמודת התוכן
   main: { flex: 1, minWidth: 0 },
   sectionLast: { marginBottom: 0 },
   sectionGlyph: {
@@ -1362,6 +1408,7 @@ const styles = StyleSheet.create({
   },
 
   panelRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 16 },
+  // כרטיסים זה לצד זה
   panelStack: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 12 },
   panelHalf: { flexGrow: 1, flexBasis: 300, minWidth: 0 },
   slotPanel: { padding: 20 },
@@ -1378,6 +1425,7 @@ const styles = StyleSheet.create({
   panelTitle: { fontSize: 14 },
   cellControl: { gap: 5 },
 
+  // שורת מתג
   toggleRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -1418,6 +1466,7 @@ const styles = StyleSheet.create({
   link: { fontSize: 15, color: DESKTOP_COLORS.brand },
   linkDanger: { color: DESKTOP_TONES.bad.fg },
   linkHover: { opacity: 0.7 },
+  // תיבת העלאת תמונה
   drop: {
     height: 150,
     borderRadius: 14,
@@ -1464,6 +1513,7 @@ const styles = StyleSheet.create({
     bottom: 24,
     alignItems: 'center',
   },
+  // כפתור השמירה הצף
   capsule: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -1534,6 +1584,7 @@ const styles = StyleSheet.create({
   capsuleCtaText: { fontSize: 15.5, color: '#FFFFFF' },
   busyLabel: { opacity: 0 },
 
+  // הכותרת הכחולה
   // Company hero
   hero: {
     marginBottom: 28,
@@ -1565,6 +1616,7 @@ const styles = StyleSheet.create({
   heroLogo: { width: 42, height: 42 },
   heroInitial: { fontSize: 20, color: '#FFFFFF' },
   heroNameBlock: { flex: 1, minWidth: 0, gap: 3 },
+  // שם החברה בכותרת
   heroName: { fontSize: 21, lineHeight: 27, letterSpacing: -0.3, color: '#FFFFFF' },
   heroIdRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   heroIdLabel: { fontSize: 13.5, color: 'rgba(255,255,255,0.6)' },
@@ -1579,6 +1631,7 @@ const styles = StyleSheet.create({
   },
   heroTagText: { fontSize: 12, color: '#9FD8F5' },
   heroChips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 },
+  // תגית פרט בכותרת
   heroChip: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -1595,6 +1648,7 @@ const styles = StyleSheet.create({
   heroChipText: { fontSize: 13.5, color: '#FFFFFF', flexShrink: 1 },
   heroChipTextEmpty: { color: 'rgba(255,255,255,0.5)' },
 
+  // תיבת 'חסרים עוד'
   heroProgress: {
     flexGrow: 1,
     flexBasis: 290,
@@ -1610,6 +1664,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.09)',
     ...webOnly({ backdropFilter: 'blur(16px) saturate(140%)' }),
   },
+  // עיגול ההשלמה
   ring: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   ringInner: {
     width: 58,
@@ -1625,6 +1680,7 @@ const styles = StyleSheet.create({
   heroProgressTitle: { fontSize: 15, color: '#FFFFFF' },
   heroProgressHint: { fontSize: 12.5, color: 'rgba(255,255,255,0.65)' },
   missingRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  // כפתור פרט חסר
   missingPill: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -1679,6 +1735,7 @@ const styles = StyleSheet.create({
   },
   paperCaption: { alignSelf: 'stretch', flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   paperCaptionText: { fontSize: 16, color: DESKTOP_COLORS.ink },
+  // דף המסמך בתצוגה המקדימה
   paper: {
     width: 270,
     aspectRatio: 210 / 297,

@@ -1,3 +1,4 @@
+// כפתור 'חזרה' שעובד גם אחרי רענון הדף
 import type { RootStackParamList } from '../navigation/types';
 
 type RouteName = keyof RootStackParamList;
@@ -7,6 +8,7 @@ export type RefreshBackRoute = {
   params?: Record<string, unknown>;
 };
 
+// לאן לחזור כשאין מסך קודם (אחרי רענון)
 /**
  * A browser refresh can restore a deep link as the only item in the native
  * stack. In that state `goBack()` has nothing to pop, so choose the closest

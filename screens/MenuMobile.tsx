@@ -1,3 +1,4 @@
+// התפריט בטלפון
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +33,7 @@ type Props = {
   onLogout: () => void;
 };
 
+// מי מחובר ומה אפשר לפתוח
 /**
  * The menu, for every role: who is signed in, on the night; then what they
  * can reach in short groups, with live counts where something is waiting.
@@ -105,6 +107,7 @@ export function MenuMobile(p: Props) {
   );
 }
 
+// עיצוב התפריט
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   heroBar: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 },

@@ -1,3 +1,4 @@
+// 'דורש טיפול' של המנהל
 import React, { useCallback, useState } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -16,6 +17,7 @@ import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Attention'>;
 
+// טוען ומציג מחשב או טלפון
 export default function AttentionScreen({ navigation }: Props) {
   const { companyId } = useCompany();
   const insets = useSafeAreaInsets();

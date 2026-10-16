@@ -1,3 +1,4 @@
+// הקשר החברה: שומר בזיכרון איזו חברה פעילה ומי המשתמש, וזמין לכל המסכים
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { isAuthApiError, isAuthSessionMissingError } from '@supabase/supabase-js';
 import { supabase, Company, Profile } from './supabase';
@@ -22,8 +23,10 @@ interface CompanyContextValue {
   refresh: () => Promise<void>;
 }
 
+// האובייקט המשותף שמחזיק את נתוני החברה הפעילה
 const CompanyContext = createContext<CompanyContextValue | undefined>(undefined);
 
+// עוטף את האפליקציה, טוען את החברה והמשתמש ומעדכן כשמשהו משתנה
 export function CompanyProvider({
   children,
   companyIdOverride,
@@ -184,6 +187,7 @@ export function CompanyProvider({
   return <CompanyContext.Provider value={value}>{children}</CompanyContext.Provider>;
 }
 
+// מחזיר למסך את נתוני החברה הפעילה (חייב להיות בתוך CompanyProvider)
 export function useCompany(): CompanyContextValue {
   const ctx = useContext(CompanyContext);
   if (!ctx) throw new Error('useCompany must be used inside a CompanyProvider');

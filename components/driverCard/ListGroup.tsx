@@ -1,3 +1,4 @@
+// קבוצת שורות עם כותרת (תיק נהג בטלפון)
 import { View, Text, StyleSheet } from 'react-native';
 import { ListRowNav } from './ListRowNav';
 import { ListRowValue } from './ListRowValue';
@@ -5,6 +6,7 @@ import { DC_COLORS, DC_SPACING, DC_TYPO } from './driverCardTheme';
 import type { DriverCardGroup, DriverCardRow } from './driverCardSections';
 import { textStart, textDirection } from '../../lib/i18n';
 
+// כותרת וכרטיס שמחזיק שורות
 export function ListGroup({
   group,
   onRowPress,
@@ -39,6 +41,7 @@ export function ListGroup({
   );
 }
 
+// עיצוב הקבוצה
 const styles = StyleSheet.create({
   wrap: {
     marginBottom: DC_SPACING.groupGap,

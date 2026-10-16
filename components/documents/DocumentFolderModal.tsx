@@ -1,3 +1,4 @@
+// חלון תיקייה עם תמונות קטנות (מחשב)
 import React, { useEffect, useState } from 'react';
 import { Image, Modal, Platform, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,8 +9,10 @@ import { getDocumentUrl } from '../../lib/documents';
 import { confirmDeleteDocument, documentIconName, downloadDocumentWithAlert, openDocumentExternally } from '../../lib/documentActions';
 import { t } from '../../lib/i18n';
 
+// סגנון רק לדפדפן
 const webOnly = (style: Record<string, unknown>) => (Platform.OS === 'web' ? style : {});
 
+// תמונה קטנה של מסמך
 function DocumentThumb({ doc, onDeleted }: { doc: DocumentRow; onDeleted: () => void | Promise<void> }) {
   const [url, setUrl] = useState<string | null>(null);
   const isImage = doc.mime_type?.startsWith('image/');
@@ -54,6 +57,7 @@ function DocumentThumb({ doc, onDeleted }: { doc: DocumentRow; onDeleted: () => 
   );
 }
 
+// החלון
 /**
  * Centered modal for browsing a document folder's contents — desktop only.
  * Shows every document as a small thumbnail with its upload date, a
@@ -115,6 +119,7 @@ export function DocumentFolderModal({
   );
 }
 
+// עיצוב החלון
 const styles = StyleSheet.create({
   backdrop: { position: 'absolute', top: 0, start: 0, end: 0, bottom: 0, backgroundColor: 'rgba(15,23,32,0.45)' },
   backdropIn: webOnly({
@@ -130,6 +135,7 @@ const styles = StyleSheet.create({
     animationFillMode: 'backwards',
   }),
   centerWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  // החלון עצמו
   modalCard: { width: '100%', maxWidth: 640, maxHeight: '85%', backgroundColor: COLORS.card, borderRadius: RADIUS.lg, overflow: 'hidden' },
   modalCardIn: webOnly({
     animationKeyframes: {
@@ -159,7 +165,9 @@ const styles = StyleSheet.create({
   modalBodyContent: { padding: SPACING.lg, gap: SPACING.md },
   emptyText: { fontSize: 13, color: COLORS.textFaint, textAlign: 'center', paddingVertical: SPACING.lg },
 
+  // רשת התמונות
   thumbGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 12 },
+  // תמונה ברשת
   thumbCard: { width: 132, gap: 6 },
   thumbImage: { width: '100%', height: 92, borderRadius: RADIUS.sm, backgroundColor: COLORS.field, alignItems: 'center', justifyContent: 'center' },
   thumbIconWrap: {},

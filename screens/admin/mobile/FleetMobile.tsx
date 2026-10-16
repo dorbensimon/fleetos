@@ -1,3 +1,4 @@
+// מסך הבית של המנהל בטלפון
 import React, { useRef, useState } from 'react';
 import { FlatList, RefreshControl, StatusBar, StyleSheet, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -97,6 +98,7 @@ type Entry =
   | { kind: 'vehicle'; item: Vehicle; index: number }
   | { kind: 'add' };
 
+// אחרי כמה שורות כפתור ההוספה צף
 /** The add button starts floating once this many rows have scrolled past. */
 const FLOAT_AFTER_ROWS = 4;
 
@@ -116,6 +118,7 @@ export type ListMetrics = {
   bottomPadding: number;
 };
 
+// האם כפתור ההוספה צריך לצוף
 /**
  * The add button sits at the end of the list. Once the first rows have
  * slid under the pinned filter bar it also floats at the side, until the
@@ -130,6 +133,7 @@ export function addFloats(m: ListMetrics): boolean {
   return pastFirstRows && !endInView;
 }
 
+// מנהל את כפתור ההוספה הצף
 function useFloatingAdd(rowCount: number, bottomPadding: number) {
   const [floating, setFloating] = useState(false);
   const metrics = useRef<ListMetrics>({ scrollY: 0, viewport: 0, content: 0, header: 0, rows: [], rowCount: 0, end: 0, bottomPadding: 0 }).current;
@@ -166,6 +170,7 @@ function useFloatingAdd(rowCount: number, bottomPadding: number) {
   };
 }
 
+// הכותרת, הסינון והרשימה
 /**
  * The fleet manager's home. The night carries the company, what needs
  * attention, the drivers/vehicles switch and three live counts that double
@@ -365,6 +370,7 @@ export function FleetMobile(p: Props) {
   );
 }
 
+// הכותרת הכהה
 function Hero(p: Props) {
   const drivers = p.mode === 'drivers';
   const stats: { label: string; value: number; dot?: string; filter: string }[] = drivers
@@ -443,6 +449,7 @@ function Hero(p: Props) {
   );
 }
 
+// שורת 'דורש טיפול'
 /** What needs the manager, in one tappable line — or a calm "all clear". */
 function AttentionPanel({ summary, onPress }: { summary: AttentionSummary; onPress: () => void }) {
   const parts = [
@@ -477,6 +484,7 @@ function AttentionPanel({ summary, onPress }: { summary: AttentionSummary; onPre
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   screen: { flex: 1, backgroundColor: DK.canvas },
@@ -486,6 +494,7 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 },
   heroSlot: { width: 48, height: 48 },
   block: { marginTop: 16 },
+  // שורת המספרים
   stats: { flexDirection: 'row-reverse', gap: 8, marginTop: 12 },
 
   attention: {

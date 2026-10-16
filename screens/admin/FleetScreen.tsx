@@ -1,3 +1,4 @@
+// מסך הבית של המנהל (הדשבורד): נהגים ורכבים
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Linking } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
@@ -44,6 +45,7 @@ type LicenseFilter = DriverFilter;
 type StatusFilter = VehicleFilter;
 type ToggleValue = 'drivers' | 'vehicles';
 
+// טוען את הנתונים ומציג מחשב או טלפון
 export default function FleetScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'AdminHome'>>();

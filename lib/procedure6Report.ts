@@ -1,3 +1,4 @@
+// טופס נוהל 6 כ-PDF
 import * as Print from 'expo-print';
 import { buildReportDocument, esc } from './reportTemplate';
 import { uploadGeneratedDocument } from './documents';
@@ -13,6 +14,7 @@ export interface Procedure6FormValues {
   complainantPhone: string;
 }
 
+// בונה את ה-HTML של הטופס
 function buildProcedure6Html(values: Procedure6FormValues, photoDataUri?: string | null): string {
   const bodyHtml = `
     <h2 class="section-title">פרטי האירוע</h2>
@@ -37,6 +39,7 @@ function buildProcedure6Html(values: Procedure6FormValues, photoDataUri?: string
   });
 }
 
+// מפיק את PDF נוהל 6 ושומר אותו בתיק הנהג
 /** Generates the נוהל 6 PDF and stores it exactly like any other driver document. */
 export async function createProcedure6Report(params: {
   companyId: string;

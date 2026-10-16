@@ -1,3 +1,4 @@
+// פונקציית שרת: השבלונות המוכנות של הבעלים
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyOwner } from '../_shared/verifyOwner.ts';
 import { parseForm } from '../_shared/checklistDocument.ts';
@@ -14,28 +15,35 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
  * the editor or the checklist builder can open.
  */
 
+// תבנית מזהה
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// שמות התיקיות הקבועות
 /** The fixed folders of every driver's file (company-signing-template FIXED_DRIVER_FOLDERS). */
 const FIXED_DRIVER_FOLDERS = ['הצהרת בריאות', 'הדרכות תקופתיות', 'נוהל 6 (הסעת ילדים)', 'נוהל 6', 'רישיון מנוף', 'תוקף ר.פ'];
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
+// שם בלי רווחים ואותיות גדולות
 function titleKey(value: string | null | undefined): string {
   return (value ?? '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('he');
 }
 
+// מנקה שם
 function cleanTitle(value: unknown): string {
   return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, 120) : '';
 }
 
+// מנקה תיאור
 function cleanDescription(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const text = value.trim().slice(0, 300);
   return text || null;
 }
 
+// בודק את תוכן השבלונה
 /** The template's content, checked the same way a company form is; null when invalid. */
 function cleanContent(kind: 'document' | 'checklist', raw: unknown): Record<string, unknown> | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -44,6 +52,7 @@ function cleanContent(kind: 'document' | 'checklist', raw: unknown): Record<stri
   return cleanEditorContent(blocks, fields);
 }
 
+// מקבל בקשה ובודק שזה הבעלים
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);
@@ -60,6 +69,7 @@ Deno.serve(async (req) => {
   }
 });
 
+// מבצע את הפעולה
 async function run(db: SupabaseClient, ownerId: string, action: string, body: Record<string, unknown>): Promise<Response> {
   if (action === 'list') {
     const [{ data: templates, error }, { data: used, error: usedError }] = await Promise.all([

@@ -1,3 +1,4 @@
+// הגדרות ההתראות בטלפון
 import React, { useEffect, useRef, useState } from 'react';
 import { LayoutAnimation, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +33,7 @@ type Props = {
   onBack: () => void;
 };
 
+// אייקון לכל סוג
 const ICON: Partial<Record<NotificationType, IconName>> = {
   driver_profile_update: 'person',
   driver_document_upload: 'document-text',
@@ -61,12 +63,15 @@ const ICON: Partial<Record<NotificationType, IconName>> = {
   vehicle_safety_check_due: 'shield-checkmark',
 };
 
+// שם קצר
 const shortLabel = withoutValidity;
 
+// אנימציה לשינוי הבא
 const animateNext = () => {
   if (Platform.OS === 'ios') LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
 };
 
+// המתגים ו'כמה זמן מראש'
 /**
  * Which updates reach this user, and — for managers — when each timed one
  * goes out. Switches are per user; lead times are per company. Every change
@@ -158,6 +163,7 @@ export function NotificationPrefsMobile({ insetTop, insetBottom, state, onBack }
   );
 }
 
+// קבוצת התראות
 function Group({
   group,
   index,
@@ -265,6 +271,7 @@ function Group({
   );
 }
 
+// שורת התראה עם מתג
 function Row({
   item,
   first,
@@ -341,6 +348,7 @@ function Row({
   );
 }
 
+// הגדרות מסמכי החתימה
 /** Each signing document: how long a signature stays good and when its alert goes out (migration 105). */
 function SigningRulesGroup({ index }: { index: number }) {
   const { companyId } = useCompany();
@@ -399,6 +407,7 @@ function SigningRulesGroup({ index }: { index: number }) {
   );
 }
 
+// עריכת 'כמה זמן מראש'
 /**
  * − value + with the unit in words, then a few one-tap values. Steps and
  * typing settle for a moment before saving; closing the editor saves too.
@@ -528,6 +537,7 @@ function LeadEditor({ label, rule, value, onCommit }: { label: string; rule: Lea
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   dim: { opacity: 0.45 },
@@ -545,6 +555,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: DK.accent, borderColor: DK.accent },
   validityChips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   validityChip: { flex: 0, flexGrow: 1 },
+  // שורה
   row: { paddingHorizontal: DK_SPACE.md, paddingVertical: 12 },
   rowTop: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 48 },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },
@@ -564,6 +575,7 @@ const styles = StyleSheet.create({
   },
   leadPillOpen: { backgroundColor: DK.accent },
   leadPillText: { fontSize: 12.5 },
+  // עורך 'כמה זמן מראש'
   editor: { marginTop: 12, padding: 14, borderRadius: 18, backgroundColor: DK.surfaceSunk, gap: 12 },
   stepper: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   stepBtn: { width: 48, height: 48, borderRadius: 16, backgroundColor: DK.surface, borderWidth: 1, borderColor: DK.hairline, alignItems: 'center', justifyContent: 'center' },

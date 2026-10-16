@@ -1,6 +1,8 @@
+// פונקציית שרת: רישום מכשיר להתראות
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyUser } from '../_shared/verifyUser.ts';
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -8,11 +10,13 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
+// בודק אסימון
 function isExpoPushToken(value: unknown): value is string {
   return typeof value === 'string'
     && /^(?:Exponent|Expo)PushToken\[[A-Za-z0-9_-]+\]$/.test(value);
 }
 
+// שומר את האסימון
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'שיטה לא נתמכת' }, 405);

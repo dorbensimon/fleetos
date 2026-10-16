@@ -1,3 +1,4 @@
+// רכיבי בסיס למחשב: טקסט, כפתור, שדות, בחירה ולוח שנה
 import React, { useRef, useState } from 'react';
 import { FocusTarget } from '../ui/FocusTarget';
 import { Modal, Pressable, PressableProps, ScrollView, StyleProp, Text, TextInput, TextInputProps, TextProps, View, ViewStyle, StyleSheet } from 'react-native';
@@ -8,26 +9,31 @@ import { t, dirIcon, textStart, textDirection, getLocale } from '../../lib/i18n'
 
 type Weight = keyof typeof DESKTOP_FONT;
 
+// טקסט בגופן Heebo מיושר לימין
 /** Heebo text, right-aligned RTL by default — the desktop counterpart of AppText. */
 export function DText({ weight = 'regular', style, ...rest }: TextProps & { weight?: Weight }) {
   return <Text {...rest} style={[styles.text, { fontFamily: DESKTOP_FONT[weight] }, style]} />;
 }
 
+// טקסט משמאל לימין (תאריכים, מספרים)
 /** Latin data (dates, plates, phones) inside the Hebrew UI stays LTR but keeps the RTL column alignment. */
 export function DLtrText(props: TextProps & { weight?: Weight }) {
   return <DText {...props} style={[styles.ltr, props.style]} />;
 }
 
+// האם המשתמש ביקש פחות אנימציות
 export function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 }
 
+// האם יש עכבר (ולא מסך מגע)
 export function supportsFinePointerHoverMotion(): boolean {
   return !prefersReducedMotion()
     && typeof window !== 'undefined'
     && !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
 }
 
+// אנימציית פתיחה של חלונית קטנה
 /** Entry motion shared by every desktop popover (selects, calendar, overflow menus). */
 export function popoverEnterStyle() {
   return prefersReducedMotion() ? fieldStyles.popoverInReduced : fieldStyles.popoverIn;
@@ -35,6 +41,7 @@ export function popoverEnterStyle() {
 
 type HoverState = { pressed: boolean; hovered?: boolean; focused?: boolean };
 
+// כפתור שמגיב למעבר עכבר
 /**
  * Pressable with react-native-web's hover/focus state exposed to the style
  * callback, plus a pointer cursor — every clickable element on desktop.
@@ -98,6 +105,7 @@ export function HoverPressable({
   );
 }
 
+// תגית מצב צבעונית
 export function StatusPill({ tone, label }: { tone: DesktopTone; label: string }) {
   const colors = DESKTOP_TONES[tone];
   return (
@@ -109,6 +117,7 @@ export function StatusPill({ tone, label }: { tone: DesktopTone; label: string }
   );
 }
 
+// שורת שדה: כותרת ותיבה
 /** Dense label-left / control-right row used by every desktop form (driver, vehicle, settings). */
 export function DesktopFieldRow({
   label,
@@ -141,6 +150,7 @@ export function DesktopFieldRow({
   return focusId ? <FocusTarget id={focusId} radius={6} tint={DESKTOP_COLORS.brand}>{row}</FocusTarget> : row;
 }
 
+// תיבת טקסט
 /** Plain-bordered text input matching the desktop form row — the counterpart of the mobile FormFieldRow's input. */
 export function DesktopInput({
   value,
@@ -211,6 +221,7 @@ export interface DesktopSelectOption<T extends string> {
   description?: string;
 }
 
+// רשימה נפתחת
 /** Lightweight inline dropdown for desktop forms — a popover under the trigger, not the mobile bottom sheet. */
 export function DesktopSelect<T extends string>({
   value,
@@ -293,14 +304,17 @@ export function DesktopSelect<T extends string>({
   );
 }
 
+// שמות ימי השבוע
 const weekdayLabels = () => [t('date.weekdayShort.sun'), t('date.weekdayShort.mon'), t('date.weekdayShort.tue'), t('date.weekdayShort.wed'), t('date.weekdayShort.thu'), t('date.weekdayShort.fri'), t('date.weekdayShort.sat')];
 
+// תאריך בפורמט שנה-חודש-יום
 function toIsoDate(d: Date): string {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
+// בחירת תאריך עם לוח שנה
 /** Compact calendar popover matching DesktopSelect's chrome — the desktop counterpart of the mobile DateField (which uses a bottom-sheet). */
 export function DesktopDateField({
   value,
@@ -449,6 +463,7 @@ export function DesktopDateField({
   );
 }
 
+// עיצוב הטקסט והתגית
 const styles = StyleSheet.create({
   text: { color: DESKTOP_COLORS.ink, fontSize: 13.5, textAlign: textStart(), writingDirection: textDirection() },
   ltr: { writingDirection: 'ltr' },
@@ -456,7 +471,9 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 11 },
 });
 
+// עיצוב השדות
 const fieldStyles = StyleSheet.create({
+  // שורת שדה
   row: {
     flexDirection: 'row-reverse',
     alignItems: 'flex-start',
@@ -470,6 +487,7 @@ const fieldStyles = StyleSheet.create({
   required: { color: DESKTOP_COLORS.danger, fontSize: 13 },
   control: { flex: 1, maxWidth: 380 },
   error: { fontSize: 11.5, color: DESKTOP_COLORS.danger, marginTop: 5 },
+  // תיבת טקסט (גובה 34)
   input: {
     height: 34,
     borderWidth: 1,
@@ -482,10 +500,12 @@ const fieldStyles = StyleSheet.create({
     textAlign: textStart(),
     backgroundColor: DESKTOP_COLORS.surface,
   },
+  // תיבת טקסט גדולה (גובה 44)
   inputLarge: { height: 44, borderRadius: 10, paddingHorizontal: 14, fontSize: 15 },
   inputLtr: { textAlign: 'left', writingDirection: 'ltr' },
   inputDisabled: { backgroundColor: DESKTOP_COLORS.surfaceMuted, color: DESKTOP_COLORS.inkFaint },
   inputError: { borderColor: DESKTOP_COLORS.danger },
+  // תיבת בחירה
   selectBox: {
     height: 34,
     borderWidth: 1,
@@ -502,6 +522,7 @@ const fieldStyles = StyleSheet.create({
   selectValueLarge: { fontSize: 15 },
   placeholder: { color: DESKTOP_COLORS.inkFaint },
   selectCatcher: { position: 'absolute', top: 0, start: 0, end: 0, bottom: 0 },
+  // הרשימה שנפתחת
   selectMenu: {
     position: 'absolute',
     backgroundColor: DESKTOP_COLORS.surface,
@@ -537,6 +558,7 @@ const fieldStyles = StyleSheet.create({
   selectOptionText: { fontSize: 13 },
   selectOptionDesc: { fontSize: 11.5, color: DESKTOP_COLORS.inkFaint },
 
+  // לוח השנה שנפתח
   calendarMenu: {
     position: 'absolute',
     width: 248,

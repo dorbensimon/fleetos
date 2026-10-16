@@ -1,3 +1,4 @@
+// חלון 'מסמכי רישיון נהיגה' במחשב
 import React, { useCallback, useEffect, useState } from 'react';
 import { Image, StyleSheet, View, type ImageStyle } from 'react-native';
 import { BrandLoader } from '../../ui/BrandLoader';
@@ -18,10 +19,13 @@ import { t } from '../../../lib/i18n';
 import { errorMessage } from '../../../lib/requestError';
 
 type Side = LicenseSide;
+// צד קדמי ואחורי
 const SIDES: Side[] = ['front', 'back'];
+// השם שבו נשמרת כל תמונת צד
 /** The document titles the license photos are stored under — shared with DriverLicenseDocumentsScreen. */
 export const LICENSE_SIDE_TITLE: Record<Side, string> = { get front() { return t('documents.frontSide'); }, get back() { return t('documents.backSide'); } };
 
+// החלון: תמונות שני הצדדים, תוקף ובקשת עדכון
 /**
  * Desktop "מסמכי רישיון נהיגה" folder as a centered modal, replacing the
  * separate license page on desktop: the front/back photo slots (upload,
@@ -208,6 +212,7 @@ export function DriverLicenseModal({
   );
 }
 
+// כפתור פעולה לצד של הרישיון
 function SideAction({
   icon,
   label,
@@ -240,8 +245,10 @@ function SideAction({
   );
 }
 
+// עיצוב החלון
 const styles = StyleSheet.create({
   body: { paddingHorizontal: 18, paddingVertical: 16, gap: 14 },
+  // בקשת עדכון ממתינה
   request: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 12, borderRadius: 8 },
   requestText: { flex: 1, gap: 2 },
   requestTitle: { fontSize: 13 },
@@ -251,9 +258,11 @@ const styles = StyleSheet.create({
   approveText: { fontSize: 12.5, color: '#FFFFFF' },
   rejectBtn: { borderWidth: 1, borderColor: DESKTOP_COLORS.borderInput, backgroundColor: DESKTOP_COLORS.surface },
   rejectText: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
+  // שני הצדדים
   sides: { flexDirection: 'row-reverse', gap: 14 },
   side: { flex: 1, gap: 8 },
   sideLabel: { fontSize: 12.5 },
+  // מקום התמונה
   slot: {
     height: 150,
     borderRadius: 8,
@@ -276,6 +285,7 @@ const styles = StyleSheet.create({
   sideActionText: { fontSize: 11.5 },
   hidden: { opacity: 0 },
   scanNote: { fontSize: 12, color: DESKTOP_COLORS.inkMuted },
+  // פרטי הרישיון
   details: { flexDirection: 'row-reverse', gap: 16 },
   statusField: { flex: 1, width: 'auto' },
   statusRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },

@@ -1,5 +1,7 @@
+// מספרי טלפון ישראליים
 import { Linking } from 'react-native';
 
+// מציג טלפון בפורמט 05X-XXXXXXX
 /**
  * Formats an Israeli phone number for display/typing as 05X-XXXXXXX
  * (e.g. 052-7898655) or 0X-XXXXXXX for landlines. Separators are stripped
@@ -15,6 +17,7 @@ export function formatPhone(raw: string | null | undefined): string {
   return `${digits.slice(0, prefixLength)}-${digits.slice(prefixLength)}`;
 }
 
+// בודק מספר טלפון ישראלי
 /** Validates a Long Israeli mobile/landline number (9-10 digits, starting with 0). */
 export function isValidIsraeliPhone(raw: string | null | undefined): boolean {
   if (!raw) return false;
@@ -22,6 +25,7 @@ export function isValidIsraeliPhone(raw: string | null | undefined): boolean {
   return /^0([23489]|5[0-9]|7[0-9])\d{6,7}$/.test(digits);
 }
 
+// פותח חיוג למספר
 /** Opens the system dialer for a phone number, stripping everything but digits and a leading +. */
 export function dialPhone(raw: string | null | undefined): void {
   if (!raw) return;

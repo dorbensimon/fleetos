@@ -1,3 +1,4 @@
+// תצוגה מקדימה של העמוד הראשון של מסמך (דפדפן)
 import React, { useEffect, useState } from 'react';
 import { Image, StyleSheet, View, type ImageStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +7,7 @@ import { getDocumentUrl } from '../../../lib/documents';
 import { documentIconName } from '../../../lib/documentActions';
 import { DESKTOP_COLORS, webOnly } from '../desktopTheme';
 
+// זיכרון של תצוגות שכבר נטענו
 /**
  * A miniature of a document's first page — the photo itself for images, the
  * rendered first page for PDFs — drawn as a small sheet of paper. Previews
@@ -14,6 +16,7 @@ import { DESKTOP_COLORS, webOnly } from '../desktopTheme';
  */
 const previewCache = new Map<string, Promise<string | null>>();
 
+// טוען תמונה או מצייר את העמוד הראשון של PDF
 async function loadPreview(doc: DocumentRow): Promise<string | null> {
   const url = await getDocumentUrl(doc);
   if (!url) return null;
@@ -25,6 +28,7 @@ async function loadPreview(doc: DocumentRow): Promise<string | null> {
   return null;
 }
 
+// התצוגה המקדימה של מסמך (מהזיכרון אם יש)
 function previewOf(doc: DocumentRow): Promise<string | null> {
   let pending = previewCache.get(doc.id);
   if (!pending) {
@@ -34,6 +38,7 @@ function previewOf(doc: DocumentRow): Promise<string | null> {
   return pending;
 }
 
+// התמונה הקטנה של המסמך
 export function DocumentPreview({ doc, width, height }: { doc: DocumentRow; width: number; height: number }) {
   const [src, setSrc] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -71,6 +76,7 @@ export function DocumentPreview({ doc, width, height }: { doc: DocumentRow; widt
   );
 }
 
+// עיצוב התצוגה המקדימה
 const styles = StyleSheet.create({
   paper: {
     borderRadius: 5,

@@ -1,3 +1,4 @@
+// תרגום ושפות: עברית, אנגלית, ערבית, רוסית, וכיוון הכתיבה
 import { createInstance, type TOptions } from 'i18next';
 import { Platform } from 'react-native';
 import he from '../../locales/he.json';
@@ -15,6 +16,7 @@ import en from '../../locales/en.json';
  */
 export type Language = 'he' | 'ar' | 'ru' | 'en';
 
+// השפות הנתמכות
 export const LANGUAGES: readonly { code: Language; nativeName: string }[] = [
   { code: 'he', nativeName: 'עברית' },
   { code: 'ar', nativeName: 'العربية' },
@@ -22,14 +24,19 @@ export const LANGUAGES: readonly { code: Language; nativeName: string }[] = [
   { code: 'en', nativeName: 'English' },
 ];
 
+// שפת ברירת המחדל (עברית)
 export const DEFAULT_LANGUAGE: Language = 'he';
+// המפתח שבו נשמרת השפה במכשיר
 const STORAGE_KEY = 'fleetos.language';
+// שפות מימין לשמאל
 const RTL_LANGUAGES: readonly Language[] = ['he', 'ar'];
 
+// האם הערך הוא שפה נתמכת
 export function isLanguage(value: unknown): value is Language {
   return value === 'he' || value === 'ar' || value === 'ru' || value === 'en';
 }
 
+// קורא את השפה השמורה בדפדפן
 // Web can read its saved choice synchronously, so the very first render —
 // including module-level strings — is already in the right language.
 function readWebLanguage(): Language | null {
@@ -42,6 +49,7 @@ function readWebLanguage(): Language | null {
   }
 }
 
+// מנוע התרגום
 const i18next = createInstance();
 
 void i18next.init({
@@ -58,24 +66,29 @@ void i18next.init({
   returnNull: false,
 });
 
+// מחזיר טקסט מתורגם לפי מפתח
 export function t(key: string, options?: TOptions): string {
   return i18next.t(key, options) as string;
 }
 
+// השפה הנוכחית
 export function getLanguage(): Language {
   return isLanguage(i18next.language) ? i18next.language : DEFAULT_LANGUAGE;
 }
 
+// האם השפה מימין לשמאל
 export function isRTL(language: Language = getLanguage()): boolean {
   return RTL_LANGUAGES.includes(language);
 }
 
+// הגדרת אזור לתאריכים ומספרים
 /** BCP 47 locale for Intl / toLocaleString (dates, numbers). */
 export function getLocale(): string {
   // Arabic keeps Western digits, as used for plates, phones and dates in Israel.
   return { he: 'he-IL', ar: 'ar-IL-u-nu-latn', ru: 'ru-RU', en: 'en-GB' }[getLanguage()];
 }
 
+// כיוון הפריסה של המסכים
 /**
  * The layout of every screen is authored for Hebrew: rows use
  * `row-reverse` and positions use start/end under a left-to-right layout
@@ -88,15 +101,18 @@ export function layoutDirection(language: Language = getLanguage()): 'ltr' | 'rt
   return isRTL(language) ? 'ltr' : 'rtl';
 }
 
+// הצד שבו מתחילה שורת טקסט
 /** Physical side where a line of text starts in the current language. */
 export function textStart(): 'right' | 'left' {
   return isRTL() ? 'right' : 'left';
 }
 
+// הצד שבו נגמרת שורת טקסט
 export function textEnd(): 'right' | 'left' {
   return isRTL() ? 'left' : 'right';
 }
 
+// מעדכן את השפה והכיוון של הדף בדפדפן
 /** Updates <html lang dir> and the document's layout direction on web. */
 export function applyDocumentLanguage(language: Language = getLanguage()) {
   if (Platform.OS !== 'web' || typeof document === 'undefined') return;
@@ -113,13 +129,16 @@ export function applyDocumentLanguage(language: Language = getLanguage()) {
 
 /** `saved`: the choice was stored on this device, so a fresh start reads it back. */
 type Listener = (language: Language, saved: boolean) => void;
+// מי שמאזין לשינוי שפה
 const listeners = new Set<Listener>();
 
+// נרשם לקבלת הודעה כשהשפה משתנה
 export function onLanguageChange(listener: Listener): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
 
+// אחסון המכשיר בטלפון
 // Loaded on first use, so importing translations never needs the native module.
 async function nativeStorage() {
   type Storage = typeof import('@react-native-async-storage/async-storage').default;
@@ -128,6 +147,7 @@ async function nativeStorage() {
   return 'default' in loaded ? loaded.default : loaded;
 }
 
+// שומר ערך קטן במכשיר
 /**
  * A small value kept on this device next to the language choice:
  * localStorage on web, AsyncStorage on native. `null` removes it. Resolves
@@ -148,6 +168,7 @@ export async function storeOnDevice(key: string, value: string | null): Promise<
     .then(() => true, () => false);
 }
 
+// קורא ערך שנשמר במכשיר
 export async function readFromDevice(key: string): Promise<string | null> {
   if (Platform.OS === 'web') {
     try {
@@ -159,6 +180,7 @@ export async function readFromDevice(key: string): Promise<string | null> {
   return nativeStorage().then((storage) => storage.getItem(key)).catch(() => null);
 }
 
+// מחליף שפה במכשיר
 /** Switches the app language on this device (no server write). */
 export async function applyLanguage(language: Language) {
   // When it could not be stored, the choice lasts for this visit only.
@@ -169,6 +191,7 @@ export async function applyLanguage(language: Language) {
   listeners.forEach((listener) => listener(language, saved));
 }
 
+// טוען את השפה השמורה לפני המסך הראשון
 /** Native keeps its choice in async storage; read it before the first screen. */
 export async function loadStoredLanguage(): Promise<Language> {
   if (Platform.OS !== 'web') {
@@ -181,13 +204,16 @@ export async function loadStoredLanguage(): Promise<Language> {
 
 applyDocumentLanguage();
 
+// ייצוא מנוע התרגום
 export default i18next;
 
+// כיוון הקריאה של הטקסט
 /** Reading direction for text in the current language. */
 export function textDirection(): 'rtl' | 'ltr' {
   return isRTL() ? 'rtl' : 'ltr';
 }
 
+// אייקונים שמתהפכים בשפות משמאל לימין
 const MIRRORED_ICONS = {
   'chevron-back': 'chevron-forward',
   'chevron-forward': 'chevron-back',
@@ -197,6 +223,7 @@ const MIRRORED_ICONS = {
   'chevron-right': 'chevron-left',
 } as const;
 
+// אייקון חץ בכיוון הנכון לשפה
 /**
  * Directional icons are chosen for Hebrew (a "forward" chevron points left).
  * In a left-to-right language the layout is mirrored, so the arrow is too.
@@ -205,15 +232,18 @@ export function dirIcon<T extends keyof typeof MIRRORED_ICONS>(name: T): T | (ty
   return isRTL() ? name : MIRRORED_ICONS[name];
 }
 
+// 1 או -1 להיפוך תנועה לפי שפה
 /** 1 in Hebrew/Arabic, -1 in a mirrored left-to-right layout: flips horizontal motion. */
 export function dirSign(): 1 | -1 {
   return isRTL() ? 1 : -1;
 }
 
+// מקבע רכיב לסידור העברי בכל שפה (כמו לוחית רישוי)
 /**
  * Pins a view to its Hebrew-authored arrangement in every language, for
  * things that look the same everywhere, like an Israeli licence plate.
  * Spread the props on the view and add the style.
  */
 export const fixedLayoutProps: object = Platform.OS === 'web' ? { dir: 'ltr' } : {};
+// סגנון לסידור קבוע
 export const FIXED_LAYOUT_STYLE = { direction: 'ltr' } as const;

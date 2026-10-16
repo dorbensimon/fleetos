@@ -1,11 +1,14 @@
+// פונקציית שרת: טיפול בבקשות חתימה שפגו
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { docusealFetch } from '../_shared/docuseal.ts';
 import { expiryDecision, type RemoteSubmission } from '../_shared/signingExpiry.ts';
 
+// תשובת JSON
 const json = (body: Record<string, unknown>, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { 'Content-Type': 'application/json' },
 });
 
+// בודק ומטפל
 /** Deliberately defaults to a read-only audit. DocuSeal DELETE is archival,
  * not permanent erasure; archive mode must be explicitly selected at rollout. */
 Deno.serve(async req => {

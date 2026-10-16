@@ -1,3 +1,4 @@
+// תגית 'מתי המילוי הבא' (אדום באיחור, כתום בקרוב)
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -5,6 +6,7 @@ import { DK, DKText, STATUS } from '../driverKit';
 import { dueState, dueText } from '../../lib/meetingPlan';
 import { t } from '../../lib/i18n';
 
+// התגית עצמה
 /**
  * When a driver's next meeting is due, as a small pill: red when late,
  * amber within two weeks, quiet after that. Always spelled out in words.
@@ -27,6 +29,7 @@ export function DuePill({ nextDue, firstMeeting }: { nextDue: string; firstMeeti
   );
 }
 
+// עיצוב התגית
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   pill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },

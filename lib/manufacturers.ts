@@ -1,9 +1,11 @@
+// רשימת יצרני רכב נפוצים בישראל
 /** Most common vehicle manufacturers on Israeli roads, for the manufacturer autocomplete. */
 export interface Manufacturer {
   he: string;
   en: string;
 }
 
+// היצרנים הנפוצים לבחירה
 export const ISRAEL_COMMON_MANUFACTURERS: Manufacturer[] = [
   { he: 'טויוטה', en: 'Toyota' },
   { he: 'יונדאי', en: 'Hyundai' },

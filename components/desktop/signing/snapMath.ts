@@ -1,3 +1,4 @@
+// החישוב של הצמדת שדה לקווים
 /**
  * The snapping math behind the builders' smart guides (snapGuides.web.tsx),
  * kept free of React so it can be tested on its own.
@@ -11,6 +12,7 @@ export type PageLines = { v: number[]; h: number[]; width: number; height: numbe
 
 type Candidate = { at: number; from: number; to: number };
 
+// הקווים שאפשר להיצמד אליהם
 function candidatesFor(axis: 'v' | 'h', page: PageLines, others: SnapRect[]): Candidate[] {
   const list: Candidate[] = (axis === 'v' ? page.v : page.h).map((at) => ({ at, from: 0, to: axis === 'v' ? page.height : page.width }));
   for (const o of others) {
@@ -20,6 +22,7 @@ function candidatesFor(axis: 'v' | 'h', page: PageLines, others: SnapRect[]): Ca
   return list;
 }
 
+// הקו הכי קרוב
 /** The closest line within `threshold` of any of `anchors`, and how far to shift to meet it. */
 function nearest(anchors: number[], candidates: Candidate[], threshold: number) {
   let best: { shift: number; candidate: Candidate } | null = null;
@@ -32,11 +35,13 @@ function nearest(anchors: number[], candidates: Candidate[], threshold: number) 
   return best;
 }
 
+// הקו להצגה
 function guideFor(axis: 'v' | 'h', rect: SnapRect, candidate: Candidate): Guide {
   const [start, size] = axis === 'v' ? [rect.y, rect.h] : [rect.x, rect.w];
   return { axis, at: candidate.at, from: Math.min(start, candidate.from), to: Math.max(start + size, candidate.to) };
 }
 
+// הצמדה בזמן הזזה
 /** Moving: the left, middle and right (top, middle, bottom) of the field may snap. */
 export function snapMove(rect: SnapRect, others: SnapRect[], page: PageLines, threshold: number): { x: number; y: number; guides: Guide[] } {
   const guides: Guide[] = [];
@@ -51,6 +56,7 @@ export function snapMove(rect: SnapRect, others: SnapRect[], page: PageLines, th
   return { x, y, guides };
 }
 
+// הצמדה בזמן שינוי גודל
 /** Resizing from the corner: the right and bottom edges may snap. */
 export function snapResize(rect: SnapRect, others: SnapRect[], page: PageLines, threshold: number): { w: number; h: number; guides: Guide[] } {
   const guides: Guide[] = [];

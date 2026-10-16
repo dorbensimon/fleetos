@@ -1,3 +1,4 @@
+// ארכיון הנהגים
 import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -30,6 +31,7 @@ import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverArchive'>;
 
+// המסך: שחזור ומחיקה
 export default function DriverArchiveScreen({ navigation }: Props) {
   const { companyId } = useCompany();
   const insets = useSafeAreaInsets();
@@ -199,6 +201,7 @@ export default function DriverArchiveScreen({ navigation }: Props) {
   );
 }
 
+// עיצוב המסך
 const s = StyleSheet.create({
   flex: { flex: 1 },
   card: { padding: 14, gap: 12 },

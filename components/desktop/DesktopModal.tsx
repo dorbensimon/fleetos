@@ -1,3 +1,4 @@
+// חלון צף באמצע המסך (למחשב)
 import React, { useEffect } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -5,6 +6,7 @@ import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, webOnly } from './desktopTheme';
 import { t } from '../../lib/i18n';
 
+// החלון עם כותרת, כפתור סגירה ותוכן
 /**
  * Generic centered floating modal for desktop quick actions (dashboard
  * "show more" lists, departments management, report export) — same visual
@@ -66,7 +68,9 @@ export function DesktopModal({
   );
 }
 
+// עיצוב החלון
 const styles = StyleSheet.create({
+  // הרקע הכהה מאחורי החלון
   overlay: {
     flex: 1,
     backgroundColor: DESKTOP_COLORS.overlay,
@@ -85,6 +89,7 @@ const styles = StyleSheet.create({
     animationTimingFunction: 'ease',
     animationFillMode: 'backwards',
   }),
+  // החלון עצמו
   dialog: {
     width: '92%',
     maxHeight: '84%',
@@ -110,6 +115,7 @@ const styles = StyleSheet.create({
     animationTimingFunction: 'ease',
     animationFillMode: 'backwards',
   }),
+  // כותרת החלון
   header: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -131,6 +137,7 @@ const styles = StyleSheet.create({
   },
   closeButtonHover: { backgroundColor: DESKTOP_COLORS.canvas },
   closeButtonPress: { transform: [{ scale: 0.92 }] },
+  // תוכן החלון
   body: { flexGrow: 0 },
   bodyContent: { paddingVertical: 4 },
 });

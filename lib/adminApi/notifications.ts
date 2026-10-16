@@ -1,13 +1,17 @@
+// התראות למנהל: רשימה, ספירת לא נקראו וסימון כנקרא
 import { supabase } from '../supabase';
 import { Notification } from './types';
 import { plateFromOdometerMessage } from '../notificationFocus';
 
+// כמה ימים התראה נשארת ברשימה
 const NOTIFICATION_TTL_DAYS = 7;
 
+// התאריך שלפניו התראות כבר לא מוצגות
 function notificationCutoffIso(): string {
   return new Date(Date.now() - NOTIFICATION_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
 }
 
+// רשימת ההתראות של החברה
 export async function listNotifications(companyId: string): Promise<Notification[]> {
   const { data, error } = await supabase
     .from('notifications')
@@ -20,6 +24,7 @@ export async function listNotifications(companyId: string): Promise<Notification
   return (data ?? []) as Notification[];
 }
 
+// כמה התראות עוד לא נקראו
 export async function countUnreadNotifications(companyId: string): Promise<number> {
   const { count, error } = await supabase
     .from('notifications')
@@ -32,6 +37,7 @@ export async function countUnreadNotifications(companyId: string): Promise<numbe
   return count ?? 0;
 }
 
+// מסמן התראה אחת כנקראה
 /** Marks a single notification as read — used when the admin opens that specific notification. */
 export async function markNotificationRead(notificationId: string) {
   const { error } = await supabase
@@ -43,6 +49,7 @@ export async function markNotificationRead(notificationId: string) {
   if (error) throw error;
 }
 
+// מסמן כנקראו התראות שהמשתמש כבר ראה את המקום שהן מדברות עליו
 /**
  * Notifications that only report something are done once the user has seen
  * the place they talk about: opening a driver's card clears "the driver
@@ -65,6 +72,7 @@ export async function markNotificationsReadWhere(filter: {
   if (error) throw error;
 }
 
+// מסמן את כל ההתראות כנקראו ("קרא הכל")
 /** Marks every currently-unread notification as read — only via an explicit "קרא הכל" action. */
 export async function markAllNotificationsRead(companyId: string) {
   const { error } = await supabase
@@ -76,6 +84,7 @@ export async function markAllNotificationsRead(companyId: string) {
   if (error) throw error;
 }
 
+// מוצא את הרכב של התראה ישנה לפי מספר הרכב שבטקסט
 /**
  * Old vehicle notifications were written before `vehicle_id` existed. Their
  * message still includes the plate in parentheses, so resolve that one

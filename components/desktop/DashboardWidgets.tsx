@@ -1,3 +1,4 @@
+// כפתורי הכותרת בדשבורד: דוחות ומחלקות
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../ui/BrandLoader';
@@ -43,6 +44,7 @@ import { errorMessage } from '../../lib/requestError';
 /* מחלקות                                                              */
 /* ------------------------------------------------------------------ */
 
+// כפתור 'מחלקות' שפותח חלון ניהול מחלקות
 export function DepartmentsQuickAction() {
   const { companyId } = useCompany();
   const [open, setOpen] = useState(false);
@@ -141,6 +143,7 @@ export function DepartmentsQuickAction() {
 /* דוחות                                                               */
 /* ------------------------------------------------------------------ */
 
+// כפתור 'דוחות' שפותח חלון הפקת דוחות
 export function ReportsQuickAction() {
   const { companyId, company } = useCompany();
   const [open, setOpen] = useState(false);
@@ -239,6 +242,7 @@ export function ReportsQuickAction() {
 
 /* ------------------------------------------------------------------ */
 
+// כפתור בכותרת הכחולה
 function HeaderAction({
   icon, label, onPress,
 }: {
@@ -254,9 +258,11 @@ function HeaderAction({
   );
 }
 
+// עיצוב הכפתורים
 const styles = StyleSheet.create({
   state: { alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 20 },
 
+  // כפתור שקוף על הכותרת הכהה
   headerAction: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

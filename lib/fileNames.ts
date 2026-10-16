@@ -1,3 +1,5 @@
+// שמות קבצים בטוחים
+// מנקה שם קובץ משמירה במטמון
 /** Safe single path segment for files written to the app cache. */
 export function safeFileName(value: string | null | undefined, fallback: string): string {
   const normalized = (value ?? '').normalize('NFKC')

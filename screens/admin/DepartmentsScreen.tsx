@@ -1,3 +1,4 @@
+// ניהול מחלקות
 import React, { useCallback, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
@@ -26,6 +27,7 @@ import { errorMessage } from '../../lib/requestError';
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'Departments'>;
 
+// המסך
 export default function DepartmentsScreen({ navigation }: Props) {
   const { companyId } = useCompany();
   const { showToast } = useToast();
@@ -260,6 +262,7 @@ export default function DepartmentsScreen({ navigation }: Props) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   add: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12 },

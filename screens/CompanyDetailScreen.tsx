@@ -1,3 +1,4 @@
+// מסך חברה אצל הבעלים: טוען נתונים ומציג תצוגת מחשב או טלפון
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { BrandLoader } from '../components/ui/BrandLoader';
@@ -59,6 +60,7 @@ import { errorMessage } from '../lib/requestError';
  * loading and the handlers those pieces call back into.
  */
 
+// שדות ריקים לטופס
 const EMPTY_FIELDS: CompanyEditableFields = {
   name: '',
   logoUrl: '',
@@ -72,6 +74,7 @@ const EMPTY_FIELDS: CompanyEditableFields = {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyDetail'>;
 
+// המסך: טעינה, שמירה וכל הפעולות
 export default function CompanyDetailScreen({ route, navigation }: Props) {
   const { companyId } = route.params;
   const insets = useSafeAreaInsets();
@@ -624,6 +627,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: DK.canvas },
 });

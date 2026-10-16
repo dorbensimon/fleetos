@@ -1,3 +1,4 @@
+// נהגים: רשימה, פרטים, עדכון, ארכיון, מחיקה, סיסמה ומייל
 import { supabase } from '../supabase';
 import { DriverDetails, DriverRow, DriverRowVehicle } from './types';
 import { listActiveDriverVehicles } from './assignments';
@@ -5,6 +6,7 @@ import { functionErrorMessage } from '../functionError';
 import { chunkIds, fetchAllPages } from './paging';
 import { t } from '../i18n';
 
+// רשימת הנהגים של החברה עם מספר הרכב של כל אחד
 /**
  * Drivers live across two tables: `profiles` (identity + auth link) and
  * `driver_details` (everything else). This joins them and attaches the
@@ -70,6 +72,7 @@ export async function listDrivers(companyId: string): Promise<DriverRow[]> {
   });
 }
 
+// מביא נהג אחד לפי מזהה
 export async function getDriver(driverId: string): Promise<DriverRow | null> {
   const [{ data: details, error: detailsError }, { data: profile, error: profileError }] = await Promise.all([
     supabase.from('driver_details').select('*').eq('id', driverId).single(),
@@ -102,6 +105,7 @@ export async function getDriver(driverId: string): Promise<DriverRow | null> {
   };
 }
 
+// מעדכן פרטי נהג
 /** Updates the driver across both tables in one call. */
 export async function updateDriver(
   driverId: string,
@@ -138,6 +142,7 @@ export async function updateDriver(
   }
 }
 
+// רשימת הנהגים שבארכיון
 /**
  * Drivers that were moved to the archive, newest first — the only list
  * that shows them. Archived drivers have no access to the app at all, so
@@ -186,6 +191,7 @@ export async function listArchivedDrivers(companyId: string): Promise<DriverRow[
   }));
 }
 
+// מעביר נהג לארכיון וחוסם לו את הכניסה
 /**
  * Moves a driver to the archive. This is not a list filter: server-side it
  * also blocks the driver's login, ends any session they currently have,
@@ -207,6 +213,7 @@ export async function archiveDriver(
   return { ok: true };
 }
 
+// מחזיר נהג מהארכיון ומחזיר לו את הכניסה
 /** Brings an archived driver back to active and restores their login. */
 export async function restoreDriver(
   driverId: string,
@@ -223,6 +230,7 @@ export async function restoreDriver(
   return { ok: true };
 }
 
+// יוצר נהג חדש עם חשבון כניסה (דרך השרת)
 /**
  * Creating a driver needs an Auth account, which the client cannot do —
  * it runs server-side with the service role.
@@ -253,6 +261,7 @@ export async function createDriverAccount(payload: {
   return { ok: true, driverId: data.driverId };
 }
 
+// מוחק נהג מהארכיון לצמיתות עם כל המסמכים שלו
 /**
  * Permanently removes an archived driver and everything the app holds
  * about them — profile, documents, compliance items and the files behind
@@ -277,6 +286,7 @@ export async function deleteDriver(
   return { ok: true };
 }
 
+// מוחק את כל הנהגים של החברה לצמיתות
 /**
  * Permanently deletes EVERY driver in the company. Intentionally separate
  * from deleting an admin account (deleteDriver deletes one driver at a
@@ -306,6 +316,7 @@ export async function deleteAllCompanyDrivers(
   };
 }
 
+// מאפס סיסמה לנהג ומחייב אותו לבחור סיסמה חדשה
 /**
  * Resets a driver's password and forces them to set their own new one
  * on next login (must_change_password=true) — same flow as when the
@@ -327,6 +338,7 @@ export async function resetDriverPassword(
   return { ok: true };
 }
 
+// מביא את מייל הכניסה של משתמש
 /** The login email of a driver/admin — not on `profiles`, only in auth.users. */
 export async function getUserEmail(userId: string, companyId: string): Promise<string | null> {
   const { data, error } = await supabase.functions.invoke('get-user-email', {
@@ -336,6 +348,7 @@ export async function getUserEmail(userId: string, companyId: string): Promise<s
   return data.email ?? null;
 }
 
+// מתקן את מייל הכניסה של משתמש
 /**
  * Corrects a driver/admin's login email (e.g. a typo made at creation) —
  * DriverFormScreen only exposes the email field on create, never on edit.

@@ -1,3 +1,4 @@
+// עריכת הנהגים של רכב: הוספה, הסרה ונהג ראשי
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { showAlert } from '../lib/platformAlert';
@@ -18,6 +19,7 @@ import {
 import { t } from '../lib/i18n';
 import { errorMessage } from '../lib/requestError';
 
+// רשימת הנהגים של הרכב עם פעולות
 /**
  * Active driver assignments for one vehicle, with add/remove/promote actions
  * — the one place this UI is built, reused
@@ -204,11 +206,13 @@ export function VehicleDriversEditor({
   );
 }
 
+// עיצוב רשימת הנהגים (טלפון)
 const styles = StyleSheet.create({
   wrap: { gap: SPACING.sm },
   desktopWrap: { maxWidth: 390, alignSelf: 'flex-end', width: '100%' },
   empty: { fontSize: 13, color: COLORS.textFaint, paddingVertical: SPACING.sm },
 
+  // שורת נהג
   row: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -223,15 +227,18 @@ const styles = StyleSheet.create({
   name: { fontSize: 14.5, flexShrink: 1 },
   meta: { fontSize: 12.5, color: COLORS.textMuted },
 
+  // תגית ראשי/משני
   badge: { borderRadius: RADIUS.pill, paddingHorizontal: 8, paddingVertical: 2 },
   badgePrimary: { backgroundColor: COLORS.accentSoft },
   badgeSecondary: { backgroundColor: COLORS.field },
   badgeText: { fontSize: 10.5, color: COLORS.textMuted },
   badgeTextPrimary: { color: COLORS.accent },
 
+  // כפתורי הפעולה בשורה
   rowActions: { flexDirection: 'row-reverse', gap: SPACING.sm },
   actionBtn: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
 
+  // שורת הוספת נהג
   addRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.sm, paddingTop: SPACING.xs },
   addSelect: { flex: 1 },
   desktopAddRow: { justifyContent: 'flex-start' },
@@ -250,13 +257,17 @@ const styles = StyleSheet.create({
   },
 });
 
+// עיצוב רשימת הנהגים (מחשב)
 const kit = StyleSheet.create({
+  // שורת נהג
   row: { minHeight: 64, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: DK.hairline },
   rowMain: { flexDirection: 'row-reverse', alignItems: 'center' },
   name: { fontFamily: DK_FONT.semibold, fontSize: 15.5, color: DK.ink },
   meta: { fontFamily: DK_FONT.medium, fontSize: 13.5, color: DK.muted },
+  // כפתור פעולה
   actionBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: DK.accentSoft },
   actionDanger: { backgroundColor: STATUS.expired.soft },
+  // כפתור הוספה
   addBtn: { width: 52, height: 52, borderRadius: 16, backgroundColor: DK.accent },
   empty: { fontFamily: DK_FONT.medium, fontSize: 14.5, color: DK.muted },
 });

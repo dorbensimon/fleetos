@@ -1,3 +1,4 @@
+// תיקיות המסמכים והתוקף בתיק רכב או נהג (ביטוח, טסט, רישיון...)
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { BrandLoader } from './ui/BrandLoader';
@@ -43,18 +44,22 @@ import { errorMessage } from '../lib/requestError';
 /** compliance_items only tracks driver/vehicle expiries — not company-level documents. */
 type ComplianceOwnerType = 'driver' | 'vehicle';
 
+// השם של מסמך כללי
 /** Saved on the document row and matched on it, so it stays the same in every UI language. */
 const GENERAL_DOCUMENT_TITLE = 'מסמך כללי';
 
+// אייקון לכל תיקייה
 const complianceFolderIcon = (itemType: string): keyof typeof Ionicons.glyphMap => ({
   vehicle_license: 'car-outline', operating_license: 'document-text-outline',
   insurance_mandatory: 'shield-checkmark-outline', insurance_comprehensive: 'shield-outline',
   annual_test: 'car-sport-outline',
 }[itemType] ?? 'document-text-outline') as keyof typeof Ionicons.glyphMap;
+// צבע לכל תיקייה
 const complianceFolderColor = (itemType: string) => ({
   vehicle_license: '#0088CC', operating_license: '#5E5CE6', insurance_mandatory: '#34C759',
   insurance_comprehensive: '#0A7FD0', annual_test: '#FF9500',
 }[itemType] ?? '#8E8E93');
+// המסמך האחרון שהועלה לתיקייה
 /** The outer folder tile always reflects the expiry of its newest uploaded document. */
 const latestDocument = (docs: DocumentRow[]) => docs.reduce<DocumentRow | null>(
   (latest, doc) => (!latest || doc.created_at > latest.created_at ? doc : latest),
@@ -71,6 +76,7 @@ const latestDocument = (docs: DocumentRow[]) => docs.reduce<DocumentRow | null>(
  * endless list of unrelated entries.
  */
 
+// כל התיקיות מקובצות, עם העלאה ותאריך תוקף
 export function ComplianceSection({
   companyId,
   ownerType,
@@ -667,6 +673,7 @@ export function ComplianceSection({
   );
 }
 
+// מסמכים כלליים שלא שייכים לתיקייה עם תוקף
 /** Free-form documents that don't belong to a tracked expiry item. */
 function GeneralDocuments({
   companyId,
@@ -754,10 +761,13 @@ function GeneralDocuments({
   );
 }
 
+// עיצוב התיקיות והמסמכים
 const styles = StyleSheet.create({
+  // הכרטיס של קבוצת תיקיות
   card: { gap: 2 },
   cardSpacious: { marginBottom: SPACING.sm, paddingVertical: SPACING.sm },
   folderCard: { padding: 0, gap: 0, overflow: 'hidden' },
+  // כותרת הקבוצה
   groupHead: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -776,7 +786,9 @@ const styles = StyleSheet.create({
   },
   itemHeadSpacious: { paddingVertical: SPACING.md },
   folderItemHead: { minHeight: 57, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 11 },
+  // שורת תיקייה
   folderRow: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline, minHeight: 64, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
+  // אייקון התיקייה
   folderIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   folderItemLabel: { fontFamily: DK_FONT.semibold, fontSize: 15, lineHeight: 20, color: DK.ink },
   // The sunken detail panel already pads the sides.
@@ -786,17 +798,21 @@ const styles = StyleSheet.create({
   itemDocCount: { fontFamily: DK_FONT.medium, fontSize: 13, color: DK.muted },
   itemStatusNote: { fontSize: 11.5 },
 
+  // רשת אריחי התיקיות
   folderGrid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 12, padding: 14 },
+  // החלונית שנפתחת עם תוכן התיקייה
   folderDetailPanel: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline, backgroundColor: DK.surfaceSunk, paddingHorizontal: SPACING.lg, paddingTop: SPACING.md },
 
   itemBody: { paddingBottom: SPACING.md, gap: SPACING.sm },
   itemBodySpacious: { paddingBottom: SPACING.lg, gap: SPACING.md },
+  // שורת תאריך התוקף
   dateRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: SPACING.md },
   dateLabel: { fontFamily: DK_FONT.medium, fontSize: 13.5, color: DK.inkSoft, width: 92 },
   dateInput: { flex: 1 },
   autoDateValue: { fontFamily: DK_FONT.medium, fontSize: 14, color: DK.muted, flex: 1 },
   confirmBtn: { marginTop: 2 },
 
+  // כפתור ההעלאה
   uploadBtn: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -818,10 +834,12 @@ const styles = StyleSheet.create({
   uploadRow: { flexDirection: 'row-reverse', alignItems: 'stretch', gap: 8 },
   uploadRowDate: { flex: 1 },
   uploadRowDateBox: { backgroundColor: DK.surface, borderColor: DK.hairline, borderWidth: StyleSheet.hairlineWidth },
+  // תיקייה ריקה
   emptyFolder: { fontFamily: DK_FONT.medium, fontSize: 13.5, color: DK.faint, textAlign: 'right', paddingVertical: 4 },
 
   emptyDocs: { fontSize: 12.5, color: COLORS.textFaint, paddingVertical: SPACING.md },
 
+  // שורת ההעלאה במחשב
   // Keep every desktop vehicle-folder footer aligned with the free-form
   // vehicle folders (for example, "אישור קצין בטיחות").
   desktopUploadRow: { flexDirection: 'row-reverse', alignSelf: 'flex-end', alignItems: 'center', gap: 8 },

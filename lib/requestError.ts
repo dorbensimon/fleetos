@@ -1,3 +1,4 @@
+// הופך שגיאות טכניות להסבר שאדם מבין
 import { t } from './i18n';
 
 type RequestError = { code?: string | number; message?: string; status?: string | number };
@@ -8,6 +9,7 @@ export type RequestErrorDetails = {
   icon: 'alert-circle' | 'cloud-offline';
 };
 
+// הסבר ברור לשגיאה בבקשה
 /** Turns technical request failures into an explanation a person can act on. */
 export function requestErrorDetails(error: unknown, fallback: string): RequestErrorDetails {
   const candidate = (error ?? {}) as RequestError;
@@ -32,9 +34,11 @@ export function requestErrorDetails(error: unknown, fallback: string): RequestEr
   return { message: fallback, hint: t('error.tryAgainShortly'), icon: 'alert-circle' };
 }
 
+// הודעות שנכתבו למפתחים ולא למשתמשים
 // Messages written for developers, not people: network, database and parse errors.
 const TECHNICAL = /failed to fetch|network ?request failed|networkerror|load failed|non-2xx|pgrst|violates|duplicate key|syntax error|relation "|column "|unexpected token|json|typeerror|is not a function|undefined|null value/i;
 
+// ההודעה להצגה כשפעולה נכשלה
 /**
  * The message to show for a failed action: the error's own when it was
  * written for people (the server's and the app's own), otherwise a plain

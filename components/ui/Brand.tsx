@@ -1,3 +1,4 @@
+// הלוגו של iCar
 import { Image, StyleProp, ImageStyle } from 'react-native';
 
 /**
@@ -5,13 +6,18 @@ import { Image, StyleProp, ImageStyle } from 'react-native';
  * (prod.py) — edit the geometry there, not the PNGs.
  */
 
+// יחס הרוחב לגובה של הלוגו
 /** The horizontal lockup artwork is 311.9 × 87.5. */
 const LOCKUP_RATIO = 311.9 / 87.5;
 
+// לוגו לרקע כהה
 const LOGO_ON_DARK = require('../../images/icar-logo-on-dark.png');
+// לוגו לרקע בהיר
 const LOGO_ON_LIGHT = require('../../images/icar-logo-on-light.png');
+// הסמל לבד
 const SYMBOL = require('../../images/icar-symbol.png');
 
+// סמל ומילה
 /** Symbol + "icar" wordmark. `onDark` switches the wordmark to white. */
 export function BrandLogo({
   height,
@@ -33,6 +39,7 @@ export function BrandLogo({
   );
 }
 
+// הסמל לבד
 /** The symbol alone (square) — for small, quiet placements. */
 export function BrandSymbol({ size, style }: { size: number; style?: StyleProp<ImageStyle> }) {
   return (

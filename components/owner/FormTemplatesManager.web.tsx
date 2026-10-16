@@ -1,3 +1,4 @@
+// ניהול השבלונות המוכנות של הבעלים
 import React, { useCallback, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -21,8 +22,10 @@ import { t } from '../../lib/i18n';
  * Built with the same editor the companies use ("מסמך חדש" in owner mode).
  */
 
+// הודעת שגיאה
 const errorText = (error: unknown, fallback: string) => (error instanceof Error && error.message ? error.message : fallback);
 
+// '12 סעיפים' / '3 שדות' מתחת לשם
 /** "12 סעיפים" / "3 שדות" under a template's name. */
 function contentLine(template: OwnerFormTemplate): string {
   if (template.kind === 'checklist') {
@@ -33,6 +36,7 @@ function contentLine(template: OwnerFormTemplate): string {
   return t('templates.fieldsCount', { count: fields });
 }
 
+// הרשימה: יצירה, עריכה, הסתרה, מחיקה וסדר
 export function FormTemplatesManager({ onClosed }: { onClosed: () => void }) {
   useSigningStyles();
   const { closing, close } = useSheetClose(onClosed);

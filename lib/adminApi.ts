@@ -1,3 +1,4 @@
+// נקודת כניסה אחת לכל פעולות הנתונים של המנהל (רכבים, נהגים, שיוכים, התראות)
 /**
  * Barrel re-export — the admin/driver data-access layer lives in
  * lib/adminApi/*.ts split by domain (vehicles, assignments, drivers,

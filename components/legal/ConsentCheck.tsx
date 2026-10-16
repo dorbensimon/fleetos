@@ -1,8 +1,10 @@
+// תיבת סימון לאישור תנאים
 import React, { useEffect, useRef } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DK, DKText, useReducedMotion } from '../driverKit';
 
+// התיבה (כל השורה לחיצה)
 /** A real checkbox: its whole row is the target, and it says checked/unchecked to screen readers. */
 export function ConsentCheck({ value, onChange, label }: { value: boolean; onChange: (v: boolean) => void; label: string }) {
   const reduce = useReducedMotion();
@@ -32,6 +34,7 @@ export function ConsentCheck({ value, onChange, label }: { value: boolean; onCha
   );
 }
 
+// עיצוב התיבה
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   check: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, minHeight: 64, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 16 },

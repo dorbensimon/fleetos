@@ -1,3 +1,4 @@
+// התיק של הנהג בטלפון
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,7 @@ import { t } from '../../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+// אייקון לכל שורה
 const ICONS: Record<DriverCardIconKey, IconName> = {
   phone: 'call',
   email: 'mail',
@@ -41,6 +43,7 @@ const ICONS: Record<DriverCardIconKey, IconName> = {
   key: 'key',
 };
 
+// צבעי הקטגוריות
 /** The dossier's category colours, retuned to sit with the icar blue. */
 const TINTS: Record<DriverCardTint, string> = {
   blue: '#2F5BFF',
@@ -68,6 +71,7 @@ type Props = {
   onRetry: () => void;
 };
 
+// הפרטים וכל התיקיות
 /**
  * The driver's own file: who they are, then every folder of documents,
  * grouped the same way the manager sees them — minus manager-only actions.
@@ -151,6 +155,7 @@ export function DriverDocumentsMobile(p: Props) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   groupTitle: { paddingHorizontal: 6, marginBottom: 8 },
   note: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 6, paddingHorizontal: DK_SPACE.sm, marginTop: 4 },

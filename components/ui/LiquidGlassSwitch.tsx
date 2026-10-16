@@ -1,3 +1,4 @@
+// מתג בסגנון אייפון (זכוכית)
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -13,13 +14,20 @@ import { LinearGradient } from 'expo-linear-gradient';
  * damped spring — no bounce, this isn't a gesture the user threw.
  */
 
+// רוחב המסילה
 const TRACK_WIDTH = 51;
+// גובה המסילה
 const TRACK_HEIGHT = 31;
+// עיגול המסילה
 const TRACK_RADIUS = TRACK_HEIGHT / 2;
+// גודל הכפתור
 const THUMB_SIZE = 27;
+// ריווח
 const PAD = 2;
+// המרחק שהכפתור זז
 const TRAVEL = TRACK_WIDTH - THUMB_SIZE - PAD * 2;
 
+// המתג
 export function LiquidGlassSwitch({
   value,
   onValueChange,
@@ -107,8 +115,10 @@ export function LiquidGlassSwitch({
   );
 }
 
+// עיצוב המתג
 const styles = StyleSheet.create({
   disabled: { opacity: 0.45 },
+  // המסילה
   track: {
     width: TRACK_WIDTH,
     height: TRACK_HEIGHT,
@@ -125,6 +135,7 @@ const styles = StyleSheet.create({
   },
 
   thumbPositioner: { width: THUMB_SIZE, height: THUMB_SIZE },
+  // הכפתור העגול
   thumb: {
     flex: 1,
     borderRadius: THUMB_SIZE / 2,

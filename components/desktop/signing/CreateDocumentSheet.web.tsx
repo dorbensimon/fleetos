@@ -1,3 +1,4 @@
+// חלון 'מסמך חדש' במחשב: שם ושיטה, תוכן ושדות, בדיקה
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import type { SigningTemplate } from '../../../lib/docuseal';
@@ -55,10 +56,14 @@ import { t, dirIcon } from '../../../lib/i18n';
 type Mode = 'editor' | 'upload' | 'checklist';
 type Step = 0 | 1 | 2 | 3;
 
+// הצעות לשמות מסמך
 const nameIdeas = () => [t('signing.suggest.safetyProcedure'), DRIVER_MEETING_TITLE, t('signing.suggest.vehicleHandover'), t('signing.suggest.vehicleCare')];
+// גודל קובץ מקסימלי (20MB)
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+// שמות השלבים
 const stepNames = () => [t('signing.stepName.nameAndMethod'), t('signing.stepName.contentAndFields'), t('signing.stepName.reviewAndSave')];
 
+// סיכום השדות שהונחו
 function fieldSummary(kinds: SigningFieldKind[]) {
   const counts = new Map<SigningFieldKind, number>();
   kinds.forEach((k) => counts.set(k, (counts.get(k) ?? 0) + 1));
@@ -72,6 +77,7 @@ export type OwnerTemplateTarget = {
   onSaved: (template: FormTemplate) => void;
 };
 
+// החלון עם כל השלבים
 export function CreateDocumentSheet({
   companyId,
   takenTitles = [],
@@ -729,6 +735,7 @@ export function CreateDocumentSheet({
   );
 }
 
+// שבלונה מוכנה ברשימה
 /** One of the owner's ready templates in the "start from a template" list. */
 function TemplateChoice({ template, index, selected, onPress }: { template: FormTemplate; index: number; selected: boolean; onPress: () => void }) {
   const checklist = template.kind === 'checklist';
@@ -753,6 +760,7 @@ function TemplateChoice({ template, index, selected, onPress }: { template: Form
   );
 }
 
+// כרטיס בחירת שיטה
 function ChoiceCard({
   selected,
   onPress,

@@ -1,3 +1,4 @@
+// סריקת רישיון נהיגה
 import React, { useState, useRef } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Image, Modal } from 'react-native';
 import { BrandLoader } from '../ui/BrandLoader';
@@ -17,6 +18,7 @@ type Props = {
 
 type ScanPhase = 'idle' | 'photo-front' | 'photo-back' | 'extracting' | 'editing';
 
+// צילום שני הצדדים וזיהוי התוקף
 export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props) {
   const [phase, setPhase] = useState<ScanPhase>('idle');
   const [frontPhoto, setFrontPhoto] = useState<string | null>(null);
@@ -274,6 +276,7 @@ export function DriverLicenseScannerSheet({ visible, onClose, onSubmit }: Props)
   );
 }
 
+// עיצוב הסורק
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F7' },
   header: {
@@ -297,11 +300,14 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: COLORS.textMuted, textAlign: 'center', marginBottom: SPACING.lg, maxWidth: 280 },
   sectionTitle: { fontSize: 15, marginTop: SPACING.lg, marginBottom: SPACING.md },
   button: { marginTop: SPACING.lg, width: '100%', maxWidth: 200 },
+  // שורת התמונות
   photosRow: { flexDirection: 'row-reverse', gap: SPACING.md, marginBottom: SPACING.lg },
   photo: { width: 120, height: 80, borderRadius: 8, backgroundColor: COLORS.field },
+  // כרטיס התוצאה
   scanCard: { marginBottom: SPACING.md, backgroundColor: '#F9F9FB' },
   label: { fontSize: 13, marginBottom: SPACING.sm },
   extractedText: { fontSize: 12, color: COLORS.textMuted, lineHeight: 18 },
   error: { color: COLORS.dangerText, fontSize: 13, marginTop: SPACING.md, textAlign: 'center' },
+  // כפתור השליחה
   submitButton: { marginTop: SPACING.xl, marginBottom: SPACING.xl },
 });

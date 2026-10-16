@@ -1,3 +1,5 @@
+// זיהוי תאריך תוקף מטקסט שנסרק מרישיון
+// מוצא את תאריך התוקף בטקסט הסרוק
 /**
  * Extract a license expiry date from OCR text. Tries multiple Israeli/Hebrew
  * date formats: DD.MM.YYYY or DD/MM/YYYY, optionally near a "תוקף"/"valid"/

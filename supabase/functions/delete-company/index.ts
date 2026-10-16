@@ -1,3 +1,4 @@
+// פונקציית שרת: מחיקת חברה עם כל הקבצים
 // Edge Function: delete-company
 // Owner-only permanent deletion of a company, its Auth users and private files.
 
@@ -5,11 +6,13 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { verifyOwner } from '../_shared/verifyOwner.ts';
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// תשובת JSON
 const json = (body: unknown, status: number) => new Response(JSON.stringify(body), {
   status,
   headers: { ...corsHeaders, 'Content-Type': 'application/json' },
 });
 
+// נתיב קובץ מכתובת ציבורית
 function publicObjectPath(url: string | null, bucket: string): string | null {
   if (!url) return null;
   const marker = `/storage/v1/object/public/${bucket}/`;
@@ -22,6 +25,7 @@ function publicObjectPath(url: string | null, bucket: string): string | null {
   }
 }
 
+// מוחק קבצים מהאחסון
 async function removePaths(adminClient: SupabaseClient, bucket: string, paths: Array<string | null>): Promise<boolean> {
   const unique = [...new Set(paths.filter((path): path is string => !!path))];
   for (let index = 0; index < unique.length; index += 100) {
@@ -31,6 +35,7 @@ async function removePaths(adminClient: SupabaseClient, bucket: string, paths: A
   return true;
 }
 
+// מקבל בקשה ומוחק
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'השיטה אינה נתמכת' }, 405);

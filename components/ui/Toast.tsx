@@ -1,3 +1,4 @@
+// הודעה קצרה בתחתית המסך ('נשמר')
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,17 +15,23 @@ interface ToastContextValue {
   showToast: (message: string, tone?: ToastTone) => void;
 }
 
+// ההקשר של ההודעה
 const ToastContext = createContext<ToastContextValue>({ showToast: () => {} });
 
+// מציג הודעה קצרה
 /** Call after any successful save across the app to show the bottom confirmation toast, or with 'warning' for what must come first. */
 export function useToast() {
   return useContext(ToastContext);
 }
 
+// כמה זמן הודעה מוצגת
 const VISIBLE_MS = 2000;
+// כמה זמן אזהרה מוצגת
 const WARNING_VISIBLE_MS = 3500;
+// זמן האנימציה
 const ANIM_MS = 220;
 
+// מציג את ההודעות
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const phone = !useIsDesktop();
@@ -86,6 +93,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// עיצוב ההודעה
 const styles = StyleSheet.create({
   root: { flex: 1 },
   wrap: { position: 'absolute', start: 0, end: 0, alignItems: 'center' },
@@ -103,6 +111,7 @@ const styles = StyleSheet.create({
   text: { color: '#FFFFFF', fontSize: 14 },
 });
 
+// עיצוב בטלפון
 const kit = StyleSheet.create({
   toast: {
     flexDirection: 'row-reverse',

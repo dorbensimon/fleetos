@@ -1,3 +1,4 @@
+// ההתראות בטלפון
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,7 @@ type Props = {
   onRefresh?: () => void;
 };
 
+// אייקון וצבע לכל סוג
 /** What each kind of update looks like: the icon and the colour of its meaning. */
 function look(type: string | null): { icon: IconName; tint: string } {
   if (type === 'signature_request_assigned') return { icon: 'create', tint: STATUS.soon.fg };
@@ -47,6 +49,7 @@ function look(type: string | null): { icon: IconName; tint: string } {
   return { icon: 'person', tint: DK.accent };
 }
 
+// קבוצת יום
 function dayGroup(iso: string): string {
   const d = new Date(iso);
   const today = new Date();
@@ -58,6 +61,7 @@ function dayGroup(iso: string): string {
   return t('time.earlier');
 }
 
+// הרשימה לפי ימים
 /**
  * Updates for whoever is signed in, newest first and grouped by day. Unread
  * ones carry a blue edge and a dot, and say in words what tapping does.
@@ -179,12 +183,14 @@ export function NotificationsMobile(p: Props) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   markAll: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, minHeight: 36, paddingHorizontal: 12, borderRadius: 999, backgroundColor: DK.accentSoft },
   groupHead: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: DK_SPACE.md, paddingTop: 6 },
   gapTop: { marginTop: 18 },
   list: { overflow: 'hidden' },
+  // שורת התראה
   row: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 12, paddingHorizontal: DK_SPACE.md, paddingVertical: 14, minHeight: 72 },
   rowUnread: { backgroundColor: '#F5F8FF', borderEndWidth: 3, borderEndColor: DK.accent },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },

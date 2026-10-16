@@ -1,3 +1,4 @@
+// בדיקות קצין בטיחות: הרשימה, מילוי, חתימות, הגדרות ותזמון
 import { supabase } from './supabase';
 import { functionErrorMessage } from './functionError';
 import { t } from './i18n';
@@ -23,6 +24,7 @@ export type InspectionAnswers = Record<string, InspectionAnswer>;
 
 export { INSPECTION_TITLE, LEGACY_INSPECTION_TITLE } from './inspectionTitle';
 
+// מגבלות הבדיקה: אורך טקסט ומספר סעיפים
 export const INSPECTION_LIMITS = {
   groups: 12,
   items: 80,
@@ -34,9 +36,11 @@ export const INSPECTION_LIMITS = {
   closedNote: 300,
 } as const;
 
+// הנוסח המשפטי שמופיע בבדיקה
 export const INSPECTION_DISCLAIMER =
   'בדיקה זו נעשית במבט חיצוני בלבד ואינה מחליפה טיפול או בדיקה במוסך. על הנהג לדווח מיד לממונה על כל תקלה, או חשד לתקלה, שעלולה לפגוע בבטיחות הנסיעה.';
 
+// רשימת הבדיקה המוכנה, לפי סדר ההליכה סביב הרכב
 /** The ready-made list, in the order you walk around a vehicle. Same as the server's DEFAULT_INSPECTION_FORM. */
 export const DEFAULT_INSPECTION_FORM: InspectionForm = {
   version: 1,
@@ -84,6 +88,7 @@ export const DEFAULT_INSPECTION_FORM: InspectionForm = {
   ],
 };
 
+// מילים, אייקונים וצבעים לכל תשובה
 /**
  * Words, icons and colours for each answer. Colour is never alone: every
  * answer is also spelled out and has its own icon.
@@ -94,21 +99,26 @@ export const INSPECTION_STATUS_META: Record<InspectionStatus, { label: string; i
   na: { get label() { return t('status.notRelevant'); }, icon: 'remove', fg: '#56657A', soft: '#EEF1F6', fill: '#8593A6' },
 };
 
+// התשובות האפשריות (תקין, לא תקין, לא רלוונטי)
 export const INSPECTION_STATUSES: InspectionStatus[] = ['ok', 'not_ok', 'na'];
 
+// כל הסעיפים מכל הקבוצות
 export function formItems(form: Pick<InspectionForm, 'groups'>): InspectionItem[] {
   return form.groups.flatMap((group) => group.items);
 }
 
+// כמה סעיפים נענו
 export function answeredCount(form: InspectionForm, answers: InspectionAnswers): number {
   return formItems(form).filter((item) => !!answers[item.id]?.status).length;
 }
 
+// סעיפי 'לא תקין' שעוד חסר בהם הסבר
 /** "לא תקין" items that still need a line about what is wrong. */
 export function missingDefectNotes(form: InspectionForm, answers: InspectionAnswers): InspectionItem[] {
   return formItems(form).filter((item) => answers[item.id]?.status === 'not_ok' && !answers[item.id]?.note.trim());
 }
 
+// למה הקצין עוד לא יכול לחתום
 /** Why the officer cannot sign yet, in plain words, or null. The server checks the same. */
 export function inspectionProblem(form: InspectionForm, answers: InspectionAnswers): string | null {
   const open = formItems(form).length - answeredCount(form, answers);
@@ -118,6 +128,7 @@ export function inspectionProblem(form: InspectionForm, answers: InspectionAnswe
   return null;
 }
 
+// כל הליקויים לפי הסדר
 /** Every defect, in the order of the list, then the ones written freely. */
 export function defectLines(form: InspectionForm, answers: InspectionAnswers, extra: string[]): string[] {
   const listed = formItems(form)
@@ -126,6 +137,7 @@ export function defectLines(form: InspectionForm, answers: InspectionAnswers, ex
   return [...listed, ...extra.map((line) => line.trim()).filter(Boolean)];
 }
 
+// קורא רשימה שמורה בזהירות
 /** Reads a stored list defensively; anything unexpected becomes null. */
 export function readInspectionForm(value: unknown): InspectionForm | null {
   if (!value || typeof value !== 'object') return null;
@@ -144,14 +156,17 @@ export function readInspectionForm(value: unknown): InspectionForm | null {
   return groups.length ? { version: 1, groups } : null;
 }
 
+// קורא ליקויים שנכתבו בחופשי
 export function readExtraDefects(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((line): line is string => typeof line === 'string') : [];
 }
 
+// מזהה לסעיף או קבוצה חדשים
 export function newListId(prefix: string): string {
   return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// למה אי אפשר לשמור את הרשימה שנערכה
 /** Why an edited list cannot be saved yet, or null. */
 export function listProblem(form: InspectionForm): string | null {
   const groups = form.groups.filter((group) => group.title.trim() || group.items.some((item) => item.text.trim()));
@@ -164,6 +179,7 @@ export function listProblem(form: InspectionForm): string | null {
   return null;
 }
 
+// הרשימה כפי שנשמרת: בלי שורות וקבוצות ריקות
 /** The list as saved: trimmed, without empty rows or empty groups. */
 export function cleanList(form: InspectionForm): InspectionForm {
   return {
@@ -221,6 +237,7 @@ export type InspectionRow = {
 /** Where an inspection stands, from its own row and its signature request. */
 export type InspectionState = 'draft' | 'awaiting_driver' | 'completed' | 'closed' | 'requires_attention' | 'cancelled';
 
+// המצב של בדיקה
 export function inspectionState(inspection: Pick<InspectionRow, 'status' | 'signature_request_id'>, requestStatus?: string | null): InspectionState {
   if (inspection.status === 'cancelled') return 'cancelled';
   if (inspection.status === 'draft') return 'draft';
@@ -231,6 +248,7 @@ export function inspectionState(inspection: Pick<InspectionRow, 'status' | 'sign
   return 'requires_attention';
 }
 
+// טקסט וצבע לכל מצב בדיקה
 export const INSPECTION_STATE_META: Record<InspectionState, { label: string; tone: 'ok' | 'soon' | 'expired' | 'missing' | 'info' }> = {
   draft: { get label() { return t('status.draft'); }, tone: 'missing' },
   awaiting_driver: { get label() { return t('inspection.awaitingDriverSignature'); }, tone: 'soon' },
@@ -240,6 +258,7 @@ export const INSPECTION_STATE_META: Record<InspectionState, { label: string; ton
   cancelled: { get label() { return t('common.cancelled'); }, tone: 'missing' },
 };
 
+// האם יש מסמך גמור
 /**
  * A finished document exists: the driver signed, or a manager closed the
  * inspection without them. A cancelled inspection keeps the one it had.
@@ -249,12 +268,14 @@ export function hasDocument(row: Pick<InspectionRow, 'status' | 'closed_at'>, re
   return (row.status === 'signed' || row.status === 'cancelled') && requestStatus === 'completed';
 }
 
+// התאריך של היום
 /** Today in the device's calendar, as YYYY-MM-DD. */
 export function todayIso(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
+// מציג תאריך כיום/חודש/שנה
 /** "26/09/2026" from YYYY-MM-DD, without time-zone drift. */
 export function formatIsoDay(value: string | null | undefined): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value ?? '');
@@ -267,10 +288,12 @@ export type InspectionListRow = InspectionRow & {
   request: { id: string; status: string } | null;
 };
 
+// העמודות שמביאים לרשימה
 const LIST_COLUMNS =
   'id, company_id, vehicle_id, driver_id, title, form, answers, extra_defects, defect_count, odometer, inspection_date, officer_name, officer_signature, facts, status, signature_request_id, signed_at, closed_note, closed_at, cancelled_at, created_at, updated_at,' +
   ' vehicle:vehicle_id(id, plate_number, manufacturer, model), driver:driver_id(id, full_name), request:signature_request_id(id, status)';
 
+// רשימת הבדיקות של החברה או של רכב
 /** The company's inspections, newest first; one vehicle's when `vehicleId` is given. */
 export async function listInspections(companyId: string, vehicleId?: string): Promise<InspectionListRow[]> {
   const rows: InspectionListRow[] = [];
@@ -289,16 +312,19 @@ export async function listInspections(companyId: string, vehicleId?: string): Pr
   return rows;
 }
 
+// מביא בדיקה אחת
 export async function getInspection(inspectionId: string): Promise<InspectionListRow | null> {
   const { data, error } = await supabase.from('vehicle_inspections').select(LIST_COLUMNS).eq('id', inspectionId).maybeSingle();
   if (error) throw error;
   return (data as unknown as InspectionListRow | null) ?? null;
 }
 
+// המצב של שורה ברשימה
 export function listStateOf(row: InspectionListRow): InspectionState {
   return inspectionState(row, row.request?.status ?? null);
 }
 
+// שמות שחתמו לאחרונה, לבחירה מהירה
 /** Names that already signed inspections (or meetings) in this company, most recent first, for one-tap reuse. */
 export async function recentInspectorNames(companyId: string): Promise<string[]> {
   const [inspections, meetings] = await Promise.all([
@@ -322,6 +348,7 @@ export async function recentInspectorNames(companyId: string): Promise<string[]>
 
 export type InspectionSettings = { repeatMonths: number; form: InspectionForm | null };
 
+// כל כמה זמן בודקים
 export const INSPECTION_REPEAT_OPTIONS = [
   { months: 1, get label() { return t('frequency.monthly'); } },
   { months: 2, get label() { return t('frequency.every2Months'); } },
@@ -331,10 +358,12 @@ export const INSPECTION_REPEAT_OPTIONS = [
   { months: 0, get label() { return t('frequency.noReminders'); } },
 ] as const;
 
+// טקסט ל'כל כמה זמן'
 export function inspectionRepeatLabel(months: number): string {
   return INSPECTION_REPEAT_OPTIONS.find((o) => o.months === months)?.label ?? t('frequency.everyNMonths', { months });
 }
 
+// הגדרות הבדיקות של החברה
 export async function getInspectionSettings(companyId: string): Promise<InspectionSettings> {
   const { data, error } = await supabase.from('vehicle_inspection_settings').select('repeat_months, form').eq('company_id', companyId).maybeSingle();
   if (error) throw error;
@@ -369,6 +398,7 @@ type PlanRpcRow = {
   first_inspection: boolean;
 };
 
+// כל הרכבים, הקרוב ביותר לבדיקה ראשון
 /** Every vehicle in use, soonest due first. */
 export async function loadInspectionPlan(companyId: string): Promise<InspectionPlanRow[]> {
   const { data, error } = await supabase.rpc('list_vehicle_inspection_plan', { p_company_id: companyId });
@@ -387,6 +417,7 @@ export async function loadInspectionPlan(companyId: string): Promise<InspectionP
 
 // ── Server actions ───────────────────────────────────────────────────────
 
+// קורא לפונקציית השרת של הבדיקות
 async function invoke<T>(body: Record<string, unknown>, fallback: string): Promise<T> {
   const { data, error } = await supabase.functions.invoke('vehicle-inspection', { body });
   if (error || data?.error) throw new Error(await functionErrorMessage(error, data, fallback, false));
@@ -401,6 +432,7 @@ export type InspectionInput = {
   driverId: string | null;
 };
 
+// מתחיל או שומר בדיקה בתהליך
 /** Starts an inspection of a vehicle (or saves one in progress). The server keeps its own copy of the list. */
 export async function saveInspectionDraft(
   companyId: string,
@@ -411,6 +443,7 @@ export async function saveInspectionDraft(
   return inspection;
 }
 
+// הקצין חותם והמסמך מחכה לנהג
 /** The officer signs; the document waits for the driver. Returns the vehicle's next inspection, when set. */
 export async function signInspection(
   companyId: string,
@@ -420,34 +453,41 @@ export async function signInspection(
   return invoke({ action: 'sign', companyId, inspectionId, ...input }, t('common.saveSignatureFailed'));
 }
 
+// הנהג חותם על הבדיקה
 export async function driverSignInspection(companyId: string, inspectionId: string, driverSignature: string): Promise<{ status: 'completed'; filePending: boolean }> {
   return invoke({ action: 'driver-sign', companyId, inspectionId, driverSignature }, t('common.saveDriverSignatureFailed'));
 }
 
+// שולח לנהג הודעה לחתום
 export async function notifyInspectionDriver(companyId: string, inspectionId: string): Promise<void> {
   await invoke({ action: 'notify', companyId, inspectionId }, t('common.sendToDriverFailed'));
 }
 
+// סוגר בדיקה בלי חתימת נהג
 /** The driver never signed: the document is issued with the officer's signature and this note. */
 export async function closeInspection(companyId: string, inspectionId: string, note: string): Promise<InspectionRow> {
   const { inspection } = await invoke<{ inspection: InspectionRow }>({ action: 'close', companyId, inspectionId, note }, t('inspection.closeFailed'));
   return inspection;
 }
 
+// מבטל בדיקה (טיוטה נמחקת, חתומה מסומנת 'בוטל')
 /** A draft is thrown away; a signed inspection stays, marked "בוטל". */
 export async function cancelInspection(companyId: string, inspectionId: string): Promise<{ removed?: boolean }> {
   return invoke({ action: 'cancel', companyId, inspectionId }, t('inspection.cancelFailed'));
 }
 
+// קישור זמני ל-PDF הגמור
 /** A short-lived link to the finished PDF. */
 export async function inspectionDocument(companyId: string, inspectionId: string): Promise<{ url: string; fileName: string }> {
   return invoke({ action: 'document', companyId, inspectionId }, t('common.openDocumentFailed'));
 }
 
+// קובע תאריך לבדיקה הבאה
 export async function setNextInspectionDate(companyId: string, vehicleId: string, nextDue: string): Promise<void> {
   await invoke({ action: 'set-next', companyId, vehicleId, nextDue }, t('common.saveDateFailed'));
 }
 
+// שומר את הגדרות הבדיקות
 /** How often vehicles are checked, and/or the company's own list (null brings back the ready-made one). */
 export async function saveInspectionSettings(
   companyId: string,

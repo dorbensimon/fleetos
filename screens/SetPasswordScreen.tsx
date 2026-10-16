@@ -1,3 +1,4 @@
+// בחירת סיסמה חדשה
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,6 +25,7 @@ import { t, dirIcon } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SetPassword'>;
 
+// המסך
 export default function SetPasswordScreen({ navigation, route }: Props) {
   const isDesktop = useIsDesktop();
   const insets = useSafeAreaInsets();
@@ -201,6 +203,7 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
   );
 }
 
+// שורת דרישה עם V
 function Check({ ok, label }: { ok: boolean; label: string }) {
   return (
     <View style={styles.check}>
@@ -212,6 +215,7 @@ function Check({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   bar: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, marginBottom: 20 },

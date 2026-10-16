@@ -1,3 +1,4 @@
+// החלקים והשורות של תיק הנהג
 import type { DriverCardBadgeTone, DriverCardTint } from './driverCardTheme';
 import { t } from '../../lib/i18n';
 
@@ -74,6 +75,7 @@ export interface DriverCardGroup {
   rows: DriverCardRow[];
 }
 
+// הקבוצות והשורות בתיק
 export const DRIVER_CARD_GROUPS: DriverCardGroup[] = [
   {
     get title() { return t('driverCard.contactAndVehicle'); },
@@ -124,6 +126,7 @@ export const DRIVER_CARD_GROUPS: DriverCardGroup[] = [
   },
 ];
 
+// איזו תיקייה כל שורה פותחת
 /** The document folder each driver-card row opens — the same for the manager and the driver. */
 export const DOCUMENT_CATEGORY_BY_ROW: Partial<Record<DriverCardRow['key'], string>> = {
   'general-documents': 'general',

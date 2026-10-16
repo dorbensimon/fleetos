@@ -1,3 +1,4 @@
+// משטח הציור של החתימה בדפדפן
 import React, { useEffect, useRef } from 'react';
 import { SIGNATURE_INK_JS } from './signatureInk';
 import type { SignatureSurfaceProps } from './SignatureSurface.types';
@@ -5,6 +6,7 @@ import type { SignatureSurfaceProps } from './SignatureSurface.types';
 type Ink = { clear: () => void; destroy: () => void };
 type CreateInk = (canvas: HTMLCanvasElement, onChange: (png: string | null, length: number) => void, onDrawing: (active: boolean) => void) => Ink;
 
+// טוען לדף את קוד הציור
 /**
  * The same drawing code the phone runs inside its WebView, added to the page
  * once as an inline script. (The site's CSP forbids eval, and the code has to
@@ -21,6 +23,7 @@ function loadInk(): CreateInk {
   return host.__icarCreateInk!;
 }
 
+// משטח הציור (canvas)
 /** The signature surface in a browser: a canvas drawn with pointer events. */
 export function SignatureSurface({ onChange, onDrawing, clearKey, label }: SignatureSurfaceProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);

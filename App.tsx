@@ -1,3 +1,4 @@
+// נקודת הכניסה של האפליקציה: ניווט, כניסה, שפה, הרשאות וכל המסכים
 import { useEffect, useState } from 'react';
 import { View, AppState, Platform } from 'react-native';
 import { BrandLoader } from './components/ui/BrandLoader';
@@ -85,13 +86,18 @@ import { reloadAppAsync } from 'expo';
 import { getLanguage, layoutDirection, onLanguageChange, readFromDevice, storeOnDevice, type Language } from './lib/i18n';
 import { resetLanguageSync, syncLanguageFromAccount } from './lib/i18n/userLanguage';
 
+// רשימת המסכים (ערימת ניווט)
 const Stack = createNativeStackNavigator<RootStackParamList>();
+// גישה לניווט מכל מקום
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
+// המפתח שבו נשמר מצב הניווט בדפדפן
 const WEB_NAVIGATION_STATE_KEY = 'fleetos.web-navigation-state';
+// המסך לחזור אליו אחרי החלפת שפה
 // Native starts over after a language change and returns to the screen the
 // user was on: saved just before the restart, read once as it starts.
 const LANGUAGE_RESTART_STATE_KEY = 'fleetos.language-restart-state';
 
+// קורא ומוחק את המסך השמור אחרי החלפת שפה
 async function takeLanguageRestartState(): Promise<object | undefined> {
   const saved = await readFromDevice(LANGUAGE_RESTART_STATE_KEY);
   if (!saved) return undefined;
@@ -105,6 +111,7 @@ async function takeLanguageRestartState(): Promise<object | undefined> {
   }
 }
 
+// מצב הניווט ההתחלתי בדפדפן
 // Web navigation normally restores from the URL. The development server can
 // retain the root URL, though, so also retain the in-app stack for a browser
 // refresh from that root. A non-root URL always takes precedence for direct
@@ -121,6 +128,7 @@ const getWebInitialNavigationState = () => {
   }
 };
 
+// כתובת URL לכל מסך
 // On web this maps every in-app screen to a URL and lets React Navigation
 // synchronize its stack with the browser History API. Without it, Safari's
 // back button only knows the page that opened the app, not its inner screens.
@@ -171,12 +179,14 @@ const linking: LinkingOptions<RootStackParamList> = {
   },
 };
 
+// כותרת הלשונית לדף משפטי
 function legalPageTitle(route: { name: string; params?: object } | undefined): string | null {
   if (route?.name !== 'Legal') return null;
   const doc = (route.params as { doc?: unknown } | undefined)?.doc;
   return isLegalDocId(doc) ? `${LEGAL_DOCUMENTS[doc].title} · icar` : null;
 }
 
+// האפליקציה: טוענת משתמש, שפה ומציגה את המסכים
 export default function App() {
   const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList | null>(null);
   const [webInitialNavigationState] = useState(getWebInitialNavigationState);
@@ -431,6 +441,7 @@ export default function App() {
   );
 }
 
+// מונע ממשתמש לפתוח מסכים שלא שלו
 /**
  * Keeps every account on its own screens. On web the browser's history
  * outlives a sign-out, so after an admin signs out and a driver signs in on
@@ -473,6 +484,7 @@ function RouteRoleGuard() {
   return null;
 }
 
+// מחכה לטעינת המשתמש לפני הצגת המסך
 /**
  * A refresh restores the page the user was on, and every screen reads the
  * signed-in profile and company. Until they have loaded once, keep the boot

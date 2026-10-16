@@ -1,3 +1,4 @@
+// מסמכים חתומים בטלפון
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
@@ -54,8 +55,10 @@ type Props = {
   onMeetingOpened: () => void;
 };
 
+// כמה שורות לפני 'עוד'
 const DUE_COLLAPSED = 4;
 
+// שורת המשנה של טופס
 function checklistSubtitle(entry: SigningTemplate): string {
   const months = readForm(entry.form_content)?.repeatMonths ?? 0;
   return months ? t('signing.checklistMeetingRepeat', { months: repeatLabel(months) }) : t('signing.checklistCreatedOn', { v1: formatDate(entry.created_at) });
@@ -64,6 +67,7 @@ function checklistSubtitle(entry: SigningTemplate): string {
 type Mode = 'actions' | 'confirm' | 'send' | 'meet';
 type Busy = '' | 'view' | 'download' | 'check' | 'delete';
 
+// הטפסים, המילויים והפעולות
 /**
  * "מסמכים חתומים" on the manager's phone: everything the desktop page does
  * with a document except creating one — view, download, send to drivers and
@@ -317,6 +321,7 @@ export function SignedDocumentsMobile(p: Props) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   actions: { borderRadius: 18, backgroundColor: DK.surfaceSunk, overflow: 'hidden' },

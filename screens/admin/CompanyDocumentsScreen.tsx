@@ -1,3 +1,4 @@
+// מסמכי החברה
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Image, Modal, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -24,10 +25,14 @@ import { errorMessage } from '../../lib/requestError';
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyDocuments'>;
 type Draft = { title: string; date: string | null; description: string; file: PickedFile | null };
 type DocumentPreview = { doc: DocumentRow; src: string };
+// הקטגוריה של מסמכי חברה
 const CATEGORY = 'general';
+// טיוטה ריקה
 const emptyDraft = (): Draft => ({ title: '', date: null, description: '', file: null });
+// האם המסמך תמונה
 const isImage = (doc: DocumentRow) => Boolean(doc.mime_type?.startsWith('image/'));
 
+// המסך (טלפון או מחשב)
 export default function CompanyDocumentsScreen({ navigation }: Props) {
   const { companyId } = useCompany();
   const insets = useSafeAreaInsets();
@@ -148,6 +153,7 @@ export default function CompanyDocumentsScreen({ navigation }: Props) {
   );
 }
 
+// כרטיס מסמך
 /** A company document: its cover (the image itself, or the file type), name, date and note. */
 function DocumentCard({ doc, preview, onOpen, onDownload, onDelete }: { doc: DocumentRow; preview?: string; onOpen: (doc: DocumentRow) => void; onDownload: (doc: DocumentRow) => void; onDelete: (doc: DocumentRow) => void }) {
   const pdf = !!doc.mime_type?.includes('pdf');
@@ -201,6 +207,7 @@ function DocumentCard({ doc, preview, onOpen, onDownload, onDelete }: { doc: Doc
   );
 }
 
+// חלון הוספת מסמך
 function Composer({ visible, draft, errors, saving, onClose, onChange, onChooseFile, onSave }: { visible: boolean; draft: Draft; errors: { title: boolean; date: boolean; file: boolean }; saving: boolean; onClose: () => void; onChange: (update: Partial<Draft>) => void; onChooseFile: () => void; onSave: () => void }) {
   return (
     <KitSheet
@@ -249,6 +256,7 @@ function Composer({ visible, draft, errors, saving, onClose, onChange, onChooseF
   );
 }
 
+// תצוגת מסמך במחשב
 function DesktopDocumentPreview({ preview, progress, onClose }: { preview: DocumentPreview | null; progress: Animated.Value; onClose: () => void }) {
   if (!preview) return null;
   const opacity = progress;
@@ -273,6 +281,7 @@ function DesktopDocumentPreview({ preview, progress, onClose }: { preview: Docum
   </Modal>;
 }
 
+// צפייה בתמונה עם הגדלה
 function DesktopImageViewer({ src, alt }: { src: string; alt: string }) {
   const [zoom, setZoom] = useState(1.6);
   const zoomIn = () => setZoom((value) => Math.min(2.2, Number((value + .2).toFixed(1))));
@@ -293,6 +302,7 @@ function DesktopImageViewer({ src, alt }: { src: string; alt: string }) {
     {React.createElement('div' as any, { style: { flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: 18, backgroundColor: '#DCE5EA' } }, image)}
   </View>;
 }
+// עיצוב בטלפון
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   flex2: { flex: 2 },
@@ -312,6 +322,7 @@ const styles = StyleSheet.create({
   uploadMark: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
 });
 
+// עיצוב התצוגה במחשב
 const previewStyles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(13,26,38,.56)', padding: 32, alignItems: 'center', justifyContent: 'center' },
   dismissArea: { flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' },

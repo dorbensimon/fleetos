@@ -1,3 +1,4 @@
+// חדר הבקרה של הבעלים - תצוגת מחשב
 import React, { useMemo, useState } from 'react';
 import { FormTemplatesManager } from './FormTemplatesManager';
 import { AnnouncementPanel, CollectedPanel } from './OwnerToolsPanels';
@@ -27,9 +28,12 @@ import { companyTypeLabel } from '../../lib/companyType';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+// ספרות ברוחב אחיד
 const TABULAR = webOnly({ fontVariantNumeric: 'tabular-nums' });
 
+// צבע נקודה לכל מצב
 export const TONE_DOT: Record<Tone, string> = { ok: '#1E9E4C', warn: '#D97706', bad: '#DC2F26', off: '#98A2AD' };
+// טקסט לכל מצב
 export const TONE_LABEL: Record<Tone, string> = { get ok() { return t('owner.health.ok'); }, get warn() { return t('owner.health.warn'); }, get bad() { return t('owner.health.bad'); }, get off() { return t('owner.health.off'); } };
 
 type Props = {
@@ -46,6 +50,7 @@ type Props = {
   onDelete: (company: CompanyHealth) => void;
 };
 
+// הדף: נתונים, טבלת חברות ועמודת צד
 export function OwnerConsoleDesktop(p: Props) {
   const { width, height } = useWindowDimensions();
   const wide = width - DESKTOP_SIDEBAR_WIDTH >= 1180;
@@ -230,6 +235,7 @@ export function OwnerConsoleDesktop(p: Props) {
 /* Vitals                                                              */
 /* ------------------------------------------------------------------ */
 
+// שורת המספרים העליונה
 function Vitals({ overview }: { overview: PlatformOverview }) {
   const totals = overview.totals;
   const cells: { label: string; value: string; sub: string; tone?: 'bad' | 'warn'; icon: IconName }[] = [
@@ -282,6 +288,7 @@ function Vitals({ overview }: { overview: PlatformOverview }) {
 /* Companies table                                                     */
 /* ------------------------------------------------------------------ */
 
+// עמודות טבלת החברות
 const COLUMNS: { key: string; label: string; sort?: CompanySort; style: object }[] = [
   { key: 'company', get label() { return t('owner.col.company'); }, sort: 'name', style: { flex: 1, minWidth: 200 } },
   { key: 'state', get label() { return t('common.state'); }, sort: 'health', style: { width: 150 } },
@@ -291,6 +298,7 @@ const COLUMNS: { key: string; label: string; sort?: CompanySort; style: object }
   { key: 'menu', label: '', style: { width: 36 } },
 ];
 
+// טבלת החברות
 function CompanyTable({
   rows,
   sort,
@@ -386,6 +394,7 @@ function CompanyTable({
   );
 }
 
+// לוגו או ראשי תיבות של חברה
 function CompanyAvatar({ row, size = 36 }: { row: CompanyHealth; size?: number }) {
   const radius = Math.round(size * 0.28);
   if (row.company.logo_url) {
@@ -407,6 +416,7 @@ function CompanyAvatar({ row, size = 36 }: { row: CompanyHealth; size?: number }
   );
 }
 
+// שורת חברה
 function CompanyRowView({
   row,
   index,
@@ -513,13 +523,16 @@ function CompanyRowView({
   );
 }
 
+// צבע לכל מצב מנוי
 const ACCOUNT_DOT: Record<AccountTone, string> = { ok: '#1E9E4C', warn: '#D97706', bad: '#DC2F26', off: '#98A2AD' };
 
+// צבע התאריך הבא
 function nextTone(row: CompanyHealth): 'warn' | 'bad' | null {
   const tone = accountNextStep(row.account)?.tone;
   return tone === 'warn' || tone === 'bad' ? tone : null;
 }
 
+// פעולה בתפריט
 function MenuAction({ icon, title, caption, danger, onPress }: { icon: IconName; title: string; caption: string; danger?: boolean; onPress: () => void }) {
   const color = danger ? DESKTOP_COLORS.danger : DESKTOP_COLORS.ink;
   return (
@@ -541,6 +554,7 @@ function MenuAction({ icon, title, caption, danger, onPress }: { icon: IconName;
 /* Side column                                                         */
 /* ------------------------------------------------------------------ */
 
+// כותרת כרטיס בצד
 function PanelTitle({ title, trailing }: { title: string; trailing?: React.ReactNode }) {
   return (
     <View style={styles.panelTitleRow}>
@@ -552,6 +566,7 @@ function PanelTitle({ title, trailing }: { title: string; trailing?: React.React
   );
 }
 
+// הכנסות במבט אחד
 /** Revenue at a glance: monthly income, customers by standing, and the next dates that bring money in. */
 function BusinessPanel({ overview, onOpen }: { overview: PlatformOverview; onOpen: (id: string) => void }) {
   const totals = overview.totals;
@@ -613,6 +628,7 @@ function BusinessPanel({ overview, onOpen }: { overview: PlatformOverview; onOpe
   );
 }
 
+// מה דורש טיפול
 function AttentionQueue({ issues, onOpen }: { issues: CompanyIssue[]; onOpen: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? issues : issues.slice(0, 6);
@@ -680,6 +696,7 @@ function AttentionQueue({ issues, onOpen }: { issues: CompanyIssue[]; onOpen: (i
   );
 }
 
+// גרף פעילות
 function ActivityChart({ days }: { days: { day: string; count: number }[] }) {
   const [hover, setHover] = useState<number | null>(null);
   const max = Math.max(1, ...days.map((d) => d.count));
@@ -730,6 +747,7 @@ function ActivityChart({ days }: { days: { day: string; count: number }[] }) {
   );
 }
 
+// כרטיס אבטחה
 function SecurityPanel({ overview }: { overview: PlatformOverview }) {
   const disabled = overview.totals.companies - overview.totals.activeCompanies;
   const notActivated = overview.totals.notActivated;
@@ -771,11 +789,14 @@ function SecurityPanel({ overview }: { overview: PlatformOverview }) {
   );
 }
 
+// עיצוב חדר הבקרה
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
+  // הדף
   page: { padding: 28, paddingBottom: 48, gap: 20, width: '100%', maxWidth: 1480, alignSelf: 'center' },
   center: { alignItems: 'center', justifyContent: 'center' },
 
+  // הכותרת
   header: { flexDirection: 'row-reverse', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' },
   headerText: { gap: 4 },
   title: { fontSize: 30, lineHeight: 36, color: DESKTOP_COLORS.ink, letterSpacing: -0.7 },
@@ -808,6 +829,7 @@ const styles = StyleSheet.create({
   secondaryButtonHover: { backgroundColor: DESKTOP_COLORS.rowHover, borderColor: DESKTOP_COLORS.borderInput },
   secondaryButtonText: { fontSize: 14, color: DESKTOP_COLORS.ink },
 
+  // שורת המספרים
   vitals: {
     flexDirection: 'row-reverse',
     backgroundColor: DESKTOP_COLORS.surface,
@@ -823,6 +845,7 @@ const styles = StyleSheet.create({
   vitalValue: { fontSize: 30, lineHeight: 36, color: DESKTOP_COLORS.ink, letterSpacing: -0.6 },
   vitalSub: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
 
+  // העמודות
   columns: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 20 },
   columnsStacked: { flexDirection: 'column', alignItems: 'stretch' },
   mainColumn: { flex: 1, minWidth: 0, gap: 20 },
@@ -831,6 +854,7 @@ const styles = StyleSheet.create({
   sideColumn: { width: 340, gap: 20 },
   sideColumnStacked: { width: '100%' },
 
+  // כרטיס
   panel: {
     backgroundColor: DESKTOP_COLORS.surface,
     borderRadius: 14,

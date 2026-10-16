@@ -1,3 +1,4 @@
+// פונקציית שרת: מחיקת נהג לצמיתות
 // Edge Function: delete-company-driver
 //
 // Permanently removes one archived driver and everything the app holds
@@ -22,6 +23,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
 
+// תשובת JSON
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
     status,
@@ -36,6 +38,7 @@ type DeleteRecordsResult = {
   already_cleaned?: boolean;
 };
 
+// מקבל בקשה ומוחק
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

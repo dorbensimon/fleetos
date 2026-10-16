@@ -1,3 +1,5 @@
+// מאיזו התראה לסמן אילו שדות במסך
+// שם שדה בעברית ← מפתח השדה
 /**
  * Driver-detail notifications list the changed fields by their Hebrew label
  * ("המנהל עדכן בתיק שלך: טלפון, תוקף רישיון" — supabase/sql/92). These are
@@ -23,6 +25,7 @@ const FIELD_BY_LABEL: Record<string, string> = {
   'תוקף רישיון': 'license_expiry',
 };
 
+// מוציא מהודעה את שמות השדות שהשתנו
 /** The field keys named in a "…: a, b, c" message, in the order written. */
 export function fieldKeysFromMessage(message: string | null | undefined): string[] {
   if (!message) return [];
@@ -35,11 +38,13 @@ export function fieldKeysFromMessage(message: string | null | undefined): string
     .filter((key): key is string => !!key);
 }
 
+// השדות לסימון, בפורמט לכתובת
 /** Joined for a route param, or undefined when nothing was recognised. */
 export function focusParam(keys: readonly string[]): string | undefined {
   return keys.length ? keys.join(',') : undefined;
 }
 
+// מוציא את מספר הרכב מהתראת קילומטראז'
 /** A driver's odometer notification names the plate: "… עדכן/ה קילומטראז׳ ברכב 12-345-67 ל-…". */
 export function plateFromOdometerMessage(message: string | null | undefined): string | null {
   const match = message?.match(/ברכב\s+(.+?)\s+ל-/);

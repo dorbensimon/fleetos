@@ -1,3 +1,4 @@
+// ביצוע בדיקת קצין בטיחות לרכב: סעיפים, ליקויים וחתימות
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Image, Linking, Platform, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -88,9 +89,12 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SafetyInspection'>;
 type Step = 'fill' | 'officer' | 'choose' | 'handoff' | 'driver' | 'done' | 'sent' | 'view';
 type Busy = '' | 'save' | 'next' | 'sign' | 'driver' | 'notify' | 'download' | 'close' | 'cancel';
 
+// עקומת אנימציה
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+// השם הפרטי
 const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
 
+// תאריך הטסט של הרכב
 /** The test's date, as the app reads it everywhere: its expiry, or a year after it was done. */
 function testUntil(items: ComplianceItem[]): string | null {
   const test = items.find((c) => c.item_type === 'annual_test');
@@ -101,6 +105,7 @@ function testUntil(items: ComplianceItem[]): string | null {
   return date.toISOString().slice(0, 10);
 }
 
+// המסך: הסעיפים, חתימת קצין, חתימת נהג וסגירה
 export default function SafetyInspectionScreen({ navigation, route }: Props) {
   // What the screen was opened with. Once a draft exists the address points
   // at it (a refresh resumes the same inspection), without loading it again.
@@ -1341,6 +1346,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
 
 // ── pieces ───────────────────────────────────────────────────────────────
 
+// תוקף ביטוח וטסט
 function Validity({ label, date }: { label: string; date: string | null }) {
   const status = statusOfDate(date);
   const s = STATUS[status];
@@ -1359,6 +1365,7 @@ function Validity({ label, date }: { label: string; date: string | null }) {
   );
 }
 
+// כרטיס הליקויים
 function DefectsCard({ lines }: { lines: string[] }) {
   if (!lines.length) {
     return (
@@ -1389,6 +1396,7 @@ function DefectsCard({ lines }: { lines: string[] }) {
   );
 }
 
+// רשימת התוצאות
 function ResultList({ form, answers }: { form: InspectionForm; answers: InspectionAnswers }) {
   return (
     <Surface style={styles.summary}>
@@ -1433,6 +1441,7 @@ function ResultList({ form, answers }: { form: InspectionForm; answers: Inspecti
   );
 }
 
+// הנוסח המשפטי
 function Disclaimer() {
   return (
     <View style={styles.disclaimer}>
@@ -1447,6 +1456,7 @@ function Disclaimer() {
   );
 }
 
+// חלון ביטול בדיקה
 function CancelSheet({ visible, draft = false, onClose, onConfirm, loading }: { visible: boolean; draft?: boolean; onClose: () => void; onConfirm: () => void; loading: boolean }) {
   return (
     <KitSheet
@@ -1470,6 +1480,7 @@ function CancelSheet({ visible, draft = false, onClose, onConfirm, loading }: { 
   );
 }
 
+// פס התקדמות
 function Progress({ marked, total }: { marked: number; total: number }) {
   const reduce = useReducedMotion();
   const value = total ? marked / total : 0;
@@ -1494,6 +1505,7 @@ function Progress({ marked, total }: { marked: number; total: number }) {
   );
 }
 
+// מי חתם ומתי
 function SignedBy({ image, name, date }: { image: string | null; name: string; date: string }) {
   return (
     <Surface style={styles.signedBy}>
@@ -1517,6 +1529,7 @@ function SignedBy({ image, name, date }: { image: string | null; name: string; d
   );
 }
 
+// כפתור בחירה
 function Choice({
   icon,
   tone,
@@ -1560,6 +1573,7 @@ function Choice({
   );
 }
 
+// אנימציית V בסיום
 /** The one moment of delight: a ring settles in and the tick draws on. */
 function SuccessTick({ tone }: { tone: 'ok' | 'accent' }) {
   const reduce = useReducedMotion();
@@ -1599,6 +1613,7 @@ function SuccessTick({ tone }: { tone: 'ok' | 'accent' }) {
   );
 }
 
+// עיצוב המסך
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { textAlign: 'center' },
@@ -1618,10 +1633,12 @@ const styles = StyleSheet.create({
   who: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, marginTop: 4 },
   heroChips: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, marginTop: 14, flexWrap: 'wrap' },
   statePill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: DK.glass, borderWidth: 1, borderColor: DK.glassBorder },
+  // פס ההתקדמות
   progress: { marginTop: 18, gap: 8, padding: 14, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
   progressRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
   progressTrack: { height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.16)', overflow: 'hidden', flexDirection: 'row-reverse' },
   progressFill: { height: '100%', borderRadius: 4, backgroundColor: DK.mint },
+  // תחתית עם הכפתורים
   footer: { gap: 10 },
   need: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6 },
   sheetStack: { gap: 10 },
@@ -1630,10 +1647,12 @@ const styles = StyleSheet.create({
   validity: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 },
   validityItem: { flexGrow: 1, flexBasis: 200, flexDirection: 'row-reverse', alignItems: 'center', gap: 10, padding: 12, borderRadius: 16 },
   group: { gap: 12 },
+  // פריסת המחשב
   // Desktop: a side panel beside the items, which sit as tables.
   desk: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 24 },
   deskAside: { width: 340, gap: 16 },
   deskMain: { flex: 1, minWidth: 0, gap: 20 },
+  // תפריט הצד במחשב
   deskNav: { paddingVertical: 8 },
   deskNavRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 16, minHeight: 40 },
   deskAnchor: { scrollMarginTop: 16 } as object,

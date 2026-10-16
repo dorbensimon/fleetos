@@ -1,3 +1,4 @@
+// פונקציית שרת: שמירת הגדרות החברה
 // Edge Function: update-company-settings
 // The one server-side write path for company details by an admin (or owner).
 // `companies` RLS only grants UPDATE to the platform owner, so this narrow
@@ -11,11 +12,16 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
 
+// תבנית טלפון
 const PHONE_RE = /^0([23489]|5[0-9]|7[0-9])\d{6,7}$/;
+// תבנית מייל
 const EMAIL_RE = /^[A-Za-z0-9_%+-]+(\.[A-Za-z0-9_%+-]+)*@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/;
+// תבנית תאריך
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+// סוגי חברה
 const COMPANY_TYPES = ['בע״מ', 'עוסק מורשה'];
 
+// תשובת JSON
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -23,8 +29,10 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
+// שגיאת ערך לא תקין
 class Invalid extends Error {}
 
+// בודק טקסט
 function text(value: unknown, max = 200): string | null {
   if (value === null || value === undefined) return null;
   if (typeof value !== 'string') throw new Invalid('ערך לא תקין');
@@ -33,6 +41,7 @@ function text(value: unknown, max = 200): string | null {
   return trimmed || null;
 }
 
+// בודק טלפון
 function phone(value: unknown, label: string): string | null {
   const raw = text(value, 20);
   if (!raw) return null;
@@ -41,6 +50,7 @@ function phone(value: unknown, label: string): string | null {
   return digits;
 }
 
+// בודק מייל
 function email(value: unknown, label: string): string | null {
   const raw = text(value, 254);
   if (!raw) return null;
@@ -48,6 +58,7 @@ function email(value: unknown, label: string): string | null {
   return raw.toLowerCase();
 }
 
+// בודק כתובת תמונה
 function imageUrl(value: unknown): string | null {
   const raw = text(value, 1000);
   if (!raw) return null;
@@ -57,6 +68,7 @@ function imageUrl(value: unknown): string | null {
   return raw;
 }
 
+// בודק ובונה את העדכון
 /** Validates and maps only the keys the caller sent. */
 function buildPatch(s: Record<string, unknown>): Record<string, unknown> {
   const has = (key: string) => Object.prototype.hasOwnProperty.call(s, key);
@@ -119,6 +131,7 @@ function buildPatch(s: Record<string, unknown>): Record<string, unknown> {
   return patch;
 }
 
+// שומר
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'השיטה אינה נתמכת' }, 405);

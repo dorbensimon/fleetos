@@ -1,3 +1,4 @@
+// בדיקות קצין בטיחות בתיק רכב (מחשב)
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,8 +17,10 @@ import { defectsText, latestNextDue } from './VehicleInspectionsCard';
 import { t, dirIcon } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 
+// צבע לכל מצב
 const STATE_TONE: Record<string, DesktopTone> = { ok: 'ok', soon: 'warn', expired: 'bad', missing: 'neutral', info: 'neutral' };
 
+// שורת תיקייה וחלון עם הבדיקה הבאה והיסטוריה
 /**
  * "בדיקות בטיחות" in a vehicle's card on the desktop: one folder row among
  * the vehicle's documents, like the signed-documents folders, with the next
@@ -185,8 +188,10 @@ export function VehicleInspectionsDesktopSection({
   );
 }
 
+// עיצוב השורה והחלון
 // Same measures as the folder rows beside it (components/desktop/record/FolderDocuments.tsx).
 const styles = StyleSheet.create({
+  // השורה
   row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 54, paddingHorizontal: 16, paddingVertical: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },
   rowDivider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },

@@ -1,7 +1,9 @@
+// עיצוב משותף לחלונות של תיק הנהג
 import { StyleSheet, type TextStyle, type ViewStyle } from 'react-native';
 import { COLORS, RADIUS, SPACING } from '../../lib/theme';
 import { textStart } from '../../lib/i18n';
 
+// בסיס החלון באמצע המסך
 /** The centred modal of the driver card's confirm, edit-email and reset-password dialogs. */
 export const DRIVER_MODAL_BASE = {
   overlay: {
@@ -35,6 +37,7 @@ export const DRIVER_MODAL_BASE = {
   confirmBtn: { flex: 1.4 },
 } satisfies Record<string, ViewStyle | TextStyle>;
 
+// עיצוב שדות בחלון
 /** The edit-email and reset-password modals. */
 export const modalStyles = StyleSheet.create({
   ...DRIVER_MODAL_BASE,
@@ -51,6 +54,7 @@ export const modalStyles = StyleSheet.create({
   error: { fontSize: 12.5, color: COLORS.dangerText, textAlign: 'center' },
 });
 
+// עיצוב כפתורים בחלון
 export const modalKit = StyleSheet.create({
   fields: { marginHorizontal: -16 },
   cancel: { flex: 1 },

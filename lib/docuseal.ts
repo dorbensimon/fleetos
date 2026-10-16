@@ -1,3 +1,4 @@
+// חתימות דיגיטליות (DocuSeal): תבניות, בקשות חתימה, הורדות והגדרות
 import { decode } from 'base64-arraybuffer';
 import { File, Paths } from 'expo-file-system';
 import * as Print from 'expo-print';
@@ -61,6 +62,7 @@ export type CompanySigningSettings = {
   max_email_reminders: number;
 };
 
+// הגדרות חתימה ברירת מחדל לחברה
 export const DEFAULT_COMPANY_SIGNING_SETTINGS: CompanySigningSettings = {
   email_reminders_enabled: true,
   initial_reminder_delay_hours: 72,
@@ -79,6 +81,7 @@ export type DocuSealSession =
   | { mode: 'preview'; token: string; host: string }
   | { mode: 'document'; src: string; previewFields?: DocuSealPreviewField[] };
 
+// מנקה שם קובץ לשמירה
 function sanitizeStorageFileName(name: string): string {
   const trimmed = name.trim();
   const normalized = trimmed.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
@@ -92,15 +95,18 @@ function sanitizeStorageFileName(name: string): string {
   return `${base || 'document'}.${ext || 'pdf'}`;
 }
 
+// מוסיף סיומת PDF לשם
 function asPdfFileName(name: string): string {
   return `${name.replace(/\.[^.]+$/, '') || 'document'}.pdf`;
 }
 
+// מנקה את הקידומת מקובץ מקודד
 function rawBase64(value: string): string {
   const separator = value.indexOf(',');
   return value.startsWith('data:') && separator >= 0 ? value.slice(separator + 1) : value;
 }
 
+// קורא קובץ כטקסט מקודד
 async function readFileBase64(file: SigningFile): Promise<string> {
   if (file.base64) return rawBase64(file.base64);
   // On web, Expo's File class is only a stub and cannot read the blob: URL
@@ -110,6 +116,7 @@ async function readFileBase64(file: SigningFile): Promise<string> {
   return rawBase64(await new File(file.uri).base64());
 }
 
+// קורא לפונקציית שרת
 async function invoke<T>(name: string, body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(name, { body });
   if (error || data?.error) {
@@ -118,6 +125,7 @@ async function invoke<T>(name: string, body: Record<string, unknown>): Promise<T
   return data as T;
 }
 
+// מודד גודל תמונה
 async function getImageSize(uri: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     Image.getSize(
@@ -128,16 +136,19 @@ async function getImageSize(uri: string): Promise<{ width: number; height: numbe
   });
 }
 
+// קורא מספר מבייטים (עזר לקריאת תמונה)
 function readUint16BE(bytes: Uint8Array, offset: number): number {
   return (bytes[offset] << 8) | bytes[offset + 1];
 }
 
+// קורא מספר מבייטים (עזר לקריאת תמונה)
 function readUint32BE(bytes: Uint8Array, offset: number): number {
   return (
     ((bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0
   );
 }
 
+// קורא את מידות תמונת PNG
 /** The IHDR chunk always follows the 8-byte PNG signature: 4-byte length, "IHDR", 4-byte width, 4-byte height. */
 function parsePngDimensions(bytes: Uint8Array): { width: number; height: number } | null {
   const isPng =
@@ -148,6 +159,7 @@ function parsePngDimensions(bytes: Uint8Array): { width: number; height: number 
   return { width: readUint32BE(bytes, 16), height: readUint32BE(bytes, 20) };
 }
 
+// קורא את מידות תמונת JPEG
 /** Walks JPEG markers to the first SOFn (start-of-frame) segment, which holds the pixel dimensions. */
 function parseJpegDimensions(bytes: Uint8Array): { width: number; height: number } | null {
   if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
@@ -167,6 +179,7 @@ function parseJpegDimensions(bytes: Uint8Array): { width: number; height: number
   return null;
 }
 
+// מודד תמונה ישר מהבייטים שבזיכרון
 /**
  * Reads pixel dimensions straight from the image bytes we already have
  * in memory, instead of asking RN's `Image.getSize(uri)` to reload the
@@ -190,6 +203,7 @@ async function imageDimensions(file: SigningFile, base64: string): Promise<{ wid
   return getImageSize(file.uri);
 }
 
+// מחשב גודל עמוד שמתאים לתמונה
 function imagePageDimensions(imageWidth: number, imageHeight: number): { width: number; height: number } {
   // Keep the PDF page at a reliable print size while making its aspect ratio
   // identical to the selected image. Matching ratios means `contain` can show
@@ -202,6 +216,7 @@ function imagePageDimensions(imageWidth: number, imageHeight: number): { width: 
   };
 }
 
+// הופך תמונה ל-PDF
 async function imageToPdf(file: SigningFile): Promise<SigningFile> {
   if (!file.mimeType.startsWith('image/')) return file;
   const base64 = await readFileBase64(file);
@@ -244,6 +259,7 @@ async function imageToPdf(file: SigningFile): Promise<SigningFile> {
   return { uri: result.uri, name: `${file.name.replace(/\.[^.]+$/, '')}.pdf`, mimeType: 'application/pdf' };
 }
 
+// מעלה את קובץ המקור של מסמך לחתימה
 async function uploadSigningSourceFile(companyId: string, picked: SigningFile): Promise<{ file: SigningFile; path: string }> {
   // Expo Print creates a local PDF file only in native apps. In a browser it
   // opens the print dialog and returns no file, so keep the image bytes here
@@ -264,6 +280,7 @@ async function uploadSigningSourceFile(companyId: string, picked: SigningFile): 
   return { file, path };
 }
 
+// פותח את בונה התבניות של DocuSeal
 export async function createTemplateBuilderSession(companyId: string, title: string, picked: SigningFile) {
   const { file, path } = await uploadSigningSourceFile(companyId, picked);
   try {
@@ -276,15 +293,18 @@ export async function createTemplateBuilderSession(companyId: string, title: str
   }
 }
 
+// מסיים ושומר תבנית חתימה
 export async function finalizeSigningTemplate(companyId: string, templateId: string) {
   return invoke<{ success: boolean }>('finalize-signing-template', { companyId, templateId });
 }
 
+// מסנכרן תבניות מ-DocuSeal (בעלים)
 /** Owner-only: pulls in templates built directly in the DocuSeal dashboard's "FleetOS-Global" folder, and removes ones deleted there. */
 export async function syncGlobalSigningTemplates() {
   return invoke<{ imported: number; deleted: number }>('import-docuseal-templates', {});
 }
 
+// רשימת התבניות המוכנות
 // Every template is global (company_id is null) and shared by every
 // company, so "my company's templates" really means "every ready template".
 export async function listSigningTemplates(companyId: string, includeArchived = false): Promise<SigningTemplate[]> {
@@ -298,6 +318,7 @@ export async function listSigningTemplates(companyId: string, includeArchived = 
   return (data || []) as SigningTemplate[];
 }
 
+// כל התבניות כולל ארכיון (בעלים)
 // Owner-only screen: every template (global rows only exist now), archived or not.
 export async function listGlobalSigningTemplates(includeArchived = false): Promise<SigningTemplate[]> {
   let query = supabase.from('signing_templates').select('*')
@@ -309,6 +330,7 @@ export async function listGlobalSigningTemplates(includeArchived = false): Promi
   return (data || []) as SigningTemplate[];
 }
 
+// קישור לקובץ המקור של תבנית
 export async function getSigningTemplateSourceUrl(template: SigningTemplate): Promise<string | null> {
   if (!template.source_file_path) return null;
   const { data, error } = await supabase.storage
@@ -318,10 +340,12 @@ export async function getSigningTemplateSourceUrl(template: SigningTemplate): Pr
   return data.signedUrl;
 }
 
+// פותח תצוגה מקדימה של תבנית
 export async function getSigningTemplatePreviewSession(templateId: string): Promise<Extract<DocuSealSession, { mode: 'document' }>> {
   return invoke<Extract<DocuSealSession, { mode: 'document' }>>('get-template-preview-session', { templateId });
 }
 
+// מוריד תבנית
 export async function downloadSigningTemplate(template: SigningTemplate): Promise<void> {
   const url = await getSigningTemplateSourceUrl(template);
   if (!url) throw new Error(t('docuseal.templateDownloadUnavailable'));
@@ -338,6 +362,7 @@ export async function downloadSigningTemplate(template: SigningTemplate): Promis
   }
 }
 
+// מוריד מסמך חתום
 export async function downloadSignedRequest(request: Pick<SignatureRequest, 'id' | 'template_title' | 'template'>): Promise<void> {
   const session = await getSigningSession(request.id);
   if (session.mode !== 'document') {
@@ -357,6 +382,7 @@ export async function downloadSignedRequest(request: Pick<SignatureRequest, 'id'
   }
 }
 
+// מוסיף את שמות הנהגים לבקשות החתימה
 async function withDriverNames(requests: SignatureRequest[]): Promise<SignatureRequest[]> {
   if (!requests.length) return requests;
   const ids = [...new Set(requests.map((item) => item.driver_id))];
@@ -365,6 +391,7 @@ async function withDriverNames(requests: SignatureRequest[]): Promise<SignatureR
   return requests.map((item) => ({ ...item, driverName: names.get(item.driver_id) }));
 }
 
+// רשימת בקשות החתימה של החברה
 export async function listSignatureRequests(companyId?: string, includeArchived = false): Promise<SignatureRequest[]> {
   let query = supabase.from('signature_requests').select('*, template:signing_templates(title)');
   if (companyId) query = query.eq('company_id', companyId);
@@ -379,6 +406,7 @@ export async function listSignatureRequests(companyId?: string, includeArchived 
   return withDriverNames(requests);
 }
 
+// כל בקשות החתימה בכל החברות (בעלים)
 /** Owner-only control-room query. Keeps company and driver context next to each
  * request, so an Owner never has to infer a document's tenant from its title. */
 export async function listAllSignatureRequests(): Promise<SignatureRequest[]> {
@@ -407,6 +435,7 @@ export async function listAllSignatureRequests(): Promise<SignatureRequest[]> {
   }));
 }
 
+// מסמכים חתומים שהוסרו מהארכיון
 // Signed documents an admin cleared out of the archive. They are hidden from
 // every other list, and this is the only place they can still be reached.
 export async function listRemovedSignatureRequests(companyId: string): Promise<SignatureRequest[]> {
@@ -419,12 +448,14 @@ export async function listRemovedSignatureRequests(companyId: string): Promise<S
   return withDriverNames((data || []) as unknown as SignatureRequest[]);
 }
 
+// שולח מסמך לחתימה לנהגים
 export async function assignSigningTemplate(companyId: string, templateId: string, driverIds: string[]) {
   return invoke<{ success: boolean; created: number; failed: string[]; message?: string }>('assign-signing-template', {
     companyId, templateId, driverIds,
   });
 }
 
+// המסמכים לחתימה של נהג
 export async function listDriverSigningRequests(driverId: string): Promise<SignatureRequest[]> {
   const { data, error } = await supabase.from('signature_requests')
     .select('*, template:signing_templates(title)')
@@ -440,32 +471,39 @@ export async function listDriverSigningRequests(driverId: string): Promise<Signa
   return (data || []) as SignatureRequest[];
 }
 
+// משנה שם לתבנית
 export async function renameSigningTemplate(templateId: string, title: string) {
   return invoke<{ success: boolean }>('rename-signing-template', { templateId, title });
 }
 
+// פותח חלון חתימה לבקשה
 export async function getSigningSession(requestId: string): Promise<DocuSealSession> {
   return invoke<DocuSealSession>('get-signing-session', { requestId });
 }
 
+// בודק אם הנהג יכול לחתום על משטח החתימה של האפליקציה
 /** Whether the driver can sign this request on the app's own pad, and where to read it first. */
 export async function inspectDriverSigning(requestId: string) {
   return invoke<{ status: 'pending' | 'completed'; signOnly?: boolean; documentUrl?: string | null }>('driver-sign-request', { requestId, action: 'inspect' });
 }
 
+// שולח את חתימת הנהג מהמשטח
 /** Signs a sign-only request with the drawing from the app's signature pad. */
 export async function submitDriverSignature(requestId: string, signature: string) {
   return invoke<{ status: 'completed'; filePending?: boolean }>('driver-sign-request', { requestId, action: 'sign', signature });
 }
 
+// מעדכן סטטוס בקשה מול DocuSeal
 export async function syncSigningRequest(requestId: string) {
   return invoke<{ success: boolean; status: SignatureRequest['status'] }>('sync-signing-request', { requestId });
 }
 
+// שולח שוב בקשת חתימה
 export async function resendSigningRequest(requestId: string) {
   return invoke<{ success: boolean; channel: 'email' }>('resend-signing-request', { requestId });
 }
 
+// הגדרות החתימה של החברה
 export async function getCompanySigningSettings(companyId: string): Promise<CompanySigningSettings> {
   const { data, error } = await supabase
     .from('company_signing_settings')
@@ -476,6 +514,7 @@ export async function getCompanySigningSettings(companyId: string): Promise<Comp
   return (data as CompanySigningSettings | null) || DEFAULT_COMPANY_SIGNING_SETTINGS;
 }
 
+// שומר את הגדרות החתימה
 export async function updateCompanySigningSettings(companyId: string, settings: CompanySigningSettings) {
   return invoke<{ success: boolean; channel: 'email'; settings: CompanySigningSettings }>('update-company-signing-settings', {
     companyId,
@@ -486,6 +525,7 @@ export async function updateCompanySigningSettings(companyId: string, settings: 
   });
 }
 
+// מוחק תבנית או בקשת חתימה
 // companyId is required for a request (it always belongs to one company),
 // but unused for a template. Global templates are managed by the owner only;
 // `company-delete` lets a company admin delete their own company's template

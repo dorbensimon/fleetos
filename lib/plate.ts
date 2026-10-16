@@ -1,3 +1,5 @@
+// מספר רישוי ישראלי
+// מציג מספר רישוי עם מקפים
 /**
  * Formats an Israeli licence plate for display. Strips whatever the value
  * already contains (digits, dashes, spaces) and reapplies the canonical

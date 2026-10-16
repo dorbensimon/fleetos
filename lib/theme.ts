@@ -1,3 +1,4 @@
+// עיצוב בסיסי של האפליקציה בטלפון: צבעים, גופנים, צללים, ריווח ותאריכים
 /**
  * Tolvex design tokens.
  *
@@ -16,6 +17,7 @@ import { FLEET_COLORS } from './colors';
 import { t } from './i18n';
 import { fontStack } from './fontStack';
 
+// צבעי הבסיס
 export const COLORS = {
   // text
   text: '#1A1A1A',
@@ -50,6 +52,7 @@ export const COLORS = {
   neutralText: FLEET_COLORS.none.text,
 } as const;
 
+// צבעי המותג
 /**
  * Named values that already exist in screens (stage 1 of the frontend
  * unification — naming only, no visual change). Screens migrate to these
@@ -68,6 +71,7 @@ export const BRAND = {
   shadowInk: '#143C5A',
 } as const;
 
+// צבעים לאריחי אייקונים
 /** iOS-style category tints for icon tiles (intentional variety). */
 export const TINT = {
   indigo: '#5E5CE6',
@@ -78,6 +82,7 @@ export const TINT = {
   green: '#34C759',
 } as const;
 
+// גדלי טקסט
 /** Approved type scale (hero titles 26–34 stay as-is). */
 export const FONT_SIZE = {
   xs: 11,
@@ -89,6 +94,7 @@ export const FONT_SIZE = {
   title: 23,
 } as const;
 
+// צל של כרטיס
 /** Card elevation, exactly as specified. */
 export const CARD_SHADOW = {
   shadowColor: '#000000',
@@ -98,6 +104,7 @@ export const CARD_SHADOW = {
   elevation: 6,
 } as const;
 
+// צל עדין לרכיבים קטנים
 /** A lighter shadow for small inline surfaces (chips, list rows). */
 export const SUBTLE_SHADOW = {
   shadowColor: '#000000',
@@ -107,6 +114,7 @@ export const SUBTLE_SHADOW = {
   elevation: 2,
 } as const;
 
+// זוהר כחול מתחת לכפתור ראשי
 /** Blue glow used under the accent-coloured CTA / selected chips — same colour as `COLORS.accent`. */
 export const ACCENT_SHADOW = {
   shadowColor: COLORS.accent,
@@ -116,6 +124,7 @@ export const ACCENT_SHADOW = {
   elevation: 8,
 } as const;
 
+// משקלי הגופן
 export const FONT = {
   regular: fontStack('Assistant_400Regular'),
   /** Loaded in App.tsx; for form labels/inputs that sit between regular and bold. */
@@ -124,6 +133,7 @@ export const FONT = {
   bold: fontStack('Assistant_700Bold'),
 } as const;
 
+// עיגול פינות
 export const RADIUS = {
   sm: 10,
   md: 14,
@@ -131,6 +141,7 @@ export const RADIUS = {
   pill: 999,
 } as const;
 
+// ריווחים
 export const SPACING = {
   xs: 4,
   sm: 8,
@@ -140,6 +151,7 @@ export const SPACING = {
   xxl: 32,
 } as const;
 
+// הרוחב המקסימלי של תוכן מסך
 /**
  * Widest a screen's content is allowed to grow. The app is designed
  * mobile-first; on a desktop-width browser window we center the same
@@ -149,6 +161,7 @@ export const SPACING = {
  */
 export const CONTENT_MAX_WIDTH = 640;
 
+// סגנונות טקסט מוכנים
 /** Text presets, so screens don't re-declare font/size/colour each time. */
 export const TYPO = {
   screenTitle: { fontFamily: FONT.bold, fontSize: 23, color: COLORS.text },
@@ -171,6 +184,7 @@ export const TYPO = {
  */
 export type ExpiryState = 'ok' | 'soon' | 'expired' | 'missing' | 'optional';
 
+// קורא תאריך בלי בעיות אזור זמן
 /** Parses database date-only values without shifting them across time zones. */
 export function parseDateValue(value: string): Date {
   const dateOnly = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -180,6 +194,7 @@ export function parseDateValue(value: string): Date {
   return new Date(value);
 }
 
+// מצב תוקף לפי תאריך
 export function expiryState(date: string | null | undefined): ExpiryState {
   if (!date) return 'missing';
   const target = parseDateValue(date);
@@ -195,6 +210,7 @@ export function expiryState(date: string | null | undefined): ExpiryState {
   return 'ok';
 }
 
+// צבעים וטקסט לכל מצב תוקף
 export const EXPIRY_STYLE: Record<ExpiryState, { bg: string; fg: string; label: string }> = {
   ok: { bg: COLORS.okBg, fg: COLORS.okText, get label() { return t('status.valid'); } },
   soon: { bg: COLORS.warnBg, fg: COLORS.warnText, get label() { return t('status.expiringSoon'); } },
@@ -203,6 +219,7 @@ export const EXPIRY_STYLE: Record<ExpiryState, { bg: string; fg: string; label: 
   optional: { bg: COLORS.accentSoft, fg: COLORS.accent, get label() { return t('status.optional'); } },
 };
 
+// כמה ימים נשארו עד הפקיעה
 /** Days remaining until an expiry date (negative once it's passed). `null` when the date is empty/invalid. */
 export function daysUntilExpiry(date: string | null | undefined): number | null {
   if (!date) return null;
@@ -216,6 +233,7 @@ export function daysUntilExpiry(date: string | null | undefined): number | null 
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
+// ברכה לפי שעה (בוקר טוב...)
 /** Time-of-day greeting word, computed from the device clock. */
 export function timeGreeting(): string {
   const hour = new Date().getHours();
@@ -225,6 +243,7 @@ export function timeGreeting(): string {
   return t('greeting.night');
 }
 
+// מציג תאריך כיום/חודש/שנה
 /** Formats an ISO date as DD/MM/YYYY, or an em dash when empty. */
 export function formatDate(date: string | null | undefined): string {
   if (!date) return '—';
@@ -235,6 +254,7 @@ export function formatDate(date: string | null | undefined): string {
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
+// מציג תאריך ושעה
 /** Formats an ISO timestamp as DD/MM/YYYY HH:MM, or an em dash when empty. */
 export function formatDateTime(date: string | null | undefined): string {
   if (!date) return '—';
