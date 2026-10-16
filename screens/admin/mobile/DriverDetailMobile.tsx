@@ -11,6 +11,7 @@ import {
   DriverPage,
   ErrorPanel,
   HeroButton,
+  HomeLogo,
   KitSection,
   ListRow,
   LoadingPanel,
@@ -130,6 +131,7 @@ export function DriverDetailMobile(p: Props) {
       hero={
         <View>
           <View style={styles.bar}>
+            <HomeLogo />
             <HeroButton icon={dirIcon('chevron-forward')} label={t('common.goBack')} onPress={p.onBack} />
             {!p.loading && !p.error && <HeroButton icon="create-outline" label={t('driver.editDetails')} onPress={p.onEdit} />}
           </View>

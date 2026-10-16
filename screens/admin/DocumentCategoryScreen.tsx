@@ -1,5 +1,5 @@
 // תיקיית מסמכים של נהג
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { BrandLoader } from '../../components/ui/BrandLoader';
 import { showAlert } from '../../lib/platformAlert';
@@ -12,7 +12,9 @@ import { DateField } from '../../components/ui/DateField';
 import { DocumentFileRow } from '../../components/documents/DocumentFileRow';
 import { Procedure6FormModal } from '../../components/documents/Procedure6FormModal';
 import { useCompany } from '../../lib/CompanyContext';
-import { DocumentRow } from '../../lib/adminApi';
+import { DocumentRow, getVehicle, type Vehicle } from '../../lib/adminApi';
+import { vehicleName } from '../../lib/vehicleAttention';
+import { formatPlate } from '../../lib/plate';
 import { listDocuments, readPickedFileBase64, storedFolderTitle, uploadDocument, type PickedFile } from '../../lib/documents';
 import { createProcedure6Report, Procedure6FormValues } from '../../lib/procedure6Report';
 import { chooseDocumentSource, confirmDeleteDocument, documentDisplayName, documentViewerMode, downloadDocumentWithAlert, getDocumentViewUrl, pickDocumentSource, type DocumentSource } from '../../lib/documentActions';
@@ -80,6 +82,13 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const [uploading, setUploading] = useState(false);
   const [expiryDate, setExpiryDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // תיקייה של רכב: מספר הרכב והדגם, כדי שיהיה ברור באיזה רכב נמצאים
+  const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  useEffect(() => {
+    if (ownerType !== 'vehicle') return;
+    getVehicle(ownerId).then(setVehicle, () => {});
+  }, [ownerType, ownerId]);
+  const vehicleLine = vehicle ? `${formatPlate(vehicle.plate_number)} · ${vehicleName(vehicle)}` : null;
   const loadRequest = useRef(0);
   // The folder on screen: reloading it (a return, an upload) keeps the list
   // up and refreshes it quietly instead of flashing the loader.
@@ -232,7 +241,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   if (isDesktop) {
     return (
       <>
-        <DesktopShell active="AdminHome" breadcrumbs={[t('nav.management'), t('common.drivers'), title]}>
+        <DesktopShell active="AdminHome" breadcrumbs={ownerType === 'vehicle' ? [t('nav.management'), t('common.vehicles'), ...(vehicleLine ? [vehicleLine] : []), title] : [t('nav.management'), t('common.drivers'), title]}>
           {desktopBody}
         </DesktopShell>
         {isProcedure6 && (
@@ -251,7 +260,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       hero={
         <HeroTitle
           title={title}
-          subtitle={loading ? t('documents.loadingEllipsis') : docs.length ? t('documents.inFolder', { length: docs.length, v1: docs.length === 1 ? t('documents.document') : t('common.documents') }) : t('documents.folderEmptyShort')}
+          subtitle={[vehicleLine, loading ? t('documents.loadingEllipsis') : docs.length ? t('documents.inFolder', { length: docs.length, v1: docs.length === 1 ? t('documents.document') : t('common.documents') }) : t('documents.folderEmptyShort')].filter(Boolean).join(' · ')}
           onBack={() => navigation.goBack()}
           right={<View style={styles.heroIcon}><Ionicons name={icon} size={22} color={DK.onNight} /></View>}
         />

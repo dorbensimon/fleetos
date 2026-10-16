@@ -2,8 +2,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Avatar, CountPill, DK, DK_SPACE, DKText, DriverPage, HeroButton, KitSection, ListRow, Pressy, Reveal, STATUS, Surface } from '../components/driverKit';
-import { BrandLogo } from '../components/ui/Brand';
+import { Avatar, CountPill, DK, DK_SPACE, DKText, DriverPage, HeroButton, HomeLogo, KitSection, ListRow, Pressy, Reveal, STATUS, Surface } from '../components/driverKit';
 import { t, dirIcon } from '../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -48,7 +47,7 @@ export function MenuMobile(p: Props) {
         <View>
           <View style={styles.heroBar}>
             <HeroButton icon={dirIcon('chevron-forward')} label={t('common.goBack')} onPress={p.onBack} />
-            <BrandLogo height={20} onDark />
+            <HomeLogo />
           </View>
           <Pressy onPress={p.onProfile} accessibilityLabel={t('menu.profileRowLabel', { name: p.name, subtitle: p.subtitle })} pressScale={0.98}>
             <View style={styles.identity}>

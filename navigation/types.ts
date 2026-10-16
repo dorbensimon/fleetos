@@ -13,7 +13,8 @@ export type RootStackParamList = {
   SetPassword: { voluntary?: boolean } | undefined;
   OwnerHome: undefined;
   /** The fleet workspace. Desktop breadcrumbs may open a specific tab. */
-  AdminHome: { mode?: 'drivers' | 'vehicles' } | undefined;
+  /** `list`: opened from the phone bar's drivers/vehicles tab, so the screen scrolls to its list. */
+  AdminHome: { mode?: 'drivers' | 'vehicles'; list?: boolean } | undefined;
   DriverHome: undefined;
   CompanyDetail: { companyId: string };
 

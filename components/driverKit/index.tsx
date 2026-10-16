@@ -23,7 +23,7 @@ import * as Haptics from 'expo-haptics';
 import { BrandLoader } from '../ui/BrandLoader';
 import { syncWebThemeColor } from '../../lib/webThemeColor';
 import { DK, DK_FONT, DK_RADIUS, DK_SHADOW, DK_SPACE, STATUS, type Status } from './theme';
-import { useTabBarHold, useTabBarScroll, useTabBarSpace } from './tabBar';
+import { HomeLogo, useTabBarHold, useTabBarScroll, useTabBarSpace } from './tabBar';
 import { t, dirIcon, textEnd, textStart, textDirection, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../lib/i18n';
 
 export * from './theme';
@@ -306,6 +306,7 @@ export function HeroTitle({
   return (
     <View>
       <View style={styles.heroBar}>
+        <HomeLogo />
         <HeroButton icon={dirIcon('chevron-forward')} label={t('common.goBack')} onPress={onBack} />
         <View style={styles.heroBarSlot}>{right}</View>
       </View>

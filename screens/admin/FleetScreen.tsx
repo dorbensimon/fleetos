@@ -502,6 +502,7 @@ export default function FleetScreen() {
       unread={unread}
       attention={attention}
       mode={mode}
+      scrollTo={route.params?.list == null ? undefined : String(route.params.list) === 'true' ? 'list' : 'top'}
       onModeChange={changeMode}
       refreshing={refreshing}
       onRefresh={() => void onRefresh()}
@@ -534,6 +535,7 @@ export default function FleetScreen() {
       restoringVehicleId={restoringVehicleId}
       onNotifications={() => navigation.navigate('Notifications')}
       onAttention={() => navigation.navigate('Attention')}
+      onReports={() => navigation.navigate('Reports')}
       onArchive={() => navigation.navigate('DriverArchive')}
       onOpenDriver={(driverId) => navigation.navigate('DriverDetail', { driverId })}
       onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId })}

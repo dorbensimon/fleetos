@@ -11,6 +11,7 @@ import {
   EditField,
   ErrorPanel,
   HeroButton,
+  HomeLogo,
   InfoLine,
   KitSection,
   ListRow,
@@ -107,6 +108,7 @@ export function VehicleDetailMobile(p: Props) {
       hero={
         <View>
           <View style={styles.bar}>
+            <HomeLogo />
             <HeroButton icon={dirIcon('chevron-forward')} label={t('common.goBack')} onPress={p.onBack} />
             {!!v && <HeroButton icon="create-outline" label={t('vehicle.editDetails')} onPress={p.onEdit} />}
           </View>
