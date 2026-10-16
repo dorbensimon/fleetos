@@ -1,7 +1,8 @@
-// מסך הכניסה: לוח מחוונים של משאית שמתניע
+// מסך הכניסה: אזור מותג כהה עם הלוגו, וטופס נקי
 import React, { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
+  ActivityIndicator,
   Animated,
   Easing,
   Image,
@@ -17,65 +18,42 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../navigation/types';
 import { supabase } from '../lib/supabase';
 import { resolveRouteForUser } from '../lib/session';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { webOnly } from '../components/desktop/desktopTheme';
-import { t, textStart } from '../lib/i18n';
-import { fontStack } from '../lib/fontStack';
+import { DK, DK_FONT } from '../components/driverKit/theme';
+import { isFocusVisible } from '../components/driverKit';
+import { t } from '../lib/i18n';
 
 /**
- * Sign-in as starting the truck: a dark instrument cluster that runs its
- * ignition self-test when the screen opens, answers the person typing, and
- * starts with a round start button. The surface brief lives in
- * .impeccable/surfaces/screens-loginscreen-tsx.md.
+ * Sign-in: the brand's night (logo, name, one line on what icar is) beside
+ * or above a quiet white form. Motion is restrained — the page settles in
+ * once, the button answers the press, a wrong password gets one short shake.
+ *
+ * Follows the usual sign-in rules: visible labels, autocomplete for password
+ * managers, a show/hide toggle, 16px inputs (no iOS zoom), one generic error
+ * that clears as soon as the person edits, and a button never disabled
+ * while waiting for input.
  */
 
-// צבעי לוח המחוונים
-const CLUSTER = {
-  ground: '#0B1016',
-  groundDeep: '#070A0E',
-  binnacle: '#121922',
-  face: '#0D131A',
-  window: '#0A0F15',
-  field: 'rgba(237,241,244,0.045)',
-  fieldFocus: 'rgba(95,193,240,0.07)',
-  hairline: 'rgba(255,255,255,0.07)',
-  hairlineStrong: 'rgba(255,255,255,0.13)',
-  backlight: '#5FC1F0',
-  backlightSoft: 'rgba(95,193,240,0.14)',
-  ink: '#EDF1F4',
-  inkMuted: '#8B98A4',
-  tickIdle: 'rgba(237,241,244,0.2)',
-  lampIdle: 'rgba(237,241,244,0.24)',
-  amber: '#FFB020',
-  green: '#34C759',
-};
-
-// גופנים
-const FONT = {
-  regular: fontStack('Heebo_400Regular'),
-  medium: fontStack('Heebo_500Medium'),
-  semiBold: fontStack('Heebo_600SemiBold'),
-  bold: fontStack('Heebo_700Bold'),
-  extraBold: fontStack('Heebo_800ExtraBold'),
-};
-
+// מתחת לרוחב הזה: מותג למעלה וטופס מתחת
+const SPLIT_MIN_WIDTH = 1000;
+const NATIVE_DRIVER = Platform.OS !== 'web';
 // עקומת אנימציה
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
-// עקומת אנימציה
-const EASE_IN_OUT = Easing.bezier(0.65, 0, 0.35, 1);
-// איפה המחוג נח בסרק
-/** Where the revs needle rests once the engine is idling. */
-const IDLE_REVS = 0.09;
-// מתחת לרוחב הזה הפריסה הצרה
-/**
- * The wide cluster needs two gauges of at least ~200px beside the 392px
- * display; below this width the phone stack is used (also on iPads in portrait).
- */
-const WIDE_MIN_WIDTH = 1000;
+
+const LOGO = require('../images/icar-logo-on-dark.png');
+const RING = require('../images/icar-loader-ring.png');
+// יחס הלוגו (רוחב לגובה)
+const LOGO_RATIO = 900 / 254;
+
+const ERROR = '#C8322B';
+const SUCCESS = '#12805C';
+const FIELD_BORDER = '#D8DFE9';
 
 // קישורים לדפים המשפטיים
 const LOGIN_LEGAL_LINKS = [
@@ -84,40 +62,29 @@ const LOGIN_LEGAL_LINKS = [
   { doc: 'cookies', get label() { return t('legal.cookies'); } },
   { doc: 'accessibility', get label() { return t('legal.accessibilityStatement'); } },
 ] as const;
-// הגודל הכי קטן של שעון
-/** Smallest gauge (px) the phone layout will shrink to so the login fits the screen. */
-const GAUGE_MIN = 124;
-// רוחב המסך האמצעי
-const DISPLAY_WIDTH = 392;
 
-// עיצוב דפדפן (בחירה, סמן, מילוי אוטומטי)
-/** The browser parts React Native cannot style: selection, caret, autofill, scrollbars. */
+// עיצוב דפדפן: בחירה, סמן ומילוי אוטומטי
 const WEB_CSS = `
-#cluster-login ::selection { background: rgba(95,193,240,0.32); color: ${CLUSTER.ink}; }
-#cluster-login input { caret-color: ${CLUSTER.backlight}; }
-#cluster-login input:-webkit-autofill,
-#cluster-login input:-webkit-autofill:hover,
-#cluster-login input:-webkit-autofill:focus {
-  -webkit-text-fill-color: ${CLUSTER.ink};
-  -webkit-box-shadow: 0 0 0 1000px #111820 inset;
+#icar-login ::selection { background: rgba(47,91,255,0.2); }
+#icar-login input { caret-color: ${DK.accent}; }
+#icar-login input:-webkit-autofill,
+#icar-login input:-webkit-autofill:hover,
+#icar-login input:-webkit-autofill:focus {
+  -webkit-text-fill-color: ${DK.ink};
+  -webkit-box-shadow: 0 0 0 1000px ${DK.surfaceSunk} inset;
   transition: background-color 9999s ease-out 0s;
 }
-/* Lets a field notice the browser autofilling it (see ClusterField). */
-@keyframes cluster-autofill { from { opacity: 1; } to { opacity: 1; } }
-#cluster-login input:-webkit-autofill { animation: cluster-autofill 1ms; }
-#cluster-login { scrollbar-color: #1D2733 transparent; }
-#cluster-login ::-webkit-scrollbar { width: 10px; }
-#cluster-login ::-webkit-scrollbar-thumb { background: #1D2733; border-radius: 5px; }
+/* Lets a field notice the browser autofilling it (see LoginField). */
+@keyframes icar-autofill { from { opacity: 1; } to { opacity: 1; } }
+#icar-login input:-webkit-autofill { animation: icar-autofill 1ms; }
 `;
 
 // האם המשתמש ביקש פחות אנימציות
-function useReducedMotion(): boolean | null {
-  const [reduced, setReduced] = useState<boolean | null>(null);
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
   useEffect(() => {
     let alive = true;
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((value) => alive && setReduced(value))
-      .catch(() => alive && setReduced(false));
+    AccessibilityInfo.isReduceMotionEnabled().then((value) => alive && setReduced(value), () => {});
     const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced);
     return () => {
       alive = false;
@@ -127,149 +94,12 @@ function useReducedMotion(): boolean | null {
   return reduced;
 }
 
-// השעה הנוכחית
-function currentClock(): string {
-  const now = new Date();
-  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-}
-
-// ---------------------------------------------------------------------------
-// Gauge: 240° dial built from rotated tick marks, lit by the same value that
-// turns the needle, so the backlight always follows the needle exactly.
 // ---------------------------------------------------------------------------
 
-// זווית השעון
-const SWEEP = 240;
-// זווית ההתחלה
-const START_ANGLE = -120;
-
-// שעון עם מחוג
-function Gauge({
-  size,
-  value,
-  ticks,
-  majorEvery,
-  numerals,
-  label,
-  readout,
-  readoutTone,
-}: {
-  size: number;
-  value: Animated.Value;
-  ticks: number;
-  majorEvery: number;
-  numerals?: string[];
-  label: string;
-  readout: string;
-  readoutTone?: string;
-}) {
-  const needleAngle = value.interpolate({
-    inputRange: [0, 1],
-    outputRange: [`${START_ANGLE}deg`, `${START_ANGLE + SWEEP}deg`],
-    extrapolate: 'clamp',
-  });
-  const center = size / 2;
-  const tickTop = size * 0.075;
-  const showNumerals = !!numerals && size >= 180;
-
-  const marks: React.ReactNode[] = [];
-  for (let i = 0; i <= ticks; i += 1) {
-    const ratio = i / ticks;
-    const major = i % majorEvery === 0;
-    const width = major ? 3 : 2;
-    const height = major ? size * 0.07 : size * 0.038;
-    const lit = value.interpolate({ inputRange: [ratio - 0.03, ratio], outputRange: [0, 1], extrapolate: 'clamp' });
-    const tick = { left: center - width / 2, top: tickTop, width, height };
-    marks.push(
-      <View key={i} pointerEvents="none" style={[StyleSheet.absoluteFill, { transform: [{ rotate: `${START_ANGLE + SWEEP * ratio}deg` }] }]}>
-        <View style={[styles.tick, tick, { backgroundColor: CLUSTER.tickIdle }]} />
-        <Animated.View style={[styles.tick, tick, styles.tickLit, { opacity: lit }]} />
-      </View>
-    );
-  }
-
-  // With numerals the window must clear the 0 and top numerals at the lower corners;
-  // small gauges show no numerals, so their window can take the width it needs.
-  const windowInset = showNumerals ? 0.315 : 0.2;
-  const numeralRadius = size * 0.31;
-  const numeralBox = size * 0.14;
-
-  return (
-    <View
-      style={[styles.gauge, { width: size, height: size, borderRadius: size / 2 }]}
-      accessible
-      accessibilityLabel={`${label}: ${readout}`}
-    >
-      <View pointerEvents="none" style={[styles.gaugeFace, { top: size * 0.03, start: size * 0.03, end: size * 0.03, bottom: size * 0.03, borderRadius: size / 2 }]} />
-      {marks}
-      {showNumerals &&
-        numerals!.map((numeral, index) => {
-          const ratio = index / (numerals!.length - 1);
-          const radians = ((START_ANGLE + SWEEP * ratio) * Math.PI) / 180;
-          return (
-            <Text
-              key={numeral + index}
-              style={[
-                styles.numeral,
-                {
-                  width: numeralBox,
-                  start: center + numeralRadius * Math.sin(radians) - numeralBox / 2,
-                  top: center - numeralRadius * Math.cos(radians) - 9,
-                  fontSize: Math.max(11, size * 0.052),
-                },
-              ]}
-            >
-              {numeral}
-            </Text>
-          );
-        })}
-
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { transform: [{ rotate: needleAngle }] }]}>
-        <View style={[styles.needle, { start: center - 1.75, top: size * 0.115, height: size * 0.445 }]}>
-          <View style={[styles.needleTip, { height: size * 0.1 }]} />
-        </View>
-      </Animated.View>
-      <View pointerEvents="none" style={[styles.hub, { width: size * 0.11, height: size * 0.11, borderRadius: size * 0.055, start: center - size * 0.055, top: center - size * 0.055 }]}>
-        <View style={styles.hubDot} />
-      </View>
-
-      <View pointerEvents="none" style={[styles.readoutWindow, { top: size * 0.66, start: size * windowInset, end: size * windowInset }]}>
-        <Text style={[styles.readoutLabel, { fontSize: Math.max(10, size * 0.042) }]} numberOfLines={1}>{label}</Text>
-        <Text style={[styles.readoutValue, { fontSize: Math.max(12, size * 0.068) }, readoutTone ? { color: readoutTone } : null]} numberOfLines={1}>
-          {readout}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Tell-tale lamp: dark until its condition holds, like the cluster's warning
-// lights. All of them light for a moment during the ignition self-test.
-// ---------------------------------------------------------------------------
-
-// נורית אזהרה
-function TellTale({ icon, lit, tone, label }: { icon: keyof typeof Ionicons.glyphMap; lit: boolean; tone: string; label: string }) {
-  return (
-    <View
-      style={[styles.lamp, lit && { backgroundColor: `${tone}1F`, borderColor: `${tone}55` }]}
-      accessible
-      accessibilityLabel={`${label}${lit ? '' : t('login.off')}`}
-    >
-      <Ionicons name={icon} size={15} color={lit ? tone : CLUSTER.lampIdle} />
-    </View>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Field on the central display.
-// ---------------------------------------------------------------------------
-
-interface ClusterFieldProps {
+interface LoginFieldProps {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
-  icon: keyof typeof Ionicons.glyphMap;
   secureTextEntry?: boolean;
   onToggleSecure?: () => void;
   keyboardType?: 'default' | 'email-address';
@@ -277,18 +107,15 @@ interface ClusterFieldProps {
   autoComplete?: 'username' | 'current-password';
   returnKeyType?: 'next' | 'go';
   onSubmitEditing?: () => void;
-  inputRef?: React.RefObject<TextInput | null>;
+  inputRef: React.RefObject<TextInput | null>;
   hasError?: boolean;
-  /** Shorter field for phones where the login must fit the screen. */
-  short?: boolean;
 }
 
-// שדה כניסה בלוח
-function ClusterField({
+// שדה בטופס: תווית מעל, תיבה, ומסגרת מודגשת בפוקוס
+function LoginField({
   label,
   value,
   onChangeText,
-  icon,
   secureTextEntry,
   onToggleSecure,
   keyboardType = 'default',
@@ -298,12 +125,8 @@ function ClusterField({
   onSubmitEditing,
   inputRef,
   hasError,
-  short,
-}: ClusterFieldProps) {
+}: LoginFieldProps) {
   const [focused, setFocused] = useState(false);
-  const accent = hasError ? CLUSTER.amber : CLUSTER.backlight;
-  const ownRef = useRef<TextInput>(null);
-  const ref = inputRef ?? ownRef;
   const latest = useRef({ value, onChangeText });
   latest.current = { value, onChangeText };
 
@@ -312,7 +135,7 @@ function ClusterField({
   // Read the DOM value back into state whenever that happens.
   useEffect(() => {
     if (Platform.OS !== 'web') return;
-    const node = ref.current as unknown as HTMLInputElement | null;
+    const node = inputRef.current as unknown as HTMLInputElement | null;
     if (!node || typeof node.addEventListener !== 'function') return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     // Deferred so ordinary typing is handled by onChange first and not twice.
@@ -323,7 +146,7 @@ function ClusterField({
       }, 0);
     };
     const onAnimation = (event: AnimationEvent) => {
-      if (event.animationName === 'cluster-autofill') sync();
+      if (event.animationName === 'icar-autofill') sync();
     };
     node.addEventListener('input', sync);
     node.addEventListener('change', sync);
@@ -334,21 +157,16 @@ function ClusterField({
       node.removeEventListener('change', sync);
       node.removeEventListener('animationstart', onAnimation);
     };
-  }, [ref]);
+  }, [inputRef]);
 
   return (
-    <Pressable
-      onPress={() => ref.current?.focus()}
-      // Not a Tab stop of its own: Tab goes straight into the input.
-      tabIndex={-1}
-      accessible={false}
-      style={[styles.field, short && styles.fieldShort, focused && styles.fieldFocused, (focused || hasError) && { borderColor: `${accent}88` }]}
-    >
-      <Ionicons name={icon} size={18} color={focused ? CLUSTER.backlight : CLUSTER.inkMuted} />
-      <View style={[styles.fieldBody, short && styles.fieldBodyShort]}>
-        <Text style={[styles.fieldLabel, focused && { color: CLUSTER.backlight }]}>{label}</Text>
+    <View style={styles.fieldWrap}>
+      <Text style={[styles.fieldLabel, focused && styles.fieldLabelFocused]} onPress={() => inputRef.current?.focus()}>
+        {label}
+      </Text>
+      <View style={[styles.field, focused && styles.fieldFocused, hasError && styles.fieldError]}>
         <TextInput
-          ref={ref}
+          ref={inputRef}
           style={[styles.fieldInput, webOnly({ outlineStyle: 'none' })]}
           value={value}
           onChangeText={onChangeText}
@@ -362,84 +180,53 @@ function ClusterField({
           autoComplete={autoComplete}
           returnKeyType={returnKeyType}
           onSubmitEditing={onSubmitEditing}
-          selectionColor={CLUSTER.backlight}
+          selectionColor={DK.accent}
           accessibilityLabel={label}
+          aria-invalid={hasError || undefined}
           textAlign="right"
         />
+        {onToggleSecure && (
+          <Pressable
+            onPress={onToggleSecure}
+            hitSlop={12}
+            style={styles.eye}
+            accessibilityRole="button"
+            accessibilityLabel={secureTextEntry ? t('password.showThe') : t('password.hideThe')}
+          >
+            <Ionicons name={secureTextEntry ? 'eye-outline' : 'eye-off-outline'} size={20} color={DK.muted} />
+          </Pressable>
+        )}
       </View>
-      {onToggleSecure && (
-        <Pressable
-          onPress={onToggleSecure}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel={secureTextEntry ? t('password.showThe') : t('password.hideThe')}
-        >
-          <Ionicons name={secureTextEntry ? 'eye-off-outline' : 'eye-outline'} size={19} color={CLUSTER.inkMuted} />
-        </Pressable>
-      )}
-    </Pressable>
+    </View>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Start button: a round engine-start button. Its ring lights once both
-// fields are filled and pulses while signing in.
-// ---------------------------------------------------------------------------
-
-// כפתור ההתנעה (כניסה)
-function StartButton({ onPress, loading, ready, size }: { onPress: () => void; loading: boolean; ready: boolean; size: number }) {
+// כפתור הכניסה
+function SignInButton({ onPress, loading, reduce }: { onPress: () => void; loading: boolean; reduce: boolean }) {
   const press = useRef(new Animated.Value(1)).current;
-  const pulse = useRef(new Animated.Value(1)).current;
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
-
-  useEffect(() => {
-    if (!loading) {
-      pulse.stopAnimation();
-      pulse.setValue(1);
-      return;
-    }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.35, duration: 520, easing: EASE_IN_OUT, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 520, easing: EASE_IN_OUT, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [loading, pulse]);
-
-  const lit = ready || loading || focused;
-  const ringColor = lit ? CLUSTER.backlight : hovered ? 'rgba(95,193,240,0.45)' : CLUSTER.hairlineStrong;
+  const to = (toValue: number, duration: number) =>
+    !reduce && Animated.timing(press, { toValue, duration, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER }).start();
 
   return (
     <Pressable
       onPress={onPress}
       disabled={loading}
-      onPressIn={() => Animated.timing(press, { toValue: 0.95, duration: 90, easing: EASE_OUT, useNativeDriver: true }).start()}
-      onPressOut={() => Animated.spring(press, { toValue: 1, speed: 24, bounciness: 6, useNativeDriver: true }).start()}
+      onPressIn={() => to(0.98, 100)}
+      onPressOut={() => to(1, 220)}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
-      onFocus={() => setFocused(true)}
+      onFocus={(e) => setFocused(isFocusVisible(e))}
       onBlur={() => setFocused(false)}
       accessibilityRole="button"
-      accessibilityLabel={t('login.signIn')}
-      accessibilityState={{ busy: loading, disabled: loading }}
-      aria-busy={loading} aria-disabled={loading}
-      style={webOnly({ outlineStyle: 'none', cursor: loading ? 'progress' : 'pointer' })}
+      accessibilityLabel={loading ? t('login.signingIn') : t('login.signIn')}
+      accessibilityState={{ busy: loading }}
+      style={[styles.buttonHit, focused && styles.buttonFocus, webOnly({ cursor: loading ? 'progress' : 'pointer' })]}
     >
-      <Animated.View style={[styles.startOuter, { width: size, height: size, borderRadius: size / 2, transform: [{ scale: press }] }]}>
-        <Animated.View
-          style={[
-            styles.startRing,
-            { borderRadius: size / 2, borderColor: ringColor, opacity: pulse },
-            lit && styles.startRingLit,
-          ]}
-        />
-        <View style={[styles.startCore, { width: size - 22, height: size - 22, borderRadius: (size - 22) / 2 }]}>
-          <Ionicons name="power" size={Math.round(size * 0.24)} color={lit ? CLUSTER.backlight : CLUSTER.ink} />
-          <Text style={styles.startLabel}>{loading ? t('login.signingIn') : t('login.signIn')}</Text>
-        </View>
+      <Animated.View style={[styles.button, (hovered || loading) && styles.buttonHover, { transform: [{ scale: press }] }]}>
+        {loading && <ActivityIndicator size="small" color="#FFFFFF" />}
+        <Text style={styles.buttonText}>{loading ? t('login.signingIn') : t('login.signIn')}</Text>
       </Animated.View>
     </Pressable>
   );
@@ -452,28 +239,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 // המסך: מייל, סיסמה וכניסה
 export default function LoginScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
-  const wide = width >= WIDE_MIN_WIDTH;
+  const split = width >= SPLIT_MIN_WIDTH;
   const insets = useSafeAreaInsets();
-  const reduceMotion = useReducedMotion();
-  const [fitHeight, setFitHeight] = useState(0);
-  const [gaugeShrink, setGaugeShrink] = useState(0);
-  const fitWidth = useRef(width);
-  const contentHeight = useRef(0);
-  // Phone gauge size before fitting, and how far fitting may take it down.
-  const compactGauge = Math.min(172, Math.floor((Math.min(width - 40, 520) - 36 - 14) / 2));
-  const maxShrink = Math.max(0, compactGauge - GAUGE_MIN);
-  // Gauge row height is the gauge size, so shrinking the gauges by the
-  // overflow makes the content fit exactly (settles in one pass).
-  const refit = () => {
-    if (wide || !fitHeight || !contentHeight.current) return;
-    const overflow = contentHeight.current - fitHeight;
-    setGaugeShrink((prev) => {
-      const next = Math.min(Math.max(prev + overflow, 0), maxShrink);
-      return Math.abs(next - prev) < 1 ? prev : Math.ceil(next);
-    });
-  };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(refit, [fitHeight]);
+  const reduce = useReducedMotion();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -481,111 +249,50 @@ export default function LoginScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [selfTest, setSelfTest] = useState(true);
-  const [clock, setClock] = useState(currentClock);
 
   const identifierRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
-  const revs = useRef(new Animated.Value(0)).current;
-  const readiness = useRef(new Animated.Value(0)).current;
-  const displayPower = useRef(new Animated.Value(0.55)).current;
-  const revLevel = useRef(0);
-  const revTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const selfTestRef = useRef(true);
-
-  const filled = (identifier.trim() ? 1 : 0) + (password ? 1 : 0);
-  const ready = filled === 2;
+  const brandIn = useRef(new Animated.Value(0)).current;
+  const formIn = useRef(new Animated.Value(0)).current;
+  const shake = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;
-    if (document.getElementById('cluster-login-css')) return;
+    if (document.getElementById('icar-login-css')) return;
     const style = document.createElement('style');
-    style.id = 'cluster-login-css';
+    style.id = 'icar-login-css';
     style.textContent = WEB_CSS;
     document.head.appendChild(style);
   }, []);
 
+  // The page settles in once: the brand first, the form a beat after.
   useEffect(() => {
-    const timer = setInterval(() => setClock(currentClock()), 20000);
-    return () => clearInterval(timer);
-  }, []);
+    const settle = (value: Animated.Value, delay: number) =>
+      Animated.timing(value, { toValue: 1, duration: 700, delay, easing: EASE_OUT, useNativeDriver: NATIVE_DRIVER });
+    const enter = Animated.parallel([settle(brandIn, 40), settle(formIn, 160)]);
+    enter.start();
+    return () => enter.stop();
+  }, [brandIn, formIn]);
 
-  useEffect(() => () => {
-    if (revTimer.current) clearTimeout(revTimer.current);
-  }, []);
-
-  // Ignition self-test: every tell-tale on, both needles sweep to full and
-  // back, then the revs needle settles at idle. Runs once per visit.
-  useEffect(() => {
-    if (reduceMotion === null) return;
-    let cancelled = false;
-    const finish = (result?: { finished: boolean }) => {
-      if (cancelled || selfTestRef.current === false) return;
-      // A tab opened in the background pauses animation frames; the timer
-      // below still ends the test so the cluster never stays mid-sweep.
-      if (result && !result.finished) {
-        revs.setValue(IDLE_REVS);
-        readiness.setValue(0);
-        displayPower.setValue(1);
-      }
-      selfTestRef.current = false;
-      setSelfTest(false);
-      revLevel.current = IDLE_REVS;
-    };
-    if (reduceMotion) {
-      revs.setValue(IDLE_REVS);
-      displayPower.setValue(1);
-      finish();
-      return;
-    }
-    const sweepUp = (value: Animated.Value) =>
-      Animated.timing(value, { toValue: 1, duration: 640, easing: EASE_OUT, useNativeDriver: true });
-    const sweepDown = (value: Animated.Value, toValue: number) =>
-      Animated.timing(value, { toValue, duration: 720, easing: EASE_IN_OUT, useNativeDriver: true });
-    const test = Animated.parallel([
-      Animated.sequence([Animated.delay(140), sweepUp(revs), sweepDown(revs, IDLE_REVS)]),
-      Animated.sequence([Animated.delay(200), sweepUp(readiness), sweepDown(readiness, 0)]),
-      Animated.timing(displayPower, { toValue: 1, duration: 520, delay: 120, easing: EASE_OUT, useNativeDriver: true }),
-    ]);
-    test.start(finish);
-    const fallback = setTimeout(() => test.stop(), 1900);
-    return () => {
-      cancelled = true;
-      clearTimeout(fallback);
-      test.stop();
-    };
-  }, [reduceMotion, revs, readiness, displayPower]);
-
-  // Readiness follows the filled fields once the self-test hands over.
-  useEffect(() => {
-    if (selfTest) return;
-    const target = loading ? 1 : filled / 2;
-    if (reduceMotion) {
-      readiness.setValue(target);
-      return;
-    }
-    Animated.spring(readiness, { toValue: target, speed: 14, bounciness: 0, useNativeDriver: true }).start();
-  }, [filled, loading, selfTest, reduceMotion, readiness]);
-
-  const settleRevs = (toValue: number, duration = 900) => {
-    revLevel.current = toValue;
-    if (reduceMotion) {
-      revs.setValue(toValue);
-      return;
-    }
-    Animated.timing(revs, { toValue, duration, easing: EASE_OUT, useNativeDriver: true }).start();
+  // One short shake, like a wrong passcode on iOS.
+  const shakeForm = () => {
+    if (reduce) return;
+    shake.setValue(0);
+    Animated.sequence(
+      [1, -1, 0.6, -0.6, 0].map((toValue) =>
+        Animated.timing(shake, { toValue, duration: 60, easing: Easing.out(Easing.quad), useNativeDriver: NATIVE_DRIVER })
+      )
+    ).start();
   };
 
-  // Typing revs the engine a little; it drops back to idle when you pause.
-  const rev = () => {
-    if (reduceMotion || selfTestRef.current || loading) return;
-    revLevel.current = Math.min(0.88, revLevel.current + 0.14);
-    Animated.spring(revs, { toValue: revLevel.current, speed: 20, bounciness: 3, useNativeDriver: true }).start();
-    if (revTimer.current) clearTimeout(revTimer.current);
-    revTimer.current = setTimeout(() => settleRevs(IDLE_REVS), 420);
+  const fail = (message: string) => {
+    setSuccessMessage('');
+    setErrorMessage(message);
+    shakeForm();
   };
 
   const handleLogin = async () => {
+    if (loading) return;
     setErrorMessage('');
     setSuccessMessage('');
 
@@ -598,12 +305,10 @@ export default function LoginScreen({ navigation }: Props) {
     if (pass !== password) setPassword(pass);
 
     if (!email.trim() || !pass) {
-      setErrorMessage(t('login.fillEmailPassword'));
+      fail(t('login.fillEmailPassword'));
       return;
     }
 
-    if (revTimer.current) clearTimeout(revTimer.current);
-    settleRevs(0.62, 420);
     setLoading(true);
     try {
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -612,104 +317,75 @@ export default function LoginScreen({ navigation }: Props) {
       });
 
       if (authError || !authData.user) {
-        settleRevs(IDLE_REVS, 700);
-        setErrorMessage(t('login.wrongCredentials'));
+        fail(t('login.wrongCredentials'));
         return;
       }
 
-      settleRevs(1, 380);
       setSuccessMessage(t('login.accountOk'));
-
       const result = await resolveRouteForUser(authData.user.id);
-
       if (!result.ok) {
-        settleRevs(IDLE_REVS, 700);
-        setSuccessMessage('');
-        setErrorMessage(result.error);
+        fail(result.error);
         return;
       }
 
       navigation.reset({ index: 0, routes: [{ name: result.route }] });
     } catch {
-      settleRevs(IDLE_REVS, 700);
-      setSuccessMessage('');
-      setErrorMessage(t('login.errorLater'));
+      fail(t('login.errorLater'));
     } finally {
       setLoading(false);
     }
   };
 
-  // Phones: the whole cluster fits the visible screen, with no scrolling.
-  // `short` tightens the vertical rhythm; whatever still overflows comes out
-  // of the gauges, measured (see `refit`).
-  const short = !wide && fitHeight > 0 && fitHeight < 860;
-  // Wide: the binnacle (≤1080, 44px sides) holds two gauges and the display with ≥24px between them.
-  const gaugeSize = wide
-    ? Math.min(262, Math.floor((Math.min(width - 64, 1080) - 88 - DISPLAY_WIDTH - 48) / 2))
-    : compactGauge - Math.min(gaugeShrink, maxShrink);
-  const startSize = wide ? 112 : short ? 88 : 100;
-  const displayWidth = wide ? DISPLAY_WIDTH : undefined;
+  // Editing a field takes the error away.
+  const edit = (set: (value: string) => void) => (value: string) => {
+    set(value);
+    if (errorMessage) setErrorMessage('');
+  };
 
-  const revsGauge = (
-    <Gauge
-      size={gaugeSize}
-      value={revs}
-      ticks={27}
-      majorEvery={3}
-      numerals={['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']}
-      label={t('login.rpm')}
-      readout={clock}
-    />
-  );
-  const readinessGauge = (
-    <Gauge
-      size={gaugeSize}
-      value={readiness}
-      ticks={20}
-      majorEvery={10}
-      numerals={['0', '1', '2']}
-      label={t('login.fieldsReady')}
-      readout={ready ? t('login.ready') : `${filled}/2`}
-      readoutTone={ready ? CLUSTER.green : undefined}
-    />
-  );
+  const rise = (value: Animated.Value, distance: number) => ({
+    opacity: value,
+    transform: [{ translateY: value.interpolate({ inputRange: [0, 1], outputRange: [reduce ? 0 : distance, 0] }) }],
+  });
 
-  const display = (
-    <Animated.View style={[styles.display, short && styles.displayShort, displayWidth ? { width: displayWidth } : null, { opacity: displayPower }]}>
+  const logoWidth = split ? 236 : 164;
+
+  const brand = (
+    <Animated.View style={[split ? styles.brandSplit : styles.brandStack, rise(brandIn, 10)]}>
       <Image
-        source={require('../images/icar-logo-on-dark.png')}
-        style={[styles.logo, !wide && styles.logoCompact, short && styles.logoShort]}
+        source={LOGO}
+        style={{ width: logoWidth, height: logoWidth / LOGO_RATIO }}
         resizeMode="contain"
+        accessibilityRole="image"
         accessibilityLabel="icar"
       />
+      <Text style={[styles.tagline, split && styles.taglineSplit]}>{t('login.tagline')}</Text>
+    </Animated.View>
+  );
+
+  const form = (
+    <Animated.View style={[styles.form, rise(formIn, 16)]}>
+      <Text style={[styles.title, split && styles.titleSplit]} accessibilityRole="header">
+        {t('login.welcome')}
+      </Text>
       <Text style={styles.subtitle}>{t('login.signInToContinue')}</Text>
 
-      <View style={[styles.fields, short && styles.fieldsShort]}>
-        <ClusterField
+      <Animated.View style={[styles.fields, { transform: [{ translateX: shake.interpolate({ inputRange: [-1, 1], outputRange: [-8, 8] }) }] }]}>
+        <LoginField
           label={t('common.emailShort')}
           value={identifier}
-          onChangeText={(value) => {
-            setIdentifier(value);
-            rev();
-          }}
-          icon="mail-outline"
+          onChangeText={edit(setIdentifier)}
           keyboardType="email-address"
           textContentType="username"
           autoComplete="username"
           returnKeyType="next"
           onSubmitEditing={() => passwordRef.current?.focus()}
           inputRef={identifierRef}
-          hasError={!!errorMessage && !identifier.trim()}
-          short={short}
+          hasError={!!errorMessage}
         />
-        <ClusterField
+        <LoginField
           label={t('common.password')}
           value={password}
-          onChangeText={(value) => {
-            setPassword(value);
-            rev();
-          }}
-          icon="lock-closed-outline"
+          onChangeText={edit(setPassword)}
           secureTextEntry={!showPassword}
           onToggleSecure={() => setShowPassword((current) => !current)}
           textContentType="password"
@@ -717,63 +393,45 @@ export default function LoginScreen({ navigation }: Props) {
           returnKeyType="go"
           onSubmitEditing={() => void handleLogin()}
           inputRef={passwordRef}
-          hasError={!!errorMessage && !password}
-          short={short}
+          hasError={!!errorMessage}
         />
-      </View>
+      </Animated.View>
 
-      <View style={[styles.messageSlot, short && styles.messageSlotShort]} accessibilityLiveRegion="polite">
+      <View style={styles.messageSlot} accessibilityLiveRegion="polite" aria-live="polite">
         {!!errorMessage && (
           <View style={styles.messageRow}>
-            <Ionicons name="warning" size={15} color={CLUSTER.amber} />
-            <Text style={[styles.messageText, { color: CLUSTER.amber }]}>{errorMessage}</Text>
+            <Ionicons name="alert-circle" size={17} color={ERROR} />
+            <Text style={[styles.messageText, { color: ERROR }]}>{errorMessage}</Text>
           </View>
         )}
-        {!!successMessage && (
+        {!!successMessage && !errorMessage && (
           <View style={styles.messageRow}>
-            <Ionicons name="checkmark-circle" size={15} color={CLUSTER.green} />
-            <Text style={[styles.messageText, { color: CLUSTER.green }]}>{successMessage}</Text>
+            <Ionicons name="checkmark-circle" size={17} color={SUCCESS} />
+            <Text style={[styles.messageText, { color: SUCCESS }]}>{successMessage}</Text>
           </View>
         )}
       </View>
 
-      <View style={[styles.lampRow, short && styles.lampRowShort]}>
-        <TellTale icon="mail" label={t('login.emailEntered')} lit={selfTest || !!identifier.trim()} tone={CLUSTER.backlight} />
-        <TellTale icon="lock-closed" label={t('login.passwordEntered')} lit={selfTest || !!password} tone={CLUSTER.backlight} />
-        <TellTale icon="checkmark-circle" label={t('login.readyToSignIn')} lit={selfTest || ready || !!successMessage} tone={CLUSTER.green} />
-        <TellTale icon="warning" label={t('common.error')} lit={selfTest || !!errorMessage} tone={CLUSTER.amber} />
-      </View>
+      <SignInButton onPress={() => void handleLogin()} loading={loading} reduce={reduce} />
     </Animated.View>
   );
 
-  // The start button sits on the binnacle's lower edge, half on the cluster and half on the dash.
-  const startButton = (
-    <View style={[styles.startDock, { marginTop: -startSize / 2 }]}>
-      <StartButton onPress={() => void handleLogin()} loading={loading} ready={ready} size={startSize} />
-    </View>
-  );
-
   const footer = (
-    <View style={[styles.footer, short && styles.footerShort]}>
-      <Text style={[styles.footerText, short && styles.footerTextShort]}>
-        {t('login.accessManaged')}{'\n'}
-        {t('login.openAccount')}
+    <View style={styles.footer}>
+      <Text style={styles.footerText}>
+        {t('login.accessManaged')} {t('login.openAccount')}
       </Text>
-      <Text style={styles.contactText}>
+      <Text style={styles.footerText}>
         {t('login.contactColon')}{' '}
-        <Text
-          style={styles.contactEmail}
-          onPress={() => void Linking.openURL('mailto:trytolvex@gmail.com')}
-          accessibilityRole="link"
-        >
+        <Text style={styles.footerLink} onPress={() => void Linking.openURL('mailto:trytolvex@gmail.com')} accessibilityRole="link">
           trytolvex@gmail.com
         </Text>
       </Text>
-      <View style={styles.legalRow} accessibilityRole="none">
+      <View style={styles.legalRow}>
         {LOGIN_LEGAL_LINKS.map(({ doc, label }, i) => (
           <React.Fragment key={doc}>
             {i > 0 && <Text style={styles.legalDot} importantForAccessibility="no" aria-hidden>·</Text>}
-            <Text style={[styles.legalLink, short && styles.legalLinkShort]} accessibilityRole="link" onPress={() => navigation.navigate('Legal', { doc })}>
+            <Text style={styles.legalLink} accessibilityRole="link" onPress={() => navigation.navigate('Legal', { doc })}>
               {label}
             </Text>
           </React.Fragment>
@@ -782,74 +440,52 @@ export default function LoginScreen({ navigation }: Props) {
     </View>
   );
 
-  const cluster = wide ? (
-    <View style={styles.clusterWrap}>
-      <View style={[styles.binnacleWide, { paddingBottom: startSize / 2 + 30 }]}>
-        {readinessGauge}
-        {display}
-        {revsGauge}
+  // The brand's night: the app's gradient, soft light on the web, and the logo's ring, faint.
+  const night = (ringSize: number, ringStyle: object) => (
+    <>
+      <LinearGradient colors={DK.night} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      {Platform.OS === 'web' && <View pointerEvents="none" style={styles.glow} />}
+      <View pointerEvents="none" style={StyleSheet.absoluteFill} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Animated.Image
+          source={RING}
+          style={[styles.ring, { width: ringSize, height: ringSize }, ringStyle, { opacity: brandIn.interpolate({ inputRange: [0, 1], outputRange: [0, 0.1] }) }]}
+        />
       </View>
-      {startButton}
-    </View>
-  ) : (
-    <View style={[styles.clusterWrap, styles.clusterWrapCompact]}>
-      <View style={[styles.binnacleCompact, short && styles.binnacleShort, { paddingBottom: startSize / 2 + (short ? 14 : 22) }]}>
-        <View style={[styles.gaugeRow, short && styles.gaugeRowShort]}>
-          {readinessGauge}
-          {revsGauge}
-        </View>
-        {display}
-      </View>
-      {startButton}
-    </View>
+    </>
   );
 
-  const padTop = short ? Math.max(insets.top + 8, 14) : Math.max(insets.top + 12, wide ? 40 : 28);
-  const padBottom = short ? Math.max(insets.bottom + 8, 14) : Math.max(insets.bottom + 16, wide ? 40 : 28);
-
-  const content = (
-    <ScrollView
-      contentContainerStyle={[
-        styles.scrollContent,
-        wide && styles.scrollContentWide,
-        // Clear the status bar / Dynamic Island and the home indicator on phones.
-        { paddingTop: padTop, paddingBottom: padBottom },
-      ]}
-      keyboardShouldPersistTaps="handled"
-      onLayout={(e) => {
-        const h = e.nativeEvent.layout.height;
-        // The tallest height seen at this width: an open keyboard shrinks the
-        // view, and the cluster should scroll above it — not re-fit.
-        if (fitWidth.current !== width) {
-          fitWidth.current = width;
-          setFitHeight(h);
-          setGaugeShrink(0);
-        } else if (h > fitHeight) setFitHeight(h);
-      }}
-    >
-      {/* Measured on its own: the scroll content stretches to the screen, so
-          only this wrapper reports the cluster's natural height. */}
-      <View
-        style={styles.fitBox}
-        onLayout={(e) => {
-          contentHeight.current = e.nativeEvent.layout.height + padTop + padBottom;
-          refit();
-        }}
-      >
-        {cluster}
-        {footer}
+  const body = split ? (
+    <View style={styles.splitRoot}>
+      <ScrollView style={styles.formSide} contentContainerStyle={[styles.formSideContent, { paddingTop: Math.max(insets.top, 40) }]} keyboardShouldPersistTaps="handled">
+        <View style={[styles.formColumn, styles.formCenter]}>{form}</View>
+        <View style={styles.formColumn}>{footer}</View>
+      </ScrollView>
+      <View style={styles.brandSide}>
+        {night(560, styles.ringSplit)}
+        {brand}
+      </View>
+    </View>
+  ) : (
+    <ScrollView style={styles.flex} contentContainerStyle={styles.stackContent} keyboardShouldPersistTaps="handled" bounces={false}>
+      <View style={[styles.brandTop, { paddingTop: insets.top + 56 }]}>
+        {night(300, styles.ringStack)}
+        {brand}
+      </View>
+      <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom + 16, 28) }]}>
+        <View style={styles.formColumn}>{form}</View>
+        <View style={[styles.formColumn, styles.sheetFooter]}>{footer}</View>
       </View>
     </ScrollView>
   );
 
   return (
-    <View style={styles.container} nativeID="cluster-login">
+    <View style={[styles.container, split && styles.containerSplit]} nativeID="icar-login">
       {Platform.OS === 'ios' ? (
         <KeyboardAvoidingView behavior="padding" style={styles.flex}>
-          {content}
+          {body}
         </KeyboardAvoidingView>
       ) : (
-        content
+        body
       )}
     </View>
   );
@@ -858,258 +494,120 @@ export default function LoginScreen({ navigation }: Props) {
 // עיצוב מסך הכניסה
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  // המסך
-  container: { flex: 1, backgroundColor: CLUSTER.ground },
-  scrollContent: {
+  // המסך: כהה למעלה, כדי שסרגל הדפדפן והאזור העליון של האייפון יקבלו את צבע המותג
+  container: { flex: 1, backgroundColor: DK.night[0] },
+  containerSplit: { backgroundColor: DK.surface },
+
+  // טלפון: מותג למעלה, גיליון לבן מתחת
+  stackContent: { flexGrow: 1, backgroundColor: DK.surface },
+  brandTop: { alignItems: 'center', paddingBottom: 72, overflow: 'hidden' },
+  brandStack: { alignItems: 'center', gap: 14, paddingHorizontal: 24 },
+  sheet: {
     flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 28,
-  },
-  fitBox: { width: '100%', alignItems: 'center' },
-  scrollContentWide: { paddingHorizontal: 32, paddingVertical: 40 },
-
-  binnacleWide: {
-    width: '100%',
-    maxWidth: 1080,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 44,
-    paddingTop: 40,
-    borderRadius: 56,
-    borderBottomStartRadius: 36,
-    borderBottomEndRadius: 36,
-    backgroundColor: CLUSTER.binnacle,
-    borderWidth: 1,
-    borderColor: CLUSTER.hairline,
-    borderTopColor: 'rgba(255,255,255,0.11)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 30 },
-    shadowOpacity: 0.5,
-    shadowRadius: 60,
-    elevation: 18,
-  },
-  binnacleCompact: {
-    width: '100%',
-    maxWidth: 520,
-    paddingTop: 18,
-    paddingHorizontal: 18,
-    borderRadius: 32,
-    backgroundColor: CLUSTER.binnacle,
-    borderWidth: 1,
-    borderColor: CLUSTER.hairline,
-    borderTopColor: 'rgba(255,255,255,0.11)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.45,
-    shadowRadius: 40,
-    elevation: 14,
-  },
-  binnacleShort: { paddingTop: 14 },
-  clusterWrap: { width: '100%', maxWidth: 1080, alignItems: 'center' },
-  clusterWrapCompact: { maxWidth: 520 },
-  // אזור כפתור ההתנעה
-  startDock: { alignItems: 'center' },
-  gaugeRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', marginBottom: 16 },
-  gaugeRowShort: { marginBottom: 10 },
-
-  // שעון
-  gauge: {
-    backgroundColor: '#0F161E',
-    borderWidth: 1,
-    borderColor: CLUSTER.hairlineStrong,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.4,
-    shadowRadius: 24,
-    elevation: 8,
-  },
-  gaugeFace: {
-    position: 'absolute',
-    backgroundColor: CLUSTER.face,
-    borderWidth: 1,
-    borderColor: CLUSTER.hairline,
-  },
-  tick: { position: 'absolute', borderRadius: 1 },
-  // The glow is web-only: dozens of shadowed ticks fading on iOS would render offscreen every frame.
-  tickLit: {
-    backgroundColor: CLUSTER.backlight,
-    ...Platform.select({
-      web: { shadowColor: CLUSTER.backlight, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 4 },
-      default: {},
-    }),
-  },
-  numeral: {
-    position: 'absolute',
-    textAlign: 'center',
-    color: CLUSTER.inkMuted,
-    fontFamily: FONT.semiBold,
-    fontVariant: ['tabular-nums'],
-  },
-  // מחוג
-  needle: {
-    position: 'absolute',
-    width: 3.5,
-    borderRadius: 2,
-    backgroundColor: CLUSTER.ink,
-    overflow: 'hidden',
-    shadowColor: CLUSTER.backlight,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.55,
-    shadowRadius: 6,
-  },
-  needleTip: { backgroundColor: CLUSTER.backlight },
-  hub: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1C2531',
-    borderWidth: 1,
-    borderColor: CLUSTER.hairlineStrong,
-  },
-  hubDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: CLUSTER.backlight },
-  readoutWindow: {
-    position: 'absolute',
-    alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 6,
-    borderRadius: 8,
-    backgroundColor: CLUSTER.window,
-    borderWidth: 1,
-    borderColor: CLUSTER.hairline,
-  },
-  readoutLabel: { color: CLUSTER.inkMuted, fontFamily: FONT.medium },
-  readoutValue: { color: CLUSTER.ink, fontFamily: FONT.bold, fontVariant: ['tabular-nums'], marginTop: 1 },
-
-  // המסך האמצעי
-  display: {
-    alignItems: 'stretch',
+    marginTop: -28,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    backgroundColor: DK.surface,
     paddingHorizontal: 24,
-    paddingTop: 22,
-    paddingBottom: 16,
-    borderRadius: 24,
-    backgroundColor: CLUSTER.face,
-    borderWidth: 1,
-    borderColor: 'rgba(95,193,240,0.16)',
+    paddingTop: 32,
   },
-  logo: { alignSelf: 'center', width: 200, height: 61 },
-  logoCompact: { width: 172, height: 53 },
-  logoShort: { width: 150, height: 46 },
-  displayShort: { paddingTop: 16, paddingBottom: 12 },
-  subtitle: {
+  sheetFooter: { flexGrow: 1, justifyContent: 'flex-end', marginTop: 36 },
+  ringStack: { top: -40, start: -120 },
+
+  // מחשב: טופס בצד אחד, מותג בצד השני
+  splitRoot: { flex: 1, flexDirection: 'row' },
+  formSide: { flex: 1, backgroundColor: DK.surface },
+  formSideContent: { flexGrow: 1, justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 40, paddingBottom: 32 },
+  brandSide: { flex: 1.1, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', padding: 48 },
+  brandSplit: { alignItems: 'center', gap: 22, maxWidth: 440 },
+  ringSplit: { bottom: -150, end: -150 },
+
+  formColumn: { width: '100%', maxWidth: 400, alignSelf: 'center' },
+  formCenter: { flexGrow: 1, justifyContent: 'center' },
+  form: { width: '100%' },
+
+  // מותג
+  tagline: {
+    fontFamily: DK_FONT.medium,
+    fontSize: 16,
+    lineHeight: 24,
+    color: DK.onNightMuted,
     textAlign: 'center',
-    color: CLUSTER.inkMuted,
-    fontFamily: FONT.medium,
-    fontSize: 14,
-    marginTop: 8,
   },
-  fields: { gap: 12, marginTop: 20 },
-  fieldsShort: { gap: 10, marginTop: 14 },
+  taglineSplit: { fontSize: 19, lineHeight: 29 },
+  ring: { position: 'absolute' },
+  glow: {
+    position: 'absolute',
+    width: 720,
+    height: 720,
+    top: -260,
+    end: -260,
+    backgroundImage: 'radial-gradient(closest-side, rgba(47,91,255,0.34), rgba(47,91,255,0.1) 55%, rgba(47,91,255,0) 100%)',
+  } as object,
+
+  // כותרת
+  title: { fontFamily: DK_FONT.title, fontSize: 26, lineHeight: 34, color: DK.ink, textAlign: 'right', letterSpacing: -0.3 },
+  titleSplit: { fontSize: 30, lineHeight: 38 },
+  subtitle: { fontFamily: DK_FONT.regular, fontSize: 16, lineHeight: 24, color: DK.muted, textAlign: 'right', marginTop: 4 },
+
+  // שדות
+  fields: { gap: 18, marginTop: 28 },
+  fieldWrap: { gap: 8 },
+  fieldLabel: { fontFamily: DK_FONT.semibold, fontSize: 14, color: DK.inkSoft, textAlign: 'right' },
+  fieldLabelFocused: { color: DK.accent },
   field: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 12,
-    minHeight: 60,
-    paddingHorizontal: 16,
+    height: 52,
     borderRadius: 14,
-    backgroundColor: CLUSTER.field,
     borderWidth: 1,
-    borderColor: CLUSTER.hairline,
+    borderColor: FIELD_BORDER,
+    backgroundColor: DK.surfaceSunk,
+    paddingHorizontal: 16,
+    ...webOnly({ transition: 'border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease' }),
   },
-  fieldShort: { minHeight: 52 },
-  fieldBodyShort: { paddingVertical: 3 },
-  fieldFocused: { backgroundColor: CLUSTER.fieldFocus },
-  fieldBody: { flex: 1, paddingVertical: 8 },
-  fieldLabel: {
-    textAlign: textStart(),
-    color: CLUSTER.inkMuted,
-    fontFamily: FONT.medium,
-    fontSize: 12,
+  fieldFocused: {
+    borderColor: DK.accent,
+    backgroundColor: DK.surface,
+    ...webOnly({ boxShadow: '0 0 0 4px rgba(47,91,255,0.14)' }),
   },
+  fieldError: { borderColor: ERROR },
   fieldInput: {
-    color: CLUSTER.ink,
-    fontFamily: FONT.medium,
+    flex: 1,
+    height: '100%',
+    fontFamily: DK_FONT.medium,
     fontSize: 16,
-    paddingVertical: 2,
-    paddingHorizontal: 0,
-    textAlign: textStart(),
+    color: DK.ink,
+    paddingVertical: 0,
   },
-  messageSlot: { minHeight: 34, justifyContent: 'center' },
-  messageSlotShort: { minHeight: 24 },
-  messageRow: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  messageText: { fontFamily: FONT.semiBold, fontSize: 13.5, textAlign: 'center' },
-  lampRow: {
+  eye: { paddingStart: 10, height: '100%', justifyContent: 'center' },
+
+  // הודעה
+  messageSlot: { minHeight: 30, justifyContent: 'center', marginTop: 10 },
+  messageRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
+  messageText: { flex: 1, fontFamily: DK_FONT.semibold, fontSize: 14, lineHeight: 20, textAlign: 'right' },
+
+  // כפתור
+  buttonHit: { marginTop: 6, borderRadius: 16, ...webOnly({ outlineStyle: 'none' }) },
+  buttonFocus: webOnly({ boxShadow: '0 0 0 3px #FFFFFF, 0 0 0 6px rgba(47,91,255,0.55)' }) as object,
+  button: {
+    height: 54,
+    borderRadius: 14,
+    backgroundColor: DK.accent,
     flexDirection: 'row-reverse',
+    alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: CLUSTER.hairline,
+    ...webOnly({ transition: 'background-color 160ms ease', boxShadow: '0 10px 24px -12px rgba(47,91,255,0.7)' }),
   },
-  lampRowShort: { paddingTop: 10 },
-  lamp: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
+  buttonHover: { backgroundColor: DK.accentPress },
+  buttonText: { fontFamily: DK_FONT.title, fontSize: 16, color: '#FFFFFF', ...webOnly({ userSelect: 'none' }) },
 
-  startOuter: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#161E28',
-    borderWidth: 1,
-    borderColor: CLUSTER.hairlineStrong,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.5,
-    shadowRadius: 22,
-    elevation: 10,
-  },
-  startRing: {
-    position: 'absolute',
-    top: 5,
-    start: 5,
-    end: 5,
-    bottom: 5,
-    borderWidth: 2,
-  },
-  startRingLit: {
-    shadowColor: CLUSTER.backlight,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-  },
-  startCore: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-    backgroundColor: '#1D2633',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    borderTopColor: 'rgba(255,255,255,0.16)',
-  },
-  startLabel: { color: CLUSTER.ink, fontFamily: FONT.bold, fontSize: 13.5 },
-
-  footer: { marginTop: 28, alignItems: 'center', gap: 10, maxWidth: 440 },
-  footerShort: { marginTop: 12, gap: 4 },
-  footerText: {
-    textAlign: 'center',
-    color: CLUSTER.inkMuted,
-    fontFamily: FONT.regular,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  footerTextShort: { fontSize: 12, lineHeight: 17 },
-  contactText: { textAlign: 'center', color: CLUSTER.inkMuted, fontFamily: FONT.regular, fontSize: 13 },
-  contactEmail: { color: CLUSTER.backlight, fontFamily: FONT.semiBold },
-  legalRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', columnGap: 6 },
-  legalLink: { color: CLUSTER.inkMuted, fontFamily: FONT.medium, fontSize: 12.5, textDecorationLine: 'underline', paddingVertical: 4 },
-  legalDot: { color: CLUSTER.inkMuted, fontSize: 12.5 },
-  legalLinkShort: { paddingVertical: 0 },
+  // תחתית
+  footer: { gap: 8, marginTop: 40, alignItems: 'center' },
+  footerText: { fontFamily: DK_FONT.regular, fontSize: 13, lineHeight: 20, color: DK.muted, textAlign: 'center' },
+  footerLink: { fontFamily: DK_FONT.semibold, color: DK.accent },
+  legalRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 4 },
+  legalLink: { fontFamily: DK_FONT.regular, fontSize: 12.5, color: DK.muted, textDecorationLine: 'underline', paddingVertical: 4 },
+  legalDot: { color: DK.faint, fontSize: 12.5 },
 });

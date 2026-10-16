@@ -137,7 +137,7 @@ export function Pressy({
 
 // האם להציג מסגרת מיקוד
 /** On the web, whether the browser itself would draw a focus ring here. */
-function isFocusVisible(event: unknown): boolean {
+export function isFocusVisible(event: unknown): boolean {
   if (Platform.OS !== 'web') return false;
   const target = (event as { nativeEvent?: { target?: unknown }; target?: unknown })?.nativeEvent?.target ?? (event as { target?: unknown })?.target;
   try {
