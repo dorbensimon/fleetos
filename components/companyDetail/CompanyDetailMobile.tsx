@@ -12,6 +12,7 @@ import {
   HeroStat,
   HeroTitle,
   InfoLine,
+  KitInput,
   KitSection,
   ListRow,
   PrimaryAction,
@@ -21,6 +22,10 @@ import {
   Surface,
 } from '../driverKit';
 import { BrandLoader } from '../ui/BrandLoader';
+import { DateField } from '../ui/DateField';
+import { isValidEmail } from '../../lib/validation';
+import type { CompanyHealth } from '../../lib/platformOverview';
+import { NotesSection, OnboardingSection, PaymentsSection } from '../owner/OwnerToolsMobile';
 import { formatDate } from '../../lib/theme';
 import { formatPhone } from '../../lib/phone';
 import type { Company } from '../../lib/supabase';
@@ -33,9 +38,11 @@ import { COMPANY_TYPES, companyTypeLabel } from '../../lib/companyType';
 
 /**
  * One company on the owner's phone: who it is and where it stands as a
- * customer on the night; below, the subscription, the managers and the
- * drivers (tap a person for their actions), the company's details to edit,
- * and switching it off or deleting it at the very bottom.
+ * customer on the night; below, the subscription, what needs the owner,
+ * the first steps, payments, the managers and the drivers (tap a person for
+ * their actions), internal notes, the company's details to edit, and
+ * switching it off or deleting it at the very bottom — everything the
+ * computer's page has.
  */
 
 // כמה נהגים מוצגים לפני 'עוד'
@@ -46,6 +53,8 @@ type Props = {
   insetBottom: number;
   company: Company;
   account: CompanyAccount | null;
+  /** The control room's checks for this company; null until loaded. */
+  health: CompanyHealth | null;
   fields: CompanyEditableFields;
   hasChanges: boolean;
   saving: boolean;
@@ -73,7 +82,15 @@ export function CompanyDetailMobile(p: Props) {
   const active = p.company.status === 'active';
   const a = p.account;
   const next = accountNextStep(a);
-  const shownDrivers = allDrivers ? p.drivers : p.drivers.slice(0, DRIVERS_PREVIEW);
+  const [driverQuery, setDriverQuery] = useState('');
+  const q = driverQuery.trim().toLowerCase();
+  const digits = q.replace(/\D/g, '');
+  const matchingDrivers = q
+    ? p.drivers.filter(
+        (u) => (u.full_name ?? '').toLowerCase().includes(q) || (u.email ?? '').toLowerCase().includes(q) || (!!digits && (u.phone ?? '').replace(/\D/g, '').includes(digits)),
+      )
+    : p.drivers;
+  const shownDrivers = allDrivers || q ? matchingDrivers : p.drivers.slice(0, DRIVERS_PREVIEW);
   const pendingAdmins = p.admins.filter((u) => u.must_change_password).length;
   const set = <K extends keyof CompanyEditableFields>(key: K, value: CompanyEditableFields[K]) => p.onChangeFields((f) => ({ ...f, [key]: value }));
 
@@ -169,6 +186,16 @@ export function CompanyDetailMobile(p: Props) {
         </KitSection>
       </Reveal>
 
+      {active && !!p.health && (
+        <Reveal index={2}>
+          <Attention health={p.health} />
+        </Reveal>
+      )}
+
+      <OnboardingSection companyId={p.company.id} managerActive={p.admins.some((u) => !u.must_change_password)} drivers={p.drivers.length} />
+
+      <PaymentsSection companyId={p.company.id} monthlyPrice={a?.monthly_price ?? null} />
+
       <Reveal index={2}>
         <KitSection
           title={pendingAdmins ? t('company.managersPending', { pendingAdmins }) : t('company.managers')}
@@ -195,10 +222,20 @@ export function CompanyDetailMobile(p: Props) {
             <ListRow first icon="people-outline" tint={DK.muted} title={t('company.noDriversYet')} subtitle={t('company.managersAddDrivers')} />
           ) : (
             <>
-              {shownDrivers.map((u, i) => (
-                <PersonRow key={u.id} user={u} first={i === 0} onPress={() => p.onUser(u)} />
-              ))}
               {p.drivers.length > DRIVERS_PREVIEW && (
+                <View style={styles.searchBox}>
+                  <KitInput value={driverQuery} onChangeText={setDriverQuery} placeholder={t('company.searchDrivers')} accessibilityLabel={t('company.searchDrivers')} />
+                </View>
+              )}
+              {shownDrivers.map((u, i) => (
+                <PersonRow key={u.id} user={u} first={i === 0 && p.drivers.length <= DRIVERS_PREVIEW} onPress={() => p.onUser(u)} />
+              ))}
+              {!!q && shownDrivers.length === 0 && (
+                <DKText variant="caption" color={DK.muted} style={styles.noMatch}>
+                  {t('company.noDriverMatches')}
+                </DKText>
+              )}
+              {p.drivers.length > DRIVERS_PREVIEW && !q && (
                 <Pressy onPress={() => setAllDrivers((v) => !v)} accessibilityLabel={allDrivers ? t('company.showFewerDrivers') : t('meeting.showAllDrivers', { length: p.drivers.length })} pressScale={0.98}>
                   <View style={[styles.more, styles.divider]}>
                     <DKText variant="label" color={DK.accent}>
@@ -211,6 +248,8 @@ export function CompanyDetailMobile(p: Props) {
           )}
         </KitSection>
       </Reveal>
+
+      <NotesSection companyId={p.company.id} />
 
       <Reveal index={4}>
         <KitSection title={t('settings.section.company')}>
@@ -258,6 +297,28 @@ export function CompanyDetailMobile(p: Props) {
             keyboardType="phone-pad"
             ltr
           />
+          <EditField
+            label={t('company.filesEmail')}
+            value={p.fields.filesEmail}
+            onChangeText={(v) => set('filesEmail', v.trim())}
+            keyboardType="email-address"
+            autoComplete="email"
+            ltr
+            error={p.fields.filesEmail.trim() && !isValidEmail(p.fields.filesEmail.trim()) ? t('validation.invalidEmail') : undefined}
+          />
+          <EditField
+            label={t('common.email')}
+            value={p.fields.email}
+            onChangeText={(v) => set('email', v.trim())}
+            keyboardType="email-address"
+            autoComplete="email"
+            ltr
+            error={p.fields.email.trim() && !isValidEmail(p.fields.email.trim()) ? t('validation.invalidEmail') : undefined}
+          />
+          <EditField
+            label={t('company.carrierLicenseExpiry')}
+            editor={<DateField value={p.fields.carrierLicenseExpiry || null} onChange={(v) => set('carrierLicenseExpiry', v ?? '')} placeholder={t('common.notEntered')} />}
+          />
           {!!p.saveError && (
             <View style={[styles.block, styles.divider]}>
               <DKText variant="caption" color={STATUS.expired.fg}>
@@ -285,6 +346,55 @@ export function CompanyDetailMobile(p: Props) {
   );
 }
 
+// מה דורש טיפול בחברה (או 'הכול תקין')
+/** The control room's checks for this company, like the computer's page: what needs the owner, or a calm "all good". */
+function Attention({ health }: { health: CompanyHealth }) {
+  const extra = health.notActivated ? [health.notActivated === 1 ? t('owner.oneOnTempPassword') : t('owner.onTempPassword', { notActivated: health.notActivated })] : [];
+  if (!health.issues.length) {
+    return (
+      <Surface style={styles.banner}>
+        <Ionicons name="checkmark-circle" size={20} color={STATUS.ok.fg} />
+        <View style={styles.flex}>
+          <DKText variant="label" color={STATUS.ok.fg}>
+            {t('common.allOk')}
+          </DKText>
+          <DKText variant="caption" color={DK.inkSoft}>
+            {[t('companyPage.allOkDetail'), ...extra].join(' · ')}
+          </DKText>
+        </View>
+      </Surface>
+    );
+  }
+  return (
+    <KitSection title={t('owner.needsYourAttention')}>
+      {health.issues.map((issue, i) => {
+        const tone = issue.tone === 'bad' ? STATUS.expired : issue.tone === 'warn' ? STATUS.soon : issue.tone === 'ok' ? STATUS.ok : STATUS.missing;
+        return (
+          <View key={issue.title} style={[styles.issue, i > 0 && styles.divider]}>
+            <View style={[styles.issueDot, { backgroundColor: tone.fill }]} />
+            <View style={styles.flex}>
+              <DKText variant="label" color={tone.fg}>
+                {issue.title}
+              </DKText>
+              <DKText variant="caption" color={DK.muted}>
+                {issue.detail}
+              </DKText>
+            </View>
+          </View>
+        );
+      })}
+      {extra.length > 0 && (
+        <View style={[styles.issue, styles.divider]}>
+          <Ionicons name="key-outline" size={16} color={DK.muted} />
+          <DKText variant="caption" color={DK.muted} style={styles.flex}>
+            {extra.join(' · ')}
+          </DKText>
+        </View>
+      )}
+    </KitSection>
+  );
+}
+
 // שורת אדם ברשימה
 function PersonRow({ user, first, onPress }: { user: CompanyUser; first: boolean; onPress: () => void }) {
   return (
@@ -300,6 +410,10 @@ function PersonRow({ user, first, onPress }: { user: CompanyUser; first: boolean
 
 // עיצוב דף החברה בטלפון
 const styles = StyleSheet.create({
+  searchBox: { padding: DK_SPACE.md, paddingBottom: 8 },
+  noMatch: { textAlign: 'center', paddingVertical: 18, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },
+  issue: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: DK_SPACE.md, paddingVertical: 12 },
+  issueDot: { width: 10, height: 10, borderRadius: 5 },
   flex: { flex: 1 },
   tabular: { fontVariant: ['tabular-nums'] },
   // שורת המספרים

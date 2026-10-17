@@ -14,6 +14,7 @@ import { t } from '../../lib/i18n';
 import { DesktopInput, DLtrText, DText, HoverPressable, StatusPill, prefersReducedMotion } from '../desktop/primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktop/desktopTheme';
 import { OverflowMenu } from '../desktop/record/RecordKit';
+import { HeaderAction } from '../desktop/DashboardWidgets';
 import { DetailRow, Fact, FieldEditDialog, GroupLabel, pageStyles, type FieldEditor } from '../desktop/record/RecordPage';
 import { NotesCard, OnboardingCard, PaymentsCard } from './OwnerCompanyTools';
 import type { CompanyUser } from './types';
@@ -88,7 +89,9 @@ export function CompanyDetailDesktop(p: Props) {
     <>
       <ScrollView style={pageStyles.root} contentContainerStyle={pageStyles.content}>
         {/* Header */}
-        <View style={[pageStyles.hero, styles.hero, motion && pageStyles.enter]}>
+        <View style={[pageStyles.hero, pageStyles.heroNight, styles.hero, motion && pageStyles.enter]}>
+          <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
+          <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
           <View style={[pageStyles.heroIdentity, styles.who]}>
             {company.logo_url ? (
               <Image source={{ uri: company.logo_url }} accessibilityLabel={t('company.logoOf', { name: company.name })} style={styles.logo} resizeMode="cover" />
@@ -99,28 +102,25 @@ export function CompanyDetailDesktop(p: Props) {
             )}
             <View style={pageStyles.flex}>
               <View style={pageStyles.heroStatusRow}>
-                <StatusPill tone={active ? 'ok' : 'neutral'} label={active ? t('company.activeF') : t('owner.disabledCompany')} />
-                {account ? <StatusPill tone={statusTone(account.status) === 'off' ? 'neutral' : (statusTone(account.status) as 'ok' | 'warn' | 'bad')} label={statusLabel(account.status)} /> : null}
+                <View style={pageStyles.pillOnDark}><StatusPill tone={active ? 'ok' : 'neutral'} label={active ? t('company.activeF') : t('owner.disabledCompany')} /></View>
+                {account ? <View style={pageStyles.pillOnDark}><StatusPill tone={statusTone(account.status) === 'off' ? 'neutral' : (statusTone(account.status) as 'ok' | 'warn' | 'bad')} label={statusLabel(account.status)} /></View> : null}
               </View>
-              <DText weight="bold" style={pageStyles.heroName} numberOfLines={1}>{company.name}</DText>
+              <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} numberOfLines={1} accessibilityRole="header">{company.name}</DText>
               <View style={pageStyles.heroSub}>
                 {sub.map((part, index) => (
                   <React.Fragment key={part}>
-                    {index > 0 && <DText style={pageStyles.heroSubDot}>·</DText>}
-                    <DText style={pageStyles.heroSubText}>{part}</DText>
+                    {index > 0 && <DText style={[pageStyles.heroSubDot, pageStyles.heroSubDotOnDark]}>·</DText>}
+                    <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark]}>{part}</DText>
                   </React.Fragment>
                 ))}
               </View>
             </View>
           </View>
           <View style={pageStyles.facts}>
-            {facts.map((fact) => <Fact key={fact.label} {...fact} />)}
+            {facts.map((fact) => <Fact key={fact.label} onDark {...fact} />)}
           </View>
           <View style={styles.heroActions}>
-            <HoverPressable style={pageStyles.softBtn} hoverStyle={pageStyles.softBtnHover} pressStyle={pageStyles.pressDown} onPress={p.onAddAdmin}>
-              <Ionicons name="person-add-outline" size={16} color={DESKTOP_COLORS.brand} />
-              <DText weight="semiBold" style={pageStyles.softBtnText}>{t('company.addAdmin')}</DText>
-            </HoverPressable>
+            <HeaderAction icon="person-add-outline" label={t('company.addAdmin')} onPress={p.onAddAdmin} />
             <OverflowMenu
               items={[
                 { label: t('company.editSubscription'), icon: 'card-outline', onPress: p.onEditAccount },
@@ -467,9 +467,9 @@ const styles = StyleSheet.create({
   hero: { paddingVertical: 16, paddingHorizontal: 20, gap: 24 },
   who: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14 },
   // הלוגו
-  logo: { width: 56, height: 56, borderRadius: 14, borderWidth: 1, borderColor: DESKTOP_COLORS.border, backgroundColor: DESKTOP_COLORS.surface },
-  logoEmpty: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(47,91,255,0.08)', borderColor: 'transparent' },
-  logoText: { fontSize: 20, color: DESKTOP_COLORS.brand },
+  logo: { width: 56, height: 56, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)', backgroundColor: DESKTOP_COLORS.surface },
+  logoEmpty: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)' },
+  logoText: { fontSize: 20, color: '#FFFFFF' },
   heroActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
   // עמודה
   column: { gap: 16 },

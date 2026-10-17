@@ -48,7 +48,7 @@ function toCompanyRow(h: CompanyHealth): CompanyRow {
 type Props = NativeStackScreenProps<RootStackParamList, 'OwnerHome'>;
 
 // טוען נתונים ומציג מחשב או טלפון
-export default function OwnerHomeScreen({ navigation }: Props) {
+export default function OwnerHomeScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
   const { profile } = useCompany();
@@ -335,6 +335,8 @@ export default function OwnerHomeScreen({ navigation }: Props) {
         unread={unread}
         onNotifications={() => navigation.navigate('Notifications')}
         onExport={() => void exportReport()}
+        scrollTo={route.params?.list == null ? undefined : String(route.params.list) === 'true' ? 'list' : 'top'}
+        scrollKey={route.params}
       />
       {sheets}
     </>

@@ -562,7 +562,9 @@
     "vehicleOfficerMobile": "נייד קצין הרכב",
     "vehicleOfficerName": "שם קצין הרכב",
     "vehicleQuota": "מכסת רכבים",
-    "vehiclesLimit": "{{vehicle_limit}} רכבים"
+    "vehiclesLimit": "{{vehicle_limit}} רכבים",
+    "searchDrivers": "חיפוש נהג לפי שם, מייל או טלפון",
+    "noDriverMatches": "לא נמצא נהג שמתאים לחיפוש"
   },
   "companyPage": {
     "usersTitle": "משתמשים",
@@ -2101,7 +2103,18 @@
     "updatesAcrossCompanies": "עדכונים בכל החברות",
     "vehicleIssuesCount": "{{vehicleIssues}} בלי ביטוח או רישיון בתוקף",
     "whatsComing": "מה מתקרב",
-    "withoutDriver": "בלי נהג"
+    "withoutDriver": "בלי נהג",
+    "sort": {
+      "title": "סדר הרשימה",
+      "health": "מצב",
+      "healthHint": "דורשות טיפול קודם",
+      "name": "שם",
+      "nameHint": "לפי סדר האלף־בית",
+      "activity": "פעילות",
+      "activityHint": "הפעילות האחרונה קודם",
+      "size": "גודל",
+      "sizeHint": "הכי הרבה נהגים ורכבים קודם"
+    }
   },
   "password": {
     "accountSecurity": "אבטחת החשבון",
@@ -3083,6 +3096,12 @@
     "collectedTitle": "הכנסות בפועל",
     "collectedMissing": "חסר החודש {{amount}} לפי המנויים",
     "collectedThisMonth": "נכנס החודש",
-    "expectedLine": "קו מקווקו: {{amount}} לחודש לפי המנויים"
+    "expectedLine": "קו מקווקו: {{amount}} לחודש לפי המנויים",
+    "earlierMonth": "חודש קודם",
+    "laterMonth": "חודש הבא",
+    "monthPaid": "החודש הזה כבר שולם",
+    "toneLabel": "סוג ההודעה",
+    "audienceLabel": "למי",
+    "durationLabel": "למשך"
   }
 }

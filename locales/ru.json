@@ -562,7 +562,9 @@
     "vehicleOfficerMobile": "Мобильный ответственного за автомобили",
     "vehicleOfficerName": "Имя ответственного за автомобили",
     "vehicleQuota": "Лимит автомобилей",
-    "vehiclesLimit": "{{vehicle_limit}} авт."
+    "vehiclesLimit": "{{vehicle_limit}} авт.",
+    "searchDrivers": "Поиск водителя по имени, почте или телефону",
+    "noDriverMatches": "Нет водителей по этому запросу"
   },
   "companyPage": {
     "usersTitle": "Пользователи",
@@ -2101,7 +2103,18 @@
     "updatesAcrossCompanies": "Обновления во всех компаниях",
     "vehicleIssuesCount": "Без действующей страховки или техпаспорта: {{vehicleIssues}}",
     "whatsComing": "Что приближается",
-    "withoutDriver": "без водителя"
+    "withoutDriver": "без водителя",
+    "sort": {
+      "title": "Порядок компаний",
+      "health": "Состояние",
+      "healthHint": "Требующие внимания сначала",
+      "name": "Название",
+      "nameHint": "По алфавиту",
+      "activity": "Активность",
+      "activityHint": "Последняя активность сначала",
+      "size": "Размер",
+      "sizeHint": "Больше водителей и машин сначала"
+    }
   },
   "password": {
     "accountSecurity": "Безопасность учётной записи",
@@ -3083,6 +3096,12 @@
     "collectedTitle": "Фактические поступления",
     "collectedMissing": "В этом месяце не хватает {{amount}} по подпискам",
     "collectedThisMonth": "Поступило в этом месяце",
-    "expectedLine": "Пунктир: {{amount}} в месяц по подпискам"
+    "expectedLine": "Пунктир: {{amount}} в месяц по подпискам",
+    "earlierMonth": "Предыдущий месяц",
+    "laterMonth": "Следующий месяц",
+    "monthPaid": "Этот месяц уже оплачен",
+    "toneLabel": "Тип сообщения",
+    "audienceLabel": "Кому",
+    "durationLabel": "Срок"
   }
 }

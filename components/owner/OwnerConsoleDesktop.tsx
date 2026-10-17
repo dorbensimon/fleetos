@@ -8,6 +8,8 @@ import { DesktopInput, DText, HoverPressable } from '../desktop/primitives';
 import { DESKTOP_COLORS, DESKTOP_SIDEBAR_WIDTH, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from '../desktop/desktopTheme';
 import { DesktopModal } from '../desktop/DesktopModal';
 import { enter, enterRow } from '../desktop/FleetOverview';
+import { HeaderAction } from '../desktop/DashboardWidgets';
+import { pageStyles } from '../desktop/record/RecordPage';
 import { BrandLoader } from '../ui/BrandLoader';
 import { ErrorState } from '../ui';
 import { formatDate, timeGreeting } from '../../lib/theme';
@@ -68,31 +70,26 @@ export function OwnerConsoleDesktop(p: Props) {
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.page}>
       {templatesOpen && <FormTemplatesManager onClosed={() => setTemplatesOpen(false)} />}
-      <View style={[styles.header, enter(0)]}>
-        <View style={styles.headerText}>
-          <DText weight="extraBold" style={styles.title} accessibilityRole="header">
+      {/* The night header shared with every desktop page. */}
+      <View style={[pageStyles.hero, pageStyles.heroNight, enter(0)]}>
+        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
+        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+        <View style={pageStyles.heroIdentity}>
+          <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">
             {t('nav.controlCenter')}
           </DText>
-          <DText style={styles.subtitle}>
+          <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark]}>
             {[timeGreeting(), p.firstName].filter(Boolean).join(', ')} · {dateLine}
           </DText>
         </View>
         <View style={styles.headerActions}>
-          <HoverPressable style={styles.secondaryButton} hoverStyle={styles.secondaryButtonHover} onPress={() => setTemplatesOpen(true)}>
-            <Ionicons name="copy-outline" size={16} color={DESKTOP_COLORS.ink} />
-            <DText weight="semiBold" style={styles.secondaryButtonText}>
-              {t('templates.managerTitle')}
-            </DText>
-          </HoverPressable>
-          <HoverPressable style={styles.secondaryButton} hoverStyle={styles.secondaryButtonHover} onPress={p.onExport} disabled={!p.overview}>
-            <Ionicons name="download-outline" size={16} color={DESKTOP_COLORS.ink} />
-            <DText weight="semiBold" style={styles.secondaryButtonText}>
-              {t('owner.customersReport')}
-            </DText>
-          </HoverPressable>
-          <HoverPressable style={styles.primaryButton} hoverStyle={styles.primaryButtonHover} pressMotionStyle={styles.pressDown} onPress={p.onAddCompany}>
-            <Ionicons name="add" size={18} color="#FFFFFF" />
-            <DText weight="bold" style={styles.primaryButtonText}>
+          <HeaderAction icon="copy-outline" label={t('templates.managerTitle')} onPress={() => setTemplatesOpen(true)} />
+          <HeaderAction icon="download-outline" label={t('owner.customersReport')} onPress={p.onExport} disabled={!p.overview} />
+          <HoverPressable style={styles.addBtn} hoverStyle={styles.addBtnHover} pressMotionStyle={pageStyles.pressDown} onPress={p.onAddCompany} accessibilityLabel={t('owner.newCompany')}>
+            <View style={styles.addBtnIcon}>
+              <Ionicons name="add" size={18} color={DESKTOP_COLORS.brand} />
+            </View>
+            <DText weight="semiBold" style={styles.addBtnText}>
               {t('owner.newCompany')}
             </DText>
           </HoverPressable>
@@ -793,15 +790,26 @@ function SecurityPanel({ overview }: { overview: PlatformOverview }) {
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   // הדף
-  page: { padding: 28, paddingBottom: 48, gap: 20, width: '100%', maxWidth: 1480, alignSelf: 'center' },
+  page: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 48, gap: 16, width: '100%', maxWidth: 1480, alignSelf: 'center' },
   center: { alignItems: 'center', justifyContent: 'center' },
 
   // הכותרת
-  header: { flexDirection: 'row-reverse', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' },
-  headerText: { gap: 4 },
-  title: { fontSize: 30, lineHeight: 36, color: DESKTOP_COLORS.ink, letterSpacing: -0.7 },
-  subtitle: { fontSize: 15, color: DESKTOP_COLORS.inkMuted },
-  headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  // כפתור 'חברה חדשה' על הכותרת הכהה (כמו 'מסמך חדש')
+  addBtn: {
+    height: 40,
+    paddingEnd: 6,
+    paddingStart: 14,
+    borderRadius: 10,
+    backgroundColor: DESKTOP_COLORS.brand,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 10,
+    ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW, transition: 'background-color 150ms ease, transform 120ms ease-out' }),
+  },
+  addBtnHover: { backgroundColor: DESKTOP_COLORS.brandHover },
+  addBtnIcon: { width: 28, height: 28, borderRadius: 8, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  addBtnText: { fontSize: 14.5, color: '#FFFFFF' },
   primaryButton: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -814,20 +822,6 @@ const styles = StyleSheet.create({
   },
   primaryButtonHover: { backgroundColor: DESKTOP_COLORS.brandHover },
   primaryButtonText: { fontSize: 14, color: '#FFFFFF' },
-  pressDown: { transform: [{ scale: 0.97 }] },
-  secondaryButton: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 6,
-    height: 40,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
-  },
-  secondaryButtonHover: { backgroundColor: DESKTOP_COLORS.rowHover, borderColor: DESKTOP_COLORS.borderInput },
-  secondaryButtonText: { fontSize: 14, color: DESKTOP_COLORS.ink },
 
   // שורת המספרים
   vitals: {

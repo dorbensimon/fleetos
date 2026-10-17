@@ -11,7 +11,7 @@ export type RootStackParamList = {
    * "sign out" — the same complete-password-setup call handles both.
    */
   SetPassword: { voluntary?: boolean } | undefined;
-  OwnerHome: undefined;
+  OwnerHome: { list?: boolean } | undefined;
   /** The fleet workspace. Desktop breadcrumbs may open a specific tab. */
   /** `list`: opened from the phone bar's drivers/vehicles tab, so the screen scrolls to its list. */
   AdminHome: { mode?: 'drivers' | 'vehicles'; list?: boolean } | undefined;

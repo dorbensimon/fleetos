@@ -562,7 +562,9 @@
     "vehicleOfficerMobile": "Vehicle officer mobile",
     "vehicleOfficerName": "Vehicle officer name",
     "vehicleQuota": "Vehicle quota",
-    "vehiclesLimit": "{{vehicle_limit}} vehicles"
+    "vehiclesLimit": "{{vehicle_limit}} vehicles",
+    "searchDrivers": "Search a driver by name, email or phone",
+    "noDriverMatches": "No driver matches the search"
   },
   "companyPage": {
     "usersTitle": "Users",
@@ -2101,7 +2103,18 @@
     "updatesAcrossCompanies": "Updates across all companies",
     "vehicleIssuesCount": "{{vehicleIssues}} without valid insurance or license",
     "whatsComing": "What's coming up",
-    "withoutDriver": "without driver"
+    "withoutDriver": "without driver",
+    "sort": {
+      "title": "Sort companies",
+      "health": "Status",
+      "healthHint": "Needing attention first",
+      "name": "Name",
+      "nameHint": "Alphabetical",
+      "activity": "Activity",
+      "activityHint": "Most recent activity first",
+      "size": "Size",
+      "sizeHint": "Most drivers and vehicles first"
+    }
   },
   "password": {
     "accountSecurity": "Account security",
@@ -3083,6 +3096,12 @@
     "collectedTitle": "Money received",
     "collectedMissing": "{{amount}} still missing this month",
     "collectedThisMonth": "Received this month",
-    "expectedLine": "Dashed line: {{amount}} a month from subscriptions"
+    "expectedLine": "Dashed line: {{amount}} a month from subscriptions",
+    "earlierMonth": "Previous month",
+    "laterMonth": "Next month",
+    "monthPaid": "This month is already paid",
+    "toneLabel": "Message type",
+    "audienceLabel": "Audience",
+    "durationLabel": "Duration"
   }
 }

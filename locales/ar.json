@@ -562,7 +562,9 @@
     "vehicleOfficerMobile": "هاتف ضابط المركبات المحمول",
     "vehicleOfficerName": "اسم ضابط المركبات",
     "vehicleQuota": "حد المركبات",
-    "vehiclesLimit": "{{vehicle_limit}} مركبات"
+    "vehiclesLimit": "{{vehicle_limit}} مركبات",
+    "searchDrivers": "ابحث عن سائق بالاسم أو البريد أو الهاتف",
+    "noDriverMatches": "لا يوجد سائق يطابق البحث"
   },
   "companyPage": {
     "usersTitle": "المستخدمون",
@@ -2101,7 +2103,18 @@
     "updatesAcrossCompanies": "تحديثات في جميع الشركات",
     "vehicleIssuesCount": "{{vehicleIssues}} بلا تأمين أو رخصة سارية",
     "whatsComing": "ما الذي يقترب",
-    "withoutDriver": "بلا سائق"
+    "withoutDriver": "بلا سائق",
+    "sort": {
+      "title": "ترتيب الشركات",
+      "health": "الحالة",
+      "healthHint": "التي تحتاج إلى معالجة أولاً",
+      "name": "الاسم",
+      "nameHint": "أبجدياً",
+      "activity": "النشاط",
+      "activityHint": "آخر نشاط أولاً",
+      "size": "الحجم",
+      "sizeHint": "الأكثر سائقين ومركبات أولاً"
+    }
   },
   "password": {
     "accountSecurity": "أمان الحساب",
@@ -3083,6 +3096,12 @@
     "collectedTitle": "الإيرادات الفعلية",
     "collectedMissing": "ينقص هذا الشهر {{amount}} حسب الاشتراكات",
     "collectedThisMonth": "دخل هذا الشهر",
-    "expectedLine": "الخط المتقطع: {{amount}} شهريًا حسب الاشتراكات"
+    "expectedLine": "الخط المتقطع: {{amount}} شهريًا حسب الاشتراكات",
+    "earlierMonth": "الشهر السابق",
+    "laterMonth": "الشهر التالي",
+    "monthPaid": "هذا الشهر مدفوع بالفعل",
+    "toneLabel": "نوع الرسالة",
+    "audienceLabel": "لمن",
+    "durationLabel": "المدة"
   }
 }
