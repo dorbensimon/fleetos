@@ -1,8 +1,14 @@
 // מסך המסמכים החתומים
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCompany } from '../../lib/CompanyContext';
+import { ActingCompanyProvider, useCompany } from '../../lib/CompanyContext';
+import { getCompany } from '../../lib/companyApi';
+import type { Company } from '../../lib/supabase';
+import { ErrorState, LoadingState } from '../../components/ui';
+import { CreateDocumentSheet } from '../../components/desktop/signing/CreateDocumentSheet';
+import { AfterReplaceSheet, FormVersionsSheet } from '../../components/desktop/signing/FormVersionSheets';
 import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
@@ -16,17 +22,24 @@ import { t } from '../../lib/i18n';
 
 /**
  * The company's signing documents. The desktop page (reached from the
- * sidebar) also creates new ones; the phone manages the existing ones —
- * view, download, send and delete.
+ * sidebar) also creates new ones; the manager's phone manages the existing
+ * ones — view, download, send and delete. The platform owner opens the same
+ * page for one company from its page in the control room (`companyId`), and
+ * on the phone also creates forms, writes a new version and restores an
+ * earlier one, like the desktop.
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'SignedDocuments'>;
 
 // בוחר מחשב או טלפון
 export default function SignedDocumentsScreen({ navigation, route }: Props) {
-  const { company, loading: companyLoading } = useCompany();
+  const { company, profile, loading: companyLoading } = useCompany();
   const isDesktop = useIsDesktop();
   const openMeeting = route.params?.openMeeting;
   const meetingOpened = useCallback(() => navigation.setParams({ openMeeting: undefined }), [navigation]);
+
+  if (profile?.role === 'owner') {
+    return <OwnerCompanyDocuments navigation={navigation} companyId={route.params?.companyId ?? null} openMeeting={openMeeting} onMeetingOpened={meetingOpened} />;
+  }
 
   if (isDesktop) {
     return (
@@ -38,11 +51,71 @@ export default function SignedDocumentsScreen({ navigation, route }: Props) {
   return <SignedDocumentsPhone navigation={navigation} companyId={company?.id ?? null} companyLoading={companyLoading} openMeeting={openMeeting} onMeetingOpened={meetingOpened} />;
 }
 
+// הבעלים במסמכים של חברה אחת
+/** The owner on one company's documents: loads the company, then shows the manager's page inside it. */
+function OwnerCompanyDocuments({
+  navigation, companyId, openMeeting, onMeetingOpened,
+}: { navigation: Props['navigation']; companyId: string | null; openMeeting?: string; onMeetingOpened: () => void }) {
+  const isDesktop = useIsDesktop();
+  const [target, setTarget] = useState<Company | null>(null);
+  const [error, setError] = useState('');
+
+  // Without a company (an old bookmark) there is nothing to show: back to the control room.
+  useEffect(() => {
+    if (!companyId) navigation.replace('OwnerHome');
+  }, [companyId, navigation]);
+
+  const load = useCallback(async () => {
+    if (!companyId) return;
+    setError('');
+    const { data, error: loadError } = await getCompany(companyId);
+    if (loadError || !data) setError(t('company.loadFailedShort'));
+    else setTarget(data);
+  }, [companyId]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const body = !target ? (
+    <View style={styles.center}>{error ? <ErrorState message={error} onRetry={() => void load()} /> : <LoadingState />}</View>
+  ) : (
+    <ActingCompanyProvider company={target}>
+      {isDesktop ? (
+        <SignedDocumentsDesktopView companyId={target.id} companyName={target.name} openMeetingTemplateId={openMeeting} onMeetingOpened={onMeetingOpened} />
+      ) : (
+        <SignedDocumentsPhone navigation={navigation} companyId={target.id} companyName={target.name} companyLoading={false} openMeeting={openMeeting} onMeetingOpened={onMeetingOpened} ownerTools />
+      )}
+    </ActingCompanyProvider>
+  );
+
+  if (!isDesktop) return body;
+  return (
+    <DesktopShell active="OwnerHome" breadcrumbs={[t('nav.controlCenter'), target?.name ?? '…', t('nav.signedDocuments')]}>
+      {body}
+    </DesktopShell>
+  );
+}
+
 // הגרסה לטלפון
 function SignedDocumentsPhone({
-  navigation, companyId, companyLoading, openMeeting, onMeetingOpened,
-}: { navigation: Props['navigation']; companyId: string | null; companyLoading: boolean; openMeeting?: string; onMeetingOpened: () => void }) {
+  navigation, companyId, companyName, companyLoading, openMeeting, onMeetingOpened, ownerTools = false,
+}: {
+  navigation: Props['navigation'];
+  companyId: string | null;
+  /** The owner's view: the company's name in the title. */
+  companyName?: string;
+  companyLoading: boolean;
+  openMeeting?: string;
+  onMeetingOpened: () => void;
+  /** The owner also creates forms, writes new versions and restores earlier ones here. */
+  ownerTools?: boolean;
+}) {
   const insets = useSafeAreaInsets();
+  const [creating, setCreating] = useState(false);
+  const [replacing, setReplacing] = useState<SigningTemplate | null>(null);
+  const [versionsOf, setVersionsOf] = useState<SigningTemplate | null>(null);
+  const [afterReplace, setAfterReplace] = useState<{ template: SigningTemplate; pendingOld: number } | null>(null);
+  const [openSend, setOpenSend] = useState<string | undefined>(undefined);
   const [templates, setTemplates] = useState<SigningTemplate[] | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -80,7 +153,14 @@ function SignedDocumentsPhone({
   }, [load]);
 
   return (
+    <>
     <SignedDocumentsMobile
+      companyName={companyName}
+      onCreate={ownerTools ? () => setCreating(true) : undefined}
+      onReplace={ownerTools ? setReplacing : undefined}
+      onVersions={ownerTools ? setVersionsOf : undefined}
+      openSend={openSend}
+      onSendOpened={() => setOpenSend(undefined)}
       insetTop={insets.top}
       insetBottom={insets.bottom}
       companyId={companyId ?? ''}
@@ -107,5 +187,54 @@ function SignedDocumentsPhone({
       openMeeting={openMeeting}
       onMeetingOpened={onMeetingOpened}
     />
+    {ownerTools && companyId ? (
+      <>
+        {creating ? (
+          <CreateDocumentSheet
+            companyId={companyId}
+            takenTitles={(templates ?? []).map((entry) => entry.title)}
+            onClosed={() => setCreating(false)}
+            onCreated={(template) => setTemplates((prev) => [template, ...(prev ?? []).filter((entry) => entry.id !== template.id)])}
+          />
+        ) : null}
+        {replacing ? (
+          <CreateDocumentSheet
+            companyId={companyId}
+            replace={replacing}
+            onClosed={() => setReplacing(null)}
+            onCreated={(template, pendingOld) => {
+              setAfterReplace({ template, pendingOld: pendingOld ?? 0 });
+              void load();
+            }}
+          />
+        ) : null}
+        {versionsOf ? (
+          <FormVersionsSheet
+            companyId={companyId}
+            template={versionsOf}
+            onClosed={() => setVersionsOf(null)}
+            onRestored={(template, pendingOld) => {
+              setAfterReplace({ template, pendingOld });
+              void load();
+            }}
+          />
+        ) : null}
+        {afterReplace ? (
+          <AfterReplaceSheet
+            companyId={companyId}
+            template={afterReplace.template}
+            pendingOld={afterReplace.pendingOld}
+            onPickDrivers={() => setOpenSend(afterReplace.template.id)}
+            onClosed={() => setAfterReplace(null)}
+          />
+        ) : null}
+      </>
+    ) : null}
+    </>
   );
 }
+
+// עיצוב
+const styles = StyleSheet.create({
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+});

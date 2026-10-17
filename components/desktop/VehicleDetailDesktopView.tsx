@@ -234,13 +234,16 @@ export function VehicleDetailDesktopView({
       return;
     }
     if (folder?.source === 'compliance') openComplianceFolder(folder.folderKey);
-    else if (folder?.source === 'document') {
-      const documentFolder = documentFolders.find((f) => f.category === folder.folderKey);
+    else {
+      // A fixed document folder, or one the owner added (its key is its category).
+      const documentFolder = documentFolders.find((f) => f.category === (folder?.folderKey ?? openFolder));
+      // The owner's folders arrive a moment later: wait for them.
+      if (!folder && !documentFolder) return;
       if (documentFolder) setOpenDocumentFolder(documentFolder);
     }
     onFolderOpened?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openFolder, onFolderOpened]);
+  }, [openFolder, onFolderOpened, documentFolders.length]);
 
   // Attention notice: expired or soon-expiring compliance items and document folders.
   type Alert = { key: string; label: string; state: ExpiryState; date: string | null; open: () => void };

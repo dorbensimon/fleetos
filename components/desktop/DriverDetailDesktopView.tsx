@@ -27,6 +27,7 @@ import { DetailRow, Fact, FieldEditDialog, GroupLabel, NIGHT_TONES, pageStyles, 
 import { DriverLicenseModal } from './driver/DriverLicenseModal';
 import { LICENSE_SIDE_STORED_TITLE } from '../../lib/licenseSides';
 import { DRIVER_DOCUMENT_GROUPS } from '../../lib/driverDocumentFolders';
+import { folderCategory, isCompanyFolderCategory, useCompanyFolders } from '../../lib/companyFolders';
 import { DriverVehiclesCard } from './driver/DriverVehiclesCard';
 import { NewFormButton, DriverSigningList, useDriverSigningFolders, type SigningSessionTarget } from './driver/DriverSigningSection';
 import { t, dirIcon } from '../../lib/i18n';
@@ -167,6 +168,14 @@ export function DriverDetailDesktopView({
   const signing = useDriverSigningFolders(companyId, driverId);
   const [licenseOpen, setLicenseOpen] = useState(false);
   const [openFolder, setOpenFolder] = useState<RecordDocumentFolder | null>(null);
+  // The folders the owner added to this company's driver files.
+  const { folders: companyFolders } = useCompanyFolders(companyId, 'driver');
+  const extraFolders: RecordDocumentFolder[] = companyFolders.map((folder) => ({
+    category: folderCategory(folder),
+    title: folder.title,
+    icon: 'folder-outline',
+    requiresExpiry: folder.tracks_expiry,
+  }));
   const [signingRequest, setSigningRequest] = useState<string | null>(null);
   const [editor, setEditor] = useState<FieldEditor | null>(null);
   const [showNationalId, setShowNationalId] = useState(false);
@@ -175,11 +184,14 @@ export function DriverDetailDesktopView({
     if (!openFolderRequest) return;
     if (openFolderRequest === LICENSE_FOLDER) setLicenseOpen(true);
     else {
-      const folder = DOCUMENT_FOLDERS().find((f) => f.category === openFolderRequest);
+      const folder = [...DOCUMENT_FOLDERS(), ...extraFolders].find((f) => f.category === openFolderRequest);
+      // The owner's folders arrive a moment later: wait for them.
+      if (!folder && isCompanyFolderCategory(openFolderRequest)) return;
       if (folder) setOpenFolder(folder);
     }
     onFolderOpened?.();
-  }, [openFolderRequest, onFolderOpened]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openFolderRequest, onFolderOpened, companyFolders]);
 
   const licenseExpiry = driver?.license_expiry ?? null;
   const licenseState = expiryState(licenseExpiry);
@@ -554,6 +566,24 @@ export function DriverDetailDesktopView({
             </View>
           </View>
         ))}
+        {extraFolders.length > 0 && (
+          <View style={styles.thirdCell}>
+            <GroupLabel>{t('companyFolders.moreFolders')}</GroupLabel>
+            <View style={[styles.card, styles.listCard]}>
+              {extraFolders.map((folder, index) => (
+                <FolderListRow
+                  key={folder.category}
+                  title={folder.title}
+                  icon={folder.icon}
+                  docs={docs.filter((d) => d.category === folder.category)}
+                  onPress={() => setOpenFolder(folder)}
+                  first={index === 0}
+                  plain={!folder.requiresExpiry}
+                />
+              ))}
+            </View>
+          </View>
+        )}
       </View>
 
       {!!driver?.created_at && (
@@ -591,7 +621,7 @@ export function DriverDetailDesktopView({
           ownerId={driverId}
           folder={openFolder}
           docs={docs}
-          layout="gallery"
+          layout={openFolder.requiresExpiry ? 'versions' : 'gallery'}
           onClose={() => setOpenFolder(null)}
           onChanged={reloadDocs}
         />

@@ -543,4 +543,29 @@ export const SIGNING_CSS = `
   .sd-work { grid-template-columns: 250px minmax(0, 1fr); }
   .sd-canvas { padding-inline: 12px; overflow-x: clip; }
 }
+/* The A4 page sits in this frame: invisible on a computer, a sideways scroller on a phone. */
+.sd-paper-scroll { display: contents; }
+/* Phone: the sheet takes the whole width, the field panel sits above the page,
+   and the page keeps its real A4 size (the fields' places are measured on it,
+   exactly as the server prints them) and scrolls sideways under the finger. */
+@media (max-width: 760px) {
+  .sd-sheet { top: 8px; width: 100vw; margin-left: -50vw; border-radius: 22px 22px 0 0; }
+  .sd-sheet-head { padding: 2px 10px 8px; gap: 6px; }
+  .sd-sheet-foot { flex-wrap: wrap; padding: 10px 14px 12px; }
+  .sd-sheet-foot > div:first-child { flex: 1 1 100%; flex-wrap: wrap; gap: 10px !important; }
+  .sd-sheet-foot > div:first-child:empty { display: none; }
+  .sd-sheet-foot .sd-btn-primary { flex: 1 1 100%; min-width: 0 !important; }
+  .sd-foot-note { font-size: 14px; flex: 1 1 200px; min-width: 0; white-space: normal; }
+  .sd-work { grid-template-columns: minmax(0, 1fr); }
+  .sd-panel { position: static; max-height: none; min-height: 0; border-inline-end: none; border-bottom: 1px solid var(--sd-sep); padding: 12px 12px 14px; }
+  .sd-panel h3 { font-size: 16px; }
+  .sd-panel-sub { font-size: 13.5px; margin-bottom: 10px; }
+  .sd-group-label { margin: 12px 4px 6px; }
+  .sd-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .sd-tile { min-height: 44px; font-size: 13px; padding: 6px; }
+  .sd-canvas { padding: 10px 0 40px; align-items: stretch; overflow-x: visible; }
+  .sd-canvas > .sd-toolbar, .sd-canvas > .sd-tip { margin-inline: 8px; width: auto; }
+  .sd-paper-scroll { display: block; width: 100%; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; padding: 4px 8px 12px; box-sizing: border-box; }
+  .sd-paper-scroll > .sd-paper-page { margin-inline: auto; }
+}
 `;

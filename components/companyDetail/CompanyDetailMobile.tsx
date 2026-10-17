@@ -26,6 +26,7 @@ import { DateField } from '../ui/DateField';
 import { isValidEmail } from '../../lib/validation';
 import type { CompanyHealth } from '../../lib/platformOverview';
 import { NotesSection, OnboardingSection, PaymentsSection } from '../owner/OwnerToolsMobile';
+import { CompanyFoldersPanel } from './CompanyFoldersPanel';
 import { formatDate } from '../../lib/theme';
 import { formatPhone } from '../../lib/phone';
 import type { Company } from '../../lib/supabase';
@@ -71,6 +72,8 @@ type Props = {
   onSave: () => void;
   onEditAccount: () => void;
   onAddAdmin: () => void;
+  /** The company's forms, folders and signatures (the manager's page, for this company). */
+  onDocuments: () => void;
   onUser: (user: CompanyUser) => void;
   onToggleActive: () => void;
   onDelete: () => void;
@@ -193,6 +196,12 @@ export function CompanyDetailMobile(p: Props) {
       )}
 
       <OnboardingSection companyId={p.company.id} managerActive={p.admins.some((u) => !u.must_change_password)} drivers={p.drivers.length} />
+
+      <KitSection title={t('companyPage.documentsTitle')}>
+        <ListRow first icon="folder-open" title={t('companyPage.documentsAction')} subtitle={t('companyPage.documentsHint')} onPress={p.onDocuments} />
+      </KitSection>
+
+      <CompanyFoldersPanel companyId={p.company.id} companyName={p.company.name} />
 
       <PaymentsSection companyId={p.company.id} monthlyPrice={a?.monthly_price ?? null} />
 

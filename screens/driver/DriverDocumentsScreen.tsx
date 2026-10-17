@@ -10,7 +10,8 @@ import { ListGroup } from '../../components/driverCard/ListGroup';
 import { SigningFolders } from '../../components/driverCard/SigningFolders';
 import { buildDriverDetailGroups } from '../../components/driverCard/buildDriverDetailGroups';
 import { DC_COLORS } from '../../components/driverCard/driverCardTheme';
-import { DOCUMENT_CATEGORY_BY_ROW, type DriverCardRow } from '../../components/driverCard/driverCardSections';
+import { companyFoldersGroup, DOCUMENT_CATEGORY_BY_ROW, type DriverCardRow } from '../../components/driverCard/driverCardSections';
+import { folderCategory, useCompanyFolders } from '../../lib/companyFolders';
 import { useCompany } from '../../lib/CompanyContext';
 import { getDriver, updateDriver, type DriverRow } from '../../lib/adminApi';
 import { listDocuments } from '../../lib/documents';
@@ -35,6 +36,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DriverDocuments'>;
 // טוען ומציג מחשב או טלפון
 export default function DriverDocumentsScreen({ navigation }: Props) {
   const { companyId, profile, loading: profileLoading } = useCompany();
+  // The folders the owner added to the company's driver files.
+  const { folders: companyFolders } = useCompanyFolders(companyId, 'driver');
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
   const profileId = profile?.id;
@@ -111,9 +114,12 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
     : licensePhotosComplete && !!driver?.license_expiry
     ? 'verified'
     : 'pending';
-  const groups = buildDriverDetailGroups(driver, licenseStatus).map(group => ({ ...group, rows: group.rows.filter(row => row.key !== 'signing-documents') })).filter(
-    (group) => group.title !== t('reports.title') && group.title !== t('driverCard.accountManagement')
-  );
+  const groups = [
+    ...buildDriverDetailGroups(driver, licenseStatus).map(group => ({ ...group, rows: group.rows.filter(row => row.key !== 'signing-documents') })).filter(
+      (group) => group.title !== t('reports.title') && group.title !== t('driverCard.accountManagement')
+    ),
+    ...companyFoldersGroup(companyFolders),
+  ];
 
   const handleRowPress = (row: DriverCardRow) => {
     if (!profileId) return;
@@ -129,6 +135,11 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
     }
     if (row.key === 'signing-documents') {
       navigation.navigate('DriverSigningDocuments');
+      return;
+    }
+    const custom = companyFolders.find((folder) => folderCategory(folder) === row.key);
+    if (custom) {
+      navigation.navigate('DocumentCategory', { ownerType: 'driver', ownerId: profileId, category: row.key, title: custom.title, requiresExpiry: custom.tracks_expiry, allowDelete: false });
       return;
     }
     const category = DOCUMENT_CATEGORY_BY_ROW[row.key];

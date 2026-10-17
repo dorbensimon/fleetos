@@ -594,6 +594,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
             onDelete={() => setDeleteOpen(true)}
             onEditAccount={() => setAccountOpen(true)}
             onAddAdmin={() => setAddAdminOpen(true)}
+            onDocuments={() => navigation.navigate('SignedDocuments', { companyId: company.id })}
             onEditUser={openEdit}
             onResetUser={(user) => {
               setResetPasswordValue('');
@@ -633,6 +634,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         onSave={saveChanges}
         onEditAccount={() => setAccountOpen(true)}
         onAddAdmin={() => setAddAdminOpen(true)}
+            onDocuments={() => navigation.navigate('SignedDocuments', { companyId: company.id })}
         onUser={openUser}
         onToggleActive={toggleActive}
         onDelete={() => setDeleteOpen(true)}

@@ -1,6 +1,6 @@
 // הגדרות התראות: אילו התראות פעילות וכמה זמן מראש
 import { supabase } from './supabase';
-import { VEHICLE_FOLDER_ALERTS, isVehicleFolderNotification } from './vehicleFolderAlerts';
+import { COMPANY_FOLDERS_ALERT_KEY, VEHICLE_FOLDER_ALERTS, isVehicleFolderNotification } from './vehicleFolderAlerts';
 import { t, getLocale } from './i18n';
 
 /**
@@ -33,6 +33,8 @@ export type NotificationType =
   | 'vehicle_brakes_annual_expiry'
   | 'vehicle_winter_inspection_expiry'
   | 'vehicle_child_detection_expiry'
+  | 'vehicle_custom_folder_expiry'
+  | 'driver_custom_folder_expiry'
   | 'vehicle_service_due'
   | 'signature_request_assigned'
   | 'vehicle_assignment'
@@ -77,8 +79,8 @@ const vehicleFolderTypes = (descriptionKey: string): NotificationTypeInfo[] =>
   VEHICLE_FOLDER_ALERTS.map((folder) => ({
     type: folder.notificationType as NotificationType,
     get label() {
-      // The tachograph folder's own name already says "validity".
-      return folder.folderKey === 'tachograph_calibration' ? folder.label : t('prefs.validityOf', { label: folder.label });
+      // The tachograph folder's own name already says "validity", and so does the owner's folders' row.
+      return folder.folderKey === 'tachograph_calibration' || folder.folderKey === COMPANY_FOLDERS_ALERT_KEY ? folder.label : t('prefs.validityOf', { label: folder.label });
     },
     get description() { return t(descriptionKey); },
   }));
@@ -115,6 +117,11 @@ export const ADMIN_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     type: 'driver_license_expiry',
     get label() { return t('prefs.type.driverLicense'); },
     get description() { return t('prefs.type.driverLicenseDesc'); },
+  },
+  {
+    type: 'driver_custom_folder_expiry',
+    get label() { return t('companyFolders.driverAlertLabel'); },
+    get description() { return t('companyFolders.driverAlertDesc'); },
   },
   {
     type: 'company_carrier_license_expiry',
@@ -175,6 +182,11 @@ export const DRIVER_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     type: 'driver_license_expiry',
     get label() { return t('prefs.type.myLicenseExpiry'); },
     get description() { return t('prefs.type.myLicenseExpiryDesc'); },
+  },
+  {
+    type: 'driver_custom_folder_expiry',
+    get label() { return t('companyFolders.myAlertLabel'); },
+    get description() { return t('companyFolders.myAlertDesc'); },
   },
   {
     type: 'vehicle_odometer_stale',
@@ -383,6 +395,7 @@ export const LEAD_RULES: Partial<Record<NotificationType, LeadRule>> = {
   vehicle_safety_check_due: { unit: 'days', min: 1, max: 30, step: 1, presets: [3, 7, 14, 30] },
   vehicle_service_due: { unit: 'km', min: 100, max: 5000, step: 100, presets: [500, 1000, 2000, 3000] },
   driver_license_expiry: { unit: 'days', min: 1, max: 90, step: 1, presets: [14, 30, 60, 90] },
+  driver_custom_folder_expiry: FOLDER_LEAD_RULE,
   company_carrier_license_expiry: { unit: 'days', min: 1, max: 90, step: 1, presets: [14, 30, 60, 90] },
   vehicle_odometer_stale: { unit: 'idle', min: 7, max: 90, step: 1, presets: [14, 30, 45, 60] },
 };
@@ -399,6 +412,7 @@ const FIXED_LEAD_DEFAULTS: Partial<Record<NotificationType, number>> = {
   vehicle_safety_check_due: 7,
   vehicle_service_due: SERVICE_LEAD_KM_DEFAULT,
   driver_license_expiry: 30,
+  driver_custom_folder_expiry: 30,
   company_carrier_license_expiry: 30,
   vehicle_odometer_stale: 30,
 };
@@ -442,6 +456,7 @@ const ADMIN_GROUP_OF: Partial<Record<NotificationType, NotificationGroup['key']>
   signature_request_completed: 'drivers',
   signature_expiry: 'drivers',
   driver_license_expiry: 'licenses',
+  driver_custom_folder_expiry: 'licenses',
   company_carrier_license_expiry: 'licenses',
   vehicle_service_due: 'care',
   vehicle_odometer_stale: 'care',

@@ -193,3 +193,16 @@ export function useCompany(): CompanyContextValue {
   if (!ctx) throw new Error('useCompany must be used inside a CompanyProvider');
   return ctx;
 }
+
+// הבעלים עובד בתוך חברה אחת: המסכים שמתחת רואים אותה כחברה הפעילה
+/**
+ * Lets the platform owner work inside one company: everything under it reads
+ * that company from useCompany (its letterhead, name, id) while the signed-in
+ * profile stays the owner's. The data is guarded by RLS and the Edge
+ * Functions, which already let the owner manage any company.
+ */
+export function ActingCompanyProvider({ company, children }: { company: Company; children: React.ReactNode }) {
+  const parent = useCompany();
+  const value = useMemo<CompanyContextValue>(() => ({ ...parent, company, companyId: company.id }), [parent, company]);
+  return <CompanyContext.Provider value={value}>{children}</CompanyContext.Provider>;
+}

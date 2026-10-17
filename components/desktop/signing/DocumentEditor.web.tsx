@@ -1151,6 +1151,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
           </Tb>
         </div>
 
+        <div className="sd-paper-scroll">
         <div
           ref={pageRef}
           className={`sd-paper-page${over ? ' sd-over' : ''}`}
@@ -1215,6 +1216,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
               onDeselect={() => setSelectedId(null)}
             />
           ))}
+        </div>
         </div>
       </div>
     </div>

@@ -15,6 +15,7 @@ import { DesktopInput, DLtrText, DText, HoverPressable, StatusPill, prefersReduc
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktop/desktopTheme';
 import { OverflowMenu } from '../desktop/record/RecordKit';
 import { HeaderAction } from '../desktop/DashboardWidgets';
+import { CompanyFoldersPanel } from './CompanyFoldersPanel';
 import { DetailRow, Fact, FieldEditDialog, GroupLabel, pageStyles, type FieldEditor } from '../desktop/record/RecordPage';
 import { NotesCard, OnboardingCard, PaymentsCard } from './OwnerCompanyTools';
 import type { CompanyUser } from './types';
@@ -42,6 +43,8 @@ type Props = {
   onDelete: () => void;
   onEditAccount: () => void;
   onAddAdmin: () => void;
+  /** The company's forms, folders and signatures (the manager's page, for this company). */
+  onDocuments: () => void;
   onEditUser: (user: CompanyUser) => void;
   onResetUser: (user: CompanyUser) => void;
   onRemoveUser: (user: CompanyUser) => void;
@@ -120,6 +123,7 @@ export function CompanyDetailDesktop(p: Props) {
             {facts.map((fact) => <Fact key={fact.label} onDark {...fact} />)}
           </View>
           <View style={styles.heroActions}>
+            <HeaderAction icon="folder-open-outline" label={t('companyPage.documentsTitle')} onPress={p.onDocuments} />
             <HeaderAction icon="person-add-outline" label={t('company.addAdmin')} onPress={p.onAddAdmin} />
             <OverflowMenu
               items={[
@@ -148,6 +152,15 @@ export function CompanyDetailDesktop(p: Props) {
           {/* Main column */}
           <View style={[pageStyles.mainCell, styles.column]}>
             <OnboardingCard companyId={company.id} managerActive={p.admins.some((a) => !a.must_change_password)} drivers={p.drivers.length} />
+
+            <View>
+              <GroupLabel>{t('companyPage.documentsTitle')}</GroupLabel>
+              <View style={[pageStyles.card, pageStyles.listCard]}>
+                <ActionRow first icon="folder-open-outline" title={t('companyPage.documentsAction')} caption={t('companyPage.documentsHint')} onPress={p.onDocuments} />
+              </View>
+            </View>
+
+            <CompanyFoldersPanel companyId={company.id} companyName={company.name} />
 
             <UsersCard {...p} />
 

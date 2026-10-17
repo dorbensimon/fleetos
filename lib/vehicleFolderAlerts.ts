@@ -12,6 +12,10 @@ import { t } from './i18n';
 
 export type VehicleFolderSource = 'compliance' | 'document';
 
+// המפתח של שורת 'תיקיות שנוספו' בהגדרות ההתראות
+/** The settings row for all the owner's folders; not a folder key of its own. */
+export const COMPANY_FOLDERS_ALERT_KEY = 'company_folders';
+
 export interface VehicleFolderAlert {
   folderKey: string;
   notificationType: string;
@@ -32,6 +36,9 @@ export const VEHICLE_FOLDER_ALERTS: VehicleFolderAlert[] = [
   { folderKey: 'brakes_annual', notificationType: 'vehicle_brakes_annual_expiry', get label() { return t('folder.brakesAnnual'); }, source: 'document' },
   { folderKey: 'winter_inspection', notificationType: 'vehicle_winter_inspection_expiry', get label() { return t('folder.winterCheck'); }, source: 'document' },
   { folderKey: 'child_detection', notificationType: 'vehicle_child_detection_expiry', get label() { return t('folder.childLeftBehind'); }, source: 'document' },
+  // Every folder the owner added (migration 112) shares one alert type; its own
+  // notifications carry the folder's real key, `folder:<id>`.
+  { folderKey: COMPANY_FOLDERS_ALERT_KEY, notificationType: 'vehicle_custom_folder_expiry', get label() { return t('companyFolders.alertLabel'); }, source: 'document' },
 ];
 
 // חיפוש לפי סוג התראה

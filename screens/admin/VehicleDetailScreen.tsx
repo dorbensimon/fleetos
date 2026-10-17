@@ -22,6 +22,7 @@ import { isStaleDepartmentError } from '../../lib/driverFields';
 import { lookupVehicleRegistry } from '../../lib/vehicleRegistry';
 import { requiresTachograph } from '../../lib/tachograph';
 import { VehicleDetailMobile } from './mobile/VehicleDetailMobile';
+import { folderCategory, useCompanyFolders } from '../../lib/companyFolders';
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 
@@ -53,6 +54,7 @@ const loadVehicleDrivers = async (vehicleId: string) => (await listActiveVehicle
 export default function VehicleDetailScreen({ route, navigation }: Props) {
   const { vehicleId } = route.params;
   const { companyId } = useCompany();
+  const { folders: companyFolders } = useCompanyFolders(companyId, 'vehicle');
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
@@ -113,9 +115,16 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const openFolderParam = route.params.openFolder;
   useEffect(() => {
     if (isDesktop || !vehicle || !openFolderParam) return;
-    navigation.setParams({ openFolder: undefined });
     const folder = vehicleFolderByKey(openFolderParam);
-    if (!folder) return;
+    if (!folder) {
+      // One of the owner's folders: its key is its category. Wait for the list to arrive.
+      const custom = companyFolders.find((f) => folderCategory(f) === openFolderParam);
+      if (!custom) return;
+      navigation.setParams({ openFolder: undefined });
+      navigation.navigate('DocumentCategory', { ownerType: 'vehicle', ownerId: vehicleId, category: openFolderParam, title: custom.title, requiresExpiry: custom.tracks_expiry });
+      return;
+    }
+    navigation.setParams({ openFolder: undefined });
     if (folder.folderKey === 'tachograph_calibration' && !requiresTachograph(vehicle.vehicle_type)) return;
     if (folder.source === 'compliance') {
       setTab('documents');
@@ -128,7 +137,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
         ownerType: 'vehicle', ownerId: vehicleId, category: documentFolder.category, title: documentFolder.title, requiresExpiry: documentFolder.requiresExpiry,
       });
     }
-  }, [isDesktop, vehicle, openFolderParam, navigation, vehicleId]);
+  }, [isDesktop, vehicle, openFolderParam, navigation, vehicleId, companyFolders]);
 
   // "Needs attention" for a vehicle without a driver: the phone has no
   // drivers dialog, so open the drivers tab (its card lights up via `focus`).
@@ -144,9 +153,19 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     navigation.setParams({ tab: next });
     if (item) setFocusItem(item);
   };
-  const visibleDocumentFolders = VEHICLE_DOCUMENT_FOLDERS.filter(
-    (folder) => folder.category !== 'tachograph_calibration' || requiresTachograph(vehicle?.vehicle_type ?? 'car'),
-  );
+  // The fixed folders, then the ones the owner added to this company.
+  const visibleDocumentFolders = [
+    ...VEHICLE_DOCUMENT_FOLDERS.filter(
+      (folder) => folder.category !== 'tachograph_calibration' || requiresTachograph(vehicle?.vehicle_type ?? 'car'),
+    ),
+    ...companyFolders.map((folder) => ({
+      category: folderCategory(folder),
+      title: folder.title,
+      icon: 'folder-outline' as const,
+      color: '#0A7FD0',
+      requiresExpiry: folder.tracks_expiry,
+    })),
+  ];
   const archive = () => showAlert(t('common.moveToArchive'), t('vehicle.archiveConfirm', { v1: formatPlate(vehicle?.plate_number) }), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.moveToArchiveAction'), style: 'destructive', onPress: async () => { try { await archiveVehicle(vehicleId); navigation.goBack(); } catch (e: any) { showAlert(t('common.actionFailed'), String(errorMessage(e, t('common.tryAgain')))); } } }]);
   const restore = () => showAlert(t('vehicle.unarchiveTitle'), t('vehicle.unarchiveConfirm', { v1: formatPlate(vehicle?.plate_number) }), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('vehicle.unarchiveAction'), onPress: async () => { try { await restoreVehicle(vehicleId); await load(); showToast(t('vehicle.unarchived')); } catch (e: any) { showAlert(t('common.actionFailed'), String(errorMessage(e, t('common.tryAgain')))); } } }]);
   const editMaintenance = () => { if (!vehicle) return; setMaintenance({ odometer: String(vehicle.odometer ?? ''), last_service_km: String(vehicle.last_service_km ?? ''), service_interval_km: vehicle.service_interval_km ? String(vehicle.service_interval_km) : '', next_service_km: vehicle.next_service_km ? String(vehicle.next_service_km) : '' }); setEditingMaintenance(true); };

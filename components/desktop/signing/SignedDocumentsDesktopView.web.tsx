@@ -331,10 +331,13 @@ function HeroArt() {
 // הדף כולו
 export function SignedDocumentsDesktopView({
   companyId,
+  companyName,
   openMeetingTemplateId,
   onMeetingOpened,
 }: {
   companyId: string;
+  /** The owner's view of one company: its name in the title. */
+  companyName?: string;
   /** Opens "מפגש חדש" on this form, e.g. from a "meetings due" notification. */
   openMeetingTemplateId?: string;
   onMeetingOpened?: () => void;
@@ -403,7 +406,7 @@ export function SignedDocumentsDesktopView({
           </div>
           <div className="sd-hero-grain" />
           <div>
-            <h1 className="sd-xb">{t('nav.signedDocuments')}</h1>
+            <h1 className="sd-xb">{companyName ? t('signing.titleFor', { name: companyName }) : t('nav.signedDocuments')}</h1>
             <p>{t('signing.intro')}</p>
             <div className="sd-hero-actions">
               <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={() => setCreating(true)}>

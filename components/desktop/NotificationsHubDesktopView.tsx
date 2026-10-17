@@ -89,6 +89,8 @@ const TYPE_ICON: Partial<Record<NotificationType, IconName>> = {
   vehicle_brakes_annual_expiry: 'disc-outline',
   vehicle_winter_inspection_expiry: 'snow-outline',
   vehicle_child_detection_expiry: 'happy-outline',
+  vehicle_custom_folder_expiry: 'folder-open-outline',
+  driver_custom_folder_expiry: 'folder-open-outline',
   vehicle_service_due: 'build-outline',
   driver_meeting_due: 'people-outline',
   vehicle_safety_check_due: 'shield-checkmark-outline',
@@ -615,6 +617,7 @@ const TIMELINE_LABEL: Partial<Record<NotificationType, string>> = {
   get driver_meeting_due() { return t('prefs.type.driverMeeting'); },
   get vehicle_safety_check_due() { return t('notifications.cat.safetyCheck'); },
   get driver_license_expiry() { return t('driver.drivingLicense'); },
+  get driver_custom_folder_expiry() { return t('companyFolders.driverTimelineLabel'); },
   get company_carrier_license_expiry() { return t('notifications.cat.carrierLicense'); },
 };
 

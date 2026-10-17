@@ -33,6 +33,9 @@ describe('routeAccess', () => {
     expect(canOpenRoute('admin', 'DriverSigningDocuments')).toBe(true);
     expect(canOpenRoute('driver', 'DocumentCategory')).toBe(true);
     expect(canOpenRoute('owner', 'Notifications')).toBe(true);
+    // A company's documents, opened from its page in the control room.
+    expect(canOpenRoute('owner', 'SignedDocuments')).toBe(true);
+    expect(canOpenRoute('owner', 'ChecklistMeeting')).toBe(true);
   });
 
   it('treats login, legal and set-password as public, unknown screens as closed', () => {
