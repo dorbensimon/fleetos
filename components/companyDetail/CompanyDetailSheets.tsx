@@ -82,6 +82,13 @@ export function UserActionsSheet({
   onRemove: () => void;
 }) {
   const role = user?.role === 'admin' ? t('role.manager') : t('role.driver');
+  const [copied, setCopied] = useState(false);
+  const canCopy = !!user?.email && typeof navigator !== 'undefined' && !!navigator.clipboard;
+  const copyEmail = () =>
+    void navigator.clipboard.writeText(user!.email!).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    });
   return (
     <KitSheet
       visible={!!user}
@@ -90,7 +97,15 @@ export function UserActionsSheet({
       subtitle={[role, user?.must_change_password ? t('users.notSignedInYet') : null].filter(Boolean).join(' · ')}
     >
       <Surface style={styles.list}>
-        <ListRow first icon="mail-outline" title={t('common.emailShort')} value={user?.email || '—'} ltrValue />
+        <ListRow
+          first
+          icon={copied ? 'checkmark' : 'mail-outline'}
+          title={t('common.emailShort')}
+          subtitle={canCopy ? (copied ? t('companyPage.copied') : t('companyPage.copyEmail')) : null}
+          value={user?.email || '—'}
+          ltrValue
+          onPress={canCopy ? copyEmail : undefined}
+        />
         <ListRow icon="call-outline" title={t('common.phone')} value={user?.phone ? formatPhone(user.phone) : '—'} ltrValue />
       </Surface>
       <Surface style={[styles.list, styles.gap]}>

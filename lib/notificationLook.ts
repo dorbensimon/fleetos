@@ -27,6 +27,7 @@ export function notificationIcon(type: string | null): keyof typeof Ionicons.gly
   if (type === 'signature_request_completed') return 'checkmark-done-outline';
   if (type === 'signature_expiry') return 'hourglass-outline';
   if (type === 'driver_license_expiry') return 'id-card-outline';
+  if (type === 'vehicle_custom_folder_expiry' || type === 'driver_custom_folder_expiry') return 'folder-open-outline';
   if (type === 'company_carrier_license_expiry') return 'business-outline';
   if (type === 'vehicle_odometer_stale') return 'speedometer-outline';
   if (type === 'driver_meeting_due') return 'people-outline';
@@ -47,7 +48,7 @@ export function notificationIcon(type: string | null): keyof typeof Ionicons.gly
  */
 export function notificationTone(n: Pick<Notification, 'notification_type' | 'message'>): 'bad' | 'warn' | 'brand' {
   const type = n.notification_type;
-  if (isVehicleFolderNotification(type) || type === 'driver_license_expiry' || type === 'company_carrier_license_expiry') {
+  if (isVehicleFolderNotification(type) || type === 'driver_license_expiry' || type === 'driver_custom_folder_expiry' || type === 'company_carrier_license_expiry') {
     return n.message.includes(' פג ב-') ? 'bad' : 'warn';
   }
   // Signature validity (supabase/sql/105): ahead is a heads-up, run out is urgent.

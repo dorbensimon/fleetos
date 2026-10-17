@@ -11,7 +11,7 @@ export type RootStackParamList = {
    * "sign out" — the same complete-password-setup call handles both.
    */
   SetPassword: { voluntary?: boolean } | undefined;
-  OwnerHome: undefined;
+  OwnerHome: { list?: boolean } | undefined;
   /** The fleet workspace. Desktop breadcrumbs may open a specific tab. */
   /** `list`: opened from the phone bar's drivers/vehicles tab, so the screen scrolls to its list. */
   AdminHome: { mode?: 'drivers' | 'vehicles'; list?: boolean } | undefined;
@@ -35,7 +35,8 @@ export type RootStackParamList = {
   AdminProfile: undefined;
   CompanySettings: undefined;
   /** `openMeeting`: a repeating form's id, to open its "מפגש חדש" list (from a "meetings due" notification). */
-  SignedDocuments: { openMeeting?: string } | undefined;
+  /** `companyId`: the owner working on one company's documents (from its page). */
+  SignedDocuments: { openMeeting?: string; companyId?: string } | undefined;
   Notifications: { section?: 'settings' } | undefined;
   AdminDocumentSigning: { companyId?: string } | undefined;
   /** A meeting on a "רשימת סעיפים" form: a new one (templateId) or one in progress (meetingId). */

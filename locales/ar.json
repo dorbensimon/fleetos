@@ -562,7 +562,9 @@
     "vehicleOfficerMobile": "هاتف ضابط المركبات المحمول",
     "vehicleOfficerName": "اسم ضابط المركبات",
     "vehicleQuota": "حد المركبات",
-    "vehiclesLimit": "{{vehicle_limit}} مركبات"
+    "vehiclesLimit": "{{vehicle_limit}} مركبات",
+    "searchDrivers": "ابحث عن سائق بالاسم أو البريد أو الهاتف",
+    "noDriverMatches": "لا يوجد سائق يطابق البحث"
   },
   "companyPage": {
     "usersTitle": "المستخدمون",
@@ -576,7 +578,10 @@
     "lastActivity": "آخر نشاط: {{when}}",
     "dangerZone": "تعطيل وحذف",
     "detailsHint": "انقر على سطر لتعديله في مكانه",
-    "settingsTitle": "إعدادات الشركة"
+    "settingsTitle": "إعدادات الشركة",
+    "documentsTitle": "المستندات والنماذج",
+    "documentsAction": "إدارة مستندات الشركة",
+    "documentsHint": "المجلدات والنماذج، الإرسال للتوقيع وما تم توقيعه"
   },
   "companyDocs": {
     "addFirstHint": "أضيفوا المستند الأول — مع اسم وتاريخ ووصف، ليسهل العثور عليه.",
@@ -2101,7 +2106,18 @@
     "updatesAcrossCompanies": "تحديثات في جميع الشركات",
     "vehicleIssuesCount": "{{vehicleIssues}} بلا تأمين أو رخصة سارية",
     "whatsComing": "ما الذي يقترب",
-    "withoutDriver": "بلا سائق"
+    "withoutDriver": "بلا سائق",
+    "sort": {
+      "title": "ترتيب الشركات",
+      "health": "الحالة",
+      "healthHint": "التي تحتاج إلى معالجة أولاً",
+      "name": "الاسم",
+      "nameHint": "أبجدياً",
+      "activity": "النشاط",
+      "activityHint": "آخر نشاط أولاً",
+      "size": "الحجم",
+      "sizeHint": "الأكثر سائقين ومركبات أولاً"
+    }
   },
   "password": {
     "accountSecurity": "أمان الحساب",
@@ -2654,7 +2670,10 @@
     "willResend": "سيُرسل مجددًا",
     "writtenHere": "كُتب هنا",
     "yourSignature": "توقيعك",
-    "fixedFolderName": "يوجد مجلد ثابت بهذا الاسم في ملف كل سائق. اختاروا اسمًا آخر."
+    "fixedFolderName": "يوجد مجلد ثابت بهذا الاسم في ملف كل سائق. اختاروا اسمًا آخر.",
+    "titleFor": "المستندات · {{name}}",
+    "newVersionHint": "النموذج نفسه بصيغة محدّثة. التواقيع السابقة محفوظة",
+    "actingFor": "أنت تعمل في مستندات {{name}}. كل نموذج تنشئه وترسله يظهر لمديري الشركة وسائقيها."
   },
   "status": {
     "aboutToExpire": "قريب الانتهاء",
@@ -3083,6 +3102,58 @@
     "collectedTitle": "الإيرادات الفعلية",
     "collectedMissing": "ينقص هذا الشهر {{amount}} حسب الاشتراكات",
     "collectedThisMonth": "دخل هذا الشهر",
-    "expectedLine": "الخط المتقطع: {{amount}} شهريًا حسب الاشتراكات"
+    "expectedLine": "الخط المتقطع: {{amount}} شهريًا حسب الاشتراكات",
+    "earlierMonth": "الشهر السابق",
+    "laterMonth": "الشهر التالي",
+    "monthPaid": "هذا الشهر مدفوع بالفعل",
+    "toneLabel": "نوع الرسالة",
+    "audienceLabel": "لمن",
+    "durationLabel": "المدة"
+  },
+  "companyFolders": {
+    "title": "مجلدات للمركبات والسائقين",
+    "add": "مجلد جديد",
+    "addShort": "مجلد",
+    "addAction": "إضافة المجلد",
+    "editTitle": "تعديل المجلد",
+    "editNamed": "تعديل {{title}}",
+    "deleteNamed": "حذف {{title}}",
+    "deleteAction": "حذف المجلد",
+    "deleteTitle": "حذف هذا المجلد؟",
+    "deleteBody": "سيختفي المجلد \"{{title}}\" من جميع مركبات الشركة أو ملفات سائقيها.",
+    "cannotDeleteTitle": "لا يمكن حذف المجلد",
+    "cannotDeleteBody": "يحتوي على {{count}} ملفات. حتى لا تضيع، احذف الملفات أولاً من المركبات أو ملفات السائقين.",
+    "hasFiles": "يحتوي هذا المجلد على ملفات، لذلك لا يمكن حذفه.",
+    "titleTaken": "يوجد مجلد بهذا الاسم بالفعل",
+    "nameRequired": "يجب إعطاء المجلد اسماً",
+    "loadFailed": "تعذر تحميل المجلدات",
+    "vehicleGroup": "في بطاقة كل مركبة",
+    "driverGroup": "في ملف كل سائق",
+    "vehicleEmpty": "لم تتم إضافة مجلدات للمركبات بعد.",
+    "driverEmpty": "لم تتم إضافة مجلدات لملف السائق بعد.",
+    "oneFile": "ملف واحد",
+    "filesCount": "{{count}} ملفات",
+    "withExpiry": "مع تاريخ صلاحية",
+    "nameLabel": "اسم المجلد",
+    "namePlaceholder": "مثال: موافقة معهد الترخيص",
+    "whereLabel": "أين يظهر المجلد",
+    "inVehicle": "في بطاقة المركبة",
+    "inDriverFile": "في ملف السائق",
+    "expiryLabel": "تاريخ الصلاحية",
+    "noExpiry": "بدون صلاحية",
+    "askExpiry": "مع تاريخ صلاحية",
+    "expiryHint": "مع تاريخ صلاحية، يسأل كل رفع حتى متى الملف ساري، ويُرسل تنبيه قبل انتهائه.",
+    "scopeLabel": "لأي شركات",
+    "onlyThisCompany": "فقط {{name}}",
+    "allCompanies": "لجميع الشركات",
+    "addedTitle": "تمت إضافة المجلد",
+    "addedToCompanies": "تمت إضافة المجلد إلى {{count}} شركات. الشركات التي لديها مجلد بهذا الاسم بقيت كما هي.",
+    "moreFolders": "مجلدات إضافية",
+    "alertLabel": "الصلاحية في المجلدات المضافة",
+    "driverAlertLabel": "الصلاحية في مجلدات ملف السائق المضافة",
+    "driverAlertDesc": "عندما يقترب ملف في أحد المجلدات المضافة لملف السائق من الانتهاء أو ينتهي",
+    "myAlertLabel": "صلاحية المستندات في مجلداتي",
+    "myAlertDesc": "عندما يقترب مستند في أحد مجلدات ملفك من الانتهاء أو ينتهي",
+    "driverTimelineLabel": "مجلدات إضافية"
   }
 }

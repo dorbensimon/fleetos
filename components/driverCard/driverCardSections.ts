@@ -45,7 +45,9 @@ export type DriverCardRowKey =
   | 'training'
   | 'edit-driver'
   | 'reset-driver-password'
-  | 'export-driver-report';
+  | 'export-driver-report'
+  /** One of the folders the owner added to the company (its documents category). */
+  | `folder:${string}`;
 
 export interface DriverCardValueRow {
   key: DriverCardRowKey;
@@ -140,3 +142,15 @@ export const DOCUMENT_CATEGORY_BY_ROW: Partial<Record<DriverCardRow['key'], stri
   hazmat: 'hazmat',
   training: 'trainings',
 };
+
+// קבוצת התיקיות שהבעלים הוסיף לחברה
+/** The folders the owner added to the company's driver files, as one more group of the card (none: no group). */
+export function companyFoldersGroup(folders: { id: string; title: string }[]): DriverCardGroup[] {
+  if (!folders.length) return [];
+  return [
+    {
+      title: t('companyFolders.moreFolders'),
+      rows: folders.map((folder): DriverCardNavRow => ({ key: `folder:${folder.id}`, kind: 'nav', label: folder.title, icon: 'folder', tint: 'teal' })),
+    },
+  ];
+}

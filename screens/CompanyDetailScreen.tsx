@@ -70,6 +70,9 @@ const EMPTY_FIELDS: CompanyEditableFields = {
   phone: '',
   safetyOfficerName: '',
   safetyOfficerPhone: '',
+  filesEmail: '',
+  email: '',
+  carrierLicenseExpiry: '',
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyDetail'>;
@@ -191,20 +194,21 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         phone: companyData.phone || '',
         safetyOfficerName: companyData.safety_officer_name || '',
         safetyOfficerPhone: companyData.safety_officer_phone || '',
+        filesEmail: companyData.files_email || '',
+        email: companyData.email || '',
+        carrierLicenseExpiry: companyData.carrier_license_expiry || '',
       });
     }
 
     // The subscription is decoration on this page: a failure leaves it empty.
     const accountData = await getCompanyAccount(companyId).catch(() => null);
     if (requestId === loadRequest.current) setAccount(accountData);
-    // The control room's numbers and checks for this company (computer only); extra, so a failure leaves them out.
+    // The control room's numbers and checks for this company; extra, so a failure leaves them out.
     // ponytail: loads every company's rows; a per-company query if the platform grows large.
-    if (isDesktop) {
-      void loadPlatformRows()
-        .then((rows) => buildPlatformOverview(rows).companies.find((row) => row.company.id === companyId) ?? null)
-        .catch(() => null)
-        .then((row) => { if (requestId === loadRequest.current) setHealth(row); });
-    }
+    void loadPlatformRows()
+      .then((rows) => buildPlatformOverview(rows).companies.find((row) => row.company.id === companyId) ?? null)
+      .catch(() => null)
+      .then((row) => { if (requestId === loadRequest.current) setHealth(row); });
 
     const { data: usersData, error } = await listCompanyUsers(companyId);
 
@@ -217,7 +221,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     } catch (err: any) {
       if (requestId === loadRequest.current) setLoadError(errorMessage(err, t('company.loadFailedShort')));
     }
-  }, [companyId, isDesktop]);
+  }, [companyId]);
 
   useEffect(() => {
     let active = true;
@@ -241,10 +245,17 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
       fields.address.trim() !== (company.address || '') ||
       fields.phone.trim() !== (company.phone || '') ||
       fields.safetyOfficerName.trim() !== (company.safety_officer_name || '') ||
-      fields.safetyOfficerPhone.trim() !== (company.safety_officer_phone || ''));
+      fields.safetyOfficerPhone.trim() !== (company.safety_officer_phone || '') ||
+      fields.filesEmail.trim() !== (company.files_email || '') ||
+      fields.email.trim() !== (company.email || '') ||
+      fields.carrierLicenseExpiry !== (company.carrier_license_expiry || ''));
 
   const saveChanges = async () => {
     if (!company || !fields.name.trim()) return;
+    if ((fields.filesEmail.trim() && !isValidEmail(fields.filesEmail.trim())) || (fields.email.trim() && !isValidEmail(fields.email.trim()))) {
+      setSaveError(t('validation.invalidEmail'));
+      return;
+    }
     setSaveError('');
     setSaving(true);
     const { error } = await updateCompany(company.id, {
@@ -256,6 +267,9 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         phone: fields.phone.trim() || null,
         safety_officer_name: fields.safetyOfficerName.trim() || null,
         safety_officer_phone: fields.safetyOfficerPhone.trim() || null,
+        files_email: fields.filesEmail.trim() || null,
+        email: fields.email.trim() || null,
+        carrier_license_expiry: fields.carrierLicenseExpiry || null,
       });
     setSaving(false);
     if (error) {
@@ -580,6 +594,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
             onDelete={() => setDeleteOpen(true)}
             onEditAccount={() => setAccountOpen(true)}
             onAddAdmin={() => setAddAdminOpen(true)}
+            onDocuments={() => navigation.navigate('SignedDocuments', { companyId: company.id })}
             onEditUser={openEdit}
             onResetUser={(user) => {
               setResetPasswordValue('');
@@ -602,6 +617,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         insetBottom={insets.bottom}
         company={company}
         account={account}
+        health={health}
         fields={fields}
         hasChanges={hasChanges}
         saving={saving}
@@ -618,6 +634,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         onSave={saveChanges}
         onEditAccount={() => setAccountOpen(true)}
         onAddAdmin={() => setAddAdminOpen(true)}
+            onDocuments={() => navigation.navigate('SignedDocuments', { companyId: company.id })}
         onUser={openUser}
         onToggleActive={toggleActive}
         onDelete={() => setDeleteOpen(true)}

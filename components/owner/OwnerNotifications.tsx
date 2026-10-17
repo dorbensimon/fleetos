@@ -8,6 +8,8 @@ import { BrandLoader } from '../ui/BrandLoader';
 import { LiquidGlassSwitch } from '../ui/LiquidGlassSwitch';
 import { DText, HoverPressable } from '../desktop/primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from '../desktop/desktopTheme';
+import { HeaderAction } from '../desktop/DashboardWidgets';
+import { pageStyles } from '../desktop/record/RecordPage';
 import { notificationGroups } from '../../lib/notificationPreferencesApi';
 import type { NotificationPreferencesState } from '../../lib/useNotificationPreferences';
 import { ownerActionLabel, type OwnerNotification, type OwnerNotificationType } from '../../lib/ownerNotifications';
@@ -234,21 +236,17 @@ export function OwnerNotificationsDesktop(p: FeedProps & { prefs: NotificationPr
 
   return (
     <ScrollView style={styles.flex} contentContainerStyle={d.page}>
-      <View style={d.header}>
-        <View style={d.headerText}>
-          <DText weight="extraBold" style={d.title} accessibilityRole="header">
+      {/* The night header shared with every desktop page. */}
+      <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
+        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
+        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+        <View style={pageStyles.heroIdentity}>
+          <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">
             {t('notifications.title')}
           </DText>
-          <DText style={d.subtitle}>{t('owner.notif.aboutCompanies')}</DText>
+          <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark]}>{t('owner.notif.aboutCompanies')}</DText>
         </View>
-        {unread > 0 && (
-          <HoverPressable style={d.secondary} hoverStyle={d.secondaryHover} onPress={p.onMarkAllRead}>
-            <Ionicons name="checkmark-done" size={16} color={DESKTOP_COLORS.ink} />
-            <DText weight="semiBold" style={d.secondaryText}>
-              {t('notifications.markAllReadOpen')}{unread})
-            </DText>
-          </HoverPressable>
-        )}
+        {unread > 0 && <HeaderAction icon="checkmark-done" label={`${t('notifications.markAllReadOpen')}${unread})`} onPress={p.onMarkAllRead} />}
       </View>
 
       <View style={d.columns}>
@@ -408,25 +406,8 @@ const styles = StyleSheet.create({
 // עיצוב במחשב
 const d = StyleSheet.create({
   // הדף
-  page: { padding: 28, paddingBottom: 48, gap: 20, width: '100%', maxWidth: 1240, alignSelf: 'center' },
+  page: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 48, gap: 16, width: '100%', maxWidth: 1240, alignSelf: 'center' },
   center: { paddingVertical: 48, alignItems: 'center' },
-  header: { flexDirection: 'row-reverse', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' },
-  headerText: { gap: 4 },
-  title: { fontSize: 30, lineHeight: 36, color: DESKTOP_COLORS.ink, letterSpacing: -0.7 },
-  subtitle: { fontSize: 15, color: DESKTOP_COLORS.inkMuted },
-  secondary: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 6,
-    height: 40,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: DESKTOP_COLORS.surface,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
-  },
-  secondaryHover: { backgroundColor: DESKTOP_COLORS.rowHover, borderColor: DESKTOP_COLORS.borderInput },
-  secondaryText: { fontSize: 14, color: DESKTOP_COLORS.ink },
 
   columns: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' },
   panel: { backgroundColor: DESKTOP_COLORS.surface, borderRadius: 14, borderWidth: 1, borderColor: DESKTOP_COLORS.border, overflow: 'hidden' },

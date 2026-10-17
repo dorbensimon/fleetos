@@ -9,4 +9,8 @@ export type CompanyEditableFields = {
   phone: string;
   safetyOfficerName: string;
   safetyOfficerPhone: string;
+  filesEmail: string;
+  email: string;
+  /** ISO date or ''. */
+  carrierLicenseExpiry: string;
 };

@@ -74,6 +74,23 @@ export function monthKey(d: Date = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
+// החודש שחלון רישום התשלום פותח עליו
+/**
+ * The month a new payment is most likely for: the first unpaid month after
+ * the last paid one, up to this month. With nothing paid in the last year,
+ * this month (a new customer starts now, not a year ago).
+ */
+export function defaultPaymentMonth(paidMonths: Set<string>, now: Date = new Date()): string {
+  const current = monthKey(now);
+  let pick = current;
+  for (let i = 0; i < 12; i++) {
+    const m = monthKey(new Date(now.getFullYear(), now.getMonth() - i, 1));
+    if (paidMonths.has(m)) return pick;
+    pick = m;
+  }
+  return current;
+}
+
 // כמה שולם בכל חודש
 /** The last `count` months, oldest first, each with what was paid for it. */
 export function paidByMonth(payments: Pick<CompanyPayment, 'period' | 'amount'>[], count: number, now: Date = new Date()): { month: string; total: number }[] {

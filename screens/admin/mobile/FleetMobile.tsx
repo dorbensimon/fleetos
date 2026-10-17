@@ -135,7 +135,7 @@ export function addFloats(m: ListMetrics): boolean {
 }
 
 // מנהל את כפתור ההוספה הצף
-function useFloatingAdd(rowCount: number, bottomPadding: number) {
+export function useFloatingAdd(rowCount: number, bottomPadding: number) {
   const [floating, setFloating] = useState(false);
   const metrics = useRef<ListMetrics>({ scrollY: 0, viewport: 0, content: 0, header: 0, rows: [], rowCount: 0, end: 0, bottomPadding: 0 }).current;
   metrics.rowCount = rowCount;

@@ -13,7 +13,8 @@ import { listDocuments } from '../../lib/documents';
 import { listSignatureRequests } from '../../lib/docuseal';
 import { exportDriverSnapshotReport } from '../../lib/driverSnapshotReport';
 import { RootStackParamList } from '../../navigation/types';
-import { DOCUMENT_CATEGORY_BY_ROW, DriverCardRow } from '../../components/driverCard/driverCardSections';
+import { companyFoldersGroup, DOCUMENT_CATEGORY_BY_ROW, DriverCardRow } from '../../components/driverCard/driverCardSections';
+import { folderCategory, isCompanyFolderCategory, useCompanyFolders } from '../../lib/companyFolders';
 import { DriverDetailMobile } from './mobile/DriverDetailMobile';
 import { dialPhone } from '../../lib/phone';
 import { ResetDriverPasswordModal } from '../../components/driverCard/ResetDriverPasswordModal';
@@ -51,6 +52,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DriverDetail'>;
 export default function DriverDetailScreen({ route, navigation }: Props) {
   const { driverId } = route.params;
   const { companyId, company, profile } = useCompany();
+  // The folders the owner added to this company's driver files.
+  const { folders: companyFolders } = useCompanyFolders(companyId, 'driver');
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
@@ -257,6 +260,14 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   const openFolderParam = route.params.openFolder;
   useEffect(() => {
     if (isDesktop || !driver || !openFolderParam) return;
+    if (isCompanyFolderCategory(openFolderParam)) {
+      // One of the owner's folders: wait for the list to arrive.
+      const custom = companyFolders.find((f) => folderCategory(f) === openFolderParam);
+      if (!custom) return;
+      navigation.setParams({ openFolder: undefined });
+      navigation.navigate('DocumentCategory', { ownerType: 'driver', ownerId: driverId, category: openFolderParam, title: custom.title, requiresExpiry: custom.tracks_expiry });
+      return;
+    }
     navigation.setParams({ openFolder: undefined });
     if (openFolderParam === LICENSE_DOCS_CATEGORY) {
       navigation.navigate('DriverLicenseDocuments', { driverId });
@@ -266,7 +277,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
     if (folder) {
       navigation.navigate('DocumentCategory', { ownerType: 'driver', ownerId: driverId, category: folder.category, title: folder.title });
     }
-  }, [isDesktop, driver, openFolderParam, navigation, driverId]);
+  }, [isDesktop, driver, openFolderParam, navigation, driverId, companyFolders]);
 
   // Arriving from "the driver updated details": the phone shows those fields
   // on the details screen, so the focus travels there.
@@ -339,6 +350,11 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       exportReport();
       return;
     }
+    const custom = companyFolders.find((folder) => folderCategory(folder) === row.key);
+    if (custom) {
+      navigation.navigate('DocumentCategory', { ownerType: 'driver', ownerId: driverId, category: row.key, title: custom.title, requiresExpiry: custom.tracks_expiry });
+      return;
+    }
     const category = DOCUMENT_CATEGORY_BY_ROW[row.key];
     if (category) {
       navigation.navigate('DocumentCategory', {
@@ -359,7 +375,10 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   const licenseExpired = !!driver?.license_expiry && driver.license_expiry < dateOnlyIsoFromLocalDate(new Date());
   const licenseStatus: 'expired' | 'verified' | 'pending' =
     licenseExpired ? 'expired' : licensePhotosComplete && !!driver?.license_expiry ? 'verified' : 'pending';
-  const groups = buildDriverDetailGroups(driver, licenseStatus).map(group => ({ ...group, rows: group.rows.filter(row => row.key !== 'signing-documents') }));
+  const groups = [
+    ...buildDriverDetailGroups(driver, licenseStatus).map(group => ({ ...group, rows: group.rows.filter(row => row.key !== 'signing-documents') })),
+    ...companyFoldersGroup(companyFolders),
+  ];
 
   // Shared by the desktop record and the phone screen.
   const modals = (

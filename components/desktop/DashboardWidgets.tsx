@@ -243,15 +243,16 @@ export function ReportsQuickAction() {
 /* ------------------------------------------------------------------ */
 
 // כפתור בכותרת הכחולה
-function HeaderAction({
-  icon, label, onPress,
+export function HeaderAction({
+  icon, label, onPress, disabled,
 }: {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   label: string;
   onPress: () => void;
+  disabled?: boolean;
 }) {
   return (
-    <HoverPressable style={styles.headerAction} hoverStyle={styles.headerActionHover} pressStyle={styles.pressDown} onPress={onPress}>
+    <HoverPressable style={[styles.headerAction, disabled && styles.disabled]} hoverStyle={styles.headerActionHover} pressStyle={styles.pressDown} onPress={onPress} disabled={disabled}>
       <Ionicons name={icon} size={17} color="rgba(255,255,255,0.8)" />
       <DText weight="semiBold" style={styles.headerActionText}>{label}</DText>
     </HoverPressable>
@@ -281,4 +282,5 @@ const styles = StyleSheet.create({
   headerActionHover: { backgroundColor: 'rgba(255,255,255,0.16)', borderColor: 'rgba(255,255,255,0.28)' },
   headerActionText: { fontSize: 14, color: '#FFFFFF' },
   pressDown: { transform: [{ scale: 0.97 }] },
+  disabled: { opacity: 0.5 },
 });

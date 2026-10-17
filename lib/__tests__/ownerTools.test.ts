@@ -1,5 +1,5 @@
 jest.mock('../supabase', () => ({ supabase: {} }));
-import { isLive, monthKey, paidByMonth } from '../ownerTools';
+import { defaultPaymentMonth, isLive, monthKey, paidByMonth } from '../ownerTools';
 
 describe('owner tools', () => {
   const now = new Date(2026, 9, 6); // 6 Oct 2026
@@ -31,5 +31,12 @@ describe('owner tools', () => {
     expect(isLive({ starts_at: '2026-10-01T00:00:00Z', ends_at: null }, now)).toBe(true);
     expect(isLive({ starts_at: '2026-10-01T00:00:00Z', ends_at: '2026-10-02T00:00:00Z' }, now)).toBe(false);
     expect(isLive({ starts_at: '2026-11-01T00:00:00Z', ends_at: null }, now)).toBe(false);
+  });
+
+  it('opens a new payment on the month after the last paid one, or on this month', () => {
+    expect(defaultPaymentMonth(new Set(), now)).toBe('2026-10-01');
+    expect(defaultPaymentMonth(new Set(['2026-10-01']), now)).toBe('2026-10-01');
+    expect(defaultPaymentMonth(new Set(['2026-07-01']), now)).toBe('2026-08-01');
+    expect(defaultPaymentMonth(new Set(['2026-09-01', '2026-07-01']), now)).toBe('2026-10-01');
   });
 });

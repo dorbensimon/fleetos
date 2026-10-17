@@ -562,7 +562,9 @@
     "vehicleOfficerMobile": "נייד קצין הרכב",
     "vehicleOfficerName": "שם קצין הרכב",
     "vehicleQuota": "מכסת רכבים",
-    "vehiclesLimit": "{{vehicle_limit}} רכבים"
+    "vehiclesLimit": "{{vehicle_limit}} רכבים",
+    "searchDrivers": "חיפוש נהג לפי שם, מייל או טלפון",
+    "noDriverMatches": "לא נמצא נהג שמתאים לחיפוש"
   },
   "companyPage": {
     "usersTitle": "משתמשים",
@@ -576,7 +578,10 @@
     "lastActivity": "פעילות אחרונה: {{when}}",
     "dangerZone": "השבתה ומחיקה",
     "detailsHint": "לחיצה על שורה פותחת עריכה במקום",
-    "settingsTitle": "הגדרות החברה"
+    "settingsTitle": "הגדרות החברה",
+    "documentsTitle": "מסמכים וטפסים",
+    "documentsAction": "ניהול המסמכים של החברה",
+    "documentsHint": "תיקיות וטפסים, שליחה לחתימה ומה שכבר נחתם"
   },
   "companyDocs": {
     "addFirstHint": "הוסיפו את המסמך הראשון — עם שם, תאריך ותיאור, כדי שיהיה קל למצוא אותו.",
@@ -2101,7 +2106,18 @@
     "updatesAcrossCompanies": "עדכונים בכל החברות",
     "vehicleIssuesCount": "{{vehicleIssues}} בלי ביטוח או רישיון בתוקף",
     "whatsComing": "מה מתקרב",
-    "withoutDriver": "בלי נהג"
+    "withoutDriver": "בלי נהג",
+    "sort": {
+      "title": "סדר הרשימה",
+      "health": "מצב",
+      "healthHint": "דורשות טיפול קודם",
+      "name": "שם",
+      "nameHint": "לפי סדר האלף־בית",
+      "activity": "פעילות",
+      "activityHint": "הפעילות האחרונה קודם",
+      "size": "גודל",
+      "sizeHint": "הכי הרבה נהגים ורכבים קודם"
+    }
   },
   "password": {
     "accountSecurity": "אבטחת החשבון",
@@ -2654,7 +2670,10 @@
     "willResend": "יישלח שוב",
     "writtenHere": "נכתב כאן",
     "yourSignature": "החתימה שלך",
-    "fixedFolderName": "יש כבר תיקייה קבועה בשם הזה בתיק הנהג. בחרו שם אחר."
+    "fixedFolderName": "יש כבר תיקייה קבועה בשם הזה בתיק הנהג. בחרו שם אחר.",
+    "titleFor": "מסמכים · {{name}}",
+    "newVersionHint": "אותו טופס בנוסח מעודכן. חתימות קודמות נשמרות",
+    "actingFor": "אתה עובד במסמכים של {{name}}. כל טופס שתיצור ותשלח יופיע אצל המנהלים והנהגים של החברה."
   },
   "status": {
     "aboutToExpire": "קרוב לפוג",
@@ -3083,6 +3102,58 @@
     "collectedTitle": "הכנסות בפועל",
     "collectedMissing": "חסר החודש {{amount}} לפי המנויים",
     "collectedThisMonth": "נכנס החודש",
-    "expectedLine": "קו מקווקו: {{amount}} לחודש לפי המנויים"
+    "expectedLine": "קו מקווקו: {{amount}} לחודש לפי המנויים",
+    "earlierMonth": "חודש קודם",
+    "laterMonth": "חודש הבא",
+    "monthPaid": "החודש הזה כבר שולם",
+    "toneLabel": "סוג ההודעה",
+    "audienceLabel": "למי",
+    "durationLabel": "למשך"
+  },
+  "companyFolders": {
+    "title": "תיקיות לרכבים ולנהגים",
+    "add": "תיקייה חדשה",
+    "addShort": "תיקייה",
+    "addAction": "הוספת התיקייה",
+    "editTitle": "עריכת תיקייה",
+    "editNamed": "עריכת {{title}}",
+    "deleteNamed": "מחיקת {{title}}",
+    "deleteAction": "מחיקת התיקייה",
+    "deleteTitle": "למחוק את התיקייה?",
+    "deleteBody": "התיקייה \"{{title}}\" תיעלם מכל הרכבים או מכל תיקי הנהגים של החברה.",
+    "cannotDeleteTitle": "אי אפשר למחוק את התיקייה",
+    "cannotDeleteBody": "יש בה {{count}} קבצים. כדי לא לאבד אותם, מוחקים קודם את הקבצים מתוך הרכבים או תיקי הנהגים.",
+    "hasFiles": "יש קבצים בתיקייה הזו, ולכן אי אפשר למחוק אותה.",
+    "titleTaken": "כבר יש תיקייה בשם הזה",
+    "nameRequired": "צריך לתת לתיקייה שם",
+    "loadFailed": "טעינת התיקיות נכשלה",
+    "vehicleGroup": "בכרטיס כל רכב",
+    "driverGroup": "בתיק כל נהג",
+    "vehicleEmpty": "עדיין לא נוספו תיקיות לרכבים.",
+    "driverEmpty": "עדיין לא נוספו תיקיות לתיק הנהג.",
+    "oneFile": "קובץ אחד",
+    "filesCount": "{{count}} קבצים",
+    "withExpiry": "עם תאריך תוקף",
+    "nameLabel": "שם התיקייה",
+    "namePlaceholder": "לדוגמה: אישור מכון רישוי",
+    "whereLabel": "איפה התיקייה תופיע",
+    "inVehicle": "בכרטיס הרכב",
+    "inDriverFile": "בתיק הנהג",
+    "expiryLabel": "תאריך תוקף",
+    "noExpiry": "בלי תוקף",
+    "askExpiry": "עם תאריך תוקף",
+    "expiryHint": "עם תאריך תוקף, כל העלאה שואלת עד מתי הקובץ בתוקף, ונשלחת התראה לפני שהוא פג.",
+    "scopeLabel": "לאילו חברות",
+    "onlyThisCompany": "רק ל{{name}}",
+    "allCompanies": "לכל החברות",
+    "addedTitle": "התיקייה נוספה",
+    "addedToCompanies": "התיקייה נוספה ל-{{count}} חברות. חברות שכבר הייתה להן תיקייה בשם הזה לא השתנו.",
+    "moreFolders": "תיקיות נוספות",
+    "alertLabel": "תוקף בתיקיות שנוספו",
+    "driverAlertLabel": "תוקף בתיקיות שנוספו לתיק הנהג",
+    "driverAlertDesc": "כשקובץ באחת התיקיות הנוספות בתיק נהג עומד לפוג או פג",
+    "myAlertLabel": "תוקף מסמכים בתיקיות שלי",
+    "myAlertDesc": "כשמסמך באחת התיקיות בתיק שלך עומד לפוג או פג",
+    "driverTimelineLabel": "תיקיות נוספות"
   }
 }

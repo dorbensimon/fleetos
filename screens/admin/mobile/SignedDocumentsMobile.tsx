@@ -11,6 +11,7 @@ import {
   HeroTitle,
   KitSection,
   KitSheet,
+  ListEndAction,
   ListRow,
   LoadingPanel,
   PrimaryAction,
@@ -53,6 +54,15 @@ type Props = {
   /** Opens this form's "עם מי המפגש?" list on arrival (from a notification). */
   openMeeting?: string;
   onMeetingOpened: () => void;
+  /** Opens this document's "send to drivers" (after a new version, for those still to sign). */
+  openSend?: string;
+  onSendOpened?: () => void;
+  /** The owner's view: the company's name in the title. */
+  companyName?: string;
+  /** The owner's extras, like the desktop: a new form, a new version, earlier versions. */
+  onCreate?: () => void;
+  onReplace?: (template: SigningTemplate) => void;
+  onVersions?: (template: SigningTemplate) => void;
 };
 
 // כמה שורות לפני 'עוד'
@@ -116,6 +126,19 @@ export function SignedDocumentsMobile(p: Props) {
     }
     onMeetingOpened();
   }, [openMeeting, templates, onMeetingOpened]);
+  const { openSend, onSendOpened } = p;
+  useEffect(() => {
+    if (!openSend || !templates) return;
+    const target = templates.find((entry) => entry.id === openSend);
+    if (target) {
+      setTemplate(target);
+      setMode(isChecklistTemplate(target) ? 'meet' : 'send');
+      setMessage('');
+      setBusy('');
+      setOpen(true);
+    }
+    onSendOpened?.();
+  }, [openSend, templates, onSendOpened]);
 
   const close = () => {
     if (busy === 'delete' || send.sending) return;
@@ -160,7 +183,7 @@ export function SignedDocumentsMobile(p: Props) {
       insetBottom={p.insetBottom}
       refreshing={p.refreshing}
       onRefresh={p.onRefresh}
-      hero={<HeroTitle title={t('nav.signedDocuments')} subtitle={p.templates ? (count ? t('signing.canSendToDrivers', { v1: count === 1 ? t('documents.oneDocument') : t('documents.countN', { count }) }) : t('signing.formsDriversSign')) : ' '} onBack={p.onBack} />}
+      hero={<HeroTitle title={p.companyName ? t('signing.titleFor', { name: p.companyName }) : t('nav.signedDocuments')} subtitle={p.templates ? (count ? t('signing.canSendToDrivers', { v1: count === 1 ? t('documents.oneDocument') : t('documents.countN', { count }) }) : t('signing.formsDriversSign')) : ' '} onBack={p.onBack} />}
       overlay={
         <KitSheet
           visible={open}
@@ -236,6 +259,32 @@ export function SignedDocumentsMobile(p: Props) {
             <View style={styles.actions}>
               <ActionRow icon="eye-outline" label={busy === 'view' ? t('common.opening') : checklist ? t('signing.viewForm') : t('signing.viewDocument')} hint={checklist ? t('signing.blankAsPrinted') : t('signing.asDriverSees')} onPress={() => void view()} disabled={!!busy} />
               <ActionRow icon="download-outline" label={busy === 'download' ? t('common.downloading') : t('common.download')} hint={t('signing.saveOrShare')} onPress={() => void download()} disabled={!!busy} first={false} />
+              {isOwn && p.onReplace ? (
+                <ActionRow
+                  icon="create-outline"
+                  label={t('templates.newVersion')}
+                  hint={t('signing.newVersionHint')}
+                  onPress={() => {
+                    setOpen(false);
+                    p.onReplace!(template!);
+                  }}
+                  disabled={!!busy}
+                  first={false}
+                />
+              ) : null}
+              {isOwn && p.onVersions && (template!.version ?? 1) > 1 ? (
+                <ActionRow
+                  icon="time-outline"
+                  label={t('folders.versionsTitle')}
+                  hint={t('folders.versionN', { version: template!.version ?? 1 })}
+                  onPress={() => {
+                    setOpen(false);
+                    p.onVersions!(template!);
+                  }}
+                  disabled={!!busy}
+                  first={false}
+                />
+              ) : null}
               {isOwn ? (
                 <ActionRow icon="trash-outline" tone="danger" label={busy === 'check' ? t('common.checking') : t('documents.deleteDocument')} onPress={() => void askDelete()} disabled={!!busy} first={false} />
               ) : null}
@@ -250,10 +299,17 @@ export function SignedDocumentsMobile(p: Props) {
         <ErrorPanel message={p.error} onRetry={p.companyId ? p.onRetry : undefined} />
       ) : (
         <>
+          {/* The first card rises over the hero's edge, where a heading can't sit. */}
           <Reveal index={0}>
-            <Banner tone="info" icon="desktop-outline">
-              {t('signing.createOnComputer')}
-            </Banner>
+            {p.companyName ? (
+              <Banner tone="info" icon="business-outline">
+                {t('signing.actingFor', { name: p.companyName })}
+              </Banner>
+            ) : (
+              <Banner tone="info" icon="desktop-outline">
+                {t('signing.createOnComputer')}
+              </Banner>
+            )}
           </Reveal>
           {dueRows.length > 0 && (
             <Reveal index={1}>
@@ -301,10 +357,11 @@ export function SignedDocumentsMobile(p: Props) {
                 ))
               ) : (
                 <DKText variant="caption" color={DK.muted} style={styles.empty}>
-                  {t('signing.noCompanyDocsMobile')}
+                  {p.onCreate ? t('signing.noCompanyDocs') : t('signing.noCompanyDocsMobile')}
                 </DKText>
               )}
             </KitSection>
+            {p.onCreate ? <ListEndAction label={t('signing.newDocument')} onPress={p.onCreate} /> : null}
           </Reveal>
           {shared.length > 0 && (
             <Reveal index={3}>

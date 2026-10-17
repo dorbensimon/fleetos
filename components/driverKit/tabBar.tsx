@@ -29,7 +29,8 @@ import { t, dirSign } from '../../lib/i18n';
 /**
  * The phone's bottom bar, drawn like iOS 26's: a floating capsule of light
  * glass with a tab per main place for the role (the manager: home, drivers,
- * vehicles, menu; the driver: home, vehicle, documents, menu; alerts live in the title bar).
+ * vehicles, menu; the driver: home, vehicle, documents, menu; the owner: home,
+ * companies, notifications, menu; alerts live in the title bar).
  * It steps aside while the page scrolls down (the content gets the whole
  * screen) and comes back on the first scroll up, at the top of a page, and
  * on every new screen. Screens with their own pinned action (a save
@@ -199,6 +200,17 @@ export function useTabBarScroll(): {
   return { onScroll, scrollEventThrottle: 16 };
 }
 
+// מאפס את מעקב הגלילה (הסרגל חוזר ולא מגיב לקפיצה הבאה)
+/**
+ * Forgets where every scroller was and brings the bar back. A screen calls
+ * it right before it jumps its own scroller, so the jump doesn't read as the
+ * reader scrolling down and send the bar away.
+ */
+export function useTabBarReset(): () => void {
+  const reset = useContext(TabBarContext)?.resetScroll;
+  return useCallback(() => reset?.(), [reset]);
+}
+
 // כמה מקום להשאיר בתחתית
 /** Extra bottom room a page needs so its last item clears the bar. */
 export function useTabBarSpace(): number {
@@ -271,7 +283,7 @@ export function HomeLogo() {
 // the drop follows the finger (tap or slide) and settles back into a platter
 // on the tab it lands on.
 
-type Glyph = 'home' | 'people' | 'car-sport' | 'grid' | 'folder';
+type Glyph = 'home' | 'people' | 'car-sport' | 'grid' | 'folder' | 'business' | 'notifications';
 type TabDef = { key: string; icon: Glyph; label: string; go: () => void };
 type Current = { name: Route; params?: Record<string, unknown> } | null;
 
@@ -390,6 +402,13 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
           { key: 'documents', icon: 'folder', label: t('common.documents'), go: () => goTo('DriverDocuments') },
           { key: 'home', icon: 'home', label: t('nav.home'), go: () => goTo('DriverHome') },
         ]
+      : profile?.role === 'owner'
+      ? [
+          { key: 'menu', icon: 'grid', label: t('nav.menu'), go: () => goTo('Menu') },
+          { key: 'notifications', icon: 'notifications', label: t('notifications.title'), go: () => goTo('Notifications') },
+          { key: 'companies', icon: 'business', label: t('owner.notif.companies'), go: () => goTo('OwnerHome', { list: true }) },
+          { key: 'home', icon: 'home', label: t('nav.home'), go: () => goTo('OwnerHome', { list: false }) },
+        ]
       : [
           { key: 'menu', icon: 'grid', label: t('nav.menu'), go: () => goTo('Menu') },
           { key: 'home', icon: 'home', label: t('nav.home'), go: () => home && goTo(home) },
@@ -404,8 +423,14 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
           ? 'vehicles'
           : 'drivers'
         : 'home'
+      : route === 'OwnerHome'
+      ? String(current?.params?.list) === 'true'
+        ? 'companies'
+        : 'home'
       : route === home
       ? 'home'
+      : route === 'Notifications' && profile?.role === 'owner'
+      ? 'notifications'
       : route === 'Menu'
       ? 'menu'
       : route === 'DriverVehicle'

@@ -20,6 +20,7 @@ import {
   listCompanyNotes,
   listCompanyPayments,
   loadOnboarding,
+  defaultPaymentMonth,
   monthKey,
   PAYMENT_METHODS,
   type CompanyNote,
@@ -217,7 +218,7 @@ function PaymentDialog({
   onSaved: () => void;
 }) {
   const now = new Date();
-  // Twelve months back and two ahead; the first unpaid one up to this month is preselected.
+  // Twelve months back and two ahead; the month after the last paid one is preselected.
   const months = Array.from({ length: 15 }, (_, i) => monthKey(new Date(now.getFullYear(), now.getMonth() + 2 - i, 1)));
   const [period, setPeriod] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
@@ -229,8 +230,7 @@ function PaymentDialog({
 
   useEffect(() => {
     if (!visible) return;
-    const firstUnpaid = months.slice(2).reverse().find((m) => !paidMonths.has(m));
-    setPeriod(paidMonths.has(monthKey()) ? monthKey() : firstUnpaid ?? monthKey());
+    setPeriod(defaultPaymentMonth(paidMonths));
     setAmount(defaultAmount ? String(Math.round(defaultAmount)) : '');
     setPaidOn(new Date().toISOString().slice(0, 10));
     setMethod('transfer');

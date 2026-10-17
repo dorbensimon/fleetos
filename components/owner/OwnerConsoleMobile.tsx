@@ -1,5 +1,5 @@
 // חדר הבקרה של הבעלים - תצוגת טלפון
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FormTemplatesManager } from './FormTemplatesManager';
 import { FlatList, Image, RefreshControl, StatusBar, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,9 @@ import {
   HeroButton,
   HeroStat,
   KitSection,
+  KitSheet,
+  ListEndAction,
+  ListRow,
   LoadingPanel,
   NightHero,
   NightUnderlay,
@@ -22,6 +25,7 @@ import {
   Reveal,
   STATUS,
   Surface,
+  useTabBarReset,
   useTabBarScroll,
   useTabBarSpace,
 } from '../driverKit';
@@ -30,7 +34,9 @@ import { timeGreeting } from '../../lib/theme';
 import { ACTIVITY_DAYS, lastSeenLabel, type CompanyHealth, type PlatformOverview, type Tone } from '../../lib/platformOverview';
 import { accountNextStep, formatMoney, formatMoneyCompact, statusLabel, statusTone } from '../../lib/companyAccount';
 import { ACCOUNT_TONE, TonePill } from './ownerKit';
-import { COMPANY_FILTERS, filterCompanies, type CompanyFilter } from './ownerConsole';
+import { COMPANY_FILTERS, filterCompanies, type CompanyFilter, type CompanySort } from './ownerConsole';
+import { AnnouncementSection, CollectedSection } from './OwnerToolsMobile';
+import { useFloatingAdd } from '../../screens/admin/mobile/FleetMobile';
 import { t, dirIcon, getLocale } from '../../lib/i18n';
 import { fontStack } from '../../lib/fontStack';
 
@@ -38,8 +44,10 @@ import { fontStack } from '../../lib/fontStack';
  * The owner's control room on the phone: the night carries the business at a
  * glance (what needs the owner, companies, monthly revenue,
  * search); below, every company as a card that says whether it is healthy,
- * where it stands as a customer and why; then revenue, how the system is
- * being used and its security state. Counts only, like desktop.
+ * where it stands as a customer and why (filters and order pinned, the add
+ * button at the end, floating like the manager's); then revenue, money
+ * collected, the announcement to every company, templates, how the system
+ * is being used and its security state. Counts only, like desktop.
  */
 
 // צבע מילוי לכל מצב
@@ -67,6 +75,10 @@ type Props = {
   unread: number;
   onNotifications: () => void;
   onExport: () => void;
+  /** Set by the phone bar: 'list' brings the companies up, 'top' goes back to the top. */
+  scrollTo?: 'list' | 'top';
+  /** Changes on every tap of the same tab, so a second tap scrolls again. */
+  scrollKey?: unknown;
 };
 
 type Entry =
@@ -74,18 +86,48 @@ type Entry =
   | { kind: 'loading' }
   | { kind: 'error' }
   | { kind: 'empty' }
-  | { kind: 'company'; row: CompanyHealth; index: number };
+  | { kind: 'company'; row: CompanyHealth; index: number }
+  | { kind: 'add' };
+
+// סדרי הרשימה
+const SORTS: { value: CompanySort; label: () => string; hint: () => string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
+  { value: 'health', label: () => t('owner.sort.health'), hint: () => t('owner.sort.healthHint'), icon: 'pulse' },
+  { value: 'name', label: () => t('owner.sort.name'), hint: () => t('owner.sort.nameHint'), icon: 'text' },
+  { value: 'activity', label: () => t('owner.sort.activity'), hint: () => t('owner.sort.activityHint'), icon: 'time' },
+  { value: 'size', label: () => t('owner.sort.size'), hint: () => t('owner.sort.sizeHint'), icon: 'people' },
+];
 
 // המסך: כותרת, כרטיסי חברות ותחתית
 export function OwnerConsoleMobile(p: Props) {
   const [filter, setFilter] = useState<CompanyFilter>('all');
+  const [sort, setSort] = useState<CompanySort>('health');
+  const [sortOpen, setSortOpen] = useState(false);
   const [search, setSearch] = useState('');
   const tabBarScroll = useTabBarScroll();
   const tabBarSpace = useTabBarSpace();
+  const resetTabBar = useTabBarReset();
+  const listRef = useRef<FlatList<Entry>>(null);
+  const heroHeight = useRef(0);
+  const [footerHeight, setFooterHeight] = useState(0);
 
   const companies = useMemo(() => p.overview?.companies ?? [], [p.overview]);
-  const rows = useMemo(() => filterCompanies(companies, filter, search, 'health'), [companies, filter, search]);
+  const rows = useMemo(() => filterCompanies(companies, filter, search, sort), [companies, filter, search, sort]);
   const loading = p.loading && !p.overview;
+  const bottomPadding = p.insetBottom + 24 + tabBarSpace;
+  // The footer sits under the list's end, so it counts as room below it.
+  const floatingAdd = useFloatingAdd(rows.length, bottomPadding + footerHeight);
+
+  // The bar's companies tab brings the list (its filters pinned) to the top
+  // in one jump, keeping the bar in place; home glides back up.
+  useEffect(() => {
+    if (!p.scrollTo) return;
+    const toList = p.scrollTo === 'list';
+    const timer = setTimeout(() => {
+      if (toList) resetTabBar();
+      listRef.current?.scrollToOffset({ offset: toList ? heroHeight.current : 0, animated: !toList });
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [p.scrollTo, p.scrollKey, resetTabBar]);
 
   const data: Entry[] = [
     { kind: 'bar' },
@@ -94,9 +136,11 @@ export function OwnerConsoleMobile(p: Props) {
       : p.error && !p.overview
         ? [{ kind: 'error' as const }]
         : rows.length
-          ? rows.map((row, index) => ({ kind: 'company' as const, row, index }))
+          ? [...rows.map((row, index) => ({ kind: 'company' as const, row, index })), { kind: 'add' as const }]
           : [{ kind: 'empty' as const }]),
   ];
+
+  const sortLabel = SORTS.find((s) => s.value === sort)!.label();
 
   const renderItem = ({ item: entry }: { item: Entry }) => {
     switch (entry.kind) {
@@ -112,6 +156,14 @@ export function OwnerConsoleMobile(p: Props) {
                 count: p.overview ? filterCompanies(companies, f.value, '', 'health').length : undefined,
                 tone: f.tone === 'bad' ? 'expired' : f.tone === 'ok' ? 'ok' : f.tone === 'off' ? 'missing' : undefined,
               }))}
+              trailing={
+                <Pressy onPress={() => setSortOpen(true)} accessibilityLabel={t('owner.sortBy', { label: sortLabel })} style={styles.sortPill} pressScale={0.95}>
+                  <Ionicons name="swap-vertical" size={16} color={DK.inkSoft} />
+                  <DKText variant="label" color={DK.inkSoft}>
+                    {sortLabel}
+                  </DKText>
+                </Pressy>
+              }
             />
           </View>
         );
@@ -159,10 +211,16 @@ export function OwnerConsoleMobile(p: Props) {
         );
       case 'company':
         return (
-          <View style={styles.cell}>
+          <View style={styles.cell} onLayout={floatingAdd.measureRow(entry.index)}>
             <Reveal index={Math.min(entry.index, 8)}>
               <CompanyCard row={entry.row} onPress={() => p.onOpenCompany(entry.row.company.id)} onMenu={() => p.onCompanyMenu(entry.row)} />
             </Reveal>
+          </View>
+        );
+      case 'add':
+        return (
+          <View style={styles.cell} onLayout={floatingAdd.measureEnd}>
+            <ListEndAction label={t('owner.newCompany')} onPress={p.onAddCompany} />
           </View>
         );
     }
@@ -175,22 +233,63 @@ export function OwnerConsoleMobile(p: Props) {
       <View style={styles.flex}>
         <NightUnderlay />
         <FlatList
+          ref={listRef}
           data={data}
           keyExtractor={(e) => (e.kind === 'company' ? e.row.company.id : e.kind)}
           renderItem={renderItem}
-          {...tabBarScroll}
-          ListHeaderComponent={<Hero {...p} search={search} onSearch={setSearch} onAttention={() => setFilter('attention')} />}
-          ListFooterComponent={p.overview ? <Footer overview={p.overview} onOpen={p.onOpenCompany} onExport={p.onExport} /> : null}
+          onScroll={(event) => {
+            tabBarScroll.onScroll?.(event);
+            floatingAdd.onScroll(event);
+          }}
+          scrollEventThrottle={16}
+          onLayout={floatingAdd.onLayout}
+          onContentSizeChange={floatingAdd.onContentSizeChange}
+          ListHeaderComponent={
+            <View
+              onLayout={(event) => {
+                heroHeight.current = event.nativeEvent.layout.height;
+                floatingAdd.measureHeader(event);
+              }}
+            >
+              <Hero {...p} search={search} onSearch={setSearch} onAttention={() => setFilter('attention')} />
+            </View>
+          }
+          ListFooterComponent={
+            p.overview ? (
+              <View onLayout={(event) => setFooterHeight(event.nativeEvent.layout.height)}>
+                <Footer overview={p.overview} onOpen={p.onOpenCompany} onExport={p.onExport} />
+              </View>
+            ) : null
+          }
           stickyHeaderIndices={[1]}
           style={styles.flex}
-          contentContainerStyle={[styles.content, { paddingBottom: p.insetBottom + 104 + tabBarSpace }]}
+          contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={p.refreshing} onRefresh={p.onRefresh} tintColor="#FFFFFF" colors={[DK.accent]} />}
         />
       </View>
-      <Fab label={t('owner.newCompany')} onPress={p.onAddCompany} bottom={p.insetBottom + 18} />
+      <Fab label={t('owner.newCompany')} onPress={p.onAddCompany} bottom={p.insetBottom + 18} visible={floatingAdd.floating} />
+      <KitSheet visible={sortOpen} onClose={() => setSortOpen(false)} title={t('owner.sort.title')} icon="swap-vertical">
+        <Surface>
+          {SORTS.map((option, index) => (
+            <ListRow
+              key={option.value}
+              first={index === 0}
+              icon={option.icon}
+              tint={option.value === sort ? DK.accent : DK.muted}
+              title={option.label()}
+              subtitle={option.hint()}
+              trailing={option.value === sort ? <Ionicons name="checkmark" size={20} color={DK.accent} accessibilityLabel={t('common.selectedSuffix')} /> : null}
+              onPress={() => {
+                setSort(option.value);
+                setSortOpen(false);
+              }}
+            />
+          ))}
+        </Surface>
+      </KitSheet>
     </View>
   );
 }
@@ -343,6 +442,8 @@ function Footer({ overview, onOpen, onExport }: { overview: PlatformOverview; on
   return (
     <View style={styles.footer}>
       <Revenue overview={overview} onOpen={onOpen} onExport={onExport} />
+      <CollectedSection expected={overview.totals.mrr} style={styles.sectionGap} />
+      <AnnouncementSection style={styles.sectionGap} />
 
       <KitSection title={t('templates.managerTitle')} style={styles.sectionGap}>
         <Pressy onPress={() => setTemplatesOpen(true)} accessibilityLabel={t('templates.managerTitle')} pressScale={0.985}>
@@ -545,6 +646,7 @@ const styles = StyleSheet.create({
   attentionValue: { fontFamily: fontStack('Heebo_800ExtraBold'), fontSize: 34, lineHeight: 38, letterSpacing: -1, fontVariant: ['tabular-nums'] },
 
   bar: { backgroundColor: DK.canvas, paddingTop: 14, paddingBottom: 12 },
+  sortPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, height: 42, paddingHorizontal: 15, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(10,22,38,0.12)', backgroundColor: '#FFFFFF' },
   chartBar: { width: '100%', borderRadius: 3, backgroundColor: '#A9BCFF' },
   cell: { paddingHorizontal: DK_SPACE.md, paddingBottom: 12 },
 
