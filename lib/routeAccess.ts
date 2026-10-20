@@ -40,6 +40,7 @@ const ROUTE_ACCESS: Record<RouteName, Access> = {
   SafetyInspections: ['admin'],
   SafetyInspectionSettings: ['admin'],
   SafetyInspection: ['admin'],
+  WorkSchedule: ['admin'],
 
   DriverHome: ['driver'],
   DriverVehicle: ['driver'],

@@ -89,6 +89,7 @@ export function DesktopShell({
   const manageItems: NavItem[] = isAdmin
     ? [
         { key: 'AdminHome', label: t('nav.dashboard'), icon: 'grid' },
+        { key: 'WorkSchedule', label: t('schedule.title'), icon: 'calendar' },
         { key: 'SignedDocuments', label: t('nav.signedDocuments'), icon: 'create' },
         { key: 'SafetyInspections', label: t('nav.safetyInspections'), icon: 'shield-checkmark' },
       ]

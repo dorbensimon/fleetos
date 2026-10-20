@@ -44,6 +44,8 @@ export type RootStackParamList = {
   /** "בדיקות בטיחות": the company's vehicle inspections and the vehicles due for one. */
   SafetyInspections: undefined;
   SafetyInspectionSettings: undefined;
+  /** "סידור עבודה": the manager's trips by day, vehicle and driver. */
+  WorkSchedule: undefined;
   /** One vehicle inspection: a new one, or one opened again (`inspectionId`). */
   SafetyInspection: { vehicleId: string; inspectionId?: string };
   /** Owner-only: manage the global signing templates shared by every company. */

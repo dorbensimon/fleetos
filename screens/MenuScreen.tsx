@@ -137,6 +137,7 @@ export default function MenuScreen({ navigation }: Props) {
             {
               title: t('menu.fleetManagement'),
               rows: [
+                { key: 'schedule', icon: 'calendar', title: t('schedule.title'), subtitle: t('schedule.menuSubtitle'), onPress: () => navigation.navigate('WorkSchedule') },
                 { key: 'departments', icon: 'business', title: t('departments.title'), subtitle: t('menu.departmentsSubtitle'), onPress: () => navigation.navigate('Departments') },
                 { key: 'archive', icon: 'archive', title: t('fleet.driverArchive'), subtitle: t('menu.archiveSubtitle'), onPress: () => navigation.navigate('DriverArchive') },
                 { key: 'reports', icon: 'stats-chart', title: t('reports.export'), subtitle: t('menu.reportsSubtitle'), onPress: () => navigation.navigate('Reports') },
