@@ -1,6 +1,7 @@
 // בונה את קבוצות הפרטים של תיק הנהג
 import type { DriverRow } from '../../lib/adminApi';
 import { formatPhone } from '../../lib/phone';
+import { formatDate } from '../../lib/theme';
 import {
   DRIVER_CARD_GROUPS,
   type DriverCardGroup,
@@ -38,8 +39,10 @@ export function buildDriverDetailGroups(
     ...group,
     rows: group.rows.flatMap((row): DriverCardRow[] => {
       if (row.key === 'license-documents' && row.kind === 'nav') {
-        const badge =
+        const status =
           licenseStatus === 'expired' ? t('status.expiredLong') : licenseStatus === 'verified' ? t('common.verified') : t('common.pendingCompletion');
+        // התוקף רשום ליד המצב, בלי להיכנס למסך
+        const badge = driver?.license_expiry ? `${status} · ${formatDate(driver.license_expiry)}` : status;
         const tone = licenseStatus === 'expired' ? 'bad' : licenseStatus === 'verified' ? 'muted' : 'warn';
         return [{ ...row, badge, tone }];
       }

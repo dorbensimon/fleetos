@@ -13,9 +13,13 @@ import { dueState, dueText } from '../../lib/meetingPlan';
 import { INSPECTION_STATE_META, formatIsoDay, inspectionRepeatLabel, todayIso } from '../../lib/inspections';
 import type { RootStackParamList } from '../../navigation/types';
 import { useVehicleInspections } from './useVehicleInspections';
-import { defectsText, latestNextDue } from './VehicleInspectionsCard';
+import { defectsText, latestNextDue, SAFETY_FOLDER } from './VehicleInspectionsCard';
+import { FolderListRow } from '../desktop/record/FolderDocuments';
+import type { DocumentRow } from '../../lib/adminApi';
 import { t, dirIcon } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
+
+export { SAFETY_FOLDER };
 
 // צבע לכל מצב
 const STATE_TONE: Record<string, DesktopTone> = { ok: 'ok', soon: 'warn', expired: 'bad', missing: 'neutral', info: 'neutral' };
@@ -31,11 +35,16 @@ export function VehicleInspectionsDesktopSection({
   vehicleId,
   archived,
   first,
+  title = t('nav.safetyInspections'),
+  documents,
 }: {
   companyId: string;
   vehicleId: string;
   archived: boolean;
   first?: boolean;
+  title?: string;
+  /** The files of the "בדיקות קצין בטיחות" folder, shown inside the same window. */
+  documents?: { docs: DocumentRow[]; onOpen: () => void };
 }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { plan, entries, repeatMonths, error, draft, move } = useVehicleInspections(companyId, vehicleId);
@@ -94,20 +103,20 @@ export function VehicleInspectionsDesktopSection({
         style={[styles.row, !first && styles.rowDivider]}
         hoverStyle={styles.rowHover}
         onPress={() => setOpenWindow(true)}
-        accessibilityLabel={[t('nav.safetyInspections'), meta, statusLabel].filter(Boolean).join(', ')}
+        accessibilityLabel={[title, meta, statusLabel].filter(Boolean).join(', ')}
       >
         <View style={[styles.rowIcon, total > 0 && styles.rowIconFilled]}>
           <Ionicons name="shield-checkmark-outline" size={16} color={total > 0 ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkMuted} />
         </View>
         <View style={styles.rowText}>
-          <DText weight="semiBold" style={styles.rowTitle} numberOfLines={1}>{t('nav.safetyInspections')}</DText>
+          <DText weight="semiBold" style={styles.rowTitle} numberOfLines={1}>{title}</DText>
           <DText style={styles.rowMeta} numberOfLines={1}>{meta}</DText>
         </View>
         {statusTone && statusLabel && <StatusPill tone={statusTone} label={statusLabel} />}
         <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
       </HoverPressable>
 
-      <DesktopModal visible={openWindow} title={t('nav.safetyInspections')} onClose={() => setOpenWindow(false)} maxWidth={560}>
+      <DesktopModal visible={openWindow} title={title} onClose={() => setOpenWindow(false)} maxWidth={560}>
         <View style={styles.body}>
           {!!error && <DText style={styles.error}>{error}</DText>}
 
@@ -145,6 +154,21 @@ export function VehicleInspectionsDesktopSection({
               <DateField value={plan.nextDue} onChange={(value) => void change(value)} placeholder={t('date.chooseDateAction')} disabled={saving} hasError={!!moveError} />
               {!!moveError && <DText style={styles.error} accessibilityRole="alert">{moveError}</DText>}
               {saving && <DText style={styles.muted}>{t('common.savingEllipsis')}</DText>}
+            </View>
+          )}
+
+          {documents && (
+            <View>
+              <DText weight="semiBold" style={styles.listTitle}>{t('inspection.documents')}</DText>
+              <View style={[pageStyles.card, pageStyles.listCard]}>
+                <FolderListRow
+                  first
+                  title={t('inspection.documents')}
+                  icon="folder-open-outline"
+                  docs={documents.docs}
+                  onPress={() => { setOpenWindow(false); documents.onOpen(); }}
+                />
+              </View>
             </View>
           )}
 

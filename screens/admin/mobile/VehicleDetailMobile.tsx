@@ -33,7 +33,7 @@ import { formatPlate } from '../../../lib/plate';
 import { formatDate } from '../../../lib/theme';
 import { nextServiceKmOf } from '../../../lib/serviceSchedule';
 import { vehicleHealth } from './FleetCards';
-import { VehicleInspectionsCard } from '../../../components/inspection/VehicleInspectionsCard';
+import { SAFETY_FOLDER, VehicleInspectionsCard } from '../../../components/inspection/VehicleInspectionsCard';
 import { t, dirIcon, getLocale } from '../../../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -60,13 +60,10 @@ type Props = {
   maintenance: Maint;
   derivedNextServiceKm: number | null;
   savingMaintenance: boolean;
-  lookupLoading: boolean;
-  lookupMessage: string | null;
   scrollRef: React.Ref<any>;
   onBack: () => void;
   onRetry: () => void;
   onEdit: () => void;
-  onLookup: () => void;
   onEditMaintenance: () => void;
   onCancelMaintenance: () => void;
   onChangeMaintenance: (field: keyof Maint, value: string) => void;
@@ -236,15 +233,24 @@ function renderTab(p: Props, v: Vehicle) {
     );
   }
   if (p.tab === 'documents') {
+    // בדיקות קצין בטיחות: הבדיקות והמסמכים שלהן בתיקייה אחת
+    const safetyFolder = p.folders.find((f) => f.category === SAFETY_FOLDER);
+    const otherFolders = p.folders.filter((f) => f.category !== SAFETY_FOLDER);
     return (
       <>
         <ComplianceSection companyId={p.companyId} ownerType="vehicle" ownerId={v.id} focusItemType={p.focusItem} spacious folderAppearance hiddenItemTypes={['annual_test']} />
+        <VehicleInspectionsCard
+          companyId={p.companyId}
+          vehicleId={v.id}
+          archived={archived}
+          title={safetyFolder?.title}
+          onOpenDocuments={safetyFolder ? () => p.onOpenFolder(safetyFolder) : undefined}
+        />
         <KitSection title={t('compliance.cat.inspection')}>
-          {p.folders.map((folder, index) => (
+          {otherFolders.map((folder, index) => (
             <ListRow key={folder.category} first={index === 0} icon={folder.icon as IconName} tint={folder.color} title={folder.title} onPress={() => p.onOpenFolder(folder)} />
           ))}
         </KitSection>
-        <VehicleInspectionsCard companyId={p.companyId} vehicleId={v.id} archived={archived} />
       </>
     );
   }
@@ -262,16 +268,7 @@ function renderTab(p: Props, v: Vehicle) {
         <InfoLine icon="grid" label={t('vehicle.typeLabel')} value={VEHICLE_TYPE_LABELS[v.vehicle_type]} onPress={p.onEdit} />
         <InfoLine icon="calendar" label={t('vehicle.productionYear')} value={v.production_year ? `${v.production_month ? `${v.production_month}/` : ''}${v.production_year}` : null} onPress={p.onEdit} />
         <InfoLine icon="flag" label={t('vehicle.onRoadDate')} value={v.road_registration_date ? formatDate(v.road_registration_date) : null} onPress={p.onEdit} />
-        <ActionRow
-          first={false}
-          icon="cloud-download-outline"
-          label={p.lookupLoading ? t('vehicle.searchingDb') : t('vehicle.fillByPlate')}
-          hint={t('vehicle.fillByPlateHint')}
-          onPress={p.onLookup}
-          disabled={p.lookupLoading}
-        />
       </KitSection>
-      {!!p.lookupMessage && <Banner tone="info">{p.lookupMessage}</Banner>}
       <KitSection title={t('vehicle.idAndOrganization')}>
         <InfoLine first icon="barcode" label={t('vehicle.vin')} value={v.vin} ltr onPress={p.onEdit} />
         <InfoLine icon="code" label={t('vehicle.internalCode')} value={v.internal_code} ltr onPress={p.onEdit} />

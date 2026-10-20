@@ -62,22 +62,71 @@ function buildHtml(
     .join('');
 
   // Same folders and order as the driver record; the license photos have their own line above.
+  // Each folder: how many files, the latest upload, and the latest expiry with its state.
+  const folderState = (inFolder: DocumentRow[]) => {
+    const latest = [...inFolder].sort((x, y) => (x.created_at < y.created_at ? 1 : -1))[0] ?? null;
+    const expiry = latest?.expiry_date ?? null;
+    const state = expiry ? expiryState(expiry) : null;
+    return { latest, expiry, state };
+  };
+  let emptyFolders = 0;
+  const badFolders: string[] = [];
   const documentRows = DRIVER_DOCUMENT_GROUPS.map((group) => {
     const rows = group.folders.map((folder) => {
       const inFolder = documents.filter((doc) => doc.category === folder.category);
-      const latest = inFolder.reduce<string | null>((max, doc) => (!max || doc.created_at > max ? doc.created_at : max), null);
+      const { latest, expiry, state } = folderState(inFolder);
+      if (!inFolder.length) emptyFolders++;
+      if (state === 'expired' || state === 'soon') badFolders.push(`${folder.title} — ${state === 'expired' ? 'פג תוקף' : 'קרוב לפוג'} (${formatDate(expiry)})`);
+      const tag = !inFolder.length
+        ? statusTag('ריק', 'neutral')
+        : state === 'expired' ? statusTag('פג תוקף', 'accent2')
+        : state === 'soon' ? statusTag('קרוב לפוג', 'outline')
+        : statusTag('קיים', 'accent');
       return `
         <tr>
           <td>${esc(folder.title)}</td>
-          <td>${inFolder.length ? inFolder.length : statusTag('ריק', 'neutral')}</td>
-          <td>${latest ? esc(formatDate(latest)) : '—'}</td>
+          <td class="num">${inFolder.length || '—'}</td>
+          <td>${latest ? esc(formatDate(latest.created_at)) : '—'}</td>
+          <td>${expiry ? esc(formatDate(expiry)) : '—'}</td>
+          <td>${tag}</td>
         </tr>`;
     });
-    return `<tr class="group-row"><td colspan="3">${esc(group.title)}</td></tr>${rows.join('')}`;
+    return `<tr class="group-row"><td colspan="5">${esc(group.title)}</td></tr>${rows.join('')}`;
   }).join('');
+  const folderCount = DRIVER_DOCUMENT_GROUPS.reduce((n, g) => n + g.folders.length, 0);
+  const pendingSigning = signingRequests.filter((r) => r.status === 'pending').length;
+
+  // מה דורש טיפול: קודם מה שפג, אחר כך מה שקרוב לפוג ומה שחסר
+  const actions: { text: string; tone: TagTone }[] = [];
+  const licenseState = expiryState(driver.license_expiry);
+  if (licenseState === 'expired') actions.push({ text: `רישיון הנהיגה פג תוקף ב-${formatDate(driver.license_expiry)}`, tone: 'accent2' });
+  if (licenseState === 'missing') actions.push({ text: 'לא הוזן תוקף לרישיון הנהיגה', tone: 'outline' });
+  if (licenseState === 'soon') actions.push({ text: `רישיון הנהיגה יפוג ב-${formatDate(driver.license_expiry)}`, tone: 'outline' });
+  if (photoSides < 2) actions.push({ text: `חסר צילום רישיון (${photoSides} מתוך 2 צדדים)`, tone: 'outline' });
+  badFolders.forEach((text) => actions.push({ text, tone: text.includes('פג תוקף') ? 'accent2' : 'outline' }));
+  if (pendingSigning) actions.push({ text: `${pendingSigning} טפסים ממתינים לחתימת הנהג`, tone: 'outline' });
+  actions.sort((x, y) => (x.tone === y.tone ? 0 : x.tone === 'accent2' ? -1 : 1));
+  const overall = actions.some((x) => x.tone === 'accent2') ? { label: 'דורש טיפול מיידי', tone: 'accent2' as TagTone }
+    : actions.length ? { label: 'דורש השלמה', tone: 'outline' as TagTone }
+    : { label: 'תקין', tone: 'accent' as TagTone };
+
+  const kpi = (label: string, value: string, tone: TagTone | null = null, sub = '') =>
+    `<div class="kpi${tone ? ` kpi-${tone}` : ''}"><div class="kpi-label">${esc(label)}</div><div class="kpi-value">${value}</div>${sub ? `<div class="kpi-sub">${esc(sub)}</div>` : ''}</div>`;
 
   // Field order follows the driver record screen, row by row (three per row, right to left).
   const bodyHtml = `
+    <div class="kpis">
+      ${kpi('מצב כללי', esc(overall.label), overall.tone)}
+      ${kpi('רישיון נהיגה', esc(license.label), license.tone, driver.license_expiry ? `עד ${formatDate(driver.license_expiry)}` : '')}
+      ${kpi('תיקיות עם מסמכים', `<span class="ltr">${folderCount - emptyFolders}/${folderCount}</span>`, null, emptyFolders ? `${emptyFolders} ריקות` : 'הכל מלא')}
+      ${kpi('טפסים לחתימה', String(pendingSigning), pendingSigning ? 'outline' : null, pendingSigning ? 'ממתינים לנהג' : 'אין ממתינים')}
+    </div>
+
+    <h2 class="section-title">דורש טיפול</h2>
+    ${actions.length
+      ? `<ul class="actions">${actions.map((x) => `<li class="action action-${x.tone}">${esc(x.text)}</li>`).join('')}</ul>`
+      : emptyState('אין פריטים פתוחים — תיק הנהג מעודכן')}
+
     <h2 class="section-title">פרטים אישיים</h2>
     <div class="grid">
       ${field('שם מלא', esc(driver.full_name))}
@@ -108,9 +157,10 @@ function buildHtml(
     ${
       vehicles.length === 0
         ? emptyState('אין רכב משויך לנהג זה')
-        : `<div class="grid">
-            ${vehicles.map((v) => ltrField(v.is_primary ? 'רכב ראשי' : 'רכב משני', formatPlate(v.plate_number))).join('')}
-          </div>`
+        : `<table class="table" dir="rtl">
+            <thead><tr><th>מספר רישוי</th><th>שיוך</th></tr></thead>
+            <tbody>${vehicles.map((v) => `<tr><td><span class="ltr">${esc(formatPlate(v.plate_number))}</span></td><td>${v.is_primary ? 'רכב ראשי' : 'רכב משני'}</td></tr>`).join('')}</tbody>
+          </table>`
     }
 
     <h2 class="section-title">מסמכים</h2>
@@ -118,8 +168,10 @@ function buildHtml(
       <thead>
         <tr>
           <th>תיקייה</th>
-          <th>מסמכים</th>
-          <th>עודכן לאחרונה</th>
+          <th>קבצים</th>
+          <th>הועלה לאחרונה</th>
+          <th>תוקף</th>
+          <th>מצב</th>
         </tr>
       </thead>
       <tbody>${documentRows}</tbody>
@@ -139,7 +191,14 @@ function buildHtml(
             </thead>
             <tbody>${signingRows}</tbody>
           </table>`
-    }`;
+    }
+
+    <div class="signoff">
+      <div class="sign-line"><span>שם הבודק</span></div>
+      <div class="sign-line"><span>תפקיד</span></div>
+      <div class="sign-line"><span>תאריך</span></div>
+      <div class="sign-line"><span>חתימה</span></div>
+    </div>`;
 
   return buildReportDocument({
     company: { name: company.name, businessId: company.business_id },

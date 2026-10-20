@@ -1,14 +1,15 @@
 // מסך סידור העבודה בדפדפן: לוח חודש, פאנל יום, טופס נסיעה וחלונות
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { t } from '../../lib/i18n';
+import { getLocale, t } from '../../lib/i18n';
+import { useCompany } from '../../lib/CompanyContext';
 import { errorMessage } from '../../lib/requestError';
 import {
   addDays, byStart, CITIES, count, createRules, dayKey, dayName, diffDays, fromKey, hebrewDayLabel, holidayOf, isOff,
   lastDay, monthName, nextWorkDay, niceDate, repeatDates, route, shortDate, span, timeRange, todayKey, tripDayOf, tripTime,
-  weekday, weekStart, type Block, type Repeat, type Rules, type SavedTrip, type ScheduleData, type ScheduleVehicle, type Trip,
+  weekday, weekStart, type Block, type Repeat, type Rules, type SavedTrip, type ScheduleData, type ScheduleVehicle, type Series, type Trip,
 } from '../../lib/workSchedule';
-import { addClient, addSavedTrip, deleteBlock, deleteSavedTrip, deleteTrips, loadSchedule, loadTrips, newId, saveBlock, saveTrips } from '../../lib/workScheduleApi';
+import { addClient, addSavedTrip, deleteBlock, deleteSavedTrip, deleteTrips, loadSchedule, loadTrips, newId, saveBlock, saveSeries, saveTrips, SERIES_AHEAD_DAYS } from '../../lib/workScheduleApi';
 import { SCHEDULE_CSS } from './scheduleCss';
 
 /* ---------- אייקונים ---------- */
@@ -21,7 +22,7 @@ const ICONS: Record<string, string> = {
   copy: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V5a2 2 0 0 1 2-2h10"/>',
   userX: '<circle cx="9" cy="7" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 4 1.5M17 15l5 5M22 15l-5 5"/>',
   alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
-  check: '<path d="M20 6 9 17l-5-5"/>', more: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', bookmark: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
   chart: '<path d="M3 3v18h18M8 17v-5M13 17V8M18 17v-8"/>',
 };
@@ -98,6 +99,7 @@ export function WorkSchedule({ companyId, phone, onMenu }: { companyId: string; 
   const [searchOpen, setSearchOpen] = useState(false);
   const [phoneSearch, setPhoneSearch] = useState(false);
   const [print, setPrint] = useState<{ day: string; how: 'drivers' | 'table' } | null>(null);
+  const [blockOpen, setBlockOpen] = useState<Block | null>(null);
   const searchRef = useRef<HTMLLabelElement>(null);
   const agendaRef = useRef<HTMLDivElement>(null);
 
@@ -183,6 +185,49 @@ export function WorkSchedule({ companyId, phone, onMenu }: { companyId: string; 
     }
   }, [companyId, showToast]);
 
+  // מחיקה מהיומן: אפשר להחזיר מיד מההודעה
+  const removeTrips = useCallback(async (trips: Trip[], message: string, alsoUndo: Undo | null) => {
+    const ids = new Set(trips.map((x) => x.id));
+    try {
+      await deleteTrips([...ids]);
+      setData((d) => (d ? { ...d, trips: d.trips.filter((x) => !ids.has(x.id)) } : d));
+      showToast(message, async () => {
+        try {
+          await saveTrips(companyId, trips);
+          setData((d) => (d ? { ...d, trips: [...d.trips.filter((x) => !ids.has(x.id)), ...trips] } : d));
+          await alsoUndo?.();
+          showToast(t('schedule.undone'));
+        } catch (error) {
+          showToast(errorMessage(error, t('schedule.saveFailed')));
+        }
+      });
+      return true;
+    } catch (error) {
+      showToast(errorMessage(error, t('schedule.saveFailed')));
+      return false;
+    }
+  }, [companyId, showToast]);
+
+  // הסרת "רכב במוסך" / "נהג לא זמין" מהיומן
+  const removeBlock = useCallback(async (b: Block) => {
+    try {
+      await deleteBlock(b.id);
+      setData((d) => (d ? { ...d, blocks: d.blocks.filter((x) => x.id !== b.id) } : d));
+      setBlockOpen(null);
+      showToast(t('schedule.block.removed'), async () => {
+        try {
+          await saveBlock(companyId, b);
+          setData((d) => (d ? { ...d, blocks: [...d.blocks, b] } : d));
+          showToast(t('schedule.undone'));
+        } catch (error) {
+          showToast(errorMessage(error, t('schedule.saveFailed')));
+        }
+      });
+    } catch (error) {
+      showToast(errorMessage(error, t('schedule.saveFailed')));
+    }
+  }, [companyId, showToast]);
+
   /* ---------- חיפוש ---------- */
   const hits = useMemo(() => {
     const q = norm(query).replace(/-/g, '');
@@ -259,7 +304,7 @@ export function WorkSchedule({ companyId, phone, onMenu }: { companyId: string; 
     />
   );
 
-  const common = { data, rules, sel, today, flashId, openTrip };
+  const common = { data, rules, sel, today, flashId, openTrip, onBlock: setBlockOpen };
   return (
     <div className={`ws${phone ? ' phone' : ''}`}>
       <style>{SCHEDULE_CSS}</style>
@@ -316,6 +361,8 @@ export function WorkSchedule({ companyId, phone, onMenu }: { companyId: string; 
           onSaved={(date, id) => { setEditing(null); goTo(date); flash(id); }}
           onClientAdded={(c) => setData((d) => (d ? { ...d, clients: [...d.clients, c] } : d))}
           onSavedTripAdded={(s) => setData((d) => (d ? { ...d, saved: [...d.saved, s] } : d))}
+          onSeriesChanged={(x) => setData((d) => (d ? { ...d, series: [...d.series.filter((y) => y.id !== x.id), x] } : d))}
+          removeTrips={removeTrips}
         />
       )}
       {dialog === 'dup' && (
@@ -338,7 +385,8 @@ export function WorkSchedule({ companyId, phone, onMenu }: { companyId: string; 
         <PrintDialog rules={rules} sel={sel} today={today} onClose={() => setDialog(null)} onPrint={(day, how) => { setDialog(null); setPrint({ day, how }); }} />
       )}
       {dialog === 'more' && (
-        <Dialog title={t('schedule.more.title')} onClose={() => setDialog(null)} bodyClass="dlg-body sheet-list">
+        <Dialog title={t('schedule.addMenu')} onClose={() => setDialog(null)} bodyClass="dlg-body sheet-list">
+          <button type="button" className="sheet-main" onClick={() => { setDialog(null); openTrip({ date: sel }); }}><Icon name="plus" />{t('schedule.newTrip')}</button>
           {([['dup', 'copy', 'schedule.more.dup'], ['away', 'userX', 'schedule.driverAway'], ['garage', 'wrench', 'schedule.vehicleGarage'],
             ['print', 'printer', 'schedule.print.title'], ['saved', 'bookmark', 'schedule.savedTrips'], ['report', 'chart', 'schedule.more.report']] as const).map(([name, icon, key]) => (
             <button type="button" key={name} onClick={() => setDialog(name)}><Icon name={icon} />{t(key)}</button>
@@ -360,6 +408,18 @@ export function WorkSchedule({ companyId, phone, onMenu }: { companyId: string; 
           }}
         />
       )}
+      {blockOpen && (
+        <Dialog title={blockOpen.ownerType === 'driver' ? t('schedule.driverAway') : t('schedule.vehicleGarage')} onClose={() => setBlockOpen(null)}>
+          <p>
+            <b>{blockOpen.ownerType === 'driver' ? rules.driverName(blockOpen.ownerId) : rules.vehicleLabel(rules.vehicle(blockOpen.ownerId))}</b> · {blockOpen.reason}
+          </p>
+          <div className="vsub tnum">{datesRange(blockOpen.from, blockOpen.to)}</div>
+          <div className="dlg-foot">
+            <button type="button" className="danger" onClick={() => void removeBlock(blockOpen)}>{t('schedule.block.removeFromCalendar')}</button>
+            <button type="button" onClick={() => setBlockOpen(null)}>{t('common.close')}</button>
+          </div>
+        </Dialog>
+      )}
       {print && <PrintSheets data={data} rules={rules} day={print.day} how={print.how} onDone={() => setPrint(null)} />}
 
       <div className={`toast${toast ? ' show' : ''}`} role="status">
@@ -379,6 +439,7 @@ type Common = {
   today: string;
   flashId: string | null;
   openTrip: (trip: Partial<Trip> & { date: string }) => void;
+  onBlock: (b: Block) => void;
 };
 
 /* ---------- סיכום של יום ללוח ---------- */
@@ -456,7 +517,7 @@ function TripTags({ trip, k }: { trip: Trip; k: string }) {
 }
 
 /* ---------- פאנל היום (מחשב) ---------- */
-function DayPanel({ data, rules, sel: k, today, flashId, openTrip, onDay, onAction }: Common & { onDay: (n: number) => void; onAction: (name: 'dup' | 'away' | 'garage' | 'print') => void }) {
+function DayPanel({ data, rules, sel: k, today, flashId, openTrip, onBlock, onDay, onAction }: Common & { onDay: (n: number) => void; onAction: (name: 'dup' | 'away' | 'garage' | 'print') => void }) {
   const trips = rules.dayTrips(k).sort(byStart(k));
   const hol = holidayOf(k);
   const waiting = trips.filter((x) => !x.vehicleId && x.status === 'active');
@@ -470,7 +531,7 @@ function DayPanel({ data, rules, sel: k, today, flashId, openTrip, onDay, onActi
 
   const vehicleStatus = (v: ScheduleVehicle) => {
     const g = rules.garageOf(v.id, k);
-    if (g) return <span className="pill p-gray">{t('schedule.garagePill', { reason: g.reason })}</span>;
+    if (g) return <button type="button" className="pill p-gray pill-btn" onClick={() => onBlock(g)} aria-label={t('schedule.block.editMark')}>{t('schedule.garagePill', { reason: g.reason })}</button>;
     const own = trips.filter((x) => x.vehicleId === v.id && x.status === 'active');
     if (k === today) {
       const cur = own.find((x) => span(x, k)[0] <= nowHm && nowHm < span(x, k)[1]);
@@ -512,7 +573,7 @@ function DayPanel({ data, rules, sel: k, today, flashId, openTrip, onDay, onActi
       ) : null}
       {away.length > 0 && (
         <div className="vsub" style={{ margin: '-4px 2px 12px' }}>
-          <Icon name="userX" /> {t('schedule.awayToday')} {away.map((b, i) => <React.Fragment key={b.id}>{i > 0 && ', '}<b>{rules.driverName(b.ownerId)}</b> ({b.reason})</React.Fragment>)}
+          <Icon name="userX" /> {t('schedule.awayToday')} {away.map((b, i) => <React.Fragment key={b.id}>{i > 0 && ', '}<button type="button" className="link" onClick={() => onBlock(b)}><b>{rules.driverName(b.ownerId)}</b> ({b.reason})</button></React.Fragment>)}
         </div>
       )}
       {waiting.length > 0 && (
@@ -523,7 +584,7 @@ function DayPanel({ data, rules, sel: k, today, flashId, openTrip, onDay, onActi
               <div>
                 <b className="tnum">{tripTime(x, k)}</b> {x.title}<TripTags trip={x} k={k} />
                 {(x.client || x.driverId || route(x)) && (
-                  <div className="vsub">{[x.client, route(x), x.driverId && t('schedule.driverLabel', { name: rules.driverName(x.driverId) })].filter(Boolean).join(' · ')}</div>
+                  <div className="vsub">{[x.client, x.phone, route(x), x.driverId && t('schedule.driverLabel', { name: rules.driverName(x.driverId) })].filter(Boolean).join(' · ')}</div>
                 )}
               </div>
               <button type="button" onClick={() => openTrip(x)}>{t('schedule.assignVehicle')}</button>
@@ -552,7 +613,7 @@ function DayPanel({ data, rules, sel: k, today, flashId, openTrip, onDay, onActi
                 </div>
               </div>
               {vehicleStatus(v)}
-              {!g && !bad && (
+              {!g && (
                 <button type="button" className="icon-btn" onClick={() => openTrip({ date: k, vehicleId: v.id })} aria-label={t('schedule.newTripFor', { plate: v.plate })}><Icon name="plus" /></button>
               )}
             </div>
@@ -560,6 +621,7 @@ function DayPanel({ data, rules, sel: k, today, flashId, openTrip, onDay, onActi
               <button type="button" key={x.id} data-tid={x.id} className={['trip', x.status === 'cancelled' && 'cancel', flashId === x.id && 'flash'].filter(Boolean).join(' ')} onClick={() => openTrip(x)}>
                 <span className="t">{tripTime(x, k)}</span>{x.title}<TripTags trip={x} k={k} />
                 {x.client && <> · <span className="vsub">{x.client}</span></>}
+                {x.phone && <> · <span className="vsub" dir="ltr">{x.phone}</span></>}
                 {x.driverId !== v.driverId && <> · <span className="vsub">{t('schedule.driverLabel', { name: rules.driverName(x.driverId) || '—' })}</span></>}
                 {x.status === 'cancelled' && ` ${t('schedule.cancelledMark')}`}
                 {route(x) && <div className="vsub">{route(x)}</div>}
@@ -574,7 +636,7 @@ function DayPanel({ data, rules, sel: k, today, flashId, openTrip, onDay, onActi
 
 /* ---------- אייפון: יומן בסגנון iOS ---------- */
 function PhoneView({
-  data, rules, sel: k, today, flashId, openTrip, view, monthMove, agendaRef, onSelect, onShift, onToday, onMenu, onMore, search, onToggleSearch,
+  data, rules, sel: k, today, flashId, openTrip, onBlock, view, monthMove, agendaRef, onSelect, onShift, onToday, onMenu, onMore, search, onToggleSearch,
 }: Common & {
   view: { y: number; m: number }; monthMove: number; agendaRef: React.RefObject<HTMLDivElement | null>; onSelect: (k: string) => void; onShift: (n: number) => void;
   onToday: () => void; onMenu?: () => void; onMore: () => void; search: React.ReactNode; onToggleSearch: () => void;
@@ -603,7 +665,7 @@ function PhoneView({
         <button type="button" className="ios-pill" onClick={onMenu} aria-label={t('schedule.menu')}><Icon name="menu" /></button>
         <div className="ios-pill grp">
           <button type="button" onClick={onToggleSearch} aria-label={t('schedule.search')}><Icon name="search" /></button>
-          <button type="button" onClick={() => openTrip({ date: k })} aria-label={t('schedule.newTrip')}><Icon name="plus" /></button>
+          <button type="button" onClick={onMore} aria-label={t('schedule.addMenu')}><Icon name="plus" /></button>
         </div>
       </div>
       {search}
@@ -646,13 +708,13 @@ function PhoneView({
         })}
         {data.vehicles.map((v) => {
           const g = rules.garageOf(v.id, k);
-          return g ? row(`g${v.id}`, 'note', t('schedule.vehicleInGarage', { vehicle: vehicleLabel(v) }), g.reason, t('schedule.allDay')) : null;
+          return g ? row(`g${v.id}`, 'note', t('schedule.vehicleInGarage', { vehicle: vehicleLabel(v) }), g.reason, t('schedule.allDay'), () => onBlock(g)) : null;
         })}
         {data.blocks.filter((b) => b.ownerType === 'driver' && b.from <= k && k <= b.to).map((b) =>
-          row(`a${b.id}`, 'note', `${rules.driverName(b.ownerId)} – ${b.reason}`, t('schedule.notAvailable'), t('schedule.allDay')))}
+          row(`a${b.id}`, 'note', `${rules.driverName(b.ownerId)} – ${b.reason}`, t('schedule.notAvailable'), t('schedule.allDay'), () => onBlock(b)))}
         {trips.map((x) => {
           const v = rules.vehicle(x.vehicleId);
-          const sub = x.status === 'cancelled' ? t('schedule.cancelled') : v ? [vehicleLabel(v), rules.driverName(x.driverId), x.client, route(x)].filter(Boolean).join(' · ') : t('schedule.waitingTap');
+          const sub = x.status === 'cancelled' ? t('schedule.cancelled') : v ? [vehicleLabel(v), rules.driverName(x.driverId), x.client, x.phone, route(x)].filter(Boolean).join(' · ') : t('schedule.waitingTap');
           const [s, e] = span(x, k);
           const time = s === '00:00' && e === '24:00' ? t('schedule.allDay') : <>{s === '00:00' ? '—' : s}<span>{e === '24:00' ? '—' : e}</span></>;
           return row(x.id, x.status === 'cancelled' ? 'cancel' : v ? '' : 'wait', <>{x.title}<TripTags trip={x} k={k} /></>, sub, time, () => openTrip(x), x.id);
@@ -667,7 +729,6 @@ function PhoneView({
       <div className="ios-bottom">
         <button type="button" className="ios-pill" onClick={() => { onToday(); document.querySelector('.ws')?.scrollTo({ top: 0, behavior: 'smooth' }); }}>{t('schedule.today')}</button>
         <div className="ios-pill grp">
-          <button type="button" onClick={onMore} aria-label={t('schedule.more.title')}><Icon name="more" /></button>
           <button
             type="button"
             onClick={() => agendaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
@@ -684,13 +745,15 @@ function PhoneView({
 /* ---------- טופס נסיעה ---------- */
 type ApplyTrips = (changed: Trip[], undo: Undo | null, message: string) => Promise<boolean>;
 type UndoTrips = (before: Trip[], created: string[]) => Undo;
+type RemoveTrips = (trips: Trip[], message: string, alsoUndo: Undo | null) => Promise<boolean>;
 
 function TripForm({
-  data, rules, initial, companyId, onClose, applyTrips, undoTrips, onSaved, onClientAdded, onSavedTripAdded,
+  data, rules, initial, companyId, onClose, applyTrips, undoTrips, onSaved, onClientAdded, onSavedTripAdded, onSeriesChanged, removeTrips,
 }: {
   data: ScheduleData; rules: Rules; initial: Partial<Trip> & { date: string }; companyId: string; onClose: () => void;
   applyTrips: ApplyTrips; undoTrips: UndoTrips; onSaved: (date: string, id: string) => void;
   onClientAdded: (c: { id: string; name: string }) => void; onSavedTripAdded: (s: SavedTrip) => void;
+  onSeriesChanged: (x: Series) => void; removeTrips: RemoveTrips;
 }) {
   const editing = initial.id ? (initial as Trip) : null;
   const cancelled = editing?.status === 'cancelled';
@@ -703,6 +766,10 @@ function TripForm({
   const [scope, setScope] = useState<'one' | 'all'>('one');
   const [title, setTitle] = useState(initial.title ?? '');
   const [client, setClient] = useState(initial.client ?? '');
+  const [phoneNo, setPhoneNo] = useState(initial.phone ?? '');
+  // נסיעה קבועה בלי תאריך סיום: נמשכת עד שמבטלים אותה
+  const [forever, setForever] = useState(false);
+  const seriesRow = editing?.seriesId ? data.series.find((x) => x.id === editing.seriesId) ?? null : null;
   const [pickup, setPickup] = useState(initial.pickup ?? '');
   const [dest, setDest] = useState(initial.dest ?? '');
   // undefined = לא נבחר, null = רשימת המחכים
@@ -713,21 +780,17 @@ function TripForm({
   const [errors, setErrors] = useState<{ when?: string; what?: string; vehicle?: string }>({});
   const [busy, setBusy] = useState(false);
 
-  const showUntil = repeat !== 'once' && !(series && !cancelled);
+  const repeating = repeat === 'daily' || repeat === 'weekly';
+  const showUntil = repeat !== 'once' && !(series && !cancelled) && !(repeating && forever);
   const end = repeat === 'multi' && until > date ? until : date;
   const ignore = editing?.id ?? null;
   const vehicleWhy = (id: string) => rules.vehicleBusyRange(id, date, end, from, to, ignore);
   const pickedVehicle = rules.vehicle(pick);
   const driverBlock = (id: string) => rules.driverBlockedRange(id, date, end) || rules.noLicense(id, pickedVehicle);
-  const dates = repeat === 'daily' || repeat === 'weekly' ? repeatDates(repeat, date, until) : [];
-
-  // רכב שנבחר ונהיה תפוס (שינוי שעה/תאריך): מבטלים את הבחירה ומסבירים
-  useEffect(() => {
-    if (pick && vehicleWhy(pick)) {
-      setErrors((e) => ({ ...e, vehicle: t('schedule.form.vehicleNotFree', { plate: rules.vehicle(pick)?.plate ?? '', reason: vehicleWhy(pick) }) }));
-      setPick(undefined);
-    }
-  }, [date, end, from, to]); // eslint-disable-line react-hooks/exhaustive-deps
+  const horizon = addDays(todayKey(), SERIES_AHEAD_DAYS);
+  const dates = repeating ? repeatDates(repeat, date, forever ? (horizon > date ? horizon : date) : until) : [];
+  // אפשר לשבץ כל רכב; מה שלא תקין נשאר כהערה מתחת
+  const pickWhy = pick ? vehicleWhy(pick) : null;
   // נהג שלא יכול לנהוג יוצא, וחוזר כשהוא שוב יכול
   useEffect(() => {
     if (driverId && driverBlock(driverId)) {
@@ -742,7 +805,7 @@ function TripForm({
   const busyWith = driverId && from && to ? rules.driverBusyRange(driverId, date, end, from, to, ignore) : null;
   let soft: string | null = null;
   if (driverId && from && to && end === date && to > from) {
-    const draft: Trip = { id: '-', date, end: null, from, to, title, client, pickup: norm(pickup), dest: norm(dest), vehicleId: pick ?? null, driverId, seriesId: null, status: 'active' };
+    const draft: Trip = { id: '-', date, end: null, from, to, title, client, phone: phoneNo, pickup: norm(pickup), dest: norm(dest), vehicleId: pick ?? null, driverId, seriesId: null, status: 'active' };
     soft = rules.hoursIssue(driverId, date, ignore, draft) || rules.hoursIssue(driverId, addDays(date, 1), ignore, draft);
     const gap = rules.gaps(rules.driverDay(driverId, date, ignore, draft)).find((g) => g.prev === draft || g.next === draft);
     if (!soft && gap) soft = t('schedule.form.gapReason', { gap: gap.text });
@@ -771,7 +834,9 @@ function TripForm({
 
   let repeatHint = '';
   if (repeat === 'multi' && until > date) repeatHint = t('schedule.form.multiHint', { n: diffDays(until, date) + 1, start: `${shortDate(date)} ${from}`.trim(), end: `${shortDate(until)} ${to}`.trim() });
-  else if ((repeat === 'daily' || repeat === 'weekly') && dates.length) repeatHint = t('schedule.form.seriesHint', { trips: count(dates.length, 'schedule.trips') });
+  else if (repeating && forever) repeatHint = t('schedule.form.foreverHint');
+  else if (repeating && dates.length) repeatHint = t('schedule.form.seriesHint', { trips: count(dates.length, 'schedule.trips') });
+  else if (seriesRow && !seriesRow.until && !cancelled) repeatHint = t('schedule.form.foreverScopeHint');
   else if (series && !cancelled) repeatHint = t('schedule.form.scopeHint');
 
   const save = async () => {
@@ -780,7 +845,7 @@ function TripForm({
     if (!date || !from || !to) next.when = t('schedule.form.whenMissing');
     else if (r === 'multi' && !(until > date)) next.when = t('schedule.form.lastDayMissing');
     else if (r !== 'multi' && to <= from) next.when = t('schedule.form.endBeforeStart');
-    else if ((r === 'daily' || r === 'weekly') && !dates.length) next.when = t('schedule.form.untilMissing');
+    else if ((r === 'daily' || r === 'weekly') && !dates.length) next.when = forever ? t('schedule.form.endBeforeStart') : t('schedule.form.untilMissing');
     if (!norm(title)) next.what = t('schedule.form.titleMissing');
     if (pick === undefined) next.vehicle = t('schedule.form.vehicleMissing');
     setErrors(next);
@@ -788,7 +853,7 @@ function TripForm({
 
     setBusy(true);
     const fields = {
-      from, to, title: norm(title), client: clientValue, pickup: norm(pickup), dest: norm(dest), vehicleId: pick ?? null, driverId: driverId || null,
+      from, to, title: norm(title), client: clientValue, phone: norm(phoneNo), pickup: norm(pickup), dest: norm(dest), vehicleId: pick ?? null, driverId: driverId || null,
     };
     try {
       if (clientValue && !knownClient) {
@@ -803,6 +868,7 @@ function TripForm({
       let changed: Trip[] = [];
       let created: string[] = [];
       let before: Trip[] = [];
+      let stopOnUndo: Series | null = null;
       let message = cancelled ? t('schedule.form.restored') : pick ? t('schedule.form.saved') : t('schedule.form.savedWaiting');
       let firstId: string;
       if (editing) {
@@ -815,33 +881,60 @@ function TripForm({
           const later = data.trips.filter((x) => x.seriesId === editing.seriesId && x.date > editing.date && x.status === 'active');
           later.forEach((x) => {
             const c: Trip = { ...x, ...fields };
-            if (c.vehicleId && rules.vehicleBusy(c.vehicleId, x.date, from, to, x.id)) { c.vehicleId = null; moved++; }
+            if (c.vehicleId && rules.vehicleClash(c.vehicleId, x.date, from, to, x.id)) { c.vehicleId = null; moved++; }
             if (c.driverId && (rules.driverBlocked(c.driverId, x.date) || rules.driverBusy(c.driverId, x.date, from, to, x.id))) c.driverId = null;
             changed.push(c);
           });
           before = [editing, ...later];
+          // A series with no end: the trips made from now on follow the change too.
+          if (seriesRow) {
+            const updated: Series = { ...seriesRow, ...fields };
+            try {
+              await saveSeries(companyId, updated);
+            } catch (error) {
+              setErrors({ when: errorMessage(error, t('schedule.saveFailed')) });
+              return;
+            }
+            onSeriesChanged(updated);
+          }
           message = t('schedule.form.seriesUpdated', { trips: count(later.length, 'schedule.trips') }) + (moved ? t('schedule.movedWaiting', { n: moved }) : '');
         }
       } else if (r === 'daily' || r === 'weekly') {
         const seriesId = newId();
         let moved = 0;
-        // נסיעה קבועה: רכב תפוס = לרשימת המחכים, נהג שלא יכול = בלי נהג
+        if (forever) {
+          const row: Series = { id: seriesId, repeat: r, start: date, until: null, generatedUntil: dates[dates.length - 1], ...fields };
+          try {
+            await saveSeries(companyId, row);
+          } catch (error) {
+            setErrors({ when: errorMessage(error, t('schedule.saveFailed')) });
+            return;
+          }
+          onSeriesChanged(row);
+          // Undoing ends the series too, so no more trips are made for it.
+          stopOnUndo = { ...row, until: addDays(date, -1) };
+        }
+        // נסיעה קבועה: רכב שכבר יוצא באותן שעות = לרשימת המחכים, נהג שלא יכול = בלי נהג
         changed = dates.map((d) => {
           const c: Trip = { id: newId(), date: d, end: null, ...fields, seriesId, status: 'active' };
-          if (c.vehicleId && rules.vehicleBusy(c.vehicleId, d, from, to, null)) { c.vehicleId = null; moved++; }
+          if (c.vehicleId && rules.vehicleClash(c.vehicleId, d, from, to, null)) { c.vehicleId = null; moved++; }
           if (c.driverId && (rules.driverBlocked(c.driverId, d) || rules.noLicense(c.driverId, rules.vehicle(c.vehicleId)) || rules.driverBusy(c.driverId, d, from, to, null))) c.driverId = null;
           return c;
         });
         created = changed.map((x) => x.id);
         firstId = changed[0].id;
-        message = t('schedule.form.seriesCreated', { trips: count(changed.length, 'schedule.recurringTrips'), date: shortDate(until) }) + (moved ? t('schedule.movedWaiting', { n: moved }) : '');
+        message = (forever
+          ? t('schedule.form.foreverCreated', { day: r === 'weekly' ? dayName(date) : t('schedule.form.everyDay'), time: from })
+          : t('schedule.form.seriesCreated', { trips: count(changed.length, 'schedule.recurringTrips'), date: shortDate(until) })) + (moved ? t('schedule.movedWaiting', { n: moved }) : '');
       } else {
         const c: Trip = { id: newId(), date, end: r === 'multi' ? until : null, ...fields, seriesId: null, status: 'active' };
         changed = [c];
         created = [c.id];
         firstId = c.id;
       }
-      if (await applyTrips(changed, undoTrips(before, created), message)) onSaved(date, firstId);
+      const undo = undoTrips(before, created);
+      const stop = stopOnUndo;
+      if (await applyTrips(changed, stop ? withSeries(undo, stop) : undo, message)) onSaved(date, firstId);
     } finally {
       setBusy(false);
     }
@@ -855,8 +948,46 @@ function TripForm({
       : [];
     const before = [editing, ...later];
     const changed = before.map((x) => ({ ...x, status: 'cancelled' as const }));
-    const message = later.length ? t('schedule.form.cancelledMany', { trips: count(later.length, 'schedule.trips') }) : t('schedule.form.cancelledOne');
-    if (await applyTrips(changed, undoTrips(before, []), message)) onClose();
+    const message = later.length || (seriesRow && scope === 'all') ? t('schedule.form.cancelledMany', { trips: count(later.length, 'schedule.trips') }) : t('schedule.form.cancelledOne');
+    const stopped = await stopSeries();
+    if (!stopped) { setBusy(false); return; }
+    if (await applyTrips(changed, withSeries(undoTrips(before, []), stopped), message)) onClose();
+    setBusy(false);
+  };
+
+  // ביטול/מחיקה של "כל הבאות" בסדרה בלי סוף: לא יוצרים עוד נסיעות אחרי היום הזה
+  // Returns the series as it was (to undo), 'none' when there is nothing to stop, or null when saving failed.
+  const stopSeries = async (): Promise<Series | 'none' | null> => {
+    if (!editing || !seriesRow || scope !== 'all') return 'none';
+    const stopped: Series = { ...seriesRow, until: addDays(editing.date, -1) };
+    try {
+      await saveSeries(companyId, stopped);
+      onSeriesChanged(stopped);
+      return seriesRow;
+    } catch (error) {
+      setErrors((e) => ({ ...e, when: errorMessage(error, t('schedule.saveFailed')) }));
+      return null;
+    }
+  };
+  // Undoing also lets the series go on again.
+  const withSeries = (undo: Undo, previous: Series | 'none'): Undo => async () => {
+    await undo();
+    if (previous === 'none') return;
+    await saveSeries(companyId, previous).then(() => onSeriesChanged(previous)).catch(() => undefined);
+  };
+
+  // מחיקה מהיומן (אפשר לבטל מיד מההודעה למטה)
+  const deleteTrip = async () => {
+    if (!editing) return;
+    setBusy(true);
+    const later = editing.seriesId && scope === 'all'
+      ? data.trips.filter((x) => x.seriesId === editing.seriesId && x.date > editing.date)
+      : [];
+    const gone = [editing, ...later];
+    const stopped = await stopSeries();
+    if (!stopped) { setBusy(false); return; }
+    const message = later.length ? t('schedule.form.deletedMany', { trips: count(gone.length, 'schedule.trips') }) : t('schedule.form.deletedOne');
+    if (await removeTrips(gone, message, stopped === 'none' ? null : withSeries(async () => undefined, stopped))) onClose();
     setBusy(false);
   };
 
@@ -891,6 +1022,9 @@ function TripForm({
           />
         </div>
       )}
+      {repeating && !editing && (
+        <label className="check"><input type="checkbox" checked={forever} onChange={(e) => setForever(e.target.checked)} /> {t('schedule.form.forever')}</label>
+      )}
       {showUntil && (
         <div className="dates">
           <label>{repeat === 'multi' ? t('schedule.form.lastDay') : t('schedule.form.repeatUntil')}<input type="date" value={until} onChange={(e) => setUntil(e.target.value)} /></label>
@@ -909,6 +1043,7 @@ function TripForm({
         <input value={title} onChange={(e) => { setTitle(e.target.value); setErrors((x) => ({ ...x, what: undefined })); }} placeholder={t('schedule.form.titlePlaceholder')} style={{ flex: '2 1 220px' }} aria-label={t('schedule.form.titleLabel')} />
         <input value={client} onChange={(e) => setClient(e.target.value)} list="ws-clients" placeholder={t('schedule.form.clientPlaceholder')} style={{ flex: '1 1 160px' }} aria-label={t('schedule.form.clientLabel')} autoComplete="off" />
         <datalist id="ws-clients">{data.clients.map((c) => <option key={c.id} value={c.name} />)}</datalist>
+        <input value={phoneNo} onChange={(e) => setPhoneNo(e.target.value)} type="tel" inputMode="tel" dir="ltr" maxLength={20} placeholder={t('schedule.form.phonePlaceholder')} style={{ flex: '1 1 140px' }} aria-label={t('schedule.form.phoneLabel')} autoComplete="off" />
       </div>
       <div className="row" style={{ marginTop: 8 }}>
         <input value={pickup} onChange={(e) => setPickup(e.target.value)} list="ws-cities" placeholder={t('schedule.form.pickup')} style={{ flex: '1 1 150px' }} aria-label={t('schedule.form.pickup')} autoComplete="off" />
@@ -924,7 +1059,6 @@ function TripForm({
       <div className="vpick">
         {data.vehicles.map((v) => {
           const why = vehicleWhy(v.id);
-          if (why) return <div key={v.id} aria-disabled="true">{vehicleLabel(v)}<small>{why}</small></div>;
           const soon = rules.vehicleSoon(v, date);
           const primary = rules.driverBlockedRange(v.driverId, date, end) || rules.noLicense(v.driverId, v);
           return (
@@ -936,7 +1070,7 @@ function TripForm({
               onClick={() => { setPick(v.id); setDriverId(v.driverId ?? ''); setLostDriver(''); setErrors((x) => ({ ...x, vehicle: undefined })); }}
             >
               {vehicleLabel(v)}
-              {soon ? <small className="warn">{soon}</small> : primary ? <small className="warn">{t('schedule.form.primaryIssue', { reason: primary })}</small> : <small className="ok">{t('schedule.form.free')}</small>}
+              {why ? <small className="bad">{why}</small> : soon ? <small className="warn">{soon}</small> : primary ? <small className="warn">{t('schedule.form.primaryIssue', { reason: primary })}</small> : <small className="ok">{t('schedule.form.free')}</small>}
             </button>
           );
         })}
@@ -945,6 +1079,7 @@ function TripForm({
         </button>
       </div>
       <div className="err">{errors.vehicle}</div>
+      {pickWhy && <div className="hint warn">{t('schedule.form.vehicleWarn', { plate: rules.vehicle(pick)?.plate ?? '', reason: pickWhy })}</div>}
 
       <div className="q">{t('schedule.form.driverQ')} <small>{t('schedule.form.driverHint')}</small></div>
       <select style={{ width: '100%' }} value={driverId} aria-label={t('schedule.form.driverLabel')} onChange={(e) => { setDriverId(e.target.value); setLostDriver(''); }}>
@@ -962,9 +1097,10 @@ function TripForm({
 
       <div className="dlg-foot">
         <button type="button" className="primary" disabled={busy} onClick={() => void save()}>
-          {cancelled ? t('schedule.form.restore') : busyWith || soft ? t('schedule.form.saveAnyway') : t('common.save')}
+          {cancelled ? t('schedule.form.restore') : busyWith || soft || pickWhy ? t('schedule.form.saveAnyway') : t('common.save')}
         </button>
         {editing && !cancelled && <button type="button" className="danger" disabled={busy} onClick={() => void cancelTrip()}>{t('schedule.form.cancelTrip')}</button>}
+        {editing && <button type="button" className="danger" disabled={busy} onClick={() => void deleteTrip()}>{t('schedule.form.deleteTrip')}</button>}
         <button type="button" onClick={onClose}>{t('common.close')}</button>
       </div>
     </Dialog>
@@ -1199,6 +1335,7 @@ function PrintDialog({ rules, sel, today, onClose, onPrint }: {
 
 // הדפים להדפסה: מוצגים רק בהדפסה, ואז נעלמים
 function PrintSheets({ data, rules, day: k, how, onDone }: { data: ScheduleData; rules: Rules; day: string; how: 'drivers' | 'table'; onDone: () => void }) {
+  const { company } = useCompany();
   useEffect(() => {
     const done = () => onDone();
     window.addEventListener('afterprint', done);
@@ -1206,38 +1343,74 @@ function PrintSheets({ data, rules, day: k, how, onDone }: { data: ScheduleData;
     return () => { clearTimeout(timer); window.removeEventListener('afterprint', done); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const trips = rules.dayTrips(k).filter((x) => x.status === 'active').sort(byStart(k));
-  const cell = (x: Trip) => {
-    const v = rules.vehicle(x.vehicleId);
-    return { time: tripTime(x, k) + (x.end ? ` (${tripDayOf(x, k)})` : ''), vehicle: v ? vehicleLabel(v) : t('schedule.waitingVehicle') };
-  };
-  const garage = data.vehicles.filter((v) => rules.garageOf(v.id, k)).map((v) => v.plate);
-  const away = data.blocks.filter((b) => b.ownerType === 'driver' && b.from <= k && k <= b.to).map((b) => rules.driverName(b.ownerId));
+  const garage = data.vehicles.filter((v) => rules.garageOf(v.id, k)).map((v) => `${v.plate} (${rules.garageOf(v.id, k)?.reason})`);
+  const away = data.blocks.filter((b) => b.ownerType === 'driver' && b.from <= k && k <= b.to).map((b) => `${rules.driverName(b.ownerId)} (${b.reason})`);
+  const printedAt = new Date().toLocaleString(getLocale(), { dateStyle: 'short', timeStyle: 'short' });
+
   const head = (withDriver: boolean) => (
     <tr>
-      <th>{t('schedule.print.colTime')}</th><th>{t('schedule.print.colVehicle')}</th>{withDriver && <th>{t('schedule.print.colDriver')}</th>}
-      <th>{t('schedule.print.colTrip')}</th><th>{t('schedule.print.colRoute')}</th><th>{t('schedule.print.colClient')}</th>
+      <th className="c-time">{t('schedule.print.colTime')}</th>
+      <th>{t('schedule.print.colTrip')}</th>
+      <th>{t('schedule.print.colRoute')}</th>
+      <th>{t('schedule.print.colVehicle')}</th>
+      {withDriver && <th>{t('schedule.print.colDriver')}</th>}
+      <th>{t('schedule.print.colClient')}</th>
     </tr>
   );
   const line = (x: Trip, withDriver: boolean) => {
-    const c = cell(x);
+    const v = rules.vehicle(x.vehicleId);
+    const [from, to] = span(x, k);
     return (
-      <tr key={x.id}>
-        <td>{c.time}</td><td>{c.vehicle}</td>{withDriver && <td>{rules.driverName(x.driverId) || '—'}</td>}
-        <td>{x.title}</td><td>{route(x)}</td><td>{x.client}</td>
+      <tr key={x.id} className={v ? '' : 'wait'}>
+        <td className="c-time"><b>{from === '00:00' ? '—' : from}</b><span>{to === '24:00' ? '—' : to}</span>{x.end && <em>{tripDayOf(x, k)}</em>}</td>
+        <td><b>{x.title}</b></td>
+        <td>{x.pickup || x.dest ? <>{x.pickup || '—'}<span className="arrow">←</span>{x.dest || '—'}</> : '—'}</td>
+        <td>{v ? <><span className="plate">{v.plate}</span><small>{t(`vehicle.type.${v.type}`)}</small></> : <span className="tag">{t('schedule.waitingVehicle')}</span>}</td>
+        {withDriver && <td>{rules.driverName(x.driverId) || '—'}</td>}
+        <td>{x.client || '—'}{x.phone && <small dir="ltr">{x.phone}</small>}</td>
       </tr>
     );
   };
+  const sheetHead = (title: string, sub: string, list: Trip[]) => {
+    const vehicles = new Set(list.map((x) => x.vehicleId).filter(Boolean)).size;
+    const first = list[0] ? span(list[0], k)[0] : '';
+    const last = list.reduce((m, x) => (span(x, k)[1] > m ? span(x, k)[1] : m), '');
+    return (
+      <header className="p-head">
+        <div>
+          <div className="p-kicker">{company?.name ?? ''}</div>
+          <h2>{title}</h2>
+          <div className="p-sub">{sub}</div>
+        </div>
+        <div className="p-stats">
+          <div><b>{list.length}</b><span>{t('schedule.print.statTrips')}</span></div>
+          <div><b>{vehicles}</b><span>{t('schedule.print.statVehicles')}</span></div>
+          {first && <div><b className="tnum">{timeRange(first, last)}</b><span>{t('schedule.print.statHours')}</span></div>}
+        </div>
+      </header>
+    );
+  };
+  const foot = (signature: boolean) => (
+    <footer className="p-foot">
+      {(garage.length > 0 || away.length > 0) && (
+        <div className="p-note">
+          {garage.length > 0 && <div><b>{t('schedule.print.noteGarage')}</b> {garage.join(' · ')}</div>}
+          {away.length > 0 && <div><b>{t('schedule.print.noteAway')}</b> {away.join(' · ')}</div>}
+        </div>
+      )}
+      {signature && <div className="p-sign"><span>{t('schedule.print.driverSignature')}</span><span>{t('schedule.print.signDate')}</span></div>}
+      <div className="p-printed">{t('schedule.print.printedAt', { when: printedAt })}</div>
+    </footer>
+  );
+
   let body: React.ReactNode;
-  if (!trips.length) body = <p>{t('schedule.noTrips')}</p>;
+  if (!trips.length) body = <div className="sheet">{sheetHead(t('schedule.title'), niceDate(k), [])}<p className="p-empty">{t('schedule.noTrips')}</p></div>;
   else if (how === 'table') {
     body = (
       <div className="sheet">
-        <h2>{t('schedule.title')}</h2><div>{niceDate(k)}</div>
+        {sheetHead(t('schedule.title'), niceDate(k), trips)}
         <table><thead>{head(true)}</thead><tbody>{trips.map((x) => line(x, true))}</tbody></table>
-        <div className="foot">
-          {garage.length > 0 && <div>{t('schedule.print.footGarage', { list: garage.join(', ') })}</div>}
-          {away.length > 0 && <div>{t('schedule.print.footAway', { list: away.join(', ') })}</div>}
-        </div>
+        {foot(false)}
       </div>
     );
   } else {
@@ -1248,8 +1421,9 @@ function PrintSheets({ data, rules, day: k, how, onDone }: { data: ScheduleData;
     });
     body = [...by].map(([n, list]) => (
       <div className="sheet" key={n}>
-        <h2>{n}</h2><div>{niceDate(k)}</div>
+        {sheetHead(n, `${t('schedule.print.driverSheet')} · ${niceDate(k)}`, list)}
         <table><thead>{head(false)}</thead><tbody>{list.map((x) => line(x, false))}</tbody></table>
+        {foot(true)}
       </div>
     ));
   }

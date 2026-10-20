@@ -379,6 +379,37 @@ function liftDividers(root: HTMLElement) {
 /** Toolbar buttons keep the editor's selection: mousedown would otherwise move focus off the page. */
 const keepSelection = (event: React.MouseEvent) => event.preventDefault();
 
+// מסך צר (טלפון)
+function usePhoneWidth() {
+  const query = '(max-width: 760px)';
+  const [phone, setPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches);
+  useEffect(() => {
+    const list = window.matchMedia(query);
+    const update = () => setPhone(list.matches);
+    list.addEventListener('change', update);
+    return () => list.removeEventListener('change', update);
+  }, []);
+  return phone;
+}
+
+// הגובה שהמקלדת תופסת בתחתית המסך
+function useKeyboardInset(active: boolean) {
+  const [inset, setInset] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!active || !vv) return;
+    const update = () => setInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, [active]);
+  return inset;
+}
+
 // כפתור בסרגל הכלים
 function Tb({ on, label, onPress, children }: { on?: boolean; label: string; onPress: () => void; children: React.ReactNode }) {
   return (
@@ -500,6 +531,36 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
   const [guides, setGuides] = useState<Guide[]>([]);
   const [showGrid, toggleGrid] = useGuidesToggle();
 
+  // טלפון: הדף מוקטן לרוחב המסך, וכלי העריכה בסרגלים כמו בפתקים של האייפון
+  const phone = usePhoneWidth();
+  const fitRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const scaleRef = useRef(1);
+  scaleRef.current = scale;
+  /** Screen pixels (measured on the shrunken page) back to page pixels. */
+  const sc = (v: number) => v / scaleRef.current;
+  const [pageH, setPageH] = useState<number>(PAGE_H);
+  const [sheet, setSheet] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const keyboard = useKeyboardInset(phone);
+  const [inspect, setInspect] = useState(false);
+  // The page shrinks to the phone's width, and its frame keeps the shrunken height.
+  useLayoutEffect(() => {
+    if (!phone) { setScale(1); return; }
+    const fit = fitRef.current;
+    const page = pageRef.current;
+    if (!fit || !page) return;
+    const update = () => {
+      setScale(Math.min(1, (fit.clientWidth - 16) / PAGE_W));
+      setPageH(page.offsetHeight);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(fit);
+    observer.observe(page);
+    return () => observer.disconnect();
+  }, [phone]);
+
   /** Tags every top-level paragraph with an id and records where it starts. */
   const measure = useCallback(() => {
     const doc = docRef.current;
@@ -524,13 +585,14 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
     const text: Rect[] = [];
     const origin = pageRef.current?.getBoundingClientRect();
     if (origin) {
+      const k = scaleRef.current;
       const walker = document.createTreeWalker(doc, NodeFilter.SHOW_TEXT);
       const range = document.createRange();
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         if (!node.textContent?.replace(/[\s\u200b]/g, '')) continue;
         range.selectNodeContents(node);
         Array.from(range.getClientRects()).forEach((r) => {
-          if (r.width > 1) text.push({ l: r.left - origin.left, t: r.top - origin.top, r: r.right - origin.left, b: r.bottom - origin.top });
+          if (r.width > 1) text.push({ l: (r.left - origin.left) / k, t: (r.top - origin.top) / k, r: (r.right - origin.left) / k, b: (r.bottom - origin.top) / k });
         });
       }
     }
@@ -602,8 +664,8 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
         continue;
       }
       const r = blank.getBoundingClientRect();
-      const x = r.left - origin.left;
-      const pin = anchorAt(r.top - origin.top, f.h);
+      const x = (r.left - origin.left) / scaleRef.current;
+      const pin = anchorAt((r.top - origin.top) / scaleRef.current, f.h);
       if (Math.abs(x - f.x) < 0.5 && pin.anchor === f.anchor && Math.abs(pin.dy - f.dy) < 0.5) next.push(f);
       else {
         changed = true;
@@ -801,7 +863,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
     if (!rect) return;
     measure();
     const size = sizeOf(kind);
-    const field = makeField(kind, clientX - rect.left - size.w / 2, clientY - rect.top - size.h / 2);
+    const field = makeField(kind, sc(clientX - rect.left) - size.w / 2, sc(clientY - rect.top) - size.h / 2);
     commit([...fieldsRef.current, field]);
     setSelectedId(field.id);
   };
@@ -842,7 +904,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
 
     const origin = page.getBoundingClientRect();
     const r = blank.getBoundingClientRect();
-    const field: EditorField = { id, kind, ...size, slot: true, x: r.left - origin.left, ...anchorAt(r.top - origin.top, size.h) };
+    const field: EditorField = { id, kind, ...size, slot: true, x: sc(r.left - origin.left), ...anchorAt(sc(r.top - origin.top), size.h) };
     commit([...fieldsRef.current, field]);
     fieldsRef.current = [...fieldsRef.current, field];
     measure();
@@ -875,9 +937,9 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
     // Bring the new field on screen if it landed below what's visible.
     const scroller = page.closest<HTMLElement>('.sd-sheet-body');
     if (scroller) {
-      const fieldTop = page.getBoundingClientRect().top + y;
+      const fieldTop = page.getBoundingClientRect().top + y * scaleRef.current;
       const view = scroller.getBoundingClientRect();
-      if (fieldTop + size.h > view.bottom - 60 || fieldTop < view.top + 60) {
+      if (fieldTop + size.h * scaleRef.current > view.bottom - 60 || fieldTop < view.top + 60) {
         scroller.scrollBy({ top: fieldTop - (view.top + view.height / 2), behavior: 'smooth' });
       }
     }
@@ -904,8 +966,8 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
       const para = (span.closest('p') ?? span).getBoundingClientRect();
       span.remove();
       const size = sizeOf(kind);
-      const y = para.top - pageRect.top + (para.height - size.h) / 2;
-      return { kind, x: Math.max(PAD_X, end.left - pageRect.left - 12 - size.w), y };
+      const y = sc(para.top - pageRect.top) + (sc(para.height) - size.h) / 2;
+      return { kind, x: Math.max(PAD_X, sc(end.left - pageRect.left) - 12 - size.w), y };
     });
     measure();
     const added = spots.filter((s) => FIELD_META[s.kind]).map((s) => makeField(s.kind, s.x, s.y));
@@ -948,7 +1010,9 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
         remember();
         if (!inLine) base = lift(field);
       },
-      (dx, dy) => {
+      (rawDx, rawDy) => {
+        const dx = sc(rawDx);
+        const dy = sc(rawDy);
         if (mode === 'move') {
           const x = clamp(base.x + dx, 0, PAGE_W - base.w);
           const y = Math.max(TOP_MIN, startTop + dy);
@@ -1017,206 +1081,282 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
     event.dataTransfer.effectAllowed = 'copy';
   };
 
+  const pickField = (kind: SigningFieldKind) => {
+    addInView(kind);
+    setSheet(false);
+  };
+  // The keyboard's toolbar stays while the text (or the toolbar itself) has the focus.
+  const onDocBlur = () => setTimeout(() => {
+    const active = document.activeElement;
+    if (active !== docRef.current && !active?.closest?.('.sd-ph-kb')) setTyping(false);
+  }, 200);
+
+  const toolbar = (
+    <div className="sd-toolbar" role="toolbar" aria-label={t('editor.textFormatting')}>
+      <Tb label={t('editor.mainHeading')} on={tools.block === 'h1'} onPress={() => run('formatBlock', 'h1')}>
+        <span className="sd-b">{t('editor.heading')}</span>
+      </Tb>
+      <Tb label={t('editor.subheading')} on={tools.block === 'h2'} onPress={() => run('formatBlock', 'h2')}>
+        <span className="sd-sb">{t('editor.subheading')}</span>
+      </Tb>
+      <Tb label={t('editor.normalText')} on={tools.block === 'p' || tools.block === 'div'} onPress={() => run('formatBlock', 'p')}>
+        {t('editor.normalText')}
+      </Tb>
+      <span className="sd-tb-sep" />
+      <TbMenu
+        label={t('editor.textSize')}
+        open={menu === 'size'}
+        onToggle={() => setMenu(menu === 'size' ? null : 'size')}
+        onClose={closeMenu}
+        button={<span className="sd-sb sd-tb-size">{EDITOR_TEXT_SIZES.find((s) => s.px === tools.size)?.label ?? t('editor.sizeLabel')}</span>}
+      >
+        {EDITOR_TEXT_SIZES.map((s) => (
+          <MenuItem key={s.px} on={tools.size === s.px} onPress={() => applyStyle('size', String(s.px))}>
+            <span style={{ fontSize: s.px }}>{s.label}</span>
+          </MenuItem>
+        ))}
+      </TbMenu>
+      <span className="sd-tb-sep" />
+      <Tb label={t('editor.bold')} on={tools.bold} onPress={() => run('bold')}>
+        <span className="sd-xb" style={{ fontSize: 16 }}>B</span>
+      </Tb>
+      <Tb label={t('editor.italic')} on={tools.italic} onPress={() => run('italic')}>
+        <span style={{ fontStyle: 'italic', fontSize: 16 }}>I</span>
+      </Tb>
+      <Tb label={t('editor.underline')} on={tools.underline} onPress={() => run('underline')}>
+        <span style={{ textDecoration: 'underline', fontSize: 16 }}>U</span>
+      </Tb>
+      <TbMenu
+        label={t('editor.textColor')}
+        open={menu === 'color'}
+        onToggle={() => setMenu(menu === 'color' ? null : 'color')}
+        onClose={closeMenu}
+        button={
+          <span className="sd-color-a sd-b">
+            {t('date.weekdayShort.sun')}
+            <i style={{ background: tools.color }} />
+          </span>
+        }
+      >
+        {EDITOR_TEXT_COLORS.map((c) => (
+          <MenuItem key={c.hex} on={tools.color === c.hex} onPress={() => applyStyle('color', c.hex.slice(1))}>
+            <span className="sd-swatch" style={{ background: c.hex }} />
+            <span style={{ color: c.hex }}>{c.label}</span>
+          </MenuItem>
+        ))}
+      </TbMenu>
+      <Tb label={t('editor.highlight')} on={tools.highlight} onPress={() => applyStyle('hl', tools.highlight ? '0' : '1')}>
+        <span className="sd-hl-a sd-b">{t('date.weekdayShort.sun')}</span>
+      </Tb>
+      <span className="sd-tb-sep" />
+      <Tb label={t('editor.bulletList')} on={tools.ul} onPress={() => run('insertUnorderedList')}>
+        <Ionicons name="list" size={19} color="currentColor" />
+      </Tb>
+      <Tb label={t('editor.numberedList')} on={tools.ol} onPress={() => run('insertOrderedList')}>
+        <span className="sd-sb">1.</span>
+      </Tb>
+      <span className="sd-tb-sep" />
+      <Tb label={t('editor.alignStart')} on={tools.align === 'right'} onPress={() => run('justifyRight')}>
+        <Ionicons name="reorder-three" size={21} color="currentColor" style={{ transform: [{ scaleX: -1 }] }} />
+      </Tb>
+      <Tb label={t('editor.alignCenter')} on={tools.align === 'center'} onPress={() => run('justifyCenter')}>
+        <Ionicons name="menu" size={19} color="currentColor" />
+      </Tb>
+      <Tb label={t('editor.justify')} on={tools.align === 'justify'} onPress={() => run('justifyFull')}>
+        <Ionicons name="reorder-four" size={19} color="currentColor" />
+      </Tb>
+      <span className="sd-tb-sep" />
+      <Tb label={t('editor.divider')} onPress={insertDivider}>
+        <span className="sd-hr-icon" />
+      </Tb>
+      <span className="sd-tb-sep" />
+      <Tb label={t('editor.undo')} onPress={() => run('undo')}>
+        <Ionicons name="arrow-redo" size={18} color="currentColor" />
+      </Tb>
+      <Tb label={t('editor.redo')} onPress={() => run('redo')}>
+        <Ionicons name="arrow-undo" size={18} color="currentColor" />
+      </Tb>
+    </div>
+  );
+  const fieldTools = (
+    <>
+      <h3 className="sd-b">{t('editor.addFieldToDoc')}</h3>
+      <p className="sd-panel-sub">{t('editor.addFieldHelp')}</p>
+
+      <button type="button" className="sd-area-btn" onMouseDown={keepSelection} onClick={() => { insertSigningArea(); setSheet(false); }}>
+        <span className="sd-tool-icon" style={{ background: 'linear-gradient(160deg,#35B8F0,#2F5BFF)' }}>
+          <Ionicons name="sparkles" size={18} color="#fff" />
+        </span>
+        <span className="sd-tool-text">
+          <strong className="sd-sb">{t('editor.signatureBlock')}</strong>
+          <small>{t('editor.signatureBlockHint')}</small>
+        </span>
+      </button>
+
+      <div className="sd-group-label sd-sb">{t('editor.driverFills')}</div>
+      <div className="sd-tiles">
+        {DRIVER_FIELDS.map((kind) => (
+          <FieldTool key={kind} kind={kind} onMouseDown={keepSelection} draggable onDragStart={dragStart(kind)} onPress={() => pickField(kind)} />
+        ))}
+      </div>
+
+      <div className="sd-group-label sd-sb">{t('editor.autoFromDriverFile')}</div>
+      <div className="sd-tiles">
+        {AUTO_FIELDS.map((kind) => (
+          <FieldTool key={kind} kind={kind} onMouseDown={keepSelection} draggable onDragStart={dragStart(kind)} onPress={() => pickField(kind)} />
+        ))}
+      </div>
+
+      <GuidesToggle on={showGrid} onToggle={toggleGrid} />
+    </>
+  );
+  const fieldInspector = selected ? (
+    <FieldInspector
+      key={selected.id}
+      kind={selected.kind}
+      label={selected.label}
+      size={t('editor.sizeCm', { v1: cm(selected.w), v2: cm(selected.h) })}
+      covers={coversText(selected)}
+      onEditStart={remember}
+      onLabelChange={(label) => change({ ...selected, label })}
+      onRemove={() => remove(selected.id)}
+    />
+  ) : null;
+
+  const paper = (
+    <div
+      ref={pageRef}
+      className={`sd-paper-page${over ? ' sd-over' : ''}`}
+      style={phone ? { minHeight: pages * PAGE_H, position: 'absolute', top: 0, left: 0, transform: `scale(${scale})`, transformOrigin: 'top left' } : { minHeight: pages * PAGE_H }}
+      onPointerDown={(e) => {
+        if (!(e.target as HTMLElement).closest('.sd-field')) setSelectedId(null);
+      }}
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes(FIELD_DRAG_TYPE)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        setOver(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false);
+      }}
+      onDrop={(e) => {
+        setOver(false);
+        const kind = e.dataTransfer.getData(FIELD_DRAG_TYPE) as SigningFieldKind;
+        if (!kind || !FIELD_META[kind]) return;
+        e.preventDefault();
+        addAt(kind, e.clientX, e.clientY);
+      }}
+    >
+      <Letterhead />
+      <div
+        ref={docRef}
+        className="sd-doc"
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        aria-multiline="true"
+        aria-label={t('editor.content')}
+        data-placeholder={t('editor.contentPlaceholder')}
+        spellCheck
+        onInput={measure}
+        onFocus={() => setTyping(true)}
+        onBlur={onDocBlur}
+        onKeyUp={refreshTools}
+        onMouseUp={refreshTools}
+        onPaste={onPaste}
+      />
+      {showGrid ? <PageGrid margins={{ x: PAD_X, y: PAD_Y }} cell={{ x: PX_PER_CM, y: PX_PER_CM }} unit="px" middleH={false} /> : null}
+      <GuideLines guides={guides} unit="px" />
+      {Array.from({ length: pages - 1 }, (_, i) => (
+        <div key={i} className="sd-page-break" style={{ top: (i + 1) * PAGE_H }} aria-hidden="true">
+          <span>{t('editor.pageEnd')} {i + 1}</span>
+        </div>
+      ))}
+      {fields.map((field) => (
+        <FieldBox
+          key={field.id}
+          kind={field.kind}
+          label={field.label}
+          box={{ left: `${field.x}px`, top: `${topOf(field)}px`, width: `${field.w}px`, height: `${field.h}px` }}
+          selected={field.id === selectedId}
+          sizeLabel={t('editor.sizeCm', { v1: cm(field.w), v2: cm(field.h) })}
+          covers={coversText(field)}
+          onMovePointer={gesture(field, 'move')}
+          onResizePointer={gesture(field, 'resize')}
+          onNudge={nudge(field)}
+          onRemove={() => remove(field.id)}
+          onSelect={() => { setSelectedId(field.id); if (phone) setInspect(true); }}
+          onDeselect={() => setSelectedId(null)}
+        />
+      ))}
+    </div>
+  );
+
+  if (phone) {
+    return (
+      <div className="sd-work sd-phone">
+        <style>{GUIDES_CSS}</style>
+        {/* פעולות למעלה, כמו בפתקים */}
+        <div className="sd-ph-actions" role="toolbar" aria-label={t('editor.addFields')}>
+          <button type="button" className="sd-ph-act sd-ph-main sd-sb" onMouseDown={keepSelection} onClick={() => { setInspect(false); setSheet(true); }}>
+            <Ionicons name="add-circle" size={20} color="currentColor" />{t('editor.addField')}
+          </button>
+          <button type="button" className="sd-ph-act sd-sb" onMouseDown={keepSelection} onClick={insertSigningArea}>
+            <Ionicons name="sparkles" size={18} color="currentColor" />{t('editor.signatureBlock')}
+          </button>
+          <span className="sd-ph-gap" />
+          <button type="button" className="sd-ph-act sd-ph-icon" aria-label={t('editor.undo')} onMouseDown={keepSelection} onClick={() => run('undo')}>
+            <Ionicons name="arrow-redo" size={19} color="currentColor" />
+          </button>
+          <button type="button" className="sd-ph-act sd-ph-icon" aria-label={t('editor.redo')} onMouseDown={keepSelection} onClick={() => run('redo')}>
+            <Ionicons name="arrow-undo" size={19} color="currentColor" />
+          </button>
+        </div>
+
+        <div className="sd-paper-scroll" ref={fitRef}>
+          <div className="sd-paper-fit" style={{ width: PAGE_W * scale, height: pageH * scale }}>
+            {paper}
+          </div>
+        </div>
+
+        {/* סרגל העיצוב מעל המקלדת */}
+        {typing && !sheet ? (
+          <div className="sd-ph-kb" style={{ bottom: keyboard, ['--kb' as string]: `${keyboard}px` }} onPointerDown={(e) => { if (!(e.target as HTMLElement).closest('.sd-menu')) e.preventDefault(); }}>
+            {toolbar}
+          </div>
+        ) : null}
+
+        {sheet || (inspect && fieldInspector) ? (
+          <>
+            <div className="sd-ph-scrim" onClick={() => { setSheet(false); setInspect(false); }} />
+            <div className="sd-ph-sheet" role="dialog" aria-label={sheet ? t('editor.addFields') : t('editor.fieldDetails')}>
+              <div className="sd-ph-sheet-head">
+                <strong className="sd-b">{sheet ? t('editor.addFieldToDoc') : t('editor.fieldDetails')}</strong>
+                <button type="button" className="sd-ph-act sd-ph-icon" aria-label={t('common.close')} onClick={() => { setSheet(false); setInspect(false); }}>
+                  <Ionicons name="close" size={20} color="currentColor" />
+                </button>
+              </div>
+              <div className="sd-ph-sheet-body">{sheet ? fieldTools : fieldInspector}</div>
+            </div>
+          </>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="sd-work">
       <style>{GUIDES_CSS}</style>
       <aside className="sd-panel" aria-label={t('editor.addFields')}>
-        <h3 className="sd-b">{t('editor.addFieldToDoc')}</h3>
-        <p className="sd-panel-sub">{t('editor.addFieldHelp')}</p>
-
-        <button type="button" className="sd-area-btn" onMouseDown={keepSelection} onClick={insertSigningArea}>
-          <span className="sd-tool-icon" style={{ background: 'linear-gradient(160deg,#35B8F0,#2F5BFF)' }}>
-            <Ionicons name="sparkles" size={18} color="#fff" />
-          </span>
-          <span className="sd-tool-text">
-            <strong className="sd-sb">{t('editor.signatureBlock')}</strong>
-            <small>{t('editor.signatureBlockHint')}</small>
-          </span>
-        </button>
-
-        <div className="sd-group-label sd-sb">{t('editor.driverFills')}</div>
-        <div className="sd-tiles">
-          {DRIVER_FIELDS.map((kind) => (
-            <FieldTool key={kind} kind={kind} onMouseDown={keepSelection} draggable onDragStart={dragStart(kind)} onPress={() => addInView(kind)} />
-          ))}
-        </div>
-
-        <div className="sd-group-label sd-sb">{t('editor.autoFromDriverFile')}</div>
-        <div className="sd-tiles">
-          {AUTO_FIELDS.map((kind) => (
-            <FieldTool key={kind} kind={kind} onMouseDown={keepSelection} draggable onDragStart={dragStart(kind)} onPress={() => addInView(kind)} />
-          ))}
-        </div>
-
-        <GuidesToggle on={showGrid} onToggle={toggleGrid} />
-
-        {selected ? (
-          <FieldInspector
-            key={selected.id}
-            kind={selected.kind}
-            label={selected.label}
-            size={t('editor.sizeCm', { v1: cm(selected.w), v2: cm(selected.h) })}
-            covers={coversText(selected)}
-            onEditStart={remember}
-            onLabelChange={(label) => change({ ...selected, label })}
-            onRemove={() => remove(selected.id)}
-          />
-        ) : null}
+        {fieldTools}
+        {fieldInspector}
       </aside>
 
       <div className="sd-canvas">
-        <div className="sd-toolbar" role="toolbar" aria-label={t('editor.textFormatting')}>
-          <Tb label={t('editor.mainHeading')} on={tools.block === 'h1'} onPress={() => run('formatBlock', 'h1')}>
-            <span className="sd-b">{t('editor.heading')}</span>
-          </Tb>
-          <Tb label={t('editor.subheading')} on={tools.block === 'h2'} onPress={() => run('formatBlock', 'h2')}>
-            <span className="sd-sb">{t('editor.subheading')}</span>
-          </Tb>
-          <Tb label={t('editor.normalText')} on={tools.block === 'p' || tools.block === 'div'} onPress={() => run('formatBlock', 'p')}>
-            {t('editor.normalText')}
-          </Tb>
-          <span className="sd-tb-sep" />
-          <TbMenu
-            label={t('editor.textSize')}
-            open={menu === 'size'}
-            onToggle={() => setMenu(menu === 'size' ? null : 'size')}
-            onClose={closeMenu}
-            button={<span className="sd-sb sd-tb-size">{EDITOR_TEXT_SIZES.find((s) => s.px === tools.size)?.label ?? t('editor.sizeLabel')}</span>}
-          >
-            {EDITOR_TEXT_SIZES.map((s) => (
-              <MenuItem key={s.px} on={tools.size === s.px} onPress={() => applyStyle('size', String(s.px))}>
-                <span style={{ fontSize: s.px }}>{s.label}</span>
-              </MenuItem>
-            ))}
-          </TbMenu>
-          <span className="sd-tb-sep" />
-          <Tb label={t('editor.bold')} on={tools.bold} onPress={() => run('bold')}>
-            <span className="sd-xb" style={{ fontSize: 16 }}>B</span>
-          </Tb>
-          <Tb label={t('editor.italic')} on={tools.italic} onPress={() => run('italic')}>
-            <span style={{ fontStyle: 'italic', fontSize: 16 }}>I</span>
-          </Tb>
-          <Tb label={t('editor.underline')} on={tools.underline} onPress={() => run('underline')}>
-            <span style={{ textDecoration: 'underline', fontSize: 16 }}>U</span>
-          </Tb>
-          <TbMenu
-            label={t('editor.textColor')}
-            open={menu === 'color'}
-            onToggle={() => setMenu(menu === 'color' ? null : 'color')}
-            onClose={closeMenu}
-            button={
-              <span className="sd-color-a sd-b">
-                {t('date.weekdayShort.sun')}
-                <i style={{ background: tools.color }} />
-              </span>
-            }
-          >
-            {EDITOR_TEXT_COLORS.map((c) => (
-              <MenuItem key={c.hex} on={tools.color === c.hex} onPress={() => applyStyle('color', c.hex.slice(1))}>
-                <span className="sd-swatch" style={{ background: c.hex }} />
-                <span style={{ color: c.hex }}>{c.label}</span>
-              </MenuItem>
-            ))}
-          </TbMenu>
-          <Tb label={t('editor.highlight')} on={tools.highlight} onPress={() => applyStyle('hl', tools.highlight ? '0' : '1')}>
-            <span className="sd-hl-a sd-b">{t('date.weekdayShort.sun')}</span>
-          </Tb>
-          <span className="sd-tb-sep" />
-          <Tb label={t('editor.bulletList')} on={tools.ul} onPress={() => run('insertUnorderedList')}>
-            <Ionicons name="list" size={19} color="currentColor" />
-          </Tb>
-          <Tb label={t('editor.numberedList')} on={tools.ol} onPress={() => run('insertOrderedList')}>
-            <span className="sd-sb">1.</span>
-          </Tb>
-          <span className="sd-tb-sep" />
-          <Tb label={t('editor.alignStart')} on={tools.align === 'right'} onPress={() => run('justifyRight')}>
-            <Ionicons name="reorder-three" size={21} color="currentColor" style={{ transform: [{ scaleX: -1 }] }} />
-          </Tb>
-          <Tb label={t('editor.alignCenter')} on={tools.align === 'center'} onPress={() => run('justifyCenter')}>
-            <Ionicons name="menu" size={19} color="currentColor" />
-          </Tb>
-          <Tb label={t('editor.justify')} on={tools.align === 'justify'} onPress={() => run('justifyFull')}>
-            <Ionicons name="reorder-four" size={19} color="currentColor" />
-          </Tb>
-          <span className="sd-tb-sep" />
-          <Tb label={t('editor.divider')} onPress={insertDivider}>
-            <span className="sd-hr-icon" />
-          </Tb>
-          <span className="sd-tb-sep" />
-          <Tb label={t('editor.undo')} onPress={() => run('undo')}>
-            <Ionicons name="arrow-redo" size={18} color="currentColor" />
-          </Tb>
-          <Tb label={t('editor.redo')} onPress={() => run('redo')}>
-            <Ionicons name="arrow-undo" size={18} color="currentColor" />
-          </Tb>
-        </div>
-
+        {toolbar}
         <div className="sd-paper-scroll">
-        <div
-          ref={pageRef}
-          className={`sd-paper-page${over ? ' sd-over' : ''}`}
-          style={{ minHeight: pages * PAGE_H }}
-          onPointerDown={(e) => {
-            if (!(e.target as HTMLElement).closest('.sd-field')) setSelectedId(null);
-          }}
-          onDragOver={(e) => {
-            if (!e.dataTransfer.types.includes(FIELD_DRAG_TYPE)) return;
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';
-            setOver(true);
-          }}
-          onDragLeave={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false);
-          }}
-          onDrop={(e) => {
-            setOver(false);
-            const kind = e.dataTransfer.getData(FIELD_DRAG_TYPE) as SigningFieldKind;
-            if (!kind || !FIELD_META[kind]) return;
-            e.preventDefault();
-            addAt(kind, e.clientX, e.clientY);
-          }}
-        >
-          <Letterhead />
-          <div
-            ref={docRef}
-            className="sd-doc"
-            contentEditable
-            suppressContentEditableWarning
-            role="textbox"
-            aria-multiline="true"
-            aria-label={t('editor.content')}
-            data-placeholder={t('editor.contentPlaceholder')}
-            spellCheck
-            onInput={measure}
-            onKeyUp={refreshTools}
-            onMouseUp={refreshTools}
-            onPaste={onPaste}
-          />
-          {showGrid ? <PageGrid margins={{ x: PAD_X, y: PAD_Y }} cell={{ x: PX_PER_CM, y: PX_PER_CM }} unit="px" middleH={false} /> : null}
-          <GuideLines guides={guides} unit="px" />
-          {Array.from({ length: pages - 1 }, (_, i) => (
-            <div key={i} className="sd-page-break" style={{ top: (i + 1) * PAGE_H }} aria-hidden="true">
-              <span>{t('editor.pageEnd')} {i + 1}</span>
-            </div>
-          ))}
-          {fields.map((field) => (
-            <FieldBox
-              key={field.id}
-              kind={field.kind}
-              label={field.label}
-              box={{ left: `${field.x}px`, top: `${topOf(field)}px`, width: `${field.w}px`, height: `${field.h}px` }}
-              selected={field.id === selectedId}
-              sizeLabel={t('editor.sizeCm', { v1: cm(field.w), v2: cm(field.h) })}
-              covers={coversText(field)}
-              onMovePointer={gesture(field, 'move')}
-              onResizePointer={gesture(field, 'resize')}
-              onNudge={nudge(field)}
-              onRemove={() => remove(field.id)}
-              onSelect={() => setSelectedId(field.id)}
-              onDeselect={() => setSelectedId(null)}
-            />
-          ))}
-        </div>
+          {paper}
         </div>
       </div>
     </div>

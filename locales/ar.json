@@ -1166,7 +1166,9 @@
     "textFormatting": "تنسيق النص",
     "textSize": "حجم النص",
     "underline": "تسطير",
-    "undo": "تراجع عن الإجراء الأخير"
+    "undo": "تراجع عن الإجراء الأخير",
+    "addField": "إضافة حقل",
+    "fieldDetails": "تفاصيل الحقل"
   },
   "email": {
     "address": "عنوان البريد الإلكتروني",
@@ -1341,7 +1343,7 @@
     "operatingLicense": "رخصة التشغيل",
     "procedure6": "إجراء 6",
     "safetyAndTraining": "السلامة والإرشاد",
-    "safetyOfficerApproval": "موافقة ضابط السلامة",
+    "safetyOfficerApproval": "فحوصات ضابط السلامة",
     "tachographValidity": "صلاحية جهاز التاكوغراف",
     "trafficInfoDocs": "مستندات معلومات مرورية",
     "trafficReports": "مخالفات مرورية",
@@ -1597,7 +1599,9 @@
     "whatsProblemRequired": "ما المشكلة؟ (إلزامي)",
     "whichVehicle": "أي مركبة تُفحص؟",
     "whoIsDriver": "من السائق؟",
-    "whyNotSigned": "لماذا لم يوقّع السائق"
+    "whyNotSigned": "لماذا لم يوقّع السائق",
+    "documents": "المستندات",
+    "documentsHint": "موافقات وملفات فحوصات ضابط السلامة"
   },
   "legal": {
     "acceptAndContinue": "موافقة ومتابعة",
@@ -3370,7 +3374,18 @@
       "seriesUpdated": "تم تحديث هذه الرحلة و{{trips}} أخرى ثابتة",
       "seriesCreated": "تم إنشاء {{trips}} حتى {{date}}",
       "cancelledOne": "أُلغيت الرحلة (لم تُحذف)",
-      "cancelledMany": "أُلغيت هذه الرحلة و{{trips}} أخرى (لم تُحذف)"
+      "cancelledMany": "أُلغيت هذه الرحلة و{{trips}} أخرى (لم تُحذف)",
+      "forever": "بدون تاريخ انتهاء – حتى ألغيه",
+      "foreverHint": "تتكرر الرحلة من الآن فصاعدًا، بدون أيام السبت والأعياد، حتى تلغيها (\"كل القادمة\").",
+      "foreverScopeHint": "هذه رحلة ثابتة بدون تاريخ انتهاء. إلغاء أو حذف \"كل القادمة\" يوقفها.",
+      "foreverCreated": "تم إنشاء رحلة ثابتة: {{day}} الساعة {{time}}، حتى تلغيها",
+      "everyDay": "كل يوم",
+      "phonePlaceholder": "هاتف العميل (اختياري)",
+      "phoneLabel": "هاتف العميل",
+      "deleteTrip": "حذف من الجدول",
+      "deletedOne": "تم حذف الرحلة",
+      "deletedMany": "تم حذف {{trips}}",
+      "vehicleWarn": "{{plate}}: {{reason}}. يمكن التعيين رغم ذلك – سيظهر ضمن \"للفحص\"."
     },
     "dup": {
       "title": "نسخ الرحلات",
@@ -3440,7 +3455,9 @@
       "savedDriver": "تم الحفظ: {{name}} – {{reason}} {{dates}}",
       "savedVehicle": "تم الحفظ: {{plate}} في المرآب {{dates}}",
       "markedOne": "رحلة واحدة عُلّمت للفحص",
-      "markedMany": "{{n}} رحلات عُلّمت للفحص"
+      "markedMany": "{{n}} رحلات عُلّمت للفحص",
+      "removeFromCalendar": "إزالة من الجدول",
+      "editMark": "تفاصيل العلامة والإزالة"
     },
     "print": {
       "button": "طباعة",
@@ -3471,7 +3488,16 @@
       "colClient": "العميل",
       "noDriver": "بدون سائق",
       "footGarage": "في المرآب: {{list}}",
-      "footAway": "غير متاحين: {{list}}"
+      "footAway": "غير متاحين: {{list}}",
+      "statTrips": "رحلات",
+      "statVehicles": "مركبات",
+      "statHours": "ساعات",
+      "noteGarage": "في المرآب:",
+      "noteAway": "غير متاحين:",
+      "driverSignature": "توقيع السائق",
+      "signDate": "التاريخ",
+      "printedAt": "طُبع {{when}}",
+      "driverSheet": "ورقة السائق"
     },
     "more": {
       "title": "إجراءات أخرى",
@@ -3488,6 +3514,7 @@
       "name": "الاسم",
       "hours": "الساعات",
       "hint": "تُضاف رحلة محفوظة من النموذج: \"حفظ أيضًا كرحلة محفوظة\"."
-    }
+    },
+    "addMenu": "إضافة إلى الجدول"
   }
 }

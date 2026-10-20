@@ -1166,7 +1166,9 @@
     "textFormatting": "עיצוב הטקסט",
     "textSize": "גודל הטקסט",
     "underline": "קו תחתון",
-    "undo": "ביטול הפעולה האחרונה"
+    "undo": "ביטול הפעולה האחרונה",
+    "addField": "הוספת שדה",
+    "fieldDetails": "פרטי השדה"
   },
   "email": {
     "address": "כתובת מייל",
@@ -1341,7 +1343,7 @@
     "operatingLicense": "רישיון הפעלה",
     "procedure6": "נוהל 6",
     "safetyAndTraining": "בטיחות והדרכות",
-    "safetyOfficerApproval": "אישור קצין בטיחות",
+    "safetyOfficerApproval": "בדיקות קצין בטיחות",
     "tachographValidity": "תוקף טכוגרף",
     "trafficInfoDocs": "מסמכי מידע תעבורתי",
     "trafficReports": "דוחות תעבורה",
@@ -1597,7 +1599,9 @@
     "whatsProblemRequired": "מה הבעיה? (חובה)",
     "whichVehicle": "איזה רכב בודקים?",
     "whoIsDriver": "מי הנהג?",
-    "whyNotSigned": "למה הנהג לא חתם"
+    "whyNotSigned": "למה הנהג לא חתם",
+    "documents": "מסמכים",
+    "documentsHint": "אישורים וקבצים של בדיקות קצין הבטיחות"
   },
   "legal": {
     "acceptAndContinue": "אישור והמשך",
@@ -3370,7 +3374,18 @@
       "seriesUpdated": "עודכנו הנסיעה הזו ועוד {{trips}} קבועות",
       "seriesCreated": "נוצרו {{trips}} עד {{date}}",
       "cancelledOne": "הנסיעה בוטלה (לא נמחקה)",
-      "cancelledMany": "בוטלו הנסיעה הזו ועוד {{trips}} (לא נמחקו)"
+      "cancelledMany": "בוטלו הנסיעה הזו ועוד {{trips}} (לא נמחקו)",
+      "forever": "ללא תאריך סיום – עד שאבטל",
+      "foreverHint": "הנסיעה תחזור מעכשיו והלאה, בלי שבתות וחגים, עד שתבטלו אותה (\"כל הבאות\").",
+      "foreverScopeHint": "זו נסיעה קבועה בלי תאריך סיום. ביטול או מחיקה של \"כל הבאות\" עוצרים אותה.",
+      "foreverCreated": "נוצרה נסיעה קבועה: {{day}} ב-{{time}}, עד שתבטלו",
+      "everyDay": "כל יום",
+      "phonePlaceholder": "טלפון לקוח (לא חובה)",
+      "phoneLabel": "טלפון לקוח",
+      "deleteTrip": "מחק מהיומן",
+      "deletedOne": "הנסיעה נמחקה",
+      "deletedMany": "נמחקו {{trips}}",
+      "vehicleWarn": "{{plate}}: {{reason}}. אפשר לשבץ בכל זאת – זה יופיע ב\"לבדוק\"."
     },
     "dup": {
       "title": "שכפול נסיעות",
@@ -3440,7 +3455,9 @@
       "savedDriver": "נשמר: {{name}} – {{reason}} {{dates}}",
       "savedVehicle": "נשמר: {{plate}} במוסך {{dates}}",
       "markedOne": "נסיעה אחת סומנה לבדיקה",
-      "markedMany": "{{n}} נסיעות סומנו לבדיקה"
+      "markedMany": "{{n}} נסיעות סומנו לבדיקה",
+      "removeFromCalendar": "הסר מהיומן",
+      "editMark": "פרטי הסימון והסרה"
     },
     "print": {
       "button": "הדפסה",
@@ -3471,7 +3488,16 @@
       "colClient": "לקוח",
       "noDriver": "ללא נהג",
       "footGarage": "במוסך: {{list}}",
-      "footAway": "לא זמינים: {{list}}"
+      "footAway": "לא זמינים: {{list}}",
+      "statTrips": "נסיעות",
+      "statVehicles": "רכבים",
+      "statHours": "שעות",
+      "noteGarage": "במוסך:",
+      "noteAway": "לא זמינים:",
+      "driverSignature": "חתימת הנהג",
+      "signDate": "תאריך",
+      "printedAt": "הודפס {{when}}",
+      "driverSheet": "דף נהג"
     },
     "more": {
       "title": "עוד פעולות",
@@ -3488,6 +3514,7 @@
       "name": "שם",
       "hours": "שעות",
       "hint": "מוסיפים נסיעה שמורה מתוך הטופס: \"לשמור גם כנסיעה שמורה\"."
-    }
+    },
+    "addMenu": "הוספה לסידור"
   }
 }

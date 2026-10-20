@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import { FocusTarget } from '../ui/FocusTarget';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { BrandLoader } from '../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import type {
   AcquisitionType,
@@ -14,7 +13,7 @@ import type {
 } from '../../lib/adminApi';
 import { ComplianceSection } from '../ComplianceSection';
 import { VehicleDriversEditor } from '../VehicleDriversEditor';
-import { VehicleInspectionsDesktopSection } from '../inspection/VehicleInspectionsDesktopSection';
+import { SAFETY_FOLDER, VehicleInspectionsDesktopSection } from '../inspection/VehicleInspectionsDesktopSection';
 import { DesktopModal } from './DesktopModal';
 import {
   ACQUISITION_TYPE_LABELS,
@@ -72,7 +71,7 @@ const STATUS_OPTIONS: { value: VehicleStatus; label: string; tone: DesktopTone }
  *    "רישוי וביטוח" (compliance items) and "בדיקות ובטיחות" (document folders).
  *
  * Each value appears once: licence/insurance status lives only in the
- * documents list, and the plate lookup sits inside the plate row. The phone
+ * documents list; the plate lookup lives only in the edit form. The phone
  * keeps its own tabbed flow in VehicleDetailScreen.
  */
 
@@ -168,9 +167,6 @@ export function VehicleDetailDesktopView({
   onRestore,
   onDelete,
   departmentOptions,
-  lookupLoading,
-  lookupMessage,
-  onLookupPlate,
   onSaveField,
   openFolder,
   onFolderOpened,
@@ -194,9 +190,6 @@ export function VehicleDetailDesktopView({
   onRestore: () => void;
   onDelete: () => void;
   departmentOptions: { value: string; label: string }[];
-  lookupLoading: boolean;
-  lookupMessage: string | null;
-  onLookupPlate: () => void;
   onSaveField: (patch: Partial<Vehicle>) => Promise<string | null>;
   /** A folder key (lib/vehicleFolderAlerts.ts) to open once, e.g. when arriving from an expiry notification. */
   openFolder?: string | null;
@@ -244,6 +237,9 @@ export function VehicleDetailDesktopView({
     onFolderOpened?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openFolder, onFolderOpened, documentFolders.length]);
+
+  const safetyFolder = documentFolders.find((f) => f.category === SAFETY_FOLDER);
+  const otherFolders = documentFolders.filter((f) => f.category !== SAFETY_FOLDER);
 
   // Attention notice: expired or soon-expiring compliance items and document folders.
   type Alert = { key: string; label: string; state: ExpiryState; date: string | null; open: () => void };
@@ -413,26 +409,8 @@ export function VehicleDetailDesktopView({
                 validate: (v) => (/^\d{7,8}$/.test(v) ? null : t('vehicle.plateInvalid')),
                 onSave: (v) => onSaveField({ plate_number: v }),
               }}
-              accessory={
-                <HoverPressable
-                  style={[styles.lookupPill, lookupLoading && styles.disabled]}
-                  hoverStyle={styles.softBtnHover}
-                  pressStyle={styles.pressDown}
-                  onPress={onLookupPlate}
-                  disabled={lookupLoading}
-                  accessibilityLabel={t('vehicle.autofillLabel')}
-                >
-                  {lookupLoading ? <BrandLoader size="small" color={DESKTOP_COLORS.brand} style={styles.lookupSpinner} /> : <Ionicons name="search-outline" size={13} color={DESKTOP_COLORS.brand} />}
-                  <DText weight="semiBold" style={styles.lookupText}>{lookupLoading ? t('common.searching') : t('vehicle.autofill')}</DText>
-                </HoverPressable>
-              }
             />
-            {!!lookupMessage && (
-              <View style={styles.lookupNote}>
-                <DText style={styles.lookupNoteText}>{lookupMessage}</DText>
-              </View>
-            )}
-            <DetailRow first={!!lookupMessage} label={t('vehicle.manufacturer')} value={vehicle.manufacturer} onPress={() => setEditor({ kind: 'select', label: t('vehicle.manufacturer'), raw: vehicle.manufacturer, options: manufacturerOptions, allowClear: true, placeholder: t('vehicle.chooseManufacturer'), onSave: (v) => onSaveField({ manufacturer: v }) })} />
+            <DetailRow label={t('vehicle.manufacturer')} value={vehicle.manufacturer} onPress={() => setEditor({ kind: 'select', label: t('vehicle.manufacturer'), raw: vehicle.manufacturer, options: manufacturerOptions, allowClear: true, placeholder: t('vehicle.chooseManufacturer'), onSave: (v) => onSaveField({ manufacturer: v }) })} />
             <DetailRow label={t('vehicle.model')} value={vehicle.model} edit={{ kind: 'text', label: t('vehicle.model'), raw: vehicle.model ?? '', onSave: (v) => onSaveField({ model: v.trim() || null }) }} />
             <DetailRow label={t('vehicle.typeLabel')} value={VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type} onPress={() => setEditor({ kind: 'select', label: t('vehicle.typeLabel'), raw: vehicle.vehicle_type, options: VEHICLE_TYPE_OPTIONS(), onSave: (v) => onSaveField({ vehicle_type: (v ?? vehicle.vehicle_type) as VehicleType }) })} />
             <DetailRow
@@ -614,17 +592,24 @@ export function VehicleDetailDesktopView({
         <View style={styles.halfCell}>
           <GroupLabel>{t('compliance.cat.inspection')}</GroupLabel>
           <View style={[styles.card, styles.listCard]}>
-            {documentFolders.map((folder, index) => (
+            {/* בדיקות קצין בטיחות: הבדיקות והמסמכים שלהן בתיקייה אחת */}
+            <VehicleInspectionsDesktopSection
+              companyId={companyId}
+              vehicleId={vehicleId}
+              archived={isArchived}
+              first
+              title={safetyFolder?.title}
+              documents={safetyFolder ? { docs: folderDocs.filter((d) => d.category === safetyFolder.category), onOpen: () => setOpenDocumentFolder(safetyFolder) } : undefined}
+            />
+            {otherFolders.map((folder) => (
               <FolderListRow
                 key={folder.category}
                 title={folder.title}
                 icon={folder.icon}
                 docs={folderDocs.filter((d) => d.category === folder.category)}
                 onPress={() => setOpenDocumentFolder(folder)}
-                first={index === 0}
               />
             ))}
-            <VehicleInspectionsDesktopSection companyId={companyId} vehicleId={vehicleId} archived={isArchived} first={documentFolders.length === 0} />
           </View>
         </View>
       </View>
@@ -719,11 +704,6 @@ const styles = StyleSheet.create({
   plateBandText: { fontSize: 10, color: '#FFFFFF', letterSpacing: 0.4 },
   plateText: { fontSize: 30, lineHeight: 46, color: '#111111', paddingHorizontal: 14, letterSpacing: 0.6, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
 
-  lookupPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, height: 24, paddingHorizontal: 8, borderRadius: 12, backgroundColor: 'rgba(47,91,255,0.09)', ...webOnly({ transition: 'background-color 150ms ease, transform 120ms ease-out' }) },
-  lookupSpinner: { transform: [{ scale: 0.7 }], width: 13, height: 13 },
-  lookupText: { fontSize: 12.5, color: DESKTOP_COLORS.brand },
-  lookupNote: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#F3FAF6', borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
-  lookupNoteText: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted },
 
   // כרטיס התחזוקה
   // Maintenance
