@@ -14,6 +14,9 @@ import { useVehicleInspections } from './useVehicleInspections';
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 
+// תיקיית המסמכים של בדיקות קצין בטיחות בכרטיס הרכב
+export const SAFETY_FOLDER = 'safety_officer_approval';
+
 // כמה בדיקות קודמות מוצגות
 const HISTORY_SHOWN = 5;
 
@@ -35,7 +38,11 @@ export function defectsText(count: number): string {
  * is due (and a way to move it), whether the last one found defects, a button
  * to start one, and the inspections it had.
  */
-export function VehicleInspectionsCard({ companyId, vehicleId, archived }: { companyId: string; vehicleId: string; archived: boolean }) {
+export function VehicleInspectionsCard({ companyId, vehicleId, archived, title = t('nav.safetyInspections'), onOpenDocuments }: {
+  companyId: string; vehicleId: string; archived: boolean; title?: string;
+  /** Opens the folder of the inspections' documents. */
+  onOpenDocuments?: () => void;
+}) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { plan, entries, repeatMonths, error, draft, move } = useVehicleInspections(companyId, vehicleId);
   const [saving, setSaving] = useState(false);
@@ -64,7 +71,7 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived }: { com
 
   return (
     <View style={styles.wrap}>
-      <KitSection title={t('nav.safetyInspections')} surfaceStyle={styles.card}>
+      <KitSection title={title} surfaceStyle={styles.card}>
         {!!error && <DKText variant="caption" color={STATUS.expired.fg}>{error}</DKText>}
         {!archived && (
           <View style={styles.top}>
@@ -106,6 +113,12 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived }: { com
           />
         )}
       </KitSection>
+
+      {onOpenDocuments && (
+        <Surface style={styles.list}>
+          <ListRow first icon="folder-open-outline" title={t('inspection.documents')} subtitle={t('inspection.documentsHint')} onPress={onOpenDocuments} />
+        </Surface>
+      )}
 
       {shown.length > 0 && (
         <Surface style={styles.list}>

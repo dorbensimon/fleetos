@@ -247,14 +247,45 @@ export const SCHEDULE_CSS = `
 .ws .badge{position:absolute;top:2px;left:4px;min-width:20px;height:20px;border-radius:10px;background:#FF3B30;color:#fff;font-size:12px;font-family:var(--h-b);display:flex;align-items:center;justify-content:center;padding:0 5px}
 
 /* ---------- הדפסה ---------- */
+.ws .vpick small.bad{color:var(--red-tx)}
+.ws button.pill-btn{border:0;padding:2px 8px;cursor:pointer}
+.ws .sheet-list button.sheet-main{color:var(--blue);font-family:var(--f-b)}
 .ws-print{display:none}
 @media print{
+  @page{size:A4;margin:12mm}
   body>*:not(.ws-print){display:none!important}
-  .ws-print{display:block;color:#000;direction:var(--app-dir,rtl);font-family:'Assistant_400Regular',Arial,sans-serif}
-  .ws-print .sheet{page-break-after:always;padding:10px}
-  .ws-print h2{margin:0 0 4px;font-family:'Heebo_700Bold',Arial,sans-serif;font-weight:normal}
-  .ws-print table{border-collapse:collapse;width:100%;margin-top:8px}
-  .ws-print th,.ws-print td{border:1px solid #999;padding:5px 6px;text-align:start;font-size:11pt;vertical-align:top}
-  .ws-print .foot{margin-top:10px;font-size:11pt}
+  .ws-print{display:block;color:#16222E;direction:var(--app-dir,rtl);font-family:'Assistant_400Regular',Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .ws-print b{font-family:'Assistant_700Bold','Heebo_700Bold',Arial,sans-serif;font-weight:normal}
+  .ws-print .sheet{page-break-after:always;break-after:page}
+  .ws-print .sheet:last-child{page-break-after:auto;break-after:auto}
+  .ws-print .p-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding-bottom:10px;border-bottom:2.5px solid #16222E;margin-bottom:12px}
+  .ws-print .p-kicker{font-size:10pt;color:#5C6773;letter-spacing:.02em}
+  .ws-print h2{margin:2px 0 0;font-family:'Heebo_700Bold',Arial,sans-serif;font-weight:normal;font-size:20pt;line-height:1.15}
+  .ws-print .p-sub{font-size:11.5pt;color:#2F5BFF;margin-top:2px}
+  .ws-print .p-stats{display:flex;gap:6px}
+  .ws-print .p-stats div{border:1px solid #DDE3E9;border-radius:8px;padding:5px 10px;text-align:center;min-width:64px;background:#F6F8FA}
+  .ws-print .p-stats b{display:block;font-size:14pt;line-height:1.2;direction:ltr}
+  .ws-print .p-stats span{font-size:8.5pt;color:#5C6773}
+  .ws-print table{border-collapse:collapse;width:100%}
+  .ws-print thead{display:table-header-group}
+  .ws-print th{background:#16222E;color:#fff;font-family:'Heebo_700Bold',Arial,sans-serif;font-weight:normal;font-size:9.5pt;padding:6px 8px;text-align:start}
+  .ws-print td{border-bottom:1px solid #DDE3E9;padding:7px 8px;text-align:start;font-size:10.5pt;vertical-align:top}
+  .ws-print tr{break-inside:avoid;page-break-inside:avoid}
+  .ws-print tbody tr:nth-child(even) td{background:#F6F8FA}
+  .ws-print tr.wait td{background:#FFF6E5}
+  .ws-print td small{display:block;font-size:9pt;color:#5C6773}
+  .ws-print .c-time{width:62px;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .ws-print .c-time b{display:block;font-size:12.5pt}
+  .ws-print .c-time span{display:block;font-size:9pt;color:#5C6773}
+  .ws-print .c-time em{display:block;font-style:normal;font-size:8.5pt;color:#2F5BFF}
+  .ws-print .arrow{margin:0 6px;color:#8B98A4}
+  .ws-print .plate{display:inline-block;direction:ltr;border:1.5px solid #16222E;border-radius:4px;padding:0 5px;background:#FFD43B;font-family:'Heebo_700Bold',Arial,sans-serif;font-size:10pt;letter-spacing:.03em}
+  .ws-print .tag{display:inline-block;border-radius:999px;padding:1px 8px;background:#FFE7BA;color:#8A4B00;font-size:9pt}
+  .ws-print .p-foot{margin-top:14px;font-size:10pt}
+  .ws-print .p-note{border:1px solid #DDE3E9;border-inline-start:4px solid #8B98A4;border-radius:6px;padding:7px 10px;background:#F6F8FA;display:grid;gap:3px}
+  .ws-print .p-sign{display:flex;gap:28px;margin-top:28px}
+  .ws-print .p-sign span{flex:1;border-top:1px solid #16222E;padding-top:4px;font-size:9.5pt;color:#5C6773}
+  .ws-print .p-printed{margin-top:12px;font-size:8.5pt;color:#8B98A4;text-align:end}
+  .ws-print .p-empty{padding:24px;text-align:center;color:#5C6773}
 }
 `;

@@ -1166,7 +1166,9 @@
     "textFormatting": "Text formatting",
     "textSize": "Text size",
     "underline": "Underline",
-    "undo": "Undo"
+    "undo": "Undo",
+    "addField": "Add field",
+    "fieldDetails": "Field details"
   },
   "email": {
     "address": "Email address",
@@ -1341,7 +1343,7 @@
     "operatingLicense": "Operating license",
     "procedure6": "Procedure 6",
     "safetyAndTraining": "Safety and briefings",
-    "safetyOfficerApproval": "Safety officer approval",
+    "safetyOfficerApproval": "Safety officer inspections",
     "tachographValidity": "Tachograph validity",
     "trafficInfoDocs": "Traffic record documents",
     "trafficReports": "Traffic tickets",
@@ -1597,7 +1599,9 @@
     "whatsProblemRequired": "What's the problem? (required)",
     "whichVehicle": "Which vehicle are you inspecting?",
     "whoIsDriver": "Who's the driver?",
-    "whyNotSigned": "Why the driver didn't sign"
+    "whyNotSigned": "Why the driver didn't sign",
+    "documents": "Documents",
+    "documentsHint": "Approvals and files of the safety officer inspections"
   },
   "legal": {
     "acceptAndContinue": "Accept and continue",
@@ -3370,7 +3374,18 @@
       "seriesUpdated": "Updated this trip and {{trips}} more recurring ones",
       "seriesCreated": "Created {{trips}} until {{date}}",
       "cancelledOne": "The trip was cancelled (not deleted)",
-      "cancelledMany": "Cancelled this trip and {{trips}} more (not deleted)"
+      "cancelledMany": "Cancelled this trip and {{trips}} more (not deleted)",
+      "forever": "No end date – until I cancel",
+      "foreverHint": "The trip repeats from now on, without Saturdays and holidays, until you cancel it (\"all upcoming\").",
+      "foreverScopeHint": "This is a recurring trip with no end date. Cancelling or deleting \"all upcoming\" stops it.",
+      "foreverCreated": "Recurring trip created: {{day}} at {{time}}, until you cancel",
+      "everyDay": "Every day",
+      "phonePlaceholder": "Client phone (optional)",
+      "phoneLabel": "Client phone",
+      "deleteTrip": "Delete from calendar",
+      "deletedOne": "Trip deleted",
+      "deletedMany": "Deleted {{trips}}",
+      "vehicleWarn": "{{plate}}: {{reason}}. You can still assign it – it will show under \"to check\"."
     },
     "dup": {
       "title": "Duplicate trips",
@@ -3440,7 +3455,9 @@
       "savedDriver": "Saved: {{name}} – {{reason}} {{dates}}",
       "savedVehicle": "Saved: {{plate}} in the garage {{dates}}",
       "markedOne": "One trip marked to check",
-      "markedMany": "{{n}} trips marked to check"
+      "markedMany": "{{n}} trips marked to check",
+      "removeFromCalendar": "Remove from calendar",
+      "editMark": "Mark details and removal"
     },
     "print": {
       "button": "Print",
@@ -3471,7 +3488,16 @@
       "colClient": "Client",
       "noDriver": "No driver",
       "footGarage": "In the garage: {{list}}",
-      "footAway": "Unavailable: {{list}}"
+      "footAway": "Unavailable: {{list}}",
+      "statTrips": "Trips",
+      "statVehicles": "Vehicles",
+      "statHours": "Hours",
+      "noteGarage": "In the garage:",
+      "noteAway": "Not available:",
+      "driverSignature": "Driver signature",
+      "signDate": "Date",
+      "printedAt": "Printed {{when}}",
+      "driverSheet": "Driver sheet"
     },
     "more": {
       "title": "More actions",
@@ -3488,6 +3514,7 @@
       "name": "Name",
       "hours": "Hours",
       "hint": "Add a saved trip from the trip form: \"Also keep as a saved trip\"."
-    }
+    },
+    "addMenu": "Add to schedule"
   }
 }

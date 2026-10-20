@@ -22,12 +22,36 @@ export interface Trip {
   to: string;
   title: string;
   client: string;
+  /** The client's phone; optional. */
+  phone: string;
   pickup: string;
   dest: string;
   vehicleId: string | null;
   driverId: string | null;
   seriesId: string | null;
   status: TripStatus;
+}
+
+/**
+ * A recurring trip with no last day ("until I cancel"). Its trips are made
+ * ahead, a few months at a time, up to `generatedUntil`; `until` is set when
+ * it is cancelled.
+ */
+export interface Series {
+  id: string;
+  repeat: 'daily' | 'weekly';
+  start: string;
+  until: string | null;
+  generatedUntil: string;
+  from: string;
+  to: string;
+  title: string;
+  client: string;
+  phone: string;
+  pickup: string;
+  dest: string;
+  vehicleId: string | null;
+  driverId: string | null;
 }
 
 export interface VehicleDoc {
@@ -85,6 +109,7 @@ export interface ScheduleData {
   blocks: Block[];
   clients: Client[];
   saved: SavedTrip[];
+  series: Series[];
 }
 
 /* ---------------- dates ---------------- */
@@ -358,6 +383,9 @@ export function createRules(data: ScheduleData) {
     }
     return null;
   };
+  // רכב שכבר יוצא לנסיעה אחרת באותן שעות (רק חפיפה, בלי תוקף ומוסך)
+  const vehicleClash = (vehicleId: string, k: string, from: string, to: string, ignore: string | null) =>
+    active.some((x) => x.id !== ignore && x.vehicleId === vehicleId && onDay(x, k) && from && to && overlap(from, to, ...span(x, k)));
   const vehicleBusyRange = (vehicleId: string, a: string, b: string, from: string, to: string, ignore: string | null) =>
     onRange(a, b, (k) => vehicleBusy(vehicleId, k, k === a ? from : '00:00', k === b ? to : '24:00', ignore));
   const driverBlockedRange = (driverId: string | null, a: string, b: string) => onRange(a, b, (k) => driverBlocked(driverId, k));
@@ -454,7 +482,7 @@ export function createRules(data: ScheduleData) {
 
   return {
     vehicle, driver, driverName, vehicleLabel, dayTrips, garageOf, awayOf,
-    vehicleBlocked, vehicleSoon, noLicense, driverBlocked, driverBusy, vehicleBusy,
+    vehicleBlocked, vehicleSoon, noLicense, driverBlocked, driverBusy, vehicleBusy, vehicleClash,
     vehicleBusyRange, driverBlockedRange, driverBusyRange, driverDay, hoursIssue, gaps, issues,
   };
 }

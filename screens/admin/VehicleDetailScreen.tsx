@@ -19,7 +19,6 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { VehicleDetailDesktopView } from '../../components/desktop/VehicleDetailDesktopView';
 import { isStaleDepartmentError } from '../../lib/driverFields';
-import { lookupVehicleRegistry } from '../../lib/vehicleRegistry';
 import { requiresTachograph } from '../../lib/tachograph';
 import { VehicleDetailMobile } from './mobile/VehicleDetailMobile';
 import { folderCategory, useCompanyFolders } from '../../lib/companyFolders';
@@ -71,8 +70,6 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const [editingMaintenance, setEditingMaintenance] = useState(false);
   const [savingMaintenance, setSavingMaintenance] = useState(false);
   const [maintenance, setMaintenance] = useState<MaintForm>({ odometer: '', last_service_km: '', service_interval_km: '', next_service_km: '' });
-  const [lookupLoading, setLookupLoading] = useState(false);
-  const [lookupMessage, setLookupMessage] = useState<string | null>(null);
 
   // Only the newest load may write: a slow answer for the previous vehicle
   // must not land on top of the one now open.
@@ -199,31 +196,6 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     }
   };
 
-  const lookupPlate = async () => {
-    if (!vehicle) return;
-    const plate = vehicle.plate_number.replace(/\D/g, '');
-    if (!/^\d{7,8}$/.test(plate)) { setLookupMessage(t('vehicle.plateMust78')); return; }
-    setLookupLoading(true);
-    setLookupMessage(null);
-    try {
-      const details = await lookupVehicleRegistry(plate);
-      if (!details) { setLookupMessage(t('vehicle.notFoundManual')); return; }
-      const patch: Partial<Vehicle> = {
-        manufacturer: details.manufacturer ?? vehicle.manufacturer,
-        model: details.model ?? vehicle.model,
-        color: details.color ?? vehicle.color,
-        production_year: details.productionYear ?? vehicle.production_year,
-      };
-      await updateVehicle(vehicleId, patch);
-      await load();
-      setLookupMessage(t('vehicle.filledFromMotShort'));
-    } catch (e: any) {
-      setLookupMessage(errorMessage(e, t('vehicle.lookupUnavailable')));
-    } finally {
-      setLookupLoading(false);
-    }
-  };
-
   const mobileBase = {
     insetTop: insets.top,
     insetBottom: insets.bottom,
@@ -239,13 +211,10 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     maintenance,
     derivedNextServiceKm: deriveNextServiceKm(numberOrNull(maintenance.last_service_km) ?? 0, numberOrNull(maintenance.service_interval_km)),
     savingMaintenance,
-    lookupLoading,
-    lookupMessage,
     scrollRef,
     onBack: () => navigation.goBack(),
     onRetry: () => { setLoading(true); setError(null); load().catch((e: any) => setError(errorMessage(e, t('vehicle.loadFailed')))).finally(() => setLoading(false)); },
     onEdit: () => navigation.navigate('VehicleForm', { vehicleId }),
-    onLookup: () => void lookupPlate(),
     onEditMaintenance: editMaintenance,
     onCancelMaintenance: () => setEditingMaintenance(false),
     onChangeMaintenance: (field: keyof MaintForm, value: string) => setMaintenance((x) => ({ ...x, [field]: value })),
@@ -299,10 +268,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
           onRestore={restore}
           onDelete={removePermanently}
           departmentOptions={departments.map((d) => ({ value: d.id, label: d.name }))}
-          lookupLoading={lookupLoading}
-          lookupMessage={lookupMessage}
           onSaveField={saveField}
-          onLookupPlate={() => void lookupPlate()}
           openFolder={route.params.openFolder ?? null}
           onFolderOpened={() => navigation.setParams({ openFolder: undefined })}
           openDrivers={!!route.params.openDrivers}

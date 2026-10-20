@@ -201,6 +201,27 @@ const REPORT_STYLES = `
     margin-bottom: 2.5rem;
   }
 
+  /* תקציר בראש הדוח: ארבעה ריבועים עם המצב */
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 2.5rem; }
+  .kpi { border: 1px solid var(--border); border-radius: 12px; padding: 0.875rem 1rem; background: var(--bg); min-width: 0; }
+  .kpi-label { font-size: 0.8125rem; color: var(--text-muted); font-weight: 500; }
+  .kpi-value { font-size: 1.25rem; font-weight: 700; margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
+  .kpi-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.125rem; }
+  .kpi-accent { background: var(--ok-bg); border-color: transparent; } .kpi-accent .kpi-value { color: var(--ok-text); }
+  .kpi-outline { background: var(--warn-bg); border-color: transparent; } .kpi-outline .kpi-value { color: var(--warn-text); }
+  .kpi-accent2 { background: var(--danger-bg); border-color: transparent; } .kpi-accent2 .kpi-value { color: var(--danger-text); }
+
+  /* רשימת פעולות לטיפול */
+  .actions { list-style: none; margin: 0 0 2.5rem; padding: 0; display: grid; gap: 0.5rem; }
+  .action { padding: 0.625rem 0.875rem; border-radius: 8px; font-size: 0.9375rem; font-weight: 500; border-inline-start: 4px solid; }
+  .action-accent2 { background: var(--danger-bg); border-color: var(--danger-text); color: var(--danger-text); }
+  .action-outline { background: var(--warn-bg); border-color: var(--warn-text); color: var(--warn-text); }
+  .table td.num { font-weight: 600; }
+
+  /* שורת חתימה של הבודק */
+  .signoff { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-top: 3rem; }
+  .sign-line { border-top: 1px solid var(--text-main); padding-top: 0.375rem; font-size: 0.8125rem; color: var(--text-muted); }
+
   .footnote-mark { margin-bottom: 0.4rem; line-height: 0; }
   .footnote-mark svg { display: inline-block; }
   .footnote {
@@ -215,7 +236,7 @@ const REPORT_STYLES = `
   @media (max-width: 600px) {
     body { padding: 1rem; }
     .page { padding: 1.5rem; }
-    .grid, .meta-row { grid-template-columns: 1fr 1fr; }
+    .grid, .meta-row, .kpis, .signoff { grid-template-columns: 1fr 1fr; }
     .header { flex-direction: column; align-items: flex-start; gap: 1rem; }
     .header-meta { text-align: right; }
     .table th, .table td { white-space: nowrap; padding-inline: 0.5rem; }
@@ -225,7 +246,9 @@ const REPORT_STYLES = `
     html, body { background: #ffffff; }
     body { padding: 0; display: block; }
     .page { max-width: none; border: none; box-shadow: none; border-radius: 0; padding: 0; }
-    h2.section-title, .grid, .table tr { break-inside: avoid; }
+    h2.section-title, .grid, .table tr, .kpis, .action, .signoff { break-inside: avoid; }
+    h2.section-title { break-after: avoid; }
+    .kpi, .action, .tag { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .table-scroll { overflow: visible; }
   }
 `;

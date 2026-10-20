@@ -1,7 +1,7 @@
 import { createRules, holidayOf, isOff, nextWorkDay, repeatDates, travelMinutes, type ScheduleData, type Trip } from '../workSchedule';
 
 const trip = (over: Partial<Trip>): Trip => ({
-  id: Math.random().toString(36).slice(2), date: '2026-10-21', end: null, from: '08:00', to: '09:00', title: 'נסיעה', client: '',
+  id: Math.random().toString(36).slice(2), date: '2026-10-21', end: null, from: '08:00', to: '09:00', title: 'נסיעה', client: '', phone: '',
   pickup: '', dest: '', vehicleId: 'v1', driverId: 'd1', seriesId: null, status: 'active', ...over,
 });
 
@@ -18,6 +18,7 @@ const base = (trips: Trip[]): ScheduleData => ({
   blocks: [{ id: 'b1', ownerType: 'vehicle', ownerId: 'v2', from: '2026-10-27', to: '2026-10-28', reason: 'תיקון' }],
   clients: [],
   saved: [],
+  series: [],
 });
 
 describe('work schedule rules', () => {
@@ -28,6 +29,13 @@ describe('work schedule rules', () => {
     expect(r.vehicleBusy('v1', '2026-10-21', '08:30', '10:00', 't1')).toBeNull();
     expect(r.vehicleBusy('v2', '2026-10-27', '08:00', '09:00', null)).toBeTruthy();
     expect(r.vehicleBusy('v1', '2026-10-26', '08:00', '09:00', null)).toBeTruthy();
+  });
+
+  it('tells a real clash with another trip apart from an expired document', () => {
+    const r = createRules(base([trip({ id: 't1' })]));
+    expect(r.vehicleClash('v1', '2026-10-21', '08:30', '10:00', null)).toBe(true);
+    expect(r.vehicleClash('v1', '2026-10-26', '08:00', '09:00', null)).toBe(false);
+    expect(r.vehicleClash('v2', '2026-10-27', '08:00', '09:00', null)).toBe(false);
   });
 
   it('takes a trip of several days on all its days', () => {

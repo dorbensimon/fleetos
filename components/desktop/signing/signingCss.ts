@@ -568,4 +568,50 @@ export const SIGNING_CSS = `
   .sd-paper-scroll { display: block; width: 100%; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; padding: 4px 8px 12px; box-sizing: border-box; }
   .sd-paper-scroll > .sd-paper-page { margin-inline: auto; }
 }
+/* Phone editor, like Notes on the iPhone: actions on top, the page shrunk to the
+   screen's width (at least 70% of the screen is the document), the formatting
+   bar right above the keyboard, and the field tiles in a sheet from the bottom. */
+.sd-work.sd-phone { display: flex; flex-direction: column; min-height: 100%; }
+.sd-ph-actions {
+  position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 6px; padding: 8px 10px;
+  background: rgba(244,246,248,0.94); border-bottom: 1px solid var(--sd-sep);
+}
+.sd-ph-gap { flex: 1; }
+.sd-ph-act {
+  height: 38px; padding: 0 12px; border-radius: 19px; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 14.5px; color: var(--sd-ink); background: #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+  -webkit-tap-highlight-color: transparent; transition: transform 100ms ease;
+}
+.sd-ph-act:active { transform: scale(0.96); }
+.sd-ph-act.sd-ph-main { background: var(--sd-tint); color: #fff; box-shadow: none; }
+.sd-ph-act.sd-ph-icon { width: 38px; padding: 0; justify-content: center; }
+.sd-phone .sd-paper-scroll { display: block; overflow: hidden; padding: 10px 8px 96px; }
+.sd-paper-fit { position: relative; margin-inline: auto; }
+.sd-paper-fit > .sd-paper-page { border-radius: 6px; }
+.sd-ph-kb {
+  position: fixed; left: 0; right: 0; z-index: 1003; padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+  background: #F2F3F5; border-top: 1px solid rgba(0,0,0,0.08); box-shadow: 0 -4px 16px rgba(16,34,50,0.08);
+}
+.sd-ph-kb .sd-toolbar {
+  position: static; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  background: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; padding: 0;
+}
+.sd-ph-kb .sd-toolbar::-webkit-scrollbar { display: none; }
+.sd-ph-kb .sd-tb { flex: none; height: 42px; }
+/* The size and colour lists open upward, over the page, and stay on screen. */
+.sd-ph-kb .sd-menu { position: fixed; top: auto; bottom: calc(var(--kb, 0px) + 64px + env(safe-area-inset-bottom)); inset-inline: 10px; min-width: 0; max-height: 50vh; overflow: auto; }
+.sd-ph-kb .sd-tb-wrap { position: static; }
+.sd-ph-scrim { position: fixed; inset: 0; z-index: 1004; background: rgba(16,34,50,0.28); animation: sd-fade 200ms ease both; }
+.sd-ph-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1005; max-height: 72vh; display: flex; flex-direction: column;
+  background: var(--sd-card); border-radius: 20px 20px 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
+  padding-bottom: env(safe-area-inset-bottom); animation: sd-sheet-in 360ms var(--sd-sheet) both;
+}
+.sd-ph-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px 8px; border-bottom: 1px solid var(--sd-sep); }
+.sd-ph-sheet-head strong { font-size: 17px; }
+.sd-ph-sheet-body { overflow: auto; padding: 4px 12px 16px; }
+.sd-ph-sheet-body > h3, .sd-ph-sheet-body > .sd-panel-sub { display: none; }
+.sd-ph-sheet-body .sd-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.sd-ph-sheet-body .sd-tile { min-height: 64px; flex-direction: column; justify-content: center; text-align: center; font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .sd-ph-sheet, .sd-ph-scrim { animation: none; } }
 `;
