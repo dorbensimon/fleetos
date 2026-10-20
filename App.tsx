@@ -51,6 +51,7 @@ import ChecklistMeetingScreen from './screens/admin/ChecklistMeetingScreen';
 import SafetyInspectionsScreen from './screens/admin/SafetyInspectionsScreen';
 import SafetyInspectionScreen from './screens/admin/SafetyInspectionScreen';
 import SafetyInspectionSettingsScreen from './screens/admin/SafetyInspectionSettingsScreen';
+import WorkScheduleScreen from './screens/admin/WorkScheduleScreen';
 import NotificationsScreen from './screens/admin/NotificationsScreen';
 import AdminDocumentSigningScreen from './screens/admin/AdminDocumentSigningScreen';
 import DocusealWebViewScreen from './screens/DocusealWebViewScreen';
@@ -159,6 +160,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       ChecklistMeeting: 'drivers/:driverId/meeting',
       SafetyInspections: 'safety-inspections',
       SafetyInspectionSettings: 'safety-inspections/settings',
+      WorkSchedule: 'work-schedule',
       SafetyInspection: 'vehicles/:vehicleId/safety-inspection',
       Notifications: 'notifications',
       AdminDocumentSigning: 'documents/signing',
@@ -409,6 +411,7 @@ export default function App() {
               <Stack.Screen name="SafetyInspections" component={SafetyInspectionsScreen} />
               <Stack.Screen name="SafetyInspection" component={SafetyInspectionScreen} />
               <Stack.Screen name="SafetyInspectionSettings" component={SafetyInspectionSettingsScreen} />
+              <Stack.Screen name="WorkSchedule" component={WorkScheduleScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               <Stack.Screen name="AdminDocumentSigning" component={AdminDocumentSigningScreen} />
               <Stack.Screen name="DocusealWebView" component={DocusealWebViewScreen} />
