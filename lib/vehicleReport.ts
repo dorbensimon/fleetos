@@ -26,8 +26,8 @@ export type VehicleReportCategory = 'all' | 'insurance' | 'test' | 'service' | '
 export const VEHICLE_REPORT_CATEGORIES: { value: VehicleReportCategory; label: string; icon: string }[] = [
   { value: 'all', label: 'כל הרכבים', icon: 'car-outline' },
   { value: 'issues', label: 'רכבים עם חריגה', icon: 'warning' },
-  { value: 'insurance', label: 'ביטוח פג / קרוב לפוג', icon: 'shield-checkmark-outline' },
-  { value: 'test', label: 'טסט פג / קרוב לפוג', icon: 'construct-outline' },
+  { value: 'insurance', label: 'ביטוח פג / חסר', icon: 'shield-checkmark-outline' },
+  { value: 'test', label: 'טסט פג / חסר', icon: 'construct-outline' },
   { value: 'service', label: 'טיפול קרוב / באיחור', icon: 'build-outline' },
 ];
 
@@ -100,10 +100,11 @@ function filterVehicles(
   category: VehicleReportCategory
 ): VehicleSummary[] {
   switch (category) {
+    // Only what needs action now: expired, or no date entered at all.
     case 'insurance':
-      return summaries.filter((s) => s.insTone !== TONE_OK);
+      return summaries.filter((s) => s.insDays == null || s.insDays < 0);
     case 'test':
-      return summaries.filter((s) => s.testTone !== TONE_OK);
+      return summaries.filter((s) => s.testDays == null || s.testDays < 0);
     case 'service':
       return summaries.filter((s) => s.svcTone !== TONE_OK);
     case 'issues':
