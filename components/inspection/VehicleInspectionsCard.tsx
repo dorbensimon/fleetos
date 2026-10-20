@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { DK, DKText, KitSection, ListRow, PrimaryAction, STATUS, Surface } from '../driverKit';
+import { DK, DKText, KitSection, KitSheet, ListRow, PrimaryAction, STATUS, Surface } from '../driverKit';
 import { DateField } from '../ui/DateField';
 import { DuePill } from '../checklist/DuePill';
 import { dueState } from '../../lib/meetingPlan';
@@ -38,12 +38,18 @@ export function defectsText(count: number): string {
  * is due (and a way to move it), whether the last one found defects, a button
  * to start one, and the inspections it had.
  */
-export function VehicleInspectionsCard({ companyId, vehicleId, archived, title = t('nav.safetyInspections'), onOpenDocuments }: {
+export function VehicleInspectionsCard({ companyId, vehicleId, archived, title = t('nav.safetyInspections'), onOpenDocuments, onLeave }: {
   companyId: string; vehicleId: string; archived: boolean; title?: string;
   /** Opens the folder of the inspections' documents. */
   onOpenDocuments?: () => void;
+  /** Called before going to another screen (e.g. to close the sheet holding the card). */
+  onLeave?: () => void;
 }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const go = (open: () => void) => {
+    onLeave?.();
+    open();
+  };
   const { plan, entries, repeatMonths, error, draft, move } = useVehicleInspections(companyId, vehicleId);
   const [saving, setSaving] = useState(false);
   const [moveError, setMoveError] = useState('');
@@ -109,14 +115,14 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived, title =
           <PrimaryAction
             label={draft ? t('inspection.continueStarted') : t('inspection.new')}
             icon={draft ? 'play-outline' : 'add-circle-outline'}
-            onPress={() => navigation.navigate('SafetyInspection', draft ? { vehicleId, inspectionId: draft.id } : { vehicleId })}
+            onPress={() => go(() => navigation.navigate('SafetyInspection', draft ? { vehicleId, inspectionId: draft.id } : { vehicleId }))}
           />
         )}
       </KitSection>
 
       {onOpenDocuments && (
         <Surface style={styles.list}>
-          <ListRow first icon="folder-open-outline" title={t('inspection.documents')} subtitle={t('inspection.documentsHint')} onPress={onOpenDocuments} />
+          <ListRow first icon="folder-open-outline" title={t('inspection.documents')} subtitle={t('inspection.documentsHint')} onPress={() => go(onOpenDocuments)} />
         </Surface>
       )}
 
@@ -137,16 +143,60 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived, title =
                     <DKText variant="micro" color={pill.fg}>{meta.label}</DKText>
                   </View>
                 }
-                onPress={() => navigation.navigate('SafetyInspection', { vehicleId, inspectionId: row.id })}
+                onPress={() => go(() => navigation.navigate('SafetyInspection', { vehicleId, inspectionId: row.id }))}
               />
             );
           })}
           {(entries?.length ?? 0) > HISTORY_SHOWN && (
-            <ListRow icon="list-outline" title={t('inspection.all')} subtitle={t('inspection.countLength', { length: entries!.length })} onPress={() => navigation.navigate('SafetyInspections')} />
+            <ListRow icon="list-outline" title={t('inspection.all')} subtitle={t('inspection.countLength', { length: entries!.length })} onPress={() => go(() => navigation.navigate('SafetyInspections'))} />
           )}
         </Surface>
       )}
     </View>
+  );
+}
+
+// תיקיית בדיקות קצין בטיחות
+/**
+ * The safety officer's inspections as one folder in the vehicle's folder
+ * list: the row shows when the next one is due, and opens a sheet with the
+ * next date (and a way to move it), a new inspection, the documents and the
+ * inspections done.
+ */
+export function VehicleInspectionsFolder({ companyId, vehicleId, archived, title, first = false, onOpenDocuments }: {
+  companyId: string; vehicleId: string; archived: boolean; title: string; first?: boolean;
+  onOpenDocuments?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { plan, entries } = useVehicleInspections(companyId, vehicleId);
+  const late = !!plan?.nextDue && dueState(plan.nextDue) === 'late';
+  const subtitle = [
+    plan?.nextDue ? `${t('inspection.next')}: ${formatIsoDay(plan.nextDue)}` : t('inspection.noDateSet'),
+    entries?.length ? t('inspection.countLength', { length: entries.length }) : null,
+  ].filter(Boolean).join(' · ');
+  return (
+    <>
+      <ListRow
+        first={first}
+        icon="shield-checkmark-outline"
+        tint={late ? STATUS.expired.fg : DK.accent}
+        title={title}
+        subtitle={subtitle}
+        onPress={() => setOpen(true)}
+      />
+      <KitSheet visible={open} onClose={() => setOpen(false)} title={title} icon="shield-checkmark-outline">
+        {open && (
+          <VehicleInspectionsCard
+            companyId={companyId}
+            vehicleId={vehicleId}
+            archived={archived}
+            title=""
+            onOpenDocuments={onOpenDocuments}
+            onLeave={() => setOpen(false)}
+          />
+        )}
+      </KitSheet>
+    </>
   );
 }
 

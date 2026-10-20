@@ -1585,7 +1585,7 @@
     "signatureNotStored": "The signature isn't stored on the device. You sign again at each inspection.",
     "signedSavedIn": "The signed document was saved in the vehicle's safety officer inspections and in {{driverName}}'s file.",
     "signerMissing": "Signing driver missing",
-    "signingDriver": "Signing driver",
+    "signingDriver": "Signing driver (optional)",
     "testValidUntil": "Annual test valid until",
     "thanksSigned": "Thanks, the inspection is signed",
     "toSiteOfFirst": "The inspection goes to {{first}}'s site, and they sign from there. Meanwhile it shows as \"Awaiting driver signature\".",
@@ -1601,7 +1601,9 @@
     "whoIsDriver": "Who's the driver?",
     "whyNotSigned": "Why the driver didn't sign",
     "documents": "Documents",
-    "documentsHint": "Approvals and files of the safety officer inspections"
+    "documentsHint": "Approvals and files of the safety officer inspections",
+    "noDriver": "No driver",
+    "signedSavedNoDriver": "The signed document was saved in the vehicle's safety officer inspections."
   },
   "legal": {
     "acceptAndContinue": "Accept and continue",

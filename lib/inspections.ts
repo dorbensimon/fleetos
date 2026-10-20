@@ -241,7 +241,8 @@ export type InspectionState = 'draft' | 'awaiting_driver' | 'completed' | 'close
 export function inspectionState(inspection: Pick<InspectionRow, 'status' | 'signature_request_id'>, requestStatus?: string | null): InspectionState {
   if (inspection.status === 'cancelled') return 'cancelled';
   if (inspection.status === 'draft') return 'draft';
-  if (inspection.status === 'closed') return 'closed';
+  // Done without a driver: only the officer signed, and that is the whole document.
+  if (inspection.status === 'closed') return inspection.signature_request_id ? 'closed' : 'completed';
   if (requestStatus === 'completed') return 'completed';
   if (requestStatus === 'pending') return 'awaiting_driver';
   // Declined, failed, cancelled from the driver's folder, or removed.
@@ -449,7 +450,7 @@ export async function signInspection(
   companyId: string,
   inspectionId: string,
   input: InspectionInput & { officerSignature: string; notifyDriver: boolean },
-): Promise<{ inspection: InspectionRow; requestId: string; nextDue: string | null }> {
+): Promise<{ inspection: InspectionRow; requestId: string | null; nextDue: string | null }> {
   return invoke({ action: 'sign', companyId, inspectionId, ...input }, t('common.saveSignatureFailed'));
 }
 

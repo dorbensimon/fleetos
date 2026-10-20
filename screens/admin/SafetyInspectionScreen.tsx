@@ -155,6 +155,8 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
   const odometerValue = /^\d{1,7}$/.test(odometer.replace(/[,\s]/g, '')) ? Number(odometer.replace(/[,\s]/g, '')) : null;
   const driver = drivers.find((d) => d.id === driverId) ?? null;
   const driverName = driver?.full_name?.trim() || inspection?.facts?.driverName || t('common.theDriver');
+  // The driver is optional; without one only the officer signs.
+  const noDriver = !driverId;
   const vehicleDrivers = useMemo(
     () =>
       drivers
@@ -308,7 +310,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
     }
   };
 
-  const fillReady = !problem && odometerValue != null && !!driverId;
+  const fillReady = !problem && odometerValue != null;
   const saveDraft = () =>
     run('save', async () => {
       await persist();
@@ -318,7 +320,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
   const toOfficer = () => {
     if (!fillReady) {
       setShowErrors(true);
-      setError(odometerValue == null ? t('inspection.enterMileage') : !driverId ? t('inspection.chooseSigningDriver') : problem ?? '');
+      setError(odometerValue == null ? t('inspection.enterMileage') : problem ?? '');
       toTop();
       return;
     }
@@ -332,10 +334,10 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
       const current = inspection ?? (await persist());
       const result = await signInspection(companyId, current.id, { ...input(), officerSignature: officerSig!, notifyDriver: false });
       setInspection(result.inspection);
-      setRequestStatus('pending');
+      setRequestStatus(result.requestId ? 'pending' : null);
       setNextDue(result.nextDue ?? null);
       setDirty(false);
-      setStep('choose');
+      setStep(result.requestId ? 'choose' : 'done');
     });
   const sendToDriver = () =>
     run('notify', async () => {
@@ -432,17 +434,16 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
   if (step === 'fill') {
     const left = items.length - marked;
     const needOdometer = showErrors && odometerValue == null;
-    const needDriver = showErrors && !driverId;
     // Items are numbered straight through, across groups.
     const firstNumber = form.groups.map((_, i) => form.groups.slice(0, i).reduce((sum, g) => sum + g.items.length, 1));
     const fillAction = (
           <View style={styles.footer}>
             <View style={styles.need} accessibilityLiveRegion="polite">
-              {left > 0 || problem || odometerValue == null || !driverId ? (
+              {left > 0 || problem || odometerValue == null ? (
                 <>
                   <Ionicons name="information-circle-outline" size={18} color={DK.muted} />
                   <DKText variant="caption" color={DK.muted}>
-                    {problem ?? (odometerValue == null ? t('inspection.mileageMissing') : t('inspection.signerMissing'))}
+                    {problem ?? t('inspection.mileageMissing')}
                   </DKText>
                 </>
               ) : (
@@ -510,7 +511,13 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
                     </DKText>
                   </View>
                 )}
-                <Pressy onPress={() => setPickDriver(true)} accessibilityLabel={t('inspection.chooseOtherDriver')} style={[styles.chip, styles.chipGhost, needDriver && styles.chipError]} pressScale={0.95}>
+                <Pressy onPress={() => edit(setDriverId)(null)} accessibilityLabel={`${t('inspection.noDriver')}${noDriver ? t('common.selectedSuffix') : ''}`} style={[styles.chip, noDriver && styles.chipOn]} pressScale={0.95}>
+                  <Ionicons name={noDriver ? 'checkmark' : 'remove-circle-outline'} size={16} color={noDriver ? '#FFFFFF' : DK.accent} />
+                  <DKText variant="label" color={noDriver ? '#FFFFFF' : DK.accent}>
+                    {t('inspection.noDriver')}
+                  </DKText>
+                </Pressy>
+                <Pressy onPress={() => setPickDriver(true)} accessibilityLabel={t('inspection.chooseOtherDriver')} style={[styles.chip, styles.chipGhost]} pressScale={0.95}>
                   <Ionicons name="people-outline" size={16} color={DK.inkSoft} />
                   <DKText variant="label" color={DK.inkSoft}>
                     {vehicleDrivers.length ? t('inspection.otherDriver') : t('inspection.chooseDriver')}
@@ -1155,7 +1162,9 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
             <DKText variant="body" color={DK.inkSoft} style={styles.center}>
               {sent
                 ? t('inspection.sentBody', { first })
-                : t('inspection.signedSavedIn', { driverName })}
+                : noDriver
+                  ? t('inspection.signedSavedNoDriver')
+                  : t('inspection.signedSavedIn', { driverName })}
             </DKText>
           </Reveal>
           {nextDue ? (
@@ -1190,7 +1199,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
     { label: t('vehicle.number'), value: facts ? formatPlate(facts.plate) : plate },
     { label: t('vehicle.makeAndModel'), value: facts?.vehicle || vehicleLabel || '—' },
     { label: t('vehicle.mileage'), value: (facts?.odometer ?? inspection?.odometer)?.toLocaleString(getLocale()) ?? '—' },
-    { label: t('role.driver'), value: facts?.driverName ?? driverName },
+    { label: t('role.driver'), value: facts?.driverName || (inspection && inspection.status !== 'draft' && !inspection.driver_id ? t('inspection.noDriver') : driverName) },
     { label: t('inspection.date'), value: formatIsoDay(inspection?.inspection_date) },
     { label: t('company.safetyOfficer'), value: inspection?.officer_name ?? '—' },
   ];
@@ -1682,7 +1691,6 @@ const styles = StyleSheet.create({
   chip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: 14, borderRadius: 999, backgroundColor: DK.accentSoft },
   chipOn: { backgroundColor: DK.accent },
   chipGhost: { backgroundColor: DK.surfaceSunk },
-  chipError: { borderWidth: 1.5, borderColor: STATUS.expired.fg },
   pickList: { gap: 6, marginTop: 10 },
   pickRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, minHeight: 52, paddingHorizontal: 12, borderRadius: 14, backgroundColor: DK.surfaceSunk },
   pickRowOn: { backgroundColor: DK.accentSoft },

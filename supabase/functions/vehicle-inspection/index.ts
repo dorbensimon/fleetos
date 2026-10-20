@@ -214,23 +214,25 @@ Deno.serve(async (req) => {
       if (!officerName) return json({ error: 'חסר השם של קצין הבטיחות' }, 400);
       const officerSignature = signaturePng(body.officerSignature);
       if (!officerSignature) return json({ error: 'החתימה לא נקלטה. חתמו שוב ונסו שוב.' }, 400);
-      const driver = await activeDriver(body.driverId);
-      if (!driver) return json({ error: 'יש לבחור את הנהג שחותם על הבדיקה' }, 400);
-      const driverName = driver.full_name?.trim();
-      if (!driverName) return json({ error: 'יש להשלים את שם הנהג בפרופיל לפני החתימה' }, 400);
+      // The driver is optional: without one, only the officer signs.
+      const noDriver = body.driverId == null;
+      const driver = noDriver ? null : await activeDriver(body.driverId);
+      if (!noDriver && !driver) return json({ error: 'אפשר לבחור רק נהג פעיל של החברה' }, 400);
+      const driverName = driver?.full_name?.trim() ?? '';
+      if (driver && !driverName) return json({ error: 'יש להשלים את שם הנהג בפרופיל לפני החתימה' }, 400);
 
       const today = israelToday();
       const [{ data: vehicle }, { data: company }, { data: authData }, { data: compliance }, settings] = await Promise.all([
         db.from('vehicles').select('id, plate_number, manufacturer, model, odometer, status').eq('id', inspection.vehicle_id).eq('company_id', companyId).maybeSingle(),
         db.from('companies').select('name, logo_url').eq('id', companyId).single(),
-        db.auth.admin.getUserById(driver.id),
+        driver ? db.auth.admin.getUserById(driver.id) : Promise.resolve({ data: null }),
         db.from('compliance_items').select('item_type, expiry_date, last_date')
           .eq('owner_type', 'vehicle').eq('owner_id', inspection.vehicle_id).in('item_type', ['annual_test', 'insurance_mandatory']),
         companySettings(db, companyId),
       ]);
       if (!vehicle || vehicle.status === 'archived') return json({ error: 'אפשר לחתום רק על רכב פעיל של החברה' }, 400);
-      const driverEmail = authData?.user?.email;
-      if (!driverEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(driverEmail)) {
+      const driverEmail = authData?.user?.email ?? '';
+      if (driver && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(driverEmail)) {
         return json({ error: 'יש לעדכן כתובת אימייל תקינה בפרופיל הנהג לפני החתימה' }, 400);
       }
 
@@ -261,7 +263,84 @@ Deno.serve(async (req) => {
       if (!claimed) return json({ error: 'החתימה כבר נשמרת. חכו רגע ורעננו את המסך.' }, 409);
       const release = () => db.from('vehicle_inspections').update({ signing_locked_until: null }).eq('id', inspection.id).eq('status', 'draft');
 
-      const html = renderInspectionHtml({ form, letterhead: letterheadOf(company), facts, answers, extraDefects, officerName });
+      const html = renderInspectionHtml({ form, letterhead: letterheadOf(company), facts, answers, extraDefects, officerName, noDriver: !driver });
+      const signedFields = {
+        answers,
+        extra_defects: extraDefects,
+        defect_count: defectCount(form, answers, extraDefects),
+        odometer,
+        inspection_date: today,
+        officer_name: officerName,
+        officer_signature: officerSignature,
+        facts,
+        signing_locked_until: null,
+      };
+      // After the officer signs: the next inspection, and the reading goes to
+      // the vehicle only when it moves forward.
+      const afterSigning = async (row: { id: string; company_id: string; vehicle_id: string; inspection_date: string }) => {
+        const scheduled = await scheduleNextInspection(db, row, nextDue, user.userId);
+        if (odometer > (vehicle.odometer ?? 0)) {
+          const { error: odometerError } = await db.from('vehicles').update({ odometer })
+            .eq('id', vehicle.id).eq('company_id', companyId).lt('odometer', odometer);
+          if (odometerError) console.error('vehicle-inspection odometer update failed');
+        }
+        return scheduled;
+      };
+
+      // No driver: the officer's document is the finished one.
+      if (!driver) {
+        let officerSubmitter: Submitter | undefined;
+        try {
+          const response = await docusealFetch('/submissions/html', {
+            method: 'POST',
+            body: JSON.stringify({
+              name: [INSPECTION_TITLE, formatPlate(vehicle.plate_number), dayText(today)].join(' - '),
+              send_email: false,
+              documents: [{ name: INSPECTION_TITLE, html, size: 'A4' }],
+              submitters: [{
+                role: OFFICER_ROLE,
+                name: officerName,
+                email: user.email,
+                send_email: false,
+                completed: true,
+                values: { [OFFICER_FIELD]: officerSignature },
+                metadata: { vehicle_inspection_id: inspection.id, company_id: companyId, signed_by_user: user.userId },
+              }],
+            }),
+          });
+          if (!response.ok) throw new Error(`DocuSeal rejected the submission (${response.status})`);
+          const payload = await response.json() as { submitters?: Submitter[] } | Submitter[];
+          const submitters = Array.isArray(payload) ? payload : payload.submitters ?? [];
+          officerSubmitter = submitters[0];
+          if (!officerSubmitter?.id || !officerSubmitter.submission_id) throw new Error('DocuSeal returned no submission');
+        } catch (error) {
+          console.error('vehicle-inspection sign (no driver) failed', error instanceof Error ? error.message : 'unknown');
+          if (officerSubmitter?.submission_id) await discardSubmission(officerSubmitter.submission_id);
+          await release();
+          return json({ error: 'יצירת המסמך נכשלה. נסו שוב בעוד רגע.' }, 502);
+        }
+        const { url: documentUrl } = await submitterDocument(officerSubmitter.id!);
+        const path = closedFilePath(companyId, inspection.vehicle_id, inspection.id);
+        const filePath = documentUrl && await storePdf(db, documentUrl, path) ? path : null;
+        const now = new Date().toISOString();
+        const { data: done, error: doneError } = await db.from('vehicle_inspections').update({
+          ...signedFields,
+          status: 'closed',
+          driver_id: null,
+          signed_at: now,
+          closed_at: now,
+          closed_by: user.userId,
+          closing_submission_id: officerSubmitter.submission_id,
+          file_path: filePath,
+        }).eq('id', inspection.id).eq('status', 'draft').select('*').maybeSingle();
+        if (doneError || !done) {
+          console.error('vehicle-inspection inspection linking failed', doneError?.message ?? 'no row');
+          await discardSubmission(officerSubmitter.submission_id!);
+          await release();
+          return json({ error: 'המסמך לא נשמר. נסו שוב בעוד רגע.' }, 500);
+        }
+        return json({ inspection: done, requestId: null, nextDue: await afterSigning(done) });
+      }
 
       const { data: request, error: requestError } = await db.from('signature_requests').insert({
         company_id: companyId,
@@ -340,19 +419,11 @@ Deno.serve(async (req) => {
         return json({ error: 'המסמך לא נשמר. נסו שוב בעוד רגע.' }, 500);
       }
       const { data: signed, error: signError } = await db.from('vehicle_inspections').update({
+        ...signedFields,
         status: 'signed',
         driver_id: driver.id,
-        answers,
-        extra_defects: extraDefects,
-        defect_count: defectCount(form, answers, extraDefects),
-        odometer,
-        inspection_date: today,
-        officer_name: officerName,
-        officer_signature: officerSignature,
-        facts,
         signed_at: now,
         signature_request_id: request.id,
-        signing_locked_until: null,
       }).eq('id', inspection.id).eq('status', 'draft').select('*').maybeSingle();
       if (signError || !signed) {
         console.error('vehicle-inspection inspection linking failed', signError?.message ?? 'no row');
@@ -361,13 +432,7 @@ Deno.serve(async (req) => {
         return json({ error: 'המסמך לא נשמר. נסו שוב בעוד רגע.' }, 500);
       }
 
-      const scheduled = await scheduleNextInspection(db, signed, nextDue, user.userId);
-      // The reading goes to the vehicle only when it moves forward.
-      if (odometer > (vehicle.odometer ?? 0)) {
-        const { error: odometerError } = await db.from('vehicles').update({ odometer })
-          .eq('id', vehicle.id).eq('company_id', companyId).lt('odometer', odometer);
-        if (odometerError) console.error('vehicle-inspection odometer update failed');
-      }
+      const scheduled = await afterSigning(signed);
       if (body.notifyDriver === true) await notifyDriver(db, companyId, user.userId, user.profile.full_name, driver.id, request.id, vehicle.plate_number);
       return json({ inspection: signed, requestId: request.id, nextDue: scheduled });
     }

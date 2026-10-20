@@ -33,7 +33,7 @@ import { formatPlate } from '../../../lib/plate';
 import { formatDate } from '../../../lib/theme';
 import { nextServiceKmOf } from '../../../lib/serviceSchedule';
 import { vehicleHealth } from './FleetCards';
-import { SAFETY_FOLDER, VehicleInspectionsCard } from '../../../components/inspection/VehicleInspectionsCard';
+import { SAFETY_FOLDER, VehicleInspectionsFolder } from '../../../components/inspection/VehicleInspectionsCard';
 import { t, dirIcon, getLocale } from '../../../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -239,16 +239,17 @@ function renderTab(p: Props, v: Vehicle) {
     return (
       <>
         <ComplianceSection companyId={p.companyId} ownerType="vehicle" ownerId={v.id} focusItemType={p.focusItem} spacious folderAppearance hiddenItemTypes={['annual_test']} />
-        <VehicleInspectionsCard
-          companyId={p.companyId}
-          vehicleId={v.id}
-          archived={archived}
-          title={safetyFolder?.title}
-          onOpenDocuments={safetyFolder ? () => p.onOpenFolder(safetyFolder) : undefined}
-        />
         <KitSection title={t('compliance.cat.inspection')}>
-          {otherFolders.map((folder, index) => (
-            <ListRow key={folder.category} first={index === 0} icon={folder.icon as IconName} tint={folder.color} title={folder.title} onPress={() => p.onOpenFolder(folder)} />
+          <VehicleInspectionsFolder
+            first
+            companyId={p.companyId}
+            vehicleId={v.id}
+            archived={archived}
+            title={safetyFolder?.title ?? t('folder.safetyOfficerApproval')}
+            onOpenDocuments={safetyFolder ? () => p.onOpenFolder(safetyFolder) : undefined}
+          />
+          {otherFolders.map((folder) => (
+            <ListRow key={folder.category} icon={folder.icon as IconName} tint={folder.color} title={folder.title} onPress={() => p.onOpenFolder(folder)} />
           ))}
         </KitSection>
       </>
