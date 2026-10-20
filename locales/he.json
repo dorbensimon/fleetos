@@ -1585,7 +1585,7 @@
     "signatureNotStored": "החתימה לא נשמרת במכשיר. בכל בדיקה חותמים מחדש.",
     "signedSavedIn": "המסמך החתום נשמר בבדיקות קצין הבטיחות של הרכב ובתיק של {{driverName}}.",
     "signerMissing": "חסר הנהג שחותם",
-    "signingDriver": "הנהג שחותם",
+    "signingDriver": "הנהג שחותם (לא חובה)",
     "testValidUntil": "טסט בתוקף עד",
     "thanksSigned": "תודה, הבדיקה נחתמה",
     "toSiteOfFirst": "הבדיקה תגיע לאתר של {{first}}, והחתימה תיעשה משם. בינתיים היא מופיעה כ״ממתין לחתימת נהג״.",
@@ -1601,7 +1601,9 @@
     "whoIsDriver": "מי הנהג?",
     "whyNotSigned": "למה הנהג לא חתם",
     "documents": "מסמכים",
-    "documentsHint": "אישורים וקבצים של בדיקות קצין הבטיחות"
+    "documentsHint": "אישורים וקבצים של בדיקות קצין הבטיחות",
+    "noDriver": "ללא נהג",
+    "signedSavedNoDriver": "המסמך החתום נשמר בבדיקות קצין הבטיחות של הרכב."
   },
   "legal": {
     "acceptAndContinue": "אישור והמשך",

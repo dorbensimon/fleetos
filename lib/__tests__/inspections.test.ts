@@ -96,6 +96,7 @@ describe('where an inspection stands', () => {
     expect(inspectionState({ status: 'signed', signature_request_id: 'r' }, 'completed')).toBe('completed');
     expect(inspectionState({ status: 'signed', signature_request_id: 'r' }, 'declined')).toBe('requires_attention');
     expect(inspectionState({ status: 'closed', signature_request_id: 'r' }, 'cancelled')).toBe('closed');
+    expect(inspectionState({ status: 'closed', signature_request_id: null })).toBe('completed');
     expect(inspectionState({ status: 'cancelled', signature_request_id: 'r' }, 'completed')).toBe('cancelled');
   });
 

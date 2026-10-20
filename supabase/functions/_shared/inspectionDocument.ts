@@ -240,6 +240,8 @@ type RenderInput = {
   officerName: string;
   /** Set when the inspection was closed without the driver: printed in the driver's place, and no driver field. */
   closedNote?: { text: string; by: string; on: string } | null;
+  /** Done without a driver: only the officer signs. */
+  noDriver?: boolean;
 };
 
 // מספר רישוי עם מקפים
@@ -265,7 +267,7 @@ function dueSoon(date: string | null, from: string): boolean {
  * The page matches the checklist meeting's document (A4 at 96dpi, the same
  * letterhead), so every company document looks like one family.
  */
-export function renderInspectionHtml({ form, letterhead, facts, answers, extraDefects, officerName, closedNote }: RenderInput): string {
+export function renderInspectionHtml({ form, letterhead, facts, answers, extraDefects, officerName, closedNote, noDriver = false }: RenderInput): string {
   const logo = letterhead.logoUrl
     ? `<span class="lh-logo"><img src="${escapeHtml(letterhead.logoUrl)}" alt=""></span>`
     : `<span class="lh-logo lh-mono">${escapeHtml(letterhead.name.charAt(0))}</span>`;
@@ -306,7 +308,9 @@ export function renderInspectionHtml({ form, letterhead, facts, answers, extraDe
     ? `<div class="defects"><div class="defects-h">ליקויים שנמצאו (${listed.length + free.length})</div><ol>${[...listed, ...free].join('')}</ol></div>`
     : '<div class="defects none">לא נמצאו ליקויים.</div>';
 
-  const driverSide = closedNote
+  const driverSide = noDriver
+    ? ''
+    : closedNote
     ? `<div class="sig">
     <div class="sig-l">${DRIVER_FIELD}</div>
     <div class="sig-box closed">הנהג לא חתם על הבדיקה.<br>${escapeHtml(closedNote.text)}</div>
