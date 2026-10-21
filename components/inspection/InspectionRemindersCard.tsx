@@ -115,7 +115,7 @@ export function InspectionRemindersCard({
               rule={rule}
               value={lead!}
               saving={prefs.savingLeadType === TYPE}
-              dimmed={!alertOn || repeatMonths === 0}
+              dimmed={!alertOn}
               onCommit={(next) => prefs.setLead(TYPE, next)}
             />
             <DText style={styles.hint}>{t('inspection.leadShared')}</DText>
