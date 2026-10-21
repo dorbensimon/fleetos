@@ -1,32 +1,28 @@
 // דוח רכבים להורדה (PDF)
 import { Company } from './supabase';
 import { Vehicle, ComplianceItem, VehicleDriverWithProfile } from './adminApi';
-import { daysUntilExpiry, formatDate } from './theme';
+import { listDepartments } from './adminApi/departments';
+import { daysUntilExpiry } from './theme';
 import { formatPlate } from './plate';
 import { nextServiceKmOf } from './serviceSchedule';
 import {
   VEHICLE_STATUS_LABELS,
   VEHICLE_TYPE_LABELS,
   complianceRemainingDays,
+  complianceTargetDate,
   findComplianceDef,
 } from './compliance';
-import {
-  TONE_BAD,
-  TONE_OK,
-  TONE_WARN,
-  SERVICE_WARN_KM,
-  remainingTone,
-  worstTone,
-} from './fleetCardHelpers';
-import { buildReportDocument, emptyState, esc, printOrShareReport, statusTag, TagTone } from './reportTemplate';
+import { TONE_BAD, TONE_NEUTRAL, TONE_OK, TONE_WARN, SERVICE_WARN_KM, remainingTone } from './fleetCardHelpers';
+import { buildTableReport, expiryCell, printOrShareReport, ReportCell } from './reportTemplate';
 
-export type VehicleReportCategory = 'all' | 'insurance' | 'test' | 'service' | 'issues';
+export type VehicleReportCategory = 'all' | 'insurance' | 'comprehensive' | 'test' | 'service' | 'issues';
 
 // סוגי הדוח לבחירה
 export const VEHICLE_REPORT_CATEGORIES: { value: VehicleReportCategory; label: string; icon: string }[] = [
   { value: 'all', label: 'כל הרכבים', icon: 'car-outline' },
   { value: 'issues', label: 'רכבים עם חריגה', icon: 'warning' },
-  { value: 'insurance', label: 'ביטוח פג / חסר', icon: 'shield-checkmark-outline' },
+  { value: 'insurance', label: 'ביטוח חובה פג / חסר', icon: 'shield-checkmark-outline' },
+  { value: 'comprehensive', label: 'ביטוח מקיף פג / חסר', icon: 'shield-outline' },
   { value: 'test', label: 'טסט פג / חסר', icon: 'construct-outline' },
   { value: 'service', label: 'טיפול קרוב / באיחור', icon: 'build-outline' },
 ];
@@ -35,8 +31,9 @@ export const VEHICLE_REPORT_CATEGORIES: { value: VehicleReportCategory; label: s
 const CATEGORY_TITLES: Record<VehicleReportCategory, string> = {
   all: 'דוח כלל הרכבים',
   issues: 'דוח רכבים עם חריגה',
-  insurance: 'דוח ביטוח רכבים',
-  test: 'דוח טסט שנתי',
+  insurance: 'דוח רכבים ללא ביטוח חובה בתוקף',
+  comprehensive: 'דוח רכבים ללא ביטוח מקיף בתוקף',
+  test: 'דוח רכבים ללא טסט בתוקף',
   service: 'דוח טיפולים',
 };
 
@@ -45,12 +42,14 @@ interface VehicleSummary {
   insurance: string | null;
   insDays: number | null;
   insTone: string;
+  comprehensive: string | null;
+  compDays: number | null;
   test: string | null;
   testDays: number | null;
   testTone: string;
+  nextServiceKm: number | null;
   kmToService: number | null;
   svcTone: string;
-  worst: string;
   driverName: string | null;
 }
 
@@ -62,19 +61,17 @@ function summarize(
 ): VehicleSummary {
   const items = compliance.get(vehicle.id) ?? [];
   const insuranceItem = items.find((c) => c.item_type === 'insurance_mandatory') ?? null;
+  const comprehensiveItem = items.find((c) => c.item_type === 'insurance_comprehensive') ?? null;
   const testItem = items.find((c) => c.item_type === 'annual_test') ?? null;
   const testDef = findComplianceDef('vehicle', 'annual_test');
 
   const insurance = insuranceItem?.expiry_date ?? null;
   const insDays = daysUntilExpiry(insurance);
-  const testDays = testDef ? complianceRemainingDays(testDef, testItem) : daysUntilExpiry(testItem?.expiry_date ?? null);
+  const comprehensive = comprehensiveItem?.expiry_date ?? null;
+  const rawTestDays = testDef ? complianceRemainingDays(testDef, testItem) : daysUntilExpiry(testItem?.expiry_date ?? null);
+  const testDays = rawTestDays === Number.POSITIVE_INFINITY ? null : rawTestDays;
   const nextServiceKm = nextServiceKmOf(vehicle);
   const kmToService = nextServiceKm != null ? nextServiceKm - vehicle.odometer : null;
-
-  const insTone = remainingTone(insDays, 30);
-  const testTone = remainingTone(testDays === Number.POSITIVE_INFINITY ? null : testDays, 30);
-  const svcTone = remainingTone(kmToService, SERVICE_WARN_KM);
-  const worst = worstTone([insTone, testTone, svcTone]);
 
   const assignedDrivers = vehicleDrivers.get(vehicle.id) ?? [];
   const driverName = assignedDrivers.find((d) => d.is_primary)?.full_name ?? assignedDrivers[0]?.full_name ?? null;
@@ -83,124 +80,157 @@ function summarize(
     vehicle,
     insurance,
     insDays,
-    insTone,
-    test: testItem?.expiry_date ?? null,
-    testDays: testDays === Number.POSITIVE_INFINITY ? null : testDays,
-    testTone,
+    insTone: remainingTone(insDays, 30),
+    comprehensive,
+    compDays: daysUntilExpiry(comprehensive),
+    test: testDef ? complianceTargetDate(testDef, testItem) : testItem?.expiry_date ?? null,
+    testDays,
+    testTone: remainingTone(testDays, 30),
+    nextServiceKm,
     kmToService,
-    svcTone,
-    worst,
+    svcTone: remainingTone(kmToService, SERVICE_WARN_KM),
     driverName,
   };
 }
 
-// מסנן רכבים לפי סוג הדוח
-function filterVehicles(
+// פג או חסר: מה שצריך טיפול עכשיו
+const expiredOrMissing = (days: number | null) => days == null || days < 0;
+
+// שמות הסטטוסים בדוח כלל הרכבים, לפי הסדר
+const STATUS_SECTIONS: [Vehicle['status'], string][] = [
+  ['active', 'סה״כ רכבים פעילים'],
+  ['maintenance', 'סה״כ רכבים בטיפול'],
+  ['disabled', 'סה״כ רכבים מושבתים'],
+];
+
+const UNIT = { one: 'רכב אחד', many: 'רכבים' };
+const PLATE = { label: 'מספר רישוי', width: 15 };
+const MODEL = { label: 'יצרן ודגם', width: 22 };
+const TYPE = { label: 'סוג', width: 11 };
+const DEPT = { label: 'מחלקה', width: 13 };
+const DRIVER = { label: 'נהג משויך', width: 18 };
+
+// בונה את ה-HTML של הדוח
+function buildHtml(
+  company: Company,
   summaries: VehicleSummary[],
-  category: VehicleReportCategory
-): VehicleSummary[] {
+  category: VehicleReportCategory,
+  departments: Map<string, string>
+): string {
+  const plate = (s: VehicleSummary): ReportCell => ({ text: formatPlate(s.vehicle.plate_number), ltr: true });
+  const model = (s: VehicleSummary): ReportCell => ({ text: [s.vehicle.manufacturer, s.vehicle.model].filter(Boolean).join(' ') });
+  const type = (s: VehicleSummary): ReportCell => ({ text: VEHICLE_TYPE_LABELS[s.vehicle.vehicle_type] ?? s.vehicle.vehicle_type });
+  const dept = (s: VehicleSummary): ReportCell => ({ text: s.vehicle.department_id ? departments.get(s.vehicle.department_id) : null });
+  const driver = (s: VehicleSummary): ReportCell => ({ text: s.driverName ?? 'ללא נהג', tone: s.driverName ? undefined : 'muted' });
+  const base = (s: VehicleSummary) => [plate(s), model(s), type(s), dept(s), driver(s)];
+  const km = (n: number) => n.toLocaleString('en-US');
+  const serviceCell = (s: VehicleSummary): ReportCell => {
+    if (s.nextServiceKm == null || s.kmToService == null) return { text: 'לא הוזן', tone: 'muted' };
+    const text = `${km(s.nextServiceKm)} ק״מ`;
+    return s.kmToService < 0
+      ? { text, tone: 'bad', sub: `באיחור של ${km(-s.kmToService)} ק״מ` }
+      : { text, sub: `בעוד ${km(s.kmToService)} ק״מ` };
+  };
+  // Two sections for the expiry reports: expired, then never entered.
+  const expirySections = (days: (s: VehicleSummary) => number | null, date: (s: VehicleSummary) => string | null, expired: string, missing: string) => [
+    { title: expired, rows: summaries.filter((s) => date(s) && (days(s) ?? 0) < 0).map((s) => [...base(s), expiryCell(date(s), days(s))]) },
+    { title: missing, rows: summaries.filter((s) => !date(s) || days(s) == null).map((s) => [...base(s), expiryCell(null, null)]) },
+  ];
+
+  const common = { company: { name: company.name, businessId: company.business_id }, title: CATEGORY_TITLES[category], unit: UNIT };
+
   switch (category) {
-    // Only what needs action now: expired, or no date entered at all.
     case 'insurance':
-      return summaries.filter((s) => s.insDays == null || s.insDays < 0);
+      return buildTableReport({
+        ...common,
+        columns: [PLATE, MODEL, TYPE, DEPT, DRIVER, { label: 'תוקף ביטוח חובה', width: 21 }],
+        sections: expirySections((s) => s.insDays, (s) => s.insurance, 'סה״כ ביטוח חובה פג תוקף', 'סה״כ ללא ביטוח חובה'),
+        grandTitle: 'סה״כ רכבים ללא ביטוח חובה בתוקף',
+        note: 'הדוח כולל רק רכבים שביטוח החובה שלהם פג או שלא הועלה להם ביטוח חובה.',
+        emptyText: 'לכל הרכבים יש ביטוח חובה בתוקף',
+      });
+    case 'comprehensive':
+      return buildTableReport({
+        ...common,
+        columns: [PLATE, MODEL, TYPE, DEPT, DRIVER, { label: 'תוקף ביטוח מקיף', width: 21 }],
+        sections: expirySections((s) => s.compDays, (s) => s.comprehensive, 'סה״כ ביטוח מקיף פג תוקף', 'סה״כ ללא ביטוח מקיף'),
+        grandTitle: 'סה״כ רכבים ללא ביטוח מקיף בתוקף',
+        note: 'הדוח כולל רק רכבים שביטוח המקיף שלהם פג או שלא הועלה להם ביטוח מקיף.',
+        emptyText: 'לכל הרכבים יש ביטוח מקיף בתוקף',
+      });
     case 'test':
-      return summaries.filter((s) => s.testDays == null || s.testDays < 0);
+      return buildTableReport({
+        ...common,
+        columns: [PLATE, MODEL, TYPE, DEPT, DRIVER, { label: 'תוקף טסט', width: 21 }],
+        sections: expirySections((s) => s.testDays, (s) => s.test, 'סה״כ טסט פג תוקף', 'סה״כ ללא תאריך טסט'),
+        grandTitle: 'סה״כ רכבים ללא טסט בתוקף',
+        note: 'הדוח כולל רק רכבים שהטסט שלהם פג או שלא הוזן להם תאריך טסט.',
+        emptyText: 'לכל הרכבים יש טסט בתוקף',
+      });
     case 'service':
-      return summaries.filter((s) => s.svcTone !== TONE_OK);
-    case 'issues':
-      return summaries.filter((s) => s.worst !== TONE_OK);
+      return buildTableReport({
+        ...common,
+        columns: [PLATE, MODEL, TYPE, DEPT, { label: 'ק״מ נוכחי', width: 14 }, { label: 'טיפול הבא', width: 25 }],
+        sections: [
+          { title: 'סה״כ טיפול באיחור', rows: summaries.filter((s) => s.svcTone === TONE_BAD) },
+          { title: 'סה״כ טיפול קרוב', rows: summaries.filter((s) => s.svcTone === TONE_WARN) },
+          { title: 'סה״כ ללא נתוני טיפול', rows: summaries.filter((s) => s.svcTone === TONE_NEUTRAL) },
+        ].map((sec) => ({
+          title: sec.title,
+          rows: sec.rows.map((s) => [plate(s), model(s), type(s), dept(s), { text: km(s.vehicle.odometer), ltr: true }, serviceCell(s)]),
+        })),
+        grandTitle: 'סה״כ רכבים שדורשים טיפול',
+        note: `טיפול קרוב: פחות מ־${km(SERVICE_WARN_KM)} ק״מ עד הטיפול הבא.`,
+        emptyText: 'אין רכבים שצריכים טיפול',
+      });
+    case 'issues': {
+      const short = (s: VehicleSummary) => [plate(s), model(s), dept(s), driver(s)];
+      return buildTableReport({
+        ...common,
+        columns: [PLATE, MODEL, { label: 'מחלקה', width: 13 }, DRIVER, { label: 'פירוט', width: 32 }],
+        sections: [
+          { title: 'סה״כ טסט פג, קרוב או חסר', rows: summaries.filter((s) => s.testTone !== TONE_OK).map((s) => [...short(s), s.test ? expiryCell(s.test, s.testDays) : { text: 'טסט לא הוזן', tone: 'muted' as const }]) },
+          { title: 'סה״כ ביטוח חובה פג, קרוב או חסר', rows: summaries.filter((s) => s.insTone !== TONE_OK).map((s) => [...short(s), s.insurance ? expiryCell(s.insurance, s.insDays) : { text: 'ביטוח חובה לא הועלה', tone: 'muted' as const }]) },
+          { title: 'סה״כ טיפול באיחור, קרוב או חסר', rows: summaries.filter((s) => s.svcTone !== TONE_OK).map((s) => [...short(s), serviceCell(s)]) },
+        ],
+        grandTitle: 'סה״כ רכבים עם חריגה',
+        grandCount: summaries.length,
+        note: 'רכב עם כמה חריגות מופיע בכל אחד מהסעיפים שלו, אבל נספר פעם אחת בסה״כ.',
+        emptyText: 'אין רכבים עם חריגה',
+      });
+    }
     default:
-      return summaries;
+      return buildTableReport({
+        ...common,
+        columns: [PLATE, MODEL, TYPE, DEPT, DRIVER, { label: 'סטטוס', width: 21 }],
+        sections: STATUS_SECTIONS.map(([status, title]) => ({
+          title,
+          rows: summaries.filter((s) => s.vehicle.status === status).map((s) => [...base(s), { text: VEHICLE_STATUS_LABELS[status] ?? status }]),
+        })),
+        grandTitle: 'סה״כ רכבים בצי',
+        note: 'רשימת כל הרכבים בצי, מקובצת לפי סטטוס.',
+        emptyText: 'אין רכבים בצי',
+      });
   }
 }
 
-// ממיר צבע למצב
-function toneStatusKey(tone: string): 'ok' | 'soon' | 'expired' | 'missing' {
-  if (tone === TONE_BAD) return 'expired';
-  if (tone === TONE_WARN) return 'soon';
-  if (tone === TONE_OK) return 'ok';
-  return 'missing';
-}
-
-// טקסט לכל מצב
-const STATUS_LABELS: Record<'ok' | 'soon' | 'expired' | 'missing', string> = {
-  ok: 'תקין',
-  soon: 'מתקרב מועד',
-  expired: 'דורש טיפול',
-  missing: 'חסר נתונים',
-};
-
-// צבע לכל מצב
-function statusTone(statusKey: 'ok' | 'soon' | 'expired' | 'missing'): TagTone {
-  if (statusKey === 'expired') return 'accent2';
-  if (statusKey === 'soon') return 'outline';
-  if (statusKey === 'missing') return 'neutral';
-  return 'accent';
-}
-
-// בונה את ה-HTML של הדוח
-function buildHtml(company: Company, summaries: VehicleSummary[], category: VehicleReportCategory): string {
-  const rows = summaries
-    .map((s) => {
-      const v = s.vehicle;
-      const statusKey = toneStatusKey(s.worst);
-      const model = [v.manufacturer, v.model].filter(Boolean).join(' ') || '—';
-      return `
-        <tr>
-          <td class="ltr">${esc(formatPlate(v.plate_number))}</td>
-          <td>${esc(model)}</td>
-          <td>${esc(VEHICLE_TYPE_LABELS[v.vehicle_type] ?? v.vehicle_type)}</td>
-          <td>${esc(VEHICLE_STATUS_LABELS[v.status] ?? v.status)}</td>
-          <td>${s.insurance ? esc(formatDate(s.insurance)) : '—'}</td>
-          <td>${s.test ? esc(formatDate(s.test)) : '—'}</td>
-          <td>${nextServiceKmOf(v) != null ? `${nextServiceKmOf(v)!.toLocaleString()} ק״מ` : '—'}</td>
-          <td>${esc(s.driverName) || 'ללא נהג'}</td>
-          <td>${statusTag(STATUS_LABELS[statusKey], statusTone(statusKey))}</td>
-        </tr>`;
-    })
-    .join('');
-
-  const bodyHtml = summaries.length === 0
-    ? emptyState('לא נמצאו רכבים בקטגוריה זו')
-    : `<table class="table" dir="rtl">
-        <thead>
-          <tr>
-            <th>מספר רישוי</th>
-            <th>יצרן ודגם</th>
-            <th>סוג</th>
-            <th>סטטוס רכב</th>
-            <th>ביטוח חובה</th>
-            <th>טסט שנתי</th>
-            <th>טיפול הבא</th>
-            <th>נהג משויך</th>
-            <th>מצב כללי</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-
-  return buildReportDocument({
-    company: { name: company.name, businessId: company.business_id },
-    title: CATEGORY_TITLES[category],
-    metaColumns: [
-      {
-        label: 'קצין רכב',
-        value: company.safety_officer_name ?? '',
-      },
-      {
-        label: 'קצין רכב נייד',
-        value: company.safety_officer_phone ?? '',
-        ltr: true,
-      },
-      {
-        label: 'סה״כ רכבים בדוח',
-        value: String(summaries.length),
-        big: true,
-        pushEnd: true,
-      },
-    ],
-    bodyHtml,
-  });
+// מסנן רכבים לפי סוג הדוח
+function filterVehicles(summaries: VehicleSummary[], category: VehicleReportCategory): VehicleSummary[] {
+  switch (category) {
+    // Only what needs action now: expired, or no date entered at all.
+    case 'insurance':
+      return summaries.filter((s) => expiredOrMissing(s.insDays));
+    case 'comprehensive':
+      return summaries.filter((s) => expiredOrMissing(s.compDays));
+    case 'test':
+      return summaries.filter((s) => expiredOrMissing(s.testDays));
+    case 'service':
+      return summaries.filter((s) => s.svcTone !== TONE_OK);
+    case 'issues':
+      return summaries.filter((s) => s.testTone !== TONE_OK || s.insTone !== TONE_OK || s.svcTone !== TONE_OK);
+    default:
+      return summaries;
+  }
 }
 
 // מפיק ומוריד את הדוח
@@ -213,7 +243,7 @@ export async function exportVehiclesReport(
 ): Promise<void> {
   const activeVehicles = vehicles.filter((v) => v.status !== 'archived');
   const summaries = activeVehicles.map((v) => summarize(v, compliance, vehicleDrivers));
-  const filtered = filterVehicles(summaries, category);
-  const html = buildHtml(company, filtered, category);
+  const departments = new Map((await listDepartments(company.id)).map((d) => [d.id, d.name]));
+  const html = buildHtml(company, filterVehicles(summaries, category), category, departments);
   await printOrShareReport(html, CATEGORY_TITLES[category]);
 }

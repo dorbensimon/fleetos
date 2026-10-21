@@ -13,6 +13,7 @@ import { Platform } from 'react-native';
 import { t, textDirection } from './i18n';
 import { safeFileName } from './fileNames';
 import { shareFileOnWeb } from './webDownload';
+import { formatDate } from './theme';
 
 export type TagTone = 'accent' | 'accent2' | 'neutral' | 'outline';
 
@@ -309,6 +310,164 @@ export function buildReportDocument(opts: ReportDocumentOptions): string {
     <div class="footnote">
       <div class="footnote-mark">${ICAR_REPORT_MARK}</div>
       ${esc(footerNote)}
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+// תא בטבלת הדוח
+/** One table cell: plain text (escaped here), optionally left-to-right, highlighted, with a smaller line under it. */
+export interface ReportCell {
+  text: string | null | undefined;
+  ltr?: boolean;
+  tone?: 'bad' | 'muted';
+  sub?: string;
+}
+
+export interface ReportSection {
+  /** The section's total line, e.g. "סה״כ טסט פג תוקף". Empty: the rows run under the column titles. */
+  title: string;
+  rows: ReportCell[][];
+}
+
+export interface TableReportOptions {
+  title: string;
+  company: { name: string; businessId?: string | null };
+  /** Column titles and widths in percent; the last column is the one the report is about. */
+  columns: { label: string; width: number }[];
+  sections: ReportSection[];
+  /** How a count reads: one item and many, e.g. { one: 'רכב אחד', many: 'רכבים' }. */
+  unit: { one: string; many: string };
+  grandTitle: string;
+  /** Defaults to the number of rows; a report that lists an item in several sections counts it once. */
+  grandCount?: number;
+  note: string;
+  emptyText: string;
+  generatedAt?: string;
+}
+
+// כמה פריטים, בעברית
+export function countLabel(n: number, unit: { one: string; many: string }): string {
+  return n === 1 ? unit.one : `${n} ${unit.many}`;
+}
+
+// עיצוב דוח הטבלה (CSS)
+const TABLE_REPORT_STYLES = `
+  :root { --text: #0f172a; --muted: #64748b; --line: #1e293b; --soft: #e2e8f0; --band: #eef2ff; --accent: #2F5BFF; --danger: #b91c1c; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; direction: rtl; background: #fff; color: var(--text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Heebo', sans-serif;
+    -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; }
+  .page { max-width: 760px; margin: 0 auto; padding: 48px 16px 64px; }
+  h1 { font-size: 34px; font-weight: 800; text-align: center; margin: 0 0 6px; line-height: 1.25; }
+  .sub { text-align: center; color: var(--muted); font-size: 14px; margin-bottom: 40px; line-height: 1.7; }
+  .sub b { color: var(--text); }
+  .ltr { direction: ltr; unicode-bidi: isolate; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; font-variant-numeric: tabular-nums; }
+  th { text-align: right; font-size: 12px; font-weight: 600; color: var(--muted); padding: 0 8px 10px;
+    border-bottom: 1.5px solid var(--line); white-space: nowrap; }
+  td { padding: 9px 8px; border-bottom: 1px solid var(--soft); vertical-align: top; text-align: right;
+    overflow-wrap: normal; word-break: normal; }
+  td.ltr, td.end { white-space: nowrap; }
+  td small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; font-weight: 400; }
+  td.end, th.end { text-align: left; }
+  tr.sec td { font-weight: 700; padding-top: 22px; border-bottom: 1.5px solid var(--line); }
+  tr.gap td { border: none; height: 18px; padding: 0; }
+  tr.grand td { background: var(--band); font-weight: 700; font-size: 16px; padding: 14px 8px;
+    border-top: 1.5px solid var(--accent); border-bottom: 1.5px solid var(--accent);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  tr.grand td.end { color: var(--accent); }
+  .bad { color: var(--danger); }
+  .muted { color: var(--muted); }
+  .empty { text-align: center; color: var(--muted); padding: 32px 0; border-top: 1.5px solid var(--line); border-bottom: 1px solid var(--soft); }
+  .note { color: var(--muted); font-size: 12px; margin-top: 20px; text-align: center; }
+  .promo { margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--soft); text-align: center; color: var(--muted); }
+  .promo svg { width: 56px; height: 16px; opacity: .85; }
+  .promo h2 { font-size: 12px; font-weight: 600; color: var(--text); margin: 4px 0 2px; }
+  .promo p { font-size: 11px; margin: 0; line-height: 1.5; }
+  @media (max-width: 600px) {
+    h1 { font-size: 24px; }
+    /* Narrow screens: columns size to their content, so plates and dates stay whole and names wrap. */
+    table { font-size: 11.5px; table-layout: auto; }
+    th { font-size: 10.5px; white-space: normal; vertical-align: bottom; }
+    td, th { padding-left: 5px; padding-right: 5px; }
+    tr.grand td { font-size: 13px; }
+  }
+  @media print { .page { padding-top: 16px; } tr { break-inside: avoid; } tr.sec { break-after: avoid; } }
+`;
+
+// תא אחד בטבלה
+function cellHtml(cell: ReportCell, isLast: boolean): string {
+  const cls = [cell.ltr && !isLast ? 'ltr' : '', isLast ? 'end' : '', cell.tone ?? ''].filter(Boolean).join(' ');
+  const text = esc(cell.text) || '—';
+  const body = cell.ltr && isLast ? `<span class="ltr">${text}</span>` : text;
+  return `<td${cls ? ` class="${cls}"` : ''}>${body}${cell.sub ? `<small>${esc(cell.sub)}</small>` : ''}</td>`;
+}
+
+// תא של תאריך תוקף: אדום כשפג, ״לא הוזן״ כשחסר
+/** An expiry cell: the date, how long ago it expired or how soon it will, or "לא הוזן". */
+export function expiryCell(date: string | null | undefined, days: number | null, soonDays = 30): ReportCell {
+  if (!date || days == null) return { text: 'לא הוזן', tone: 'muted' };
+  const text = formatDate(date);
+  if (days < 0) return { text, ltr: true, tone: 'bad', sub: days === -1 ? 'פג אתמול' : `פג לפני ${-days} ימים` };
+  if (days === 0) return { text, ltr: true, sub: 'בתוקף עד היום' };
+  if (days <= soonDays) return { text, ltr: true, sub: days === 1 ? 'מחר' : `בעוד ${days} ימים` };
+  return { text, ltr: true };
+}
+
+// בונה דוח בצורת טבלה עם סה״כ לכל חלק
+/**
+ * The list reports: title, company line, one table whose sections open with
+ * their own total, a blue band with the grand total, a short note on what the
+ * report includes, and a small icar line at the bottom.
+ */
+export function buildTableReport(opts: TableReportOptions): string {
+  const n = opts.columns.length;
+  const sections = opts.sections.filter((s) => s.rows.length > 0);
+  const rowCount = sections.reduce((sum, s) => sum + s.rows.length, 0);
+  const grand = opts.grandCount ?? rowCount;
+  const business = opts.company.businessId ? ` · ח.פ. <span class="ltr">${esc(opts.company.businessId)}</span>` : '';
+
+  const body = sections
+    .map((s) => {
+      const head = s.title
+        ? `<tr class="sec"><td colspan="${n - 1}">${esc(s.title)}</td><td class="end">${esc(countLabel(s.rows.length, opts.unit))}</td></tr>`
+        : '';
+      return head + s.rows.map((row) => `<tr>${row.map((c, i) => cellHtml(c, i === n - 1)).join('')}</tr>`).join('');
+    })
+    .join('');
+
+  const table = rowCount === 0
+    ? `<div class="empty">${esc(opts.emptyText)}</div>`
+    : `<table>
+        <colgroup>${opts.columns.map((c) => `<col style="width:${c.width}%">`).join('')}</colgroup>
+        <thead><tr>${opts.columns.map((c, i) => `<th${i === n - 1 ? ' class="end"' : ''}>${esc(c.label)}</th>`).join('')}</tr></thead>
+        <tbody>${body}
+          <tr class="gap"><td colspan="${n}"></td></tr>
+          <tr class="grand"><td colspan="${n - 1}">${esc(opts.grandTitle)}</td><td class="end">${esc(countLabel(grand, opts.unit))}</td></tr>
+        </tbody>
+      </table>`;
+
+  return `
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>icar - ${esc(opts.title)}</title>
+<style>${TABLE_REPORT_STYLES}</style>
+</head>
+<body>
+  <div class="page">
+    <h1>${esc(opts.title)}</h1>
+    <div class="sub">חברה: <b>${esc(opts.company.name)}</b>${business} · הופק ב־<span class="ltr">${esc(opts.generatedAt ?? todayHe())}</span></div>
+    ${table}
+    <div class="note">${esc(opts.note)}</div>
+    <div class="promo">
+      ${ICAR_REPORT_MARK}
+      <h2>כל הצי שלך, במקום אחד</h2>
+      <p>icar מזכירה לך לפני שטסט, ביטוח או רישיון פגים — ומפיקה דוחות כאלה בלחיצה.</p>
     </div>
   </div>
 </body>
