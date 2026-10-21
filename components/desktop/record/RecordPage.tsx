@@ -398,9 +398,9 @@ export function GroupLabel({ children, action }: { children: string; action?: Re
 // מספר גדול בכותרת
 /** One of the header's big numbers. */
 /** `onDark` is for a fact sitting on the night header (the vehicle card). */
-export function Fact({ label, value, unit, color, muted, onDark }: { label: string; value: string; unit?: string; color?: string; muted?: boolean; onDark?: boolean }) {
+export function Fact({ label, value, unit, color, muted, onDark, nativeID }: { label: string; value: string; unit?: string; color?: string; muted?: boolean; onDark?: boolean; nativeID?: string }) {
   return (
-    <View style={[pageStyles.fact, onDark && pageStyles.factOnDark]}>
+    <View nativeID={nativeID} style={[pageStyles.fact, onDark && pageStyles.factOnDark]}>
       <DText style={[pageStyles.factLabel, onDark && pageStyles.factLabelOnDark]}>{label}</DText>
       <View style={pageStyles.factValueRow}>
         <DLtrText weight="bold" style={[pageStyles.factValue, onDark && pageStyles.factValueOnDark, muted && pageStyles.factValueMuted, muted && onDark && pageStyles.factLabelOnDark, color ? { color } : null]}>{value}</DLtrText>
