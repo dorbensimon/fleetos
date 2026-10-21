@@ -3437,6 +3437,9 @@
       "sumOne": "يوم واحد · {{date}}",
       "sumMany": "{{n}} أيام · {{range}}",
       "why": "لماذا؟",
+      "details": "تفاصيل (اختياري)",
+      "vehicleDetailsHint": "ما الذي يُصلَّح، الكلفة…",
+      "driverDetailsHint": "إلى أين ذهب، تفاصيل أخرى…",
       "driverReason": {
         "vacation": "إجازة",
         "sick": "مرض",

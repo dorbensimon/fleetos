@@ -3437,6 +3437,9 @@
       "sumOne": "One day · {{date}}",
       "sumMany": "{{n}} days · {{range}}",
       "why": "Why?",
+      "details": "Details (optional)",
+      "vehicleDetailsHint": "What is being fixed, the cost…",
+      "driverDetailsHint": "Where they went, other details…",
       "driverReason": {
         "vacation": "Vacation",
         "sick": "Sick",

@@ -3437,6 +3437,9 @@
       "sumOne": "Один день · {{date}}",
       "sumMany": "{{n}} дн. · {{range}}",
       "why": "Почему?",
+      "details": "Подробности (необязательно)",
+      "vehicleDetailsHint": "Что чинят, сколько стоило…",
+      "driverDetailsHint": "Куда уехал, другие подробности…",
       "driverReason": {
         "vacation": "Отпуск",
         "sick": "Болезнь",
