@@ -1535,6 +1535,7 @@
     "nextDateHint": "Each vehicle's next date is set when the safety officer signs its inspection. A change here applies from each vehicle's next inspection.",
     "nextOn": "Next on {{v1}}",
     "noDateSet": "No date set",
+    "noReminderSet": "No reminder set for the next inspection",
     "noDefects": "No defects found",
     "noFixedReminders": "No regular reminders",
     "noRemindersHint": "No reminders will be sent. A date you set manually on the vehicle card will still remind you.",

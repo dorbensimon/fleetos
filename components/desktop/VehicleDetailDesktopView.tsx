@@ -599,7 +599,7 @@ export function VehicleDetailDesktopView({
               archived={isArchived}
               first
               title={safetyFolder?.title}
-              documents={safetyFolder ? { docs: folderDocs.filter((d) => d.category === safetyFolder.category), onOpen: () => setOpenDocumentFolder(safetyFolder) } : undefined}
+              documents={folderDocs.filter((d) => d.category === SAFETY_FOLDER)}
             />
             {otherFolders.map((folder) => (
               <FolderListRow

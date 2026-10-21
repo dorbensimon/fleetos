@@ -483,11 +483,6 @@ export async function inspectionDocument(companyId: string, inspectionId: string
   return invoke({ action: 'document', companyId, inspectionId }, t('common.openDocumentFailed'));
 }
 
-// קובע תאריך לבדיקה הבאה
-export async function setNextInspectionDate(companyId: string, vehicleId: string, nextDue: string): Promise<void> {
-  await invoke({ action: 'set-next', companyId, vehicleId, nextDue }, t('common.saveDateFailed'));
-}
-
 // שומר את הגדרות הבדיקות
 /** How often vehicles are checked, and/or the company's own list (null brings back the ready-made one). */
 export async function saveInspectionSettings(
