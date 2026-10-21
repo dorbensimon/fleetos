@@ -1,31 +1,23 @@
 // בדיקות קצין בטיחות בתיק רכב (טלפון)
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { DK, DKText, KitSection, KitSheet, ListRow, PrimaryAction, STATUS, Surface } from '../driverKit';
-import { DateField } from '../ui/DateField';
+import { DK, DKText, KitSection, KitSheet, ListRow, PrimaryAction, STATUS } from '../driverKit';
 import { DuePill } from '../checklist/DuePill';
 import { dueState } from '../../lib/meetingPlan';
-import { INSPECTION_STATE_META, formatIsoDay, inspectionRepeatLabel, todayIso } from '../../lib/inspections';
+import { INSPECTION_STATE_META, formatIsoDay, inspectionRepeatLabel } from '../../lib/inspections';
+import { listDocuments } from '../../lib/documents';
+import { documentDisplayName, documentViewerMode, getDocumentViewUrl } from '../../lib/documentActions';
+import type { DocumentRow } from '../../lib/adminApi';
+import { formatDate } from '../../lib/theme';
 import type { RootStackParamList } from '../../navigation/types';
 import { useVehicleInspections } from './useVehicleInspections';
 import { t } from '../../lib/i18n';
-import { errorMessage } from '../../lib/requestError';
 
 // תיקיית המסמכים של בדיקות קצין בטיחות בכרטיס הרכב
 export const SAFETY_FOLDER = 'safety_officer_approval';
-
-// כמה בדיקות קודמות מוצגות
-const HISTORY_SHOWN = 5;
-
-// התאריך הכי רחוק לבדיקה הבאה (שלוש שנים)
-/** The latest day the server accepts for a vehicle's next inspection: three years ahead. */
-export function latestNextDue(today = todayIso()): string {
-  const [y, m, d] = today.split('-').map(Number);
-  return `${y + 3}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-}
 
 // מספר הליקויים במילים
 export function defectsText(count: number): string {
@@ -34,14 +26,14 @@ export function defectsText(count: number): string {
 
 // הבדיקה הבאה והיסטוריה
 /**
- * "בדיקות בטיחות" in a vehicle's card on the phone: when the next inspection
- * is due (and a way to move it), whether the last one found defects, a button
- * to start one, and the inspections it had.
+ * "בדיקות קצין בטיחות" in a vehicle's card on the phone: when the next
+ * inspection is due (from the repeat interval in the settings), a button to
+ * start one, and every inspection it had with its date. Each inspection keeps
+ * its own signed document; files uploaded to the folder earlier are listed
+ * with them.
  */
-export function VehicleInspectionsCard({ companyId, vehicleId, archived, title = t('nav.safetyInspections'), onOpenDocuments, onLeave }: {
+export function VehicleInspectionsCard({ companyId, vehicleId, archived, title = t('nav.safetyInspections'), onLeave }: {
   companyId: string; vehicleId: string; archived: boolean; title?: string;
-  /** Opens the folder of the inspections' documents. */
-  onOpenDocuments?: () => void;
   /** Called before going to another screen (e.g. to close the sheet holding the card). */
   onLeave?: () => void;
 }) {
@@ -50,30 +42,24 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived, title =
     onLeave?.();
     open();
   };
-  const { plan, entries, repeatMonths, error, draft, move } = useVehicleInspections(companyId, vehicleId);
-  const [saving, setSaving] = useState(false);
-  const [moveError, setMoveError] = useState('');
+  const { plan, entries, repeatMonths, error, draft } = useVehicleInspections(companyId, vehicleId);
+  const [files, setFiles] = useState<DocumentRow[]>([]);
 
-  const change = async (value: string | null) => {
-    if (!value || value === plan?.nextDue || saving) return;
-    if (value < todayIso() || value > latestNextDue()) {
-      setMoveError(t('inspection.dateRange'));
-      return;
-    }
-    setSaving(true);
-    setMoveError('');
-    try {
-      await move(value);
-    } catch (e) {
-      setMoveError(errorMessage(e, t('common.saveDateFailedRetry')));
-    } finally {
-      setSaving(false);
-    }
+  useEffect(() => {
+    let live = true;
+    listDocuments('vehicle', vehicleId, SAFETY_FOLDER).then((rows) => { if (live) setFiles(rows); }).catch(() => {});
+    return () => { live = false; };
+  }, [vehicleId]);
+
+  const openFile = async (doc: DocumentRow) => {
+    const src = await getDocumentViewUrl(doc);
+    if (src) go(() => navigation.navigate('DocusealWebView', { mode: documentViewerMode(doc), title: documentDisplayName(doc), src }));
   };
 
-  const state = plan?.nextDue ? dueState(plan.nextDue) : null;
+  const reminders = repeatMonths > 0;
+  const state = reminders && plan?.nextDue ? dueState(plan.nextDue) : null;
   const tone = state === 'late' ? STATUS.expired : state && state !== 'later' ? STATUS.soon : null;
-  const shown = (entries ?? []).slice(0, HISTORY_SHOWN);
+  const list = entries ?? [];
 
   return (
     <View style={styles.wrap}>
@@ -81,18 +67,24 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived, title =
         {!!error && <DKText variant="caption" color={STATUS.expired.fg}>{error}</DKText>}
         {!archived && (
           <View style={styles.top}>
-            <View style={[styles.icon, { backgroundColor: tone?.soft ?? DK.accentSoft }]}>
-              <Ionicons name={state === 'late' ? 'alert-circle' : 'shield-checkmark'} size={24} color={tone?.fg ?? DK.accent} />
+            <View style={[styles.icon, { backgroundColor: tone?.soft ?? (reminders ? DK.accentSoft : STATUS.missing.soft) }]}>
+              <Ionicons name={!reminders ? 'notifications-off-outline' : state === 'late' ? 'alert-circle' : 'shield-checkmark'} size={24} color={tone?.fg ?? (reminders ? DK.accent : STATUS.missing.fg)} />
             </View>
             <View style={styles.flex}>
-              <DKText variant="caption" color={DK.muted}>{plan?.firstInspection ? t('inspection.first') : t('inspection.next')}</DKText>
-              <DKText variant="heading">{plan?.nextDue ? formatIsoDay(plan.nextDue) : t('inspection.noDateSet')}</DKText>
+              {reminders ? (
+                <>
+                  <DKText variant="caption" color={DK.muted}>{plan?.firstInspection ? t('inspection.first') : t('inspection.next')}</DKText>
+                  <DKText variant="heading">{plan?.nextDue ? formatIsoDay(plan.nextDue) : t('inspection.noDateSet')}</DKText>
+                </>
+              ) : (
+                <DKText variant="label">{t('inspection.noReminderSet')}</DKText>
+              )}
             </View>
-            {plan?.nextDue && state !== 'later' && <DuePill nextDue={plan.nextDue} />}
+            {state && state !== 'later' && <DuePill nextDue={plan!.nextDue!} />}
           </View>
         )}
         <DKText variant="caption" color={DK.muted}>
-          {repeatMonths > 0 ? t('inspection.repeatLabel', { repeatMonths: inspectionRepeatLabel(repeatMonths) }) : t('inspection.noFixedReminders')}
+          {reminders ? t('inspection.repeatLabel', { repeatMonths: inspectionRepeatLabel(repeatMonths) }) : t('inspection.noFixedReminders')}
           {plan?.lastInspection ? t('inspection.lastOn', { v1: formatIsoDay(plan.lastInspection) }) : t('inspection.noneYetSuffix')}
         </DKText>
         {!!plan?.lastDefects && (
@@ -101,14 +93,6 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived, title =
             <DKText variant="label" color={STATUS.expired.fg} style={styles.flex}>
               {t('inspection.hasDefectsColon')} {defectsText(plan.lastDefects)} {t('inspection.inLast')}
             </DKText>
-          </View>
-        )}
-        {!archived && plan && (
-          <View style={styles.move}>
-            <DKText variant="label">{t('inspection.changeNextDate')}</DKText>
-            <DateField value={plan.nextDue} onChange={(value) => void change(value)} placeholder={t('date.chooseDateAction')} disabled={saving} hasError={!!moveError} />
-            {!!moveError && <DKText variant="caption" color={STATUS.expired.fg} accessibilityRole="alert">{moveError}</DKText>}
-            {saving && <DKText variant="caption" color={DK.muted}>{t('common.savingEllipsis')}</DKText>}
           </View>
         )}
         {!archived && (
@@ -120,38 +104,45 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived, title =
         )}
       </KitSection>
 
-      {onOpenDocuments && (
-        <Surface style={styles.list}>
-          <ListRow first icon="folder-open-outline" title={t('inspection.documents')} subtitle={t('inspection.documentsHint')} onPress={() => go(onOpenDocuments)} />
-        </Surface>
-      )}
-
-      {shown.length > 0 && (
-        <Surface style={styles.list}>
-          {shown.map(({ row, state: rowState }, i) => {
-            const meta = INSPECTION_STATE_META[rowState];
-            const pill = meta.tone === 'info' ? { fg: DK.accent, soft: DK.accentSoft } : STATUS[meta.tone];
-            return (
+      <KitSection title={t('inspection.previous')} surfaceStyle={styles.list}>
+        {entries === null ? (
+          <DKText variant="caption" color={DK.muted} style={styles.empty}>{t('common.loadingEllipsis')}</DKText>
+        ) : list.length === 0 && files.length === 0 ? (
+          <DKText variant="caption" color={DK.muted} style={styles.empty}>{t('inspection.noneForVehicle')}</DKText>
+        ) : (
+          <>
+            {list.map(({ row, state: rowState }, i) => {
+              const meta = INSPECTION_STATE_META[rowState];
+              const pill = meta.tone === 'info' ? { fg: DK.accent, soft: DK.accentSoft } : STATUS[meta.tone];
+              return (
+                <ListRow
+                  key={row.id}
+                  first={i === 0}
+                  icon="shield-checkmark-outline"
+                  title={formatIsoDay(row.inspection_date)}
+                  subtitle={[row.officer_name, row.defect_count > 0 && rowState !== 'draft' ? defectsText(row.defect_count) : null].filter(Boolean).join(' · ') || null}
+                  trailing={
+                    <View style={[styles.pill, { backgroundColor: pill.soft }]}>
+                      <DKText variant="micro" color={pill.fg}>{meta.label}</DKText>
+                    </View>
+                  }
+                  onPress={() => go(() => navigation.navigate('SafetyInspection', { vehicleId, inspectionId: row.id }))}
+                />
+              );
+            })}
+            {files.map((doc, i) => (
               <ListRow
-                key={row.id}
-                first={i === 0}
-                icon="shield-checkmark-outline"
-                title={formatIsoDay(row.inspection_date)}
-                subtitle={[row.officer_name, row.defect_count > 0 && rowState !== 'draft' ? defectsText(row.defect_count) : null].filter(Boolean).join(' · ') || null}
-                trailing={
-                  <View style={[styles.pill, { backgroundColor: pill.soft }]}>
-                    <DKText variant="micro" color={pill.fg}>{meta.label}</DKText>
-                  </View>
-                }
-                onPress={() => go(() => navigation.navigate('SafetyInspection', { vehicleId, inspectionId: row.id }))}
+                key={doc.id}
+                first={list.length === 0 && i === 0}
+                icon="document-text-outline"
+                title={documentDisplayName(doc)}
+                subtitle={formatDate(doc.created_at)}
+                onPress={() => void openFile(doc)}
               />
-            );
-          })}
-          {(entries?.length ?? 0) > HISTORY_SHOWN && (
-            <ListRow icon="list-outline" title={t('inspection.all')} subtitle={t('inspection.countLength', { length: entries!.length })} onPress={() => go(() => navigation.navigate('SafetyInspections'))} />
-          )}
-        </Surface>
-      )}
+            ))}
+          </>
+        )}
+      </KitSection>
     </View>
   );
 }
@@ -159,19 +150,18 @@ export function VehicleInspectionsCard({ companyId, vehicleId, archived, title =
 // תיקיית בדיקות קצין בטיחות
 /**
  * The safety officer's inspections as one folder in the vehicle's folder
- * list: the row shows when the next one is due, and opens a sheet with the
- * next date (and a way to move it), a new inspection, the documents and the
- * inspections done.
+ * list: the row shows when the next one is due, and opens a sheet with a new
+ * inspection and every inspection done, each with its date and document.
  */
-export function VehicleInspectionsFolder({ companyId, vehicleId, archived, title, first = false, onOpenDocuments }: {
+export function VehicleInspectionsFolder({ companyId, vehicleId, archived, title, first = false }: {
   companyId: string; vehicleId: string; archived: boolean; title: string; first?: boolean;
-  onOpenDocuments?: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const { plan, entries } = useVehicleInspections(companyId, vehicleId);
-  const late = !!plan?.nextDue && dueState(plan.nextDue) === 'late';
+  const { plan, entries, repeatMonths } = useVehicleInspections(companyId, vehicleId);
+  const reminders = repeatMonths > 0;
+  const late = reminders && !!plan?.nextDue && dueState(plan.nextDue) === 'late';
   const subtitle = [
-    plan?.nextDue ? `${t('inspection.next')}: ${formatIsoDay(plan.nextDue)}` : t('inspection.noDateSet'),
+    !reminders ? t('inspection.noReminderSet') : plan?.nextDue ? `${t('inspection.next')}: ${formatIsoDay(plan.nextDue)}` : t('inspection.noDateSet'),
     entries?.length ? t('inspection.countLength', { length: entries.length }) : null,
   ].filter(Boolean).join(' · ');
   return (
@@ -191,7 +181,6 @@ export function VehicleInspectionsFolder({ companyId, vehicleId, archived, title
             vehicleId={vehicleId}
             archived={archived}
             title=""
-            onOpenDocuments={onOpenDocuments}
             onLeave={() => setOpen(false)}
           />
         )}
@@ -208,7 +197,7 @@ const styles = StyleSheet.create({
   top: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   icon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   defects: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14, backgroundColor: STATUS.expired.soft },
-  move: { gap: 6, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },
+  empty: { padding: 16 },
   list: { paddingVertical: 4 },
   pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
 });

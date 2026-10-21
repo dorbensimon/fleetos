@@ -6,7 +6,6 @@ import {
   listInspections,
   listStateOf,
   loadInspectionPlan,
-  setNextInspectionDate,
   type InspectionListRow,
   type InspectionPlanRow,
   type InspectionState,
@@ -16,10 +15,10 @@ import { errorMessage } from '../../lib/requestError';
 
 export type VehicleInspectionEntry = { row: InspectionListRow; state: InspectionState };
 
-// מתי הבדיקה הבאה, הזזה שלה והיסטוריה
+// מתי הבדיקה הבאה והיסטוריה
 /**
- * One vehicle's safety inspections, for its card: when the next one is due,
- * a way to move that date, and every inspection it had, newest first.
+ * One vehicle's safety inspections, for its card: when the next one is due
+ * and every inspection it had, newest first.
  */
 export function useVehicleInspections(companyId: string | null | undefined, vehicleId: string | null | undefined) {
   const [plan, setPlan] = useState<InspectionPlanRow | null>(null);
@@ -54,16 +53,6 @@ export function useVehicleInspections(companyId: string | null | undefined, vehi
     }, [reload]),
   );
 
-  const move = useCallback(
-    async (nextDue: string) => {
-      if (!companyId || !vehicleId) return;
-      await setNextInspectionDate(companyId, vehicleId, nextDue);
-      setPlan((current) => (current ? { ...current, nextDue } : current));
-      void reload();
-    },
-    [companyId, vehicleId, reload],
-  );
-
   const draft = entries?.find((e) => e.state === 'draft')?.row ?? null;
-  return { plan, entries, repeatMonths, error, draft, reload, move };
+  return { plan, entries, repeatMonths, error, draft, reload };
 }

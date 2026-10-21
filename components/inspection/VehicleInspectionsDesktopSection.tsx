@@ -4,20 +4,19 @@ import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { DateField } from '../ui/DateField';
 import { DesktopModal } from '../desktop/DesktopModal';
 import { DLtrText, DText, HoverPressable, StatusPill } from '../desktop/primitives';
 import { pageStyles } from '../desktop/record/RecordPage';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, type DesktopTone } from '../desktop/desktopTheme';
 import { dueState, dueText } from '../../lib/meetingPlan';
-import { INSPECTION_STATE_META, formatIsoDay, inspectionRepeatLabel, todayIso } from '../../lib/inspections';
+import { INSPECTION_STATE_META, formatIsoDay, inspectionRepeatLabel } from '../../lib/inspections';
 import type { RootStackParamList } from '../../navigation/types';
 import { useVehicleInspections } from './useVehicleInspections';
-import { defectsText, latestNextDue, SAFETY_FOLDER } from './VehicleInspectionsCard';
-import { FolderListRow } from '../desktop/record/FolderDocuments';
+import { defectsText, SAFETY_FOLDER } from './VehicleInspectionsCard';
 import type { DocumentRow } from '../../lib/adminApi';
+import { documentDisplayName, documentViewerMode, getDocumentViewUrl } from '../../lib/documentActions';
+import { formatDate } from '../../lib/theme';
 import { t, dirIcon } from '../../lib/i18n';
-import { errorMessage } from '../../lib/requestError';
 
 export { SAFETY_FOLDER };
 
@@ -28,7 +27,8 @@ const STATE_TONE: Record<string, DesktopTone> = { ok: 'ok', soon: 'warn', expire
 /**
  * "בדיקות בטיחות" in a vehicle's card on the desktop: one folder row among
  * the vehicle's documents, like the signed-documents folders, with the next
- * date and the inspections themselves in a window.
+ * date (from the repeat interval in the settings), a new inspection and every
+ * inspection done in a window, each with its date and document.
  */
 export function VehicleInspectionsDesktopSection({
   companyId,
@@ -43,33 +43,16 @@ export function VehicleInspectionsDesktopSection({
   archived: boolean;
   first?: boolean;
   title?: string;
-  /** The files of the "בדיקות קצין בטיחות" folder, shown inside the same window. */
-  documents?: { docs: DocumentRow[]; onOpen: () => void };
+  /** Files uploaded to the "בדיקות קצין בטיחות" folder, listed with the inspections. */
+  documents?: DocumentRow[];
 }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { plan, entries, repeatMonths, error, draft, move } = useVehicleInspections(companyId, vehicleId);
+  const { plan, entries, repeatMonths, error, draft } = useVehicleInspections(companyId, vehicleId);
   const [openWindow, setOpenWindow] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [moveError, setMoveError] = useState('');
+  const files = documents ?? [];
+  const reminders = repeatMonths > 0;
 
-  const change = async (value: string | null) => {
-    if (!value || value === plan?.nextDue || saving) return;
-    if (value < todayIso() || value > latestNextDue()) {
-      setMoveError(t('inspection.dateRange'));
-      return;
-    }
-    setSaving(true);
-    setMoveError('');
-    try {
-      await move(value);
-    } catch (e) {
-      setMoveError(errorMessage(e, t('common.saveDateFailedRetry')));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const state = plan?.nextDue && !archived ? dueState(plan.nextDue) : null;
+  const state = reminders && plan?.nextDue && !archived ? dueState(plan.nextDue) : null;
   const statusTone: DesktopTone | null = draft
     ? 'neutral'
     : state === 'late'
@@ -88,9 +71,16 @@ export function VehicleInspectionsDesktopSection({
         : null;
   const total = entries?.length ?? 0;
   const meta = [
-    plan?.nextDue && !archived ? t('inspection.nextOn', { v1: formatIsoDay(plan.nextDue) }) : null,
+    archived ? null : !reminders ? t('inspection.noReminderSet') : plan?.nextDue ? t('inspection.nextOn', { v1: formatIsoDay(plan.nextDue) }) : null,
     entries === null ? t('common.loadingEllipsis') : total === 0 ? t('inspection.noneForVehicle') : total === 1 ? t('inspection.oneInspection') : t('inspection.countLength', { length: total }),
   ].filter(Boolean).join(' · ');
+
+  const openFile = async (doc: DocumentRow) => {
+    const src = await getDocumentViewUrl(doc);
+    if (!src) return;
+    setOpenWindow(false);
+    navigation.navigate('DocusealWebView', { mode: documentViewerMode(doc), title: documentDisplayName(doc), src });
+  };
 
   const go = (inspectionId?: string) => {
     setOpenWindow(false);
@@ -123,16 +113,23 @@ export function VehicleInspectionsDesktopSection({
           {!archived && (
             <View style={styles.next}>
               <View style={pageStyles.flex}>
-                <DText style={styles.label}>{plan?.firstInspection ? t('inspection.first') : t('inspection.next')}</DText>
-                <View style={styles.dueRow}>
-                  <DLtrText weight="bold" style={[styles.dueDate, { color: state === 'late' ? DESKTOP_TONES.bad.fg : state && state !== 'later' ? DESKTOP_TONES.warn.fg : plan?.nextDue ? DESKTOP_COLORS.ink : DESKTOP_COLORS.inkFaint }]}>
-                    {plan?.nextDue ? formatIsoDay(plan.nextDue) : t('inspection.noDateSet')}
-                  </DLtrText>
-                  {plan?.nextDue && state && state !== 'later' && <StatusPill tone={state === 'late' ? 'bad' : 'warn'} label={dueText(plan.nextDue)} />}
-                </View>
-                <DText style={styles.muted}>
-                  {repeatMonths > 0 ? t('inspection.repeatLabel', { repeatMonths: inspectionRepeatLabel(repeatMonths) }) : t('inspection.noFixedReminders')}
-                </DText>
+                {reminders ? (
+                  <>
+                    <DText style={styles.label}>{plan?.firstInspection ? t('inspection.first') : t('inspection.next')}</DText>
+                    <View style={styles.dueRow}>
+                      <DLtrText weight="bold" style={[styles.dueDate, { color: state === 'late' ? DESKTOP_TONES.bad.fg : state && state !== 'later' ? DESKTOP_TONES.warn.fg : plan?.nextDue ? DESKTOP_COLORS.ink : DESKTOP_COLORS.inkFaint }]}>
+                        {plan?.nextDue ? formatIsoDay(plan.nextDue) : t('inspection.noDateSet')}
+                      </DLtrText>
+                      {state && state !== 'later' && <StatusPill tone={state === 'late' ? 'bad' : 'warn'} label={dueText(plan!.nextDue!)} />}
+                    </View>
+                    <DText style={styles.muted}>{t('inspection.repeatLabel', { repeatMonths: inspectionRepeatLabel(repeatMonths) })}</DText>
+                  </>
+                ) : (
+                  <View style={styles.dueRow}>
+                    <Ionicons name="notifications-off-outline" size={18} color={DESKTOP_COLORS.inkMuted} />
+                    <DText weight="semiBold" style={styles.noReminder}>{t('inspection.noReminderSet')}</DText>
+                  </View>
+                )}
               </View>
               <HoverPressable style={pageStyles.primaryBtn} hoverStyle={pageStyles.primaryBtnHover} pressStyle={pageStyles.pressDown} onPress={() => go(draft?.id)}>
                 <Ionicons name={draft ? 'play-outline' : 'add'} size={16} color="#FFFFFF" />
@@ -148,39 +145,16 @@ export function VehicleInspectionsDesktopSection({
             </View>
           )}
 
-          {!archived && plan && (
-            <View style={styles.move}>
-              <DText style={styles.label}>{t('inspection.changeNextDate')}</DText>
-              <DateField value={plan.nextDue} onChange={(value) => void change(value)} placeholder={t('date.chooseDateAction')} disabled={saving} hasError={!!moveError} />
-              {!!moveError && <DText style={styles.error} accessibilityRole="alert">{moveError}</DText>}
-              {saving && <DText style={styles.muted}>{t('common.savingEllipsis')}</DText>}
-            </View>
-          )}
-
-          {documents && (
-            <View>
-              <DText weight="semiBold" style={styles.listTitle}>{t('inspection.documents')}</DText>
-              <View style={[pageStyles.card, pageStyles.listCard]}>
-                <FolderListRow
-                  first
-                  title={t('inspection.documents')}
-                  icon="folder-open-outline"
-                  docs={documents.docs}
-                  onPress={() => { setOpenWindow(false); documents.onOpen(); }}
-                />
-              </View>
-            </View>
-          )}
-
           <View>
             <DText weight="semiBold" style={styles.listTitle}>{t('inspection.previous')}</DText>
             <View style={[pageStyles.card, pageStyles.listCard]}>
               {entries === null ? (
                 <DText style={[styles.muted, styles.empty]}>{t('common.loadingEllipsis')}</DText>
-              ) : total === 0 ? (
+              ) : total === 0 && files.length === 0 ? (
                 <DText style={[styles.muted, styles.empty]}>{t('inspection.noneForVehicle')}</DText>
               ) : (
-                entries.map(({ row, state: rowState }, index) => {
+                <>
+                {entries.map(({ row, state: rowState }, index) => {
                   const rowMeta = INSPECTION_STATE_META[rowState];
                   const defects = row.defect_count > 0 && rowState !== 'draft' ? defectsText(row.defect_count) : null;
                   return (
@@ -202,7 +176,26 @@ export function VehicleInspectionsDesktopSection({
                       <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
                     </HoverPressable>
                   );
-                })
+                })}
+                {files.map((doc, index) => (
+                  <HoverPressable
+                    key={doc.id}
+                    style={[styles.row, (total > 0 || index > 0) && styles.rowDivider]}
+                    hoverStyle={styles.rowHover}
+                    onPress={() => void openFile(doc)}
+                    accessibilityLabel={documentDisplayName(doc)}
+                  >
+                    <View style={styles.rowIcon}>
+                      <Ionicons name="document-attach-outline" size={16} color={DESKTOP_COLORS.inkMuted} />
+                    </View>
+                    <View style={styles.rowText}>
+                      <DText weight="semiBold" style={styles.rowTitle}>{documentDisplayName(doc)}</DText>
+                      <DLtrText style={styles.rowMeta}>{formatDate(doc.created_at)}</DLtrText>
+                    </View>
+                    <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
+                  </HoverPressable>
+                ))}
+                </>
               )}
             </View>
           </View>
@@ -232,7 +225,7 @@ const styles = StyleSheet.create({
   muted: { fontSize: 13, color: DESKTOP_COLORS.inkMuted },
   defects: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, backgroundColor: DESKTOP_TONES.bad.bg },
   defectsText: { fontSize: 14, color: DESKTOP_TONES.bad.fg, flex: 1 },
-  move: { gap: 4, paddingTop: 12, borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
+  noReminder: { fontSize: 15, color: DESKTOP_COLORS.ink },
   listTitle: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted, marginBottom: 6, paddingHorizontal: 4 },
   error: { fontSize: 13.5, color: DESKTOP_TONES.bad.fg },
   empty: { padding: 16 },

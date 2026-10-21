@@ -246,7 +246,6 @@ function renderTab(p: Props, v: Vehicle) {
             vehicleId={v.id}
             archived={archived}
             title={safetyFolder?.title ?? t('folder.safetyOfficerApproval')}
-            onOpenDocuments={safetyFolder ? () => p.onOpenFolder(safetyFolder) : undefined}
           />
           {otherFolders.map((folder) => (
             <ListRow key={folder.category} icon={folder.icon as IconName} tint={folder.color} title={folder.title} onPress={() => p.onOpenFolder(folder)} />
