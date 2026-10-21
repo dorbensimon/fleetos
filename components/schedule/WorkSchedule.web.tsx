@@ -11,6 +11,7 @@ import {
 } from '../../lib/workSchedule';
 import { addClient, addSavedTrip, deleteBlock, deleteSavedTrip, deleteTrips, loadSchedule, loadTrips, newId, saveBlock, saveSeries, saveTrips, SERIES_AHEAD_DAYS } from '../../lib/workScheduleApi';
 import { SCHEDULE_CSS } from './scheduleCss';
+import { PageTour } from '../desktop/PageTour';
 
 /* ---------- אייקונים ---------- */
 const ICONS: Record<string, string> = {
@@ -100,6 +101,7 @@ export function WorkSchedule({ companyId, phone, onMenu }: { companyId: string; 
   const [phoneSearch, setPhoneSearch] = useState(false);
   const [print, setPrint] = useState<{ day: string; how: 'drivers' | 'table' } | null>(null);
   const [blockOpen, setBlockOpen] = useState<Block | null>(null);
+  const [touring, setTouring] = useState(false);
   const searchRef = useRef<HTMLLabelElement>(null);
   const agendaRef = useRef<HTMLDivElement>(null);
 
@@ -325,17 +327,18 @@ export function WorkSchedule({ companyId, phone, onMenu }: { companyId: string; 
       ) : (
         <>
           <header className="hero">
-            <div className="monthnav">
+            <div className="monthnav" id="tour-month">
               <button type="button" className="sq" onClick={() => shiftMonth(-1)} aria-label={t('schedule.prevMonth')}><Icon name="chevR" /></button>
               <div className="month" aria-live="polite">{monthName(view.m)} {view.y}</div>
               <button type="button" className="sq" onClick={() => shiftMonth(1)} aria-label={t('schedule.nextMonth')}><Icon name="chevL" /></button>
               <button type="button" onClick={() => goTo(today)}>{t('schedule.today')}</button>
             </div>
             <div className="spacer" />
-            <label className="search" ref={searchRef}><Icon name="search" />{searchInput}</label>
-            <button type="button" onClick={() => setDialog('saved')}><Icon name="bookmark" />{t('schedule.savedTrips')}</button>
-            <button type="button" onClick={() => setDialog('report')}><Icon name="chart" />{t('schedule.clientReport')}</button>
-            <button type="button" className="primary" onClick={() => openTrip({ date: sel })}><Icon name="plus" />{t('schedule.newTrip')}</button>
+            <button type="button" className="sq help" id="tour-help" onClick={() => setTouring(true)} aria-label={t('schedule.tourHelp')} title={t('schedule.tourHelp')}>?</button>
+            <label className="search" id="tour-search" ref={searchRef}><Icon name="search" />{searchInput}</label>
+            <button type="button" id="tour-saved" onClick={() => setDialog('saved')}><Icon name="bookmark" />{t('schedule.savedTrips')}</button>
+            <button type="button" id="tour-report" onClick={() => setDialog('report')}><Icon name="chart" />{t('schedule.clientReport')}</button>
+            <button type="button" className="primary" id="tour-new" onClick={() => openTrip({ date: sel })}><Icon name="plus" />{t('schedule.newTrip')}</button>
           </header>
           <main>
             <MonthGrid {...common} view={view} onSelect={setSel} />
@@ -348,6 +351,7 @@ export function WorkSchedule({ companyId, phone, onMenu }: { companyId: string; 
         </>
       )}
       {searchPop}
+      {touring && !phone && <PageTour steps={TOUR_STEPS()} onClose={() => setTouring(false)} />}
 
       {editing && (
         <TripForm
@@ -465,7 +469,7 @@ function MonthGrid({ data, rules, sel, today, view, onSelect }: Common & { view:
     <span className={`pill ${cls}`} key={cls}><span className="lg">{long}</span><span className="sh">{short}</span></span>
   );
   return (
-    <section className="cal" aria-label={t('schedule.monthBoard')}>
+    <section className="cal" id="tour-cal" aria-label={t('schedule.monthBoard')}>
       <div className="weekdays">{[0, 1, 2, 3, 4, 5, 6].map((d) => <div key={d}>{t(`schedule.weekday.${d}`)}</div>)}</div>
       <div className="grid">
         {Array.from({ length: first }, (_, i) => <div key={`o${i}`} className="day out" aria-hidden="true" />)}
@@ -498,7 +502,7 @@ function MonthGrid({ data, rules, sel, today, view, onSelect }: Common & { view:
           );
         })}
       </div>
-      <div className="legend">
+      <div className="legend" id="tour-legend">
         <span className="pill p-blue">{t('schedule.legend.trips')}</span>
         <span className="pill p-amber">{t('schedule.legend.waiting')}</span>
         <span className="pill p-gray">{t('schedule.legend.unavailable')}</span>
@@ -516,6 +520,10 @@ function TripTags({ trip, k }: { trip: Trip; k: string }) {
     </>
   );
 }
+
+const TOUR_KEYS = ['intro', 'month', 'search', 'saved', 'report', 'new', 'cal', 'legend', 'panel', 'actions', 'todo'] as const;
+const TOUR_TARGETS: Record<(typeof TOUR_KEYS)[number], string> = { intro: 'tour-help', month: 'tour-month', search: 'tour-search', saved: 'tour-saved', report: 'tour-report', new: 'tour-new', cal: 'tour-cal', legend: 'tour-legend', panel: 'tour-panel', actions: 'tour-actions', todo: 'tour-todo' };
+const TOUR_STEPS = () => TOUR_KEYS.map((k) => ({ target: TOUR_TARGETS[k], title: t(`schedule.tour.${k}.title`), body: t(`schedule.tour.${k}.body`) }));
 
 /* ---------- פאנל היום (מחשב) ---------- */
 function DayPanel({ data, rules, sel: k, today, flashId, openTrip, onBlock, onDay, onAction }: Common & { onDay: (n: number) => void; onAction: (name: 'dup' | 'away' | 'garage' | 'print') => void }) {
@@ -543,13 +551,13 @@ function DayPanel({ data, rules, sel: k, today, flashId, openTrip, onBlock, onDa
   };
 
   return (
-    <aside className="panel" aria-live="polite" ref={panelRef}>
+    <aside className="panel" id="tour-panel" aria-live="polite" ref={panelRef}>
       <div className="panel-head">
         <button type="button" className="icon-btn" onClick={() => onDay(-1)} aria-label={t('schedule.prevDay')}><Icon name="chevR" /></button>
         <div className="ttl"><h2>{niceDate(k)}</h2>{sub && <div className="sub">{sub}</div>}</div>
         <button type="button" className="icon-btn" onClick={() => onDay(1)} aria-label={t('schedule.nextDay')}><Icon name="chevL" /></button>
       </div>
-      <div className="actions">
+      <div className="actions" id="tour-actions">
         <button type="button" className="primary" onClick={() => openTrip({ date: k })}><Icon name="plus" /> {t('schedule.newTripOnDay')}</button>
         <button type="button" onClick={() => onAction('dup')}><Icon name="copy" />{t('schedule.duplicate')}</button>
         <button type="button" onClick={() => onAction('away')}><Icon name="userX" />{t('schedule.driverAway')}</button>
@@ -557,7 +565,7 @@ function DayPanel({ data, rules, sel: k, today, flashId, openTrip, onBlock, onDa
         <button type="button" onClick={() => onAction('print')}><Icon name="printer" />{t('schedule.print.button')}</button>
       </div>
       {issues.length || waiting.length ? (
-        <div className="todo warn">
+        <div className="todo warn" id="tour-todo">
           <h3><Icon name="alert" /> {t('schedule.openTitle')}</h3>
           {waiting.length > 0 && (
             <button type="button" className="amb" onClick={() => document.getElementById('ws-waiting')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
