@@ -545,6 +545,16 @@ export const SIGNING_CSS = `
 }
 /* The A4 page sits in this frame: invisible on a computer, a sideways scroller on a phone. */
 .sd-paper-scroll { display: contents; }
+/* The editor on a computer: the page is shown at 80% inside this frame, so most of it fits on screen. */
+.sd-paper-scroll.sd-paper-host { display: block; width: 100%; }
+/* The editor's field panel and formatting bar on a computer: a size smaller, so the page gets the room. */
+@media (min-width: 761px) {
+  .sd-work.sd-editor { grid-template-columns: 272px minmax(0, 1fr); }
+  .sd-editor > .sd-panel { zoom: 0.85; max-height: calc((100vh - 150px) / 0.85); min-height: calc((100vh - 150px) / 0.85); }
+  .sd-editor .sd-canvas > .sd-toolbar { zoom: 0.85; }
+}
+/* A template's preview: a whole page fits the screen's height. */
+.sd-preview-pages > .sd-page-wrap { width: min(100%, 680px, calc((100vh - 240px) * 0.707)); }
 /* Phone: the sheet takes the whole width, the field panel sits above the page,
    and the page keeps its real A4 size (the fields' places are measured on it,
    exactly as the server prints them) and scrolls sideways under the finger. */

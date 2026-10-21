@@ -1052,7 +1052,7 @@ export function LeadControl({
   const stepLabels = leadStepLabels(rule);
 
   return (
-    <View style={[styles.lead, dimmed && styles.leadDimmed]}>
+    <View style={[styles.lead, dimmed && styles.leadDimmed]} aria-disabled={dimmed}>
       <View style={styles.leadRow}>
         <Ionicons name="time-outline" size={16} color={DESKTOP_COLORS.inkMuted} />
         <DText weight="semiBold" style={styles.leadLabel}>{t('notifications.alert')}</DText>
@@ -1441,7 +1441,7 @@ const styles = StyleSheet.create({
 
   // Lead control
   lead: { gap: 10, paddingTop: 14, borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft, ...webOnly({ transition: 'opacity 200ms ease' }) },
-  leadDimmed: { opacity: 0.5 },
+  leadDimmed: { opacity: 0.5, pointerEvents: 'none' },
   leadRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   leadLabel: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
   leadUnit: { fontSize: 14, color: DESKTOP_COLORS.ink, flexShrink: 1 },

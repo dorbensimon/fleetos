@@ -379,6 +379,9 @@ function liftDividers(root: HTMLElement) {
 /** Toolbar buttons keep the editor's selection: mousedown would otherwise move focus off the page. */
 const keepSelection = (event: React.MouseEvent) => event.preventDefault();
 
+// כמה הדף מוקטן במחשב, כדי לראות יותר ממנו בלי לגלול
+const DESKTOP_PAGE_SCALE = 0.8;
+
 // מסך צר (טלפון)
 function usePhoneWidth() {
   const query = '(max-width: 760px)';
@@ -544,14 +547,14 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
   const [typing, setTyping] = useState(false);
   const keyboard = useKeyboardInset(phone);
   const [inspect, setInspect] = useState(false);
-  // The page shrinks to the phone's width, and its frame keeps the shrunken height.
+  // The page shrinks to the phone's width (on a computer, to a calmer size that shows more of it),
+  // and its frame keeps the shrunken height.
   useLayoutEffect(() => {
-    if (!phone) { setScale(1); return; }
     const fit = fitRef.current;
     const page = pageRef.current;
     if (!fit || !page) return;
     const update = () => {
-      setScale(Math.min(1, (fit.clientWidth - 16) / PAGE_W));
+      setScale(phone ? Math.min(1, (fit.clientWidth - 16) / PAGE_W) : Math.min(DESKTOP_PAGE_SCALE, (fit.clientWidth - 32) / PAGE_W));
       setPageH(page.offsetHeight);
     };
     update();
@@ -1227,7 +1230,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
     <div
       ref={pageRef}
       className={`sd-paper-page${over ? ' sd-over' : ''}`}
-      style={phone ? { minHeight: pages * PAGE_H, position: 'absolute', top: 0, left: 0, transform: `scale(${scale})`, transformOrigin: 'top left' } : { minHeight: pages * PAGE_H }}
+      style={{ minHeight: pages * PAGE_H, position: 'absolute', top: 0, left: 0, transform: `scale(${scale})`, transformOrigin: 'top left' }}
       onPointerDown={(e) => {
         if (!(e.target as HTMLElement).closest('.sd-field')) setSelectedId(null);
       }}
@@ -1346,7 +1349,7 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
   }
 
   return (
-    <div className="sd-work">
+    <div className="sd-work sd-editor">
       <style>{GUIDES_CSS}</style>
       <aside className="sd-panel" aria-label={t('editor.addFields')}>
         {fieldTools}
@@ -1355,8 +1358,10 @@ export const DocumentEditor = forwardRef<DocumentEditorHandle, { initial: Editor
 
       <div className="sd-canvas">
         {toolbar}
-        <div className="sd-paper-scroll">
-          {paper}
+        <div className="sd-paper-scroll sd-paper-host" ref={fitRef}>
+          <div className="sd-paper-fit" style={{ width: PAGE_W * scale, height: pageH * scale }}>
+            {paper}
+          </div>
         </div>
       </div>
     </div>

@@ -158,8 +158,7 @@ const REPORT_STYLES = `
     font-size: 0.8125rem;
     font-weight: 500;
     color: var(--text-muted);
-    padding: 0 0.75rem 0.625rem;
-    border-bottom: 1px solid var(--border);
+    padding: 0 0.75rem 0.25rem;
   }
   .table td {
     text-align: right;
@@ -354,7 +353,7 @@ export function countLabel(n: number, unit: { one: string; many: string }): stri
 
 // עיצוב דוח הטבלה (CSS)
 const TABLE_REPORT_STYLES = `
-  :root { --text: #0f172a; --muted: #64748b; --line: #1e293b; --soft: #e2e8f0; --band: #eef2ff; --accent: #2F5BFF; --danger: #b91c1c; }
+  :root { --text: #0f172a; --muted: #64748b; --line: #1e293b; --soft: #e2e8f0; --band: #f1f5fb; --band-line: #cfdcee; --band-text: #4f6f9a; --danger: #b91c1c; }
   * { box-sizing: border-box; }
   html, body { margin: 0; direction: rtl; background: #fff; color: var(--text);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Heebo', sans-serif;
@@ -365,19 +364,18 @@ const TABLE_REPORT_STYLES = `
   .sub b { color: var(--text); }
   .ltr { direction: ltr; unicode-bidi: isolate; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; font-variant-numeric: tabular-nums; }
-  th { text-align: right; font-size: 12px; font-weight: 600; color: var(--muted); padding: 0 8px 10px;
-    border-bottom: 1.5px solid var(--line); white-space: nowrap; }
+  th { text-align: right; font-size: 12px; font-weight: 600; color: var(--muted); padding: 12px 8px 4px; white-space: nowrap; }
   td { padding: 9px 8px; border-bottom: 1px solid var(--soft); vertical-align: top; text-align: right;
     overflow-wrap: normal; word-break: normal; }
   td.ltr, td.end { white-space: nowrap; }
   td small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; font-weight: 400; }
   td.end, th.end { text-align: left; }
-  tr.sec td { font-weight: 700; padding-top: 22px; border-bottom: 1.5px solid var(--line); }
+  tr.sec td { font-weight: 700; padding-top: 28px; border-bottom: 1.5px solid var(--line); }
   tr.gap td { border: none; height: 18px; padding: 0; }
   tr.grand td { background: var(--band); font-weight: 700; font-size: 16px; padding: 14px 8px;
-    border-top: 1.5px solid var(--accent); border-bottom: 1.5px solid var(--accent);
+    border-top: 1px solid var(--band-line); border-bottom: 1px solid var(--band-line);
     -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  tr.grand td.end { color: var(--accent); }
+  tr.grand td.end { color: var(--band-text); }
   .bad { color: var(--danger); }
   .muted { color: var(--muted); }
   .empty { text-align: center; color: var(--muted); padding: 32px 0; border-top: 1.5px solid var(--line); border-bottom: 1px solid var(--soft); }
@@ -394,7 +392,7 @@ const TABLE_REPORT_STYLES = `
     td, th { padding-left: 5px; padding-right: 5px; }
     tr.grand td { font-size: 13px; }
   }
-  @media print { .page { padding-top: 16px; } tr { break-inside: avoid; } tr.sec { break-after: avoid; } }
+  @media print { .page { padding-top: 16px; } tr { break-inside: avoid; } tr.sec, tr.cols { break-after: avoid; } }
 `;
 
 // תא אחד בטבלה
@@ -419,7 +417,7 @@ export function expiryCell(date: string | null | undefined, days: number | null,
 // בונה דוח בצורת טבלה עם סה״כ לכל חלק
 /**
  * The list reports: title, company line, one table whose sections open with
- * their own total, a blue band with the grand total, a short note on what the
+ * their own total and the column titles, a soft blue band with the grand total, a short note on what the
  * report includes, and a small icar line at the bottom.
  */
 export function buildTableReport(opts: TableReportOptions): string {
@@ -429,12 +427,14 @@ export function buildTableReport(opts: TableReportOptions): string {
   const grand = opts.grandCount ?? rowCount;
   const business = opts.company.businessId ? ` · ח.פ. <span class="ltr">${esc(opts.company.businessId)}</span>` : '';
 
+  // Column titles sit right on top of each section's rows, under the section's total.
+  const columnTitles = `<tr class="cols">${opts.columns.map((c, i) => `<th${i === n - 1 ? ' class="end"' : ''}>${esc(c.label)}</th>`).join('')}</tr>`;
   const body = sections
     .map((s) => {
       const head = s.title
         ? `<tr class="sec"><td colspan="${n - 1}">${esc(s.title)}</td><td class="end">${esc(countLabel(s.rows.length, opts.unit))}</td></tr>`
         : '';
-      return head + s.rows.map((row) => `<tr>${row.map((c, i) => cellHtml(c, i === n - 1)).join('')}</tr>`).join('');
+      return head + columnTitles + s.rows.map((row) => `<tr>${row.map((c, i) => cellHtml(c, i === n - 1)).join('')}</tr>`).join('');
     })
     .join('');
 
@@ -442,7 +442,6 @@ export function buildTableReport(opts: TableReportOptions): string {
     ? `<div class="empty">${esc(opts.emptyText)}</div>`
     : `<table>
         <colgroup>${opts.columns.map((c) => `<col style="width:${c.width}%">`).join('')}</colgroup>
-        <thead><tr>${opts.columns.map((c, i) => `<th${i === n - 1 ? ' class="end"' : ''}>${esc(c.label)}</th>`).join('')}</tr></thead>
         <tbody>${body}
           <tr class="gap"><td colspan="${n}"></td></tr>
           <tr class="grand"><td colspan="${n - 1}">${esc(opts.grandTitle)}</td><td class="end">${esc(countLabel(grand, opts.unit))}</td></tr>
