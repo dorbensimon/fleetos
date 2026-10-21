@@ -3016,7 +3016,12 @@
     "vinInvalidShort": "يجب أن يحتوي VIN على 17 حرفًا دون I/O/Q",
     "whoDrives": "من يقود هذه المركبة.",
     "yearLabel": "سنة {{production_year}}",
-    "yearNotFuture": "لا يمكن أن تكون سنة الصنع في المستقبل"
+    "yearNotFuture": "لا يمكن أن تكون سنة الصنع في المستقبل",
+    "licensePhoto": "صورة رخصة المركبة",
+    "licensePhotoChoose": "اختيار صورة رخصة المركبة",
+    "licensePhotoHint": "إلزامية لإنشاء مركبة. تُحفظ الصلاحية مع المستند",
+    "licensePhotoRequired": "أرفق صورة رخصة المركبة",
+    "licenseUploadFailed": "أُنشئت المركبة، لكن لم تُرفع صورة الرخصة. يمكن رفعها في مجلد رخصة المركبة."
   },
   "viewer": {
     "downloadDocument": "تنزيل المستند",

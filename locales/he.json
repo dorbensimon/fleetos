@@ -3016,7 +3016,12 @@
     "vinInvalidShort": "VIN חייב להכיל 17 תווים ללא I/O/Q",
     "whoDrives": "מי נוהג ברכב הזה.",
     "yearLabel": "שנת {{production_year}}",
-    "yearNotFuture": "שנת ייצור לא יכולה להיות עתידית"
+    "yearNotFuture": "שנת ייצור לא יכולה להיות עתידית",
+    "licensePhoto": "צילום רישיון רכב",
+    "licensePhotoChoose": "בחירת צילום רישיון רכב",
+    "licensePhotoHint": "חובה ביצירת רכב. התוקף נשמר יחד עם המסמך",
+    "licensePhotoRequired": "צריך לצרף צילום של רישיון הרכב",
+    "licenseUploadFailed": "הרכב נוצר, אבל צילום הרישיון לא הועלה. אפשר להעלות אותו בתיקיית רישיון רכב."
   },
   "viewer": {
     "downloadDocument": "הורדת המסמך",
