@@ -1,5 +1,6 @@
 // דף בדיקות קצין בטיחות - תצוגת מחשב
 import React, { useMemo, useState } from 'react';
+import { PageTour, type TourStep } from '../desktop/PageTour';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DesktopModal } from '../desktop/DesktopModal';
@@ -59,6 +60,7 @@ export function SafetyInspectionsDesktopView({
   const [query, setQuery] = useState('');
   const [picking, setPicking] = useState(false);
   const [pickQuery, setPickQuery] = useState('');
+  const [touring, setTouring] = useState(false);
 
   const withState = useMemo(() => (rows ?? []).map((row) => ({ row, state: listStateOf(row) as InspectionState })), [rows]);
   const drafts = useMemo(() => new Set(withState.filter((x) => x.state === 'draft').map((x) => x.row.vehicle_id)), [withState]);
@@ -97,25 +99,38 @@ export function SafetyInspectionsDesktopView({
 
   return (
     <ScrollView style={pageStyles.root} contentContainerStyle={pageStyles.content}>
-      <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
+      <View nativeID="tour-hero" style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
         <View style={[pageStyles.heroGlow, pageStyles.heroGlowBlue, { pointerEvents: 'none' }]} />
         <View style={[pageStyles.heroGlow, pageStyles.heroGlowCyan, { pointerEvents: 'none' }]} />
         <View style={styles.heroIcon}>
           <Ionicons name="shield-checkmark" size={22} color="#FFFFFF" />
         </View>
         <View style={pageStyles.heroIdentity}>
-          <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">{t('nav.safetyInspections')}</DText>
+          <View style={styles.titleRow}>
+            <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">{t('nav.safetyInspections')}</DText>
+            <HoverPressable
+              style={styles.helpBtn}
+              hoverStyle={styles.helpBtnHover}
+              onPress={() => setTouring(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t('inspection.tourHelp')}
+              {...webOnly({ title: t('inspection.tourHelp') })}
+            >
+              <DText weight="bold" style={styles.helpText}>?</DText>
+            </HoverPressable>
+          </View>
           <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark]}>{t('inspection.listSubtitle')}</DText>
         </View>
         {rows && (
           <View style={pageStyles.facts}>
-            <Fact onDark label={t('inspection.kpiLate')} value={String(late)} color={late ? NIGHT_TONES.bad : undefined} muted={!late} />
-            <Fact onDark label={t('inspection.kpiSoon')} value={String(due.length - late)} color={due.length - late ? NIGHT_TONES.warn : undefined} muted={!(due.length - late)} />
-            <Fact onDark label={t('inspection.kpiAwaiting')} value={String(count('awaiting'))} muted={!count('awaiting')} />
-            <Fact onDark label={t('inspection.kpiDefects')} value={String(withDefects)} color={withDefects ? NIGHT_TONES.bad : undefined} muted={!withDefects} />
+            <Fact nativeID="tour-late" onDark label={t('inspection.kpiLate')} value={String(late)} color={late ? NIGHT_TONES.bad : undefined} muted={!late} />
+            <Fact nativeID="tour-soon" onDark label={t('inspection.kpiSoon')} value={String(due.length - late)} color={due.length - late ? NIGHT_TONES.warn : undefined} muted={!(due.length - late)} />
+            <Fact nativeID="tour-awaiting" onDark label={t('inspection.kpiAwaiting')} value={String(count('awaiting'))} muted={!count('awaiting')} />
+            <Fact nativeID="tour-defects" onDark label={t('inspection.kpiDefects')} value={String(withDefects)} color={withDefects ? NIGHT_TONES.bad : undefined} muted={!withDefects} />
           </View>
         )}
         <HoverPressable
+          nativeID="tour-new"
           style={pageStyles.primaryBtn}
           hoverStyle={pageStyles.primaryBtnHover}
           pressStyle={pageStyles.pressDown}
@@ -130,7 +145,7 @@ export function SafetyInspectionsDesktopView({
       <View style={pageStyles.gridRow}>
         <View style={pageStyles.mainCell}>
           <GroupLabel>{t('inspection.all')}</GroupLabel>
-          <View style={[pageStyles.card, pageStyles.listCard]}>
+          <View nativeID="tour-table" style={[pageStyles.card, pageStyles.listCard]}>
             <View style={styles.toolbar}>
               <View style={styles.search}>
                 <Ionicons name="search" size={15} color={DESKTOP_COLORS.inkFaint} style={styles.searchIcon} />
@@ -233,7 +248,7 @@ export function SafetyInspectionsDesktopView({
 
         <View style={pageStyles.sideCell}>
           <GroupLabel>{t('inspection.vehiclesToCheck', { length: due.length })}</GroupLabel>
-          <View style={[pageStyles.card, pageStyles.listCard]}>
+          <View nativeID="tour-due" style={[pageStyles.card, pageStyles.listCard]}>
             {!rows ? (
               <DText style={[pageStyles.mutedText, styles.pad]}>{t('common.loadingEllipsis')}</DText>
             ) : due.length === 0 ? (
@@ -275,10 +290,12 @@ export function SafetyInspectionsDesktopView({
 
           <View style={styles.sideGap} />
           <GroupLabel>{t('inspection.remindersTitle')}</GroupLabel>
-          <InspectionRemindersCard companyId={companyId} repeatMonths={repeatMonths} onRepeatSaved={onRepeatSaved} />
+          <View nativeID="tour-reminders">
+            <InspectionRemindersCard companyId={companyId} repeatMonths={repeatMonths} onRepeatSaved={onRepeatSaved} />
+          </View>
 
           <View style={styles.sideGap} />
-          <View style={[pageStyles.card, pageStyles.listCard]}>
+          <View nativeID="tour-items" style={[pageStyles.card, pageStyles.listCard]}>
             <HoverPressable style={styles.linkRow} hoverStyle={pageStyles.rowHover} onPress={onEditList}>
               <View style={styles.dueIcon}>
                 <Ionicons name="list-outline" size={16} color={DESKTOP_COLORS.inkMuted} />
@@ -292,6 +309,8 @@ export function SafetyInspectionsDesktopView({
           </View>
         </View>
       </View>
+
+      {touring && <PageTour steps={TOUR_STEPS()} onClose={() => setTouring(false)} />}
 
       <DesktopModal visible={picking} title={t('inspection.whichVehicle')} onClose={() => setPicking(false)} maxWidth={480}>
         <View style={styles.pickBody}>
@@ -323,8 +342,21 @@ export function SafetyInspectionsDesktopView({
   );
 }
 
+// שלבי ההסבר על המסך
+const TOUR_STEPS = (): TourStep[] =>
+  (['intro', 'late', 'soon', 'awaiting', 'defects', 'new', 'table', 'due', 'reminders', 'items'] as const).map((k) => ({
+    target: k === 'intro' ? 'tour-hero' : `tour-${k}`,
+    title: t(`inspection.tour.${k}.title`),
+    body: t(`inspection.tour.${k}.body`),
+  }));
+
 // עיצוב הדף
 const styles = StyleSheet.create({
+  // שורת הכותרת עם סימן השאלה
+  titleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  helpBtn: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.55)' },
+  helpBtnHover: { backgroundColor: 'rgba(255,255,255,0.16)', borderColor: '#FFFFFF' },
+  helpText: { fontSize: 14, lineHeight: 18, color: '#FFFFFF' },
   // האייקון בכותרת
   heroIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
   // שורת החיפוש

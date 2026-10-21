@@ -160,7 +160,7 @@ export async function loadSchedule(companyId: string, fromDate: string): Promise
     vehicles,
     drivers,
     trips: [...trips, ...added],
-    blocks: blocks.map((b): Block => ({ id: b.id, ownerType: b.owner_type, ownerId: b.vehicle_id ?? b.driver_id, from: b.start_date, to: b.end_date, reason: b.reason })),
+    blocks: blocks.map((b): Block => ({ id: b.id, ownerType: b.owner_type, ownerId: b.vehicle_id ?? b.driver_id, from: b.start_date, to: b.end_date, reason: b.reason, details: b.details ?? '' })),
     clients: clients as Client[],
     series,
     saved: saved.map((s): SavedTrip => ({
@@ -206,7 +206,7 @@ export async function saveBlock(companyId: string, block: Block) {
     id: block.id, company_id: companyId, owner_type: block.ownerType,
     vehicle_id: block.ownerType === 'vehicle' ? block.ownerId : null,
     driver_id: block.ownerType === 'driver' ? block.ownerId : null,
-    start_date: block.from, end_date: block.to, reason: block.reason,
+    start_date: block.from, end_date: block.to, reason: block.reason, details: block.details?.trim() || null,
   });
   if (error) throw error;
 }

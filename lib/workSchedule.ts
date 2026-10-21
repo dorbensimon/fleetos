@@ -78,6 +78,8 @@ export interface ScheduleDriver {
 }
 
 export interface Block {
+  /** Free text: what is being fixed, the cost, and so on. */
+  details?: string;
   id: string;
   ownerType: 'vehicle' | 'driver';
   ownerId: string;

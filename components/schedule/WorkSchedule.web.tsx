@@ -414,6 +414,7 @@ export function WorkSchedule({ companyId, phone, onMenu }: { companyId: string; 
             <b>{blockOpen.ownerType === 'driver' ? rules.driverName(blockOpen.ownerId) : rules.vehicleLabel(rules.vehicle(blockOpen.ownerId))}</b> · {blockOpen.reason}
           </p>
           <div className="vsub tnum">{datesRange(blockOpen.from, blockOpen.to)}</div>
+          {blockOpen.details && <p style={{ whiteSpace: 'pre-wrap' }}>{blockOpen.details}</p>}
           <div className="dlg-foot">
             <button type="button" className="danger" onClick={() => void removeBlock(blockOpen)}>{t('schedule.block.removeFromCalendar')}</button>
             <button type="button" onClick={() => setBlockOpen(null)}>{t('common.close')}</button>
@@ -1186,6 +1187,7 @@ function BlockDialog({ kind, data, sel, today, companyId, onClose, onChange, onE
   const [from, setFrom] = useState(sel);
   const [to, setTo] = useState(sel);
   const [reason, setReason] = useState(reasons[0]);
+  const [details, setDetails] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const blocksRef = useRef(data.blocks);
@@ -1216,7 +1218,7 @@ function BlockDialog({ kind, data, sel, today, companyId, onClose, onChange, onE
     if (!from || !to) return setError(t('schedule.block.chooseDates'));
     if (to < from) return setError(t('schedule.block.datesOrder'));
     setBusy(true);
-    const b: Block = { id: newId(), ownerType: kind, ownerId: owner, from, to, reason: reasonText(reason) };
+    const b: Block = { id: newId(), ownerType: kind, ownerId: owner, from, to, reason: reasonText(reason), details: details.trim() };
     try {
       await saveBlock(companyId, b);
       const hit = data.trips.filter((x) => (driver ? x.driverId : x.vehicleId) === owner && x.status === 'active' && x.date <= to && lastDay(x) >= from).length;
@@ -1273,6 +1275,8 @@ function BlockDialog({ kind, data, sel, today, companyId, onClose, onChange, onE
       <div className="tnum" style={{ marginTop: 8, color: 'var(--blue)', fontFamily: 'var(--f-b)' }}>{sum}</div>
       <div className="q">{t('schedule.block.why')}</div>
       <Seg<string> name={`ws-why-${kind}`} value={reason} onChange={setReason} options={reasons.map((r) => ({ value: r, label: t(`schedule.block.${kind}ReasonShort.${r}`) }))} />
+      <div className="q">{t('schedule.block.details')}</div>
+      <textarea style={{ width: '100%', minHeight: 72, resize: 'vertical' }} maxLength={500} value={details} onChange={(e) => setDetails(e.target.value)} placeholder={t(`schedule.block.${kind}DetailsHint`)} aria-label={t('schedule.block.details')} />
       <div className="err">{error}</div>
       <div className="dlg-foot">
         <button type="button" className="primary" disabled={busy} onClick={() => void save()}>{t('common.save')}</button>
@@ -1283,7 +1287,7 @@ function BlockDialog({ kind, data, sel, today, companyId, onClose, onChange, onE
           <div className="q">{t('schedule.block.alreadyMarked')}</div>
           {marked.map((b) => (
             <div className="witem" key={b.id}>
-              <div><b>{nameOf(b)}</b> · {b.reason}<div className="vsub tnum">{datesRange(b.from, b.to)}</div></div>
+              <div><b>{nameOf(b)}</b> · {b.reason}<div className="vsub tnum">{datesRange(b.from, b.to)}</div>{b.details && <div className="vsub" style={{ whiteSpace: 'pre-wrap' }}>{b.details}</div>}</div>
               <button type="button" onClick={() => void remove(b)}>{t('common.remove')}</button>
             </div>
           ))}

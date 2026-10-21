@@ -554,7 +554,10 @@ export const SIGNING_CSS = `
   .sd-editor .sd-canvas > .sd-toolbar { zoom: 0.85; }
 }
 /* A template's preview: a whole page fits the screen's height. */
-.sd-preview-pages > .sd-page-wrap { width: min(100%, 680px, calc((100vh - 240px) * 0.707)); }
+.sd-preview-pages > .sd-page-wrap { max-width: none; width: min(100%, calc(680px * var(--sd-zoom, 1)), calc((100vh - 240px) * 0.707 * var(--sd-zoom, 1))); }
+.sd-zoom { display: flex; align-items: center; gap: 6px; }
+.sd-zoom button { width: 36px; height: 36px; padding: 0; justify-content: center; }
+.sd-zoom span { min-width: 44px; text-align: center; font-size: 13px; color: var(--sd-ink-3); }
 /* Phone: the sheet takes the whole width, the field panel sits above the page,
    and the page keeps its real A4 size (the fields' places are measured on it,
    exactly as the server prints them) and scrolls sideways under the finger. */
