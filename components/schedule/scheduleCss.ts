@@ -48,6 +48,7 @@ export const SCHEDULE_CSS = `
 .ws .hero button{background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.22);color:var(--on-night)}
 @media (hover:hover){.ws .hero button:hover:not(:disabled){background:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.3)}}
 .ws .hero .spacer{flex:1}
+.ws .hero button.help{border-radius:50%;font-size:16px;font-weight:700}
 .ws .hero button.primary{background:#fff;color:#12306E;border-color:#fff;border-radius:999px}
 @media (hover:hover){.ws .hero button.primary:hover:not(:disabled){background:#EEF2FF}}
 .ws .sq{width:38px;height:38px;padding:0}

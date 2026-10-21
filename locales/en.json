@@ -3191,6 +3191,20 @@
     "driverTimelineLabel": "More folders"
   },
   "schedule": {
+    "tourHelp": "About this screen",
+    "tour": {
+      "intro": {"title": "Work schedule – everything in one place", "body": "Here you see all the company's trips, who drives which vehicle, and what is still not arranged. Let's go through the screen together, it takes a minute."},
+      "month": {"title": "Which month you see", "body": "Move between months with the arrows. The \"Today\" button takes you straight back to today's date."},
+      "search": {"title": "Search", "body": "Type a driver, client or vehicle and see all their trips. Clicking a result takes you straight to its day."},
+      "saved": {"title": "Saved trips", "body": "A trip that repeats often can be saved once, then added to a day with one click, without filling everything in again."},
+      "report": {"title": "Client report", "body": "How many trips each client had in the month shown. Handy before sending an invoice."},
+      "new": {"title": "New trip", "body": "Add a trip: who the client is, from where to where, at what time, and which vehicle and driver. If there is no vehicle yet, it waits in the list until one is assigned."},
+      "cal": {"title": "Month board", "body": "Each square is a day. The colored labels show briefly what happens in it. Click a day to see it in detail on the side."},
+      "legend": {"title": "What the colors mean", "body": "Blue – trips. Amber – trips waiting for a vehicle. Gray – a vehicle in the garage or a driver who is not available. Red – something worth checking, for example a vehicle that already has a trip at the same time."},
+      "panel": {"title": "The day you picked", "body": "Here you see everything happening on the selected day: each vehicle and its trips. Use the arrows to move to the previous or next day."},
+      "actions": {"title": "Quick actions", "body": "Add a trip to this day, copy a day or a whole week to another date, mark a driver who is unavailable or a vehicle in the garage (you can write what is being repaired), and print the schedule."},
+      "todo": {"title": "What is open on this day", "body": "This list only appears when something needs attention, such as a trip without a vehicle. Click a row to jump straight to it."}
+    },
     "title": "Work schedule",
     "menuSubtitle": "Trips, vehicles and drivers by day",
     "webOnly": "The work schedule opens on the website, in a browser",
