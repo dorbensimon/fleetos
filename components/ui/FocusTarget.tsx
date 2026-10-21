@@ -151,11 +151,10 @@ export function FocusTarget({
       {children}
       {!!match && (
         <Animated.View
-          pointerEvents="none"
           style={[
             StyleSheet.absoluteFill,
             styles.glow,
-            { borderRadius: radius, borderColor: tint, backgroundColor: `${tint}14`, opacity: glow },
+            { borderRadius: radius, borderColor: tint, backgroundColor: `${tint}14`, opacity: glow }, { pointerEvents: 'none' },
           ]}
         />
       )}

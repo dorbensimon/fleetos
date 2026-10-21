@@ -33,10 +33,10 @@ export function SignaturePad({
       <DKText variant="label" color={DK.inkSoft}>
         {title}
       </DKText>
-      <View style={[styles.box, signed && styles.boxSigned]} pointerEvents={disabled ? 'none' : 'auto'}>
-        <View style={styles.line} pointerEvents="none" />
+      <View style={[styles.box, signed && styles.boxSigned, { pointerEvents: disabled ? 'none' : 'auto' }]}>
+        <View style={[styles.line, { pointerEvents: 'none' }]} />
         {ink === 0 && (
-          <View style={styles.placeholder} pointerEvents="none">
+          <View style={[styles.placeholder, { pointerEvents: 'none' }]}>
             <Ionicons name="finger-print-outline" size={26} color={DK.faint} />
             <DKText variant="body" color={DK.muted}>
               {t('signature.signHereFinger')}

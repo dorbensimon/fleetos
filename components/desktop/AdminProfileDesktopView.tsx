@@ -54,8 +54,8 @@ export function AdminProfileDesktopView({
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       {/* The night header shared with the other desktop pages. */}
       <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
-        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
-        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+        <View style={[pageStyles.heroGlow, pageStyles.heroGlowBlue, { pointerEvents: 'none' }]} />
+        <View style={[pageStyles.heroGlow, pageStyles.heroGlowCyan, { pointerEvents: 'none' }]} />
         <View style={styles.avatar}>
           <DText weight="bold" style={styles.avatarText}>{initial}</DText>
         </View>

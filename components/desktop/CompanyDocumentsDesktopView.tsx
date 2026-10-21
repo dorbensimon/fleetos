@@ -87,8 +87,8 @@ export function CompanyDocumentsDesktopView({
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       {/* The night header shared with the driver and vehicle pages. */}
       <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
-        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
-        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+        <View style={[pageStyles.heroGlow, pageStyles.heroGlowBlue, { pointerEvents: 'none' }]} />
+        <View style={[pageStyles.heroGlow, pageStyles.heroGlowCyan, { pointerEvents: 'none' }]} />
         <View style={styles.heroIcon}>
           <Ionicons name="folder-open" size={22} color="#FFFFFF" />
         </View>
@@ -221,7 +221,7 @@ function DocumentCard({
           <View style={styles.kind}>
             <DText weight="bold" style={styles.kindText}>{kindOf(doc.mime_type)}</DText>
           </View>
-          <View style={[styles.openHint, hovered && styles.openHintOn]} pointerEvents="none">
+          <View style={[styles.openHint, hovered && styles.openHintOn, { pointerEvents: 'none' }]}>
             <Ionicons name="eye-outline" size={14} color="#FFFFFF" />
             <DText weight="semiBold" style={styles.openHintText}>{t('common.open')}</DText>
           </View>

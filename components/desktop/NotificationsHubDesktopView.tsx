@@ -243,8 +243,8 @@ export function NotificationsHubDesktopView({
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         {/* The night header shared with the other desktop pages: title on the right, the view switch on the left. */}
         <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
-          <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
-          <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+          <View style={[pageStyles.heroGlow, pageStyles.heroGlowBlue, { pointerEvents: 'none' }]} />
+          <View style={[pageStyles.heroGlow, pageStyles.heroGlowCyan, { pointerEvents: 'none' }]} />
           <View style={styles.heroIcon}>
             <Ionicons name="notifications" size={22} color="#FFFFFF" />
           </View>
@@ -398,7 +398,7 @@ export function NotificationsHubDesktopView({
       </ScrollView>
 
       {undo && (
-        <View style={styles.toastWrap} pointerEvents="box-none">
+        <View style={[styles.toastWrap, { pointerEvents: 'box-none' }]}>
           <View style={[styles.toast, !reduceMotion && styles.toastIn]} accessibilityLiveRegion="polite">
             <Ionicons name="notifications-off" size={17} color="#FFFFFF" />
             <DText style={styles.toastText} numberOfLines={1}>{t('notifications.muted', { label: undo.label })}</DText>
@@ -514,7 +514,7 @@ function FeedRow({
         onPress={() => onOpen(n)}
         accessibilityLabel={`${unread ? t('notifications.newPrefix') : ''}${n.message}. ${timeAgo}${action ? `. ${action}` : ''}`}
       >
-        {unread && <View pointerEvents="none" style={styles.unreadEdge} />}
+        {unread && <View style={[styles.unreadEdge, { pointerEvents: 'none' }]} />}
         <View style={[styles.rowIcon, { backgroundColor: colors.bg }]}>
           <Ionicons name={icon} size={18} color={colors.fg} />
         </View>
@@ -534,7 +534,7 @@ function FeedRow({
         {/* Room for the action buttons, which sit over the row as siblings (a button may not hold a button). */}
         <View style={styles.rowActionSpace} />
       </HoverPressable>
-      <View style={styles.rowActions} pointerEvents="box-none">
+      <View style={[styles.rowActions, { pointerEvents: 'box-none' }]}>
         {hasLead && (
           <IconAction icon="time-outline" label={t('notifications.timingOf', { v1: shortLabel(info!.label) })} onPress={() => onLead(type!)} />
         )}
@@ -572,7 +572,7 @@ function IconAction({ icon, label, onPress, disabled }: { icon: IconName; label:
         <Ionicons name={icon} size={18} color={hover ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
       </HoverPressable>
       {hover && (
-        <View pointerEvents="none" style={styles.tip}>
+        <View style={[styles.tip, { pointerEvents: 'none' }]}>
           <DText weight="semiBold" style={styles.tipText} numberOfLines={1}>{label}</DText>
         </View>
       )}
@@ -699,9 +699,9 @@ function LeadTimeline({ prefs, onPick, reduceMotion }: { prefs: NotificationPref
               const top = (lanes - 1 - c.lane) * LANE_HEIGHT;
               const selected = open?.days === c.days;
               return (
-                <View key={c.days} pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+                <View key={c.days} style={[StyleSheet.absoluteFill, { pointerEvents: 'box-none' }]}>
                   {/* The stem from the label down to the axis. */}
-                  <View pointerEvents="none" style={[styles.stem, { start: c.x - 0.5, top: top + 28, height: trackHeight - top - 28 + 3 }, !c.on && styles.stemOff]} />
+                  <View style={[styles.stem, { start: c.x - 0.5, top: top + 28, height: trackHeight - top - 28 + 3 }, !c.on && styles.stemOff, { pointerEvents: 'none' }]} />
                   <HoverPressable
                     style={[
                       styles.marker,
@@ -728,7 +728,7 @@ function LeadTimeline({ prefs, onPick, reduceMotion }: { prefs: NotificationPref
           <View style={styles.axisFill} />
           {width > 0 &&
             placed.map((c) => (
-              <View key={c.days} pointerEvents="none" style={[styles.axisDot, c.meeting && styles.axisDotMeeting, !c.on && styles.axisDotOff, { start: c.x - 5 }]} />
+              <View key={c.days} style={[styles.axisDot, c.meeting && styles.axisDotMeeting, !c.on && styles.axisDotOff, { start: c.x - 5 }, { pointerEvents: 'none' }]} />
             ))}
         </View>
         <View style={styles.ticks}>
@@ -888,7 +888,7 @@ function TypeCard({
       ref={(node) => registerCard(item.type, node)}
       style={[styles.card, width != null && { width }, !value && styles.cardOff]}
     >
-      {flashNonce != null && <View key={flashNonce} pointerEvents="none" style={[StyleSheet.absoluteFill, styles.cardFlash]} />}
+      {flashNonce != null && <View key={flashNonce} style={[StyleSheet.absoluteFill, styles.cardFlash, { pointerEvents: 'none' }]} />}
       <View style={styles.cardHead}>
         <View style={[styles.cardIcon, !value && styles.cardIconOff]}>
           <Ionicons name={TYPE_ICON[item.type] ?? 'notifications-outline'} size={20} color={value ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />

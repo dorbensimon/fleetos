@@ -211,8 +211,8 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
       <DesktopShell active="SafetyInspections" breadcrumbs={[t('nav.management'), t('nav.safetyInspections'), t('common.settings')]}>
         <ScrollView style={pageStyles.root} contentContainerStyle={pageStyles.content}>
           <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
-            <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
-            <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+            <View style={[pageStyles.heroGlow, pageStyles.heroGlowBlue, { pointerEvents: 'none' }]} />
+            <View style={[pageStyles.heroGlow, pageStyles.heroGlowCyan, { pointerEvents: 'none' }]} />
             <HoverPressable style={desk.back} hoverStyle={desk.backHover} onPress={back} accessibilityLabel={t('common.goBack')}>
               <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
             </HoverPressable>

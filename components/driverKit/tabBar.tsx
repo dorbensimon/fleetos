@@ -267,7 +267,7 @@ export function HomeLogo() {
     else navigation.reset({ index: 0, routes: [{ name: home }] });
   };
   return (
-    <View style={styles.homeLogo} pointerEvents="box-none">
+    <View style={[styles.homeLogo, { pointerEvents: 'box-none' }]}>
       <Pressable onPress={goHome} accessibilityRole="button" accessibilityLabel={t('nav.home')} hitSlop={10}>
         <BrandLogo height={20} onDark />
       </Pressable>
@@ -582,10 +582,9 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
   return (
     <>
     {/* iOS "scroll edge": the page softly blurs and fades under the bar. */}
-    {Platform.OS === 'web' ? <Animated.View pointerEvents="none" style={[styles.edge, { height: BAR_HEIGHT + bottom + 28, opacity: shown }]} /> : null}
+    {Platform.OS === 'web' ? <Animated.View style={[styles.edge, { height: BAR_HEIGHT + bottom + 28, opacity: shown }, { pointerEvents: 'none' }]} /> : null}
     <Animated.View
-      pointerEvents={visible ? 'box-none' : 'none'}
-      style={[styles.host, { bottom, opacity: shown, transform: [{ translateY }, { scale: barScale }] }]}
+      style={[styles.host, { bottom, opacity: shown, transform: [{ translateY }, { scale: barScale }] }, { pointerEvents: visible ? 'box-none' : 'none' }]}
       {...(Platform.OS === 'web' ? ({ role: 'navigation', 'aria-label': t('nav.mainNavigation'), 'aria-hidden': !visible } as object) : {})}
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
@@ -594,8 +593,7 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
         <View ref={barRef} onLayout={measureBar} style={[styles.bar, { width: barWidth }]} {...(dragHandlers as object)}>
           <Glass />
           <Animated.View
-            pointerEvents="none"
-            style={[styles.lens, { width: slot, transform: [{ translateX: lensX }, { scaleX: lensScaleX }, { scaleY: lensScaleY }] }]}
+            style={[styles.lens, { width: slot, transform: [{ translateX: lensX }, { scaleX: lensScaleX }, { scaleY: lensScaleY }] }, { pointerEvents: 'none' }]}
           >
             <Animated.View style={[styles.lensFill, styles.platter, { opacity: platterOpacity }]} />
             <Animated.View style={[styles.lensFill, styles.drop, { opacity: glassOpacity }]} />
@@ -639,7 +637,7 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
 /** The glass itself: a live blur of the page behind, with light caught on its rim. */
 function Glass() {
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.glassClip]}>
+    <View style={[StyleSheet.absoluteFill, styles.glassClip, { pointerEvents: 'none' }]}>
       {Platform.OS !== 'web' ? (
         <BlurView tint={Platform.OS === 'ios' ? 'systemChromeMaterialLight' : 'light'} intensity={80} style={StyleSheet.absoluteFill} />
       ) : null}

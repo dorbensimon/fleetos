@@ -583,7 +583,7 @@ export default function ChecklistMeetingScreen({ navigation, route }: Props) {
     return (
       <View style={styles.night}>
         <StatusBar barStyle="light-content" />
-        <LinearGradient colors={DK.night} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <LinearGradient colors={DK.night} locations={[0, 0.6, 1]} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} />
         <View style={[styles.nightBody, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]}>
           <View style={styles.nightMid}>
             <Reveal>

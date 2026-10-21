@@ -295,7 +295,7 @@ function GalleryTile({ doc, index, onDelete }: { doc: DocumentRow; index: number
     >
       <View style={[styles.tilePreview, hovered && !reduceMotion && styles.tilePreviewHover]}>
         <DocumentPreview doc={doc} width={78} height={102} />
-        <View style={[styles.tileActions, showActions && styles.tileActionsOn]} pointerEvents={showActions ? 'auto' : 'none'}>
+        <View style={[styles.tileActions, showActions && styles.tileActionsOn, { pointerEvents: showActions ? 'auto' : 'none' }]}>
           <TileAction icon="download-outline" label={t('common.download')} onPress={() => void downloadDocumentWithAlert(doc)} />
           <TileAction icon="trash-outline" label={t('common.deleteAction')} danger onPress={onDelete} />
         </View>

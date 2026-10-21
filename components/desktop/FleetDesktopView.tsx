@@ -63,6 +63,8 @@ export interface FleetDesktopViewProps<LF extends string, SF extends string> {
   vehicleDrivers: Map<string, VehicleDriverWithProfile[]>;
   /** Defects in each vehicle's last safety inspection; absent when none. */
   inspectionDefects: Map<string, number>;
+  /** Next safety inspection of each vehicle; absent when no reminder is set. */
+  inspectionDue: Map<string, string>;
   departmentNames: Map<string, string>;
   restoringVehicleId: string | null;
 
@@ -114,6 +116,27 @@ function expiryWords(date: string | null | undefined): { tone: DesktopTone; labe
   if (days === 0) return { tone: 'bad', label: t('expiry.expiredToday') };
   if (days <= 30) return { tone: 'warn', label: days === 1 ? t('expiry.expiresTomorrow') : t('time.daysLeft', { days }) };
   return { tone: 'ok', label: t('status.valid') };
+}
+
+// תא תוקף: מצב ותאריך
+/** An expiry cell: its state in words, and the date under it. */
+function ExpiryCell({ date, empty }: { date: string | null | undefined; empty?: string }) {
+  if (!date) {
+    return (
+      <DText style={[styles.cellText, styles.faint]} numberOfLines={1}>
+        {empty ?? t('common.notEntered')}
+      </DText>
+    );
+  }
+  const words = expiryWords(date);
+  return (
+    <>
+      <Status tone={words.tone} label={words.label} />
+      <DText style={styles.subText} numberOfLines={1}>
+        {t('common.until')} {formatDate(date)}
+      </DText>
+    </>
+  );
 }
 
 // מצב הצהרת הבריאות במילים
@@ -253,8 +276,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
             name="search"
             size={19}
             color={searchFocused ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint}
-            style={styles.searchIcon}
-            pointerEvents="none"
+            style={[styles.searchIcon, { pointerEvents: 'none' }]}
           />
           <TextInput
             ref={searchRef}
@@ -284,7 +306,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
             </HoverPressable>
           ) : (
             !searchFocused && (
-              <View style={styles.kbd} pointerEvents="none">
+              <View style={[styles.kbd, { pointerEvents: 'none' }]}>
                 <DText weight="semiBold" style={styles.kbdText}>
                   /
                 </DText>
@@ -505,7 +527,10 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                         );
                       })
                     : props.filteredVehicles.map((vehicle, index) => {
-                        const insurance = (props.compliance.get(vehicle.id) ?? []).find((c) => c.item_type === 'insurance_mandatory');
+                        const vehicleCompliance = props.compliance.get(vehicle.id) ?? [];
+                        const insurance = vehicleCompliance.find((c) => c.item_type === 'insurance_mandatory');
+                        const comprehensive = vehicleCompliance.find((c) => c.item_type === 'insurance_comprehensive');
+                        const inspectionDue = props.inspectionDue.get(vehicle.id) ?? null;
                         const words = expiryWords(insurance?.expiry_date);
                         // Driving without mandatory insurance is never neutral.
                         const insuranceInfo = words.tone === 'neutral' ? { tone: 'bad' as const, label: t('vehicle.noInsurance') } : words;
@@ -557,6 +582,12 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                               )}
                             </View>
                             <View style={[styles.cell, colStyle(VEHICLE_COLUMNS[3])]}>
+                              <ExpiryCell date={comprehensive?.expiry_date} />
+                            </View>
+                            <View style={[styles.cell, colStyle(VEHICLE_COLUMNS[4])]}>
+                              <ExpiryCell date={inspectionDue} empty={t('fleet.inspectionNotSet')} />
+                            </View>
+                            <View style={[styles.cell, colStyle(VEHICLE_COLUMNS[5])]}>
                               {service.tone === 'neutral' ? (
                                 <DText weight="medium" style={[styles.cellValue, service.label === '—' && styles.faint]} numberOfLines={1}>
                                   {service.label}
@@ -565,7 +596,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                                 <Status tone={service.tone} label={service.label} />
                               )}
                             </View>
-                            <View style={[styles.cell, colStyle(VEHICLE_COLUMNS[4])]}>
+                            <View style={[styles.cell, colStyle(VEHICLE_COLUMNS[6])]}>
                               <Pill
                                 tone={VEHICLE_STATUS_TONE[vehicle.status] ?? 'neutral'}
                                 label={VEHICLE_STATUS_LABELS[vehicle.status] ?? vehicle.status}
@@ -605,6 +636,8 @@ const VEHICLE_COLUMNS: Column[] = [
   { get label() { return t('vehicle.vehicle'); }, flex: 1.6, min: 210 },
   { get label() { return t('vehicle.primaryDriver'); }, flex: 1.3, min: 140 },
   { get label() { return t('folder.mandatoryInsurance'); }, flex: 1.2, min: 150 },
+  { get label() { return t('folder.comprehensiveInsurance'); }, flex: 1.2, min: 150 },
+  { get label() { return t('notifications.cat.safetyCheck'); }, flex: 1.2, min: 160 },
   { get label() { return t('vehicle.nextService'); }, flex: 1.2, min: 160 },
   { get label() { return t('common.status'); }, flex: 0.7, min: 104 },
 ];

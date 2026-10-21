@@ -376,6 +376,8 @@ export function DetailRow({
       onHoverOut={() => setHovered(false)}
       onPress={pressable}
       accessibilityLabel={`${label}: ${value || t('common.notEntered')}. ${empty ? t('common.add') : t('common.edit')}`}
+      // A button inside the row (the accessory) can't sit in another <button> on web, so the row then stops being one.
+      {...(accessory ? { accessibilityRole: 'none' as const } : null)}
     >
       {content}
     </HoverPressable>

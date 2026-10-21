@@ -443,9 +443,9 @@ export default function LoginScreen({ navigation }: Props) {
   // The brand's night: the app's gradient, soft light on the web, and the logo's ring, faint.
   const night = (ringSize: number, ringStyle: object) => (
     <>
-      <LinearGradient colors={DK.night} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-      {Platform.OS === 'web' && <View pointerEvents="none" style={styles.glow} />}
-      <View pointerEvents="none" style={StyleSheet.absoluteFill} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <LinearGradient colors={DK.night} locations={[0, 0.6, 1]} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} />
+      {Platform.OS === 'web' && <View style={[styles.glow, { pointerEvents: 'none' }]} />}
+      <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <Animated.Image
           source={RING}
           style={[styles.ring, { width: ringSize, height: ringSize }, ringStyle, { opacity: brandIn.interpolate({ inputRange: [0, 1], outputRange: [0, 0.1] }) }]}

@@ -212,6 +212,8 @@ export default function FleetScreen() {
   const [vehicleDrivers, setVehicleDrivers] = useState<Map<string, VehicleDriverWithProfile[]>>(new Map());
   // Defects found in each vehicle's last safety inspection ("יש ליקויים").
   const [inspectionDefects, setInspectionDefects] = useState<Map<string, number>>(new Map());
+  // When each vehicle's next safety inspection is due; absent when no reminder is set.
+  const [inspectionDue, setInspectionDue] = useState<Map<string, string>>(new Map());
   const [departmentNames, setDepartmentNames] = useState<Map<string, string>>(new Map());
   const [vehiclesLoading, setVehiclesLoading] = useState(true);
   const [vehiclesError, setVehiclesError] = useState<string | null>(null);
@@ -254,6 +256,7 @@ export default function FleetScreen() {
       setCompliance(nextCompliance);
       setVehicleDrivers(nextVehicleDrivers);
       setInspectionDefects(new Map(plan.filter((row) => row.lastDefects > 0).map((row) => [row.vehicleId, row.lastDefects])));
+      setInspectionDue(new Map(plan.flatMap((row) => (row.nextDue ? [[row.vehicleId, row.nextDue] as const] : []))));
       setDepartmentNames(new Map(departments.map((department) => [department.id, department.name])));
       setVehiclesError(null);
       return true;
@@ -479,6 +482,7 @@ export default function FleetScreen() {
           compliance={compliance}
           vehicleDrivers={vehicleDrivers}
           inspectionDefects={inspectionDefects}
+          inspectionDue={inspectionDue}
           departmentNames={departmentNames}
           restoringVehicleId={restoringVehicleId}
           onOpenDriver={(driverId) => navigation.navigate('DriverDetail', { driverId })}

@@ -89,7 +89,7 @@ export function DocumentFolderModal({
   return (
     <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
       <Pressable style={[styles.backdrop, reduceMotion ? styles.backdropInReduced : styles.backdropIn]} onPress={onClose} />
-      <View style={styles.centerWrap} pointerEvents="box-none">
+      <View style={[styles.centerWrap, { pointerEvents: 'box-none' }]}>
         <View style={[styles.modalCard, reduceMotion ? styles.modalCardInReduced : styles.modalCardIn]}>
           <View style={styles.modalHeader}>
             <AppText weight="bold" style={styles.modalTitle}>{title}</AppText>

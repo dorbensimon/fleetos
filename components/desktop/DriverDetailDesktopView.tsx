@@ -260,8 +260,8 @@ export function DriverDetailDesktopView({
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={[styles.hero, styles.heroNight, !reduceMotion && styles.enter]}>
-        <View pointerEvents="none" style={[styles.heroGlow, styles.heroGlowBlue]} />
-        <View pointerEvents="none" style={[styles.heroGlow, styles.heroGlowCyan]} />
+        <View style={[styles.heroGlow, styles.heroGlowBlue, { pointerEvents: 'none' }]} />
+        <View style={[styles.heroGlow, styles.heroGlowCyan, { pointerEvents: 'none' }]} />
         <View style={[styles.heroIdentity, styles.heroWho]}>
           <View style={[styles.portrait, isArchived && styles.portraitMuted]}>
             <View style={styles.portraitInner}>

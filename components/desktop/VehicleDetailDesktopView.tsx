@@ -14,7 +14,7 @@ import type {
 import { ComplianceSection } from '../ComplianceSection';
 import { VehicleDriversEditor } from '../VehicleDriversEditor';
 import { SAFETY_FOLDER, VehicleInspectionsDesktopSection } from '../inspection/VehicleInspectionsDesktopSection';
-import { DesktopModal } from './DesktopModal';
+import { HeaderMenuBackdrop, headerMenuEnter, headerMenuStyles, useHeaderMenu } from './headerMenu';
 import {
   ACQUISITION_TYPE_LABELS,
   VEHICLE_STATUS_LABELS,
@@ -258,10 +258,10 @@ export function VehicleDetailDesktopView({
 
   // Editing
   const [editor, setEditor] = useState<FieldEditor | null>(null);
-  const [driversModalOpen, setDriversModalOpen] = useState(false);
+  const driversMenu = useHeaderMenu('vehicle-drivers');
   useEffect(() => {
     if (!openDrivers) return;
-    setDriversModalOpen(true);
+    driversMenu.setOpen(true);
     onDriversOpened?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openDrivers]);
@@ -303,8 +303,8 @@ export function VehicleDetailDesktopView({
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={[styles.hero, styles.heroNight, !reduceMotion && styles.enter]}>
-        <View pointerEvents="none" style={[styles.heroGlow, styles.heroGlowBlue]} />
-        <View pointerEvents="none" style={[styles.heroGlow, styles.heroGlowCyan]} />
+        <View style={[styles.heroGlow, styles.heroGlowBlue, { pointerEvents: 'none' }]} />
+        <View style={[styles.heroGlow, styles.heroGlowCyan, { pointerEvents: 'none' }]} />
         <View style={styles.heroIdentity}>
           <View style={styles.heroStatusRow}>
             {isArchived ? (
@@ -445,7 +445,8 @@ export function VehicleDetailDesktopView({
           </View>
         </View>
 
-        <View style={styles.sideCell}>
+        <View style={[styles.sideCell, driversMenu.open && headerMenuStyles.wrapOpen]}>
+          {driversMenu.open && <HeaderMenuBackdrop onClose={driversMenu.close} />}
           <GroupLabel>{t('vehicle.maintenance')}</GroupLabel>
           <FocusTarget id="odometer,service" radius={8} tint={DESKTOP_COLORS.brand}>
           <View style={[styles.card, styles.maintCard]}>
@@ -546,7 +547,7 @@ export function VehicleDetailDesktopView({
         <View style={styles.sideCell}>
           <GroupLabel
             action={
-              <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={() => setDriversModalOpen(true)} accessibilityLabel={t('vehicle.changeAssignedDrivers')}>
+              <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={driversMenu.toggle} accessibilityLabel={t('vehicle.changeAssignedDrivers')}>
                 <DText weight="semiBold" style={styles.linkText}>{t('common.change')}</DText>
               </HoverPressable>
             }
@@ -557,7 +558,7 @@ export function VehicleDetailDesktopView({
             {drivers.length === 0 ? (
               <View style={styles.driversEmpty}>
                 <DText style={styles.mutedText}>{t('vehicle.noAssignedDrivers')}</DText>
-                <HoverPressable style={styles.softBtn} hoverStyle={styles.softBtnHover} pressStyle={styles.pressDown} onPress={() => setDriversModalOpen(true)}>
+                <HoverPressable style={styles.softBtn} hoverStyle={styles.softBtnHover} pressStyle={styles.pressDown} onPress={driversMenu.toggle}>
                   <Ionicons name="person-add-outline" size={16} color={DESKTOP_COLORS.brand} />
                   <DText weight="semiBold" style={styles.softBtnText}>{t('attention.assignDriver')}</DText>
                 </HoverPressable>
@@ -566,6 +567,20 @@ export function VehicleDetailDesktopView({
               drivers.map((driver, index) => <DriverRow key={driver.id} driver={driver} first={index === 0} onPress={() => onOpenDriver(driver.driver_id)} />)
             )}
           </View>
+          {driversMenu.open && (
+            <View style={[headerMenuStyles.menu, styles.driversMenu, headerMenuEnter()]} role="dialog" aria-label={t('vehicle.assignedDrivers')}>
+              <View style={styles.driversModalContent}>
+                <VehicleDriversEditor
+                  vehicleId={vehicleId}
+                  assignments={drivers}
+                  driverOptions={driverOptions}
+                  onChanged={onDriversChanged}
+                  onOpenDriver={onOpenDriver}
+                  desktop
+                />
+              </View>
+            </View>
+          )}
         </View>
       </View>
 
@@ -629,18 +644,6 @@ export function VehicleDetailDesktopView({
 
       <FieldEditDialog editor={editor} onClose={() => setEditor(null)} />
 
-      <DesktopModal visible={driversModalOpen} title={t('vehicle.assignedDrivers')} onClose={() => setDriversModalOpen(false)} maxWidth={480}>
-        <View style={styles.driversModalContent}>
-          <VehicleDriversEditor
-            vehicleId={vehicleId}
-            assignments={drivers}
-            driverOptions={driverOptions}
-            onChanged={onDriversChanged}
-            onOpenDriver={onOpenDriver}
-            desktop
-          />
-        </View>
-      </DesktopModal>
     </ScrollView>
   );
 }
@@ -740,5 +743,7 @@ const styles = StyleSheet.create({
   driverName: { fontSize: 14.5 },
   driverLicense: { fontSize: 13, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   driversEmpty: { padding: 16, gap: 10, alignItems: 'flex-end' },
+  // חלון הנהגים נפתח מתחת לכותרת
+  driversMenu: { top: 34, start: 0, end: 0, width: 'auto' },
   driversModalContent: { paddingHorizontal: 18, paddingVertical: 14 },
 });

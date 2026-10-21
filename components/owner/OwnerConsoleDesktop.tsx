@@ -72,8 +72,8 @@ export function OwnerConsoleDesktop(p: Props) {
       {templatesOpen && <FormTemplatesManager onClosed={() => setTemplatesOpen(false)} />}
       {/* The night header shared with every desktop page. */}
       <View style={[pageStyles.hero, pageStyles.heroNight, enter(0)]}>
-        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
-        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+        <View style={[pageStyles.heroGlow, pageStyles.heroGlowBlue, { pointerEvents: 'none' }]} />
+        <View style={[pageStyles.heroGlow, pageStyles.heroGlowCyan, { pointerEvents: 'none' }]} />
         <View style={pageStyles.heroIdentity}>
           <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">
             {t('nav.controlCenter')}

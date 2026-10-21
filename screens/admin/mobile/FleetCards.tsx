@@ -15,7 +15,9 @@ const APP_STARTED_AT_MS = Date.now();
 // כמה ק"מ לפני טיפול מזהירים
 const SERVICE_WARN_KM = 1000;
 
-type Health = { label: string; value: string; note: string; status: Status; progress: number };
+type Health = { label: string; value: string; note: string; status: Status; progress: number; parts?: HealthPart[] };
+// ביטוח חובה או מקיף בתוך קוביית הביטוח
+type HealthPart = { label: string; value: string; status: Status; progress: number };
 
 // מצב לפי ימים
 function daysStatus(days: number | null): Status {
@@ -37,6 +39,7 @@ function daysNote(days: number | null) {
 /** Insurance, annual test and service for one vehicle, each as a status the card can draw. */
 export function vehicleHealth(vehicle: Vehicle, items: ComplianceItem[] | undefined): { rows: Health[]; worst: Status; bad: string[] } {
   const insurance = items?.find((c) => c.item_type === 'insurance_mandatory')?.expiry_date ?? null;
+  const comprehensive = items?.find((c) => c.item_type === 'insurance_comprehensive')?.expiry_date ?? null;
   const testItem = items?.find((c) => c.item_type === 'annual_test') ?? null;
   const testDef = findComplianceDef('vehicle', 'annual_test');
   const insDays = daysUntilExpiry(insurance);
@@ -54,6 +57,10 @@ export function vehicleHealth(vehicle: Vehicle, items: ComplianceItem[] | undefi
       note: daysNote(insDays),
       status: statusFromExpiry(insurance),
       progress: validityProgress(insurance),
+      parts: [
+        { label: t('fleet.insMandatory'), value: insurance ? shortDate(insurance) : t('status.missing'), status: statusFromExpiry(insurance), progress: validityProgress(insurance) },
+        { label: t('fleet.insComprehensive'), value: comprehensive ? shortDate(comprehensive) : t('status.missing'), status: statusFromExpiry(comprehensive), progress: validityProgress(comprehensive) },
+      ],
     },
     {
       label: t('fleet.test'),
@@ -73,6 +80,11 @@ export function vehicleHealth(vehicle: Vehicle, items: ComplianceItem[] | undefi
   const bad = rows.filter((r) => r.status === 'expired').map((r) => r.label);
   const worst: Status = bad.length ? 'expired' : rows.some((r) => r.status === 'soon') ? 'soon' : rows.every((r) => r.status === 'missing') ? 'missing' : 'ok';
   return { rows, worst, bad };
+}
+
+// תאריך קצר עם שנה בשתי ספרות, כדי ששתי שורות ייכנסו בקוביה
+function shortDate(date: string) {
+  return formatDate(date).replace(/\/\d{2}(\d{2})$/, '/$1');
 }
 
 // מצב לפי תאריך
@@ -277,19 +289,40 @@ export function VehicleFleetCard({
         ) : (
           <View style={styles.health}>
             {health.rows.map((row, i) => (
-              <View key={row.label} style={[styles.healthCell, i > 0 && styles.healthDivider]} accessible accessibilityLabel={`${row.label}: ${row.value}, ${row.note}`}>
+              <View key={row.label} style={[styles.healthCell, i > 0 && styles.healthDivider]} accessible accessibilityLabel={row.parts ? `${row.label}: ${row.parts.map((p) => `${p.label} ${p.value}`).join(', ')}` : `${row.label}: ${row.value}, ${row.note}`}>
                 <DKText variant="micro" color={DK.muted}>
                   {row.label}
                 </DKText>
-                <DKText variant="number" numberOfLines={1} adjustsFontSizeToFit style={styles.healthValue}>
-                  {row.value}
-                </DKText>
-                <DKText variant="micro" color={row.status === 'ok' || row.status === 'missing' ? DK.muted : STATUS[row.status].fg} numberOfLines={1}>
-                  {row.note}
-                </DKText>
-                <View style={styles.track}>
-                  <View style={[styles.trackFill, { width: `${Math.round(row.progress * 100)}%`, backgroundColor: STATUS[row.status].fill }]} />
-                </View>
+                {row.parts ? (
+                  // Mandatory and comprehensive share the cell: two short lines with their gauges fit the height of value, note and gauge.
+                  row.parts.map((part) => (
+                    <View key={part.label}>
+                      <View style={styles.partLine}>
+                        <DKText variant="micro" color={DK.inkSoft} numberOfLines={1}>
+                          {part.label}
+                        </DKText>
+                        <DKText variant="micro" color={part.status === 'ok' || part.status === 'missing' ? DK.ink : STATUS[part.status].fg} numberOfLines={1} ltr={part.status !== 'missing'} style={styles.flexShrink}>
+                          {part.value}
+                        </DKText>
+                      </View>
+                      <View style={[styles.track, styles.partTrack]}>
+                        <View style={[styles.trackFill, { width: `${Math.round(part.progress * 100)}%`, backgroundColor: STATUS[part.status].fill }]} />
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <>
+                    <DKText variant="number" numberOfLines={1} adjustsFontSizeToFit style={styles.healthValue}>
+                      {row.value}
+                    </DKText>
+                    <DKText variant="micro" color={row.status === 'ok' || row.status === 'missing' ? DK.muted : STATUS[row.status].fg} numberOfLines={1}>
+                      {row.note}
+                    </DKText>
+                    <View style={styles.track}>
+                      <View style={[styles.trackFill, { width: `${Math.round(row.progress * 100)}%`, backgroundColor: STATUS[row.status].fill }]} />
+                    </View>
+                  </>
+                )}
               </View>
             ))}
           </View>
@@ -341,5 +374,8 @@ const styles = StyleSheet.create({
   healthValue: { fontSize: 14.5, lineHeight: 20 },
   track: { height: 4, borderRadius: 2, backgroundColor: '#E3E8EF', overflow: 'hidden', marginTop: 4, flexDirection: 'row-reverse' },
   trackFill: { height: '100%', borderRadius: 2 },
+  // שורת חובה/מקיף בקוביית הביטוח
+  partLine: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 4 },
+  partTrack: { marginTop: 3 },
   restore: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, borderRadius: 16, backgroundColor: DK.accentSoft },
 });

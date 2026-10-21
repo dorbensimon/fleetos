@@ -98,8 +98,8 @@ export function SafetyInspectionsDesktopView({
   return (
     <ScrollView style={pageStyles.root} contentContainerStyle={pageStyles.content}>
       <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
-        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
-        <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+        <View style={[pageStyles.heroGlow, pageStyles.heroGlowBlue, { pointerEvents: 'none' }]} />
+        <View style={[pageStyles.heroGlow, pageStyles.heroGlowCyan, { pointerEvents: 'none' }]} />
         <View style={styles.heroIcon}>
           <Ionicons name="shield-checkmark" size={22} color="#FFFFFF" />
         </View>

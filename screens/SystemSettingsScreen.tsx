@@ -41,8 +41,8 @@ export default function SystemSettingsScreen({ navigation }: Props) {
         <ScrollView style={pageStyles.root} contentContainerStyle={pageStyles.content}>
           {/* The night header shared with the other desktop pages. */}
           <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
-            <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
-            <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+            <View style={[pageStyles.heroGlow, pageStyles.heroGlowBlue, { pointerEvents: 'none' }]} />
+            <View style={[pageStyles.heroGlow, pageStyles.heroGlowCyan, { pointerEvents: 'none' }]} />
             <View style={ds.heroIcon}>
               <Ionicons name="settings" size={22} color="#FFFFFF" />
             </View>

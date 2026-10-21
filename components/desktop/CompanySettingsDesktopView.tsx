@@ -496,7 +496,7 @@ function SectionNav({
 
       <View style={styles.navCard}>
       <View style={styles.navList}>
-        <Animated.View pointerEvents="none" style={[styles.navPlatter, { transform: [{ translateY: y }] }]} />
+        <Animated.View style={[styles.navPlatter, { transform: [{ translateY: y }] }, { pointerEvents: 'none' }]} />
         {SECTIONS.map((s) => {
           const selected = s.key === current;
           const errorCount = sectionErrorCount(errors, s.key);
@@ -727,10 +727,9 @@ function SaveCapsule({
   const scale = reduce ? 1 : show.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] });
 
   return (
-    <View pointerEvents="box-none" style={styles.capsuleDock}>
+    <View style={[styles.capsuleDock, { pointerEvents: 'box-none' }]}>
       <Animated.View
-        pointerEvents={visible ? 'auto' : 'none'}
-        style={[styles.capsule, { opacity: show, transform: [{ translateY }, { scale }] }]}
+        style={[styles.capsule, { opacity: show, transform: [{ translateY }, { scale }] }, { pointerEvents: visible ? 'auto' : 'none' }]}
         accessibilityLiveRegion="polite"
       >
         <View style={styles.capsuleStatus}>
