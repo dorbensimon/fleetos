@@ -15,13 +15,19 @@ const GAP = 14; // between the highlight and the bubble
 const BUBBLE_W = 340;
 const EDGE = 16;
 
+// A screen left behind may stay mounted and hidden; take the copy that is actually visible
+function visibleTarget(id: string): HTMLElement | null {
+  const all = Array.from(document.querySelectorAll<HTMLElement>(`[id="${id}"]`));
+  return all.find((el) => el.getClientRects().length > 0) ?? null;
+}
+
 /**
  * A light walkthrough of one page. Each step dims the page, lights up the
  * element it talks about and slides the bubble next to it. Steps whose
  * element is not on the page right now are skipped.
  */
 export function PageTour({ steps, onClose }: { steps: TourStep[]; onClose: () => void }) {
-  const [found] = useState(() => steps.filter((s) => document.getElementById(s.target)));
+  const [found] = useState(() => steps.filter((s) => visibleTarget(s.target)));
   const [i, setI] = useState(0);
   const [box, setBox] = useState<Box | null>(null);
   const [view, setView] = useState({ w: window.innerWidth, h: window.innerHeight });
@@ -33,13 +39,13 @@ export function PageTour({ steps, onClose }: { steps: TourStep[]; onClose: () =>
   const last = i === found.length - 1;
 
   const measure = useCallback(() => {
-    const r = document.getElementById(step?.target ?? '')?.getBoundingClientRect();
+    const r = visibleTarget(step?.target ?? '')?.getBoundingClientRect();
     if (r) setBox({ top: r.top, left: r.left, width: r.width, height: r.height });
     setView({ w: window.innerWidth, h: window.innerHeight });
   }, [step]);
 
   useEffect(() => {
-    document.getElementById(step?.target ?? '')?.scrollIntoView({ block: 'center' });
+    visibleTarget(step?.target ?? '')?.scrollIntoView({ block: 'center' });
     measure();
     const later = setTimeout(measure, 120);
     window.addEventListener('resize', measure);
