@@ -111,6 +111,8 @@ export function VehicleFormDesktopView({
   saving,
   ctaLabel,
   remainingText,
+  licenseFileName,
+  onChooseLicenseFile,
   onSave,
 }: {
   isEdit: boolean;
@@ -134,6 +136,9 @@ export function VehicleFormDesktopView({
   saving: boolean;
   ctaLabel: string;
   remainingText: string;
+  /** Create only: the chosen vehicle-license photo, required before the vehicle can be created. */
+  licenseFileName: string | null;
+  onChooseLicenseFile: () => void;
   onSave: () => void;
 }) {
   const { scrollRef, track, jump } = useSectionJump<StepKey>();
@@ -304,14 +309,31 @@ export function VehicleFormDesktopView({
               hasError={!!errors.road_registration_date}
             />
           </FormCell>
-          <FormCell label={t('vehicle.licenseExpiry')} hint={t('vehicle.licenseExpiryHint')}>
-            <DesktopDateField
-              large
-              value={form.vehicle_license_expiry || null}
-              onChange={(iso) => set('vehicle_license_expiry', iso ?? '')}
-              placeholder={t('date.chooseDateAction')}
-            />
-          </FormCell>
+          {!isEdit && (
+            <>
+              <FormCell label={t('vehicle.licenseExpiry')} required error={errors.vehicle_license_expiry} hint={t('vehicle.licenseExpiryHint')}>
+                <DesktopDateField
+                  large
+                  value={form.vehicle_license_expiry || null}
+                  onChange={(iso) => set('vehicle_license_expiry', iso ?? '')}
+                  placeholder={t('date.chooseDateAction')}
+                  hasError={!!errors.vehicle_license_expiry}
+                />
+              </FormCell>
+              <FormCell label={t('vehicle.licensePhoto')} required error={errors.license_file ? t('vehicle.licensePhotoRequired') : undefined} hint={t('vehicle.licensePhotoHint')}>
+                <HoverPressable
+                  style={styles.lookup}
+                  hoverStyle={styles.lookupHover}
+                  pressMotionStyle={styles.lookupPress}
+                  onPress={onChooseLicenseFile}
+                  accessibilityLabel={t('vehicle.licensePhotoChoose')}
+                >
+                  <Ionicons name={licenseFileName ? 'document-attach-outline' : 'cloud-upload-outline'} size={18} color={DESKTOP_COLORS.brand} />
+                  <DText weight="bold" style={styles.lookupTitle} numberOfLines={1}>{licenseFileName ?? t('vehicle.licensePhotoChoose')}</DText>
+                </HoverPressable>
+              </FormCell>
+            </>
+          )}
           <FormCell label={t('vehicle.vin')} error={errors.vin} hint={t('vehicle.vinHintShort')}>
             <DesktopInput
               large

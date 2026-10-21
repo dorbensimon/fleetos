@@ -20,6 +20,8 @@ import {
   complianceBadgeLabel,
   complianceBadgeState,
   complianceTargetDate,
+  documentDrivenDates,
+  governingDocument,
   groupByCategory,
 } from '../lib/compliance';
 import { getDocumentUrl, listDocuments, uploadDocument, type PickedFile } from '../lib/documents';
@@ -59,12 +61,6 @@ const complianceFolderColor = (itemType: string) => ({
   vehicle_license: '#0088CC', operating_license: '#5E5CE6', insurance_mandatory: '#34C759',
   insurance_comprehensive: '#0A7FD0', annual_test: '#FF9500',
 }[itemType] ?? '#8E8E93');
-// המסמך האחרון שהועלה לתיקייה
-/** The outer folder tile always reflects the expiry of its newest uploaded document. */
-const latestDocument = (docs: DocumentRow[]) => docs.reduce<DocumentRow | null>(
-  (latest, doc) => (!latest || doc.created_at > latest.created_at ? doc : latest),
-  null
-);
 
 /**
  * The grouped compliance + documents block used by both the vehicle
@@ -140,31 +136,24 @@ export function ComplianceSection({
   }, [ownerType, ownerId]);
 
   /**
-   * The mandatory-insurance badge is read from `insurance_mandatory.expiry_date`
-   * all over the app (fleet cards, dashboard, reports, notifications) — so
-   * that one field has to always reflect the newest uploaded policy document,
-   * never a manual edit left stale after a renewal was uploaded (or removed).
+   * A dated folder's expiry is read all over the app (fleet cards, dashboard,
+   * reports, notifications), so it must always match the folder's documents:
+   * the latest entered expiry wins, and the date goes with the last document.
    */
-  const syncMandatoryInsuranceDate = useCallback(
-    async (documentRows: DocumentRow[], complianceRows: ComplianceItem[]) => {
-      const def = complianceCatalog(ownerType).find((d) => d.itemType === 'insurance_mandatory');
-      if (!def) return;
-      const folderDocs = documentRows.filter((d) => d.title === def.storedTitle);
-      const latestDoc = folderDocs.reduce<DocumentRow | null>(
-        (latest, d) => (!latest || d.created_at > latest.created_at ? d : latest),
-        null
-      );
-      const nextExpiry = latestDoc?.expiry_date ?? null;
-      const currentRow = complianceRows.find((c) => c.item_type === 'insurance_mandatory');
-      if (nextExpiry === (currentRow?.expiry_date ?? null)) return;
+  const syncDocumentDates = useCallback(
+    async (def: ComplianceItemDef, documentRows: DocumentRow[], complianceRows: ComplianceItem[]) => {
+      if (!def.requiresExpiryOnUpload) return;
+      const currentRow = complianceRows.find((c) => c.item_type === def.itemType);
+      const next = documentDrivenDates(documentRows.filter((d) => d.title === def.storedTitle), currentRow);
+      if (next.expiryDate === (currentRow?.expiry_date ?? null) && next.lastDate === (currentRow?.last_date ?? null)) return;
       await upsertCompliance({
         companyId,
         ownerType,
         ownerId,
         category: def.category,
         itemType: def.itemType,
-        lastDate: currentRow?.last_date ?? null,
-        expiryDate: nextExpiry,
+        lastDate: next.lastDate,
+        expiryDate: next.expiryDate,
       });
       await load();
     },
@@ -278,23 +267,7 @@ export function ComplianceSection({
           expiryDate: uploadExpiryDate,
         });
         const { complianceRows, documentRows } = await load();
-        if (requiresExpiryOnUpload) {
-          if (def.itemType !== 'insurance_mandatory') {
-            await upsertCompliance({
-              companyId,
-              ownerType,
-              ownerId,
-              category: def.category,
-              itemType: def.itemType,
-              lastDate: items.get(def.itemType)?.last_date ?? null,
-              expiryDate: uploadExpiryDate,
-            });
-            await load();
-          }
-        }
-        if (def.itemType === 'insurance_mandatory') {
-          await syncMandatoryInsuranceDate(documentRows, complianceRows);
-        }
+        await syncDocumentDates(def, documentRows, complianceRows);
         if (requiresExpiryOnUpload) setDrafts((prev) => { const next = { ...prev }; delete next[def.itemType]; return next; });
         return true;
       } catch (err: any) {
@@ -447,7 +420,7 @@ export function ComplianceSection({
             onDelete={(item) =>
               confirmDeleteDocument(item, async () => {
                 const { complianceRows, documentRows } = await load();
-                if (def.itemType === 'insurance_mandatory') await syncMandatoryInsuranceDate(documentRows, complianceRows);
+                await syncDocumentDates(def, documentRows, complianceRows);
               })
             }
           />
@@ -492,7 +465,7 @@ export function ComplianceSection({
               onClose={() => setExpanded(null)}
               onDeleted={async () => {
                 const { complianceRows, documentRows } = await load();
-                if (openDef.itemType === 'insurance_mandatory') await syncMandatoryInsuranceDate(documentRows, complianceRows);
+                await syncDocumentDates(openDef, documentRows, complianceRows);
               }}
               upload={
                 <FolderUploadBar
@@ -529,7 +502,7 @@ export function ComplianceSection({
             <View style={styles.folderGrid}>
               {group.items.map((def) => {
                 const itemDocs = docs.filter((d) => d.title === def.storedTitle);
-                const latestDoc = latestDocument(itemDocs);
+                const latestDoc = governingDocument(itemDocs);
                 const latestExpiry = latestDoc?.expiry_date ?? null;
                 const thumbnail = thumbnails[def.storedTitle];
 
@@ -552,8 +525,9 @@ export function ComplianceSection({
               {group.items.map((def, index) => {
                 const isOpen = expanded === def.itemType;
                 const itemDocs = docs.filter((d) => d.title === def.storedTitle);
-                const latestDoc = latestDocument(itemDocs);
-                const latestExpiry = latestDoc ? latestDoc.expiry_date ?? null : items.get(def.itemType)?.expiry_date ?? null;
+                const latestDoc = governingDocument(itemDocs);
+                // Dated folders show only what their documents say; the rest keep their manual date.
+                const latestExpiry = latestDoc ? latestDoc.expiry_date ?? null : def.requiresExpiryOnUpload ? null : items.get(def.itemType)?.expiry_date ?? null;
                 return (
                   <React.Fragment key={def.itemType}>
                   {/* Lights up when a task or notification lands on this folder. */}
@@ -621,7 +595,7 @@ export function ComplianceSection({
             onClose={() => setExpanded(null)}
             onDeleted={async () => {
               const { complianceRows, documentRows } = await load();
-              if (openDef.itemType === 'insurance_mandatory') await syncMandatoryInsuranceDate(documentRows, complianceRows);
+              await syncDocumentDates(openDef, documentRows, complianceRows);
             }}
             footer={
               <View style={styles.desktopUploadRow}>

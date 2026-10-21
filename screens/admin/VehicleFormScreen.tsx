@@ -13,8 +13,10 @@ import { VehicleDriversEditor } from '../../components/VehicleDriversEditor';
 import { COLORS, parseDateValue } from '../../lib/theme';
 import { isStaleDepartmentError } from '../../lib/driverFields';
 import { useCompany } from '../../lib/CompanyContext';
-import { getVehicle, createVehicle, updateVehicle, listVehicles, listDepartments, listDrivers, listActiveVehicleDrivers, listCompliance, upsertCompliance, Vehicle, VehicleStatus, VehicleType, AcquisitionType, VehicleDriverWithProfile } from '../../lib/adminApi';
-import { VEHICLE_STATUS_LABELS, ACQUISITION_TYPE_LABELS } from '../../lib/compliance';
+import { getVehicle, createVehicle, updateVehicle, listVehicles, listDepartments, listDrivers, listActiveVehicleDrivers, upsertCompliance, Vehicle, VehicleStatus, VehicleType, AcquisitionType, VehicleDriverWithProfile } from '../../lib/adminApi';
+import { VEHICLE_STATUS_LABELS, ACQUISITION_TYPE_LABELS, findComplianceDef } from '../../lib/compliance';
+import { uploadDocument, type PickedFile } from '../../lib/documents';
+import { chooseDocumentSource, pickDocumentSource } from '../../lib/documentActions';
 import { formatPlate } from '../../lib/plate';
 import { RootStackParamList } from '../../navigation/types';
 import { lookupVehicleRegistry, VehicleRegistryDetails } from '../../lib/vehicleRegistry';
@@ -164,6 +166,8 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
   const [saving, setSaving] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupMessage, setLookupMessage] = useState<string | null>(null);
+  // A new vehicle needs its license photo; the expiry is saved with that document.
+  const [licenseFile, setLicenseFile] = useState<PickedFile | null>(null);
 
 
   const years = useMemo(() => yearOptions(), []);
@@ -179,10 +183,9 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     setDrivers(drvs.map((driver) => ({ value: driver.id, label: driver.full_name ?? t('common.unnamed') })));
 
     if (vehicleId) {
-      const [vehicle, assignments, compliance] = await Promise.all([
+      const [vehicle, assignments] = await Promise.all([
         getVehicle(vehicleId),
         listActiveVehicleDrivers(vehicleId),
-        listCompliance('vehicle', vehicleId),
       ]);
       setVehicleDrivers(assignments);
       if (vehicle) {
@@ -198,7 +201,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           production_year: vehicle.production_year ? String(vehicle.production_year) : '',
           production_month: vehicle.production_month ? String(vehicle.production_month).padStart(2, '0') : '',
           road_registration_date: vehicle.road_registration_date ?? '',
-          vehicle_license_expiry: compliance.find((item) => item.item_type === 'vehicle_license')?.expiry_date ?? '',
+          vehicle_license_expiry: '',
           acquisition_type: vehicle.acquisition_type,
           usage_type: vehicle.usage_type ?? '',
           status: vehicle.status,
@@ -279,6 +282,10 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     if (!companyId) return;
 
     const nextErrors = validateVehicleForm(form);
+    if (!isEdit) {
+      if (!form.vehicle_license_expiry) nextErrors.vehicle_license_expiry = t('validation.required');
+      if (!licenseFile) nextErrors.license_file = t('validation.required');
+    }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -326,18 +333,30 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         savedVehicleId = created.id;
       }
 
-      if (form.vehicle_license_expiry) {
+      // Only a new vehicle gets here with a license photo; later renewals are
+      // uploaded into the vehicle-license folder, which keeps the date in sync.
+      const licenseDef = findComplianceDef('vehicle', 'vehicle_license');
+      if (!isEdit && licenseFile && licenseDef) {
         try {
+          await uploadDocument({
+            companyId,
+            ownerType: 'vehicle',
+            ownerId: savedVehicleId,
+            category: licenseDef.category,
+            title: licenseDef.storedTitle,
+            file: licenseFile,
+            expiryDate: form.vehicle_license_expiry,
+          });
           await upsertCompliance({
             companyId,
             ownerType: 'vehicle',
             ownerId: savedVehicleId,
-            category: 'licensing',
-            itemType: 'vehicle_license',
+            category: licenseDef.category,
+            itemType: licenseDef.itemType,
             expiryDate: form.vehicle_license_expiry,
           });
-        } catch {
-          showToast(t('vehicle.savedExpiryNot'));
+        } catch (err: any) {
+          showAlert(t('vehicle.licenseUploadFailed'), errorMessage(err, t('common.tryAgain')));
           navigation.goBack();
           return;
         }
@@ -379,10 +398,26 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
     );
   }
 
-  const filledCount = REQUIRED_FIELDS.filter((field) => String(form[field] ?? '').trim()).length;
-  const progress = filledCount / REQUIRED_FIELDS.length;
-  const remainingCount = REQUIRED_FIELDS.length - filledCount;
-  const canSubmit = filledCount === REQUIRED_FIELDS.length;
+  // Creating also needs the license expiry and its photo.
+  const requiredCount = REQUIRED_FIELDS.length + (isEdit ? 0 : 2);
+  const filledCount =
+    REQUIRED_FIELDS.filter((field) => String(form[field] ?? '').trim()).length +
+    (isEdit ? 0 : Number(!!form.vehicle_license_expiry) + Number(!!licenseFile));
+  const progress = filledCount / requiredCount;
+  const remainingCount = requiredCount - filledCount;
+  const canSubmit = filledCount === requiredCount;
+  const chooseLicenseFile = () =>
+    chooseDocumentSource(t('vehicle.licensePhoto'), async (source) => {
+      try {
+        const file = await pickDocumentSource(source);
+        if (file) {
+          setLicenseFile(file);
+          setErrors((current) => ({ ...current, license_file: '' }));
+        }
+      } catch (err: any) {
+        showAlert(t('common.uploadFailedShort'), errorMessage(err, t('common.tryAgain')));
+      }
+    });
   const screenTitle = isEdit ? t('vehicle.edit') : t('vehicle.new');
   const ctaLabel = isEdit ? t('common.saveChanges') : t('vehicle.create');
   const selectedType = VEHICLE_TYPE_OPTIONS.find((option) => option.value === form.vehicle_type);
@@ -422,6 +457,8 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           saving={saving}
           ctaLabel={ctaLabel}
           remainingText={remainingText}
+          licenseFileName={licenseFile?.name ?? null}
+          onChooseLicenseFile={chooseLicenseFile}
           onSave={() => void save()}
         />
       </DesktopShell>
@@ -450,12 +487,12 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
               </DKText>
             </View>
           </View>
-          <View style={styles.progress} accessible accessibilityLabel={t('form.requiredFilled', { filledCount, length: REQUIRED_FIELDS.length })}>
+          <View style={styles.progress} accessible accessibilityLabel={t('form.requiredFilled', { filledCount, length: requiredCount })}>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${Math.max(4, progress * 100)}%` }]} />
             </View>
             <DKText variant="micro" color={DK.onNightMuted} ltr>
-              {`${filledCount}/${REQUIRED_FIELDS.length}`}
+              {`${filledCount}/${requiredCount}`}
             </DKText>
           </View>
         </View>
@@ -543,9 +580,15 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             }
           />
           <EditField label={t('vehicle.onRoadDate')} error={errors.road_registration_date} editor={<DateField value={form.road_registration_date || null} onChange={(value) => set('road_registration_date', value ?? '')} placeholder={t('date.chooseDateAction')} hasError={!!errors.road_registration_date} />} />
-          <EditField label={t('vehicle.licenseExpiryFull')} editor={<DateField value={form.vehicle_license_expiry || null} onChange={(value) => set('vehicle_license_expiry', value ?? '')} placeholder={t('date.chooseDateAction')} />} hint={t('vehicle.reminderBeforeExpiry')} />
           <EditField label={t('vehicle.currentMileage')} value={formatKm(form.odometer)} onChangeText={(value) => set('odometer', value.replace(/\D/g, ''))} placeholder={t('common.optionalShort')} keyboardType="number-pad" ltr />
         </KitSection>
+        {!isEdit && (
+          <KitSection title={t('folder.vehicleLicense')}>
+            <EditField first required label={t('vehicle.licenseExpiryFull')} error={errors.vehicle_license_expiry} editor={<DateField value={form.vehicle_license_expiry || null} onChange={(value) => set('vehicle_license_expiry', value ?? '')} placeholder={t('date.chooseDateAction')} hasError={!!errors.vehicle_license_expiry} />} hint={t('vehicle.reminderBeforeExpiry')} />
+            <ActionRow icon={licenseFile ? 'document-attach-outline' : 'camera-outline'} label={licenseFile?.name ?? t('vehicle.licensePhotoChoose')} hint={t('vehicle.licensePhotoHint')} onPress={chooseLicenseFile} />
+            {!!errors.license_file && <DKText variant="caption" color={STATUS.expired.fg} style={styles.typeError}>{t('vehicle.licensePhotoRequired')}</DKText>}
+          </KitSection>
+        )}
       </Reveal>
 
       <Reveal index={3}>

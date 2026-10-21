@@ -3016,7 +3016,12 @@
     "vinInvalidShort": "The VIN must have 17 characters without I/O/Q",
     "whoDrives": "Who drives this vehicle.",
     "yearLabel": "Year {{production_year}}",
-    "yearNotFuture": "The production year can't be in the future"
+    "yearNotFuture": "The production year can't be in the future",
+    "licensePhoto": "Vehicle license photo",
+    "licensePhotoChoose": "Choose vehicle license photo",
+    "licensePhotoHint": "Required to create a vehicle. The expiry is saved with the document",
+    "licensePhotoRequired": "Attach a photo of the vehicle license",
+    "licenseUploadFailed": "The vehicle was created, but the license photo wasn't uploaded. You can upload it in the vehicle license folder."
   },
   "viewer": {
     "downloadDocument": "Download the document",

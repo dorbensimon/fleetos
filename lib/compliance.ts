@@ -46,6 +46,36 @@ export interface ComplianceItemDef {
   validityDays?: number;
 }
 
+// המסמך שקובע את התוקף של התיקייה
+/**
+ * A dated folder works like a stack ordered by the expiry entered on each
+ * document: the latest expiry is the current one, whatever order the files
+ * were uploaded in. Undated files rank below dated ones, newest first.
+ */
+export function governingDocument<T extends { expiry_date: string | null; created_at: string }>(docs: T[]): T | null {
+  return docs.reduce<T | null>((best, doc) => {
+    if (!best) return doc;
+    const a = doc.expiry_date ?? '';
+    const b = best.expiry_date ?? '';
+    if (a !== b) return a > b ? doc : best;
+    return doc.created_at > best.created_at ? doc : best;
+  }, null);
+}
+
+// התאריכים שהתיקייה צריכה לשמור לפי המסמכים שבה
+/**
+ * Dated vehicle folders take their dates from their documents only: no
+ * document, no date. The last-test date has no field of its own, so it is
+ * kept while documents remain and cleared with the last one.
+ */
+export function documentDrivenDates<T extends { expiry_date: string | null; created_at: string }>(
+  folderDocs: T[],
+  current: Pick<ComplianceItem, 'last_date'> | null | undefined
+): { expiryDate: string | null; lastDate: string | null } {
+  if (!folderDocs.length) return { expiryDate: null, lastDate: null };
+  return { expiryDate: governingDocument(folderDocs)?.expiry_date ?? null, lastDate: current?.last_date ?? null };
+}
+
 // יום אחד במילישניות
 const DAY_MS = 86_400_000;
 

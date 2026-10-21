@@ -4,9 +4,9 @@ import type { Company } from './supabase';
 import type { DriverRow } from './adminApi';
 import { listSigningTemplates } from './docuseal';
 import { formatIsoDay, meetingState, readForm, todayIso, type MeetingState } from './checklistForms';
-import { daysBetween, dueText, isDueSoon, loadMeetingPlan, type PlanRow } from './meetingPlan';
+import { daysBetween, isDueSoon, loadMeetingPlan, type PlanRow } from './meetingPlan';
 import { formatPhone } from './phone';
-import { buildReportDocument, emptyState, esc, printOrShareReport, statusTag } from './reportTemplate';
+import { buildTableReport, printOrShareReport, ReportCell } from './reportTemplate';
 
 /**
  * "ייצוא דוחות" → "טפסים לנהגים": reports on ONE "רשימת סעיפים" form at a
@@ -160,20 +160,6 @@ const OPEN_NOTE: Record<Stuck, string> = {
   requires_attention: 'לא הושלם — ראו דוח ״לא הושלמו״',
 };
 
-// תאי המצב בטבלה
-function stuckCells(meeting: ReportMeeting, state: MeetingState): string {
-  const status = meeting.request?.status;
-  if (state === 'draft') return `<td>${statusTag('הקצין עוד לא חתם', 'outline')}</td><td>להמשיך את הטיוטה מתיק הנהג</td>`;
-  if (state === 'awaiting_driver') return `<td>${statusTag('ממתין לחתימת הנהג', 'outline')}</td><td>להזכיר לנהג לחתום באפליקציה</td>`;
-  const label = status === 'declined' ? 'הנהג סירב לחתום' : 'השליחה לנהג נכשלה';
-  return `<td>${statusTag(label, 'accent2')}</td><td>לבטל מתיק הנהג ולמלא מחדש</td>`;
-}
-
-// תאי הנהג בטבלה
-function driverCells(d: DriverRow | undefined, fallbackName: string): string {
-  return `<td>${esc(d?.full_name ?? fallbackName) || '—'}</td><td class="ltr">${esc(d?.national_id) || '—'}</td>`;
-}
-
 // תדירות הטופס בעברית
 /** The report is always in Hebrew, whatever the app language. */
 function frequencyHe(months: number): string {
@@ -190,72 +176,126 @@ export function formReportTitle(form: ReportForm, category: FormReportCategory):
   return `${form.title} — ${label}`;
 }
 
+// תא של מועד: באיחור, היום או בעוד כמה ימים
+function dueCell(nextDue: string, today: string): ReportCell {
+  const days = daysBetween(today, nextDue);
+  const text = formatIsoDay(nextDue);
+  if (days < 0) return { text, ltr: true, tone: 'bad', sub: `באיחור של ${-days} ימים` };
+  return { text, ltr: true, sub: days === 0 ? 'היום' : days === 1 ? 'מחר' : `בעוד ${days} ימים` };
+}
+
+// מה לעשות עם מילוי תקוע
+const STUCK_ACTION: Record<Stuck, string> = {
+  awaiting_driver: 'להזכיר לנהג לחתום באפליקציה',
+  draft: 'להמשיך את הטיוטה מתיק הנהג',
+  requires_attention: 'לבטל מתיק הנהג ולמלא מחדש',
+};
+
+const FILLS = { one: 'מילוי אחד', many: 'מילויים' };
+const DRIVERS = { one: 'נהג אחד', many: 'נהגים' };
+
 // בונה את ה-HTML של הדוח
 function buildHtml(company: Company, form: ReportForm, category: FormReportCategory, drivers: DriverRow[], data: FormReportData, pick: FormReportPick, today: string): string {
   const byId = new Map(drivers.map((d) => [d.id, d]));
   const plan = new Map(data.plan.map((row) => [row.driverId, row]));
-  const note = (driverId: string) => {
+  const note = (driverId: string): ReportCell => {
     const state = pick.open.get(driverId);
-    return state ? esc(OPEN_NOTE[state]) : '—';
+    return { text: state ? OPEN_NOTE[state] : null };
   };
-  let head = '';
-  let rows = '';
+  const driverCells = (d: DriverRow | undefined, fallbackName: string): ReportCell[] => [
+    { text: d?.full_name ?? fallbackName },
+    { text: d?.national_id, ltr: true },
+  ];
+  const common = { company: { name: company.name, businessId: company.business_id }, title: formReportTitle(form, category) };
+  const frequency = frequencyHe(form.repeatMonths);
 
   if (category === 'filled') {
-    head = `<th>שם הנהג</th><th>ת.ז</th><th>תאריך המילוי</th><th>מילא מטעם החברה</th>${form.repeatMonths > 0 ? '<th>המועד הבא</th>' : ''}`;
-    rows = pick.meetings.map(({ meeting }) => {
-      const next = plan.get(meeting.driver_id);
-      return `
-        <tr>
-          ${driverCells(byId.get(meeting.driver_id), '')}
-          <td>${esc(formatIsoDay(meeting.meeting_date))}</td>
-          <td>${esc(meeting.officer_name) || '—'}</td>
-          ${form.repeatMonths > 0 ? `<td>${next ? esc(formatIsoDay(next.nextDue)) : '—'}</td>` : ''}
-        </tr>`;
-    }).join('');
-  } else if (category === 'unfinished') {
-    head = '<th>שם הנהג</th><th>ת.ז</th><th>תאריך</th><th>מצב</th><th>מה לעשות</th>';
-    rows = pick.meetings.map(({ meeting, state }) => `
-        <tr>
-          ${driverCells(byId.get(meeting.driver_id), '')}
-          <td>${esc(formatIsoDay(meeting.meeting_date))}</td>
-          ${stuckCells(meeting, state)}
-        </tr>`).join('');
-  } else if (category === 'due') {
-    head = '<th>שם הנהג</th><th>ת.ז</th><th>מילוי אחרון</th><th>המועד</th><th>מצב</th><th>הערה</th>';
-    rows = pick.plan.map((row) => `
-        <tr>
-          ${driverCells(byId.get(row.driverId), row.driverName)}
-          <td>${row.lastMeeting ? esc(formatIsoDay(row.lastMeeting)) : 'פעם ראשונה'}</td>
-          <td>${esc(formatIsoDay(row.nextDue))}</td>
-          <td>${statusTag(dueText(row.nextDue, today), daysBetween(today, row.nextDue) < 0 ? 'accent2' : 'outline')}</td>
-          <td>${note(row.driverId)}</td>
-        </tr>`).join('');
-  } else {
-    head = '<th>שם הנהג</th><th>ת.ז</th><th>טלפון</th><th>תחילת עבודה</th><th>הערה</th>';
-    rows = pick.drivers.map((d) => `
-        <tr>
-          ${driverCells(d, '')}
-          <td class="ltr">${esc(d.phone ? formatPhone(d.phone) : null) || '—'}</td>
-          <td>${d.employment_start_date ? esc(formatIsoDay(d.employment_start_date)) : '—'}</td>
-          <td>${note(d.id)}</td>
-        </tr>`).join('');
+    const repeats = form.repeatMonths > 0;
+    return buildTableReport({
+      ...common,
+      unit: FILLS,
+      columns: repeats
+        ? [{ label: 'שם הנהג', width: 22 }, { label: 'ת.ז', width: 15 }, { label: 'תאריך המילוי', width: 18 }, { label: 'מילא מטעם החברה', width: 22 }, { label: 'המועד הבא', width: 23 }]
+        : [{ label: 'שם הנהג', width: 26 }, { label: 'ת.ז', width: 18 }, { label: 'מילא מטעם החברה', width: 30 }, { label: 'תאריך המילוי', width: 26 }],
+      sections: [{
+        title: '',
+        rows: pick.meetings.map(({ meeting }) => {
+          const date: ReportCell = { text: formatIsoDay(meeting.meeting_date), ltr: true };
+          const officer: ReportCell = { text: meeting.officer_name };
+          const next = plan.get(meeting.driver_id);
+          return repeats
+            ? [...driverCells(byId.get(meeting.driver_id), ''), date, officer, next ? dueCell(next.nextDue, today) : { text: null }]
+            : [...driverCells(byId.get(meeting.driver_id), ''), officer, date];
+        }),
+      }],
+      grandTitle: 'סה״כ מילויים',
+      note: repeats ? `${frequency}. מוצגים המילויים מהתקופה האחרונה.` : `${frequency}.`,
+      emptyText: 'אין מילויים של הטופס',
+    });
   }
 
-  const count = formReportCount(category, pick);
-  const bodyHtml = count === 0
-    ? emptyState('אין נהגים בקטגוריה זו')
-    : `<table class="table" dir="rtl"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
+  if (category === 'unfinished') {
+    const row = ({ meeting, state }: FormReportPick['meetings'][number]): ReportCell[] => [
+      ...driverCells(byId.get(meeting.driver_id), ''),
+      { text: formatIsoDay(meeting.meeting_date), ltr: true },
+      state === 'requires_attention'
+        ? { text: meeting.request?.status === 'declined' ? 'הנהג סירב לחתום' : 'השליחה לנהג נכשלה', tone: 'bad' }
+        : { text: state === 'draft' ? 'הקצין עוד לא חתם' : 'ממתין לחתימת הנהג' },
+      { text: STUCK_ACTION[state as Stuck] },
+    ];
+    const of = (state: Stuck) => pick.meetings.filter((m) => m.state === state).map(row);
+    return buildTableReport({
+      ...common,
+      unit: FILLS,
+      columns: [{ label: 'שם הנהג', width: 22 }, { label: 'ת.ז', width: 15 }, { label: 'תאריך', width: 14 }, { label: 'מצב', width: 20 }, { label: 'מה לעשות', width: 29 }],
+      sections: [
+        { title: 'סה״כ ממתינים לחתימת הנהג', rows: of('awaiting_driver') },
+        { title: 'סה״כ טיוטות פתוחות', rows: of('draft') },
+        { title: 'סה״כ סירבו או נכשלו', rows: of('requires_attention') },
+      ],
+      grandTitle: 'סה״כ מילויים שלא הושלמו',
+      note: 'מילויים שנפתחו ולא הגיעו לחתימה של שני הצדדים.',
+      emptyText: 'אין מילויים שלא הושלמו',
+    });
+  }
 
-  return buildReportDocument({
-    company: { name: company.name, businessId: company.business_id },
-    title: formReportTitle(form, category),
-    metaColumns: [
-      { label: 'קצין רכב', value: company.safety_officer_name ?? '' },
-      { label: 'קצין רכב נייד', value: company.safety_officer_phone ?? '', ltr: true },
-      { label: category === 'filled' || category === 'unfinished' ? 'סה״כ מילויים' : 'סה״כ נהגים', value: String(count), sub: frequencyHe(form.repeatMonths), big: true, pushEnd: true },
-    ],
-    bodyHtml,
+  if (category === 'due') {
+    const row = (r: PlanRow): ReportCell[] => [
+      ...driverCells(byId.get(r.driverId), r.driverName),
+      r.lastMeeting ? { text: formatIsoDay(r.lastMeeting), ltr: true } : { text: 'פעם ראשונה', tone: 'muted' },
+      note(r.driverId),
+      dueCell(r.nextDue, today),
+    ];
+    return buildTableReport({
+      ...common,
+      unit: DRIVERS,
+      columns: [{ label: 'שם הנהג', width: 22 }, { label: 'ת.ז', width: 15 }, { label: 'מילוי אחרון', width: 16 }, { label: 'הערה', width: 21 }, { label: 'המועד', width: 26 }],
+      sections: [
+        { title: 'סה״כ באיחור', rows: pick.plan.filter((r) => daysBetween(today, r.nextDue) < 0).map(row) },
+        { title: 'סה״כ בשבועיים הקרובים', rows: pick.plan.filter((r) => daysBetween(today, r.nextDue) >= 0).map(row) },
+      ],
+      grandTitle: 'סה״כ נהגים שצריכים למלא',
+      note: `${frequency}. נהגים שהמועד שלהם עבר או שיגיע בשבועיים הקרובים.`,
+      emptyText: 'אין נהגים שצריכים למלא עכשיו',
+    });
+  }
+
+  return buildTableReport({
+    ...common,
+    unit: DRIVERS,
+    columns: [{ label: 'שם הנהג', width: 22 }, { label: 'ת.ז', width: 15 }, { label: 'טלפון', width: 18 }, { label: 'תחילת עבודה', width: 18 }, { label: 'הערה', width: 27 }],
+    sections: [{
+      title: '',
+      rows: pick.drivers.map((d) => [
+        ...driverCells(d, ''),
+        { text: d.phone ? formatPhone(d.phone) : null, ltr: true },
+        { text: d.employment_start_date ? formatIsoDay(d.employment_start_date) : null, ltr: true },
+        note(d.id),
+      ]),
+    }],
+    grandTitle: 'סה״כ נהגים שלא מילאו',
+    note: 'נהגים שעוד אין להם מילוי חתום של הטופס.',
+    emptyText: 'כל הנהגים כבר מילאו את הטופס',
   });
 }
 

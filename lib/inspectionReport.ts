@@ -1,6 +1,6 @@
 // דוח בדיקות קצין בטיחות להורדה (PDF)
 import type { Company } from './supabase';
-import { daysBetween, dueText } from './meetingPlan';
+import { daysBetween } from './meetingPlan';
 import { formatPlate } from './plate';
 import {
   defectLines,
@@ -15,7 +15,10 @@ import {
   type InspectionPlanRow,
   type InspectionState,
 } from './inspections';
-import { buildReportDocument, emptyState, esc, printOrShareReport, statusTag } from './reportTemplate';
+import { buildTableReport, printOrShareReport, ReportCell } from './reportTemplate';
+import { listDepartments } from './adminApi/departments';
+import { listVehicles } from './adminApi/vehicles';
+import { VEHICLE_TYPE_LABELS } from './compliance';
 
 /**
  * "ייצוא דוחות" → vehicle safety inspections: what was checked in the last
@@ -38,7 +41,7 @@ export const INSPECTION_REPORT_CATEGORIES: { value: InspectionReportCategory; la
 // כותרת לכל סוג דוח
 const TITLES: Record<InspectionReportCategory, string> = {
   insp_quarter: 'דוח בדיקות קצין בטיחות ב־3 החודשים האחרונים',
-  insp_awaiting: 'דוח בדיקות קצין בטיחות שממתינות לחתימת הנהג',
+  insp_awaiting: 'דוח בדיקות שממתינות לחתימת הנהג',
   insp_defects: 'דוח ליקויים בבדיקות קצין הבטיחות',
   insp_due: 'דוח רכבים שצריכים בדיקת קצין בטיחות',
   insp_never: 'דוח רכבים שעוד לא עברו בדיקת קצין בטיחות',
@@ -95,108 +98,172 @@ export function selectInspectionReport(
   return { entries: [], plan: data.plan.filter((p) => p.firstInspection), defects: [] };
 }
 
-// תגית לכל מצב בדיקה
-const STATE_TAG: Partial<Record<InspectionState, [string, 'accent' | 'accent2' | 'outline']>> = {
-  completed: ['חתום', 'accent'],
-  closed: ['נסגר בלי חתימת נהג', 'outline'],
-  awaiting_driver: ['ממתין לנהג', 'outline'],
-  requires_attention: ['דורש טיפול', 'accent2'],
-};
-
-// תאי הרכב בטבלה
-function vehicleCells(plate: string | null | undefined, label: string | null | undefined): string {
-  return `<td class="ltr">${esc(plate ? formatPlate(plate) : null) || '—'}</td><td>${esc(label) || '—'}</td>`;
-}
-
 // שם הרכב בדוח
 function vehicleLabel(row: InspectionListRow): string {
   return [row.vehicle?.manufacturer, row.vehicle?.model].filter(Boolean).join(' ') || row.facts?.vehicle || '';
 }
 
-// בונה את ה-HTML של הדוח
-function buildHtml(company: Company, category: InspectionReportCategory, picked: ReturnType<typeof selectInspectionReport>, today: string): string {
-  let head = '';
-  let rows = '';
-  let count = 0;
-  let countLabel = 'סה״כ רכבים בדוח';
+// תא של מועד: באיחור, היום או בעוד כמה ימים
+function dueCell(nextDue: string, today: string): ReportCell {
+  const days = daysBetween(today, nextDue);
+  const text = formatIsoDay(nextDue);
+  if (days < 0) return { text, ltr: true, tone: 'bad', sub: `באיחור של ${-days} ימים` };
+  return { text, ltr: true, sub: days === 0 ? 'היום' : days === 1 ? 'מחר' : `בעוד ${days} ימים` };
+}
 
-  if (category === 'insp_quarter' || category === 'insp_awaiting') {
-    count = picked.entries.length;
-    countLabel = 'סה״כ בדיקות בדוח';
-    head = '<th>מספר רכב</th><th>רכב</th><th>תאריך הבדיקה</th><th>קצין הבטיחות</th><th>נהג</th><th>ליקויים</th><th>חתימת הנהג</th>';
-    rows = picked.entries.map(({ row, state }) => {
-      const tag = STATE_TAG[state];
-      return `
-        <tr>
-          ${vehicleCells(row.vehicle?.plate_number ?? row.facts?.plate, vehicleLabel(row))}
-          <td>${esc(formatIsoDay(row.inspection_date))}</td>
-          <td>${esc(row.officer_name) || '—'}</td>
-          <td>${esc(row.driver?.full_name ?? row.facts?.driverName) || '—'}</td>
-          <td>${row.defect_count > 0 ? statusTag(String(row.defect_count), 'accent2') : 'אין'}</td>
-          <td>${tag ? statusTag(tag[0], tag[1]) : '—'}</td>
-        </tr>`;
-    }).join('');
-  } else if (category === 'insp_defects') {
-    count = picked.defects.length;
-    countLabel = 'סה״כ ליקויים בדוח';
-    head = '<th>מספר רכב</th><th>רכב</th><th>תאריך הבדיקה</th><th>קצין הבטיחות</th><th>הליקוי</th>';
-    rows = picked.defects.map(({ row, text }) => `
-        <tr>
-          ${vehicleCells(row.vehicle?.plate_number ?? row.facts?.plate, vehicleLabel(row))}
-          <td>${esc(formatIsoDay(row.inspection_date))}</td>
-          <td>${esc(row.officer_name) || '—'}</td>
-          <td>${esc(text)}</td>
-        </tr>`).join('');
-  } else {
-    count = picked.plan.length;
-    head = category === 'insp_due'
-      ? '<th>מספר רכב</th><th>רכב</th><th>בדיקה אחרונה</th><th>המועד</th><th>מצב</th>'
-      : '<th>מספר רכב</th><th>רכב</th><th>המועד לבדיקה הראשונה</th>';
-    rows = picked.plan.map((p) => category === 'insp_due' ? `
-        <tr>
-          ${vehicleCells(p.plate, p.vehicleLabel)}
-          <td>${p.lastInspection ? esc(formatIsoDay(p.lastInspection)) : 'בדיקה ראשונה'}</td>
-          <td>${esc(formatIsoDay(p.nextDue))}</td>
-          <td>${statusTag(dueText(p.nextDue!, today), daysBetween(today, p.nextDue!) < 0 ? 'accent2' : 'outline')}</td>
-        </tr>` : `
-        <tr>
-          ${vehicleCells(p.plate, p.vehicleLabel)}
-          <td>${p.nextDue ? esc(formatIsoDay(p.nextDue)) : '—'}</td>
-        </tr>`).join('');
+type VehicleFacts = Map<string, { type: string; department: string | null }>;
+
+const VEHICLES = { one: 'רכב אחד', many: 'רכבים' };
+const INSPECTIONS = { one: 'בדיקה אחת', many: 'בדיקות' };
+
+// בונה את ה-HTML של הדוח
+function buildHtml(
+  company: Company,
+  category: InspectionReportCategory,
+  picked: ReturnType<typeof selectInspectionReport>,
+  today: string,
+  facts: VehicleFacts,
+): string {
+  const common = { company: { name: company.name, businessId: company.business_id }, title: TITLES[category] };
+  const plate = (value: string | null | undefined): ReportCell => ({ text: value ? formatPlate(value) : null, ltr: true });
+  const inspectionCells = (row: InspectionListRow): ReportCell[] => [
+    plate(row.vehicle?.plate_number ?? row.facts?.plate),
+    { text: vehicleLabel(row) },
+    { text: formatIsoDay(row.inspection_date), ltr: true },
+    { text: row.officer_name },
+    { text: row.driver?.full_name ?? row.facts?.driverName },
+  ];
+  const inspectionColumns = [
+    { label: 'מספר רישוי', width: 15 }, { label: 'יצרן ודגם', width: 20 }, { label: 'תאריך הבדיקה', width: 15 },
+    { label: 'קצין הבטיחות', width: 16 }, { label: 'נהג', width: 16 },
+  ];
+
+  if (category === 'insp_quarter') {
+    const row = ({ row: r }: Entry) => [...inspectionCells(r), r.defect_count > 0
+      ? { text: r.defect_count === 1 ? 'ליקוי אחד' : `${r.defect_count} ליקויים`, tone: 'bad' as const }
+      : { text: 'אין' }];
+    return buildTableReport({
+      ...common,
+      unit: INSPECTIONS,
+      columns: [...inspectionColumns, { label: 'ליקויים', width: 18 }],
+      sections: [
+        { title: 'סה״כ בדיקות עם ליקויים', rows: picked.entries.filter((e) => e.row.defect_count > 0).map(row) },
+        { title: 'סה״כ בדיקות תקינות', rows: picked.entries.filter((e) => e.row.defect_count === 0).map(row) },
+      ],
+      grandTitle: 'סה״כ בדיקות ב־3 החודשים האחרונים',
+      note: `כל בדיקות קצין הבטיחות שנעשו מ־${formatIsoDay(quarterStart(today))} ועד היום.`,
+      emptyText: 'לא נעשו בדיקות קצין בטיחות ב־3 החודשים האחרונים',
+    });
   }
 
-  const empty: Record<InspectionReportCategory, string> = {
-    insp_quarter: 'לא נעשו בדיקות קצין בטיחות ב־3 החודשים האחרונים',
-    insp_awaiting: 'אין בדיקות שממתינות לחתימת הנהג',
-    insp_defects: 'לא נמצאו ליקויים בבדיקות האחרונות',
-    insp_due: 'אין רכבים שצריכים בדיקה בשבועיים הקרובים',
-    insp_never: 'כל הרכבים כבר עברו בדיקת קצין בטיחות',
-  };
-  const bodyHtml = count === 0
-    ? emptyState(empty[category])
-    : `<table class="table" dir="rtl"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
+  if (category === 'insp_awaiting') {
+    const waiting = ({ row: r }: Entry): ReportCell[] => {
+      const days = Math.max(0, daysBetween(r.inspection_date, today));
+      return [...inspectionCells(r), { text: days === 1 ? 'יום אחד' : `${days} ימים`, tone: days > 7 ? 'bad' : undefined }];
+    };
+    return buildTableReport({
+      ...common,
+      unit: INSPECTIONS,
+      columns: [...inspectionColumns, { label: 'ממתין', width: 18 }],
+      sections: [
+        { title: 'סה״כ ממתינות לחתימת הנהג', rows: picked.entries.filter((e) => e.state === 'awaiting_driver').map(waiting) },
+        { title: 'סה״כ הנהג סירב או שהשליחה נכשלה', rows: picked.entries.filter((e) => e.state === 'requires_attention').map(waiting) },
+      ],
+      grandTitle: 'סה״כ בדיקות שממתינות לחתימה',
+      note: 'בדיקות שהקצין חתם עליהן והנהג עוד לא חתם באפליקציה.',
+      emptyText: 'אין בדיקות שממתינות לחתימת הנהג',
+    });
+  }
 
-  return buildReportDocument({
-    company: { name: company.name, businessId: company.business_id },
-    title: TITLES[category],
-    metaColumns: [
-      { label: 'קצין רכב', value: company.safety_officer_name ?? '' },
-      { label: 'קצין רכב נייד', value: company.safety_officer_phone ?? '', ltr: true },
-      { label: countLabel, value: String(count), big: true, pushEnd: true },
+  if (category === 'insp_defects') {
+    const byVehicle = new Map<string, DefectLine[]>();
+    for (const line of picked.defects) {
+      const key = line.row.vehicle?.plate_number ?? line.row.facts?.plate ?? '';
+      byVehicle.set(key, [...(byVehicle.get(key) ?? []), line]);
+    }
+    return buildTableReport({
+      ...common,
+      unit: { one: 'ליקוי אחד', many: 'ליקויים' },
+      columns: [
+        { label: 'מספר רישוי', width: 15 }, { label: 'יצרן ודגם', width: 20 }, { label: 'תאריך הבדיקה', width: 15 },
+        { label: 'קצין הבטיחות', width: 16 }, { label: 'הליקוי', width: 34 },
+      ],
+      sections: [...byVehicle].map(([key, lines]) => ({
+        title: `סה״כ ליקויים ברכב ${key ? formatPlate(key) : ''}`.trim(),
+        rows: lines.map(({ row, text }) => [...inspectionCells(row).slice(0, 4), { text }]),
+      })),
+      grandTitle: 'סה״כ ליקויים פתוחים',
+      note: 'הליקויים מהבדיקה האחרונה של כל רכב.',
+      emptyText: 'לא נמצאו ליקויים בבדיקות האחרונות',
+    });
+  }
+
+  const dept = (p: InspectionPlanRow): ReportCell => ({ text: facts.get(p.vehicleId)?.department });
+
+  if (category === 'insp_due') {
+    const row = (p: InspectionPlanRow): ReportCell[] => [
+      plate(p.plate), { text: p.vehicleLabel }, dept(p),
+      p.lastInspection ? { text: formatIsoDay(p.lastInspection), ltr: true } : { text: 'בדיקה ראשונה', tone: 'muted' },
+      dueCell(p.nextDue!, today),
+    ];
+    return buildTableReport({
+      ...common,
+      unit: VEHICLES,
+      columns: [
+        { label: 'מספר רישוי', width: 15 }, { label: 'יצרן ודגם', width: 20 }, { label: 'מחלקה', width: 14 },
+        { label: 'בדיקה אחרונה', width: 20 }, { label: 'המועד', width: 31 },
+      ],
+      sections: [
+        { title: 'סה״כ באיחור', rows: picked.plan.filter((p) => daysBetween(today, p.nextDue!) < 0).map(row) },
+        { title: 'סה״כ בשבועיים הקרובים', rows: picked.plan.filter((p) => daysBetween(today, p.nextDue!) >= 0).map(row) },
+      ],
+      grandTitle: 'סה״כ רכבים שצריכים בדיקה',
+      note: `רכבים שהבדיקה שלהם באיחור או שהיא צריכה להיעשות בתוך ${SOON_DAYS} הימים הקרובים.`,
+      emptyText: 'אין רכבים שצריכים בדיקה בשבועיים הקרובים',
+    });
+  }
+
+  return buildTableReport({
+    ...common,
+    unit: VEHICLES,
+    columns: [
+      { label: 'מספר רישוי', width: 16 }, { label: 'יצרן ודגם', width: 26 }, { label: 'סוג', width: 14 },
+      { label: 'מחלקה', width: 18 }, { label: 'מועד בדיקה ראשונה', width: 26 },
     ],
-    bodyHtml,
+    sections: [{
+      title: '',
+      rows: picked.plan.map((p) => [
+        plate(p.plate), { text: p.vehicleLabel }, { text: facts.get(p.vehicleId)?.type }, dept(p),
+        p.nextDue ? dueCell(p.nextDue, today) : { text: null },
+      ]),
+    }],
+    grandTitle: 'סה״כ רכבים שלא נבדקו',
+    note: 'רכבים שאין להם אף בדיקת קצין בטיחות.',
+    emptyText: 'כל הרכבים כבר עברו בדיקת קצין בטיחות',
   });
+}
+
+// סוג הרכב והמחלקה של כל רכב
+async function loadVehicleFacts(companyId: string): Promise<VehicleFacts> {
+  const [vehicles, departments] = await Promise.all([listVehicles(companyId), listDepartments(companyId)]);
+  const names = new Map(departments.map((d) => [d.id, d.name]));
+  return new Map(vehicles.map((v) => [v.id, {
+    type: VEHICLE_TYPE_LABELS[v.vehicle_type] ?? v.vehicle_type,
+    department: v.department_id ? names.get(v.department_id) ?? null : null,
+  }]));
 }
 
 // מפיק ומוריד את הדוח
 export async function exportInspectionsReport(company: Company, category: InspectionReportCategory): Promise<void> {
   const needsList = category === 'insp_quarter' || category === 'insp_awaiting' || category === 'insp_defects';
   const needsPlan = category === 'insp_defects' || category === 'insp_due' || category === 'insp_never';
-  const [inspections, plan] = await Promise.all([
+  const needsFacts = category === 'insp_due' || category === 'insp_never';
+  const [inspections, plan, facts] = await Promise.all([
     needsList ? listInspections(company.id) : Promise.resolve([]),
     needsPlan ? loadInspectionPlan(company.id) : Promise.resolve([]),
+    needsFacts ? loadVehicleFacts(company.id) : Promise.resolve<VehicleFacts>(new Map()),
   ]);
   const today = todayIso();
   const picked = selectInspectionReport(category, { inspections, plan }, today);
-  await printOrShareReport(buildHtml(company, category, picked, today), TITLES[category]);
+  await printOrShareReport(buildHtml(company, category, picked, today, facts), TITLES[category]);
 }
