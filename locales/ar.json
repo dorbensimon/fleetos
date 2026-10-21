@@ -250,6 +250,8 @@
     "clickToChooseFile": "انقر لاختيار ملف",
     "close": "إغلاق",
     "closeAndReopen": "حاولوا الإغلاق والفتح مجددًا بعد لحظات.",
+    "zoomIn": "تكبير",
+    "zoomOut": "تصغير",
     "continue": "متابعة",
     "continueToSign": "المتابعة إلى التوقيع",
     "createdOnPrefix": "أُنشئ في ",

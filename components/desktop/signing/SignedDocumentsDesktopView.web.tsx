@@ -1,6 +1,6 @@
 // דף 'מסמכים חתומים' במחשב: הטפסים של החברה, שבלונות ומילויים
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { getSigningTemplateSourceUrl, listSigningTemplates, type SigningTemplate } from '../../../lib/docuseal';
 import { errorMessage, requestErrorDetails, type RequestErrorDetails } from '../../../lib/requestError';
 import { countWaitingSigners, deleteCompanyTemplate, deleteTemplateMessage } from '../../../lib/signingSend';
@@ -179,6 +179,7 @@ function PreviewSheet({
   };
   const [pdf, setPdf] = useState<LoadedPdf | null>(null);
   const [failed, setFailed] = useState(false);
+  const [zoom, setZoom] = useState(1);
   // Deleting: 'ask' shows the confirmation (with how many drivers are still waiting to sign).
   const [confirm, setConfirm] = useState<{ waiting: number } | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -214,7 +215,15 @@ function PreviewSheet({
       label={template.title}
       head={
         <>
-          <div />
+          <div className="sd-zoom">
+            <button type="button" className="sd-btn sd-btn-plain" onClick={() => setZoom((z) => Math.min(2.5, z + 0.25))} disabled={!pdf || zoom >= 2.5} aria-label={t('common.zoomIn')} title={t('common.zoomIn')}>
+              <MaterialCommunityIcons name="magnify-plus-outline" size={20} color="currentColor" />
+            </button>
+            <span className="sd-num">{Math.round(zoom * 100)}%</span>
+            <button type="button" className="sd-btn sd-btn-plain" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} disabled={!pdf || zoom <= 0.5} aria-label={t('common.zoomOut')} title={t('common.zoomOut')}>
+              <MaterialCommunityIcons name="magnify-minus-outline" size={20} color="currentColor" />
+            </button>
+          </div>
           <div className="sd-sheet-title">
             <strong className="sd-b">{template.title}</strong>
             <div className="sd-progress-label">
@@ -283,7 +292,7 @@ function PreviewSheet({
           <div className="sd-spinner" />
         </div>
       ) : (
-        <div className="sd-preview-pages" style={{ maxWidth: 880, margin: '0 auto' }}>
+        <div className="sd-preview-pages" style={{ maxWidth: 880 * Math.max(1, zoom), margin: '0 auto', ['--sd-zoom' as string]: zoom }}>
           {checklistForm && own ? (
             <div className="sd-repeat-bar">
               <h3 className="sd-b" id="sd-repeat-label">{t('meeting.howOften')}</h3>

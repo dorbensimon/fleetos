@@ -250,6 +250,8 @@
     "clickToChooseFile": "Нажмите, чтобы выбрать файл",
     "close": "Закрыть",
     "closeAndReopen": "Попробуйте закрыть и снова открыть чуть позже.",
+    "zoomIn": "Увеличить",
+    "zoomOut": "Уменьшить",
     "continue": "Продолжить",
     "continueToSign": "Перейти к подписи",
     "createdOnPrefix": "Создан ",

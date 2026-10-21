@@ -250,6 +250,8 @@
     "clickToChooseFile": "Click to choose a file",
     "close": "Close",
     "closeAndReopen": "Try closing and reopening in a moment.",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
     "continue": "Continue",
     "continueToSign": "Continue to signing",
     "createdOnPrefix": "Created ",
