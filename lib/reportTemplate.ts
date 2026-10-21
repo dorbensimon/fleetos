@@ -358,7 +358,8 @@ const TABLE_REPORT_STYLES = `
   html, body { margin: 0; direction: rtl; background: #fff; color: var(--text);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Heebo', sans-serif;
     -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; }
-  .page { max-width: 760px; margin: 0 auto; padding: 48px 16px 64px; }
+  /* The promo always sits at the very bottom: the page is at least a whole sheet, and the promo takes the space left. */
+  .page { max-width: 760px; margin: 0 auto; padding: 48px 16px 32px; min-height: 100vh; display: flex; flex-direction: column; }
   h1 { font-size: 34px; font-weight: 800; text-align: center; margin: 0 0 6px; line-height: 1.25; }
   .sub { text-align: center; color: var(--muted); font-size: 14px; margin-bottom: 40px; line-height: 1.7; }
   .sub b { color: var(--text); }
@@ -379,8 +380,9 @@ const TABLE_REPORT_STYLES = `
   .bad { color: var(--danger); }
   .muted { color: var(--muted); }
   .empty { text-align: center; color: var(--muted); padding: 32px 0; border-top: 1.5px solid var(--line); border-bottom: 1px solid var(--soft); }
-  .note { color: var(--muted); font-size: 12px; margin-top: 20px; text-align: center; }
-  .promo { margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--soft); text-align: center; color: var(--muted); }
+  .note { color: var(--muted); font-size: 12px; margin: 20px 0 40px; text-align: center; }
+  .sheet-fill { display: none; }
+  .promo { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--soft); text-align: center; color: var(--muted); }
   .promo svg { width: 56px; height: 16px; opacity: .85; }
   .promo h2 { font-size: 12px; font-weight: 600; color: var(--text); margin: 4px 0 2px; }
   .promo p { font-size: 11px; margin: 0; line-height: 1.5; }
@@ -392,8 +394,76 @@ const TABLE_REPORT_STYLES = `
     td, th { padding-left: 5px; padding-right: 5px; }
     tr.grand td { font-size: 13px; }
   }
-  @media print { .page { padding-top: 16px; } tr { break-inside: avoid; } tr.sec, tr.cols { break-after: avoid; } }
+  /* A computer screen: a real A4 sheet on a grey desk, whole, with its margins. */
+  @media screen and (min-width: 900px) {
+    html, body { background: #e8ecf1; }
+    .page { width: 210mm; max-width: none; min-height: 297mm; margin: 32px auto; padding: 14mm 15mm;
+      background: #fff; border-radius: 2px; box-shadow: 0 2px 6px rgba(15,23,42,.06), 0 12px 40px rgba(15,23,42,.12); }
+  }
+  @page { size: A4; margin: 14mm 15mm; }
+  @media print {
+    html, body { background: #fff; }
+    /* Plain blocks, so the sheets break predictably; the spacer (sized by the script) drops the promo to the last sheet's bottom. */
+    .page { display: block; width: auto; max-width: none; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
+    .sheet-fill { display: block; }
+    .promo { margin-top: 0; break-inside: avoid; }
+    tr { break-inside: avoid; } tr.sec, tr.cols { break-after: avoid; } }
 `;
+
+// מוריד את הלוגו לתחתית הדף האחרון בהדפסה
+/**
+ * Print only: lays the report out on A4 sheets (269mm of text each) the way the
+ * printer will, rows never split, and sizes a spacer so the promo ends at the
+ * bottom of the last sheet. On screen the page stretches with flex instead.
+ */
+const FIT_SHEETS_SCRIPT = `(function () {
+  var page = document.querySelector('.page');
+  var spacer = document.querySelector('.sheet-fill');
+  var promo = document.querySelector('.promo');
+  if (!page || !spacer || !promo) return;
+  function mmPx() {
+    var probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute;visibility:hidden;height:100mm';
+    document.body.appendChild(probe);
+    var v = probe.offsetHeight / 100;
+    probe.remove();
+    return v;
+  }
+  function outer(el) {
+    var cs = getComputedStyle(el);
+    return el.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom);
+  }
+  function fit() {
+    var mm = mmPx(), sheet = 269 * mm, pos = 0;
+    // Blocks that never split: headings, notes and each table row; a section's title and column titles stay with its first row.
+    var units = [], glue = 0;
+    for (var i = 0; i < page.children.length; i++) {
+      var el = page.children[i];
+      if (el === spacer || el === promo) continue;
+      if (el.tagName !== 'TABLE') { units.push(outer(el)); continue; }
+      var rows = el.querySelectorAll('tr');
+      for (var r = 0; r < rows.length; r++) {
+        var h = rows[r].offsetHeight;
+        if (rows[r].classList.contains('sec') || rows[r].classList.contains('cols')) { glue += h; continue; }
+        units.push(glue + h);
+        glue = 0;
+      }
+    }
+    for (var u = 0; u < units.length; u++) {
+      if (pos > 0 && pos + units[u] > sheet) pos = 0;
+      pos += units[u] % sheet;
+    }
+    var need = promo.offsetHeight + 8 * mm;
+    var room = sheet - pos;
+    // Too little room left: the spacer runs on to the next sheet, so the promo lands at its bottom.
+    var fill = room - need >= 10 * mm ? room - need : room + sheet - need;
+    spacer.style.height = Math.max(0, Math.floor(fill)) + 'px';
+  }
+  fit();
+  window.addEventListener('resize', fit);
+  window.addEventListener('beforeprint', fit);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+})();`;
 
 // תא אחד בטבלה
 function cellHtml(cell: ReportCell, isLast: boolean): string {
@@ -463,12 +533,14 @@ export function buildTableReport(opts: TableReportOptions): string {
     <div class="sub">חברה: <b>${esc(opts.company.name)}</b>${business} · הופק ב־<span class="ltr">${esc(opts.generatedAt ?? todayHe())}</span></div>
     ${table}
     <div class="note">${esc(opts.note)}</div>
+    <div class="sheet-fill"></div>
     <div class="promo">
       ${ICAR_REPORT_MARK}
       <h2>כל הצי שלך, במקום אחד</h2>
       <p>icar מזכירה לך לפני שטסט, ביטוח או רישיון פגים — ומפיקה דוחות כאלה בלחיצה.</p>
     </div>
   </div>
+  <script>${FIT_SHEETS_SCRIPT}</script>
 </body>
 </html>`;
 }
@@ -488,7 +560,8 @@ export async function printOrShareReport(html: string, dialogTitle: string): Pro
     return;
   }
 
-  const { uri } = await Print.printToFileAsync({ html, base64: false });
+  // A4 in points, so the phone's PDF is the same sheet as the printed one.
+  const { uri } = await Print.printToFileAsync({ html, base64: false, width: 595, height: 842 });
   const canShare = await Sharing.isAvailableAsync();
   if (canShare) {
     await Sharing.shareAsync(uri, {
