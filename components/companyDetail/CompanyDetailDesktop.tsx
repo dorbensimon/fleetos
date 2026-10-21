@@ -93,8 +93,8 @@ export function CompanyDetailDesktop(p: Props) {
       <ScrollView style={pageStyles.root} contentContainerStyle={pageStyles.content}>
         {/* Header */}
         <View style={[pageStyles.hero, pageStyles.heroNight, styles.hero, motion && pageStyles.enter]}>
-          <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
-          <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+          <View style={[pageStyles.heroGlow, pageStyles.heroGlowBlue, { pointerEvents: 'none' }]} />
+          <View style={[pageStyles.heroGlow, pageStyles.heroGlowCyan, { pointerEvents: 'none' }]} />
           <View style={[pageStyles.heroIdentity, styles.who]}>
             {company.logo_url ? (
               <Image source={{ uri: company.logo_url }} accessibilityLabel={t('company.logoOf', { name: company.name })} style={styles.logo} resizeMode="cover" />

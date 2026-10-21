@@ -264,7 +264,7 @@ export function EditableFieldShell({
       <View style={[styles.field, compact && styles.maintenanceField]}>
         <DText style={styles.fieldGridLabel}>{label}</DText>
         <View style={styles.readFieldRow}>
-          {savedNonce > 0 && <View key={savedNonce} pointerEvents="none" style={[StyleSheet.absoluteFill, styles.savedFlash]} />}
+          {savedNonce > 0 && <View key={savedNonce} style={[StyleSheet.absoluteFill, styles.savedFlash, { pointerEvents: 'none' }]} />}
           {plate ? (
             <PlateBadge plate={displayValue} />
           ) : (
@@ -455,7 +455,7 @@ export function FadeInImage({ uri, hovered, signedVisual = false }: { uri: strin
         resizeMode="cover"
         onLoad={() => setLoaded(true)}
       />
-      <View pointerEvents="none" style={[styles.folderTilePreviewScrim, hovered && styles.folderTilePreviewScrimHover]} />
+      <View style={[styles.folderTilePreviewScrim, hovered && styles.folderTilePreviewScrimHover, { pointerEvents: 'none' }]} />
     </View>
   );
 }

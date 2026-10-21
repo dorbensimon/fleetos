@@ -599,11 +599,10 @@ export function Segmented<T extends string>({
     >
       {!!segment && (
         <Animated.View
-          pointerEvents="none"
           style={[
             styles.segThumb,
             onNight ? styles.segThumbNight : styles.segThumbLight,
-            { width: segment, transform: [{ translateX: Animated.multiply(pos, -segment * dirSign()) }] },
+            { width: segment, transform: [{ translateX: Animated.multiply(pos, -segment * dirSign()) }] }, { pointerEvents: 'none' },
           ]}
         />
       )}
@@ -712,8 +711,7 @@ export function Fab({ icon = 'add', label, onPress, bottom, visible = true }: { 
   const scale = shown.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] });
   return (
     <Animated.View
-      style={[styles.fabHost, { bottom, opacity: shown, transform: [{ translateY: lift }, { scale }] }]}
-      pointerEvents={visible ? 'box-none' : 'none'}
+      style={[styles.fabHost, { bottom, opacity: shown, transform: [{ translateY: lift }, { scale }] }, { pointerEvents: visible ? 'box-none' : 'none' }]}
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
     >
@@ -801,7 +799,7 @@ export function KitSheet({
       <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, { opacity: ratio }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel={t('common.close')} />
       </Animated.View>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.sheetHost, desktop && styles.sheetHostDesktop]} pointerEvents="box-none">
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.sheetHost, desktop && styles.sheetHostDesktop, { pointerEvents: 'box-none' }]}>
         <Animated.View
           accessibilityViewIsModal
           style={[

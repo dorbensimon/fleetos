@@ -72,8 +72,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {children}
         {message !== null && (
           <Animated.View
-            pointerEvents="none"
-            style={[styles.wrap, { bottom: insets.bottom + 24, opacity, transform: [{ translateY }] }]}
+            style={[styles.wrap, { bottom: insets.bottom + 24, opacity, transform: [{ translateY }] }, { pointerEvents: 'none' }]}
             accessibilityLiveRegion={tone === 'warning' ? 'assertive' : 'polite'}
           >
             <View style={[styles.toast, (phone || tone === 'warning') && kit.toast]}>

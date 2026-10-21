@@ -86,20 +86,19 @@ export function LiquidGlassSwitch({
     >
       <Animated.View style={[styles.track, { transform: [{ scale: press }] }]}>
         {/* Single glass layer: blur + a faint base tint, so it always reads as material even before color loads in. */}
-        <BlurView intensity={40} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
-        <View style={[StyleSheet.absoluteFill, styles.trackBase]} pointerEvents="none" />
+        <BlurView intensity={40} tint="light" style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} />
+        <View style={[StyleSheet.absoluteFill, styles.trackBase, { pointerEvents: 'none' }]} />
         {/* Color lives on this solid fill, not on another translucent layer stacked over the blur. */}
-        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: tint, opacity: tintOpacity }]} pointerEvents="none" />
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: tint, opacity: tintOpacity }, { pointerEvents: 'none' }]} />
         <LinearGradient
           colors={['rgba(255,255,255,.35)', 'rgba(255,255,255,0)']}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 0.6 }}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}
         />
-        <View style={styles.trackHairline} pointerEvents="none" />
+        <View style={[styles.trackHairline, { pointerEvents: 'none' }]} />
 
-        <Animated.View style={[styles.thumbPositioner, { transform: [{ translateX }] }]} pointerEvents="none">
+        <Animated.View style={[styles.thumbPositioner, { transform: [{ translateX }] }, { pointerEvents: 'none' }]}>
           <View style={styles.thumb}>
             <LinearGradient
               colors={['#FFFFFF', '#F1F1F3']}
@@ -107,7 +106,7 @@ export function LiquidGlassSwitch({
               end={{ x: 0.7, y: 1 }}
               style={StyleSheet.absoluteFill}
             />
-            <View style={styles.thumbTopLight} pointerEvents="none" />
+            <View style={[styles.thumbTopLight, { pointerEvents: 'none' }]} />
           </View>
         </Animated.View>
       </Animated.View>

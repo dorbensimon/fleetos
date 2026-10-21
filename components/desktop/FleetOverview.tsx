@@ -78,8 +78,8 @@ export function FleetHeader() {
   return (
     // The night header shared with the other desktop pages.
     <View style={[pageStyles.hero, pageStyles.heroNight, enter(0)]}>
-      <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowBlue]} />
-      <View pointerEvents="none" style={[pageStyles.heroGlow, pageStyles.heroGlowCyan]} />
+      <View style={[pageStyles.heroGlow, pageStyles.heroGlowBlue, { pointerEvents: 'none' }]} />
+      <View style={[pageStyles.heroGlow, pageStyles.heroGlowCyan, { pointerEvents: 'none' }]} />
       <View style={pageStyles.heroIdentity}>
         <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">
           {greeting}
@@ -168,7 +168,7 @@ export function ModeSwitch({
 
   return (
     <View style={styles.segmented} accessibilityRole="tablist">
-      <Animated.View pointerEvents="none" style={[styles.segmentThumb, { end: Animated.add(x, 3), width }]} />
+      <Animated.View style={[styles.segmentThumb, { end: Animated.add(x, 3), width }, { pointerEvents: 'none' }]} />
       {MODES.map((item) => {
         const on = item.value === mode;
         return (
@@ -293,7 +293,7 @@ function FilterTile<T extends string>({
     >
       <View style={[styles.tileIcon, { backgroundColor: on ? 'rgba(255,255,255,0.2)' : tone.bg }]}>
         <Ionicons name={card.icon} size={18} color={on ? '#FFFFFF' : tone.fg} />
-        <View style={[styles.tileCheck, on && styles.tileCheckOn]} pointerEvents="none">
+        <View style={[styles.tileCheck, on && styles.tileCheckOn, { pointerEvents: 'none' }]}>
           <Ionicons name="checkmark" size={10} color={fill} />
         </View>
       </View>

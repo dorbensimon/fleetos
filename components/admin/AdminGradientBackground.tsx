@@ -12,10 +12,9 @@ export const ADMIN_BACKGROUND_LOCATIONS = [0, 0.45, 0.9] as const;
 export function AdminGradientBackground() {
   return (
     <LinearGradient
-      pointerEvents="none"
       colors={ADMIN_BACKGROUND_COLORS}
       locations={ADMIN_BACKGROUND_LOCATIONS}
-      style={styles.gradient}
+      style={[styles.gradient, { pointerEvents: 'none' }]}
     />
   );
 }

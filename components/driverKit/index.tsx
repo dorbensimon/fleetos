@@ -241,14 +241,14 @@ export function NightHero({
       {/* Top-to-bottom, so the top edge is one flat colour: iOS paints the
           status bar and the overscroll area with exactly that colour, and
           nothing decorative reaches the edge to be cut off by it. */}
-      <LinearGradient colors={DK.night} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      <LinearGradient colors={DK.night} locations={[0, 0.6, 1]} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} />
       {Platform.OS === 'web' && (
         <>
-          <View pointerEvents="none" style={[styles.glow, styles.glowBlue, { top: insetTop + 10 }]} />
-          <View pointerEvents="none" style={[styles.glow, styles.glowCyan]} />
+          <View style={[styles.glow, styles.glowBlue, { top: insetTop + 10 }, { pointerEvents: 'none' }]} />
+          <View style={[styles.glow, styles.glowCyan, { pointerEvents: 'none' }]} />
         </>
       )}
-      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <View style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}>
         <Animated.Image
           source={RING}
           accessibilityElementsHidden
@@ -276,7 +276,7 @@ export function NightHero({
  */
 export function StatusBand({ insetTop }: { insetTop: number }) {
   if (!insetTop) return null;
-  return <View pointerEvents="none" style={[styles.statusBand, { height: insetTop }]} />;
+  return <View style={[styles.statusBand, { height: insetTop }, { pointerEvents: 'none' }]} />;
 }
 
 // כפתור עגול שקוף על הכותרת
@@ -347,7 +347,7 @@ export function NightBar({
   return (
     <View style={[styles.nightBar, { paddingTop: insetTop + 8 }]}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient colors={[DK.night[0], DK.night[1]]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      <LinearGradient colors={[DK.night[0], DK.night[1]]} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} />
       <HeroButton icon={dirIcon('chevron-forward')} label={t('common.goBack')} onPress={onBack} />
       <View style={styles.nightBarText}>
         <DKText variant="heading" color={DK.onNight} numberOfLines={1} accessibilityRole="header">
@@ -448,7 +448,7 @@ export const KitPage = DriverPage;
  * a pale gap opening above it; the content itself paints the canvas.
  */
 export function NightUnderlay() {
-  return <View pointerEvents="none" style={styles.underlay} />;
+  return <View style={[styles.underlay, { pointerEvents: 'none' }]} />;
 }
 
 // ── Surfaces ──────────────────────────────────────────────────────────────

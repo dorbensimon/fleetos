@@ -126,7 +126,7 @@ export function RecordHero<K extends string>({
 }) {
   return (
     <View style={[styles.hero, heroEnter()]}>
-      <View style={styles.heroGrid} pointerEvents="none" />
+      <View style={[styles.heroGrid, { pointerEvents: 'none' }]} />
       <View style={styles.heroBody}>
         <View style={styles.heroIntro}>
           <View style={styles.eyebrow}>
@@ -216,7 +216,7 @@ export function LiveCard({ children, label }: { children: React.ReactNode; label
         webOnly({ cursor: 'default' }),
       ]}
     >
-      <View style={styles.liveCardSheen} pointerEvents="none" />
+      <View style={[styles.liveCardSheen, { pointerEvents: 'none' }]} />
       {children}
     </Pressable>
   );
@@ -539,7 +539,7 @@ export function CreateDock({
   const next = missing[0];
 
   return (
-    <View pointerEvents="box-none" style={styles.dockWrap}>
+    <View style={[styles.dockWrap, { pointerEvents: 'box-none' }]}>
       <Animated.View style={[styles.dock, { opacity: enter, transform: [{ translateY }] }]} accessibilityLiveRegion="polite">
         <View
           style={styles.dockStatus}
