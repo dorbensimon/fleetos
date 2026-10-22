@@ -589,7 +589,9 @@ export function MobileTabBar({ navigationRef }: { navigationRef: NavigationConta
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
     >
-      <View style={styles.shadow}>
+      {/* On web an Animated.View writes 'box-none' inline as plain 'none', which
+          the bar would inherit; the bar takes its touches back here. */}
+      <View style={[styles.shadow, { pointerEvents: visible ? 'auto' : 'none' }]}>
         <View ref={barRef} onLayout={measureBar} style={[styles.bar, { width: barWidth }]} {...(dragHandlers as object)}>
           <Glass />
           <Animated.View

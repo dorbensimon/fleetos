@@ -715,12 +715,15 @@ export function Fab({ icon = 'add', label, onPress, bottom, visible = true }: { 
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
     >
-      <Pressy onPress={onPress} haptic accessibilityLabel={label} style={styles.fab} pressScale={0.92}>
-        <Ionicons name={icon} size={24} color="#FFFFFF" />
-        <DKText variant="label" color="#FFFFFF">
-          {label}
-        </DKText>
-      </Pressy>
+      {/* On web the host's 'box-none' lands inline as 'none'; the button takes its touches back. */}
+      <View style={{ pointerEvents: visible ? 'auto' : 'none' }}>
+        <Pressy onPress={onPress} haptic accessibilityLabel={label} style={styles.fab} pressScale={0.92}>
+          <Ionicons name={icon} size={24} color="#FFFFFF" />
+          <DKText variant="label" color="#FFFFFF">
+            {label}
+          </DKText>
+        </Pressy>
+      </View>
     </Animated.View>
   );
 }
