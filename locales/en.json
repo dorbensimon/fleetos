@@ -2954,6 +2954,19 @@
     "openFilePlate": "Open vehicle file {{plate_number}}",
     "overBy": "Over by {{v1}}",
     "overServiceKm": "{{v1}} km past service",
+    "accessories": "Accessory equipment",
+    "accessoriesHint": "Mark the equipment kept in the vehicle",
+    "accessory": {
+      "warningTriangle": "Warning triangle",
+      "spareWheel": "Spare wheel",
+      "jack": "Car jack",
+      "lugWrench": "Lug wrench",
+      "wheelLockKey": "Spare wheel lock key",
+      "tireRepairKit": "Tire repair kit",
+      "toolbox": "Toolbox",
+      "screwdrivers": "Screwdriver set",
+      "towHitch": "Tow hitch"
+    },
     "ownership": {
       "leasing": "Leasing",
       "purchase": "Purchase",

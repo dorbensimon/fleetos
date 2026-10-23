@@ -2954,6 +2954,19 @@
     "openFilePlate": "פתח את תיק הרכב {{plate_number}}",
     "overBy": "חריגה {{v1}}",
     "overServiceKm": "חריגה של {{v1}} ק״מ מהטיפול",
+    "accessories": "ציוד נלווה",
+    "accessoriesHint": "סמנו את הציוד שנמצא ברכב",
+    "accessory": {
+      "warningTriangle": "משולש חירום",
+      "spareWheel": "גלגל חלופי",
+      "jack": "מגבה (ג'ק)",
+      "lugWrench": "מפתח ברגי גלגל",
+      "wheelLockKey": "מפתח מנעול לגלגל החלופי",
+      "tireRepairKit": "ערכת תיקון תקר",
+      "toolbox": "תיבת כלים",
+      "screwdrivers": "סט מברגים",
+      "towHitch": "התקן גרירה"
+    },
     "ownership": {
       "leasing": "ליסינג",
       "purchase": "רכישה",

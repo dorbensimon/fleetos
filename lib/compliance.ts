@@ -262,3 +262,16 @@ export const ACQUISITION_TYPE_LABELS: Record<string, string> = {
   get leasing() { return t('vehicle.ownership.leasing'); },
   get rental() { return t('vehicle.ownership.rental'); },
 };
+
+// ציוד נלווה ברכב, לפי סדר ההצגה
+export const VEHICLE_ACCESSORY_LABELS: Record<string, string> = {
+  get warning_triangle() { return t('vehicle.accessory.warningTriangle'); },
+  get spare_wheel() { return t('vehicle.accessory.spareWheel'); },
+  get jack() { return t('vehicle.accessory.jack'); },
+  get lug_wrench() { return t('vehicle.accessory.lugWrench'); },
+  get wheel_lock_key() { return t('vehicle.accessory.wheelLockKey'); },
+  get tire_repair_kit() { return t('vehicle.accessory.tireRepairKit'); },
+  get toolbox() { return t('vehicle.accessory.toolbox'); },
+  get screwdrivers() { return t('vehicle.accessory.screwdrivers'); },
+  get tow_hitch() { return t('vehicle.accessory.towHitch'); },
+};

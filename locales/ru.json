@@ -2954,6 +2954,19 @@
     "openFilePlate": "Открыть карточку автомобиля {{plate_number}}",
     "overBy": "Превышение {{v1}}",
     "overServiceKm": "Превышение ТО на {{v1}} км",
+    "accessories": "Дополнительное оборудование",
+    "accessoriesHint": "Отметьте оборудование, которое есть в машине",
+    "accessory": {
+      "warningTriangle": "Аварийный знак",
+      "spareWheel": "Запасное колесо",
+      "jack": "Домкрат",
+      "lugWrench": "Баллонный ключ",
+      "wheelLockKey": "Ключ от секретки запаски",
+      "tireRepairKit": "Набор для ремонта шин",
+      "toolbox": "Ящик с инструментами",
+      "screwdrivers": "Набор отвёрток",
+      "towHitch": "Фаркоп"
+    },
     "ownership": {
       "leasing": "Лизинг",
       "purchase": "Покупка",

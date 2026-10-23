@@ -27,6 +27,8 @@ export interface Vehicle {
   last_service_km: number;
   service_interval_km: number | null;
   next_service_km: number | null;
+  /** Keys of VEHICLE_ACCESSORY_LABELS kept in the vehicle. */
+  accessories: string[];
   notes: string | null;
   created_at: string;
   updated_at: string;

@@ -17,6 +17,7 @@ import { SAFETY_FOLDER, VehicleInspectionsDesktopSection } from '../inspection/V
 import { HeaderMenuBackdrop, headerMenuEnter, headerMenuStyles, useHeaderMenu } from './headerMenu';
 import {
   ACQUISITION_TYPE_LABELS,
+  VEHICLE_ACCESSORY_LABELS,
   VEHICLE_STATUS_LABELS,
   VEHICLE_TYPE_LABELS,
   complianceBadgeState,
@@ -259,6 +260,7 @@ export function VehicleDetailDesktopView({
   // Editing
   const [editor, setEditor] = useState<FieldEditor | null>(null);
   const driversMenu = useHeaderMenu('vehicle-drivers');
+  const accessoriesMenu = useHeaderMenu('vehicle-accessories');
   useEffect(() => {
     if (!openDrivers) return;
     driversMenu.setOpen(true);
@@ -529,8 +531,9 @@ export function VehicleDetailDesktopView({
         </View>
       </View>
 
-      <View style={styles.gridRow}>
-        <View style={styles.mainCell}>
+      <View style={[styles.gridRow, (accessoriesMenu.open || driversMenu.open) && headerMenuStyles.wrapOpen]}>
+        <View style={[styles.mainCell, accessoriesMenu.open && headerMenuStyles.wrapOpen]}>
+          {accessoriesMenu.open && <HeaderMenuBackdrop onClose={accessoriesMenu.close} />}
           <GroupLabel>{t('vehicle.companyUse')}</GroupLabel>
           <View style={styles.card}>
             <DetailRow first label={t('common.department')} value={department} onPress={() => setEditor({ kind: 'select', label: t('common.department'), raw: vehicle.department_id, options: departmentOptions, allowClear: true, placeholder: t('common.noDepartment'), onSave: (v) => onSaveField({ department_id: v }) })} />
@@ -541,7 +544,14 @@ export function VehicleDetailDesktopView({
               onPress={() => setEditor({ kind: 'select', label: t('vehicle.dealType'), raw: vehicle.acquisition_type, options: ACQUISITION_TYPE_OPTIONS(), allowClear: true, placeholder: t('common.notSelected'), onSave: (v) => onSaveField({ acquisition_type: v as AcquisitionType | null }) })}
             />
             <DetailRow label={t('vehicle.internalCode')} value={vehicle.internal_code} ltr edit={{ kind: 'text', label: t('vehicle.internalCode'), raw: vehicle.internal_code ?? '', ltr: true, onSave: (v) => onSaveField({ internal_code: v.trim() || null }) }} />
+            <DetailRow
+              label={t('vehicle.accessories')}
+              value={(vehicle.accessories ?? []).map((key) => VEHICLE_ACCESSORY_LABELS[key] ?? key).join(', ') || null}
+              onPress={accessoriesMenu.toggle}
+            />
           </View>
+          {/* Outside the card: the card clips its overflow. Opens right under the last row. */}
+          {accessoriesMenu.open && <AccessoriesMenu selected={vehicle.accessories ?? []} onSave={(accessories) => onSaveField({ accessories })} onClose={accessoriesMenu.close} />}
         </View>
 
         <View style={styles.sideCell}>
@@ -678,6 +688,49 @@ function DriverRow({ driver, first, onPress }: { driver: VehicleDriverWithProfil
 }
 
 // עיצוב תיק הרכב
+// תפריט הציוד הנלווה: כל לחיצה מסמנת/מבטלת ונשמרת מיד
+function AccessoriesMenu({ selected, onSave, onClose }: { selected: string[]; onSave: (accessories: string[]) => Promise<string | null>; onClose: () => void }) {
+  // A click outside closes it (HeaderMenuBackdrop); so does Escape.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  // Local copy so quick clicks build on each other instead of on the last saved value.
+  const [picked, setPicked] = useState(selected);
+  const toggle = (key: string) => {
+    const next = picked.includes(key) ? picked.filter((k) => k !== key) : Object.keys(VEHICLE_ACCESSORY_LABELS).filter((k) => k === key || picked.includes(k));
+    setPicked(next);
+    // A failed save (the parent shows the error) drops the check again.
+    void onSave(next).then((error) => error && setPicked(picked));
+  };
+  return (
+    <View style={[headerMenuStyles.menu, styles.accessoriesMenu, headerMenuEnter()]} role="dialog" aria-label={t('vehicle.accessories')}>
+      <View style={headerMenuStyles.head}>
+        <DText style={headerMenuStyles.hint}>{t('vehicle.accessoriesHint')}</DText>
+      </View>
+      {Object.entries(VEHICLE_ACCESSORY_LABELS).map(([key, label]) => {
+        const on = picked.includes(key);
+        return (
+          <HoverPressable
+            key={key}
+            style={styles.accessoryRow}
+            hoverStyle={headerMenuStyles.rowHover}
+            onPress={() => toggle(key)}
+            accessibilityRole="checkbox"
+            aria-checked={on}
+            accessibilityLabel={label}
+          >
+            <Ionicons name={on ? 'checkbox' : 'square-outline'} size={19} color={on ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
+            <DText weight={on ? 'semiBold' : 'regular'} style={styles.accessoryLabel}>{label}</DText>
+          </HoverPressable>
+        );
+      })}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   ...pageStyles,
 
@@ -745,5 +798,9 @@ const styles = StyleSheet.create({
   driversEmpty: { padding: 16, gap: 10, alignItems: 'flex-end' },
   // חלון הנהגים נפתח מתחת לכותרת
   driversMenu: { top: 34, start: 0, end: 0, width: 'auto' },
+  // תפריט הציוד הנלווה, נפתח מתחת לשורה
+  accessoriesMenu: { top: '100%', marginTop: 4, end: 8, width: 300, paddingBottom: 6 },
+  accessoryRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },
+  accessoryLabel: { fontSize: 14, color: DESKTOP_COLORS.ink },
   driversModalContent: { paddingHorizontal: 18, paddingVertical: 14 },
 });
