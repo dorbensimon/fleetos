@@ -197,6 +197,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   };
 
   const mobileBase = {
+    onSaveField: saveField,
     insetTop: insets.top,
     insetBottom: insets.bottom,
     companyId: companyId ?? '',

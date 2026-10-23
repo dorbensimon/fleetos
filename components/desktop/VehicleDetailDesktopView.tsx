@@ -1,5 +1,5 @@
 // תיק רכב - תצוגת מחשב
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FocusTarget } from '../ui/FocusTarget';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -533,7 +533,6 @@ export function VehicleDetailDesktopView({
 
       <View style={[styles.gridRow, (accessoriesMenu.open || driversMenu.open) && headerMenuStyles.wrapOpen]}>
         <View style={[styles.mainCell, accessoriesMenu.open && headerMenuStyles.wrapOpen]}>
-          {accessoriesMenu.open && <HeaderMenuBackdrop onClose={accessoriesMenu.close} />}
           <GroupLabel>{t('vehicle.companyUse')}</GroupLabel>
           <View style={styles.card}>
             <DetailRow first label={t('common.department')} value={department} onPress={() => setEditor({ kind: 'select', label: t('common.department'), raw: vehicle.department_id, options: departmentOptions, allowClear: true, placeholder: t('common.noDepartment'), onSave: (v) => onSaveField({ department_id: v }) })} />
@@ -690,12 +689,19 @@ function DriverRow({ driver, first, onPress }: { driver: VehicleDriverWithProfil
 // עיצוב תיק הרכב
 // תפריט הציוד הנלווה: כל לחיצה מסמנת/מבטלת ונשמרת מיד
 function AccessoriesMenu({ selected, onSave, onClose }: { selected: string[]; onSave: (accessories: string[]) => Promise<string | null>; onClose: () => void }) {
-  // A click outside closes it (HeaderMenuBackdrop); so does Escape.
+  // A click anywhere outside it closes it, so does Escape. Each check is already saved.
+  // (A backdrop can't do this here: the page clips it and the card's own rows sit above it.)
+  const ref = useRef<View>(null);
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onClick = (e: MouseEvent) => !(ref.current as unknown as HTMLElement | null)?.contains(e.target as Node) && onClose();
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    document.addEventListener('click', onClick, true);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('click', onClick, true);
+    };
   }, [onClose]);
   // Local copy so quick clicks build on each other instead of on the last saved value.
   const [picked, setPicked] = useState(selected);
@@ -706,7 +712,7 @@ function AccessoriesMenu({ selected, onSave, onClose }: { selected: string[]; on
     void onSave(next).then((error) => error && setPicked(picked));
   };
   return (
-    <View style={[headerMenuStyles.menu, styles.accessoriesMenu, headerMenuEnter()]} role="dialog" aria-label={t('vehicle.accessories')}>
+    <View ref={ref} style={[headerMenuStyles.menu, styles.accessoriesMenu, headerMenuEnter()]} role="dialog" aria-label={t('vehicle.accessories')}>
       <View style={headerMenuStyles.head}>
         <DText style={headerMenuStyles.hint}>{t('vehicle.accessoriesHint')}</DText>
       </View>

@@ -1,5 +1,5 @@
 // תיק רכב בטלפון
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -28,7 +28,8 @@ import { ComplianceSection } from '../../../components/ComplianceSection';
 import { FocusTarget } from '../../../components/ui/FocusTarget';
 import { VehicleDriversEditor } from '../../../components/VehicleDriversEditor';
 import type { ComplianceItem, Vehicle, VehicleDriverWithProfile } from '../../../lib/adminApi';
-import { ACQUISITION_TYPE_LABELS, VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../../lib/compliance';
+import { ACQUISITION_TYPE_LABELS, VEHICLE_ACCESSORY_LABELS, VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS } from '../../../lib/compliance';
+import { ChoiceSheet } from '../../../components/ui/Select';
 import { formatPlate } from '../../../lib/plate';
 import { formatDate } from '../../../lib/theme';
 import { nextServiceKmOf } from '../../../lib/serviceSchedule';
@@ -64,6 +65,7 @@ type Props = {
   onBack: () => void;
   onRetry: () => void;
   onEdit: () => void;
+  onSaveField: (patch: Partial<Vehicle>) => Promise<string | null>;
   onEditMaintenance: () => void;
   onCancelMaintenance: () => void;
   onChangeMaintenance: (field: keyof Maint, value: string) => void;
@@ -275,6 +277,7 @@ function renderTab(p: Props, v: Vehicle) {
         <InfoLine icon="business" label={t('common.department')} value={p.department} onPress={p.onEdit} />
         <InfoLine icon="navigate" label={t('vehicle.usage')} value={v.usage_type} onPress={p.onEdit} />
         <InfoLine icon="card" label={t('vehicle.dealType')} value={v.acquisition_type ? ACQUISITION_TYPE_LABELS[v.acquisition_type] ?? v.acquisition_type : null} onPress={p.onEdit} />
+        <AccessoriesLine selected={v.accessories ?? []} onSave={(accessories) => p.onSaveField({ accessories })} />
       </KitSection>
       <KitSection title={t('common.actions')}>
         {archived ? (
@@ -284,6 +287,35 @@ function renderTab(p: Props, v: Vehicle) {
         )}
         <ActionRow first={false} icon="trash-outline" tone="danger" label={t('vehicle.deletePermanently')} hint={t('common.cannotUndo')} onPress={p.onDelete} />
       </KitSection>
+    </>
+  );
+}
+
+// הציוד הנלווה: שורה שפותחת חלונית סימון, כל סימון נשמר מיד
+function AccessoriesLine({ selected, onSave }: { selected: string[]; onSave: (accessories: string[]) => Promise<string | null> }) {
+  const [open, setOpen] = useState(false);
+  // Local copy so quick taps build on each other instead of on the last saved value.
+  const [picked, setPicked] = useState(selected);
+  const toggle = (key: string | null) => {
+    if (!key) return;
+    const next = picked.includes(key) ? picked.filter((k) => k !== key) : Object.keys(VEHICLE_ACCESSORY_LABELS).filter((k) => k === key || picked.includes(k));
+    setPicked(next);
+    // A failed save (the screen shows the error) drops the check again.
+    void onSave(next).then((error) => error && setPicked(picked));
+  };
+  const labels = picked.map((k) => VEHICLE_ACCESSORY_LABELS[k] ?? k);
+  const value = labels.length > 2 ? `${labels.slice(0, 2).join(', ')} ${t('common.andMoreV1', { v1: labels.length - 2 })}` : labels.join(', ');
+  return (
+    <>
+      <InfoLine icon="construct" label={t('vehicle.accessories')} value={value || null} onPress={() => { setPicked(selected); setOpen(true); }} />
+      <ChoiceSheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title={t('vehicle.accessories')}
+        options={Object.entries(VEHICLE_ACCESSORY_LABELS).map(([key, label]) => ({ value: key, label }))}
+        checked={picked}
+        onPick={toggle}
+      />
     </>
   );
 }

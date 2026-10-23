@@ -87,6 +87,7 @@ export function ChoiceSheet<T extends string>({
   value = null,
   title,
   allowClear,
+  checked,
 }: {
   open: boolean;
   onClose: () => void;
@@ -95,8 +96,11 @@ export function ChoiceSheet<T extends string>({
   value?: T | null;
   title?: string;
   allowClear?: boolean;
+  /** Pick several: rows become checkboxes and a tap toggles one without closing the sheet. */
+  checked?: T[];
 }) {
   const phone = !useIsDesktop();
+  const multi = checked !== undefined;
   const [mounted, setMounted] = useState(false);
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(1)).current;
@@ -125,7 +129,7 @@ export function ChoiceSheet<T extends string>({
   const translate = translateY.interpolate({ inputRange: [0, 1], outputRange: [0, 440] });
   const pick = (v: T | null) => {
     onPick(v);
-    onClose();
+    if (!multi) onClose();
   };
 
   return (
@@ -158,15 +162,16 @@ export function ChoiceSheet<T extends string>({
               </TouchableOpacity>
             )}
             {options.map((opt) => {
-              const active = opt.value === value;
+              const active = multi ? checked.includes(opt.value) : opt.value === value;
               return (
                 <TouchableOpacity
                   key={opt.value}
                   style={[styles.option, phone && kit.option, phone && active && kit.optionActive]}
-                  accessibilityRole="button"
+                  accessibilityRole={multi ? 'checkbox' : 'button'}
                   accessibilityLabel={opt.hint ? `${opt.label}, ${opt.hint}` : opt.label}
-                  accessibilityState={{ selected: active }}
-                  aria-selected={active}
+                  accessibilityState={multi ? { checked: active } : { selected: active }}
+                  aria-selected={multi ? undefined : active}
+                  aria-checked={multi ? active : undefined}
                   onPress={() => pick(opt.value)}
                 >
                   {!!opt.icon && (
@@ -183,7 +188,9 @@ export function ChoiceSheet<T extends string>({
                     </AppText>
                     {!!opt.hint && <AppText style={[styles.hint, phone && kit.hint]}>{opt.hint}</AppText>}
                   </View>
-                  {active ? (
+                  {multi ? (
+                    <Ionicons name={active ? 'checkbox' : 'square-outline'} size={22} color={active ? (phone ? DK.accent : COLORS.accent) : phone ? DK.faint : COLORS.textFaint} />
+                  ) : active ? (
                     <Ionicons name={phone ? 'checkmark-circle' : 'checkmark'} size={phone ? 20 : 17} color={phone ? DK.accent : COLORS.accent} />
                   ) : opt.icon ? (
                     <Ionicons name={dirIcon('chevron-back')} size={18} color={phone ? DK.faint : COLORS.textFaint} />
