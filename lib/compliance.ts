@@ -169,6 +169,8 @@ export const VEHICLE_COMPLIANCE: ComplianceItemDef[] = [
   { itemType: 'insurance_comprehensive', category: 'insurance', storedTitle: 'ביטוח מקיף', get label() { return t('folder.comprehensiveInsurance'); }, requiresExpiryOnUpload: true },
 
   { itemType: 'annual_test', category: 'inspection', storedTitle: 'טסט שנתי', get label() { return t('folder.annualTest'); }, tracksLastDate: true, validityDays: 365, requiresExpiryOnUpload: true },
+
+  { itemType: 'engineer_report', category: 'inspection', storedTitle: 'מסמך תסקיר מהנדס', get label() { return t('folder.engineerReport'); }, requiresExpiryOnUpload: true },
 ];
 
 // פריטי רכב ישנים שכבר לא מוצגים
@@ -241,11 +243,29 @@ export function groupByCategory(defs: ComplianceItemDef[]) {
 }
 
 // שמות סוגי רכב
+// the order here is the order of every vehicle-type list (passenger, cargo, work equipment, other)
 export const VEHICLE_TYPE_LABELS: Record<string, string> = {
   get car() { return t('vehicle.type.car'); },
+  get dual_use() { return t('vehicle.type.dual_use'); },
+  get taxi() { return t('vehicle.type.taxi'); },
   get minibus() { return t('vehicle.type.minibus'); },
+  get passenger_minibus() { return t('vehicle.type.passenger_minibus'); },
+  get microbus() { return t('vehicle.type.microbus'); },
+  get small_bus() { return t('vehicle.type.small_bus'); },
   get bus() { return t('vehicle.type.bus'); },
+  get touring_bus() { return t('vehicle.type.touring_bus'); },
   get truck() { return t('vehicle.type.truck'); },
+  get tractor_truck() { return t('vehicle.type.tractor_truck'); },
+  get tanker() { return t('vehicle.type.tanker'); },
+  get trailer() { return t('vehicle.type.trailer'); },
+  get tractor() { return t('vehicle.type.tractor'); },
+  get atv() { return t('vehicle.type.atv'); },
+  get engineering() { return t('vehicle.type.engineering'); },
+  get forklift() { return t('vehicle.type.forklift'); },
+  get pedestrian_forklift() { return t('vehicle.type.pedestrian_forklift'); },
+  get operational() { return t('vehicle.type.operational'); },
+  get motorcycle() { return t('vehicle.type.motorcycle'); },
+  get golf_cart() { return t('vehicle.type.golf_cart'); },
 };
 
 // שמות מצבי רכב

@@ -50,11 +50,28 @@ type StepKey = 'identity' | 'details' | 'assign' | 'drivers';
 type MciName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 // אייקון לכל סוג רכב
-const TYPE_ART: Record<VehicleType, MciName> = {
+const TYPE_ART: Partial<Record<VehicleType, MciName>> = {
   car: 'car-side',
+  dual_use: 'car-estate',
+  taxi: 'taxi',
   minibus: 'van-utility',
-  truck: 'truck',
+  passenger_minibus: 'van-passenger',
+  microbus: 'van-passenger',
+  small_bus: 'bus-side',
   bus: 'bus-side',
+  touring_bus: 'bus-side',
+  truck: 'truck',
+  tractor_truck: 'truck-trailer',
+  tanker: 'tanker-truck',
+  trailer: 'truck-trailer',
+  tractor: 'tractor',
+  atv: 'atv',
+  engineering: 'excavator',
+  forklift: 'forklift',
+  pedestrian_forklift: 'forklift',
+  operational: 'cog',
+  motorcycle: 'motorbike',
+  golf_cart: 'golf-cart',
 };
 
 // צבע נקודת המצב
@@ -162,10 +179,6 @@ export function VehicleFormDesktopView({
     !hasStatus && { label: t('common.status'), onPress: () => jump('assign') },
   ].filter(Boolean) as { label: string; onPress: () => void }[];
 
-  const typeTiles: ChoiceTile<VehicleType>[] = vehicleTypeOptions.map((o) => ({
-    ...o,
-    art: (color) => <MaterialCommunityIcons name={TYPE_ART[o.value] ?? 'car-side'} size={30} color={color} />,
-  }));
   const statusTiles: ChoiceTile<VehicleStatus>[] = statusOptions.map((o) => ({ ...o, dot: STATUS_DOT[o.value] }));
   const typeLabel = vehicleTypeOptions.find((o) => o.value === form.vehicle_type)?.label;
   const statusLabel = statusOptions.find((o) => o.value === form.status)?.label;
@@ -247,12 +260,13 @@ export function VehicleFormDesktopView({
             )}
           </FormCell>
           <FormCell label={t('vehicle.typeLabel')} required error={errors.vehicle_type}>
-            <ChoiceTiles
-              label={t('vehicle.typeLabel')}
+            <DesktopSelect
+              large
               value={form.vehicle_type || null}
-              options={typeTiles}
+              onChange={(v) => set('vehicle_type', v ?? '')}
+              options={vehicleTypeOptions}
+              placeholder={t('vehicle.typeLabel')}
               hasError={!!errors.vehicle_type}
-              onChange={(v) => set('vehicle_type', v)}
             />
           </FormCell>
         </FormPanel>
@@ -444,7 +458,7 @@ function VehicleCard({ form, typeLabel, statusLabel }: { form: FormState; typeLa
   const name = [form.manufacturer, form.model].filter(Boolean).join(' ').trim();
   const swatch = swatchFor(form.color);
   const meta = [form.production_year, form.color.trim()].filter(Boolean).join(' · ');
-  const art = form.vehicle_type ? TYPE_ART[form.vehicle_type] : null;
+  const art = form.vehicle_type ? TYPE_ART[form.vehicle_type] ?? 'car-side' : null;
 
   return (
     <LiveCard label={plate ? t('vehicle.cardOf', { plate }) : t('vehicle.newCard')}>

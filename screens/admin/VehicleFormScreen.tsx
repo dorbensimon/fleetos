@@ -14,7 +14,7 @@ import { COLORS, parseDateValue } from '../../lib/theme';
 import { isStaleDepartmentError } from '../../lib/driverFields';
 import { useCompany } from '../../lib/CompanyContext';
 import { getVehicle, createVehicle, updateVehicle, listVehicles, listDepartments, listDrivers, listActiveVehicleDrivers, upsertCompliance, Vehicle, VehicleStatus, VehicleType, AcquisitionType, VehicleDriverWithProfile } from '../../lib/adminApi';
-import { VEHICLE_STATUS_LABELS, ACQUISITION_TYPE_LABELS, findComplianceDef } from '../../lib/compliance';
+import { VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS, ACQUISITION_TYPE_LABELS, findComplianceDef } from '../../lib/compliance';
 import { uploadDocument, type PickedFile } from '../../lib/documents';
 import { chooseDocumentSource, pickDocumentSource } from '../../lib/documentActions';
 import { formatPlate } from '../../lib/plate';
@@ -51,12 +51,17 @@ const EMPTY: FormState = {
 const REQUIRED_FIELDS = ['plate_number', 'vehicle_type', 'status'] as const;
 
 // סוגי רכב
-const VEHICLE_TYPE_OPTIONS = [
-  { value: 'car', get label() { return t('vehicle.type.car'); }, get description() { return t('vehicle.typeDesc.car'); } },
-  { value: 'minibus', get label() { return t('vehicle.typeOpt.commercial'); }, get description() { return t('vehicle.typeDesc.upTo35'); } },
-  { value: 'truck', get label() { return t('vehicle.typeOpt.cargo'); }, get description() { return t('vehicle.typeDesc.over35'); } },
-  { value: 'bus', get label() { return t('vehicle.type.bus'); }, get description() { return t('vehicle.typeDesc.passengers'); } },
-] as const satisfies readonly { value: VehicleType; label: string; description: string }[];
+const TYPE_DESCRIPTIONS: Partial<Record<VehicleType, () => string>> = {
+  car: () => t('vehicle.typeDesc.car'),
+  minibus: () => t('vehicle.typeDesc.upTo35'),
+  truck: () => t('vehicle.typeDesc.over35'),
+  bus: () => t('vehicle.typeDesc.passengers'),
+};
+const VEHICLE_TYPE_OPTIONS = (Object.keys(VEHICLE_TYPE_LABELS) as VehicleType[]).map((value) => ({
+  value,
+  get label() { return VEHICLE_TYPE_LABELS[value]; },
+  get description() { return TYPE_DESCRIPTIONS[value]?.() ?? ''; },
+}));
 
 // מצבי רכב
 const STATUS_OPTIONS = [
@@ -545,13 +550,15 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
                   style={[styles.type, active && styles.typeActive]}
                   pressScale={0.96}
                 >
-                  <Ionicons name={TYPE_ICONS[option.value]} size={22} color={active ? '#FFFFFF' : DK.accent} />
+                  <Ionicons name={TYPE_ICONS[option.value] ?? 'construct'} size={22} color={active ? '#FFFFFF' : DK.accent} />
                   <DKText variant="label" color={active ? '#FFFFFF' : DK.ink}>
                     {option.label}
                   </DKText>
-                  <DKText variant="micro" color={active ? 'rgba(255,255,255,0.8)' : DK.muted}>
-                    {option.description}
-                  </DKText>
+                  {!!option.description && (
+                    <DKText variant="micro" color={active ? 'rgba(255,255,255,0.8)' : DK.muted}>
+                      {option.description}
+                    </DKText>
+                  )}
                 </Pressy>
               );
             })}
@@ -629,11 +636,21 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
 }
 
 // אייקון לכל סוג רכב
-const TYPE_ICONS: Record<VehicleType, React.ComponentProps<typeof Ionicons>['name']> = {
+const TYPE_ICONS: Partial<Record<VehicleType, React.ComponentProps<typeof Ionicons>['name']>> = {
   car: 'car-sport',
+  dual_use: 'car-sport',
+  taxi: 'car',
   minibus: 'bus-outline',
-  truck: 'cube',
+  passenger_minibus: 'bus-outline',
+  microbus: 'bus-outline',
+  small_bus: 'bus-outline',
   bus: 'bus',
+  touring_bus: 'bus',
+  truck: 'cube',
+  tractor_truck: 'cube',
+  tanker: 'water',
+  trailer: 'cube-outline',
+  motorcycle: 'bicycle',
 };
 
 // עיצוב המסך
@@ -651,7 +668,7 @@ const styles = StyleSheet.create({
   footer: { gap: 6 },
   // בחירת סוג רכב
   types: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10, padding: 14 },
-  type: { width: '47%', flexGrow: 1, minHeight: 96, borderRadius: 18, padding: 12, gap: 2, justifyContent: 'center', backgroundColor: DK.surfaceSunk },
+  type: { width: '30%', flexGrow: 1, minHeight: 84, borderRadius: 18, padding: 12, gap: 2, justifyContent: 'center', backgroundColor: DK.surfaceSunk },
   typeActive: { backgroundColor: DK.accent },
   typeError: { paddingHorizontal: 16, paddingBottom: 12 },
   pair: { flexDirection: 'row-reverse', gap: 10 },
