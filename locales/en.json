@@ -647,7 +647,7 @@
       "craneLicense": "Crane license",
       "healthDeclaration": "Health declaration",
       "periodicTraining": "Periodic briefings",
-      "procedure6": "Procedure 6 (child transport)",
+      "procedure6": "Procedure 6",
       "publicServiceLicense": "Public service license validity"
     },
     "lastInspection": "Last inspection",
@@ -1428,6 +1428,7 @@
     "addItemToGroup": "Add item to group {{title}}",
     "addNoteFor": "Add a note for {{text}}, optional",
     "alertMe": "Alert me before an inspection is due",
+    "alertInNotifications": "Set on the notifications page",
     "alertOffHint": "The alert is off for you. Other managers in the company still get it.",
     "all": "All safety officer inspections",
     "allMarkedShort": "All marked",
@@ -1848,7 +1849,7 @@
     "profileSubtitle": "Name, phone, email and password",
     "reportsSubtitle": "Driver and vehicle reports to Excel",
     "signedDocsSubtitle": "View, send to drivers and delete",
-    "systemSettingsSubtitle": "Language, terms, privacy, cookies and accessibility",
+    "systemSettingsSubtitle": "Notifications, language, terms, privacy, cookies and accessibility",
     "version": "icar · version 1.0.0"
   },
   "nav": {
@@ -2954,6 +2955,19 @@
     "openFilePlate": "Open vehicle file {{plate_number}}",
     "overBy": "Over by {{v1}}",
     "overServiceKm": "{{v1}} km past service",
+    "accessories": "Accessory equipment",
+    "accessoriesHint": "Mark the equipment kept in the vehicle",
+    "accessory": {
+      "warningTriangle": "Warning triangle",
+      "spareWheel": "Spare wheel",
+      "jack": "Car jack",
+      "lugWrench": "Lug wrench",
+      "wheelLockKey": "Spare wheel lock key",
+      "tireRepairKit": "Tire repair kit",
+      "toolbox": "Toolbox",
+      "screwdrivers": "Screwdriver set",
+      "towHitch": "Tow hitch"
+    },
     "ownership": {
       "leasing": "Leasing",
       "purchase": "Purchase",
@@ -3065,6 +3079,8 @@
     "title": "Signature validity",
     "subtitle": "For each document: how long a signature is good for, and how many days before to get an alert. When it runs out, the driver automatically gets a new request to sign.",
     "validity": "Signature valid for",
+    "detailExpiring": "Signature valid for: {{validity}}. An alert goes out {{days}} days before it expires, and when it does the driver is asked to sign again automatically.",
+    "detailNoExpiry": "A signature on this document doesn't expire, so no alert goes out for it.",
     "noExpiry": "No expiry",
     "halfYear": "Half a year",
     "oneYear": "1 year",

@@ -1,6 +1,6 @@
 // דף ההתראות - תצוגת מחשב: רשימה והגדרות
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BrandLoader } from '../ui/BrandLoader';
 import type { Notification } from '../../lib/adminApi';
@@ -20,7 +20,7 @@ import { isVehicleFolderNotification } from '../../lib/vehicleFolderAlerts';
 import { notificationTone } from '../../lib/notificationLook';
 import type { NotificationPreferencesState } from '../../lib/useNotificationPreferences';
 import { LiquidGlassSwitch } from '../ui/LiquidGlassSwitch';
-import { DText, HoverPressable, prefersReducedMotion } from './primitives';
+import { DesktopSelect, DText, HoverPressable, prefersReducedMotion } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from './desktopTheme';
 import { t, dirIcon, getLocale } from '../../lib/i18n';
 import { pageStyles } from './record/RecordPage';
@@ -31,8 +31,7 @@ import { SIGNING_LEAD_RULE, VALIDITY_MONTHS, useSigningRules, validityLabel } fr
  * Desktop "התראות" page, in two calm views behind one switch:
  *   עדכונים — the list, one readable column grouped by day, filters on top.
  *   הגדרות  — every notification type as a card with its on/off switch and,
- *             for the timed ones, its own lead time; above them a timeline
- *             that shows at a glance when each vehicle alert goes out.
+ *             for the timed ones, its own lead time on the same row.
  * A row's bell-off mutes that type on the spot (with "ביטול"); its clock
  * jumps to that type's card. Purely presentational: NotificationsScreen
  * owns the list, useNotificationPreferences owns the settings.
@@ -370,10 +369,10 @@ export function NotificationsHubDesktopView({
               <StateCard icon="cloud-offline-outline" title={t('notifications.cannotLoadSettings')} hint={prefs.error} action={{ label: t('common.tryAgain'), onPress: prefs.load }} />
             ) : (
               <>
-                {canEditLeads && <LeadTimeline prefs={prefs} onPick={revealCard} reduceMotion={reduceMotion} />}
-                {notificationGroups(prefs.visibleTypes, prefs.isDriver, prefs.isOwner).map((group) => (
+                {notificationGroups(prefs.visibleTypes, prefs.isDriver, prefs.isOwner).map((group, index, all) => (
                   <SettingsSection
                     key={group.key}
+                    layer={all.length - index}
                     group={group}
                     prefs={prefs}
                     canEditLeads={canEditLeads}
@@ -600,167 +599,40 @@ function StateCard({ icon, title, hint, action }: { icon: IconName; title: strin
 // Settings
 // ---------------------------------------------------------------------------
 
-// הקצה של ציר הזמן (90 יום)
-const AXIS_MAX = 90;
-// הסימונים על ציר הזמן
-const AXIS_TICKS = [90, 60, 30, 14, 7, 0];
-// גובה מסלול בציר הזמן
-const LANE_HEIGHT = 34;
+// הרוחב הקטן ביותר של שורה
+const ROW_MIN = 340;
 
-// הסבר ציר הזמן
+// כמה עמודות נכנסות בפאנל
 /**
- * When each vehicle alert goes out, on one line: the far right is 90 days
- * ahead, the far left is the day it expires. Close labels stack in lanes.
- * Clicking one brings its card into view.
+ * How many columns of rows every section's panel holds. All sections share it,
+ * so they line up the same; a section with fewer alerts leaves the rest empty.
  */
-const TIMELINE_LABEL: Partial<Record<NotificationType, string>> = {
-  get driver_meeting_due() { return t('prefs.type.driverMeeting'); },
-  get vehicle_safety_check_due() { return t('notifications.cat.safetyCheck'); },
-  get driver_license_expiry() { return t('driver.drivingLicense'); },
-  get driver_custom_folder_expiry() { return t('companyFolders.driverTimelineLabel'); },
-  get company_carrier_license_expiry() { return t('notifications.cat.carrierLicense'); },
-};
+function panelColumns(width: number): number {
+  if (width <= 0) return 1;
+  return Math.max(1, Math.floor(width / ROW_MIN));
+}
 
-// ציר זמן שמראה מתי כל התראה יוצאת
-function LeadTimeline({ prefs, onPick, reduceMotion }: { prefs: NotificationPreferencesState; onPick: (type: NotificationType) => void; reduceMotion: boolean }) {
-  const [width, setWidth] = useState(0);
-  const [openDays, setOpenDays] = useState<number | null>(null);
-  const leads = prefs.leads!;
+// קווי ההפרדה של תא ברשת
+/** Hairlines between the cells of a panel: above every row but the first, and between columns. */
+function cellStyle(index: number, columns: number, width: number): StyleProp<ViewStyle>[] {
+  const column = index % columns;
+  return [
+    { width: width > 0 ? width / columns : '100%' },
+    index >= columns && styles.cellTop,
+    column < columns - 1 && styles.cellSide,
+  ];
+}
 
-  // Types that share a lead time share one marker.
-  const byDays = new Map<number, { type: NotificationType; label: string; on: boolean; meeting: boolean }[]>();
-  for (const ratio of prefs.visibleTypes) {
-    if (LEAD_RULES[ratio.type]?.unit !== 'days') continue;
-    const days = leads.values[ratio.type] ?? 0;
-    const entry = { type: ratio.type, label: TIMELINE_LABEL[ratio.type] ?? shortLabel(ratio.label), on: prefs.prefs?.[ratio.type] ?? true, meeting: ratio.type === 'driver_meeting_due' || ratio.type === 'vehicle_safety_check_due' };
-    byDays.set(days, [...(byDays.get(days) ?? []), entry]);
-  }
-  const clusters = Array.from(byDays.entries())
-    .map(([days, members]) => ({
-      days,
-      members,
-      label: members.length === 1 ? members[0].label : t('notifications.count', { length: members.length }),
-      on: members.some((m) => m.on),
-      meeting: members.every((m) => m.meeting),
-    }))
-    .sort((a, b) => b.days - a.days);
-
-  // Greedy lanes, placed from the right (furthest ahead) leftwards: a label goes in
-  // the first lane whose leftmost label it doesn't touch.
-  const LABEL_PX = 128;
-  const laneEnds: number[] = [];
-  const placed = clusters.map((c) => {
-    const x = width > 0 ? (Math.min(c.days, AXIS_MAX) / AXIS_MAX) * width : 0; // from the left edge (the expiry day)
-    let lane = laneEnds.findIndex((end) => end - x >= LABEL_PX);
-    if (lane === -1) {
-      lane = laneEnds.length;
-      laneEnds.push(x);
-    } else {
-      laneEnds[lane] = x;
-    }
-    return { ...c, x, lane };
-  });
-  const lanes = Math.max(1, laneEnds.length);
-  const trackHeight = lanes * LANE_HEIGHT + 18;
-  const open = clusters.find((c) => c.days === openDays && c.members.length > 1) ?? null;
-  const service = leads.values.vehicle_service_due;
-  const serviceRule = LEAD_RULES.vehicle_service_due!;
-
-  const pick = (c: (typeof clusters)[number]) => {
-    if (c.members.length === 1) onPick(c.members[0].type);
-    else setOpenDays((d) => (d === c.days ? null : c.days));
-  };
-
-  return (
-    <View style={styles.timeline}>
-      <View style={styles.timelineHead}>
-        <View style={styles.headingCopy}>
-          <DText weight="bold" style={styles.timelineTitle}>{t('notifications.timeline')}</DText>
-          <DText style={styles.timelineSubtitle}>{t('notifications.timelineHint')}</DText>
-        </View>
-        <View style={styles.grow} />
-        {!leads.perType && (
-          <View style={styles.timelineBadge}>
-            <DText weight="semiBold" style={styles.timelineBadgeText}>{t('notifications.sharedTiming')}</DText>
-          </View>
-        )}
-        {service != null && (
-          <HoverPressable style={styles.timelineChip} hoverStyle={styles.timelineChipHover} onPress={() => onPick('vehicle_service_due')} accessibilityLabel={t('notifications.serviceTiming')}>
-            <Ionicons name="build-outline" size={15} color="#BFE6FA" />
-            <DText weight="semiBold" style={styles.timelineChipText}>{t('notifications.serviceV1', { v1: leadPhrase(service, serviceRule) })}</DText>
-          </HoverPressable>
-        )}
-      </View>
-
-      <View style={styles.axisArea} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
-        <View style={{ height: trackHeight }}>
-          {width > 0 &&
-            placed.map((c, i) => {
-              const top = (lanes - 1 - c.lane) * LANE_HEIGHT;
-              const selected = open?.days === c.days;
-              return (
-                <View key={c.days} style={[StyleSheet.absoluteFill, { pointerEvents: 'box-none' }]}>
-                  {/* The stem from the label down to the axis. */}
-                  <View style={[styles.stem, { start: c.x - 0.5, top: top + 28, height: trackHeight - top - 28 + 3 }, !c.on && styles.stemOff, { pointerEvents: 'none' }]} />
-                  <HoverPressable
-                    style={[
-                      styles.marker,
-                      c.meeting && styles.markerMeeting,
-                      !c.on && styles.markerOff,
-                      selected && styles.markerSelected,
-                      { top, ...(c.x > width - LABEL_PX / 2 ? { end: 0 } : c.x < LABEL_PX / 2 ? { start: 0 } : { start: c.x - LABEL_PX / 2 }) },
-                      !reduceMotion && styles.markerIn,
-                      !reduceMotion && webOnly({ animationDelay: `${i * 30}ms` }),
-                    ]}
-                    hoverStyle={styles.markerHover}
-                    onPress={() => pick(c)}
-                    accessibilityLabel={t('notifications.daysBeforeLabel', { v1: c.members.map((m) => m.label).join(', '), days: c.days })}
-                    accessibilityState={c.members.length > 1 ? { expanded: selected } : undefined}
-                  >
-                    <DText weight="semiBold" style={[styles.markerText, !c.on && styles.markerTextOff]} numberOfLines={1}>{c.label}</DText>
-                    <DText weight="bold" style={[styles.markerDays, !c.on && styles.markerTextOff]}>{c.days}</DText>
-                  </HoverPressable>
-                </View>
-              );
-            })}
-        </View>
-        <View style={styles.axis}>
-          <View style={styles.axisFill} />
-          {width > 0 &&
-            placed.map((c) => (
-              <View key={c.days} style={[styles.axisDot, c.meeting && styles.axisDotMeeting, !c.on && styles.axisDotOff, { start: c.x - 5 }, { pointerEvents: 'none' }]} />
-            ))}
-        </View>
-        <View style={styles.ticks}>
-          {width > 0 &&
-            AXIS_TICKS.map((tick) => (
-              <DText
-                key={tick}
-                weight={tick === 0 ? 'bold' : 'semiBold'}
-                style={[styles.tick, tick === 0 && styles.tickEnd, { start: Math.min(width - 72, Math.max(0, (tick / AXIS_MAX) * width - 36)) }]}
-              >
-                {tick === 0 ? t('notifications.expiryDay') : t('notifications.tickDays', { tick })}
-              </DText>
-            ))}
-        </View>
-      </View>
-
-      {open && (
-        <View style={[styles.clusterRow, !reduceMotion && styles.fadeIn]}>
-          <DText weight="semiBold" style={styles.clusterTitle}>{t('notifications.daysBeforeColon', { days: open.days })}</DText>
-          {open.members.map((m) => (
-            <HoverPressable key={m.type} style={[styles.clusterChip, !m.on && styles.markerOff]} hoverStyle={styles.timelineChipHover} onPress={() => onPick(m.type)}>
-              <DText weight="semiBold" style={[styles.timelineChipText, !m.on && styles.markerTextOff]}>{m.label}</DText>
-            </HoverPressable>
-          ))}
-        </View>
-      )}
-    </View>
-  );
+// הסבר בסימן שאלה שמנהל את עצמו
+/** A "?" that keeps its own open state, for a section heading. */
+function HeadingHelp({ text, title, label, reduceMotion }: { text: string; title?: string; label: string; reduceMotion: boolean }) {
+  const [open, setOpen] = useState(false);
+  return <HelpTip text={text} title={title} label={label} open={open} onOpenChange={setOpen} reduceMotion={reduceMotion} />;
 }
 
 // חלק בהגדרות
 function SettingsSection({
+  layer,
   group,
   prefs,
   canEditLeads,
@@ -768,6 +640,8 @@ function SettingsSection({
   reduceMotion,
   registerCard,
 }: {
+  /** Earlier sections sit above later ones, so a card's "?" bubble can hang over the next section. */
+  layer: number;
   group: SettingsGroup;
   prefs: NotificationPreferencesState;
   canEditLeads: boolean;
@@ -777,10 +651,7 @@ function SettingsSection({
 }) {
   const [width, setWidth] = useState(0);
   const on = group.items.filter((entry) => prefs.prefs?.[entry.type] ?? true).length;
-  const minCard = group.compact ? 300 : 380;
-  const gap = 14;
-  const columns = width > 0 ? Math.max(1, Math.min(group.items.length, Math.floor((width + gap) / (minCard + gap)))) : 1;
-  const cardWidth = width > 0 ? (width - gap * (columns - 1)) / columns : undefined;
+  const columns = panelColumns(width);
   const folderLeads = group.key === 'folders' && canEditLeads;
   const allOn = on === group.items.length;
 
@@ -796,22 +667,18 @@ function SettingsSection({
   };
 
   const toggleAll = async () => {
-    const next = !allOn;
-    await prefs.toggleMany(group.items.map((item) => item.type), next);
+    await prefs.toggleMany(group.items.map((item) => item.type), !allOn);
   };
 
   return (
-    <View style={styles.section}>
-      <View style={styles.sectionHead}>
-        <View style={styles.headingCopy}>
-          <View style={styles.sectionTitleLine}>
-            <DText weight="bold" style={styles.sectionTitle} accessibilityRole="header">{group.title}</DText>
-            <View style={styles.sectionCount}>
-              <DText weight="bold" style={styles.sectionCountText}>{`${on}/${group.items.length}`}</DText>
-            </View>
-          </View>
-          {!!group.subtitle && <DText style={styles.sectionSubtitle}>{group.subtitle}</DText>}
+    <View style={[styles.panel, { zIndex: layer }]}>
+      {/* The heading lives inside the panel: name, count, its "?" and the switch for the whole group. */}
+      <View style={styles.panelHead}>
+        <DText weight="bold" style={styles.panelTitle} accessibilityRole="header">{group.title}</DText>
+        <View style={styles.sectionCount}>
+          <DText weight="bold" style={styles.sectionCountText}>{`${on}/${group.items.length}`}</DText>
         </View>
+        {!!group.subtitle && <HeadingHelp text={group.subtitle} label={group.title} reduceMotion={reduceMotion} />}
         <View style={styles.grow} />
         {folderLeads && (
           <View style={styles.bulk}>
@@ -826,25 +693,33 @@ function SettingsSection({
                 disabled={prefs.savingLeadType != null}
                 accessibilityLabel={t('notifications.daysBeforeAllFolders', { days })}
               >
-                <DText weight="semiBold" style={styles.bulkChipText}>{t('common.daysValue', { days })}</DText>
+                <DText weight="semiBold" style={styles.bulkChipText}>{days}</DText>
               </HoverPressable>
             ))}
           </View>
         )}
         {group.items.length > 2 && (
-          <HoverPressable style={styles.linkButton} hoverStyle={styles.linkButtonHover} onPress={() => void toggleAll()} disabled={prefs.savingType != null}>
-            <DText weight="semiBold" style={styles.linkButtonText}>{allOn ? t('notifications.turnAllOff') : t('notifications.turnAllOn')}</DText>
-          </HoverPressable>
+          <View style={styles.allSwitch}>
+            <DText weight="semiBold" style={styles.allSwitchLabel}>{t('common.all')}</DText>
+            <LiquidGlassSwitch
+              value={allOn}
+              onValueChange={() => void toggleAll()}
+              disabled={prefs.savingType != null}
+              accessibilityLabel={`${group.title}: ${allOn ? t('notifications.turnAllOff') : t('notifications.turnAllOn')}`}
+              tint={DESKTOP_COLORS.brand}
+              reduceMotion={reduceMotion}
+            />
+          </View>
         )}
       </View>
 
-      <View style={styles.cards} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
-        {group.items.map((item) => (
+      <View style={styles.grid} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+        {group.items.map((item, index) => (
           <TypeCard
             key={item.type}
             item={item}
             compact={!!group.compact}
-            width={cardWidth}
+            cell={cellStyle(index, columns, width)}
             prefs={prefs}
             canEditLeads={canEditLeads}
             flashNonce={flash?.type === item.type ? flash.nonce : null}
@@ -861,7 +736,7 @@ function SettingsSection({
 function TypeCard({
   item,
   compact,
-  width,
+  cell,
   prefs,
   canEditLeads,
   flashNonce,
@@ -870,7 +745,8 @@ function TypeCard({
 }: {
   item: NotificationTypeInfo;
   compact: boolean;
-  width: number | undefined;
+  /** Its width and hairlines as a cell of the section's panel. */
+  cell: StyleProp<ViewStyle>[];
   prefs: NotificationPreferencesState;
   canEditLeads: boolean;
   flashNonce: number | null;
@@ -882,24 +758,39 @@ function TypeCard({
   const leadValue = prefs.leads?.values[item.type];
   const leadEditable = canEditLeads && !!rule && leadValue != null && (prefs.leads!.perType || isVehicleFolderNotification(item.type));
   const label = compact ? shortLabel(item.label) : item.label;
+  const [helpOpen, setHelpOpen] = useState(false);
+  // What the alert does, behind the "?": its description, or when it goes out if it has none.
+  const help =
+    item.description ||
+    (leadValue != null && rule ? `${leadPhrase(leadValue, rule)}${rule.unit === 'days' ? t('notifications.andOnDay') : ''}` : '');
 
   return (
     <View
       ref={(node) => registerCard(item.type, node)}
-      style={[styles.card, width != null && { width }, !value && styles.cardOff]}
+      style={[styles.card, ...cell, helpOpen && styles.cardRaised]}
     >
       {flashNonce != null && <View key={flashNonce} style={[StyleSheet.absoluteFill, styles.cardFlash, { pointerEvents: 'none' }]} />}
       <View style={styles.cardHead}>
         <View style={[styles.cardIcon, !value && styles.cardIconOff]}>
-          <Ionicons name={TYPE_ICON[item.type] ?? 'notifications-outline'} size={20} color={value ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
+          <Ionicons name={TYPE_ICON[item.type] ?? 'notifications-outline'} size={18} color={value ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
         </View>
         <View style={styles.cardCopy}>
           <DText weight="bold" style={[styles.cardTitle, !value && styles.cardTitleOff]} numberOfLines={1}>{label}</DText>
-          {!compact && !!item.description && <DText style={styles.cardDescription} numberOfLines={3}>{item.description}</DText>}
-          {compact && !leadEditable && leadValue != null && rule && (
-            <DText style={styles.cardDescription}>{leadPhrase(leadValue, rule)}{rule.unit === 'days' ? t('notifications.andOnDay') : ''}</DText>
-          )}
+          {!!help && <HelpTip text={help} title={item.label} label={label} open={helpOpen} onOpenChange={setHelpOpen} reduceMotion={reduceMotion} />}
         </View>
+        {/* The lead time sits on the title row, and only while the alert is on. */}
+        {leadEditable && value && (
+          <LeadControl
+            type={item.type}
+            label={label}
+            rule={rule!}
+            value={leadValue!}
+            saving={prefs.savingLeadType === item.type}
+            dimmed={false}
+            inline
+            onCommit={(next) => prefs.setLead(item.type, next)}
+          />
+        )}
         <LiquidGlassSwitch
           value={value}
           onValueChange={(next) => void prefs.toggle(item.type, next)}
@@ -909,16 +800,64 @@ function TypeCard({
           reduceMotion={reduceMotion}
         />
       </View>
-      {leadEditable && (
-        <LeadControl
-          type={item.type}
-          label={label}
-          rule={rule!}
-          value={leadValue!}
-          saving={prefs.savingLeadType === item.type}
-          dimmed={!value}
-          onCommit={(next) => prefs.setLead(item.type, next)}
-        />
+    </View>
+  );
+}
+
+// סימן שאלה קטן עם הסבר
+/**
+ * A small "?" beside a card's title. Clicking it opens a short explanation
+ * right under it; a click anywhere else, or Escape, closes it.
+ */
+function HelpTip({
+  text,
+  title,
+  label,
+  open,
+  onOpenChange,
+  reduceMotion,
+}: {
+  text: string;
+  /** Shown in bold above the explanation: the full name, for a row where it may be cut short. */
+  title?: string;
+  label: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  reduceMotion: boolean;
+}) {
+  const ref = useRef<View>(null);
+
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return;
+    const away = (event: PointerEvent) => {
+      const node = ref.current as unknown as HTMLElement | null;
+      if (node && !node.contains(event.target as Node)) onOpenChange(false);
+    };
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') onOpenChange(false); };
+    document.addEventListener('pointerdown', away);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', away);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [open, onOpenChange]);
+
+  return (
+    <View ref={ref} style={styles.help}>
+      <HoverPressable
+        style={styles.helpButton}
+        hoverStyle={styles.helpButtonHover}
+        onPress={() => onOpenChange(!open)}
+        accessibilityLabel={`${label}: ${text}`}
+        accessibilityState={{ expanded: open }}
+      >
+        <Ionicons name={open ? 'help-circle' : 'help-circle-outline'} size={15} color={open ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
+      </HoverPressable>
+      {open && (
+        <View style={[styles.helpBubble, !reduceMotion && styles.helpBubbleIn]} accessibilityLiveRegion="polite">
+          {!!title && <DText weight="bold" style={styles.helpText}>{title}</DText>}
+          <DText style={styles.helpText}>{text}</DText>
+        </View>
       )}
     </View>
   );
@@ -932,66 +871,66 @@ function TypeCard({
 function SigningRulesSection() {
   const { companyId } = useCompany();
   const rules = useSigningRules(companyId, true);
+  const [width, setWidth] = useState(0);
+  const columns = panelColumns(width);
+  const reduceMotion = prefersReducedMotion();
 
   return (
-    <View style={styles.section}>
-      <View style={styles.sectionHead}>
-        <View style={styles.headingCopy}>
-          <DText weight="bold" style={styles.sectionTitle} accessibilityRole="header">{t('signingRules.title')}</DText>
-          <DText style={styles.sectionSubtitle}>{t('signingRules.subtitle')}</DText>
-        </View>
+    // Measured on the panel, which is there from the start (the grid only appears once the rows load).
+    <View style={styles.panel} onLayout={(e) => setWidth(e.nativeEvent.layout.width - 2)}>
+      <View style={styles.panelHead}>
+        <DText weight="bold" style={styles.panelTitle} accessibilityRole="header">{t('signingRules.title')}</DText>
+        <HeadingHelp text={t('signingRules.subtitle')} label={t('signingRules.title')} reduceMotion={reduceMotion} />
       </View>
-      {!!rules.error && <DText style={[styles.sectionSubtitle, styles.ruleError]}>{rules.error}</DText>}
+      {!!rules.error && <DText style={[styles.panelNote, styles.ruleError]}>{rules.error}</DText>}
       {!rules.rows ? (
-        !rules.error && <BrandLoader color={DESKTOP_COLORS.brand} />
+        !rules.error && <View style={styles.panelNote}><BrandLoader color={DESKTOP_COLORS.brand} /></View>
       ) : rules.rows.length === 0 ? (
-        <DText style={styles.sectionSubtitle}>{t('signingRules.empty')}</DText>
+        <DText style={styles.panelNote}>{t('signingRules.empty')}</DText>
       ) : (
-        <View style={styles.cards}>
-          {rules.rows.map((row) => (
-            <View key={row.templateId} style={[styles.card, styles.ruleCard]}>
-              <View style={styles.cardHead}>
+        <View style={styles.grid}>
+          {rules.rows.map((row, index) => (
+            // Each document in two short lines: its full name, then how long a signature holds and (when it expires) the lead time.
+            <View key={row.templateId} style={[styles.card, styles.ruleCell, ...cellStyle(index, columns, width), { zIndex: rules.rows!.length - index }]}>
+              <View style={[styles.cardHead, styles.ruleHead]}>
                 <View style={styles.cardIcon}>
-                  <Ionicons name="document-text-outline" size={20} color={DESKTOP_COLORS.brand} />
+                  <Ionicons name="document-text-outline" size={18} color={DESKTOP_COLORS.brand} />
                 </View>
                 <View style={styles.cardCopy}>
-                  <DText weight="bold" style={styles.cardTitle} numberOfLines={1}>{row.title}</DText>
+                  <DText weight="bold" style={styles.cardTitle} numberOfLines={2}>{row.title}</DText>
+                  <HeadingHelp
+                    title={row.title}
+                    text={row.validMonths ? t('signingRules.detailExpiring', { validity: validityLabel(row.validMonths), days: row.leadDays }) : t('signingRules.detailNoExpiry')}
+                    label={row.title}
+                    reduceMotion={reduceMotion}
+                  />
                 </View>
                 {rules.saving === row.templateId && <BrandLoader size={14} color={DESKTOP_COLORS.brand} />}
               </View>
-              <View style={styles.lead}>
-                <DText weight="semiBold" style={styles.leadLabel}>{t('signingRules.validity')}</DText>
-                <View style={[styles.presets, styles.presetsWrap]}>
-                  {VALIDITY_MONTHS.map((months) => {
-                    const active = (row.validMonths ?? 0) === months;
-                    return (
-                      <HoverPressable
-                        key={months}
-                        style={[styles.preset, active && styles.presetActive]}
-                        hoverStyle={active ? undefined : styles.presetHover}
-                        pressMotionStyle={styles.pressDown}
-                        onPress={() => { if (!active) void rules.save(row.templateId, months || null, row.leadDays); }}
-                        disabled={rules.saving != null}
-                        accessibilityLabel={`${row.title}: ${validityLabel(months)}`}
-                        accessibilityState={{ selected: active }}
-                      >
-                        <DText weight="semiBold" style={[styles.presetText, active && styles.presetTextActive]}>{validityLabel(months)}</DText>
-                      </HoverPressable>
-                    );
-                  })}
+              <View style={styles.ruleControls}>
+                {!!row.validMonths && (
+                  <LeadControl
+                    type="signature_expiry"
+                    label={row.title}
+                    rule={SIGNING_LEAD_RULE}
+                    value={row.leadDays}
+                    saving={false}
+                    dimmed={false}
+                    inline
+                    onCommit={(days) => rules.save(row.templateId, row.validMonths, days)}
+                  />
+                )}
+                <View style={styles.validity}>
+                  <DesktopSelect
+                    value={String(row.validMonths ?? 0)}
+                    options={VALIDITY_MONTHS.map((months) => ({ value: String(months), label: validityLabel(months) }))}
+                    onChange={(next) => {
+                      const months = Number(next ?? 0);
+                      if (months !== (row.validMonths ?? 0)) void rules.save(row.templateId, months || null, row.leadDays);
+                    }}
+                  />
                 </View>
               </View>
-              {!!row.validMonths && (
-                <LeadControl
-                  type="signature_expiry"
-                  label={row.title}
-                  rule={SIGNING_LEAD_RULE}
-                  value={row.leadDays}
-                  saving={false}
-                  dimmed={false}
-                  onCommit={(days) => rules.save(row.templateId, row.validMonths, days)}
-                />
-              )}
             </View>
           ))}
         </View>
@@ -1012,6 +951,7 @@ export function LeadControl({
   value,
   saving,
   dimmed,
+  inline = false,
   onCommit,
 }: {
   type: NotificationType;
@@ -1020,6 +960,8 @@ export function LeadControl({
   value: number;
   saving: boolean;
   dimmed: boolean;
+  /** Just the − value + row, for a card's title line: no divider, no presets. */
+  inline?: boolean;
   onCommit: (value: number) => Promise<boolean>;
 }) {
   const [draft, setDraft] = useState(String(value));
@@ -1051,14 +993,14 @@ export function LeadControl({
   const unitWord = leadUnitWord(current, rule);
   const stepLabels = leadStepLabels(rule);
 
-  return (
-    <View style={[styles.lead, dimmed && styles.leadDimmed]} aria-disabled={dimmed}>
-      <View style={styles.leadRow}>
-        <Ionicons name="time-outline" size={16} color={DESKTOP_COLORS.inkMuted} />
-        <DText weight="semiBold" style={styles.leadLabel}>{t('notifications.alert')}</DText>
-        <View style={styles.stepper}>
+  const row = (
+      <View style={[styles.leadRow, inline && styles.leadRowInline]}>
+        {/* On a card's title row the card itself says what this is; just the number and its unit. */}
+        {!inline && <Ionicons name="time-outline" size={16} color={DESKTOP_COLORS.inkMuted} />}
+        {!inline && <DText weight="semiBold" style={styles.leadLabel}>{t('notifications.alert')}</DText>}
+        <View style={[styles.stepper, inline && styles.stepperInline]}>
           <HoverPressable
-            style={styles.stepBtn}
+            style={[styles.stepBtn, inline && styles.stepBtnInline]}
             hoverStyle={styles.stepBtnHover}
             pressMotionStyle={styles.pressDown}
             onPress={() => step(1)}
@@ -1075,11 +1017,11 @@ export function LeadControl({
             onSubmitEditing={() => commit(draft)}
             keyboardType="number-pad"
             accessibilityLabel={`${label}: ${unitWord}`}
-            style={[styles.stepInput, rule.unit === 'km' && styles.stepInputWide]}
+            style={[styles.stepInput, inline && styles.stepInputInline, rule.unit === 'km' && styles.stepInputWide]}
             selectTextOnFocus
           />
           <HoverPressable
-            style={styles.stepBtn}
+            style={[styles.stepBtn, inline && styles.stepBtnInline]}
             hoverStyle={styles.stepBtnHover}
             pressMotionStyle={styles.pressDown}
             onPress={() => step(-1)}
@@ -1089,10 +1031,19 @@ export function LeadControl({
             <Ionicons name="remove" size={17} color={current <= rule.min ? DESKTOP_COLORS.inkFaint : DESKTOP_COLORS.brand} />
           </HoverPressable>
         </View>
-        <DText style={styles.leadUnit} numberOfLines={1}>{unitWord}</DText>
-        <View style={styles.grow} />
+        {/* On a row days need no words; kilometres keep a short "ק״מ" so 1000 isn't read as days. */}
+        {!inline && <DText style={styles.leadUnit} numberOfLines={1}>{unitWord}</DText>}
+        {inline && rule.unit === 'km' && <DText style={[styles.leadUnit, styles.leadUnitInline]}>{t('unit.km')}</DText>}
+        {!inline && <View style={styles.grow} />}
         {saving && <BrandLoader size={14} color={DESKTOP_COLORS.brand} />}
       </View>
+  );
+
+  if (inline) return row;
+
+  return (
+    <View style={[styles.lead, dimmed && styles.leadDimmed]} aria-disabled={dimmed}>
+      {row}
       <View style={styles.presets}>
         {rule.presets.map((preset) => {
           const active = current === preset;
@@ -1302,96 +1253,11 @@ const styles = StyleSheet.create({
   stateTitle: { fontSize: 18, color: DESKTOP_COLORS.ink, textAlign: 'center' },
   stateHint: { fontSize: 15, color: DESKTOP_COLORS.inkMuted, textAlign: 'center', maxWidth: 460, marginBottom: 6 },
 
-  // Timeline
-  timeline: {
-    borderRadius: 22,
-    backgroundColor: NAVY,
-    paddingHorizontal: 30,
-    paddingTop: 24,
-    paddingBottom: 22,
-    gap: 22,
-    overflow: 'hidden',
-    ...webOnly({
-      backgroundImage: 'radial-gradient(120% 140% at 100% 0%, rgba(47,91,255,0.35) 0%, rgba(16,37,54,0) 55%)',
-      boxShadow: '0 18px 44px rgba(16,37,54,0.22)',
-    }),
-  },
-  timelineHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
-  timelineTitle: { fontSize: 20, color: '#FFFFFF', letterSpacing: -0.3 },
-  timelineSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.68)' },
-  timelineBadge: { height: 30, paddingHorizontal: 12, borderRadius: 15, justifyContent: 'center', backgroundColor: 'rgba(255,178,62,0.18)' },
-  timelineBadgeText: { fontSize: 13, color: '#FFD08A' },
-  timelineChip: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 7,
-    height: 34,
-    paddingHorizontal: 13,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-    ...webOnly({ transition: 'background-color 150ms ease' }),
-  },
-  timelineChipHover: { backgroundColor: 'rgba(255,255,255,0.16)' },
-  timelineChipText: { fontSize: 13.5, color: '#E6F4FB' },
-  axisArea: { position: 'relative' },
-  stem: { position: 'absolute', width: 1, backgroundColor: 'rgba(191,230,250,0.4)' },
-  stemOff: { backgroundColor: 'rgba(255,255,255,0.14)' },
-  marker: {
-    position: 'absolute',
-    width: 128,
-    height: 28,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 6,
-    paddingHorizontal: 10,
-    borderRadius: 9,
-    backgroundColor: 'rgba(47,91,255,0.32)',
-    borderWidth: 1,
-    borderColor: 'rgba(95,193,240,0.45)',
-    ...webOnly({ transition: `background-color 150ms ease, transform 180ms ${EASE_OUT}` }),
-  },
-  markerMeeting: { backgroundColor: 'rgba(255,178,62,0.22)', borderColor: 'rgba(255,178,62,0.5)' },
-  markerOff: { backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.12)', borderStyle: 'dashed' },
-  markerSelected: { backgroundColor: 'rgba(47,91,255,0.6)', borderColor: '#5FC1F0' },
-  markerHover: { backgroundColor: 'rgba(47,91,255,0.55)', transform: [{ translateY: -1 }] },
-  markerIn: webOnly({
-    animationKeyframes: { from: { opacity: 0, transform: [{ translateY: 6 }] }, to: { opacity: 1, transform: [{ translateY: 0 }] } },
-    animationDuration: '320ms',
-    animationTimingFunction: EASE_OUT,
-    animationFillMode: 'both',
-  }),
-  markerText: { flexShrink: 1, fontSize: 12.5, color: '#FFFFFF' },
-  markerDays: { fontSize: 13, color: '#BFE6FA', ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
-  markerTextOff: { color: 'rgba(255,255,255,0.4)' },
-  axis: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center' },
-  axisFill: {
-    position: 'absolute', start: 0, end: 0, top: 0, bottom: 0,
-    borderRadius: 3,
-    ...webOnly({ backgroundImage: 'linear-gradient(to left, rgba(95,193,240,0.15), rgba(255,101,92,0.85))' }),
-  },
-  axisDot: { position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: '#5FC1F0', borderWidth: 2, borderColor: NAVY },
-  axisDotMeeting: { backgroundColor: '#FFB23E' },
-  axisDotOff: { backgroundColor: 'rgba(255,255,255,0.25)' },
-  ticks: { height: 20, marginTop: 8 },
-  clusterRow: { flexDirection: 'row-reverse', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
-  clusterTitle: { fontSize: 14, color: 'rgba(255,255,255,0.7)', marginStart: 4 },
-  clusterChip: { height: 32, paddingHorizontal: 12, borderRadius: 16, justifyContent: 'center', backgroundColor: 'rgba(47,91,255,0.3)', borderWidth: 1, borderColor: 'rgba(95,193,240,0.4)', ...webOnly({ transition: 'background-color 150ms ease' }) },
-  tick: { position: 'absolute', width: 72, textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.5)' },
-  tickEnd: { color: '#FF8A82' },
-
   // Settings sections
-  section: { gap: 14 },
-  sectionHead: { flexDirection: 'row-reverse', alignItems: 'flex-end', gap: 14, flexWrap: 'wrap', paddingHorizontal: 4 },
-  sectionTitleLine: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
-  sectionTitle: { fontSize: 19, color: DESKTOP_COLORS.ink, letterSpacing: -0.2 },
   sectionCount: { height: 24, paddingHorizontal: 9, borderRadius: 12, justifyContent: 'center', backgroundColor: '#EEF0F2' },
   sectionCountText: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
-  sectionSubtitle: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
   bulk: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  bulkLabel: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted, marginStart: 2 },
+  bulkLabel: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, marginStart: 2 },
   bulkChip: {
     height: 32,
     paddingHorizontal: 11,
@@ -1404,45 +1270,95 @@ const styles = StyleSheet.create({
   },
   bulkChipHover: { backgroundColor: BRAND_SOFT, borderColor: 'rgba(47,91,255,0.3)' },
   bulkChipText: { fontSize: 13, color: DESKTOP_COLORS.ink },
-  linkButton: { height: 32, paddingHorizontal: 10, borderRadius: 9, justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease' }) },
-  linkButtonHover: { backgroundColor: BRAND_SOFT },
-  linkButtonText: { fontSize: 14, color: DESKTOP_COLORS.brand },
-  cards: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 14 },
-  card: {
+  // A section: one panel, its heading inside, its alerts as rows of a grid.
+  panel: {
     position: 'relative',
-    overflow: 'hidden',
-    borderRadius: 18,
+    borderRadius: 14,
     backgroundColor: DESKTOP_COLORS.surface,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.border,
-    padding: 18,
-    gap: 14,
-    ...webOnly({
-      boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
-      transition: `opacity 200ms ease, border-color 200ms ease, box-shadow 200ms ${EASE_OUT}`,
-    }),
+    ...webOnly({ boxShadow: '0 1px 2px rgba(16,24,40,0.04)' }),
   },
-  cardOff: { backgroundColor: '#FAFBFC' },
+  panelHead: {
+    position: 'relative',
+    zIndex: 2,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    minHeight: 52,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: DESKTOP_COLORS.borderSoft,
+  },
+  panelTitle: { fontSize: 15, color: DESKTOP_COLORS.ink, letterSpacing: -0.1 },
+  panelNote: { padding: 14, fontSize: 13.5, color: DESKTOP_COLORS.inkMuted },
+  allSwitch: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginStart: 4 },
+  allSwitchLabel: { fontSize: 13, color: DESKTOP_COLORS.inkMuted },
+  grid: { flexDirection: 'row-reverse', flexWrap: 'wrap' },
+  cellTop: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
+  cellSide: { borderLeftWidth: 1, borderLeftColor: DESKTOP_COLORS.borderSoft },
+  // One alert: a slim row inside its section's panel.
+  card: {
+    position: 'relative',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 14,
+    minHeight: 52,
+    justifyContent: 'center',
+  },
+  // The signature's validity: a small dropdown in place of a row of buttons.
+  validity: { width: 112, flexShrink: 0 },
+  // A document's cell: name on top, its two controls under it at the row's far edge.
+  ruleCell: { gap: 8 },
+  // Above the controls under it, so the name's "?" bubble isn't covered.
+  ruleHead: { position: 'relative', zIndex: 2 },
+  ruleControls: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'flex-end', gap: 10 },
+  // Above its neighbours while its explanation is open, so the bubble isn't covered.
+  cardRaised: { zIndex: 10 },
   cardFlash: {
-    borderRadius: 18,
+    borderRadius: 0,
     borderWidth: 2,
     borderColor: DESKTOP_COLORS.brand,
     backgroundColor: 'rgba(47,91,255,0.08)',
     opacity: 0,
     ...webOnly({ animationKeyframes: { '0%': { opacity: 1 }, '70%': { opacity: 1 }, '100%': { opacity: 0 } }, animationDuration: '1800ms', animationTimingFunction: 'ease-out' }),
   },
-  cardHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
-  cardIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: BRAND_SOFT, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  cardHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  cardIcon: { width: 28, height: 28, borderRadius: 8, backgroundColor: BRAND_SOFT, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   cardIconOff: { backgroundColor: '#EEF0F2' },
-  cardCopy: { flex: 1, minWidth: 0, gap: 3 },
-  cardTitle: { fontSize: 16, color: DESKTOP_COLORS.ink },
+  cardCopy: { flex: 1, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 2 },
+  cardTitle: { flexShrink: 1, fontSize: 13.5, color: DESKTOP_COLORS.ink },
   cardTitleOff: { color: DESKTOP_COLORS.inkMuted },
-  cardDescription: { fontSize: 13.5, lineHeight: 19, color: DESKTOP_COLORS.inkMuted },
+
+  // The "?" and its explanation
+  help: { position: 'relative', flexShrink: 0 },
+  helpButton: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease' }) },
+  helpButtonHover: { backgroundColor: BRAND_SOFT },
+  helpBubble: {
+    position: 'absolute',
+    top: 26,
+    end: -6,
+    width: 240,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: NAVY,
+    ...webOnly({ boxShadow: '0 8px 24px rgba(16,24,40,0.18)', transformOrigin: 'top right' }),
+  },
+  helpBubbleIn: webOnly({
+    animationKeyframes: { from: { opacity: 0, transform: [{ scale: 0.96 }] }, to: { opacity: 1, transform: [{ scale: 1 }] } },
+    animationDuration: '150ms',
+    animationTimingFunction: EASE_OUT,
+  }),
+  helpText: { fontSize: 12, lineHeight: 17, color: '#FFFFFF' },
 
   // Lead control
   lead: { gap: 10, paddingTop: 14, borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft, ...webOnly({ transition: 'opacity 200ms ease' }) },
   leadDimmed: { opacity: 0.5, pointerEvents: 'none' },
   leadRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  leadRowInline: { flexShrink: 0 },
   leadLabel: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
   leadUnit: { fontSize: 14, color: DESKTOP_COLORS.ink, flexShrink: 1 },
   stepper: {
@@ -1471,9 +1387,12 @@ const styles = StyleSheet.create({
     ...webOnly({ outlineStyle: 'none', fontVariantNumeric: 'tabular-nums' }),
   },
   stepInputWide: { width: 60 },
+  // The smaller stepper that sits on a card's title row
+  stepperInline: { height: 30, borderRadius: 9 },
+  stepBtnInline: { width: 24, height: 28 },
+  stepInputInline: { width: 32, height: 28, fontSize: 14 },
+  leadUnitInline: { fontSize: 13, color: DESKTOP_COLORS.inkMuted },
   presets: { flexDirection: 'row-reverse', gap: 6 },
-  presetsWrap: { flexWrap: 'wrap' },
-  ruleCard: { flexBasis: 380, flexGrow: 1 },
   ruleError: { color: DESKTOP_TONES.bad.fg },
   preset: {
     minWidth: 44,

@@ -647,7 +647,7 @@
       "craneLicense": "רישיון מנוף",
       "healthDeclaration": "הצהרת בריאות",
       "periodicTraining": "הדרכות תקופתיות",
-      "procedure6": "נוהל 6 (הסעת ילדים)",
+      "procedure6": "נוהל 6",
       "publicServiceLicense": "תוקף ר.פ"
     },
     "lastInspection": "בדיקה אחרונה",
@@ -1428,6 +1428,7 @@
     "addItemToGroup": "הוספת סעיף לקבוצה {{title}}",
     "addNoteFor": "הוספת הערה ל{{text}}, לא חובה",
     "alertMe": "התראה אליי לפני מועד בדיקה",
+    "alertInNotifications": "ההגדרה נמצאת בדף ההתראות",
     "alertOffHint": "ההתראה כבויה אצלך. מנהלים אחרים בחברה עדיין מקבלים אותה.",
     "all": "כל בדיקות קצין הבטיחות",
     "allMarkedShort": "הכול סומן",
@@ -1848,7 +1849,7 @@
     "profileSubtitle": "שם, טלפון, מייל וסיסמה",
     "reportsSubtitle": "דוחות נהגים ורכבים לאקסל",
     "signedDocsSubtitle": "צפייה, שליחה לנהגים ומחיקה",
-    "systemSettingsSubtitle": "שפה, תנאי שימוש, פרטיות, עוגיות ונגישות",
+    "systemSettingsSubtitle": "התראות, שפה, תנאי שימוש, פרטיות, עוגיות ונגישות",
     "version": "icar · גרסה 1.0.0"
   },
   "nav": {
@@ -2954,6 +2955,19 @@
     "openFilePlate": "פתח את תיק הרכב {{plate_number}}",
     "overBy": "חריגה {{v1}}",
     "overServiceKm": "חריגה של {{v1}} ק״מ מהטיפול",
+    "accessories": "ציוד נלווה",
+    "accessoriesHint": "סמנו את הציוד שנמצא ברכב",
+    "accessory": {
+      "warningTriangle": "משולש חירום",
+      "spareWheel": "גלגל חלופי",
+      "jack": "מגבה (ג'ק)",
+      "lugWrench": "מפתח ברגי גלגל",
+      "wheelLockKey": "מפתח מנעול לגלגל החלופי",
+      "tireRepairKit": "ערכת תיקון תקר",
+      "toolbox": "תיבת כלים",
+      "screwdrivers": "סט מברגים",
+      "towHitch": "התקן גרירה"
+    },
     "ownership": {
       "leasing": "ליסינג",
       "purchase": "רכישה",
@@ -3065,6 +3079,8 @@
     "title": "תוקף חתימה על מסמכים",
     "subtitle": "לכל מסמך: כמה זמן החתימה טובה, וכמה ימים לפני לקבל התראה. כשהתוקף פג, הנהג מקבל אוטומטית בקשה לחתום מחדש.",
     "validity": "תוקף החתימה",
+    "detailExpiring": "תוקף החתימה: {{validity}}. התראה יוצאת {{days}} ימים לפני שהתוקף פג, וכשהוא פג הנהג מקבל אוטומטית בקשה לחתום מחדש.",
+    "detailNoExpiry": "החתימה על המסמך לא פגה, ולכן לא יוצאת עליה התראה.",
     "noExpiry": "ללא תוקף",
     "halfYear": "חצי שנה",
     "oneYear": "שנה",

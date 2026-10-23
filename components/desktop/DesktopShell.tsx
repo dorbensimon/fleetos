@@ -42,7 +42,6 @@ const ROLE_LABEL: Record<string, string> = {
 // הפריטים בתחתית התפריט של המנהל
 // Pinned to the bottom of an admin's sidebar, just above company settings.
 const ADMIN_FOOTER_ITEMS: NavItem[] = [
-  { key: 'Notifications', get label() { return t('notifications.title'); }, icon: 'notifications' },
   { key: 'CompanyDocuments', get label() { return t('nav.companyDocuments'); }, icon: 'folder-open' },
 ];
 
@@ -111,13 +110,11 @@ export function DesktopShell({
     : isOwner
     ? [
         { key: 'AdminProfile', label: t('nav.myDetails'), icon: 'person' },
-        { key: 'Notifications', label: t('notifications.title'), icon: 'notifications' },
         { key: 'SystemSettings', label: t('nav.systemSettings'), icon: 'cog' },
       ]
     : isDriver
     ? [
         { key: 'DriverProfile', label: t('nav.myDetails'), icon: 'person' },
-        { key: 'Notifications', label: t('notifications.title'), icon: 'notifications' },
         { key: 'SystemSettings', label: t('nav.systemSettings'), icon: 'cog' },
       ]
     : [];
@@ -146,6 +143,8 @@ export function DesktopShell({
         return () => navigation.navigate('AdminHome', { mode: 'drivers' });
       case t('common.vehicles'):
         return () => navigation.navigate('AdminHome', { mode: 'vehicles' });
+      case t('nav.systemSettings'):
+        return () => navigation.navigate('SystemSettings');
       case t('nav.safetyInspections'):
         return () => navigation.navigate('SafetyInspections');
       case t('owner.notif.companies'):
