@@ -292,7 +292,7 @@ export const MAX_DAY_MINUTES = 12 * 60;
 export const MIN_REST_MINUTES = 7 * 60;
 
 /** License class each vehicle type needs, and which classes cover which. */
-const NEED: Record<VehicleType, string> = { car: 'B', truck: 'C1', minibus: 'D1', bus: 'D' };
+const NEED: Partial<Record<VehicleType, string>> = { car: 'B', truck: 'C1', minibus: 'D1', bus: 'D' };
 const COVERS: Record<string, string[]> = {
   B: ['B'], C1: ['C1', 'B'], C: ['C', 'C1', 'B'], 'C+E': ['C+E', 'C', 'C1', 'B'],
   D1: ['D1', 'B'], D2: ['D2', 'D1', 'B'], D3: ['D3', 'D2', 'D1', 'B'], D: ['D', 'D3', 'D2', 'D1', 'B'],
@@ -352,6 +352,7 @@ export function createRules(data: ScheduleData) {
     const d = driver(driverId);
     if (!d || !v || !d.classes.length) return null;
     const need = NEED[v.type];
+    if (!need) return null; // types with no licence class mapped (equipment etc.) are not checked
     return d.classes.some((c) => (COVERS[c] ?? [c]).includes(need))
       ? null
       : t('schedule.noLicenseFor', { type: t(`vehicle.type.${v.type}`), need });

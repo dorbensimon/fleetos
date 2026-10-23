@@ -1,6 +1,27 @@
 // הגדרות הטיפוסים של הנתונים: רכב, נהג, התראה, מסמך ועוד
 export type VehicleStatus = 'active' | 'maintenance' | 'disabled' | 'archived';
-export type VehicleType = 'car' | 'minibus' | 'bus' | 'truck';
+export type VehicleType =
+  | 'car'
+  | 'dual_use'
+  | 'taxi'
+  | 'minibus'
+  | 'passenger_minibus'
+  | 'microbus'
+  | 'small_bus'
+  | 'bus'
+  | 'touring_bus'
+  | 'truck'
+  | 'tractor_truck'
+  | 'tanker'
+  | 'trailer'
+  | 'tractor'
+  | 'atv'
+  | 'engineering'
+  | 'forklift'
+  | 'pedestrian_forklift'
+  | 'operational'
+  | 'motorcycle'
+  | 'golf_cart';
 export type AcquisitionType = 'purchase' | 'leasing' | 'rental';
 export type OwnerType = 'vehicle' | 'driver' | 'company';
 

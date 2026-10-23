@@ -54,12 +54,12 @@ const GENERAL_DOCUMENT_TITLE = 'מסמך כללי';
 const complianceFolderIcon = (itemType: string): keyof typeof Ionicons.glyphMap => ({
   vehicle_license: 'car-outline', operating_license: 'document-text-outline',
   insurance_mandatory: 'shield-checkmark-outline', insurance_comprehensive: 'shield-outline',
-  annual_test: 'car-sport-outline',
+  annual_test: 'car-sport-outline', engineer_report: 'construct-outline',
 }[itemType] ?? 'document-text-outline') as keyof typeof Ionicons.glyphMap;
 // צבע לכל תיקייה
 const complianceFolderColor = (itemType: string) => ({
   vehicle_license: '#0088CC', operating_license: '#5E5CE6', insurance_mandatory: '#34C759',
-  insurance_comprehensive: '#0A7FD0', annual_test: '#FF9500',
+  insurance_comprehensive: '#0A7FD0', annual_test: '#FF9500', engineer_report: '#AF52DE',
 }[itemType] ?? '#8E8E93');
 
 /**
