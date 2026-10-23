@@ -141,7 +141,7 @@ function CompanyNotificationsScreen({ navigation, route }: Props) {
 
   if (isDesktop) {
     return (
-      <DesktopShell active="Notifications" breadcrumbs={[t('notifications.title')]}>
+      <DesktopShell active="SystemSettings" breadcrumbs={[t('nav.systemSettings'), t('notifications.title')]}>
         <NotificationsHubDesktopView
           items={items}
           unreadIds={unreadIds}
@@ -245,7 +245,7 @@ function OwnerNotificationsScreen({ navigation }: Props) {
 
   if (isDesktop) {
     return (
-      <DesktopShell active="Notifications" breadcrumbs={[t('notifications.title')]}>
+      <DesktopShell active="SystemSettings" breadcrumbs={[t('nav.systemSettings'), t('notifications.title')]}>
         <OwnerNotificationsDesktop
           items={items}
           unreadIds={unreadIds}

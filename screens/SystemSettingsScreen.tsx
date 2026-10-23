@@ -27,13 +27,15 @@ const LEGAL_ROWS: { doc: RootStackParamList['Legal']['doc']; icon: IconName; lab
 
 // המסך
 /**
- * "הגדרות מערכת", for every role: the app's language, and the terms,
+ * "הגדרות מערכת", for every role: the way into notification settings, the app's language, and the terms,
  * privacy, cookies and accessibility pages.
  */
 export default function SystemSettingsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
   const openLegal = (doc: RootStackParamList['Legal']['doc']) => navigation.navigate('Legal', { doc });
+  // Every notification setting of the app lives on the notifications page.
+  const openNotifications = () => navigation.navigate('Notifications', { section: 'settings' });
 
   if (isDesktop) {
     return (
@@ -52,6 +54,16 @@ export default function SystemSettingsScreen({ navigation }: Props) {
             </View>
           </View>
           <View style={ds.columns}>
+            <View style={ds.column}>
+              <DText weight="bold" style={ds.sectionTitle}>{t('notifications.title')}</DText>
+              <View style={ds.card}>
+                <HoverPressable style={ds.row} hoverStyle={ds.rowHover} onPress={openNotifications} accessibilityRole="link">
+                  <Ionicons name="notifications-outline" size={16} color={DESKTOP_COLORS.brand} />
+                  <DText weight="medium" style={ds.rowLabel}>{t('owner.notif.manage')}</DText>
+                  <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
+                </HoverPressable>
+              </View>
+            </View>
             <View style={ds.column}>
               <DText weight="bold" style={ds.sectionTitle}>{t('settings.language')}</DText>
               <View style={ds.card}>
@@ -79,9 +91,14 @@ export default function SystemSettingsScreen({ navigation }: Props) {
   return (
     <DriverPage insetTop={insets.top} insetBottom={insets.bottom} hero={<HeroTitle title={t('nav.systemSettings')} onBack={() => navigation.goBack()} />}>
       <Reveal>
-        <LanguageSection />
+        <KitSection title={t('notifications.title')}>
+          <ListRow first icon="notifications" title={t('owner.notif.manage')} onPress={() => navigation.navigate('NotificationPreferences')} />
+        </KitSection>
       </Reveal>
       <Reveal index={1}>
+        <LanguageSection />
+      </Reveal>
+      <Reveal index={2}>
         <KitSection title={t('menu.legal')}>
           {LEGAL_ROWS.map((row, index) => (
             <ListRow key={row.doc} first={index === 0} icon={row.icon} title={row.label()} onPress={() => openLegal(row.doc)} />

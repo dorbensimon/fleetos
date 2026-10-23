@@ -2,25 +2,21 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { DText, HoverPressable, prefersReducedMotion } from '../desktop/primitives';
+import { DText, HoverPressable } from '../desktop/primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from '../desktop/desktopTheme';
 import { pageStyles } from '../desktop/record/RecordPage';
-import { LeadControl } from '../desktop/NotificationsHubDesktopView';
-import { LiquidGlassSwitch } from '../ui/LiquidGlassSwitch';
-import { useNotificationPreferences } from '../../lib/useNotificationPreferences';
-import { LEAD_RULES } from '../../lib/notificationPreferencesApi';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../navigation/types';
 import { INSPECTION_REPEAT_OPTIONS, saveInspectionSettings } from '../../lib/inspections';
-import { t } from '../../lib/i18n';
+import { t, dirIcon } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
-
-// סוג ההתראה
-const TYPE = 'vehicle_safety_check_due' as const;
 
 // כל כמה זמן בודקים ומתי מתריעים
 /**
  * Everything about when safety inspections come up, in one desktop card:
- * how often each vehicle is checked (company), whether I get the alert (me),
- * and how many days ahead it goes out (company).
+ * how often each vehicle is checked (company), and a way to the alert's
+ * settings, which live with every other alert on the notifications page.
  */
 export function InspectionRemindersCard({
   companyId,
@@ -31,10 +27,9 @@ export function InspectionRemindersCard({
   repeatMonths: number;
   onRepeatSaved: (months: number) => void;
 }) {
-  const prefs = useNotificationPreferences();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [saving, setSaving] = useState<number | null>(null);
   const [error, setError] = useState('');
-  const reduceMotion = prefersReducedMotion();
 
   const choose = async (months: number) => {
     if (months === repeatMonths || saving !== null) return;
@@ -49,11 +44,6 @@ export function InspectionRemindersCard({
       setSaving(null);
     }
   };
-
-  const alertOn = prefs.prefs?.[TYPE] ?? true;
-  const rule = LEAD_RULES[TYPE]!;
-  const lead = prefs.leads?.values[TYPE];
-  const leadEditable = !prefs.isDriver && lead != null && !!prefs.leads?.perType;
 
   return (
     <View style={[pageStyles.card, pageStyles.listCard]}>
@@ -87,41 +77,23 @@ export function InspectionRemindersCard({
         {!!error && <DText style={styles.error} accessibilityRole="alert">{error}</DText>}
       </View>
 
-      <View style={[styles.section, styles.divider]}>
-        <View style={styles.alertRow}>
-          <View style={[styles.alertIcon, !alertOn && styles.alertIconOff]}>
-            <Ionicons name={alertOn ? 'notifications' : 'notifications-off-outline'} size={17} color={alertOn ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
-          </View>
-          <View style={pageStyles.flex}>
-            <DText weight="semiBold" style={styles.alertTitle}>{t('inspection.alertMe')}</DText>
-            <DText style={styles.hint}>{alertOn ? t('prefs.type.safetyInspectionDesc') : t('inspection.alertOffHint')}</DText>
-          </View>
-          {prefs.prefs && (
-            <LiquidGlassSwitch
-              value={alertOn}
-              onValueChange={(next) => void prefs.toggle(TYPE, next)}
-              disabled={prefs.savingType === TYPE}
-              accessibilityLabel={t('inspection.alertMe')}
-              tint={DESKTOP_COLORS.brand}
-              reduceMotion={reduceMotion}
-            />
-          )}
+      {/* The alert itself is set with every other one, on the notifications page. */}
+      <HoverPressable
+        style={[styles.section, styles.divider, styles.alertRow]}
+        hoverStyle={styles.alertRowHover}
+        onPress={() => navigation.navigate('Notifications', { section: 'settings' })}
+        accessibilityRole="link"
+        accessibilityLabel={t('inspection.alertInNotifications')}
+      >
+        <View style={styles.alertIcon}>
+          <Ionicons name="notifications" size={17} color={DESKTOP_COLORS.brand} />
         </View>
-        {leadEditable && (
-          <>
-            <LeadControl
-              type={TYPE}
-              label={t('prefs.type.safetyInspection')}
-              rule={rule}
-              value={lead!}
-              saving={prefs.savingLeadType === TYPE}
-              dimmed={!alertOn}
-              onCommit={(next) => prefs.setLead(TYPE, next)}
-            />
-            <DText style={styles.hint}>{t('inspection.leadShared')}</DText>
-          </>
-        )}
-      </View>
+        <View style={pageStyles.flex}>
+          <DText weight="semiBold" style={styles.alertTitle}>{t('inspection.alertMe')}</DText>
+          <DText style={styles.hint}>{t('inspection.alertInNotifications')}</DText>
+        </View>
+        <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
+      </HoverPressable>
     </View>
   );
 }
@@ -155,6 +127,6 @@ const styles = StyleSheet.create({
   // שורת ההתראה
   alertRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12 },
   alertIcon: { width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(47,91,255,0.10)', alignItems: 'center', justifyContent: 'center' },
-  alertIconOff: { backgroundColor: DESKTOP_COLORS.canvas },
+  alertRowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
   alertTitle: { fontSize: 14.5 },
 });
