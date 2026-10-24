@@ -191,6 +191,7 @@ const FOLDER_TITLE_KEY: Record<string, string> = {
   driver_file: 'folder.driverFile',
   general: 'folder.generalDocs',
   hazmat: 'folder.hazmat',
+  license_annex: 'folder.licenseAnnex',
   notes_feedback: 'folder.notesAndResponses',
   procedure_6: 'folder.procedure6',
   safety_officer_approval: 'folder.safetyOfficerApproval',

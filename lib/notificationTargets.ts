@@ -64,6 +64,7 @@ export function driverNotificationTarget(n: NotificationTargetFields): Notificat
   }
   // A folder the owner added to the driver files (migration 112): the driver's documents.
   if (type === 'driver_custom_folder_expiry') return { screen: 'DriverDocuments' };
+  if (type === 'driver_extra_expiry') return { screen: 'DriverProfile' };
   if (type === 'vehicle_odometer_stale') return { screen: 'DriverVehicle', params: { focus: 'odometer' } };
   if (type === 'vehicle_service_due') return { screen: 'DriverVehicle', params: { focus: 'service' } };
   if (type === 'driver_odometer_update') return { screen: 'DriverVehicle', params: { focus: 'odometer' } };
@@ -134,6 +135,10 @@ export async function adminNotificationTarget<N extends NotificationTargetFields
   // A folder the owner added to the driver files (migration 112) opens in that driver's file.
   if (type === 'driver_custom_folder_expiry' && n.actor_id) {
     return { screen: 'DriverDetail', params: { driverId: n.actor_id, openFolder: n.folder_key ?? undefined } };
+  }
+
+  if (type === 'driver_extra_expiry' && n.actor_id) {
+    return { screen: 'DriverDetail', params: { driverId: n.actor_id } };
   }
 
   if (type === 'driver_license_expiry' && n.actor_id) {

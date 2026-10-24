@@ -33,6 +33,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'VehicleDetail'>;
 type MaintForm = { odometer: string; last_service_km: string; service_interval_km: string; next_service_km: string };
 // תיקיות המסמכים של רכב
 const VEHICLE_DOCUMENT_FOLDERS = [
+  { category: 'license_annex', get title() { return t('folder.licenseAnnex'); }, icon: 'document-attach-outline', color: '#0EA5E9', requiresExpiry: true },
   { category: 'safety_officer_approval', get title() { return t('folder.safetyOfficerApproval'); }, icon: 'shield-checkmark-outline', color: '#34C759', requiresExpiry: true },
   { category: 'tachograph_calibration', get title() { return t('folder.tachographValidity'); }, icon: 'speedometer-outline', color: '#5E5CE6', requiresExpiry: true },
   { category: 'brakes_semiannual', get title() { return t('folder.brakesSemiAnnual'); }, icon: 'disc-outline', color: '#FF9500', requiresExpiry: true },

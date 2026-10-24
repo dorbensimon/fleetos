@@ -104,6 +104,11 @@ describe('adminNotificationTarget', () => {
     await expect(adminNotificationTarget(notification({ actor_id: 'd1' }), noVehicle)).resolves.toBeNull();
   });
 
+  it('opens the driver for a work-at-height / port / forklift / hazmat expiry (migration 119)', async () => {
+    await expect(adminNotificationTarget(notification({ notification_type: 'driver_extra_expiry', actor_id: 'd1' }), noVehicle))
+      .resolves.toEqual({ screen: 'DriverDetail', params: { driverId: 'd1' } });
+  });
+
   it('opens the driver\'s license, the company settings, the signed document and the odometer (migration 101)', async () => {
     await expect(adminNotificationTarget(notification({ notification_type: 'driver_license_expiry', actor_id: 'd1' }), noVehicle))
       .resolves.toEqual({ screen: 'DriverDetail', params: { driverId: 'd1', focus: LICENSE_FOCUS } });
@@ -120,6 +125,8 @@ describe('adminNotificationTarget', () => {
 
 describe('driver targets for migration 101', () => {
   it('opens the license and the odometer', () => {
+    expect(driverNotificationTarget(notification({ notification_type: 'driver_extra_expiry' })))
+      .toEqual({ screen: 'DriverProfile' });
     expect(driverNotificationTarget(notification({ notification_type: 'driver_license_expiry' })))
       .toEqual({ screen: 'DriverProfile', params: { focus: LICENSE_FOCUS } });
     expect(driverNotificationTarget(notification({ notification_type: 'vehicle_odometer_stale', vehicle_id: 'v1' })))
