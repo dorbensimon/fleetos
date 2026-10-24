@@ -8,7 +8,7 @@ import { signingFolderStatus } from '../../lib/signingFolders';
 import { maskNationalId } from '../driverCard/buildDriverDetailGroups';
 import { ExpiryState, expiryState, formatDate, parseDateValue } from '../../lib/theme';
 import { isValidIsraeliPhone } from '../../lib/phone';
-import { isValidIsraeliNationalId } from '../../lib/driverFormValidation';
+import { dateOnlyIsoFromLocalDate, isValidIsraeliNationalId } from '../../lib/driverFormValidation';
 import { isValidEmail } from '../../lib/validation';
 import {
   EDUCATION_OPTIONS,
@@ -218,6 +218,18 @@ export function DriverDetailDesktopView({
       open: () => setLicenseOpen(true),
     });
   }
+  if (!driver?.employment_end_date || driver.employment_end_date >= dateOnlyIsoFromLocalDate(new Date())) {
+    for (const [key, label, value] of [
+      ['work_at_height_expiry', t('driver.workAtHeightExpiry'), driver?.work_at_height_expiry],
+      ['port_entry_expiry', t('driver.portEntryExpiry'), driver?.port_entry_expiry],
+      ['forklift_refresher_expiry', t('driver.forkliftRefresherExpiry'), driver?.forklift_refresher_expiry],
+      ['hazmat_permit_expiry', t('driver.hazmatPermitExpiry'), driver?.hazmat_approved ? driver.hazmat_permit_expiry : null],
+    ] as const) {
+      const state = expiryState(value);
+      if (state !== 'expired' && state !== 'soon') continue;
+      alerts.push({ key, tag: expiryStatusText(state, value ?? null), tone: state === 'expired' ? 'bad' : 'warn', text: label, date: value, open: () => setEditor(dateEditor(label, value ?? null, (v) => onSaveField({ [key]: v }))) });
+    }
+  }
   if (pendingLicenseRequest) {
     alerts.push({ key: 'license-request', tag: t('common.awaitingApproval'), tone: 'warn', text: t('driver.sentRenewedLicense'), open: () => setLicenseOpen(true) });
   }
@@ -253,6 +265,36 @@ export function DriverDetailDesktopView({
     ...extra,
   });
   const dateEditor = (label: string, raw: string | null | undefined, onSave: (v: string | null) => Promise<string | null>): FieldEditor => ({ kind: 'date', label, raw: raw ?? null, onSave });
+
+  // A permit date row, coloured when it has run out or is about to.
+  const expiryRow = (
+    label: string,
+    key: 'work_at_height_expiry' | 'port_entry_expiry' | 'forklift_refresher_expiry' | 'hazmat_permit_expiry',
+    first?: boolean,
+  ) => {
+    const value = driver?.[key] ?? null;
+    return (
+      <DetailRow
+        first={first} label={label} focusId={key}
+        value={value ? formatDate(value) : null}
+        ltr
+        valueColor={EXPIRY_COLOR[expiryState(value)]}
+        onPress={() => setEditor(dateEditor(label, value, (v) => onSaveField({ [key]: v })))}
+      />
+    );
+  };
+  // A yes/no row, edited from a two-option list.
+  const yesNoRow = (label: string, key: string, on: boolean, save: (on: boolean) => Promise<string | null>) => (
+    <DetailRow
+      label={label} focusId={key}
+      value={on ? t('driver.yes') : t('driver.no')}
+      onPress={() => setEditor({
+        kind: 'select', label, raw: on ? 'yes' : 'no',
+        options: [{ value: 'yes', label: t('driver.yes') }, { value: 'no', label: t('driver.no') }],
+        onSave: (v) => save(v === 'yes'),
+      })}
+    />
+  );
 
   const reduceMotion = prefersReducedMotion();
 
@@ -503,6 +545,27 @@ export function DriverDetailDesktopView({
               accessory={inCompany ? <DText style={styles.rowNote}>{`${inCompany.value} ${inCompany.unit}`}</DText> : undefined}
               onPress={() => setEditor(dateEditor(t('driver.employmentStart'), driver?.employment_start_date, (v) => onSaveField({ employment_start_date: v })))}
             />
+            <DetailRow
+              label={t('driver.employmentEnd')} focusId="employment_end_date"
+              value={driver?.employment_end_date ? formatDate(driver.employment_end_date) : null}
+              ltr
+              onPress={() => setEditor(dateEditor(t('driver.employmentEnd'), driver?.employment_end_date, async (v) => {
+                if (v && driver?.employment_start_date && v < driver.employment_start_date) return t('driver.employmentEndBeforeStart');
+                return onSaveField({ employment_end_date: v });
+              }))}
+            />
+          </View>
+
+          <GroupLabel>{t('driver.permitsGroup')}</GroupLabel>
+          <View style={styles.card}>
+            {expiryRow(t('driver.workAtHeightExpiry'), 'work_at_height_expiry', true)}
+            {expiryRow(t('driver.portEntryExpiry'), 'port_entry_expiry')}
+            {expiryRow(t('driver.forkliftRefresherExpiry'), 'forklift_refresher_expiry')}
+            {yesNoRow(t('driver.hazmatApproved'), 'hazmat_approved', !!driver?.hazmat_approved, (on) => onSaveField(on ? { hazmat_approved: true } : { hazmat_approved: false, hazmat_permit_expiry: null }))}
+            <View style={driver?.hazmat_approved ? undefined : styles.rowOff} pointerEvents={driver?.hazmat_approved ? 'auto' : 'none'}>
+              {expiryRow(t('driver.hazmatPermitExpiry'), 'hazmat_permit_expiry')}
+            </View>
+            {yesNoRow(t('driver.previouslyDisqualified'), 'previously_disqualified', !!driver?.previously_disqualified, (on) => onSaveField({ previously_disqualified: on }))}
           </View>
         </View>
 
@@ -703,6 +766,7 @@ const LICENCE_INK = '#4A2F48';
 
 // עיצוב תיק הנהג
 const styles = StyleSheet.create({
+  rowOff: { opacity: 0.4 },
   ...pageStyles,
 
   // "טפסים לחתימה" head with "+ הוסף תיקייה" beside it

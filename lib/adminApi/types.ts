@@ -71,6 +71,14 @@ export interface DriverDetails {
   license_classes: string | null;
   license_issue_date: string | null;
   license_expiry: string | null;
+  work_at_height_expiry: string | null;
+  port_entry_expiry: string | null;
+  forklift_refresher_expiry: string | null;
+  /** The permit date applies only while this is true. */
+  hazmat_approved: boolean;
+  hazmat_permit_expiry: string | null;
+  employment_end_date: string | null;
+  previously_disqualified: boolean;
   status: 'active' | 'archived';
   /** Set when the driver was moved to the archive; null while active. */
   archived_at: string | null;

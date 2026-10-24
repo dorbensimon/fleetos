@@ -257,6 +257,10 @@ export default function DriverPersonalDetailsScreen({ route, navigation }: Props
               <InfoLine icon="people" label={t('common.department')} focusId="department_id" value={departmentName} />
               <InfoLine icon="ribbon" label={t('driver.licenseClass')} focusId="license_classes" value={driver?.license_classes} />
               <InfoLine icon="calendar" label={t('driver.licenseExpiry')} focusId="license_expiry" value={driver?.license_expiry ? formatDate(driver.license_expiry) : null} />
+              <InfoLine icon="calendar" label={t('driver.workAtHeightExpiry')} focusId="work_at_height_expiry" value={driver?.work_at_height_expiry ? formatDate(driver.work_at_height_expiry) : null} />
+              <InfoLine icon="calendar" label={t('driver.portEntryExpiry')} focusId="port_entry_expiry" value={driver?.port_entry_expiry ? formatDate(driver.port_entry_expiry) : null} />
+              <InfoLine icon="calendar" label={t('driver.forkliftRefresherExpiry')} focusId="forklift_refresher_expiry" value={driver?.forklift_refresher_expiry ? formatDate(driver.forklift_refresher_expiry) : null} />
+              {driver?.hazmat_approved && <InfoLine icon="calendar" label={t('driver.hazmatPermitExpiry')} focusId="hazmat_permit_expiry" value={driver.hazmat_permit_expiry ? formatDate(driver.hazmat_permit_expiry) : null} />}
             </KitSection>
           </Reveal>
           <Reveal index={2}>

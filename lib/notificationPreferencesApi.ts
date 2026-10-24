@@ -35,6 +35,7 @@ export type NotificationType =
   | 'vehicle_child_detection_expiry'
   | 'vehicle_custom_folder_expiry'
   | 'driver_custom_folder_expiry'
+  | 'driver_extra_expiry'
   | 'vehicle_service_due'
   | 'signature_request_assigned'
   | 'vehicle_assignment'
@@ -119,6 +120,11 @@ export const ADMIN_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     get description() { return t('prefs.type.driverLicenseDesc'); },
   },
   {
+    type: 'driver_extra_expiry',
+    get label() { return t('prefs.type.driverExtraExpiry'); },
+    get description() { return t('prefs.type.driverExtraExpiryDesc'); },
+  },
+  {
     type: 'driver_custom_folder_expiry',
     get label() { return t('companyFolders.driverAlertLabel'); },
     get description() { return t('companyFolders.driverAlertDesc'); },
@@ -182,6 +188,11 @@ export const DRIVER_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     type: 'driver_license_expiry',
     get label() { return t('prefs.type.myLicenseExpiry'); },
     get description() { return t('prefs.type.myLicenseExpiryDesc'); },
+  },
+  {
+    type: 'driver_extra_expiry',
+    get label() { return t('prefs.type.myExtraExpiry'); },
+    get description() { return t('prefs.type.myExtraExpiryDesc'); },
   },
   {
     type: 'driver_custom_folder_expiry',
@@ -396,6 +407,7 @@ export const LEAD_RULES: Partial<Record<NotificationType, LeadRule>> = {
   vehicle_service_due: { unit: 'km', min: 100, max: 5000, step: 100, presets: [500, 1000, 2000, 3000] },
   driver_license_expiry: { unit: 'days', min: 1, max: 90, step: 1, presets: [14, 30, 60, 90] },
   driver_custom_folder_expiry: FOLDER_LEAD_RULE,
+  driver_extra_expiry: FOLDER_LEAD_RULE,
   company_carrier_license_expiry: { unit: 'days', min: 1, max: 90, step: 1, presets: [14, 30, 60, 90] },
   vehicle_odometer_stale: { unit: 'idle', min: 7, max: 90, step: 1, presets: [14, 30, 45, 60] },
 };
@@ -413,6 +425,7 @@ const FIXED_LEAD_DEFAULTS: Partial<Record<NotificationType, number>> = {
   vehicle_service_due: SERVICE_LEAD_KM_DEFAULT,
   driver_license_expiry: 30,
   driver_custom_folder_expiry: 30,
+  driver_extra_expiry: 30,
   company_carrier_license_expiry: 30,
   vehicle_odometer_stale: 30,
 };
@@ -457,6 +470,7 @@ const ADMIN_GROUP_OF: Partial<Record<NotificationType, NotificationGroup['key']>
   signature_expiry: 'drivers',
   driver_license_expiry: 'licenses',
   driver_custom_folder_expiry: 'licenses',
+  driver_extra_expiry: 'licenses',
   company_carrier_license_expiry: 'licenses',
   vehicle_service_due: 'care',
   vehicle_odometer_stale: 'care',
