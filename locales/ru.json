@@ -753,6 +753,8 @@
     "deleteTitle": "Удаление документа",
     "document": "Документ",
     "documentExpiry": "Срок действия документа",
+    "inspectionDate": "Дата проверки",
+    "expiryFromInspectionHint": "Срок действия — год после проверки. Его можно изменить.",
     "documentsAndExpiry": "Документы и сроки",
     "downloadUnavailable": "Сейчас не удаётся скачать документ",
     "dragOr": "Перетащите файл сюда или ",
