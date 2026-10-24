@@ -197,7 +197,7 @@ export const DRIVER_COMPLIANCE: ComplianceItemDef[] = [
   { itemType: 'health_declaration', category: 'health', storedTitle: 'הצהרת בריאות', get label() { return t('compliance.item.healthDeclaration'); } },
 
   { itemType: 'periodic_training', category: 'training', storedTitle: 'הדרכות תקופתיות', get label() { return t('compliance.item.periodicTraining'); }, tracksLastDate: true, validityDays: 365 },
-  { itemType: 'procedure_6', category: 'training', storedTitle: 'נוהל 6 (הסעת ילדים)', get label() { return t('compliance.item.procedure6'); } },
+  { itemType: 'procedure_6', category: 'training', storedTitle: 'נוהל 6', get label() { return t('compliance.item.procedure6'); } },
   { itemType: 'crane_license', category: 'training', storedTitle: 'רישיון מנוף', get label() { return t('compliance.item.craneLicense'); } },
   { itemType: 'rp_certificate', category: 'training', storedTitle: 'תוקף ר.פ', get label() { return t('compliance.item.publicServiceLicense'); } },
 ];
