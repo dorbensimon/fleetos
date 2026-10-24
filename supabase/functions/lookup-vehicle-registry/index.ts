@@ -23,6 +23,10 @@ type RegistryRecord = {
   shnat_yitzur?: string | number;
   tzeva_rechev?: string;
   tokef_dt?: string;
+  sug_degem?: string;
+  sug_rechev_nm?: string;
+  kvutzat_sug_rechev?: string;
+  mishkal_kolel?: number | string;
 };
 
 type RegistryResponse = {
@@ -57,6 +61,30 @@ function optionalIsoDate(value: unknown): string | null {
   return Number.isNaN(parsed.getTime()) ? null : value;
 }
 
+// סוג הרכב לפי המאגר שבו נמצא
+/**
+ * Maps the registry record to one of the app's vehicle types, or null when
+ * the record does not say clearly. Each dataset names the type differently:
+ * private/commercial uses sug_degem (P/M), public vehicles sug_rechev_nm,
+ * the third dataset kvutzat_sug_rechev plus the gross weight.
+ */
+function vehicleTypeFrom(resourceId: string, record: RegistryRecord): string | null {
+  if (resourceId === VEHICLE_RESOURCE_IDS[0]) {
+    return record.sug_degem === 'P' ? 'car' : record.sug_degem === 'M' ? 'minibus' : null;
+  }
+  if (resourceId === VEHICLE_RESOURCE_IDS[1]) {
+    const name = record.sug_rechev_nm ?? '';
+    if (name.includes('מונית')) return 'taxi';
+    return name.includes('אוטובוס') ? 'bus' : null;
+  }
+  const group = record.kvutzat_sug_rechev ?? '';
+  if (group === 'פרטי') return 'car';
+  if (group === 'טרקטור') return 'tractor';
+  if (group === 'גרור נתמך') return 'trailer';
+  if (group === 'מסחרי') return Number(record.mishkal_kolel) > 3500 ? 'truck' : 'minibus';
+  return null;
+}
+
 // מחפש ומחזיר את נתוני הרכב
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -76,6 +104,7 @@ Deno.serve(async (req) => {
     }
 
     let record: RegistryRecord | null = null;
+    let recordResource = '';
     let anyRequestSucceeded = false;
     for (const resourceId of VEHICLE_RESOURCE_IDS) {
       const url = new URL('https://data.gov.il/api/3/action/datastore_search');
@@ -99,7 +128,7 @@ Deno.serve(async (req) => {
       anyRequestSucceeded = true;
       const payload = await response.json() as RegistryResponse;
       const found = payload.success ? payload.result?.records?.[0] : null;
-      if (found) { record = found; break; }
+      if (found) { record = found; recordResource = resourceId; break; }
     }
 
     if (!record) {
@@ -119,6 +148,7 @@ Deno.serve(async (req) => {
         productionYear: optionalYear(record.shnat_yitzur),
         color: optionalText(record.tzeva_rechev),
         licenseExpiry: optionalIsoDate(record.tokef_dt),
+        vehicleType: vehicleTypeFrom(recordResource, record),
       },
     });
   } catch (error) {

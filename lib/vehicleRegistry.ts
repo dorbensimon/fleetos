@@ -2,6 +2,7 @@
 import { functionErrorMessage } from './functionError';
 import { supabase } from './supabase';
 import { t } from './i18n';
+import type { VehicleType } from './adminApi';
 
 export type VehicleRegistryDetails = {
   plateNumber: string;
@@ -10,6 +11,8 @@ export type VehicleRegistryDetails = {
   productionYear: number | null;
   color: string | null;
   licenseExpiry: string | null;
+  /** The app's vehicle type when the registry says it clearly (missing from older server versions). */
+  vehicleType?: VehicleType | null;
 };
 
 type VehicleRegistryResponse =
