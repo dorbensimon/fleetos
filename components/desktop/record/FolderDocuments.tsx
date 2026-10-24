@@ -19,6 +19,7 @@ import { DesktopDateField, DLtrText, DText, HoverPressable, prefersReducedMotion
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from '../desktopTheme';
 import { DocumentPreview } from './DocumentPreview';
 import { t, dirIcon } from '../../../lib/i18n';
+import { addMonthsIso } from '../../../lib/tachograph';
 
 /**
  * Document folders as a calm list (one row per folder: name, status, date,
@@ -162,6 +163,7 @@ export function FolderUploadBar({
   uploading,
   replacesCurrent,
   extraFields,
+  inspectionMonths,
 }: {
   requiresExpiry: boolean;
   expiryDate: string | null;
@@ -175,7 +177,10 @@ export function FolderUploadBar({
   replacesCurrent?: boolean;
   /** Folders with their own date fields (e.g. a last-inspection date) render them here instead of the expiry picker. */
   extraFields?: React.ReactNode;
+  /** Folders whose expiry follows an inspection date: picking it fills the expiry this many months later (still editable). */
+  inspectionMonths?: number | null;
 }) {
+  const [inspected, setInspected] = useState<string | null>(null);
   const [file, setFile] = useState<PickedFile | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -224,7 +229,10 @@ export function FolderUploadBar({
     if (!file) return setError(t('documents.chooseFileFirst'));
     if (requiresExpiry && !extraFields && !expiryDate) return setError(t('documents.chooseExpiry'));
     setError(null);
-    if (await onUpload(file)) setFile(null);
+    if (await onUpload(file)) {
+      setFile(null);
+      setInspected(null);
+    }
   };
 
   return (
@@ -254,6 +262,17 @@ export function FolderUploadBar({
         </HoverPressable>
       </View>
 
+      {!extraFields && requiresExpiry && !!inspectionMonths && (
+        <View style={styles.uploadDate}>
+          <DText style={styles.uploadLabel}>{t('documents.inspectionDate')}</DText>
+          <DesktopDateField
+            value={inspected}
+            onChange={(iso) => { setInspected(iso); if (iso) onExpiryChange(addMonthsIso(iso, inspectionMonths)); setError(null); }}
+            placeholder={t('date.chooseDateAction')}
+            large
+          />
+        </View>
+      )}
       {extraFields ?? (requiresExpiry && (
         <View style={styles.uploadDate}>
           <DText style={styles.uploadLabel}>{t('documents.validUntil')}</DText>

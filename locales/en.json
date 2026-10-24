@@ -753,6 +753,8 @@
     "deleteTitle": "Delete document",
     "document": "Document",
     "documentExpiry": "Document expiry",
+    "inspectionDate": "Inspection date",
+    "expiryFromInspectionHint": "Expiry is set one year after the inspection. You can change it.",
     "documentsAndExpiry": "Documents and expiry dates",
     "downloadUnavailable": "The document can't be downloaded right now",
     "dragOr": "Drag a file here, or ",

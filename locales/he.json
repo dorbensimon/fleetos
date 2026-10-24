@@ -753,6 +753,8 @@
     "deleteTitle": "מחיקת מסמך",
     "document": "מסמך",
     "documentExpiry": "תוקף המסמך",
+    "inspectionDate": "תאריך הבדיקה",
+    "expiryFromInspectionHint": "התוקף מחושב לשנה אחרי הבדיקה. אפשר לשנות אותו.",
     "documentsAndExpiry": "מסמכים ותוקפים",
     "downloadUnavailable": "לא ניתן להוריד את המסמך כרגע",
     "dragOr": "גררו לכאן קובץ, או ",

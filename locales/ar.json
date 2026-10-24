@@ -753,6 +753,8 @@
     "deleteTitle": "حذف مستند",
     "document": "مستند",
     "documentExpiry": "صلاحية المستند",
+    "inspectionDate": "تاريخ الفحص",
+    "expiryFromInspectionHint": "تُحسب الصلاحية بعد سنة من الفحص. يمكنك تعديلها.",
     "documentsAndExpiry": "المستندات والصلاحيات",
     "downloadUnavailable": "لا يمكن تنزيل المستند حاليًا",
     "dragOr": "اسحبوا ملفًا إلى هنا، أو ",

@@ -7,6 +7,7 @@ import type { DocumentRow } from '../../../lib/adminApi';
 import type { OwnerType } from '../../../lib/adminApi/types';
 import { DocumentFolderModal } from '../../documents/DocumentFolderModal';
 import { FolderDocumentsModal, FolderUploadBar, type FolderLayout } from './FolderDocuments';
+import { inspectionValidityMonths } from '../../../lib/tachograph';
 import { getDocumentUrl, listDocuments, storedFolderTitle, uploadDocument, type PickedFile } from '../../../lib/documents';
 import { chooseDocumentSource, pickDocumentSource, type DocumentSource } from '../../../lib/documentActions';
 import { showAlert } from '../../../lib/platformAlert';
@@ -638,6 +639,7 @@ export function DocumentFolderUploadModal({
         upload={
           <FolderUploadBar
             requiresExpiry={folder.requiresExpiry}
+            inspectionMonths={inspectionValidityMonths(folder.category)}
             expiryDate={expiryDate}
             onExpiryChange={setExpiryDate}
             onUpload={uploadFile}

@@ -126,13 +126,18 @@ function WebDatePicker({ value, title, onConfirm, onClose }: { value: string | n
  * ISO date, or null when cancelled. Render `element` once in the screen.
  */
 export function useDatePrompt(title: string) {
-  const [resolve, setResolve] = useState<((iso: string | null) => void) | null>(null);
-  const ask = useCallback(() => new Promise<string | null>((done) => setResolve(() => done)), []);
+  const [pending, setPending] = useState<{ done: (iso: string | null) => void; title: string; value: string | null } | null>(null);
+  /** Asks for a date; `options` swaps the title or preselects a date for this one ask. */
+  const ask = useCallback(
+    (options?: { title?: string; value?: string | null }) =>
+      new Promise<string | null>((done) => setPending({ done, title: options?.title ?? title, value: options?.value ?? null })),
+    [title],
+  );
   const finish = (iso: string | null) => {
-    resolve?.(iso);
-    setResolve(null);
+    pending?.done(iso);
+    setPending(null);
   };
-  const element = resolve ? <WebDatePicker value={null} title={title} onClose={() => finish(null)} onConfirm={finish} /> : null;
+  const element = pending ? <WebDatePicker value={pending.value} title={pending.title} onClose={() => finish(null)} onConfirm={finish} /> : null;
   return { ask, element };
 }
 
