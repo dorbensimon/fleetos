@@ -211,6 +211,24 @@ export async function listActiveDriverVehicles(driverId: string): Promise<Driver
     });
 }
 
+// כל הרכבים שהנהג היה רשום עליהם, מהחדש לישן
+/** Every assignment a driver ever had — active and ended — newest first. */
+export async function listDriverVehicleHistory(driverId: string): Promise<DriverVehicleAssignment[]> {
+  const { data, error } = await supabase
+    .from('vehicle_drivers')
+    .select('*, vehicle:vehicle_id(*)')
+    .eq('driver_id', driverId)
+    .order('assigned_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? [])
+    .filter((row: any) => !!row.vehicle)
+    .map((row: any) => {
+      const { vehicle, ...rest } = row;
+      return { ...(rest as VehicleDriverAssignment), vehicle };
+    });
+}
+
 // משייך נהג לרכב
 /**
  * Assigns a driver to a vehicle without touching any existing active

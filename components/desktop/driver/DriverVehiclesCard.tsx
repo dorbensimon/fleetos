@@ -25,7 +25,7 @@ import { errorMessage } from '../../../lib/requestError';
 type Row = { assignmentId: string | null; vehicleId: string; plate: string; name: string; isPrimary: boolean };
 
 // שם הרכב
-const vehicleName = (v: Pick<Vehicle, 'manufacturer' | 'model'> | null | undefined) =>
+export const vehicleName = (v: Pick<Vehicle, 'manufacturer' | 'model'> | null | undefined) =>
   [v?.manufacturer, v?.model].filter(Boolean).join(' ');
 
 // הרכבים שהנהג נוהג בהם, עם הוספה והסרה
@@ -209,7 +209,7 @@ export function DriverVehiclesCard({
 }
 
 // לוחית רישוי קטנה
-function MiniPlate({ plate }: { plate: string }) {
+export function MiniPlate({ plate }: { plate: string }) {
   return (
     <View {...fixedLayoutProps} style={[styles.miniPlate, FIXED_LAYOUT_STYLE]} accessibilityRole="image" accessibilityLabel={t('vehicle.numberLabel', { plate })}>
       <View style={styles.miniPlateBand}>

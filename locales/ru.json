@@ -859,6 +859,11 @@
     "assignFailed": "Не удалось назначить автомобиль",
     "assignSelectedVehicle": "Назначить выбранный автомобиль водителю",
     "assignedVehicles": "Назначенные автомобили",
+    "vehicleHistory": "История автомобилей",
+    "vehicleHistoryHint": "Все автомобили, за которыми был закреплён водитель, и когда",
+    "vehicleHistoryEmpty": "Водитель ещё не закреплён за автомобилем",
+    "vehicleHistoryRange": "{{from}} – {{to}}",
+    "vehicleHistoryNow": "по настоящее время",
     "attention": {
       "afterRenewExpiry": "После продления обновите здесь новый срок.",
       "afterRenewPhoto": "После продления обновите новый срок и фото прав.",

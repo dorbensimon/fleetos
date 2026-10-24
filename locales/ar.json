@@ -859,6 +859,11 @@
     "assignFailed": "فشل ربط المركبة",
     "assignSelectedVehicle": "ربط المركبة المختارة بالسائق",
     "assignedVehicles": "المركبات المرتبطة",
+    "vehicleHistory": "سجل المركبات",
+    "vehicleHistoryHint": "كل المركبات التي كان السائق مسجلاً عليها ومتى",
+    "vehicleHistoryEmpty": "لم يتم ربط السائق بأي مركبة بعد",
+    "vehicleHistoryRange": "{{from}} – {{to}}",
+    "vehicleHistoryNow": "حتى اليوم",
     "attention": {
       "afterRenewExpiry": "بعد التجديد، حدّث هنا الصلاحية الجديدة.",
       "afterRenewPhoto": "بعد التجديد، حدّث الصلاحية الجديدة وصورة الرخصة.",
