@@ -859,6 +859,11 @@
     "assignFailed": "שיוך הרכב נכשל",
     "assignSelectedVehicle": "שיוך הרכב שנבחר לנהג",
     "assignedVehicles": "רכבים משויכים",
+    "vehicleHistory": "היסטוריית רכבים",
+    "vehicleHistoryHint": "כל הרכבים שהנהג היה רשום עליהם ומתי",
+    "vehicleHistoryEmpty": "הנהג עדיין לא שויך לרכב",
+    "vehicleHistoryRange": "{{from}} – {{to}}",
+    "vehicleHistoryNow": "עד היום",
     "attention": {
       "afterRenewExpiry": "אחרי החידוש, עדכן כאן את התוקף החדש.",
       "afterRenewPhoto": "אחרי שחידשת, עדכן את התוקף החדש ואת צילום הרישיון.",

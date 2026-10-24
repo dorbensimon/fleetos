@@ -859,6 +859,11 @@
     "assignFailed": "Failed to assign the vehicle",
     "assignSelectedVehicle": "Assign the selected vehicle to the driver",
     "assignedVehicles": "Assigned vehicles",
+    "vehicleHistory": "Vehicle history",
+    "vehicleHistoryHint": "Every vehicle the driver was assigned to, and when",
+    "vehicleHistoryEmpty": "The driver has not been assigned to a vehicle yet",
+    "vehicleHistoryRange": "{{from}} – {{to}}",
+    "vehicleHistoryNow": "to date",
     "attention": {
       "afterRenewExpiry": "After renewing, update the new expiry here.",
       "afterRenewPhoto": "After renewing, update the new expiry and the license photo.",

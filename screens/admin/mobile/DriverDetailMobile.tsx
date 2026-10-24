@@ -1,5 +1,5 @@
 // תיק נהג בטלפון
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -25,7 +25,7 @@ import {
 import { ChoiceSheet } from '../../../components/ui/Select';
 import { SigningFolders } from '../../../components/driverCard/SigningFolders';
 import type { DriverCardGroup, DriverCardIconKey, DriverCardRow } from '../../../components/driverCard/driverCardSections';
-import type { DriverRow } from '../../../lib/adminApi';
+import { listDriverVehicleHistory, type DriverRow, type DriverVehicleAssignment } from '../../../lib/adminApi';
 import type { LicenseUpdateRequest } from '../../../lib/licenseUpdate';
 import type { SigningFolder } from '../../../lib/signingFolders';
 import { formatDate } from '../../../lib/theme';
@@ -228,6 +228,10 @@ export function DriverDetailMobile(p: Props) {
           ))}
 
           <Reveal index={p.groups.length + 1}>
+            <VehicleHistory driverId={p.driverId} refreshKey={d?.vehicles.map((v) => v.id).join(',')} onOpenVehicle={p.onOpenVehicle} />
+          </Reveal>
+
+          <Reveal index={p.groups.length + 2}>
             <KitSection title={t('driver.accountState')}>
               {p.archived ? (
                 <ActionRow icon="arrow-undo" label={p.restoring ? t('common.restoring') : t('common.restoreFromArchiveShort')} hint={t('driver.restoresAccess')} onPress={p.onRestore} disabled={p.restoring} />
@@ -245,6 +249,40 @@ export function DriverDetailMobile(p: Props) {
         </>
       )}
     </DriverPage>
+  );
+}
+
+// כל הרכבים שהנהג היה רשום עליהם, ומאיזה תאריך עד איזה
+function VehicleHistory({ driverId, refreshKey, onOpenVehicle }: { driverId: string; refreshKey?: string; onOpenVehicle: (vehicleId: string) => void }) {
+  const [rows, setRows] = useState<DriverVehicleAssignment[]>([]);
+  useEffect(() => {
+    let active = true;
+    listDriverVehicleHistory(driverId)
+      .then((list) => { if (active) setRows(list); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [driverId, refreshKey]);
+
+  return (
+    <KitSection title={t('driver.vehicleHistory')}>
+      {rows.length === 0 ? (
+        <ListRow first icon="car-outline" title={t('driver.vehicleHistoryEmpty')} />
+      ) : (
+        rows.map((row, i) => (
+          <ListRow
+            key={row.id}
+            first={i === 0}
+            icon="car-outline"
+            title={formatPlate(row.vehicle.plate_number)}
+            subtitle={t('driver.vehicleHistoryRange', {
+              from: formatDate(row.assigned_at),
+              to: row.unassigned_at ? formatDate(row.unassigned_at) : t('driver.vehicleHistoryNow'),
+            })}
+            onPress={() => onOpenVehicle(row.vehicle_id)}
+          />
+        ))
+      )}
+    </KitSection>
   );
 }
 

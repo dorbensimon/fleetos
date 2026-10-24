@@ -29,6 +29,7 @@ import { LICENSE_SIDE_STORED_TITLE } from '../../lib/licenseSides';
 import { DRIVER_DOCUMENT_GROUPS } from '../../lib/driverDocumentFolders';
 import { folderCategory, isCompanyFolderCategory, useCompanyFolders } from '../../lib/companyFolders';
 import { DriverVehiclesCard } from './driver/DriverVehiclesCard';
+import { DriverVehicleHistory } from './driver/DriverVehicleHistory';
 import { NewFormButton, DriverSigningList, useDriverSigningFolders, type SigningSessionTarget } from './driver/DriverSigningSection';
 import { t, dirIcon } from '../../lib/i18n';
 
@@ -569,7 +570,7 @@ export function DriverDetailDesktopView({
           </View>
         </View>
 
-        <View style={styles.sideCell}>
+        <View style={[styles.sideCell, styles.vehiclesCell]}>
           <GroupLabel>{t('driver.assignedVehicles')}</GroupLabel>
           <DriverVehiclesCard
             companyId={companyId}
@@ -580,29 +581,6 @@ export function DriverDetailDesktopView({
             onChanged={onVehiclesChanged}
           />
         </View>
-      </View>
-
-      {/* Forms to sign */}
-      <View style={[styles.docsHead, styles.formsHead]}>
-        <View style={styles.formsHeadText}>
-          <DText weight="bold" style={styles.docsTitle}>{t('signing.formsToSign')}</DText>
-          <DText style={styles.mutedText}>{t('driver.formsHint')}</DText>
-        </View>
-        {canSendSigning && <NewFormButton companyId={companyId} takenTitles={signing.folders.filter((folder) => folder.template).map((folder) => folder.title)} onChanged={() => void signing.reload()} />}
-      </View>
-      <View style={[styles.card, styles.listCard]}>
-        <DriverSigningList
-          companyId={companyId}
-          driverId={driverId}
-          canSend={canSendSigning}
-          folders={signing.folders}
-          loading={signing.loading}
-          error={signing.error}
-          onChanged={signing.reload}
-          openFolderId={signingRequest}
-          onFolderOpened={() => setSigningRequest(null)}
-          onOpenSession={onOpenSigningSession}
-        />
       </View>
 
       {/* Documents */}
@@ -647,6 +625,36 @@ export function DriverDetailDesktopView({
             </View>
           </View>
         )}
+      </View>
+
+      {/* Vehicle history */}
+      <View style={styles.docsHead}>
+        <DText weight="bold" style={styles.docsTitle}>{t('driver.vehicleHistory')}</DText>
+        <DText style={styles.mutedText}>{t('driver.vehicleHistoryHint')}</DText>
+      </View>
+      <DriverVehicleHistory driverId={driverId} refreshKey={vehicles.map((v) => v.id).join(',')} />
+
+      {/* Forms to sign */}
+      <View style={[styles.docsHead, styles.formsHead]}>
+        <View style={styles.formsHeadText}>
+          <DText weight="bold" style={styles.docsTitle}>{t('signing.formsToSign')}</DText>
+          <DText style={styles.mutedText}>{t('driver.formsHint')}</DText>
+        </View>
+        {canSendSigning && <NewFormButton companyId={companyId} takenTitles={signing.folders.filter((folder) => folder.template).map((folder) => folder.title)} onChanged={() => void signing.reload()} />}
+      </View>
+      <View style={[styles.card, styles.listCard]}>
+        <DriverSigningList
+          companyId={companyId}
+          driverId={driverId}
+          canSend={canSendSigning}
+          folders={signing.folders}
+          loading={signing.loading}
+          error={signing.error}
+          onChanged={signing.reload}
+          openFolderId={signingRequest}
+          onFolderOpened={() => setSigningRequest(null)}
+          onOpenSession={onOpenSigningSession}
+        />
       </View>
 
       {!!driver?.created_at && (
@@ -859,6 +867,8 @@ const styles = StyleSheet.create({
   // רשת התיקיות
   // Documents
   docsGrid: { alignItems: 'flex-start' },
+  // The vehicles card is as tall as its rows, not as the neighbouring column.
+  vehiclesCell: { alignSelf: 'flex-start' },
   thirdCell: { flexGrow: 1, flexBasis: 280, minWidth: 0 },
 
   // תחתית הדף
