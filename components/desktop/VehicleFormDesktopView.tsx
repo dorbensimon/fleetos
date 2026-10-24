@@ -475,9 +475,9 @@ function VehicleCard({ form, typeLabel, statusLabel }: { form: FormState; typeLa
         <View style={styles.cardMid}>
           <View style={styles.cardArt}>
             {art ? (
-              <MaterialCommunityIcons name={art} size={34} color="#FFFFFF" />
+              <MaterialCommunityIcons name={art} size={26} color="#FFFFFF" />
             ) : (
-              <Ionicons name="help" size={26} color="rgba(255,255,255,0.9)" />
+              <Ionicons name="help" size={20} color="rgba(255,255,255,0.9)" />
             )}
           </View>
           <View style={styles.cardLines}>
@@ -519,9 +519,9 @@ const styles = StyleSheet.create({
   pairRow: { flexDirection: 'row-reverse', gap: 10 },
   colorRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
   colorSwatch: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: 'rgba(22,34,46,0.14)',
     ...webOnly({ boxShadow: 'inset 0 -3px 6px rgba(0,0,0,0.12)' }),
@@ -532,9 +532,9 @@ const styles = StyleSheet.create({
   // לוחית הקלדה
   plate: {
     flexGrow: 1,
-    flexBasis: 240,
-    maxWidth: 320,
-    height: 60,
+    flexBasis: 200,
+    maxWidth: 260,
+    height: 44,
     flexDirection: 'row',
     borderRadius: 10,
     borderWidth: 2.5,
@@ -547,27 +547,27 @@ const styles = StyleSheet.create({
     }),
   },
   plateError: { borderColor: DESKTOP_TONES.bad.fg },
-  plateBand: { width: 30, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 7, backgroundColor: '#1A55A6' },
-  plateBandText: { fontSize: 11, color: '#FFFFFF' },
+  plateBand: { width: 24, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 5, backgroundColor: '#1A55A6' },
+  plateBandText: { fontSize: 9.5, color: '#FFFFFF' },
   plateInput: {
     flex: 1,
     minWidth: 0,
     paddingHorizontal: 12,
     fontFamily: DESKTOP_FONT.extraBold,
-    fontSize: 30,
-    letterSpacing: 1.5,
+    fontSize: 22,
+    letterSpacing: 1.2,
     color: '#111111',
     textAlign: 'center',
     writingDirection: 'ltr',
   },
   // כפתור חיפוש במאגר
   lookup: {
-    height: 60,
+    height: 44,
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    borderRadius: 14,
+    gap: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     backgroundColor: '#E6F4FB',
     borderWidth: 1,
     borderColor: 'rgba(47,91,255,0.22)',
@@ -576,8 +576,8 @@ const styles = StyleSheet.create({
   lookupIdle: { opacity: 0.6 },
   lookupHover: { backgroundColor: '#D6EDF9' },
   lookupPress: { transform: [{ scale: 0.97 }] },
-  lookupTitle: { fontSize: 15.5, color: DESKTOP_COLORS.brand },
-  lookupSub: { fontSize: 13, color: DESKTOP_COLORS.inkMuted },
+  lookupTitle: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
+  lookupSub: { fontSize: 11.5, color: DESKTOP_COLORS.inkMuted },
   lookupMessage: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -589,11 +589,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: DESKTOP_COLORS.brandFocusRing,
   },
-  lookupMessageText: { fontSize: 14, color: DESKTOP_COLORS.ink },
+  lookupMessageText: { fontSize: 13, color: DESKTOP_COLORS.ink },
 
   driversPanel: {
     backgroundColor: DESKTOP_COLORS.surface,
-    borderRadius: 18,
+    borderRadius: 14,
     overflow: 'hidden',
     paddingHorizontal: 16,
     ...webOnly({ boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 6px 20px rgba(16,24,40,0.05)' }),
@@ -601,11 +601,11 @@ const styles = StyleSheet.create({
 
   // כרטיס הרכב
   // Vehicle card
-  card: { flex: 1, padding: 18, justifyContent: 'space-between' },
+  card: { flex: 1, padding: 14, justifyContent: 'space-between' },
   cardPlate: {
     alignSelf: 'center',
-    width: 236,
-    height: 50,
+    width: 188,
+    height: 40,
     flexDirection: 'row',
     borderRadius: 8,
     borderWidth: 2,
@@ -617,23 +617,23 @@ const styles = StyleSheet.create({
       boxShadow: '0 3px 8px -2px rgba(22,34,46,0.3)',
     }),
   },
-  cardPlateBand: { width: 24, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 5, backgroundColor: '#1A55A6' },
-  cardPlateBandText: { fontSize: 9, color: '#FFFFFF' },
+  cardPlateBand: { width: 20, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 4, backgroundColor: '#1A55A6' },
+  cardPlateBandText: { fontSize: 8, color: '#FFFFFF' },
   cardPlateText: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 27,
-    lineHeight: 46,
+    fontSize: 21,
+    lineHeight: 36,
     letterSpacing: 1.5,
     color: '#111111',
     ...webOnly({ fontVariantNumeric: 'tabular-nums' }),
   },
   cardPlateGhost: { color: 'rgba(17,17,17,0.22)' },
-  cardMid: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14 },
+  cardMid: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
   cardArt: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: DESKTOP_COLORS.brand,
@@ -642,30 +642,30 @@ const styles = StyleSheet.create({
       boxShadow: '0 6px 14px -6px rgba(47,91,255,0.6)',
     }),
   },
-  cardLines: { flex: 1, minWidth: 0, gap: 8 },
-  cardName: { fontSize: 20, lineHeight: 24, letterSpacing: -0.4, color: DESKTOP_COLORS.ink },
+  cardLines: { flex: 1, minWidth: 0, gap: 5 },
+  cardName: { fontSize: 16, lineHeight: 20, letterSpacing: -0.3, color: DESKTOP_COLORS.ink },
   cardMetaRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   cardSwatch: { width: 13, height: 13, borderRadius: 7, borderWidth: 1, borderColor: 'rgba(22,34,46,0.18)' },
-  cardMeta: { fontSize: 14, color: DESKTOP_COLORS.inkMuted, flexShrink: 1 },
+  cardMeta: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, flexShrink: 1 },
   cardFoot: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 10,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: 'rgba(22,34,46,0.08)',
   },
-  cardType: { fontSize: 14, color: DESKTOP_COLORS.ink },
+  cardType: { fontSize: 12.5, color: DESKTOP_COLORS.ink },
   cardTypeEmpty: { color: DESKTOP_COLORS.inkFaint },
   cardStatus: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: 6,
-    height: 26,
-    paddingHorizontal: 10,
-    borderRadius: 13,
+    height: 22,
+    paddingHorizontal: 8,
+    borderRadius: 11,
     backgroundColor: 'rgba(22,34,46,0.06)',
   },
   cardStatusDot: { width: 8, height: 8, borderRadius: 4 },
-  cardStatusText: { fontSize: 13, color: DESKTOP_COLORS.ink },
+  cardStatusText: { fontSize: 12, color: DESKTOP_COLORS.ink },
 });

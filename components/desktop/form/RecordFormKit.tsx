@@ -152,7 +152,7 @@ export function RecordHero<K extends string>({
                 >
                   <View style={[styles.stepNum, done && styles.stepNumDone]}>
                     {done ? (
-                      <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                      <Ionicons name="checkmark" size={13} color="#FFFFFF" />
                     ) : (
                       <DText weight="bold" style={styles.stepNumText}>{i + 1}</DText>
                     )}
@@ -265,7 +265,7 @@ export function FormSection({
       <View style={styles.sectionHead}>
         <View style={[styles.sectionGlyph, done && styles.sectionGlyphDone]}>
           {done ? (
-            <Ionicons name="checkmark" size={24} color="#FFFFFF" />
+            <Ionicons name="checkmark" size={17} color="#FFFFFF" />
           ) : (
             <DText weight="extraBold" style={styles.sectionNum}>{index + 1}</DText>
           )}
@@ -282,16 +282,31 @@ export function FormSection({
 
 // כרטיס לבן לשדות
 /** iOS inset-grouped platter; rows sit 1px up so the first hairline hides under its edge. */
+// רוחב עמודה ברשת השדות
+/** Column width of the panel's grid, so a field alone on the last row keeps its column's width. */
+const CellWidth = React.createContext<number | undefined>(undefined);
+const GRID_GAP = 16;
+const GRID_PAD = 18;
+const MIN_CELL = 260;
+
 export function FormPanel({ children }: { children: React.ReactNode }) {
+  const [cellWidth, setCellWidth] = useState<number>();
+  const measure = (e: LayoutChangeEvent) => {
+    const inner = e.nativeEvent.layout.width - GRID_PAD * 2;
+    const cols = Math.max(1, Math.min(3, Math.floor((inner + GRID_GAP) / (MIN_CELL + GRID_GAP))));
+    setCellWidth(Math.floor((inner - GRID_GAP * (cols - 1)) / cols));
+  };
   return (
-    <View style={styles.panel}>
-      <View style={styles.rows}>{children}</View>
+    <View style={styles.panel} onLayout={measure}>
+      <CellWidth.Provider value={cellWidth}>
+        <View style={styles.rows}>{children}</View>
+      </CellWidth.Provider>
     </View>
   );
 }
 
 // שדה: כותרת ותיבה
-/** One field as a row: label on the right, the box on the left; on a narrow window the box drops under its label. */
+/** One field in the panel's grid: its label above the box; two or three fit per row. */
 export function FormCell({
   label,
   required,
@@ -306,8 +321,9 @@ export function FormCell({
   hint?: string;
   children: React.ReactNode;
 }) {
+  const width = React.useContext(CellWidth);
   return (
-    <View style={styles.cell}>
+    <View style={[styles.cell, width != null && { width, flexGrow: 0, flexBasis: 'auto' }]}>
       <DText weight="semiBold" style={styles.cellLabel}>
         {label}
         {required && <DText style={styles.required}> *</DText>}
@@ -483,7 +499,7 @@ export function FormNote({ icon, title, text }: { icon: IconName; title: string;
   return (
     <View style={[styles.panel, styles.note]}>
       <View style={styles.noteIcon}>
-        <Ionicons name={icon} size={22} color={DESKTOP_COLORS.brand} />
+        <Ionicons name={icon} size={18} color={DESKTOP_COLORS.brand} />
       </View>
       <View style={styles.noteText}>
         <DText weight="bold" style={styles.noteTitle}>{title}</DText>
@@ -631,24 +647,38 @@ export const FORM_PAGE_STYLES = {
 // עיצוב ערכת הטופס
 const styles = StyleSheet.create({
   ...FORM_PAGE_STYLES,
+  // Compact desktop scale: small section heads, fields in a grid (label above a box, 2-3 per row).
+  section: { marginBottom: 28 },
+  sectionHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, marginBottom: 10, paddingHorizontal: 2 },
+  sectionHeadText: { flex: 1, minWidth: 0, gap: 1 },
+  sectionTitle: { fontSize: 16, lineHeight: 22, letterSpacing: -0.2 },
+  sectionHint: { fontSize: 13, lineHeight: 19, color: DESKTOP_COLORS.inkMuted },
+  panel: { ...FORM_PAGE_STYLES.panel, borderRadius: 14 },
+  rows: { flexDirection: 'row-reverse', flexWrap: 'wrap', columnGap: GRID_GAP, rowGap: 14, padding: GRID_PAD },
+  cell: { flexGrow: 1, flexBasis: 300, minWidth: 0, gap: 6 },
+  cellLabel: { fontSize: 13.5, lineHeight: 18, color: DESKTOP_COLORS.ink },
+  required: { color: DESKTOP_COLORS.danger, fontSize: 13.5 },
+  cellErrorText: { fontSize: 13, color: DESKTOP_TONES.bad.fg },
+  toggleTitle: { fontSize: 14.5 },
+  toggleCaption: { fontSize: 13, color: DESKTOP_COLORS.inkMuted },
   tabular: webOnly({ fontVariantNumeric: 'tabular-nums' }),
   // הדף
   root: { flex: 1, backgroundColor: DESKTOP_COLORS.canvas },
   // אזור התוכן
   page: {
-    paddingTop: 32,
-    paddingHorizontal: 28,
-    paddingBottom: 120,
+    paddingTop: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 100,
     width: '100%',
-    maxWidth: 1080,
+    maxWidth: 1160,
     alignSelf: 'center',
   },
 
   // הכותרת הכהה
   // Hero
   hero: {
-    marginBottom: 48,
-    borderRadius: 28,
+    marginBottom: 28,
+    borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: DESKTOP_COLORS.ink,
     ...webOnly({
@@ -672,35 +702,35 @@ const styles = StyleSheet.create({
       WebkitMaskImage: 'radial-gradient(70% 110% at 0% 50%, #000 0%, transparent 75%)',
     }),
   },
-  heroBody: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'center', gap: 32, padding: 36 },
+  heroBody: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'center', gap: 24, paddingVertical: 22, paddingHorizontal: 26 },
   heroIntro: { flexGrow: 1, flexBasis: 380, minWidth: 0 },
   eyebrow: {
     alignSelf: 'flex-end',
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 7,
-    height: 30,
-    paddingHorizontal: 12,
-    borderRadius: 15,
+    gap: 6,
+    height: 24,
+    paddingHorizontal: 10,
+    borderRadius: 12,
     backgroundColor: 'rgba(95,193,240,0.16)',
     borderWidth: 1,
     borderColor: 'rgba(95,193,240,0.22)',
   },
-  eyebrowText: { fontSize: 14, color: '#9FD8F5' },
-  heroTitle: { marginTop: 16, fontSize: 40, lineHeight: 46, letterSpacing: -1.1, color: '#FFFFFF' },
-  heroSubtitle: { marginTop: 10, fontSize: 17, lineHeight: 26, color: 'rgba(255,255,255,0.7)', maxWidth: 480 },
+  eyebrowText: { fontSize: 12.5, color: '#9FD8F5' },
+  heroTitle: { marginTop: 10, fontSize: 21, lineHeight: 28, letterSpacing: -0.4, color: '#FFFFFF' },
+  heroSubtitle: { marginTop: 4, fontSize: 13.5, lineHeight: 20, color: 'rgba(255,255,255,0.7)', maxWidth: 460 },
   // רשימת השלבים
-  steps: { marginTop: 28, flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
+  steps: { marginTop: 16, flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
   step: {
     flexGrow: 1,
-    flexBasis: 118,
+    flexBasis: 110,
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 9,
-    paddingVertical: 10,
-    paddingEnd: 10,
-    paddingStart: 12,
-    borderRadius: 18,
+    gap: 8,
+    paddingVertical: 7,
+    paddingEnd: 8,
+    paddingStart: 10,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.07)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
@@ -712,37 +742,37 @@ const styles = StyleSheet.create({
   stepHover: { backgroundColor: 'rgba(255,255,255,0.13)', borderColor: 'rgba(255,255,255,0.2)' },
   stepPress: { transform: [{ scale: 0.97 }] },
   stepNum: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.12)',
     ...webOnly({ transition: 'background-color 240ms ease' }),
   },
   stepNumDone: { backgroundColor: '#34C759' },
-  stepNumText: { fontSize: 15, color: '#FFFFFF' },
+  stepNumText: { fontSize: 12.5, color: '#FFFFFF' },
   stepText: { flex: 1, minWidth: 0, gap: 1 },
-  stepLabel: { fontSize: 15.5, color: '#FFFFFF' },
-  stepMeta: { fontSize: 13, color: 'rgba(255,255,255,0.55)' },
+  stepLabel: { fontSize: 13.5, color: '#FFFFFF' },
+  stepMeta: { fontSize: 11.5, color: 'rgba(255,255,255,0.55)' },
   stepMetaDone: { color: '#7EE2A0' },
   heroStage: {
     flexGrow: 0,
     flexShrink: 0,
-    width: 344,
+    width: 270,
     maxWidth: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
 
   // הכרטיס החי
   // Live card
   liveCard: {
-    width: 340,
+    width: 264,
     maxWidth: '100%',
-    height: 214,
-    borderRadius: 20,
+    height: 166,
+    borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#FFFFFF',
     ...webOnly({
@@ -769,9 +799,9 @@ const styles = StyleSheet.create({
 
   // Sections
   sectionGlyph: {
-    width: 46,
-    height: 46,
-    borderRadius: 13,
+    width: 30,
+    height: 30,
+    borderRadius: 9,
     backgroundColor: DESKTOP_COLORS.brand,
     alignItems: 'center',
     justifyContent: 'center',
@@ -784,10 +814,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#34C759',
     ...webOnly({ boxShadow: '0 1px 2px rgba(52,199,89,0.25), 0 4px 12px rgba(52,199,89,0.25)' }),
   },
-  sectionNum: { fontSize: 21, color: '#FFFFFF' },
+  sectionNum: { fontSize: 14.5, color: '#FFFFFF' },
 
-  cellControl: { flexGrow: 1, flexBasis: 280, minWidth: 0, maxWidth: 560, gap: 6 },
-  cellHint: { fontSize: 14, lineHeight: 20, color: DESKTOP_COLORS.inkFaint },
+  cellControl: { minWidth: 0, gap: 5 },
+  cellHint: { fontSize: 12.5, lineHeight: 17, color: DESKTOP_COLORS.inkFaint },
 
   // רשת האריחים
   // Choice tiles
@@ -795,11 +825,11 @@ const styles = StyleSheet.create({
   // אריח בחירה
   tile: {
     flexGrow: 1,
-    flexBasis: 118,
-    minHeight: 72,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 14,
+    flexBasis: 100,
+    minHeight: 46,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 11,
     borderWidth: 1.5,
     borderColor: DESKTOP_COLORS.border,
     backgroundColor: DESKTOP_COLORS.surface,
@@ -809,7 +839,7 @@ const styles = StyleSheet.create({
       transition: 'background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms cubic-bezier(0.23, 1, 0.32, 1)',
     }),
   },
-  tileArt: { alignItems: 'flex-end', paddingTop: 14 },
+  tileArt: { alignItems: 'flex-end', paddingTop: 10 },
   tileHover: { borderColor: 'rgba(47,91,255,0.45)', backgroundColor: '#F5FAFD' },
   tilePress: { transform: [{ scale: 0.97 }] },
   tileSelected: {
@@ -820,12 +850,12 @@ const styles = StyleSheet.create({
     }),
   },
   tileError: { borderColor: 'rgba(213,37,28,0.45)' },
-  tileArtBox: { height: 30, justifyContent: 'center', marginBottom: 4 },
+  tileArtBox: { height: 24, justifyContent: 'center', marginBottom: 2 },
   tileLabelRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
   tileDot: { width: 9, height: 9, borderRadius: 5 },
-  tileLabel: { fontSize: 17, color: DESKTOP_COLORS.ink },
+  tileLabel: { fontSize: 14.5, color: DESKTOP_COLORS.ink },
   tileLabelSelected: { color: '#FFFFFF' },
-  tileDesc: { fontSize: 13.5, lineHeight: 18, color: DESKTOP_COLORS.inkMuted },
+  tileDesc: { fontSize: 12.5, lineHeight: 17, color: DESKTOP_COLORS.inkMuted },
   tileDescSelected: { color: 'rgba(255,255,255,0.85)' },
   tileCheck: {
     position: 'absolute',
@@ -843,13 +873,10 @@ const styles = StyleSheet.create({
   toggleRow: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 16,
-    minHeight: 76,
-    marginEnd: 20,
-    paddingStart: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: DESKTOP_COLORS.borderSoft,
+    flexBasis: '100%',
+    gap: 14,
+    minHeight: 48,
+    paddingVertical: 4,
     ...webOnly({ cursor: 'pointer', userSelect: 'none', transition: 'opacity 150ms ease-out' }),
   },
   switchTrack: { width: SWITCH_W, height: SWITCH_H, borderRadius: SWITCH_H / 2 },
@@ -863,18 +890,18 @@ const styles = StyleSheet.create({
   },
 
   // Note
-  note: { flexDirection: 'row-reverse', alignItems: 'center', gap: 16, padding: 22 },
+  note: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, padding: 16 },
   noteIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 11,
     backgroundColor: DESKTOP_COLORS.brandFocusRing,
     alignItems: 'center',
     justifyContent: 'center',
   },
   noteText: { flex: 1, gap: 3 },
-  noteTitle: { fontSize: 16.5 },
-  noteBody: { fontSize: 15, lineHeight: 22, color: DESKTOP_COLORS.inkMuted },
+  noteTitle: { fontSize: 14.5 },
+  noteBody: { fontSize: 13.5, lineHeight: 20, color: DESKTOP_COLORS.inkMuted },
 
   // Dock: one small floating line
   dockWrap: { position: 'absolute', start: 0, end: 0, bottom: 20, alignItems: 'center', paddingHorizontal: 24 },
@@ -907,7 +934,7 @@ const styles = StyleSheet.create({
   },
   dockBadgeReady: { backgroundColor: '#34C759' },
   dockBadgeText: { fontSize: 12.5, color: '#FFFFFF' },
-  dockTitle: { fontSize: 15, color: DESKTOP_COLORS.ink },
+  dockTitle: { fontSize: 14, color: DESKTOP_COLORS.ink },
   dockTrack: { width: 72, height: 5, borderRadius: 3, backgroundColor: 'rgba(22,34,46,0.08)', overflow: 'hidden' },
   dockFill: {
     height: 5,
@@ -917,9 +944,9 @@ const styles = StyleSheet.create({
   },
   dockFillReady: { backgroundColor: '#34C759', ...webOnly({ backgroundImage: 'linear-gradient(90deg, #1E9E4C, #34C759)' }) },
   dockCta: {
-    height: 42,
-    paddingHorizontal: 18,
-    borderRadius: 13,
+    height: 38,
+    paddingHorizontal: 16,
+    borderRadius: 11,
     backgroundColor: DESKTOP_COLORS.brand,
     alignItems: 'center',
     justifyContent: 'center',
@@ -936,7 +963,7 @@ const styles = StyleSheet.create({
   },
   dockCtaNextHover: { backgroundColor: '#D6EDF9' },
   dockCtaInner: { flexDirection: 'row-reverse', alignItems: 'center', gap: 7 },
-  dockCtaText: { fontSize: 15.5, color: '#FFFFFF' },
-  dockCtaNextText: { color: DESKTOP_COLORS.brand, fontSize: 15 },
+  dockCtaText: { fontSize: 14, color: '#FFFFFF' },
+  dockCtaNextText: { color: DESKTOP_COLORS.brand, fontSize: 14 },
   busy: { opacity: 0 },
 });
