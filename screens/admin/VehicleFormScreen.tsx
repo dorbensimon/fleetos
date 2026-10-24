@@ -248,6 +248,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
       color: details.color ?? current.color,
       production_year: details.productionYear ? String(details.productionYear) : current.production_year,
       vehicle_license_expiry: details.licenseExpiry ?? current.vehicle_license_expiry,
+      vehicle_type: details.vehicleType ?? current.vehicle_type,
     }));
     setLookupMessage(t('vehicle.filledFromMot'));
   };
