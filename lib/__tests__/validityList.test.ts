@@ -1,7 +1,8 @@
 jest.mock('../supabase', () => ({ supabase: {} }));
 jest.mock('@react-native-async-storage/async-storage', () => ({ getItem: jest.fn(), setItem: jest.fn(), removeItem: jest.fn() }));
 
-import { filterValidity, validityCsv, type ValidityRow } from '../validityList';
+import { filterValidity, validityTable, type ValidityRow } from '../validityList';
+import { xlsxBytes } from '../xlsx';
 
 const row = (over: Partial<ValidityRow>): ValidityRow => ({
   id: Math.random().toString(), ownerType: 'vehicle', ownerId: 'v1', folderKey: 'winter_inspection', folderLabel: 'בדיקת חורף',
@@ -35,10 +36,14 @@ describe('filterValidity', () => {
   });
 });
 
-describe('validityCsv', () => {
-  it('opens in Excel with Hebrew and quotes', () => {
-    const csv = validityCsv([row({ detail: 'דגם "מיוחד"' })], 'vehicle');
-    expect(csv.startsWith('﻿')).toBe(true);
-    expect(csv).toContain('"דגם ""מיוחד"""');
+describe('validity export', () => {
+  it('is an xlsx zip with a right-to-left sheet and escaped Hebrew', () => {
+    const table = validityTable([row({ detail: 'דגם "מיוחד" & <חדש>' })], 'vehicle');
+    expect(table).toHaveLength(2);
+    const bytes = xlsxBytes(table, { sheetName: 'תוקפים' });
+    expect([...bytes.slice(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04]);
+    const text = new TextDecoder().decode(bytes);
+    expect(text).toContain('rightToLeft="1"');
+    expect(text).toContain('דגם &quot;מיוחד&quot; &amp; &lt;חדש&gt;');
   });
 });
