@@ -226,6 +226,18 @@ export function findComplianceDef(
   return complianceCatalog(ownerType).find((d) => d.itemType === itemType);
 }
 
+// הטסט של הרכב
+/**
+ * The vehicle's test: the "טסט שנתי" item when one was entered, else the
+ * vehicle licence, which is renewed with the test (the test folder itself is
+ * hidden on vehicle records, so most vehicles only have the licence).
+ */
+export function vehicleTest(items: ComplianceItem[] | null | undefined): { def: ComplianceItemDef | undefined; item: ComplianceItem | null } {
+  const test = items?.find((c) => c.item_type === 'annual_test' && (c.expiry_date || c.last_date));
+  if (test) return { def: findComplianceDef('vehicle', 'annual_test'), item: test };
+  return { def: findComplianceDef('vehicle', 'vehicle_license'), item: items?.find((c) => c.item_type === 'vehicle_license') ?? null };
+}
+
 // מקבץ פריטים לפי קטגוריה
 /** Groups a catalogue into the sections the detail screens render. */
 export function groupByCategory(defs: ComplianceItemDef[]) {

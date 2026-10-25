@@ -10,7 +10,7 @@ import { DriverVehicleMobile } from './DriverVehicleMobile';
 import { expiryState, formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { listActiveDriverVehicles, listComplianceForOwners, markNotificationsReadWhere, DriverVehicleAssignment, ComplianceItem } from '../../lib/adminApi';
-import { VEHICLE_TYPE_LABELS, complianceBadgeLabel, complianceBadgeState, findComplianceDef } from '../../lib/compliance';
+import { VEHICLE_TYPE_LABELS, complianceBadgeLabel, complianceBadgeState, vehicleTest } from '../../lib/compliance';
 import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
@@ -156,8 +156,7 @@ function DesktopVehicleCard({
 }) {
   const expiryOf = (itemType: string) => compliance.find((c) => c.item_type === itemType)?.expiry_date ?? null;
   const insurance = expiryOf('insurance_mandatory');
-  const testItem = compliance.find((c) => c.item_type === 'annual_test') ?? null;
-  const testDef = findComplianceDef('vehicle', 'annual_test');
+  const { def: testDef, item: testItem } = vehicleTest(compliance);
   const testState = testDef ? complianceBadgeState(testDef, testItem) : expiryState(testItem?.expiry_date);
   const testLabel = testDef ? complianceBadgeLabel(testDef, testItem) : testItem?.expiry_date ? formatDate(testItem.expiry_date) : t('status.missing');
 
@@ -179,7 +178,7 @@ function DesktopVehicleCard({
           <StatusPill tone={toneFor(expiryState(insurance))} label={insurance ? formatDate(insurance) : t('status.missing')} />
         </View>
       </FocusTarget>
-      <FocusTarget id="annual_test" radius={6} tint={DESKTOP_COLORS.brand}>
+      <FocusTarget id="annual_test,vehicle_license" radius={6} tint={DESKTOP_COLORS.brand}>
         <View style={ds.metaRow}>
           <DText style={ds.metaLabel}>{t('folder.annualTest')}</DText>
           <StatusPill tone={toneFor(testState)} label={testLabel} />

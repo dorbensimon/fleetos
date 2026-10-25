@@ -14,6 +14,7 @@ import { DesktopInput, DText, HoverPressable } from '../../components/desktop/pr
 import { DESKTOP_COLORS, DESKTOP_BRAND_SHADOW, webOnly } from '../../components/desktop/desktopTheme';
 import { t, getLocale } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
+import { MAX_KM } from '../../lib/serviceSchedule';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverOdometer'>;
 // המסך
@@ -25,6 +26,7 @@ export default function DriverOdometerScreen({ navigation, route }: Props) {
   const next = Number(value);
   const invalid = value.trim() === '' || !Number.isSafeInteger(next) || next < route.params.currentOdometer;
   const save = async () => {
+    if (next > MAX_KM) { showAlert(t('odometer.invalidNumber'), t('vehicle.kmOutOfRange')); return; }
     if (invalid) { showAlert(t('odometer.invalidNumber'), t('odometer.mustBeAtLeast', { v1: route.params.currentOdometer.toLocaleString(getLocale()) })); return; }
     setSaving(true);
     try { await updateOwnVehicleOdometer(route.params.vehicleId, next); showAlert(t('odometer.updated'), t('odometer.managerWillSee'), [{ text: t('common.done'), onPress: () => navigation.goBack() }]); }

@@ -7,7 +7,7 @@ const trip = (over: Partial<Trip>): Trip => ({
 
 const base = (trips: Trip[]): ScheduleData => ({
   vehicles: [
-    { id: 'v1', plate: '11-111-11', type: 'minibus', status: 'active', driverId: 'd1', docs: [{ label: 'טסט', until: '2026-10-25', warnOnly: false }] },
+    { id: 'v1', plate: '11-111-11', type: 'passenger_minibus', status: 'active', driverId: 'd1', docs: [{ label: 'טסט', until: '2026-10-25', warnOnly: false }] },
     { id: 'v2', plate: '22-222-22', type: 'bus', status: 'active', driverId: 'd2', docs: [] },
   ],
   drivers: [
@@ -49,6 +49,12 @@ describe('work schedule rules', () => {
     expect(r.noLicense('d1', r.vehicle('v1'))).toBeNull();
     expect(r.noLicense('d1', r.vehicle('v2'))).toBeTruthy();
     expect(r.noLicense('d2', r.vehicle('v1'))).toBeNull();
+  });
+
+  it('a commercial van ("מסחרי", stored as minibus) needs only B', () => {
+    const r = createRules({ ...base([]), vehicles: [{ id: 'v3', plate: '33-333-33', type: 'minibus', status: 'active', driverId: null, docs: [] }], drivers: [{ id: 'd3', name: 'דני', licenseExpiry: '2028-01-01', classes: ['C'] }, { id: 'd4', name: 'רון', licenseExpiry: '2028-01-01', classes: ['A2'] }] });
+    expect(r.noLicense('d3', r.vehicle('v3'))).toBeNull();
+    expect(r.noLicense('d4', r.vehicle('v3'))).toBeTruthy();
   });
 
   it('warns about too little rest between days and no time to get there', () => {

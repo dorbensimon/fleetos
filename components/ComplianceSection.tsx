@@ -25,6 +25,7 @@ import {
   groupByCategory,
 } from '../lib/compliance';
 import { getDocumentUrl, listDocuments, uploadDocument, type PickedFile } from '../lib/documents';
+import { scanDocumentDates } from '../lib/documentDateScan';
 import {
   chooseDocumentSource,
   confirmDeleteDocument,
@@ -113,6 +114,7 @@ export function ComplianceSection({
   const { showToast } = useToast();
   const [items, setItems] = useState<Map<string, ComplianceItem>>(new Map());
   const [docs, setDocs] = useState<DocumentRow[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [busyItem, setBusyItem] = useState<string | null>(null);
 
@@ -168,6 +170,7 @@ export function ComplianceSection({
         // The folder structure is useful before its document counts arrive.
         // Individual uploads and date saves still surface their own errors.
       }
+      setLoaded(true);
     })();
   }, [load]);
 
@@ -284,7 +287,14 @@ export function ComplianceSection({
     chooseDocumentSource(def.label, async (source: DocumentSource) => {
       const file = await pickDocumentSource(source);
       if (!file) return;
-      const expiryDate = requiresExpiryOnUpload ? await expiryPrompt.ask() : keptExpiryDate;
+      let expiryDate = keptExpiryDate;
+      if (requiresExpiryOnUpload) {
+        // The date read from the file is filled in; the user confirms or changes it.
+        setBusyItem(def.itemType);
+        const read = await scanDocumentDates(file);
+        setBusyItem(null);
+        expiryDate = await expiryPrompt.ask({ value: read?.expiry ?? null });
+      }
       if (requiresExpiryOnUpload && !expiryDate) return;
       await upload(file, expiryDate);
     });
@@ -453,6 +463,7 @@ export function ComplianceSection({
             docs={docs.filter((d) => d.title === def.storedTitle)}
             onPress={() => setExpanded(def.itemType)}
             first={index === 0}
+            loading={!loaded}
           />
         ))}
         {openDef && (() => {
@@ -514,7 +525,7 @@ export function ComplianceSection({
                     thumbnail={thumbnail}
                     signedVisual
                     onPress={() => setExpanded(def.itemType)}
-                    meta={latestDoc ? <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : t('documents.expiryMissing')} /> : <AppText style={styles.itemDocCount}>{t('documents.none')}</AppText>}
+                    meta={!loaded ? <AppText style={styles.itemDocCount}>{t('common.loadingEllipsis')}</AppText> : latestDoc ? <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : t('documents.expiryMissing')} /> : <AppText style={styles.itemDocCount}>{t('documents.none')}</AppText>}
                   />
                 );
               })}
@@ -542,7 +553,7 @@ export function ComplianceSection({
                     </View>
                     <View style={styles.itemLabelWrap}>
                       <AppText weight="bold" style={styles.folderItemLabel}>{def.label}</AppText>
-                      <AppText style={styles.itemDocCount}>{itemDocs.length ? `${itemDocs.length} ${itemDocs.length === 1 ? t('documents.document') : t('common.documents')}` : t('documents.none')}</AppText>
+                      <AppText style={styles.itemDocCount}>{!loaded ? t('common.loadingEllipsis') : itemDocs.length ? `${itemDocs.length} ${itemDocs.length === 1 ? t('documents.document') : t('common.documents')}` : t('documents.none')}</AppText>
                     </View>
                     {(!!latestDoc || !!latestExpiry) && <ExpiryBadge state={expiryState(latestExpiry)} label={latestExpiry ? formatDate(latestExpiry) : t('documents.expiryMissing')} />}
                     <Ionicons name={isOpen ? 'chevron-down' : dirIcon('chevron-back')} size={18} color={DK.faint} />

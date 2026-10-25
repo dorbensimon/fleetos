@@ -36,6 +36,7 @@ import { nextServiceKmOf } from '../../../lib/serviceSchedule';
 import { vehicleHealth } from './FleetCards';
 import { cleanRegistryDetails, REGISTRY_DETAIL_FIELDS } from '../../../lib/vehicleRegistryFields';
 import { SAFETY_FOLDER, VehicleInspectionsFolder } from '../../../components/inspection/VehicleInspectionsCard';
+import { VehicleServiceFolderMobileRow } from '../../../components/service/VehicleServiceRecords';
 import { t, dirIcon, getLocale } from '../../../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -227,7 +228,7 @@ function renderTab(p: Props, v: Vehicle) {
         <KitSection>
           <InfoLine first icon="speedometer" label={t('vehicle.currentOdometer')} focusId="odometer" value={km(v.odometer)} />
           <InfoLine icon="time" label={t('common.lastUpdated')} value={v.odometer_updated_at ? formatDate(v.odometer_updated_at) : null} />
-          <InfoLine icon="build" label={t('vehicle.kmAtLastService')} value={km(v.last_service_km)} />
+          <InfoLine icon="build" label={t('vehicle.kmAtLastService')} value={km(v.last_service_km || null)} />
           <InfoLine icon="repeat" label={t('vehicle.serviceIntervalShort')} value={km(v.service_interval_km)} />
           <InfoLine icon="flag" label={t('vehicle.nextServiceTitle')} focusId="service" value={km(nextServiceKmOf(v))} />
         </KitSection>
@@ -253,6 +254,7 @@ function renderTab(p: Props, v: Vehicle) {
           {otherFolders.map((folder) => (
             <ListRow key={folder.category} icon={folder.icon as IconName} tint={folder.color} title={folder.title} onPress={() => p.onOpenFolder(folder)} />
           ))}
+          <VehicleServiceFolderMobileRow companyId={p.companyId} vehicleId={v.id} />
         </KitSection>
       </>
     );

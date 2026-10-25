@@ -292,7 +292,10 @@ export const MAX_DAY_MINUTES = 12 * 60;
 export const MIN_REST_MINUTES = 7 * 60;
 
 /** License class each vehicle type needs, and which classes cover which. */
-const NEED: Partial<Record<VehicleType, string>> = { car: 'B', truck: 'C1', minibus: 'D1', bus: 'D' };
+// 'minibus' is the stored key of "מסחרי" (a van up to 3.5 t, class B); the passenger minibus is 'passenger_minibus'.
+const NEED: Partial<Record<VehicleType, string>> = {
+  car: 'B', dual_use: 'B', minibus: 'B', passenger_minibus: 'D1', truck: 'C1', tractor_truck: 'C+E', bus: 'D',
+};
 const COVERS: Record<string, string[]> = {
   B: ['B'], C1: ['C1', 'B'], C: ['C', 'C1', 'B'], 'C+E': ['C+E', 'C', 'C1', 'B'],
   D1: ['D1', 'B'], D2: ['D2', 'D1', 'B'], D3: ['D3', 'D2', 'D1', 'B'], D: ['D', 'D3', 'D2', 'D1', 'B'],

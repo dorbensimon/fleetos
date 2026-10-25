@@ -95,6 +95,13 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   );
   // Desktop inline editing — one field per save, merged into the loaded row.
   const saveDriverField = async (patch: Parameters<typeof updateDriver>[1]): Promise<string | null> => {
+    // A licence is issued before it expires, and not in the future.
+    if ('license_issue_date' in patch || 'license_expiry' in patch) {
+      const issued = 'license_issue_date' in patch ? patch.license_issue_date : driver?.license_issue_date;
+      const expiry = 'license_expiry' in patch ? patch.license_expiry : driver?.license_expiry;
+      if (issued && issued > dateOnlyIsoFromLocalDate(new Date())) return t('driver.issueInFuture');
+      if (issued && expiry && expiry <= issued) return t('driver.issueAfterExpiry');
+    }
     try {
       await updateDriver(driverId, patch);
       setDriver((current) => (current ? { ...current, ...patch } : current));

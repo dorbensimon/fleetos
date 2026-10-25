@@ -3,9 +3,14 @@ import { supabase } from './supabase';
 import { listVehicles } from './adminApi/vehicles';
 import { listDrivers } from './adminApi/drivers';
 import { listComplianceForOwners } from './adminApi/compliance';
+import { listActiveVehicleDriversForVehicles } from './adminApi/assignments';
+import type { VehicleDriverWithProfile } from './adminApi/types';
 import { chunkIds, fetchAllPages } from './adminApi/paging';
-import { complianceTargetDate, VEHICLE_COMPLIANCE } from './compliance';
-import { folderExpiries, VEHICLE_DOC_FOLDERS } from './validityList';
+import { complianceTargetDate } from './compliance';
+import { folderExpiries, VEHICLE_DATED_ITEMS, VEHICLE_DOC_FOLDERS } from './validityList';
+import { loadInspectionPlan } from './inspections';
+import { t } from './i18n';
+import { formatPlate } from './plate';
 import { splitLicenseClasses } from './driverFields';
 import { addDays, hhmm, repeatDates, todayKey, type Block, type Series, type Client, type SavedTrip, type ScheduleData, type ScheduleDriver, type ScheduleVehicle, type Trip, type VehicleDoc } from './workSchedule';
 
@@ -98,10 +103,15 @@ async function vehicleDocs(companyId: string, vehicleIds: string[]): Promise<Map
 
   const compliance = await listComplianceForOwners('vehicle', vehicleIds);
   for (const [vehicleId, items] of compliance) {
-    for (const def of VEHICLE_COMPLIANCE) {
+    for (const def of VEHICLE_DATED_ITEMS) {
       const until = complianceTargetDate(def, items.find((x) => x.item_type === def.itemType));
       if (until) push(vehicleId, { label: def.label, until, warnOnly: def.itemType === 'insurance_comprehensive' });
     }
+  }
+
+  // The safety officer's next inspection, as the vehicle card counts it.
+  for (const p of await loadInspectionPlan(companyId).catch(() => [])) {
+    if (p.nextDue && vehicleIds.includes(p.vehicleId)) push(p.vehicleId, { label: t('folder.safetyOfficerApproval'), until: p.nextDue, warnOnly: false });
   }
 
   const expiries = await folderExpiries(companyId, 'vehicle', vehicleIds, DOC_FOLDERS.map((f) => f.folderKey));
@@ -113,10 +123,15 @@ async function vehicleDocs(companyId: string, vehicleIds: string[]): Promise<Map
   return out;
 }
 
+// הנהג הראשי של הרכב, או הנהג היחיד שמשויך אליו
+const primaryDriverId = (rows: VehicleDriverWithProfile[] | undefined) => (rows?.find((d) => d.is_primary) ?? rows?.[0])?.driver_id ?? null;
+
 // טוען את כל מה שהסידור צריך, מתאריך מסוים והלאה
 export async function loadSchedule(companyId: string, fromDate: string): Promise<ScheduleData> {
   const [vehicleRows, driverRows] = await Promise.all([listVehicles(companyId), listDrivers(companyId)]);
-  const [docs, trips, blocks, clients, saved, seriesRows] = await Promise.all([
+  const [assigned, docs, trips, blocks, clients, saved, seriesRows] = await Promise.all([
+    // Who drives each vehicle now (vehicle_drivers; vehicles.primary_driver_id is no longer kept).
+    listActiveVehicleDriversForVehicles(vehicleRows.map((v) => v.id)),
     vehicleDocs(companyId, vehicleRows.map((v) => v.id)),
     loadTrips(companyId, fromDate),
     fetchAllPages<any>((from, to) =>
@@ -131,7 +146,7 @@ export async function loadSchedule(companyId: string, fromDate: string): Promise
   const added = await extendSeries(companyId, series);
 
   const vehicles: ScheduleVehicle[] = vehicleRows
-    .map((v) => ({ id: v.id, plate: v.plate_number, type: v.vehicle_type, status: v.status, driverId: v.primary_driver_id, docs: docs.get(v.id) ?? [] }))
+    .map((v) => ({ id: v.id, plate: formatPlate(v.plate_number), type: v.vehicle_type, status: v.status, driverId: primaryDriverId(assigned.get(v.id)), docs: docs.get(v.id) ?? [] }))
     .sort((a, b) => a.plate.localeCompare(b.plate));
   const drivers: ScheduleDriver[] = driverRows
     .map((d) => {

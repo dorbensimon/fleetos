@@ -22,6 +22,7 @@ import { DriverFormDesktopView, type FormState } from '../../components/desktop/
 import { ConsentCheck } from '../../components/legal/ConsentCheck';
 import { DRIVER_DATA_NOTICE } from '../../lib/legal/documents';
 import { t } from '../../lib/i18n';
+import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverForm'>;
 
@@ -204,7 +205,7 @@ export default function DriverFormScreen({ route, navigation }: Props) {
         showAlert(t('common.saveFailed'), t('common.departmentDeleted'));
         return;
       }
-      showAlert(t('common.saveFailed'), message || t('common.tryAgain'));
+      showAlert(t('common.saveFailed'), errorMessage(err, t('common.tryAgain')));
     } finally {
       setSaving(false);
     }

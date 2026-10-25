@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import type { DocumentRow } from '../../../lib/adminApi';
 import { ExpiryState, expiryState, formatDate, parseDateValue } from '../../../lib/theme';
 import type { PickedFile } from '../../../lib/documents';
+import { scanDocumentDates } from '../../../lib/documentDateScan';
+import { suggestedDates } from '../../../lib/documentDates';
 import {
   chooseDocumentSource,
   confirmDeleteDocument,
@@ -88,6 +90,7 @@ export function FolderListRow({
   onPress,
   first,
   plain,
+  loading,
 }: {
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
@@ -96,11 +99,13 @@ export function FolderListRow({
   first?: boolean;
   /** A folder without expiry dates: no status, just the file count and the latest upload. */
   plain?: boolean;
+  /** The files have not arrived yet: say so instead of "no file". */
+  loading?: boolean;
 }) {
   const { state, expiry, count } = folderStatus(docs);
   const color = STATE_COLOR[state] ?? DESKTOP_COLORS.inkFaint;
   const datePrefix = state === 'expired' ? t('documents.sincePrefix') : t('documents.untilPrefix');
-  const showStatus = !plain && state !== 'optional';
+  const showStatus = !loading && !plain && state !== 'optional';
   const latestUpload = plain ? newestFirst(docs)[0]?.created_at ?? null : null;
 
   return (
@@ -108,7 +113,7 @@ export function FolderListRow({
       style={[styles.row, !first && styles.rowDivider]}
       hoverStyle={styles.rowHover}
       onPress={onPress}
-      accessibilityLabel={t('documents.openFolderLabel', { title, v1: showStatus ? expiryStatusText(state, expiry) : '' })}
+      accessibilityLabel={t('documents.openFolderLabel', { title, v1: showStatus ? expiryStatusText(state, expiry) : loading ? t('common.loadingEllipsis') : plain && count === 0 ? t('documents.noFilesYet') : countLabel(count) })}
     >
       <View style={[styles.rowIcon, plain && count > 0 && styles.rowIconFilled]}>
         <Ionicons name={icon} size={16} color={plain && count > 0 ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkMuted} />
@@ -123,7 +128,7 @@ export function FolderListRow({
               <DText style={styles.rowMetaText}> · </DText>
             </>
           )}
-          <DText style={styles.rowMetaText}>{plain && count === 0 ? t('documents.noFilesYet') : countLabel(count)}</DText>
+          <DText style={styles.rowMetaText}>{loading ? t('common.loadingEllipsis') : plain && count === 0 ? t('documents.noFilesYet') : countLabel(count)}</DText>
           {!!latestUpload && (
             <>
               <DText style={styles.rowMetaText}> {t('documents.updatedOnPrefix')}</DText>
@@ -186,11 +191,27 @@ export function FolderUploadBar({
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const zoneRef = useRef<View>(null);
+  const [scan, setScan] = useState<'scanning' | 'found' | 'none' | null>(null);
+  const scanFor = useRef<PickedFile | null>(null);
 
+  // Every chosen file is read for its dates, which fill the fields; the user can still change them.
   const choose = (picked: PickedFile) => {
     setFile(picked);
     setError(null);
+    if (!requiresExpiry || extraFields) return;
+    scanFor.current = picked;
+    setScan('scanning');
+    void scanDocumentDates(picked).then((dates) => {
+      if (scanFor.current !== picked) return;
+      const { inspected: inspectedOn, expiry } = suggestedDates(dates, inspectionMonths);
+      if (inspectedOn) setInspected(inspectedOn);
+      if (expiry) onExpiryChange(expiry);
+      setScan(expiry ? 'found' : 'none');
+    });
   };
+  // The drop listener is bound once; it reaches the latest `choose` through this.
+  const chooseRef = useRef(choose);
+  chooseRef.current = choose;
 
   // Drag and drop straight from the computer's folders (web only).
   useEffect(() => {
@@ -208,7 +229,7 @@ export function FolderUploadBar({
       event.preventDefault();
       setDragOver(false);
       const dropped = event.dataTransfer?.files?.[0];
-      if (dropped) choose({ uri: URL.createObjectURL(dropped), name: dropped.name, mimeType: dropped.type || 'application/octet-stream' });
+      if (dropped) chooseRef.current({ uri: URL.createObjectURL(dropped), name: dropped.name, mimeType: dropped.type || 'application/octet-stream' });
     };
     node.addEventListener('dragover', over);
     node.addEventListener('dragleave', leave);
@@ -233,8 +254,10 @@ export function FolderUploadBar({
     if (await onUpload(file)) {
       setFile(null);
       setInspected(null);
+      setScan(null);
     }
   };
+  const scanning = scan === 'scanning';
 
   return (
     <View style={styles.upload}>
@@ -281,10 +304,17 @@ export function FolderUploadBar({
         </View>
       ))}
 
+      {!!scan && (
+        <View style={styles.scanNote}>
+          {scanning ? <BrandLoader size="small" /> : <Ionicons name={scan === 'found' ? 'scan-outline' : 'information-circle-outline'} size={15} color={scan === 'found' ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkMuted} />}
+          <DText style={styles.scanNoteText}>{scanning ? t('documents.scanning') : scan === 'found' ? t('documents.scanFound') : t('documents.scanNotFound')}</DText>
+        </View>
+      )}
+
       {!!error && <DText style={styles.uploadError}>{error}</DText>}
 
       <View style={styles.actions}>
-        <HoverPressable style={[styles.primaryBtn, styles.actionBtn, uploading && styles.disabled]} hoverStyle={styles.primaryBtnHover} pressStyle={styles.pressDown} onPress={() => void submit()} disabled={uploading}>
+        <HoverPressable style={[styles.primaryBtn, styles.actionBtn, (uploading || scanning) && styles.disabled]} hoverStyle={styles.primaryBtnHover} pressStyle={styles.pressDown} onPress={() => void submit()} disabled={uploading || scanning}>
           {uploading ? <BrandLoader size="small" color="#FFFFFF" /> : <Ionicons name="cloud-upload-outline" size={18} color="#FFFFFF" />}
           <DText weight="semiBold" style={styles.primaryBtnText}>{uploading ? t('common.uploading') : t('common.upload')}</DText>
         </HoverPressable>
@@ -582,6 +612,8 @@ const styles = StyleSheet.create({
   uploadDate: { gap: 6 },
   uploadLabel: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
   uploadError: { fontSize: 14, color: DESKTOP_TONES.bad.fg },
+  scanNote: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  scanNoteText: { flex: 1, fontSize: 13, color: DESKTOP_COLORS.inkMuted },
   actions: { flexDirection: 'row-reverse', gap: 12, marginTop: 4 },
   actionBtn: { flex: 1, height: 48, borderRadius: 12, justifyContent: 'center' },
   primaryBtn: { height: 44, paddingHorizontal: 18, borderRadius: 10, backgroundColor: DESKTOP_COLORS.brand, flexDirection: 'row-reverse', alignItems: 'center', gap: 8, ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW, transition: 'background-color 150ms ease, transform 120ms ease-out' }) },

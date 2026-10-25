@@ -33,6 +33,8 @@ export type NotificationType =
   | 'vehicle_brakes_annual_expiry'
   | 'vehicle_winter_inspection_expiry'
   | 'vehicle_child_detection_expiry'
+  | 'vehicle_engineer_report_expiry'
+  | 'vehicle_license_annex_expiry'
   | 'vehicle_custom_folder_expiry'
   | 'driver_custom_folder_expiry'
   | 'driver_extra_expiry'
@@ -77,7 +79,7 @@ export function withoutValidity(label: string): string {
 // מתג לכל תיקיית רכב
 /** One toggle per vehicle folder (see lib/vehicleFolderAlerts.ts and migration 90). */
 const vehicleFolderTypes = (descriptionKey: string): NotificationTypeInfo[] =>
-  VEHICLE_FOLDER_ALERTS.map((folder) => ({
+  VEHICLE_FOLDER_ALERTS.filter((folder) => folder.alert !== false).map((folder) => ({
     type: folder.notificationType as NotificationType,
     get label() {
       // The tachograph folder's own name already says "validity", and so does the owner's folders' row.

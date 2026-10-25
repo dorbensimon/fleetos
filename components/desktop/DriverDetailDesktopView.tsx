@@ -165,7 +165,7 @@ export function DriverDetailDesktopView({
   const statusTone: DesktopTone = isArchived ? 'neutral' : pendingActivation ? 'warn' : 'ok';
   const statusLabel = isArchived ? t('common.archived') : pendingActivation ? t('driver.awaitingFirstLogin') : t('driver.activeInApp');
 
-  const { docs, reload: reloadDocs } = useOwnerDocuments('driver', driverId);
+  const { docs, loaded: docsLoaded, reload: reloadDocs } = useOwnerDocuments('driver', driverId);
   const signing = useDriverSigningFolders(companyId, driverId);
   const [licenseOpen, setLicenseOpen] = useState(false);
   const [openFolder, setOpenFolder] = useState<RecordDocumentFolder | null>(null);
@@ -601,6 +601,7 @@ export function DriverDetailDesktopView({
                   docs={docs.filter((d) => d.category === folder.category)}
                   onPress={() => setOpenFolder({ ...folder, requiresExpiry: false })}
                   first={index === 0}
+                  loading={!docsLoaded}
                   plain
                 />
               ))}
@@ -619,6 +620,7 @@ export function DriverDetailDesktopView({
                   docs={docs.filter((d) => d.category === folder.category)}
                   onPress={() => setOpenFolder(folder)}
                   first={index === 0}
+                  loading={!docsLoaded}
                   plain={!folder.requiresExpiry}
                 />
               ))}

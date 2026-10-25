@@ -10,7 +10,7 @@ import {
   VEHICLE_TYPE_LABELS,
   complianceRemainingDays,
   complianceTargetDate,
-  findComplianceDef,
+  vehicleTest,
 } from './compliance';
 import { TONE_BAD, TONE_NEUTRAL, TONE_OK, TONE_WARN, SERVICE_WARN_KM, remainingTone } from './fleetCardHelpers';
 import { buildTableReport, expiryCell, printOrShareReport, ReportCell } from './reportTemplate';
@@ -54,8 +54,7 @@ function summarize(
 ): VehicleSummary {
   const items = compliance.get(vehicle.id) ?? [];
   const insuranceItem = items.find((c) => c.item_type === 'insurance_mandatory') ?? null;
-  const testItem = items.find((c) => c.item_type === 'annual_test') ?? null;
-  const testDef = findComplianceDef('vehicle', 'annual_test');
+  const { def: testDef, item: testItem } = vehicleTest(items);
 
   const insurance = insuranceItem?.expiry_date ?? null;
   const insDays = daysUntilExpiry(insurance);

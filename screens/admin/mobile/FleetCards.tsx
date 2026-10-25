@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar, DK, DK_SPACE, DKText, Plate, Pressy, STATUS, Surface, validityProgress, type Status } from '../../../components/driverKit';
 import { daysUntilExpiry, expiryState, formatDate } from '../../../lib/theme';
 import type { ComplianceItem, DriverRow, Vehicle, VehicleDriverWithProfile } from '../../../lib/adminApi';
-import { VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS, complianceBadgeLabel, complianceBadgeState, complianceRemainingDays, findComplianceDef } from '../../../lib/compliance';
+import { VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS, complianceBadgeLabel, complianceBadgeState, complianceRemainingDays, vehicleTest } from '../../../lib/compliance';
 import { nextServiceKmOf } from '../../../lib/serviceSchedule';
 import { formatPlate } from '../../../lib/plate';
 import { t, getLocale } from '../../../lib/i18n';
@@ -40,8 +40,7 @@ function daysNote(days: number | null) {
 export function vehicleHealth(vehicle: Vehicle, items: ComplianceItem[] | undefined): { rows: Health[]; worst: Status; bad: string[] } {
   const insurance = items?.find((c) => c.item_type === 'insurance_mandatory')?.expiry_date ?? null;
   const comprehensive = items?.find((c) => c.item_type === 'insurance_comprehensive')?.expiry_date ?? null;
-  const testItem = items?.find((c) => c.item_type === 'annual_test') ?? null;
-  const testDef = findComplianceDef('vehicle', 'annual_test');
+  const { def: testDef, item: testItem } = vehicleTest(items);
   const insDays = daysUntilExpiry(insurance);
   const testDays = testDef ? complianceRemainingDays(testDef, testItem) : daysUntilExpiry(testItem?.expiry_date);
   const testOptional = !!testDef && complianceBadgeState(testDef, testItem) === 'optional';

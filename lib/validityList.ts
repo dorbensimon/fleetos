@@ -7,6 +7,7 @@ import { listComplianceForOwners } from './adminApi/compliance';
 import { chunkIds, fetchAllPages } from './adminApi/paging';
 import { complianceTargetDate, newestDocument, VEHICLE_COMPLIANCE } from './compliance';
 import { VEHICLE_FOLDER_ALERTS } from './vehicleFolderAlerts';
+import { loadInspectionPlan } from './inspections';
 import { folderCategory, listCompanyFolders } from './companyFolders';
 import { LICENSE_DOCS_CATEGORY } from './driverDocumentFolders';
 import { daysUntilExpiry, formatDate } from './theme';
@@ -55,7 +56,13 @@ export interface ValidityData {
 export const VALIDITY_SOON_DAYS = 30;
 
 // תיקיות המסמכים של הרכב עם תוקף (בלי התיקיות שהחברה הוסיפה)
-export const VEHICLE_DOC_FOLDERS = VEHICLE_FOLDER_ALERTS.filter((f) => f.source === 'document' && !f.folderKey.startsWith('company_'));
+export const VEHICLE_DOC_FOLDERS = VEHICLE_FOLDER_ALERTS.filter((f) => f.source === 'document' && f.alert !== false && !f.folderKey.startsWith('company_'));
+
+// תיקיית בדיקות קצין הבטיחות: התאריך מגיע מהבדיקות עצמן
+const SAFETY_FOLDER = 'safety_officer_approval';
+
+// פריטי התוקף שמוצגים ברכב (הטסט השנתי מוסתר: רישיון הרכב מתחדש איתו)
+export const VEHICLE_DATED_ITEMS = VEHICLE_COMPLIANCE.filter((def) => def.itemType !== 'annual_test');
 
 // תאריכי הנהג שנשמרים בכרטיס עצמו
 const DRIVER_DATES = [
@@ -111,7 +118,8 @@ export async function loadValidity(companyId: string): Promise<ValidityData> {
   const activeDrivers = drivers.filter((d) => !d.employment_end_date || d.employment_end_date >= today);
 
   const folders: ValidityFolder[] = [
-    ...VEHICLE_COMPLIANCE.map((def) => ({ key: def.itemType, label: def.label, ownerType: 'vehicle' as const })),
+    ...VEHICLE_DATED_ITEMS.map((def) => ({ key: def.itemType, label: def.label, ownerType: 'vehicle' as const })),
+    { key: SAFETY_FOLDER, label: t('folder.safetyOfficerApproval'), ownerType: 'vehicle' },
     ...VEHICLE_DOC_FOLDERS.map((f) => ({ key: f.folderKey, label: f.label, ownerType: 'vehicle' as const })),
     ...vehicleCustom.map((f) => ({ ...f, ownerType: 'vehicle' as const })),
     { key: LICENSE_DOCS_CATEGORY, label: t('driver.licenseExpiry'), ownerType: 'driver' },
@@ -120,10 +128,12 @@ export async function loadValidity(companyId: string): Promise<ValidityData> {
   ];
   const labelOf = new Map(folders.map((f) => [`${f.ownerType}|${f.key}`, f.label]));
 
-  const [compliance, vehicleDocs, driverDocs] = await Promise.all([
+  const [compliance, vehicleDocs, driverDocs, plan] = await Promise.all([
     listComplianceForOwners('vehicle', vehicles.map((v) => v.id)),
     folderExpiries(companyId, 'vehicle', vehicles.map((v) => v.id), [...VEHICLE_DOC_FOLDERS.map((f) => f.folderKey), ...vehicleCustom.map((f) => f.key)]),
     folderExpiries(companyId, 'driver', activeDrivers.map((d) => d.id), driverCustom.map((f) => f.key)),
+    // The safety officer's next inspection, as the vehicle card and its alert count it.
+    loadInspectionPlan(companyId).catch(() => []),
   ]);
 
   const rows: ValidityRow[] = [];
@@ -143,9 +153,13 @@ export async function loadValidity(companyId: string): Promise<ValidityData> {
     const name = formatPlate(v.plate_number);
     const detail = [v.manufacturer, v.model].filter(Boolean).join(' ');
     const items = compliance.get(v.id) ?? [];
-    for (const def of VEHICLE_COMPLIANCE) push('vehicle', v.id, def.itemType, complianceTargetDate(def, items.find((x) => x.item_type === def.itemType)), name, detail, v.department_id);
+    for (const def of VEHICLE_DATED_ITEMS) push('vehicle', v.id, def.itemType, complianceTargetDate(def, items.find((x) => x.item_type === def.itemType)), name, detail, v.department_id);
   }
   const vehicleById = new Map(vehicles.map((v) => [v.id, v]));
+  for (const p of plan) {
+    const v = vehicleById.get(p.vehicleId);
+    if (v) push('vehicle', v.id, SAFETY_FOLDER, p.nextDue, formatPlate(v.plate_number), [v.manufacturer, v.model].filter(Boolean).join(' '), v.department_id);
+  }
   for (const [k, until] of vehicleDocs) {
     const [ownerId, category] = k.split('|');
     const v = vehicleById.get(ownerId);

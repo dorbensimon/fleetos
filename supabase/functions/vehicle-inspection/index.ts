@@ -227,7 +227,7 @@ Deno.serve(async (req) => {
         db.from('companies').select('name, logo_url').eq('id', companyId).single(),
         driver ? db.auth.admin.getUserById(driver.id) : Promise.resolve({ data: null }),
         db.from('compliance_items').select('item_type, expiry_date, last_date')
-          .eq('owner_type', 'vehicle').eq('owner_id', inspection.vehicle_id).in('item_type', ['annual_test', 'insurance_mandatory']),
+          .eq('owner_type', 'vehicle').eq('owner_id', inspection.vehicle_id).in('item_type', ['annual_test', 'vehicle_license', 'insurance_mandatory']),
         companySettings(db, companyId),
       ]);
       if (!vehicle || vehicle.status === 'archived') return json({ error: 'אפשר לחתום רק על רכב פעיל של החברה' }, 400);
@@ -237,7 +237,9 @@ Deno.serve(async (req) => {
       }
 
       const rows = (compliance ?? []) as Array<{ item_type: string; expiry_date: string | null; last_date: string | null }>;
-      const test = rows.find((r) => r.item_type === 'annual_test');
+      // The test, else the vehicle licence, which is renewed with it.
+      const test = rows.find((r) => r.item_type === 'annual_test' && (r.expiry_date || r.last_date))
+        ?? rows.find((r) => r.item_type === 'vehicle_license');
       const insurance = rows.find((r) => r.item_type === 'insurance_mandatory');
       const nextDue = settings.repeatMonths > 0 ? addMonths(today, settings.repeatMonths) : null;
       const facts: InspectionFacts = {

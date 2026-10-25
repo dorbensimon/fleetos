@@ -17,6 +17,7 @@ import { getVehicle, createVehicle, updateVehicle, listVehicles, listDepartments
 import { VEHICLE_STATUS_LABELS, VEHICLE_TYPE_LABELS, ACQUISITION_TYPE_LABELS, findComplianceDef } from '../../lib/compliance';
 import { uploadDocument, type PickedFile } from '../../lib/documents';
 import { chooseDocumentSource, pickDocumentSource } from '../../lib/documentActions';
+import { scanDocumentDates } from '../../lib/documentDateScan';
 import { formatPlate } from '../../lib/plate';
 import { RootStackParamList } from '../../navigation/types';
 import { lookupVehicleRegistry, VehicleRegistryDetails } from '../../lib/vehicleRegistry';
@@ -26,6 +27,7 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { VehicleFormDesktopView, type FormState } from '../../components/desktop/VehicleFormDesktopView';
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
+import { MAX_KM } from '../../lib/serviceSchedule';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehicleForm'>;
 // טופס ריק
@@ -128,6 +130,7 @@ function validateVehicleForm(form: FormState): Record<string, string> {
 
   if (!form.vehicle_type) errors.vehicle_type = t('validation.required');
   if (!form.status) errors.status = t('validation.required');
+  if ((num(form.odometer) ?? 0) > MAX_KM) errors.odometer = t('vehicle.kmOutOfRange');
 
   const vin = form.vin.trim().toUpperCase();
   if (vin && !/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) {
@@ -345,6 +348,8 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           company_id: companyId,
           plate_number: plateDigits,
           last_service_km: 0,
+          // The odometer typed in now is today's reading (the database stamps later changes itself).
+          odometer_updated_at: num(form.odometer) ? new Date().toISOString() : null,
         });
         savedVehicleId = created.id;
       }
@@ -373,13 +378,15 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           });
         } catch (err: any) {
           showAlert(t('vehicle.licenseUploadFailed'), errorMessage(err, t('common.tryAgain')));
-          navigation.goBack();
+          navigation.replace('VehicleDetail', { vehicleId: savedVehicleId });
           return;
         }
       }
 
       showToast(isEdit ? t('common.changesSaved') : t('vehicle.created'));
-      navigation.goBack();
+      // A new vehicle opens its record, where its drivers and documents are added.
+      if (isEdit) navigation.goBack();
+      else navigation.replace('VehicleDetail', { vehicleId: savedVehicleId });
     } catch (err: any) {
       const message = String(err?.message ?? '');
       if (isStaleDepartmentError(message)) {
@@ -392,7 +399,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         t('common.saveFailed'),
         message.includes('duplicate') || message.includes('unique')
           ? t('vehicle.plateExists')
-          : message || t('common.tryAgain')
+          : errorMessage(err, t('common.tryAgain'))
       );
     } finally {
       setSaving(false);
@@ -429,6 +436,12 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         if (file) {
           setLicenseFile(file);
           setErrors((current) => ({ ...current, license_file: '' }));
+          // The licence's expiry read from the file fills the date; still editable.
+          const read = await scanDocumentDates(file);
+          if (read?.expiry) {
+            set('vehicle_license_expiry', read.expiry);
+            setErrors((current) => ({ ...current, vehicle_license_expiry: '' }));
+          }
         }
       } catch (err: any) {
         showAlert(t('common.uploadFailedShort'), errorMessage(err, t('common.tryAgain')));
@@ -599,7 +612,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
             }
           />
           <EditField label={t('vehicle.onRoadDate')} error={errors.road_registration_date} editor={<DateField value={form.road_registration_date || null} onChange={(value) => set('road_registration_date', value ?? '')} placeholder={t('date.chooseDateAction')} hasError={!!errors.road_registration_date} />} />
-          <EditField label={t('vehicle.currentMileage')} value={formatKm(form.odometer)} onChangeText={(value) => set('odometer', value.replace(/\D/g, ''))} placeholder={t('common.optionalShort')} keyboardType="number-pad" ltr />
+          <EditField label={t('vehicle.currentMileage')} error={errors.odometer} value={formatKm(form.odometer)} onChangeText={(value) => set('odometer', value.replace(/\D/g, ''))} placeholder={t('common.optionalShort')} keyboardType="number-pad" ltr />
         </KitSection>
         {!isEdit && (
           <KitSection title={t('folder.vehicleLicense')}>

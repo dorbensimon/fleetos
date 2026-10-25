@@ -31,6 +31,7 @@ import { SignaturePad } from '../../components/checklist/SignaturePad';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { getVehicle, listCompliance, listDrivers, type ComplianceItem, type DriverRow, type Vehicle } from '../../lib/adminApi';
 import { formatPlate } from '../../lib/plate';
+import { vehicleTest } from '../../lib/compliance';
 import { downloadRemoteFileOnWeb } from '../../lib/webDownload';
 import {
   DEFAULT_INSPECTION_FORM,
@@ -97,7 +98,7 @@ const firstName = (name: string) => name.trim().split(/\s+/)[0] || name;
 // תאריך הטסט של הרכב
 /** The test's date, as the app reads it everywhere: its expiry, or a year after it was done. */
 function testUntil(items: ComplianceItem[]): string | null {
-  const test = items.find((c) => c.item_type === 'annual_test');
+  const test = vehicleTest(items).item;
   if (test?.expiry_date) return test.expiry_date;
   if (!test?.last_date) return null;
   const date = new Date(`${test.last_date}T00:00:00Z`);

@@ -47,8 +47,8 @@ type Props = {
 };
 
 // פריטים שתמיד מוצגים
-/** Insurance and the annual test always show — as "missing" when absent. */
-const ALWAYS = ['insurance_mandatory', 'annual_test'];
+/** Insurance and the vehicle licence (renewed with the test) always show — as "missing" when absent. */
+const ALWAYS = ['insurance_mandatory', 'vehicle_license'];
 
 // שורות התוקף
 function rowsFor(compliance: ComplianceItem[]) {

@@ -12,6 +12,7 @@ import { useCompany } from '../../lib/CompanyContext';
 import type { DocumentRow } from '../../lib/adminApi';
 import { getDocumentUrl, listDocuments, uploadDocument, type PickedFile } from '../../lib/documents';
 import { chooseDocumentSource, confirmDeleteDocument, documentViewerMode, downloadDocumentWithAlert, getDocumentViewUrl, pickDocumentSource, type DocumentSource } from '../../lib/documentActions';
+import { scanDocumentDates } from '../../lib/documentDateScan';
 import { formatDate } from '../../lib/theme';
 import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
@@ -88,7 +89,15 @@ export default function CompanyDocumentsScreen({ navigation }: Props) {
   const openComposer = () => { setDraft(emptyDraft()); setErrors({ title: false, date: false, file: false }); setVisible(true); };
   const closeComposer = () => { if (!saving) setVisible(false); };
   const chooseFile = () => chooseDocumentSource(t('companyDocs.chooseDocFile'), async (source: DocumentSource) => {
-    try { const file = await pickDocumentSource(source); if (file) { setDraft((current) => ({ ...current, file })); setErrors((current) => ({ ...current, file: false })); } }
+    try {
+      const file = await pickDocumentSource(source);
+      if (!file) return;
+      setDraft((current) => ({ ...current, file }));
+      setErrors((current) => ({ ...current, file: false }));
+      // The document's own date, read from the file, fills the date; still editable.
+      const read = await scanDocumentDates(file);
+      if (read?.issued) setDraft((current) => (current.file === file ? { ...current, date: read.issued } : current));
+    }
     catch (err: any) { showAlert(t('companyDocs.chooseFileFailed'), errorMessage(err, t('common.tryAgain'))); }
   });
   const save = async () => {
