@@ -10,7 +10,8 @@ import { formatPlate } from '../../lib/plate';
 import { nextServiceKmOf } from '../../lib/serviceSchedule';
 import { vehicleName } from '../../lib/attention';
 import { daysUntilExpiry, formatDate } from '../../lib/theme';
-import { DLtrText, DText, HoverPressable } from './primitives';
+import { nextSort, sortRows, type TableSort } from '../../lib/sortRows';
+import { DLtrText, DText, HoverPressable, SortHeader } from './primitives';
 import { DESKTOP_AVATAR_COLORS, DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, DesktopTone, webOnly, DESKTOP_BRAND_SHADOW } from './desktopTheme';
 import { enter, enterRow, FilterCard, FilterCards, FleetHeader, FleetMode, ModeSwitch } from './FleetOverview';
 import { t, dirIcon, textStart, textDirection, dirSign } from '../../lib/i18n';
@@ -259,6 +260,26 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
   const columns = isDrivers ? DRIVER_COLUMNS : VEHICLE_COLUMNS;
   const onAdd = isDrivers ? props.onAddDriver : props.onAddVehicle;
 
+  // Date headers sort: expired and closest first, then farthest first, then back to the usual order.
+  const [sort, setSort] = useState<TableSort>(null);
+  const expiryOf = (vehicle: Vehicle, type: string) => (props.compliance.get(vehicle.id) ?? []).find((c) => c.item_type === type)?.expiry_date;
+  const driverSortValue: Record<string, (d: DriverRow) => number | null> = {
+    license: (d) => daysUntilExpiry(d.license_expiry),
+    health: (d) => daysUntilExpiry(props.healthDeclarations.get(d.id)?.expiresAt),
+  };
+  const vehicleSortValue: Record<string, (v: Vehicle) => number | null> = {
+    insurance: (v) => daysUntilExpiry(expiryOf(v, 'insurance_mandatory')),
+    comprehensive: (v) => daysUntilExpiry(expiryOf(v, 'insurance_comprehensive')),
+    inspection: (v) => daysUntilExpiry(props.inspectionDue.get(v.id)),
+    service: (v) => {
+      const km = nextServiceKmOf(v);
+      return km == null ? null : km - v.odometer;
+    },
+  };
+  const sortedDrivers = sortRows(props.filteredDrivers, sort ? driverSortValue[sort.key] : undefined, sort?.dir);
+  const sortedVehicles = sortRows(props.filteredVehicles, sort ? vehicleSortValue[sort.key] : undefined, sort?.dir);
+  const onSort = (key: string) => setSort((current) => nextSort(current, key));
+
   return (
     <View style={[styles.root, compact && styles.rootCompact]}>
       <FleetHeader />
@@ -434,13 +455,13 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
           // Narrow windows scroll the table sideways instead of squeezing statuses into "...".
           <View style={styles.tableScroll}>
             <View style={[styles.table, { minWidth: tableMinWidth(columns) }]}>
-              <TableHeader columns={columns} />
+              <TableHeader columns={columns} sort={sort} onSort={onSort} />
               {loading ? (
                 <SkeletonRows columns={columns} />
               ) : (
                 <ScrollView key={listKey} style={styles.rows} contentContainerStyle={styles.rowsContent}>
                   {isDrivers
-                    ? props.filteredDrivers.map((driver, index) => {
+                    ? sortedDrivers.map((driver, index) => {
                         const license = expiryWords(driver.license_expiry);
                         const health = healthWords(props.healthDeclarations.get(driver.id));
                         const pending = props.pendingSigning.get(driver.id) ?? 0;
@@ -526,7 +547,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
                           </TableRow>
                         );
                       })
-                    : props.filteredVehicles.map((vehicle, index) => {
+                    : sortedVehicles.map((vehicle, index) => {
                         const vehicleCompliance = props.compliance.get(vehicle.id) ?? [];
                         const insurance = vehicleCompliance.find((c) => c.item_type === 'insurance_mandatory');
                         const comprehensive = vehicleCompliance.find((c) => c.item_type === 'insurance_comprehensive');
@@ -617,7 +638,8 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
 
 /* ------------------------------------------------------------------ */
 
-type Column = { label: string; flex: number; min: number };
+/** `sort` names the value a click on the header sorts by. */
+type Column = { label: string; flex: number; min: number; sort?: string };
 
 // עמודות טבלת הנהגים
 const DRIVER_COLUMNS: Column[] = [
@@ -625,8 +647,8 @@ const DRIVER_COLUMNS: Column[] = [
   { get label() { return t('common.mobilePhone'); }, flex: 1, min: 120 },
   { get label() { return t('field.nationalId'); }, flex: 0.9, min: 104 },
   { get label() { return t('field.licenseNumber'); }, flex: 0.9, min: 96 },
-  { get label() { return t('driver.licenseExpiry'); }, flex: 1.15, min: 146 },
-  { get label() { return t('compliance.item.healthDeclaration'); }, flex: 1.15, min: 150 },
+  { get label() { return t('driver.licenseExpiry'); }, flex: 1.15, min: 146, sort: 'license' },
+  { get label() { return t('compliance.item.healthDeclaration'); }, flex: 1.15, min: 150, sort: 'health' },
   { get label() { return t('driver.assignedVehicles'); }, flex: 1, min: 116 },
   { get label() { return t('signing.pendingSignature'); }, flex: 0.9, min: 106 },
 ];
@@ -635,10 +657,10 @@ const DRIVER_COLUMNS: Column[] = [
 const VEHICLE_COLUMNS: Column[] = [
   { get label() { return t('vehicle.vehicle'); }, flex: 1.6, min: 210 },
   { get label() { return t('vehicle.primaryDriver'); }, flex: 1.3, min: 140 },
-  { get label() { return t('folder.mandatoryInsurance'); }, flex: 1.2, min: 150 },
-  { get label() { return t('folder.comprehensiveInsurance'); }, flex: 1.2, min: 150 },
-  { get label() { return t('notifications.cat.safetyCheck'); }, flex: 1.2, min: 160 },
-  { get label() { return t('vehicle.nextService'); }, flex: 1.2, min: 160 },
+  { get label() { return t('folder.mandatoryInsurance'); }, flex: 1.2, min: 150, sort: 'insurance' },
+  { get label() { return t('folder.comprehensiveInsurance'); }, flex: 1.2, min: 150, sort: 'comprehensive' },
+  { get label() { return t('notifications.cat.safetyCheck'); }, flex: 1.2, min: 160, sort: 'inspection' },
+  { get label() { return t('vehicle.nextService'); }, flex: 1.2, min: 160, sort: 'service' },
   { get label() { return t('common.status'); }, flex: 0.7, min: 104 },
 ];
 
@@ -660,14 +682,18 @@ function tableMinWidth(columns: Column[]) {
 }
 
 // שורת הכותרות של הטבלה
-function TableHeader({ columns }: { columns: Column[] }) {
+function TableHeader({ columns, sort, onSort }: { columns: Column[]; sort: TableSort; onSort: (key: string) => void }) {
   return (
     <View style={[styles.row, styles.headerRow]}>
       {columns.map((column) => (
         <View key={column.label} style={[styles.cell, colStyle(column)]}>
-          <DText weight="bold" style={styles.headerText} numberOfLines={1}>
-            {column.label}
-          </DText>
+          {column.sort ? (
+            <SortHeader label={column.label} dir={sort?.key === column.sort ? sort.dir : null} onPress={() => onSort(column.sort!)} textStyle={styles.headerText} />
+          ) : (
+            <DText weight="bold" style={styles.headerText} numberOfLines={1}>
+              {column.label}
+            </DText>
+          )}
         </View>
       ))}
       <View style={styles.rowChevron} />

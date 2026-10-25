@@ -208,6 +208,9 @@
     "writeYourItems": "Write your items. Enter adds a new item."
   },
   "common": {
+    "sortSoonFirst": "{{label}}, sorted expired and soonest first",
+    "sortFarFirst": "{{label}}, sorted farthest first",
+    "sortTap": "Sort by {{label}}",
     "9digits": "9 digits",
     "actionFailed": "The action failed",
     "actionFailedRetry": "The action failed, try again",

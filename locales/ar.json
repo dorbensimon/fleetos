@@ -208,6 +208,9 @@
     "writeYourItems": "اكتبوا بنودكم. مفتاح Enter يضيف بندًا جديدًا."
   },
   "common": {
+    "sortSoonFirst": "{{label}}، مرتب من المنتهي والأقرب أولاً",
+    "sortFarFirst": "{{label}}، مرتب من الأبعد أولاً",
+    "sortTap": "ترتيب حسب {{label}}",
     "9digits": "9 أرقام",
     "actionFailed": "فشل الإجراء",
     "actionFailedRetry": "فشل الإجراء، حاول مجددًا",
