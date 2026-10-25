@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { DK, DK_SPACE, DKText, DriverPage, HeroTitle, Pressy, Reveal, STATUS, Surface, relativeDays, type Status } from '../../components/driverKit';
 import { ErrorState, LoadingState } from '../../components/ui';
 import { t, dirIcon } from '../../lib/i18n';
-import { daysUntilExpiry } from '../../lib/theme';
+import { daysUntilExpiry, expiredAgoText } from '../../lib/theme';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -39,7 +39,7 @@ type Props = {
 export function expiredDetail(date: string | null) {
   const days = daysUntilExpiry(date);
   if (days == null) return t('status.expiredLong');
-  return days < -1 ? t('expiry.expiredDaysAgo', { days: -days }) : relativeDays(date)!;
+  return days < -1 ? expiredAgoText(-days) : relativeDays(date)!;
 }
 
 // טקסט 'בקרוב'
@@ -49,7 +49,7 @@ export function soonDetail(date: string | null) {
   if (days === 0) return t('expiry.expiredToday');
   if (days === 1) return t('expiry.expiresTomorrow');
   if (days === -1) return t('expiry.expiredYesterday');
-  return days > 1 ? t('driver.attention.expiresInDays', { days }) : t('expiry.expiredDaysAgo', { days: -days });
+  return days > 1 ? t('driver.attention.expiresInDays', { days }) : expiredAgoText(-days);
 }
 
 // מה מחכה לנהג לפי דחיפות

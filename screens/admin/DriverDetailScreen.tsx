@@ -320,15 +320,8 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
   };
 
   const handleRowPress = (row: DriverCardRow) => {
-    if (row.key === 'vehicle' || row.key === 'primary-vehicle' || row.key === 'secondary-vehicle') {
-      const targetVehicle =
-        row.key === 'primary-vehicle'
-          ? driver?.vehicles.find((vehicle) => vehicle.is_primary)
-          : row.key === 'secondary-vehicle'
-          ? driver?.vehicles.find((vehicle) => !vehicle.is_primary)
-          : driver?.vehicle_id
-          ? { id: driver.vehicle_id }
-          : null;
+    if (row.key === 'vehicle' || row.key.startsWith('vehicle:')) {
+      const targetVehicle = row.key.startsWith('vehicle:') ? { id: row.key.slice('vehicle:'.length) } : driver?.vehicle_id ? { id: driver.vehicle_id } : null;
       if (targetVehicle?.id) navigation.navigate('VehicleDetail', { vehicleId: targetVehicle.id, returnTo: 'driver', fromDriverId: driverId });
       return;
     }

@@ -204,7 +204,7 @@ export function filterValidity(
 
 // הטקסט של מצב התוקף
 export function validityStatusText(row: Pick<ValidityRow, 'days'>): string {
-  if (row.days < 0) return t('validity.expiredDaysAgo', { count: -row.days });
+  if (row.days < 0) return -row.days > 365 ? t('expiry.expiredOverYear') : t('validity.expiredDaysAgo', { count: -row.days });
   if (row.days === 0) return t('validity.today');
   return t('validity.inDays', { count: row.days });
 }

@@ -29,8 +29,8 @@ export type DriverCardRowKey =
   | 'email'
   | 'national-id'
   | 'vehicle'
-  | 'primary-vehicle'
-  | 'secondary-vehicle'
+  /** One assigned vehicle (its id): a driver can be the main driver of several. */
+  | `vehicle:${string}`
   | 'license-documents'
   | 'signing-documents'
   | 'general-documents'

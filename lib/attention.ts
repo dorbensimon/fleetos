@@ -2,7 +2,7 @@
 import type { ComplianceItem, DriverRow, Vehicle, VehicleDriverWithProfile } from './adminApi/types';
 import { LICENSE_SIDE_STORED_TITLE } from './licenseSides';
 import { formatPlate } from './plate';
-import { daysUntilExpiry, formatDate } from './theme';
+import { daysUntilExpiry, expiredAgoText, formatDate } from './theme';
 import { t } from './i18n';
 
 /**
@@ -55,7 +55,7 @@ export function vehicleName(vehicle: Vehicle): string {
 /** "פג היום", "פג אתמול", "פג לפני 12 ימים" — then the date itself. */
 function expiredWords(date: string): string {
   const days = Math.abs(daysUntilExpiry(date) ?? 0);
-  const when = days === 0 ? t('expiry.expiredToday') : days === 1 ? t('expiry.expiredYesterday') : t('expiry.expiredDaysAgo', { days });
+  const when = days === 0 ? t('expiry.expiredToday') : days === 1 ? t('expiry.expiredYesterday') : expiredAgoText(days);
   return `${when} · ${formatDate(date)}`;
 }
 

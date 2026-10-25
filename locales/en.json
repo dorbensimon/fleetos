@@ -1229,6 +1229,7 @@
   "expiry": {
     "expiredDaysAgo": "Expired {{days}} days ago",
     "expiredDaysAgoShort": "Expired {{v1}} days ago",
+    "expiredOverYear": "Expired over a year ago",
     "expiredToday": "Expired today",
     "expiredWhen": "Expired {{v1}}",
     "expiredYesterday": "Expired yesterday",

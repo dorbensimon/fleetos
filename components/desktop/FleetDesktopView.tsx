@@ -113,7 +113,7 @@ const VEHICLE_STATUS_TONE: Record<string, DesktopTone> = {
 function expiryWords(date: string | null | undefined): { tone: DesktopTone; label: string } {
   const days = daysUntilExpiry(date);
   if (days == null) return { tone: 'neutral', label: t('common.notEntered') };
-  if (days < 0) return { tone: 'bad', label: days === -1 ? t('expiry.expiredYesterday') : t('expiry.expiredDaysAgoShort', { v1: Math.abs(days) }) };
+  if (days < 0) return { tone: 'bad', label: days === -1 ? t('expiry.expiredYesterday') : (days < -365 ? t('expiry.expiredOverYear') : t('expiry.expiredDaysAgoShort', { v1: Math.abs(days) })) };
   if (days === 0) return { tone: 'bad', label: t('expiry.expiredToday') };
   if (days <= 30) return { tone: 'warn', label: days === 1 ? t('expiry.expiresTomorrow') : t('time.daysLeft', { days }) };
   return { tone: 'ok', label: t('status.valid') };

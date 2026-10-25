@@ -26,7 +26,7 @@ export function buildDriverDetailGroups(
     vehicles.length === 0
       ? [{ key: 'vehicle', kind: 'value', label: t('vehicle.vehicle'), icon: 'car', tint: 'indigo', value: t('driver.noVehicleAssigned'), ltr: true }]
       : vehicles.map((vehicle) => ({
-          key: vehicle.is_primary ? 'primary-vehicle' : 'secondary-vehicle',
+          key: `vehicle:${vehicle.id}` as const,
           kind: 'nav',
           label: vehicles.length > 1 ? (vehicle.is_primary ? t('driver.primaryVehicle') : t('driver.secondaryVehicle')) : t('vehicle.vehicle'),
           icon: 'car',

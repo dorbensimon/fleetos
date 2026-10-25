@@ -1229,6 +1229,7 @@
   "expiry": {
     "expiredDaysAgo": "Истёк {{days}} дн. назад",
     "expiredDaysAgoShort": "Истёк {{v1}} дн. назад",
+    "expiredOverYear": "Истёк больше года назад",
     "expiredToday": "Истёк сегодня",
     "expiredWhen": "Истекла {{v1}}",
     "expiredYesterday": "Истёк вчера",
