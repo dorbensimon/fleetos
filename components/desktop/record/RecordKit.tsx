@@ -10,6 +10,8 @@ import { FolderDocumentsModal, FolderUploadBar, type FolderLayout } from './Fold
 import { inspectionValidityMonths } from '../../../lib/tachograph';
 import { getDocumentUrl, listDocuments, storedFolderTitle, uploadDocument, type PickedFile } from '../../../lib/documents';
 import { chooseDocumentSource, pickDocumentSource, type DocumentSource } from '../../../lib/documentActions';
+import { scanDocumentDates } from '../../../lib/documentDateScan';
+import { suggestedDates } from '../../../lib/documentDates';
 import { showAlert } from '../../../lib/platformAlert';
 import { ExpiryState } from '../../../lib/theme';
 import { DesktopDateField, DesktopInput, DesktopSelect, DesktopSelectOption, DLtrText, DText, HoverPressable, popoverEnterStyle } from '../primitives';
@@ -520,11 +522,13 @@ export function FolderTile({
 /** Every document of one owner, plus a preview image URL per category (its first image). */
 export function useOwnerDocuments(ownerType: OwnerType, ownerId: string) {
   const [docs, setDocs] = useState<DocumentRow[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
 
   const reload = React.useCallback(async () => {
     const list = await listDocuments(ownerType, ownerId).catch(() => []);
     setDocs(list);
+    setLoaded(true);
 
     const byCategory = new Map<string, typeof list>();
     for (const doc of list) byCategory.set(doc.category, [...(byCategory.get(doc.category) ?? []), doc]);
@@ -546,7 +550,7 @@ export function useOwnerDocuments(ownerType: OwnerType, ownerId: string) {
     reload();
   }, [reload]);
 
-  return { docs, thumbnails, reload };
+  return { docs, loaded, thumbnails, reload };
 }
 
 // המסמך האחרון בקטגוריה
@@ -621,7 +625,14 @@ export function DocumentFolderUploadModal({
     chooseDocumentSource(folder.title, async (source: DocumentSource) => {
       const file = await pickDocumentSource(source);
       if (!file) return;
-      const date = folder.requiresExpiry ? await expiryPrompt.ask() : null;
+      let date: string | null = null;
+      if (folder.requiresExpiry) {
+        // The date read from the file is filled in; the user confirms or changes it.
+        setUploading(true);
+        const read = suggestedDates(await scanDocumentDates(file), inspectionValidityMonths(folder.category));
+        setUploading(false);
+        date = await expiryPrompt.ask({ value: read.expiry });
+      }
       if (folder.requiresExpiry && !date) return;
       await uploadFile(file, date);
     });

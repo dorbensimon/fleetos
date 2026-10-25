@@ -160,6 +160,8 @@ export function FieldEditDialog({ editor, onClose }: { editor: FieldEditor | nul
             keyboardType={editor.numeric ? 'number-pad' : 'default'}
             hasError={!!error}
             onSubmitEditing={() => void save()}
+            autoFocus
+            selectTextOnFocus={editor.numeric}
             large
           />
         )}
@@ -307,6 +309,7 @@ export function DetailRow({
             hasError={!!error}
             onSubmitEditing={() => void save()}
             autoFocus
+            selectTextOnFocus={edit.numeric}
             onKeyPress={(e) => {
               if (e.nativeEvent.key === 'Escape') cancel();
             }}

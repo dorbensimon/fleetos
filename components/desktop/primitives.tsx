@@ -119,8 +119,8 @@ export function StatusPill({ tone, label }: { tone: DesktopTone; label: string }
 
 // כותרת עמודה שלחיצה עליה ממיינת
 /** A table header that sorts: an up arrow is "closest first", a down arrow "farthest first". */
-export function SortHeader({ label, dir, onPress, textStyle }: { label: string; dir: 'asc' | 'desc' | null; onPress: () => void; textStyle?: TextProps['style'] }) {
-  const hint = dir === 'asc' ? t('common.sortSoonFirst', { label }) : dir === 'desc' ? t('common.sortFarFirst', { label }) : t('common.sortTap', { label });
+export function SortHeader({ label, dir, onPress, textStyle, hints }: { label: string; dir: 'asc' | 'desc' | null; onPress: () => void; textStyle?: TextProps['style']; /** Wording for columns of past dates, where "expired first" means nothing. */ hints?: { asc: string; desc: string } }) {
+  const hint = dir === 'asc' ? hints?.asc ?? t('common.sortSoonFirst', { label }) : dir === 'desc' ? hints?.desc ?? t('common.sortFarFirst', { label }) : t('common.sortTap', { label });
   return (
     <HoverPressable style={styles.sortHeader} hoverStyle={styles.sortHeaderHover} onPress={onPress} accessibilityRole="button" accessibilityLabel={hint} {...webOnly({ title: hint })}>
       <DText weight="bold" style={[textStyle, dir && { color: DESKTOP_COLORS.brand }]} numberOfLines={1}>{label}</DText>
@@ -181,8 +181,14 @@ export function DesktopInput({
   autoFocus,
   onKeyPress,
   accessibilityLabel,
+  multiline,
+  selectTextOnFocus,
 }: {
   value: string;
+  /** Select the whole value on focus, so typing replaces it (numbers that are edited, like km). */
+  selectTextOnFocus?: boolean;
+  /** Several lines, for notes. */
+  multiline?: boolean;
   autoFocus?: boolean;
   onKeyPress?: TextInputProps['onKeyPress'];
   accessibilityLabel?: string;
@@ -215,8 +221,11 @@ export function DesktopInput({
       autoFocus={autoFocus}
       onKeyPress={onKeyPress}
       accessibilityLabel={accessibilityLabel}
+      multiline={multiline}
+      selectTextOnFocus={selectTextOnFocus}
       style={[
         fieldStyles.input,
+        multiline && fieldStyles.inputMultiline,
         large && fieldStyles.inputLarge,
         ltr && fieldStyles.inputLtr,
         !editable && fieldStyles.inputDisabled,
@@ -527,6 +536,7 @@ const fieldStyles = StyleSheet.create({
   },
   // תיבת טקסט גדולה (גובה 44)
   inputLarge: { height: 44, borderRadius: 10, paddingHorizontal: 14, fontSize: 15 },
+  inputMultiline: { height: 76, paddingTop: 8, textAlignVertical: 'top' },
   inputLtr: { textAlign: 'left', writingDirection: 'ltr' },
   inputDisabled: { backgroundColor: DESKTOP_COLORS.surfaceMuted, color: DESKTOP_COLORS.inkFaint },
   inputError: { borderColor: DESKTOP_COLORS.danger },

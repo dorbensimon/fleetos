@@ -1,4 +1,7 @@
 // חישוב הטיפול הבא של רכב
+
+/** The highest km reading the database accepts (migration 123). */
+export const MAX_KM = 9_999_999;
 // הק"מ של הטיפול הבא: הטיפול האחרון + המרווח
 /**
  * Service schedule rule, shared by every screen that edits maintenance data:
@@ -27,5 +30,6 @@ export function nextServiceKmOf(vehicle: {
   service_interval_km: number | null;
   next_service_km: number | null;
 }): number | null {
-  return deriveNextServiceKm(vehicle.last_service_km, vehicle.service_interval_km) ?? vehicle.next_service_km;
+  // A stored 0 is an empty field saved by an older form, not a service due at 0 km.
+  return deriveNextServiceKm(vehicle.last_service_km, vehicle.service_interval_km) ?? (vehicle.next_service_km || null);
 }

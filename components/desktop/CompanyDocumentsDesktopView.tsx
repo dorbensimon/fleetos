@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { DocumentRow } from '../../lib/adminApi';
 import type { PickedFile } from '../../lib/documents';
 import { chooseDocumentSource, pickDocumentSource } from '../../lib/documentActions';
+import { scanDocumentDates } from '../../lib/documentDateScan';
 import { formatDate } from '../../lib/theme';
 import { ErrorState } from '../ui';
 import { DesktopModal } from './DesktopModal';
@@ -319,9 +320,12 @@ function AddDocumentDialog({
   const [saving, setSaving] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const zoneRef = useRef<View>(null);
+  const scanFor = useRef<PickedFile | null>(null);
 
   useEffect(() => {
     if (!visible) return;
+    // A scan still running from the last time the dialog was open must not fill this one.
+    scanFor.current = null;
     setFile(null);
     setTitle('');
     setTitleTouched(false);
@@ -340,6 +344,11 @@ function AddDocumentDialog({
       setTitle(withoutExtension(picked.name));
       setErrors((e) => ({ ...e, title: false }));
     }
+    // The document's own date, read from the file, replaces today's; still editable.
+    scanFor.current = picked;
+    void scanDocumentDates(picked).then((read) => {
+      if (scanFor.current === picked && read?.issued) setDate(read.issued);
+    });
   };
 
   // Drag and drop straight from the computer's folders (web only).

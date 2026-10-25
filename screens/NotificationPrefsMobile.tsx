@@ -57,6 +57,8 @@ const ICON: Partial<Record<NotificationType, IconName>> = {
   vehicle_brakes_annual_expiry: 'disc',
   vehicle_winter_inspection_expiry: 'snow',
   vehicle_child_detection_expiry: 'happy',
+  vehicle_engineer_report_expiry: 'construct',
+  vehicle_license_annex_expiry: 'document-attach',
   vehicle_custom_folder_expiry: 'folder-open',
   driver_custom_folder_expiry: 'folder-open',
   driver_extra_expiry: 'id-card',

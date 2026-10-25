@@ -36,7 +36,7 @@ export function requestErrorDetails(error: unknown, fallback: string): RequestEr
 
 // הודעות שנכתבו למפתחים ולא למשתמשים
 // Messages written for developers, not people: network, database and parse errors.
-const TECHNICAL = /failed to fetch|network ?request failed|networkerror|load failed|non-2xx|pgrst|violates|duplicate key|syntax error|relation "|column "|unexpected token|json|typeerror|is not a function|undefined|null value/i;
+const TECHNICAL = /failed to fetch|network ?request failed|networkerror|load failed|non-2xx|pgrst|violates|duplicate key|syntax error|relation "|column "|unexpected token|json|typeerror|is not a function|undefined|null value|out of range/i;
 
 // ההודעה להצגה כשפעולה נכשלה
 /**
@@ -48,6 +48,8 @@ export function errorMessage(error: unknown, fallback: string): string {
   const own = (error as { message?: unknown } | null)?.message;
   const message = typeof own === 'string' ? own.trim() : '';
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return t('error.offlineHint');
+  // The database's bound on vehicle kilometres (migration 123).
+  if (message.includes('vehicles_km_range')) return t('vehicle.kmOutOfRange');
   const details = requestErrorDetails(error, fallback);
   if (!message || TECHNICAL.test(message) || details.message !== fallback) return details.message;
   return message;

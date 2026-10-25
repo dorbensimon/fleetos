@@ -10,6 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LoadingState, EmptyState, ErrorState } from '../../components/ui';
 import { useDatePrompt } from '../../components/ui/DateField';
 import { addMonthsIso, inspectionValidityMonths } from '../../lib/tachograph';
+import { scanDocumentDates } from '../../lib/documentDateScan';
+import { suggestedDates } from '../../lib/documentDates';
 import { DocumentFileRow } from '../../components/documents/DocumentFileRow';
 import { Procedure6FormModal } from '../../components/documents/Procedure6FormModal';
 import { useCompany } from '../../lib/CompanyContext';
@@ -133,10 +135,17 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       const file = await pickDocumentSource(source);
       if (!file) return;
       // Inspection folders: ask the inspection date, then offer the expiry a year later, still editable.
+      // Both start from the dates read from the file.
       const months = requiresExpiry ? inspectionValidityMonths(category) : null;
-      const inspected = months ? await expiryPrompt.ask({ title: t('documents.inspectionDate') }) : null;
+      let read: { inspected: string | null; expiry: string | null } = { inspected: null, expiry: null };
+      if (requiresExpiry) {
+        setUploading(true);
+        read = suggestedDates(await scanDocumentDates(file), months);
+        setUploading(false);
+      }
+      const inspected = months ? await expiryPrompt.ask({ title: t('documents.inspectionDate'), value: read.inspected }) : null;
       if (months && !inspected) return;
-      const expiryDate = requiresExpiry ? await expiryPrompt.ask(inspected && months ? { value: addMonthsIso(inspected, months) } : undefined) : null;
+      const expiryDate = requiresExpiry ? await expiryPrompt.ask({ value: inspected && months ? addMonthsIso(inspected, months) : read.expiry }) : null;
       if (requiresExpiry && !expiryDate) return;
       setUploading(true);
       try {

@@ -11,7 +11,7 @@ import { SPACING } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { ComplianceItem, Department, Vehicle, VehicleDriverWithProfile, archiveVehicle, deleteVehicle, getVehicle, listActiveVehicleDriversForVehicles, listCompliance, listDepartments, listDrivers, listVehicles, restoreVehicle, updateVehicle } from '../../lib/adminApi';
 import { formatPlate } from '../../lib/plate';
-import { deriveNextServiceKm } from '../../lib/serviceSchedule';
+import { MAX_KM, deriveNextServiceKm } from '../../lib/serviceSchedule';
 import { vehicleFolderByKey } from '../../lib/vehicleFolderAlerts';
 import { RootStackParamList } from '../../navigation/types';
 import { supabase } from '../../lib/supabase';
@@ -45,7 +45,8 @@ const VEHICLE_DOCUMENT_FOLDERS = [
 // האם הערך הוא לשונית חוקית
 const isVehicleTab = (value: unknown): value is Tab => value === 'general' || value === 'maintenance' || value === 'documents' || value === 'drivers' || value === 'licensing';
 // מספר או ריק
-const numberOrNull = (value: string) => { const n = Number(value.replace(/[^\d.-]/g, '')); return Number.isFinite(n) ? n : null; };
+// An empty field is "not entered", never 0.
+const numberOrNull = (value: string) => { const digits = value.replace(/[^\d.-]/g, ''); const n = Number(digits); return digits && Number.isFinite(n) ? n : null; };
 // טוען את נהגי הרכב
 // The batched variant also carries each driver's license expiry, shown next to the driver on the desktop card.
 const loadVehicleDrivers = async (vehicleId: string) => (await listActiveVehicleDriversForVehicles([vehicleId])).get(vehicleId) ?? [];
@@ -167,7 +168,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
   const archive = () => showAlert(t('common.moveToArchive'), t('vehicle.archiveConfirm', { v1: formatPlate(vehicle?.plate_number) }), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.moveToArchiveAction'), style: 'destructive', onPress: async () => { try { await archiveVehicle(vehicleId); navigation.goBack(); } catch (e: any) { showAlert(t('common.actionFailed'), String(errorMessage(e, t('common.tryAgain')))); } } }]);
   const restore = () => showAlert(t('vehicle.unarchiveTitle'), t('vehicle.unarchiveConfirm', { v1: formatPlate(vehicle?.plate_number) }), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('vehicle.unarchiveAction'), onPress: async () => { try { await restoreVehicle(vehicleId); await load(); showToast(t('vehicle.unarchived')); } catch (e: any) { showAlert(t('common.actionFailed'), String(errorMessage(e, t('common.tryAgain')))); } } }]);
   const editMaintenance = () => { if (!vehicle) return; setMaintenance({ odometer: String(vehicle.odometer ?? ''), last_service_km: String(vehicle.last_service_km ?? ''), service_interval_km: vehicle.service_interval_km ? String(vehicle.service_interval_km) : '', next_service_km: vehicle.next_service_km ? String(vehicle.next_service_km) : '' }); setEditingMaintenance(true); };
-  const saveMaintenance = async () => { setSavingMaintenance(true); try { await updateVehicle(vehicleId, { odometer: numberOrNull(maintenance.odometer) ?? 0, last_service_km: numberOrNull(maintenance.last_service_km) ?? 0, service_interval_km: numberOrNull(maintenance.service_interval_km), next_service_km: deriveNextServiceKm(numberOrNull(maintenance.last_service_km) ?? 0, numberOrNull(maintenance.service_interval_km)) ?? numberOrNull(maintenance.next_service_km) }); setEditingMaintenance(false); await load(); showToast(t('common.savedSuccessfully')); } catch (e: any) { showAlert(t('common.saveFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setSavingMaintenance(false); } };
+  const saveMaintenance = async () => { if (Object.values(maintenance).some((v) => (numberOrNull(v) ?? 0) > MAX_KM)) { showAlert(t('common.saveFailed'), t('vehicle.kmOutOfRange')); return; } setSavingMaintenance(true); try { await updateVehicle(vehicleId, { odometer: numberOrNull(maintenance.odometer) ?? 0, last_service_km: numberOrNull(maintenance.last_service_km) ?? 0, service_interval_km: numberOrNull(maintenance.service_interval_km), next_service_km: deriveNextServiceKm(numberOrNull(maintenance.last_service_km) ?? 0, numberOrNull(maintenance.service_interval_km)) ?? numberOrNull(maintenance.next_service_km) }); setEditingMaintenance(false); await load(); showToast(t('common.savedSuccessfully')); } catch (e: any) { showAlert(t('common.saveFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setSavingMaintenance(false); } };
   const removePermanently = () => showAlert(t('vehicle.deleteTitle'), t('vehicle.deleteConfirm', { v1: formatPlate(vehicle?.plate_number) }), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.deletePermanentlyAction'), style: 'destructive', onPress: async () => { try { if (!companyId) throw new Error(t('company.noLinkedCompany')); await deleteVehicle(vehicleId, companyId); navigation.goBack(); } catch (e: any) { showAlert(t('common.deleteFailed'), String(errorMessage(e, t('vehicle.cannotDelete')))); } } }]);
 
   const saveField = async (patch: Partial<Vehicle>): Promise<string | null> => {
@@ -193,7 +194,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     } catch (e: any) {
       const message = String(e?.message ?? '');
       if (isStaleDepartmentError(message)) return t('common.departmentDeleted');
-      return message.includes('duplicate') || message.includes('unique') ? t('vehicle.plateExists') : message || t('common.tryAgain');
+      return message.includes('duplicate') || message.includes('unique') ? t('vehicle.plateExists') : errorMessage(e, t('common.tryAgain'));
     }
   };
 

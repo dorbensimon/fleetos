@@ -90,6 +90,8 @@ const TYPE_ICON: Partial<Record<NotificationType, IconName>> = {
   vehicle_brakes_annual_expiry: 'disc-outline',
   vehicle_winter_inspection_expiry: 'snow-outline',
   vehicle_child_detection_expiry: 'happy-outline',
+  vehicle_engineer_report_expiry: 'construct-outline',
+  vehicle_license_annex_expiry: 'document-attach-outline',
   vehicle_custom_folder_expiry: 'folder-open-outline',
   driver_custom_folder_expiry: 'folder-open-outline',
   driver_extra_expiry: 'id-card-outline',

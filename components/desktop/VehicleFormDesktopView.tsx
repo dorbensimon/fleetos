@@ -167,12 +167,17 @@ export function VehicleFormDesktopView({
   const hasPlate = !!form.plate_number.trim();
   const hasType = !!form.vehicle_type;
   const hasStatus = !!form.status;
-  const total = 3;
-  const filled = [hasPlate, hasType, hasStatus].filter(Boolean).length;
+  // Creating also needs the licence's expiry and its photo (they sit in the details panel).
+  const hasLicenseExpiry = isEdit || !!form.vehicle_license_expiry;
+  const hasLicenseFile = isEdit || !!licenseFileName;
+  const licenseTotal = isEdit ? 0 : 2;
+  const licenseFilled = isEdit ? 0 : Number(hasLicenseExpiry) + Number(hasLicenseFile);
+  const total = 3 + licenseTotal;
+  const filled = [hasPlate, hasType, hasStatus].filter(Boolean).length + licenseFilled;
 
   const steps: FormStep<StepKey>[] = [
     { key: 'identity', label: t('vehicle.identification'), total: 2, filled: Number(hasPlate) + Number(hasType) },
-    { key: 'details', label: t('vehicle.details'), total: 0, filled: 0 },
+    { key: 'details', label: t('vehicle.details'), total: licenseTotal, filled: licenseFilled },
     { key: 'assign', label: t('common.status'), total: 1, filled: Number(hasStatus) },
     // A new vehicle gets its drivers after it is created; the note sits in the first panel instead.
     ...(isEdit ? [{ key: 'drivers' as const, label: t('common.drivers'), total: 0, filled: 0 }] : []),
@@ -181,6 +186,8 @@ export function VehicleFormDesktopView({
   const missing = [
     !hasPlate && { label: t('vehicle.plateNumber'), onPress: () => jump('identity') },
     !hasType && { label: t('vehicle.typeLabel'), onPress: () => jump('identity') },
+    !hasLicenseExpiry && { label: t('vehicle.licenseExpiry'), onPress: () => jump('details') },
+    !hasLicenseFile && { label: t('vehicle.licensePhoto'), onPress: () => jump('details') },
     !hasStatus && { label: t('common.status'), onPress: () => jump('assign') },
   ].filter(Boolean) as { label: string; onPress: () => void }[];
 
@@ -226,7 +233,7 @@ export function VehicleFormDesktopView({
       <FormSection
         index={0}
         title={t('vehicle.identification')}
-        hint={t('vehicle.identificationHint')}
+        hint={isEdit ? t('vehicle.identificationHint') : t('vehicle.identificationHintNew')}
         done={hasPlate && hasType}
         onLayout={track('identity')}
       >
@@ -291,7 +298,7 @@ export function VehicleFormDesktopView({
       <FormSection
         index={1}
         title={t('vehicle.details')}
-        hint={t('vehicle.detailsHint')}
+        hint={isEdit ? t('vehicle.detailsHint') : t('vehicle.detailsHintNew')}
         done={false}
         onLayout={track('details')}
       >
@@ -320,7 +327,7 @@ export function VehicleFormDesktopView({
               </View>
             </View>
           </FormCell>
-          <FormCell label={t('vehicle.mileage')}>
+          <FormCell label={t('vehicle.mileage')} error={errors.odometer}>
             <DesktopInput
               large
               value={form.odometer.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}

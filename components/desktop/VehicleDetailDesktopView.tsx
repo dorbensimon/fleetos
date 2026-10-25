@@ -14,6 +14,7 @@ import type {
 import { ComplianceSection } from '../ComplianceSection';
 import { VehicleDriversEditor } from '../VehicleDriversEditor';
 import { SAFETY_FOLDER, VehicleInspectionsDesktopSection } from '../inspection/VehicleInspectionsDesktopSection';
+import { VehicleServiceFolderRow } from '../service/VehicleServiceRecords';
 import { HeaderMenuBackdrop, headerMenuEnter, headerMenuStyles, useHeaderMenu } from './headerMenu';
 import {
   ACQUISITION_TYPE_LABELS,
@@ -25,7 +26,7 @@ import {
 } from '../../lib/compliance';
 import { ExpiryState, expiryState, formatDate } from '../../lib/theme';
 import { formatPlate } from '../../lib/plate';
-import { deriveNextServiceKm, nextServiceKmOf } from '../../lib/serviceSchedule';
+import { MAX_KM, deriveNextServiceKm, nextServiceKmOf } from '../../lib/serviceSchedule';
 import { vehicleFolderByKey } from '../../lib/vehicleFolderAlerts';
 import { requiresTachograph } from '../../lib/tachograph';
 import { lookupVehicleRegistry } from '../../lib/vehicleRegistry';
@@ -111,6 +112,7 @@ const ALERT_COMPLIANCE_TYPES = [
   { itemType: 'operating_license', get label() { return t('folder.operatingLicense'); } },
   { itemType: 'insurance_mandatory', get label() { return t('folder.mandatoryInsurance'); } },
   { itemType: 'insurance_comprehensive', get label() { return t('folder.comprehensiveInsurance'); } },
+  { itemType: 'engineer_report', get label() { return t('folder.engineerReport'); } },
 ];
 
 // מספר ק"מ מעוצב
@@ -219,7 +221,7 @@ export function VehicleDetailDesktopView({
   const derivedNextServiceKm = deriveNextServiceKm(vehicle.last_service_km, vehicle.service_interval_km);
 
   // Documents
-  const { docs: folderDocs, reload: reloadFolderDocs } = useOwnerDocuments('vehicle', vehicleId);
+  const { docs: folderDocs, loaded: folderDocsLoaded, reload: reloadFolderDocs } = useOwnerDocuments('vehicle', vehicleId);
   const [folderRequest, setFolderRequest] = useState<{ itemType: string; nonce: number } | null>(null);
   const openComplianceFolder = (itemType: string) => setFolderRequest((prev) => ({ itemType, nonce: (prev?.nonce ?? 0) + 1 }));
   const [openDocumentFolder, setOpenDocumentFolder] = useState<VehicleDocumentFolder | null>(null);
@@ -255,7 +257,8 @@ export function VehicleDetailDesktopView({
     const state = def ? complianceBadgeState(def, item) : expiryState(item?.expiry_date);
     if (state === 'expired' || state === 'soon') alerts.push({ key: itemType, label, state, date: item?.expiry_date ?? null, open: () => openComplianceFolder(itemType) });
   }
-  for (const folder of documentFolders) {
+  // The safety folder's date is the next inspection (its own row), not an uploaded file's.
+  for (const folder of otherFolders) {
     const status = folderStatus(folderDocs.filter((d) => d.category === folder.category));
     if (status.state === 'expired' || status.state === 'soon') alerts.push({ key: folder.category, label: folder.title, state: status.state, date: status.expiry, open: () => setOpenDocumentFolder(folder) });
   }
@@ -287,7 +290,7 @@ export function VehicleDetailDesktopView({
     hint,
     parse: digitsOnly,
     format: (v) => (v ? Number(v).toLocaleString() : ''),
-    onSave: (v) => onSave(v ? Number(v) : null),
+    onSave: (v) => (Number(v) > MAX_KM ? Promise.resolve(t('vehicle.kmOutOfRange')) : onSave(v ? Number(v) : null)),
   });
 
   const productionLabel = vehicle.production_year ? `${vehicle.production_month ? `${String(vehicle.production_month).padStart(2, '0')}/` : ''}${vehicle.production_year}` : null;
@@ -497,7 +500,8 @@ export function VehicleDetailDesktopView({
                 first
                 compact
                 label={t('vehicle.atLastService')}
-                value={t('unit.kmValue', { v1: km(vehicle.last_service_km) })}
+                // 0 is what a new vehicle starts with: nothing was entered yet.
+                value={vehicle.last_service_km ? t('unit.kmValue', { v1: km(vehicle.last_service_km) }) : null}
                 edit={kmEditor(t('vehicle.kmAtLastService'), vehicle.last_service_km, (value) => {
                   const last = value ?? 0;
                   const next = deriveNextServiceKm(last, vehicle.service_interval_km);
@@ -638,8 +642,10 @@ export function VehicleDetailDesktopView({
                 icon={folder.icon}
                 docs={folderDocs.filter((d) => d.category === folder.category)}
                 onPress={() => setOpenDocumentFolder(folder)}
+                loading={!folderDocsLoaded}
               />
             ))}
+            <VehicleServiceFolderRow companyId={companyId} vehicleId={vehicleId} />
           </View>
         </View>
       </View>

@@ -819,7 +819,10 @@
     "validUntilV1": "Valid until {{v1}}",
     "viewCurrent": "View the current document",
     "viewDoc": "View {{doc}}",
-    "wasValidUntilPrefix": "Was valid until "
+    "wasValidUntilPrefix": "Was valid until ",
+    "scanning": "Reading the date from the document…",
+    "scanFound": "The date was read from the document. You can change it.",
+    "scanNotFound": "No date found in the document. Please choose one."
   },
   "docuseal": {
     "approveSaveTemplate": "Approve and save as template",
@@ -1134,7 +1137,9 @@
     "willJoinFleet": "The driver will join the fleet and get access immediately",
     "work": "Work at the company",
     "workAndLicense": "Work and license",
-    "workDetails": "Work details"
+    "workDetails": "Work details",
+    "issueInFuture": "The issue date cannot be in the future.",
+    "issueAfterExpiry": "The expiry date must be after the issue date."
   },
   "driverCard": {
     "accountManagement": "Account management",
@@ -2876,7 +2881,7 @@
   "vehicle": {
     "17chars": "17 characters",
     "addDriver": "Add driver",
-    "addHint": "Type the license plate and choose the type — that's it. The rest can be auto-filled from the Ministry of Transport.",
+    "addHint": "Type the license plate, choose the type and attach the vehicle license. The rest can be auto-filled from the Ministry of Transport.",
     "addToFleet": "Let's add a vehicle to the fleet",
     "additional": "Additional vehicle",
     "afterCreateAssign": "After creating, you can assign drivers and documents",
@@ -3110,7 +3115,10 @@
     "licensePhotoChoose": "Choose vehicle license photo",
     "licensePhotoHint": "Required to create a vehicle. The expiry is saved with the document",
     "licensePhotoRequired": "Attach a photo of the vehicle license",
-    "licenseUploadFailed": "The vehicle was created, but the license photo wasn't uploaded. You can upload it in the vehicle license folder."
+    "licenseUploadFailed": "The vehicle was created, but the license photo wasn't uploaded. You can upload it in the vehicle license folder.",
+    "identificationHintNew": "License plate and vehicle type. The vehicle license and its expiry are also required, below.",
+    "detailsHintNew": "The vehicle license and its expiry are required; the rest is optional. \"Auto-fill\" fills in most of them for you.",
+    "kmOutOfRange": "That km reading is not possible. Check the number you typed (up to 9,999,999 km)."
   },
   "viewer": {
     "downloadDocument": "Download the document",
@@ -3687,6 +3695,48 @@
       "folder": "Folder",
       "until": "Valid until",
       "status": "Status"
+    }
+  },
+  "service": {
+    "folder": "Service documents",
+    "add": "Add a service document",
+    "edit": "Edit service document",
+    "from": "From",
+    "to": "To",
+    "total": "Total spent before VAT",
+    "countOne": "One service",
+    "count": "{{count}} services",
+    "none": "No service documents for this vehicle yet",
+    "noneInRange": "No services in this date range",
+    "noType": "Service",
+    "invoiceShort": "Invoice",
+    "newestFirst": "Date, newest first",
+    "oldestFirst": "Date, oldest first",
+    "openFile": "Open the file",
+    "noFile": "No file was attached to this service",
+    "scanning": "Reading the invoice details…",
+    "scanFound": "The details were read from the document. You can change them.",
+    "scanNone": "No details found in the document. You can fill them in.",
+    "dateRequired": "Please choose the service date",
+    "amountInvalid": "The amount is not valid",
+    "deleteTitle": "Delete this service document?",
+    "deleteBody": "The details and the file will be deleted.",
+    "col": {
+      "date": "Date",
+      "type": "Service type",
+      "supplier": "Supplier",
+      "invoice": "Invoice no.",
+      "amount": "Before VAT"
+    },
+    "field": {
+      "file": "Invoice file",
+      "invoice": "Invoice number",
+      "supplier": "Supplier name",
+      "date": "Service date",
+      "amount": "Amount before VAT",
+      "type": "Service type",
+      "typePlaceholder": "10,000 km service, new tyres, brake repair…",
+      "details": "More details"
     }
   }
 }

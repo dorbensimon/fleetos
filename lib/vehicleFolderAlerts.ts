@@ -21,6 +21,8 @@ export interface VehicleFolderAlert {
   notificationType: string;
   label: string;
   source: VehicleFolderSource;
+  /** False: the folder opens from old notifications, but its dates come from elsewhere and it has no expiry alert of its own. */
+  alert?: false;
 }
 
 // רשימת התיקיות שיש להן התראה
@@ -29,8 +31,10 @@ export const VEHICLE_FOLDER_ALERTS: VehicleFolderAlert[] = [
   { folderKey: 'operating_license', notificationType: 'vehicle_operating_license_expiry', get label() { return t('folder.operatingLicense'); }, source: 'compliance' },
   { folderKey: 'insurance_mandatory', notificationType: 'vehicle_insurance_mandatory_expiry', get label() { return t('folder.mandatoryInsurance'); }, source: 'compliance' },
   { folderKey: 'insurance_comprehensive', notificationType: 'vehicle_insurance_comprehensive_expiry', get label() { return t('folder.comprehensiveInsurance'); }, source: 'compliance' },
-  { folderKey: 'annual_test', notificationType: 'vehicle_annual_test_expiry', get label() { return t('folder.annualTest'); }, source: 'compliance' },
-  { folderKey: 'safety_officer_approval', notificationType: 'vehicle_safety_officer_approval_expiry', get label() { return t('folder.safetyOfficerApproval'); }, source: 'document' },
+  { folderKey: 'engineer_report', notificationType: 'vehicle_engineer_report_expiry', get label() { return t('folder.engineerReport'); }, source: 'compliance' },
+  { folderKey: 'license_annex', notificationType: 'vehicle_license_annex_expiry', get label() { return t('folder.licenseAnnex'); }, source: 'document' },
+  // Due dates come from the inspections themselves ("vehicle_safety_check_due"), not from uploaded files.
+  { folderKey: 'safety_officer_approval', notificationType: 'vehicle_safety_officer_approval_expiry', get label() { return t('folder.safetyOfficerApproval'); }, source: 'document', alert: false },
   { folderKey: 'tachograph_calibration', notificationType: 'vehicle_tachograph_calibration_expiry', get label() { return t('folder.tachographValidity'); }, source: 'document' },
   { folderKey: 'brakes_semiannual', notificationType: 'vehicle_brakes_semiannual_expiry', get label() { return t('folder.brakesSemiAnnual'); }, source: 'document' },
   { folderKey: 'brakes_annual', notificationType: 'vehicle_brakes_annual_expiry', get label() { return t('folder.brakesAnnual'); }, source: 'document' },
