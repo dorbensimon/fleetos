@@ -123,7 +123,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
 
   const handleRowPress = (row: DriverCardRow) => {
     if (!profileId) return;
-    if (row.key === 'vehicle' || row.key === 'primary-vehicle' || row.key === 'secondary-vehicle') {
+    if (row.key === 'vehicle' || row.key.startsWith('vehicle:')) {
       navigation.navigate('DriverVehicle');
       return;
     }

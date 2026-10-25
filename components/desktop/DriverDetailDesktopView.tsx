@@ -29,7 +29,7 @@ import { LICENSE_SIDE_STORED_TITLE } from '../../lib/licenseSides';
 import { DRIVER_DOCUMENT_GROUPS } from '../../lib/driverDocumentFolders';
 import { folderCategory, isCompanyFolderCategory, useCompanyFolders } from '../../lib/companyFolders';
 import { DriverVehiclesCard } from './driver/DriverVehiclesCard';
-import { DriverVehicleHistory } from './driver/DriverVehicleHistory';
+import { DriverVehicleHistoryButton } from './driver/DriverVehicleHistory';
 import { NewFormButton, DriverSigningList, useDriverSigningFolders, type SigningSessionTarget } from './driver/DriverSigningSection';
 import { t, dirIcon } from '../../lib/i18n';
 
@@ -571,7 +571,9 @@ export function DriverDetailDesktopView({
         </View>
 
         <View style={[styles.sideCell, styles.vehiclesCell]}>
-          <GroupLabel>{t('driver.assignedVehicles')}</GroupLabel>
+          <GroupLabel action={<DriverVehicleHistoryButton driverId={driverId} refreshKey={vehicles.map((v) => v.id).join(',')} />}>
+            {t('driver.assignedVehicles')}
+          </GroupLabel>
           <DriverVehiclesCard
             companyId={companyId}
             driverId={driverId}
@@ -628,13 +630,6 @@ export function DriverDetailDesktopView({
           </View>
         )}
       </View>
-
-      {/* Vehicle history */}
-      <View style={styles.docsHead}>
-        <DText weight="bold" style={styles.docsTitle}>{t('driver.vehicleHistory')}</DText>
-        <DText style={styles.mutedText}>{t('driver.vehicleHistoryHint')}</DText>
-      </View>
-      <DriverVehicleHistory driverId={driverId} refreshKey={vehicles.map((v) => v.id).join(',')} />
 
       {/* Forms to sign */}
       <View style={[styles.docsHead, styles.formsHead]}>

@@ -1229,6 +1229,7 @@
   "expiry": {
     "expiredDaysAgo": "انتهى قبل {{days}} أيام",
     "expiredDaysAgoShort": "انتهى قبل {{v1}} أيام",
+    "expiredOverYear": "انتهى منذ أكثر من سنة",
     "expiredToday": "انتهى اليوم",
     "expiredWhen": "انتهت {{v1}}",
     "expiredYesterday": "انتهى أمس",

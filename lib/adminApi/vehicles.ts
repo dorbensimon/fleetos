@@ -47,6 +47,14 @@ export async function updateVehicle(vehicleId: string, patch: Partial<Vehicle>) 
 
 // מעביר רכב לארכיון
 export async function archiveVehicle(vehicleId: string) {
+  // Like archiving a driver: close the vehicle's active assignments first, so
+  // an archived vehicle stops showing on its drivers' cards and alerts.
+  const { data: links, error } = await supabase.from('vehicle_drivers').select('id').eq('vehicle_id', vehicleId).is('unassigned_at', null);
+  if (error) throw error;
+  for (const link of links ?? []) {
+    const { error: unassignError } = await supabase.rpc('unassign_vehicle_driver', { p_assignment_id: link.id });
+    if (unassignError) throw unassignError;
+  }
   await updateVehicle(vehicleId, { status: 'archived' });
 }
 

@@ -1229,6 +1229,7 @@
   "expiry": {
     "expiredDaysAgo": "פג לפני {{days}} ימים",
     "expiredDaysAgoShort": "פג לפני {{v1}} ימים",
+    "expiredOverYear": "פג לפני יותר משנה",
     "expiredToday": "פג היום",
     "expiredWhen": "פגה {{v1}}",
     "expiredYesterday": "פג אתמול",

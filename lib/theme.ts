@@ -233,6 +233,12 @@ export function daysUntilExpiry(date: string | null | undefined): number | null 
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
+// 'פג לפני X ימים', ומעל שנה 'פג לפני יותר משנה'
+/** "פג לפני 12 ימים"; past a year the day count stops being readable ("8212 ימים"), so it says "more than a year". */
+export function expiredAgoText(days: number): string {
+  return days > 365 ? t('expiry.expiredOverYear') : t('expiry.expiredDaysAgo', { days });
+}
+
 // ברכה לפי שעה (בוקר טוב...)
 /** Time-of-day greeting word, computed from the device clock. */
 export function timeGreeting(): string {
