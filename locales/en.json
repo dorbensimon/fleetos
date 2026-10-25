@@ -2911,7 +2911,7 @@
     "deleteTitle": "Delete vehicle",
     "details": "Vehicle details",
     "detailsFound": "Vehicle details found",
-    "detailsFoundBody": "We'll fill in the manufacturer, model, year, color and vehicle license expiry. You can always edit the details before saving.",
+    "detailsFoundBody": "We'll fill in the vehicle type, manufacturer, model, year, color and vehicle license expiry. You can always edit the details before saving.",
     "detailsHint": "Optional. \"Auto-fill\" fills in most of them for you.",
     "driverAssigned": "The driver was assigned to the vehicle",
     "edit": "Edit vehicle",
