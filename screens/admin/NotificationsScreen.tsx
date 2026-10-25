@@ -23,6 +23,8 @@ import {
 } from '../../lib/ownerNotifications';
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
+import type { ValidityRow } from '../../lib/validityList';
+import { LICENSE_DOCS_CATEGORY } from '../../lib/driverDocumentFolders';
 
 /**
  * Logs every driver self-edit (name/phone/ID/license/department) so
@@ -139,6 +141,14 @@ function CompanyNotificationsScreen({ navigation, route }: Props) {
     return null;
   };
 
+  // A "תוקפים" row opens that folder (a driver's permit dates: that field).
+  const openValidity = (row: ValidityRow) => {
+    if (row.ownerType === 'vehicle') navigation.navigate('VehicleDetail', { vehicleId: row.ownerId, openFolder: row.folderKey });
+    else if (row.folderKey === LICENSE_DOCS_CATEGORY || row.folderKey.startsWith('folder:')) navigation.navigate('DriverDetail', { driverId: row.ownerId, openFolder: row.folderKey });
+    else navigation.navigate('DriverDetail', { driverId: row.ownerId, focus: row.folderKey });
+  };
+  const canSeeValidity = profile?.role === 'admin';
+
   if (isDesktop) {
     return (
       <DesktopShell active="SystemSettings" breadcrumbs={[t('nav.systemSettings'), t('notifications.title')]}>
@@ -154,7 +164,8 @@ function CompanyNotificationsScreen({ navigation, route }: Props) {
           timeAgo={timeAgo}
           actionLabel={actionLabel}
           prefs={preferences}
-          initialSection={route.params?.section === 'settings' ? 'settings' : 'feed'}
+          onOpenValidity={canSeeValidity ? openValidity : undefined}
+          initialSection={route.params?.section === 'settings' ? 'settings' : route.params?.section === 'validity' && canSeeValidity ? 'validity' : 'feed'}
         />
       </DesktopShell>
     );
@@ -173,6 +184,8 @@ function CompanyNotificationsScreen({ navigation, route }: Props) {
       onOpen={(n) => void openNotification(n)}
       onMarkAllRead={() => void markAllRead()}
       onSettings={() => navigation.navigate('NotificationPreferences')}
+      onOpenValidity={canSeeValidity ? openValidity : undefined}
+      initialTab={route.params?.section === 'validity' ? 'validity' : 'feed'}
       onBack={() => navigation.goBack()}
       onRetry={load}
       emptyHint={

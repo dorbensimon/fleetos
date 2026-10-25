@@ -5,7 +5,7 @@ import { listDrivers } from './adminApi/drivers';
 import { listComplianceForOwners } from './adminApi/compliance';
 import { chunkIds, fetchAllPages } from './adminApi/paging';
 import { complianceTargetDate, VEHICLE_COMPLIANCE } from './compliance';
-import { VEHICLE_FOLDER_ALERTS } from './vehicleFolderAlerts';
+import { folderExpiries, VEHICLE_DOC_FOLDERS } from './validityList';
 import { splitLicenseClasses } from './driverFields';
 import { addDays, hhmm, repeatDates, todayKey, type Block, type Series, type Client, type SavedTrip, type ScheduleData, type ScheduleDriver, type ScheduleVehicle, type Trip, type VehicleDoc } from './workSchedule';
 
@@ -88,8 +88,8 @@ async function extendSeries(companyId: string, list: Series[]): Promise<Trip[]> 
   return out;
 }
 
-/** Document folders with an expiry date (the latest file in each counts). */
-const DOC_FOLDERS = VEHICLE_FOLDER_ALERTS.filter((f) => f.source === 'document' && !f.folderKey.startsWith('company_'));
+/** Document folders with an expiry date (the newest file in each counts, as on the vehicle card). */
+const DOC_FOLDERS = VEHICLE_DOC_FOLDERS;
 
 // התוקפים של כל רכב: פריטי התוקף בכרטיס והקובץ האחרון בכל תיקייה
 async function vehicleDocs(companyId: string, vehicleIds: string[]): Promise<Map<string, VehicleDoc[]>> {
@@ -104,27 +104,11 @@ async function vehicleDocs(companyId: string, vehicleIds: string[]): Promise<Map
     }
   }
 
-  const seen = new Set<string>();
-  for (const batch of chunkIds(vehicleIds)) {
-    const rows = await fetchAllPages<{ owner_id: string; category: string; expiry_date: string | null }>((from, to) =>
-      supabase
-        .from('documents')
-        .select('owner_id, category, expiry_date')
-        .eq('company_id', companyId)
-        .eq('owner_type', 'vehicle')
-        .in('owner_id', batch)
-        .in('category', DOC_FOLDERS.map((f) => f.folderKey))
-        .order('created_at', { ascending: false })
-        .order('id', { ascending: true })
-        .range(from, to)
-    );
-    for (const row of rows) {
-      const k = `${row.owner_id}|${row.category}`;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      const folder = DOC_FOLDERS.find((f) => f.folderKey === row.category);
-      if (folder && row.expiry_date) push(row.owner_id, { label: folder.label, until: row.expiry_date, warnOnly: false });
-    }
+  const expiries = await folderExpiries(companyId, 'vehicle', vehicleIds, DOC_FOLDERS.map((f) => f.folderKey));
+  for (const [k, until] of expiries) {
+    const [vehicleId, category] = k.split('|');
+    const folder = DOC_FOLDERS.find((f) => f.folderKey === category);
+    if (folder) push(vehicleId, { label: folder.label, until, warnOnly: false });
   }
   return out;
 }

@@ -37,7 +37,7 @@ export type RootStackParamList = {
   /** `openMeeting`: a repeating form's id, to open its "מפגש חדש" list (from a "meetings due" notification). */
   /** `companyId`: the owner working on one company's documents (from its page). */
   SignedDocuments: { openMeeting?: string; companyId?: string } | undefined;
-  Notifications: { section?: 'settings' } | undefined;
+  Notifications: { section?: 'settings' | 'validity' } | undefined;
   AdminDocumentSigning: { companyId?: string } | undefined;
   /** A meeting on a "רשימת סעיפים" form: a new one (templateId) or one in progress (meetingId). */
   ChecklistMeeting: { driverId: string; templateId?: string; meetingId?: string };

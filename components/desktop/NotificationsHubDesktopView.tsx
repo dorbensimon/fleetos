@@ -25,6 +25,8 @@ import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHA
 import { t, dirIcon, getLocale } from '../../lib/i18n';
 import { pageStyles } from './record/RecordPage';
 import { useCompany } from '../../lib/CompanyContext';
+import { ValidityPanel } from './ValidityPanel';
+import type { ValidityRow } from '../../lib/validityList';
 import { SIGNING_LEAD_RULE, VALIDITY_MONTHS, useSigningRules, validityLabel } from '../../lib/signingRules';
 
 /**
@@ -37,7 +39,7 @@ import { SIGNING_LEAD_RULE, VALIDITY_MONTHS, useSigningRules, validityLabel } fr
  * owns the list, useNotificationPreferences owns the settings.
  */
 
-type Section = 'feed' | 'settings';
+type Section = 'feed' | 'validity' | 'settings';
 type Filter = 'all' | 'unread' | 'vehicles' | 'drivers' | 'signing';
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -123,6 +125,7 @@ export function NotificationsHubDesktopView({
   timeAgo,
   actionLabel,
   prefs,
+  onOpenValidity,
   initialSection = 'feed',
 }: {
   items: Notification[];
@@ -136,6 +139,8 @@ export function NotificationsHubDesktopView({
   timeAgo: (iso: string) => string;
   actionLabel: (n: Notification) => string | null;
   prefs: NotificationPreferencesState;
+  /** Opens the vehicle or driver folder of a "תוקפים" row; absent for drivers. */
+  onOpenValidity?: (row: ValidityRow) => void;
   initialSection?: Section;
 }) {
   const [section, setSection] = useState<Section>(initialSection);
@@ -226,7 +231,9 @@ export function NotificationsHubDesktopView({
   );
 
   const subtitle =
-    section === 'settings'
+    section === 'validity'
+      ? t('validity.subtitle')
+      : section === 'settings'
       ? prefs.isDriver
         ? t('notifications.chooseUpdates')
         : t('notifications.whatAndWhen')
@@ -257,6 +264,7 @@ export function NotificationsHubDesktopView({
             section={section}
             unread={unreadIds.size}
             settingsHint={prefs.loading || prefs.error ? null : `${enabledCount}/${prefs.visibleTypes.length}`}
+            showValidity={!!onOpenValidity}
             onChange={setSection}
           />
         </View>
@@ -362,6 +370,10 @@ export function NotificationsHubDesktopView({
               </View>
             )}
           </View>
+        ) : section === 'validity' && onOpenValidity ? (
+          <View key="validity" style={[styles.pane, !reduceMotion && styles.fadeIn]}>
+            <ValidityPanel onOpen={onOpenValidity} />
+          </View>
         ) : (
           <View key="settings" style={[styles.pane, !reduceMotion && styles.fadeIn]}>
             {prefs.loading ? (
@@ -418,15 +430,18 @@ function SectionSwitch({
   section,
   unread,
   settingsHint,
+  showValidity,
   onChange,
 }: {
   section: Section;
   unread: number;
   settingsHint: string | null;
+  showValidity: boolean;
   onChange: (section: Section) => void;
 }) {
   const options: { key: Section; label: string; icon: IconName; badge: string | null; hot: boolean }[] = [
     { key: 'feed', label: t('notifications.updates'), icon: 'notifications-outline', badge: unread > 0 ? String(unread) : null, hot: unread > 0 },
+    ...(showValidity ? [{ key: 'validity' as const, label: t('validity.title'), icon: 'hourglass-outline' as IconName, badge: null, hot: false }] : []),
     { key: 'settings', label: t('notifications.settings'), icon: 'options-outline', badge: settingsHint, hot: false },
   ];
   return (

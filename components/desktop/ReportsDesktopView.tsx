@@ -31,6 +31,7 @@ export function ReportsDesktopView({
   onSelectFormCategory,
   onGoToForms,
   onSelectInspectionCategory,
+  onGoToValidity,
 }: {
   open: 'drivers' | 'vehicles' | 'meetings' | 'inspections' | null;
   onToggle: (kind: 'drivers' | 'vehicles' | 'meetings' | 'inspections') => void;
@@ -45,6 +46,8 @@ export function ReportsDesktopView({
   /** "מסמכים חתומים", where the forms are made. */
   onGoToForms: () => void;
   onSelectInspectionCategory: (value: string) => void;
+  /** Expiry lists (insurance, test, licences, every folder) live in "תוקפים". */
+  onGoToValidity: () => void;
 }) {
   return (
     <View style={styles.wrap}>
@@ -94,6 +97,14 @@ export function ReportsDesktopView({
         exportingCategory={exportingCategory}
         onSelect={onSelectInspectionCategory}
       />
+      <HoverPressable style={styles.formRow} hoverStyle={styles.categoryRowHover} onPress={onGoToValidity} accessibilityRole="button">
+        <Ionicons name="hourglass-outline" size={15} color={DESKTOP_COLORS.brand} />
+        <View style={styles.groupCopy}>
+          <DText weight="semiBold" style={styles.categoryLabel}>{t('reports.validityTitle')}</DText>
+          <DText style={styles.groupSubtitle}>{t('reports.validityHint')}</DText>
+        </View>
+        <Ionicons name="chevron-back" size={15} color={DESKTOP_COLORS.inkFaint} />
+      </HoverPressable>
     </View>
   );
 }

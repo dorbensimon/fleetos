@@ -233,6 +233,7 @@ export function ReportsQuickAction() {
             onSelectFormCategory={(value) => void exportForm(value as FormReportCategory)}
             onGoToForms={() => { setOpen(false); navigation.navigate('SignedDocuments', undefined); }}
             onSelectInspectionCategory={(value) => void exportInspections(value as InspectionReportCategory)}
+            onGoToValidity={() => { setOpen(false); navigation.navigate('Notifications', { section: 'validity' }); }}
           />
         )}
       </DesktopModal>

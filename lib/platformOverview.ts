@@ -1,7 +1,7 @@
 // סיכום נתוני כל החברות לחדר הבקרה של הבעלים
 import type { Company } from './supabase';
 import type { ComplianceItem, Vehicle, VehicleDriverWithProfile } from './adminApi';
-import { vehicleAttentionGroups } from './vehicleAttention';
+import { attentionGroups } from './attention';
 import { daysUntilExpiry, expiryState, formatDate } from './theme';
 import { accountMrr, type CompanyAccount } from './companyAccount';
 import { t } from './i18n';
@@ -141,13 +141,13 @@ export function buildPlatformOverview(rows: PlatformRows, now: Date = new Date()
     const vehicles = (vehiclesBy.get(company.id) ?? []).filter((v) => v.status !== 'archived');
     const activity = activityBy.get(company.id) ?? [];
 
-    const groups = vehicleAttentionGroups(
-      vehicles as Vehicle[],
-      new Map(vehicles.map((v) => [v.id, (complianceBy.get(v.id) ?? []) as ComplianceItem[]])),
-      new Map(vehicles.map((v) => [v.id, (assignedBy.get(v.id) ?? []) as unknown as VehicleDriverWithProfile[]])),
-    );
+    const groups = attentionGroups({
+      vehicles: vehicles as Vehicle[],
+      compliance: new Map(vehicles.map((v) => [v.id, (complianceBy.get(v.id) ?? []) as ComplianceItem[]])),
+      vehicleDrivers: new Map(vehicles.map((v) => [v.id, (assignedBy.get(v.id) ?? []) as unknown as VehicleDriverWithProfile[]])),
+    });
     const problemVehicles = new Set(
-      groups.filter((g) => g.kind !== 'unassigned').flatMap((g) => g.items.map((i) => i.vehicleId)),
+      groups.filter((g) => g.kind !== 'unassigned').flatMap((g) => g.items.map((i) => i.ownerId)),
     );
     const unassigned = groups.find((g) => g.kind === 'unassigned')?.items.length ?? 0;
 

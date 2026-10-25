@@ -1,4 +1,5 @@
 // תיקיות מסמכים בתיק רכב/נהג: רשימה וחלון תיקייה
+import { newestDocument } from '../../../lib/compliance';
 import React, { useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { BrandLoader } from '../../ui/BrandLoader';
@@ -64,7 +65,7 @@ export function expiryStatusText(state: ExpiryState, expiry: string | null): str
 // המצב של תיקייה לפי המסמך האחרון
 /** The status a folder shows: the expiry of its newest document. */
 export function folderStatus(docs: DocumentRow[]): { state: ExpiryState; expiry: string | null; count: number } {
-  const latest = newestFirst(docs)[0] ?? null;
+  const latest = newestDocument(docs);
   if (!latest) return { state: 'missing', expiry: null, count: 0 };
   return { state: latest.expiry_date ? expiryState(latest.expiry_date) : 'optional', expiry: latest.expiry_date, count: docs.length };
 }

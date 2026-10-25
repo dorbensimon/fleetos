@@ -92,6 +92,12 @@
     "primaryExists": "This vehicle already has an active primary driver — remove them before setting a new one"
   },
   "attention": {
+    "pillCount": "{{count}} need attention",
+    "pillOne": "1 item needs attention",
+    "allValidity": "All expiries",
+    "allValidityHint": "Tachograph, winter check, brakes and the other folders",
+    "toPhotos": "To photos",
+    "vehicleLicenseExpiredHint": "The vehicle licence has expired",
     "allGoodBody": "All licenses and insurance are valid, and every vehicle has a driver. When something needs attention — it shows here.",
     "allHandled": "All taken care of",
     "assignDriver": "Assign driver",
@@ -2391,10 +2397,12 @@
     "typeAndSave": "Type the new value and click \"Save\"."
   },
   "reports": {
+    "validityTitle": "Expiries by folder",
+    "validityHint": "Insurance, test, licences and every other folder, with Excel export",
     "allForms": "All forms",
     "chooseType": "Choose the report type to export as an Excel file",
     "drivers": "Driver reports",
-    "driversHint": "Licenses, expiry dates and drivers without a vehicle",
+    "driversHint": "All drivers and drivers without a vehicle",
     "excelReady": "An Excel file ready to send or print",
     "export": "Export reports",
     "exportExcel": "Export to Excel",
@@ -2415,7 +2423,7 @@
     "rowsInReport": "{{count}} in the report",
     "title": "Reports",
     "vehicles": "Vehicle reports",
-    "vehiclesHint": "Insurance, annual test, services and overdue items"
+    "vehiclesHint": "All vehicles, services and issues"
   },
   "role": {
     "admin": "Administrator",
@@ -3652,6 +3660,30 @@
       "ownership": "Ownership",
       "pollution_group": "Pollution group",
       "safety_level": "Safety equipment level"
+    }
+  },
+  "validity": {
+    "title": "Expiries",
+    "subtitle": "What has expired and what is about to, by folder",
+    "allDated": "All",
+    "allFolders": "All folders",
+    "search": "Search",
+    "searchVehicles": "Search by plate, make or department",
+    "searchDrivers": "Search by name, employee no. or department",
+    "export": "Export to Excel",
+    "fileName": "Expiries",
+    "rowsCount": "Found: {{count}}",
+    "none": "Nothing here. Everything is valid",
+    "expiredDaysAgo": "Expired {{count}} days ago",
+    "inDays": "In {{count}} days",
+    "today": "Expires today",
+    "col": {
+      "vehicle": "Vehicle",
+      "driver": "Driver",
+      "detail": "Details",
+      "folder": "Folder",
+      "until": "Valid until",
+      "status": "Status"
     }
   }
 }

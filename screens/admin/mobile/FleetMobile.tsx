@@ -25,7 +25,8 @@ import {
 } from '../../../components/driverKit';
 import { BrandLogo } from '../../../components/ui/Brand';
 import { timeGreeting } from '../../../lib/theme';
-import type { AttentionSummary, ComplianceItem, DriverRow, Vehicle, VehicleDriverWithProfile } from '../../../lib/adminApi';
+import { attentionTotals, type AttentionGroup } from '../../../lib/attention';
+import type { ComplianceItem, DriverRow, Vehicle, VehicleDriverWithProfile } from '../../../lib/adminApi';
 import { DriverFleetCard, VehicleFleetCard } from './FleetCards';
 import { t, dirIcon, getLocale } from '../../../lib/i18n';
 import { fontStack } from '../../../lib/fontStack';
@@ -40,7 +41,7 @@ type Props = {
   firstName: string;
   companyName: string;
   unread: number;
-  attention: AttentionSummary | null;
+  attention: AttentionGroup[] | null;
   mode: Mode;
   onModeChange: (mode: Mode) => void;
   refreshing: boolean;
@@ -452,15 +453,10 @@ function ReportsPanel({ onPress }: { onPress: () => void }) {
 
 // שורת 'דורש טיפול'
 /** What needs the manager, in one tappable line — or a calm "all clear". */
-function AttentionPanel({ summary, onPress }: { summary: AttentionSummary; onPress: () => void }) {
-  const parts = [
-    summary.license && `${summary.license} ${summary.license === 1 ? t('fleet.license') : t('prefs.group.licenses')}`,
-    summary.insurance && `${summary.insurance} ${summary.insurance === 1 ? t('fleet.insurance') : t('compliance.cat.insurance')}`,
-    summary.unassignedVehicles && `${summary.unassignedVehicles} ${summary.unassignedVehicles === 1 ? t('fleet.vehicleNoDriver') : t('attention.vehiclesWithoutDriver')}`,
-    summary.missingLicenseDocuments && `${summary.missingLicenseDocuments} ${summary.missingLicenseDocuments === 1 ? t('fleet.licenseUnverified') : t('attention.unverifiedLicenses')}`,
-  ].filter(Boolean) as string[];
-  const total = summary.license + summary.insurance + summary.unassignedVehicles + summary.missingLicenseDocuments;
-  const tone: Status = summary.license || summary.insurance ? 'expired' : total ? 'soon' : 'ok';
+function AttentionPanel({ summary, onPress }: { summary: AttentionGroup[]; onPress: () => void }) {
+  const parts = summary.map((g) => `${g.items.length} ${g.title}`);
+  const total = attentionTotals(summary).issues;
+  const tone: Status = summary.some((g) => g.tone === 'bad') ? 'expired' : total ? 'soon' : 'ok';
   const s = STATUS[tone];
   return (
     <Pressy onPress={onPress} accessibilityLabel={total ? t('fleet.needsAttentionList', { total, v1: parts.join(', ') }) : t('fleet.allOkNoTasks')} pressScale={0.98}>

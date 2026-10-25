@@ -1,4 +1,4 @@
-import { documentDrivenDates, governingDocument } from '../compliance';
+import { documentDrivenDates, governingDocument, newestDocument } from '../compliance';
 
 const doc = (expiry_date: string | null, created_at: string) => ({ expiry_date, created_at });
 
@@ -34,5 +34,15 @@ describe('documentDrivenDates', () => {
   it('keeps the last-test date while documents remain', () => {
     const remaining = [doc('2026-08-15', '2025-08-15T00:00:00Z')];
     expect(documentDrivenDates(remaining, { last_date: '2025-08-15' }).lastDate).toBe('2025-08-15');
+  });
+});
+
+describe('newestDocument', () => {
+  it('follows the newest upload, even when an older file has a later expiry', () => {
+    const old = { expiry_date: '2027-12-01', created_at: '2026-01-01T10:00:00Z' };
+    const fresh = { expiry_date: '2026-11-01', created_at: '2026-10-20T10:00:00Z' };
+    expect(newestDocument([fresh, old])).toBe(fresh);
+    expect(newestDocument([old, fresh])).toBe(fresh);
+    expect(newestDocument([])).toBeNull();
   });
 });

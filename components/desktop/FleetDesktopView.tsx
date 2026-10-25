@@ -8,7 +8,7 @@ import { VEHICLE_STATUS_LABELS } from '../../lib/compliance';
 import { SERVICE_WARN_KM } from '../../lib/fleetCardHelpers';
 import { formatPlate } from '../../lib/plate';
 import { nextServiceKmOf } from '../../lib/serviceSchedule';
-import { vehicleName } from '../../lib/vehicleAttention';
+import { vehicleName } from '../../lib/attention';
 import { daysUntilExpiry, formatDate } from '../../lib/theme';
 import { DLtrText, DText, HoverPressable } from './primitives';
 import { DESKTOP_AVATAR_COLORS, DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, DesktopTone, webOnly, DESKTOP_BRAND_SHADOW } from './desktopTheme';

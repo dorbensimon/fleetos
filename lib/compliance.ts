@@ -62,6 +62,17 @@ export function governingDocument<T extends { expiry_date: string | null; create
   }, null);
 }
 
+// המסמך שקובע את התוקף בתיקיית מסמכים (טכוגרף, בדיקת חורף...)
+/**
+ * Document folders (tachograph, winter check, brakes, the company's own
+ * folders...) follow their newest upload: "המסמך האחרון קובע את התוקף".
+ * The vehicle card, the "תוקפים" list, the work schedule and the daily alert
+ * scan (supabase/sql/112_company_document_folders.sql) all use this rule.
+ */
+export function newestDocument<T extends { created_at: string }>(docs: T[]): T | null {
+  return docs.reduce<T | null>((best, doc) => (!best || doc.created_at > best.created_at ? doc : best), null);
+}
+
 // התאריכים שהתיקייה צריכה לשמור לפי המסמכים שבה
 /**
  * Dated vehicle folders take their dates from their documents only: no

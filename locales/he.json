@@ -92,6 +92,12 @@
     "primaryExists": "לרכב זה כבר יש נהג ראשי פעיל — יש להסיר אותו לפני קביעת נהג ראשי חדש"
   },
   "attention": {
+    "pillCount": "{{count}} דורשים טיפול",
+    "pillOne": "דבר אחד דורש טיפול",
+    "allValidity": "לכל התוקפים",
+    "allValidityHint": "טכוגרף, בדיקת חורף, בלמים ושאר התיקיות",
+    "toPhotos": "לצילומים",
+    "vehicleLicenseExpiredHint": "תוקף רישיון הרכב עבר",
     "allGoodBody": "כל הרישיונות והביטוחים בתוקף, ולכל רכב יש נהג. כשמשהו ידרוש טיפול — הוא יופיע כאן.",
     "allHandled": "הכול מטופל",
     "assignDriver": "שיוך נהג",
@@ -2391,10 +2397,12 @@
     "typeAndSave": "כותבים את הערך החדש ולוחצים על \"שמירה\"."
   },
   "reports": {
+    "validityTitle": "תוקפים לפי תיקייה",
+    "validityHint": "ביטוח, טסט, רישיונות וכל שאר התיקיות, עם ייצוא לאקסל",
     "allForms": "כל הטפסים",
     "chooseType": "בחר את סוג הדוח שברצונך להפיק כקובץ אקסל",
     "drivers": "דוחות נהגים",
-    "driversHint": "רישיונות, תוקפים ונהגים ללא רכב",
+    "driversHint": "כל הנהגים ונהגים ללא רכב",
     "excelReady": "קובץ אקסל מוכן לשליחה או להדפסה",
     "export": "ייצוא דוחות",
     "exportExcel": "ייצוא לאקסל",
@@ -2415,7 +2423,7 @@
     "rowsInReport": "{{count}} בדוח",
     "title": "דוחות",
     "vehicles": "דוחות רכבים",
-    "vehiclesHint": "ביטוח, טסט, טיפולים וחריגות"
+    "vehiclesHint": "כל הרכבים, טיפולים וחריגות"
   },
   "role": {
     "admin": "מנהל מערכת",
@@ -3652,6 +3660,30 @@
       "ownership": "בעלות",
       "pollution_group": "קבוצת זיהום",
       "safety_level": "רמת אבזור בטיחותי"
+    }
+  },
+  "validity": {
+    "title": "תוקפים",
+    "subtitle": "מה פג ומה עומד לפוג, לפי תיקייה",
+    "allDated": "הכל",
+    "allFolders": "כל התיקיות",
+    "search": "חיפוש",
+    "searchVehicles": "חיפוש לפי מספר רכב, יצרן או מחלקה",
+    "searchDrivers": "חיפוש לפי שם, מספר עובד או מחלקה",
+    "export": "ייצוא לאקסל",
+    "fileName": "תוקפים",
+    "rowsCount": "נמצאו: {{count}}",
+    "none": "אין כאן כלום. הכל בתוקף",
+    "expiredDaysAgo": "פג לפני {{count}} ימים",
+    "inDays": "בעוד {{count}} ימים",
+    "today": "פג היום",
+    "col": {
+      "vehicle": "רכב",
+      "driver": "נהג",
+      "detail": "פרטים",
+      "folder": "תיקייה",
+      "until": "תוקף עד",
+      "status": "מצב"
     }
   }
 }

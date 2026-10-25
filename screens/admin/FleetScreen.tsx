@@ -9,8 +9,6 @@ import { expiryState } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import {
   countUnreadNotifications,
-  getAttentionSummary,
-  type AttentionSummary,
   listDrivers,
   listArchivedDrivers,
   DriverRow,
@@ -32,6 +30,8 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { FleetDesktopView } from '../../components/desktop/FleetDesktopView';
 import { loadInspectionPlan } from '../../lib/inspections';
 import { AttentionMenu } from '../../components/desktop/FleetOverview';
+import { attentionRoute, type AttentionGroup, type AttentionItem } from '../../lib/attention';
+import { loadAttention } from '../../lib/adminApi/attention';
 import { FleetMobile, type DriverFilter, type VehicleFilter } from './mobile/FleetMobile';
 import { t } from '../../lib/i18n';
 
@@ -336,19 +336,23 @@ export default function FleetScreen() {
   /* Shared load + crossfade                                          */
   /* ---------------------------------------------------------------- */
 
-  // The phone's hero shows the unread count and what needs attention.
-  // Both are extras: the fleet works without them.
+  // What needs attention (the phone's hero line, the desktop top-bar menu)
+  // and the phone's unread count. Both are extras: the fleet works without them.
   const [unread, setUnread] = useState(0);
-  const [attention, setAttention] = useState<AttentionSummary | null>(null);
+  const [attention, setAttention] = useState<AttentionGroup[] | null>(null);
   const loadExtras = useCallback(async () => {
-    if (!companyId || isDesktop) return;
-    const [count, summary] = await Promise.all([
-      countUnreadNotifications(companyId).catch(() => 0),
-      getAttentionSummary(companyId).catch(() => null),
+    if (!companyId) return;
+    const [count, groups] = await Promise.all([
+      isDesktop ? 0 : countUnreadNotifications(companyId).catch(() => 0),
+      loadAttention(companyId).catch(() => null),
     ]);
     setUnread(count);
-    setAttention(summary);
+    setAttention(groups);
   }, [companyId, isDesktop]);
+  const openAttention = (item: AttentionItem) => {
+    const route = attentionRoute(item);
+    navigation.navigate(route.screen as any, route.params as any);
+  };
   useFocusEffect(
     useCallback(() => {
       void loadExtras();
@@ -428,11 +432,9 @@ export default function FleetScreen() {
         breadcrumbs={[t('nav.dashboard')]}
         headerAccessory={
           <AttentionMenu
-            vehicles={vehicles}
-            compliance={compliance}
-            vehicleDrivers={vehicleDrivers}
-            loading={vehiclesLoading}
-            onOpenVehicle={(vehicleId, target) => navigation.navigate('VehicleDetail', { vehicleId, ...target })}
+            groups={attention}
+            onOpen={openAttention}
+            onAllValidity={() => navigation.navigate('Notifications', { section: 'validity' })}
           />
         }
       >
