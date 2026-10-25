@@ -16,6 +16,7 @@ const VEHICLE_RESOURCE_IDS = [
 const LOOKUP_TIMEOUT_MS = 8_000;
 
 type RegistryRecord = {
+  [field: string]: unknown;
   mispar_rechev?: string | number;
   tozeret_nm?: string;
   degem_nm?: string;
@@ -85,6 +86,57 @@ function vehicleTypeFrom(resourceId: string, record: RegistryRecord): string | n
   return null;
 }
 
+// תאריך עלייה לכביש ("2023-3" ← 2023-03-01)
+function roadDate(value: unknown): string | null {
+  const match = typeof value === 'string' ? /^(\d{4})-(\d{1,2})$/.exec(value.trim()) : null;
+  return match ? `${match[1]}-${match[2].padStart(2, '0')}-01` : null;
+}
+
+// מספר שלדה תקין בלבד
+function optionalVin(value: unknown): string | null {
+  const vin = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  return /^[A-HJ-NPR-Z0-9]{17}$/.test(vin) ? vin : null;
+}
+
+// כל שאר הנתונים מהמאגר
+/**
+ * Every other registry value, by the app's keys (lib/vehicleRegistryFields.ts).
+ * Values are kept as text; empty, zero and "not cancelled"-style noise is dropped.
+ */
+function registryDetails(record: RegistryRecord): Record<string, string> {
+  const pick: Record<string, unknown> = {
+    registry_kind: record.sug_rechev_nm || record.kvutzat_sug_rechev,
+    trim_level: record.ramat_gimur,
+    model_code: optionalText(record.kinuy_mishari) ? record.degem_nm : null,
+    origin_country: record.tozeret_eretz_nm,
+    fuel_type: record.sug_delek_nm,
+    engine_model: record.degem_manoa,
+    engine_number: record.mispar_manoa,
+    engine_volume_cc: record.nefach_manoa,
+    drive_type: record.hanaa_nm,
+    tires_front: record.zmig_kidmi,
+    tires_rear: record.zmig_ahori,
+    last_test_date: optionalIsoDate(record.mivchan_acharon_dt),
+    seats: record.mispar_mekomot,
+    seats_beside_driver: record.mispar_mekomot_leyd_nahag,
+    gross_weight_kg: record.mishkal_kolel,
+    curb_weight_kg: record.mishkal_azmi,
+    lift_weight_kg: record.mishkal_mitan_harama,
+    tow_hitch: record.grira_nm,
+    eu_category: record.sug_rechev_EU_cd || record.tkina_EU,
+    ownership: record.baalut,
+    pollution_group: record.kvutzat_zihum,
+    safety_level: record.ramat_eivzur_betihuty,
+  };
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(pick)) {
+    if (value == null) continue;
+    const text = String(value).trim();
+    if (text && text !== '0') out[key] = text;
+  }
+  return out;
+}
+
 // מחפש ומחזיר את נתוני הרכב
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -149,6 +201,9 @@ Deno.serve(async (req) => {
         color: optionalText(record.tzeva_rechev),
         licenseExpiry: optionalIsoDate(record.tokef_dt),
         vehicleType: vehicleTypeFrom(recordResource, record),
+        vin: optionalVin(record.misgeret ?? record.mispar_shilda),
+        roadRegistrationDate: roadDate(record.moed_aliya_lakvish),
+        details: registryDetails(record),
       },
     });
   } catch (error) {

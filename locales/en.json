@@ -3620,5 +3620,38 @@
       "hint": "Add a saved trip from the trip form: \"Also keep as a saved trip\"."
     },
     "addMenu": "Add to schedule"
+  },
+  "registry": {
+    "title": "Transport Ministry data",
+    "hint": "Pulled from the Transport Ministry registry. You can edit or clear any value.",
+    "refresh": "Update from the Transport Ministry",
+    "refreshing": "Updating…",
+    "refreshed": "Data updated from the Transport Ministry",
+    "notFound": "The vehicle was not found in the Transport Ministry registry",
+    "empty": "No data yet. You can pull it from the Transport Ministry.",
+    "field": {
+      "registry_kind": "Registry vehicle kind",
+      "trim_level": "Trim level",
+      "model_code": "Model code",
+      "origin_country": "Country of manufacture",
+      "fuel_type": "Fuel type",
+      "engine_model": "Engine model",
+      "engine_number": "Engine number",
+      "engine_volume_cc": "Engine volume (cc)",
+      "drive_type": "Drive",
+      "tires_front": "Front tire",
+      "tires_rear": "Rear tire",
+      "last_test_date": "Last annual test",
+      "seats": "Seats",
+      "seats_beside_driver": "Seats beside driver",
+      "gross_weight_kg": "Gross weight (kg)",
+      "curb_weight_kg": "Curb weight (kg)",
+      "lift_weight_kg": "Lift equipment weight (kg)",
+      "tow_hitch": "Tow hitch",
+      "eu_category": "EU category",
+      "ownership": "Ownership",
+      "pollution_group": "Pollution group",
+      "safety_level": "Safety equipment level"
+    }
   }
 }

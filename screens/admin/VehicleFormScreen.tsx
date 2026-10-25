@@ -20,6 +20,7 @@ import { chooseDocumentSource, pickDocumentSource } from '../../lib/documentActi
 import { formatPlate } from '../../lib/plate';
 import { RootStackParamList } from '../../navigation/types';
 import { lookupVehicleRegistry, VehicleRegistryDetails } from '../../lib/vehicleRegistry';
+import { cleanRegistryDetails, REGISTRY_DETAIL_FIELDS } from '../../lib/vehicleRegistryFields';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { VehicleFormDesktopView, type FormState } from '../../components/desktop/VehicleFormDesktopView';
@@ -45,6 +46,7 @@ const EMPTY: FormState = {
   usage_type: '',
   status: 'active',
   department_id: null,
+  registry_details: {},
 };
 
 // שדות חובה
@@ -179,6 +181,9 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
+  // An emptied value keeps its row while editing; saving drops it.
+  const setRegistry = (key: string, value: string) =>
+    setForm((current) => ({ ...current, registry_details: { ...current.registry_details, [key]: value } }));
 
   const load = useCallback(async () => {
     if (!companyId) return;
@@ -211,6 +216,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           usage_type: vehicle.usage_type ?? '',
           status: vehicle.status,
           department_id: vehicle.department_id,
+          registry_details: cleanRegistryDetails(vehicle.registry_details),
         });
       }
     }
@@ -249,6 +255,9 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
       production_year: details.productionYear ? String(details.productionYear) : current.production_year,
       vehicle_license_expiry: details.licenseExpiry ?? current.vehicle_license_expiry,
       vehicle_type: details.vehicleType ?? current.vehicle_type,
+      vin: details.vin ?? current.vin,
+      road_registration_date: details.roadRegistrationDate ?? current.road_registration_date,
+      registry_details: { ...current.registry_details, ...cleanRegistryDetails(details.details) },
     }));
     setLookupMessage(t('vehicle.filledFromMot'));
   };
@@ -323,6 +332,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
         usage_type: form.usage_type.trim() || null,
         status: form.status,
         department_id: form.department_id,
+        registry_details: cleanRegistryDetails(form.registry_details),
       };
 
       let savedVehicleId: string;
@@ -446,6 +456,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           vehicleId={vehicleId}
           form={form}
           set={set}
+          setRegistry={setRegistry}
           errors={errors}
           departments={departments}
           vehicleTypeOptions={VEHICLE_TYPE_OPTIONS as unknown as { value: VehicleType; label: string; description: string }[]}
@@ -619,6 +630,17 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
           <EditField label={t('vehicle.usage')} value={form.usage_type} onChangeText={(value) => set('usage_type', value)} placeholder={t('common.optionalShort')} />
           <EditField label={t('vehicle.dealType')} editor={<Select<AcquisitionType> value={form.acquisition_type} onChange={(value) => set('acquisition_type', value)} options={DEAL_TYPE_OPTIONS()} placeholder={t('vehicle.chooseDealType')} allowClear />} />
         </KitSection>
+        {REGISTRY_DETAIL_FIELDS.some((f) => f.key in form.registry_details) && (
+          <KitSection title={t('registry.title')}>
+            {REGISTRY_DETAIL_FIELDS.filter((f) => f.key in form.registry_details).map((f, i) => (
+              f.kind === 'date' ? (
+                <EditField key={f.key} first={i === 0} label={f.label} editor={<DateField value={form.registry_details[f.key] || null} onChange={(value) => setRegistry(f.key, value ?? '')} placeholder={t('date.chooseDateAction')} />} />
+              ) : (
+                <EditField key={f.key} first={i === 0} label={f.label} value={form.registry_details[f.key]} onChangeText={(value) => setRegistry(f.key, f.kind === 'number' ? value.replace(/\D/g, '') : value)} placeholder={t('common.optionalShort')} keyboardType={f.kind === 'number' ? 'number-pad' : undefined} ltr={f.ltr || f.kind === 'number'} />
+              )
+            ))}
+          </KitSection>
+        )}
       </Reveal>
 
       <Reveal index={4}>
