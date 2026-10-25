@@ -1,7 +1,7 @@
 // רכיבי בסיס למחשב: טקסט, כפתור, שדות, בחירה ולוח שנה
 import React, { useRef, useState } from 'react';
 import { FocusTarget } from '../ui/FocusTarget';
-import { Modal, Pressable, PressableProps, ScrollView, StyleProp, Text, TextInput, TextInputProps, TextProps, View, ViewStyle, StyleSheet } from 'react-native';
+import { Dimensions, Modal, Pressable, PressableProps, ScrollView, StyleProp, Text, TextInput, TextInputProps, TextProps, View, ViewStyle, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { formatDate, parseDateValue } from '../../lib/theme';
@@ -222,6 +222,17 @@ export interface DesktopSelectOption<T extends string> {
 }
 
 // רשימה נפתחת
+// מיקום חלון קופץ: מתחת לשדה, או מעליו כשאין מקום
+type PopoverAnchor = { top?: number; bottom?: number; left: number; width: number; maxHeight: number };
+/** Under the field, or above it when the window has more room there (a field near the bottom edge). */
+function popoverAnchor(x: number, y: number, width: number, height: number, wanted: number): PopoverAnchor {
+  const windowHeight = Dimensions.get('window').height;
+  const below = windowHeight - (y + height) - 12;
+  const above = y - 12;
+  if (below >= wanted || below >= above) return { top: y + height + 4, left: x, width, maxHeight: Math.max(120, below) };
+  return { bottom: windowHeight - y + 4, left: x, width, maxHeight: above };
+}
+
 /** Lightweight inline dropdown for desktop forms — a popover under the trigger, not the mobile bottom sheet. */
 export function DesktopSelect<T extends string>({
   value,
@@ -241,13 +252,13 @@ export function DesktopSelect<T extends string>({
   hasError?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [anchor, setAnchor] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [anchor, setAnchor] = useState<PopoverAnchor | null>(null);
   const triggerRef = useRef<View>(null);
   const selected = options.find((o) => o.value === value);
 
   const openMenu = () => {
     triggerRef.current?.measureInWindow((x, y, width, height) => {
-      setAnchor({ top: y + height + 4, left: x, width });
+      setAnchor(popoverAnchor(x, y, width, height, 260));
       setOpen(true);
     });
   };
@@ -268,7 +279,7 @@ export function DesktopSelect<T extends string>({
       {open && anchor && (
         <Modal transparent visible animationType="none" onRequestClose={() => setOpen(false)}>
           <Pressable style={fieldStyles.selectCatcher} onPress={() => setOpen(false)} />
-          <ScrollView style={[fieldStyles.selectMenu, { top: anchor.top, start: anchor.left, width: anchor.width }, prefersReducedMotion() ? fieldStyles.popoverInReduced : fieldStyles.popoverIn]}>
+          <ScrollView style={[fieldStyles.selectMenu, { top: anchor.top, bottom: anchor.bottom, start: anchor.left, width: anchor.width, maxHeight: Math.min(260, anchor.maxHeight) }, prefersReducedMotion() ? fieldStyles.popoverInReduced : fieldStyles.popoverIn]}>
             {allowClear && (
               <HoverPressable
                 style={fieldStyles.selectOption}
@@ -334,14 +345,14 @@ export function DesktopDateField({
   const [open, setOpen] = useState(false);
   const [choosingYear, setChoosingYear] = useState(false);
   const [cursor, setCursor] = useState(() => (value ? parseDateValue(value) : new Date()));
-  const [anchor, setAnchor] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [anchor, setAnchor] = useState<PopoverAnchor | null>(null);
   const triggerRef = useRef<View>(null);
 
   const openPicker = () => {
     setCursor(value ? parseDateValue(value) : new Date());
     setChoosingYear(false);
     triggerRef.current?.measureInWindow((x, y, width, height) => {
-      setAnchor({ top: y + height + 4, left: x, width });
+      setAnchor(popoverAnchor(x, y, width, height, 340));
       setOpen(true);
     });
   };
@@ -370,7 +381,7 @@ export function DesktopDateField({
       {open && anchor && (
         <Modal transparent visible animationType="none" onRequestClose={() => setOpen(false)}>
           <Pressable style={fieldStyles.selectCatcher} onPress={() => setOpen(false)} />
-          <View style={[fieldStyles.calendarMenu, { top: anchor.top, start: anchor.left }, prefersReducedMotion() ? fieldStyles.popoverInReduced : fieldStyles.popoverIn]}>
+          <View style={[fieldStyles.calendarMenu, { top: anchor.top, bottom: anchor.bottom, start: anchor.left }, prefersReducedMotion() ? fieldStyles.popoverInReduced : fieldStyles.popoverIn]}>
             <View style={fieldStyles.calendarHeader}>
               <HoverPressable
                 style={fieldStyles.calendarNavBtn}
