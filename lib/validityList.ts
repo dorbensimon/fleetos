@@ -195,10 +195,8 @@ export function validityStatusText(row: Pick<ValidityRow, 'days'>): string {
   return t('validity.inDays', { count: row.days });
 }
 
-// ייצוא לאקסל (CSV שאקסל פותח, כולל עברית)
-export function validityCsv(rows: ValidityRow[], ownerType: ValidityOwner): string {
-  const cell = (v: string) => `"${v.replace(/"/g, '""')}"`;
+// הטבלה לייצוא לאקסל: שורת כותרות ואז שורה לכל תוקף
+export function validityTable(rows: ValidityRow[], ownerType: ValidityOwner): string[][] {
   const head = [ownerType === 'vehicle' ? t('validity.col.vehicle') : t('validity.col.driver'), t('validity.col.detail'), t('common.department'), t('validity.col.folder'), t('validity.col.until'), t('validity.col.status')];
-  const body = rows.map((r) => [r.name, r.detail, r.department, r.folderLabel, formatDate(r.until), validityStatusText(r)]);
-  return '﻿' + [head, ...body].map((line) => line.map(cell).join(',')).join('\r\n');
+  return [head, ...rows.map((r) => [r.name, r.detail, r.department, r.folderLabel, formatDate(r.until), validityStatusText(r)])];
 }

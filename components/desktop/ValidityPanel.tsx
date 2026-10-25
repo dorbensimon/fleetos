@@ -6,7 +6,8 @@ import { BrandLoader } from '../ui/BrandLoader';
 import { DLtrText, DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, webOnly } from './desktopTheme';
 import { useCompany } from '../../lib/CompanyContext';
-import { filterValidity, loadValidity, validityCsv, validityStatusText, type ValidityData, type ValidityOwner, type ValidityRow, type ValidityState } from '../../lib/validityList';
+import { filterValidity, loadValidity, validityStatusText, validityTable, type ValidityData, type ValidityOwner, type ValidityRow, type ValidityState } from '../../lib/validityList';
+import { XLSX_MIME, xlsxBytes } from '../../lib/xlsx';
 import { downloadRemoteFileOnWeb } from '../../lib/webDownload';
 import { formatDate } from '../../lib/theme';
 import { errorMessage } from '../../lib/requestError';
@@ -55,9 +56,10 @@ export function ValidityPanel({ onOpen, compact }: { onOpen: (row: ValidityRow) 
 
   const exportCsv = async () => {
     setExporting(true);
-    const url = URL.createObjectURL(new Blob([validityCsv(visible, owner)], { type: 'text/csv;charset=utf-8' }));
+    const bytes = xlsxBytes(validityTable(visible, owner), { sheetName: t('validity.title') });
+    const url = URL.createObjectURL(new Blob([bytes], { type: XLSX_MIME }));
     try {
-      await downloadRemoteFileOnWeb(url, `${t('validity.fileName')} ${formatDate(new Date().toISOString()).replace(/\//g, '.')}.csv`);
+      await downloadRemoteFileOnWeb(url, `${t('validity.fileName')} ${formatDate(new Date().toISOString()).replace(/\//g, '.')}.xlsx`);
     } finally {
       URL.revokeObjectURL(url);
       setExporting(false);
