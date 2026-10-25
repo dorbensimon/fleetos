@@ -1,10 +1,9 @@
 // ראש הדשבורד: כותרת כחולה, מתג נהגים/רכבים, אריחי סינון ו'דורש טיפול'
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, LayoutChangeEvent, ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ComplianceItem, Vehicle, VehicleDriverWithProfile } from '../../lib/adminApi';
 import { useCompany } from '../../lib/CompanyContext';
-import { vehicleAttentionGroups, vehicleAttentionTotals, type VehicleAttentionGroup, type VehicleAttentionItem } from '../../lib/vehicleAttention';
+import { attentionTotals, type AttentionGroup, type AttentionItem } from '../../lib/attention';
 import { DLtrText, DText, HoverPressable, prefersReducedMotion } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { DepartmentsQuickAction, ReportsQuickAction } from './DashboardWidgets';
@@ -351,34 +350,30 @@ function CountUp({ value, style }: { value: number | null; style: React.Componen
 // תפריט 'דורש טיפול'
 /**
  * "Needs attention" lives in the top bar next to the notifications bell: a
- * red pill with the number of vehicles that drops down every problem,
- * grouped (lib/vehicleAttention.ts). Each row says exactly what is wrong and
- * opens the vehicle right where it gets fixed. Hidden when nothing is wrong.
+ * red pill with the number of open issues that drops down every problem,
+ * grouped (lib/attention.ts, the same list as the phone). Each row says
+ * exactly what is wrong and opens the spot that fixes it; the footer leads to
+ * every other date in "תוקפים". Hidden when nothing is wrong.
  */
 export function AttentionMenu({
-  vehicles,
-  compliance,
-  vehicleDrivers,
-  loading,
-  onOpenVehicle,
+  groups,
+  onOpen,
+  onAllValidity,
 }: {
-  vehicles: Vehicle[];
-  compliance: Map<string, ComplianceItem[]>;
-  vehicleDrivers: Map<string, VehicleDriverWithProfile[]>;
-  loading?: boolean;
-  onOpenVehicle: (vehicleId: string, target: VehicleAttentionItem['target']) => void;
+  groups: AttentionGroup[] | null;
+  onOpen: (item: AttentionItem) => void;
+  onAllValidity: () => void;
 }) {
-  const groups = useMemo(() => vehicleAttentionGroups(vehicles, compliance, vehicleDrivers), [vehicles, compliance, vehicleDrivers]);
-  const totals = vehicleAttentionTotals(groups);
+  const totals = attentionTotals(groups ?? []);
   const menu = useHeaderMenu('attention');
 
-  if (loading || totals.vehicles === 0) return null;
+  if (!groups || totals.issues === 0) return null;
 
-  const pillLabel = totals.vehicles === 1 ? t('fleet.oneVehicleNeedsAttention') : t('fleet.vehiclesNeedAttention', { vehicles: totals.vehicles });
+  const pillLabel = totals.issues === 1 ? t('attention.pillOne') : t('attention.pillCount', { count: totals.issues });
   const issuesLabel = totals.issues === 1 ? t('fleet.oneOpenIssue') : t('fleet.openIssues', { issues: totals.issues });
-  const open = (item: VehicleAttentionItem) => {
+  const open = (item: AttentionItem) => {
     menu.close();
-    onOpenVehicle(item.vehicleId, item.target);
+    onOpen(item);
   };
 
   return (
@@ -413,7 +408,7 @@ export function AttentionMenu({
                 {t('status.needsAttention')}
               </DText>
               <DText style={[headerMenuStyles.hint, TABULAR]}>
-                {totals.issues > totals.vehicles ? t('fleet.issuesInVehicles', { issuesLabel, vehicles: totals.vehicles }) : issuesLabel} {t('fleet.clickOpensFix')}
+                {issuesLabel} {t('fleet.clickOpensFix')}
               </DText>
             </View>
           </View>
@@ -422,6 +417,16 @@ export function AttentionMenu({
               <AttentionGroupSection key={group.kind} group={group} first={index === 0} onOpen={open} />
             ))}
           </ScrollView>
+          <HoverPressable
+            style={styles.allValidity}
+            hoverStyle={headerMenuStyles.rowHover}
+            onPress={() => { menu.close(); onAllValidity(); }}
+            accessibilityRole="button"
+          >
+            <Ionicons name="hourglass-outline" size={15} color={DESKTOP_COLORS.brand} />
+            <DText weight="semiBold" style={styles.issueActionText}>{t('attention.allValidity')}</DText>
+            <Ionicons name={dirIcon('chevron-back')} size={13} color={DESKTOP_COLORS.brand} />
+          </HoverPressable>
         </View>
       )}
     </View>
@@ -434,9 +439,9 @@ function AttentionGroupSection({
   first,
   onOpen,
 }: {
-  group: VehicleAttentionGroup;
+  group: AttentionGroup;
   first: boolean;
-  onOpen: (item: VehicleAttentionItem) => void;
+  onOpen: (item: AttentionItem) => void;
 }) {
   const tone = DESKTOP_TONES[group.tone];
   return (
@@ -457,22 +462,24 @@ function AttentionGroupSection({
       <View style={styles.issueList}>
         {group.items.map((item) => (
           <HoverPressable
-            key={item.vehicleId}
+            key={`${item.ownerType}|${item.ownerId}`}
             style={styles.issue}
             hoverStyle={headerMenuStyles.rowHover}
             pressMotionStyle={styles.rowPress}
             onPress={() => onOpen(item)}
             accessibilityRole="button"
-            accessibilityLabel={`${item.plate}, ${item.name}: ${item.detail}. ${group.action}`}
+            accessibilityLabel={`${item.title}${item.name ? `, ${item.name}` : ''}: ${item.detail}. ${group.action}`}
           >
-            <View style={styles.plate}>
-              <DLtrText weight="semiBold" style={[styles.plateText, TABULAR]}>
-                {item.plate}
-              </DLtrText>
-            </View>
+            {item.ownerType === 'vehicle' && (
+              <View style={styles.plate}>
+                <DLtrText weight="semiBold" style={[styles.plateText, TABULAR]}>
+                  {item.title}
+                </DLtrText>
+              </View>
+            )}
             <View style={styles.issueText}>
               <DText weight="semiBold" style={styles.issueName} numberOfLines={1}>
-                {item.name}
+                {item.ownerType === 'vehicle' ? item.name : item.title}
               </DText>
               <DText style={[styles.issueDetail, TABULAR, { color: tone.fg }]} numberOfLines={1}>
                 {item.detail}
@@ -492,9 +499,11 @@ function AttentionGroupSection({
 }
 
 // אייקון לכל קבוצה
-const GROUP_ICON: Record<VehicleAttentionGroup['kind'], IconName> = {
+const GROUP_ICON: Record<AttentionGroup['kind'], IconName> = {
   insurance: 'shield-outline',
   registration: 'document-text-outline',
+  license: 'id-card-outline',
+  licenseDocs: 'camera-outline',
   unassigned: 'person-add-outline',
 };
 
@@ -720,6 +729,7 @@ const styles = StyleSheet.create({
   menuChevron: { ...webOnly({ transition: `transform 200ms ${EASE_OUT}` }) },
   menuChevronOpen: { transform: [{ rotate: '180deg' }] },
   menuBody: { paddingVertical: 4 },
+  allValidity: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   attentionPillText: { fontSize: 14, color: DESKTOP_TONES.bad.fg },
   chipPress: { transform: [{ scale: 0.95 }] },
 });

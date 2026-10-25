@@ -58,6 +58,7 @@ export default function ReportsScreen({ navigation }: Props) {
             onSelectFormCategory={(value) => void exportForm(value as FormReportCategory)}
             onGoToForms={() => navigation.navigate('SignedDocuments', undefined)}
             onSelectInspectionCategory={(value) => void exportInspections(value as InspectionReportCategory)}
+            onGoToValidity={() => navigation.navigate('Notifications', { section: 'validity' })}
           />
         )}
       </DesktopShell>
@@ -147,7 +148,7 @@ export default function ReportsScreen({ navigation }: Props) {
                   key={category.value}
                   first={index === 0}
                   icon={category.icon as React.ComponentProps<typeof Ionicons>['name']}
-                  tint={category.value === 'expired' || category.value === 'issues' || category.value === 'due' || category.value === 'unfinished' || category.value === 'insp_due' || category.value === 'insp_defects' ? STATUS.expired.fg : DK.accent}
+                  tint={category.value === 'issues' || category.value === 'due' || category.value === 'unfinished' || category.value === 'insp_due' || category.value === 'insp_defects' ? STATUS.expired.fg : DK.accent}
                   title={category.label}
                   subtitle={busy ? t('reports.preparingFile') : 'count' in category ? [category.count === null ? t('common.loading') : t('reports.rowsInReport', { count: category.count }), category.hint].filter(Boolean).join(' · ') : t('reports.exportExcel')}
                   trailing={
@@ -164,6 +165,11 @@ export default function ReportsScreen({ navigation }: Props) {
               );
             })}
           </Surface>
+          {(mode === 'drivers' || mode === 'vehicles') && (
+            <Surface style={s.validity}>
+              <ListRow first icon="hourglass" title={t('reports.validityTitle')} subtitle={t('reports.validityHint')} onPress={() => navigation.navigate('Notifications', { section: 'validity' })} />
+            </Surface>
+          )}
           <DKText variant="caption" color={DK.muted} style={s.note}>
             {t('reports.includesLatest')}
           </DKText>
@@ -174,6 +180,7 @@ export default function ReportsScreen({ navigation }: Props) {
 }
 // עיצוב המסך
 const s = StyleSheet.create({
+  validity: { marginTop: 14 },
   segment: { marginTop: 18 },
   download: { width: 36, height: 36, borderRadius: 12, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
   note: { textAlign: 'center', marginTop: 12 },

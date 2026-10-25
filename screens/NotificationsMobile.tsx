@@ -1,11 +1,13 @@
 // ההתראות בטלפון
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DK, DK_SPACE, DKText, DriverPage, HeroTitle, ListRow, Pressy, Reveal, STATUS, Surface } from '../components/driverKit';
 import { ErrorState, LoadingState } from '../components/ui';
 import type { Notification } from '../lib/adminApi';
 import { t, dirIcon } from '../lib/i18n';
+import { ValidityPanel } from '../components/desktop/ValidityPanel';
+import type { ValidityRow } from '../lib/validityList';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -21,6 +23,9 @@ type Props = {
   onOpen: (n: Notification) => void;
   onMarkAllRead: () => void;
   onSettings: () => void;
+  /** Managers get a second tab: every dated folder that has run out or is about to. */
+  onOpenValidity?: (row: ValidityRow) => void;
+  initialTab?: 'feed' | 'validity';
   onBack: () => void;
   onRetry: () => void;
   /** What will show up here, in the reader's terms. */
@@ -67,6 +72,7 @@ function dayGroup(iso: string): string {
  * ones carry a blue edge and a dot, and say in words what tapping does.
  */
 export function NotificationsMobile(p: Props) {
+  const [tab, setTab] = useState<'feed' | 'validity'>(p.initialTab ?? 'feed');
   const unread = p.items.filter((n) => p.unreadIds.has(n.id)).length;
   const groups: { title: string; rows: Notification[] }[] = [];
   for (const n of p.items) {
@@ -90,7 +96,25 @@ export function NotificationsMobile(p: Props) {
         />
       }
     >
-      {p.loading ? (
+      {!!p.onOpenValidity && (
+        <View style={styles.tabs} accessibilityRole="tablist">
+          {(['feed', 'validity'] as const).map((key) => (
+            <Pressy
+              key={key}
+              onPress={() => setTab(key)}
+              style={[styles.tab, tab === key && styles.tabActive]}
+              pressScale={0.97}
+            >
+              <DKText variant="label" color={tab === key ? '#FFFFFF' : DK.ink}>
+                {key === 'feed' ? t('notifications.updates') : t('validity.title')}
+              </DKText>
+            </Pressy>
+          ))}
+        </View>
+      )}
+      {tab === 'validity' && p.onOpenValidity ? (
+        <ValidityPanel onOpen={p.onOpenValidity} compact />
+      ) : p.loading ? (
         <Surface>
           <LoadingState />
         </Surface>
@@ -186,6 +210,9 @@ export function NotificationsMobile(p: Props) {
 // עיצוב המסך
 const styles = StyleSheet.create({
   center: { textAlign: 'center' },
+  tabs: { flexDirection: 'row-reverse', gap: 6, padding: 4, borderRadius: 14, backgroundColor: DK.accentSoft, marginBottom: 14 },
+  tab: { flex: 1, minHeight: 40, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  tabActive: { backgroundColor: DK.accent },
   markAll: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, minHeight: 36, paddingHorizontal: 12, borderRadius: 999, backgroundColor: DK.accentSoft },
   groupHead: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: DK_SPACE.md, paddingTop: 6 },
   gapTop: { marginTop: 18 },

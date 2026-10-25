@@ -12,4 +12,3 @@ export * from './adminApi/drivers';
 export * from './adminApi/notifications';
 export * from './adminApi/compliance';
 export * from './adminApi/departments';
-export * from './adminApi/attention';

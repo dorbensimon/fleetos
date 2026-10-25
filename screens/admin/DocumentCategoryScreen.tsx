@@ -14,7 +14,7 @@ import { DocumentFileRow } from '../../components/documents/DocumentFileRow';
 import { Procedure6FormModal } from '../../components/documents/Procedure6FormModal';
 import { useCompany } from '../../lib/CompanyContext';
 import { DocumentRow, getVehicle, type Vehicle } from '../../lib/adminApi';
-import { vehicleName } from '../../lib/vehicleAttention';
+import { vehicleName } from '../../lib/attention';
 import { formatPlate } from '../../lib/plate';
 import { listDocuments, readPickedFileBase64, storedFolderTitle, uploadDocument, type PickedFile } from '../../lib/documents';
 import { createProcedure6Report, Procedure6FormValues } from '../../lib/procedure6Report';

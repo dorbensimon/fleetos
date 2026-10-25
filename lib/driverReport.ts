@@ -1,36 +1,29 @@
 // דוח נהגים להורדה (PDF)
 import { Company } from './supabase';
 import { DriverRow } from './adminApi';
-import { daysUntilExpiry, expiryState } from './theme';
+import { daysUntilExpiry } from './theme';
 import { formatPlate } from './plate';
 import { formatPhone } from './phone';
 import { buildTableReport, expiryCell, printOrShareReport, ReportCell } from './reportTemplate';
 
-export type ReportCategory = 'all' | 'soon' | 'expired' | 'no_vehicle';
+// Licence expiry lists live in "תוקפים" (lib/validityList.ts), with an Excel export.
+export type ReportCategory = 'all' | 'no_vehicle';
 
 // סוגי הדוח לבחירה
 export const REPORT_CATEGORIES: { value: ReportCategory; label: string; icon: string }[] = [
   { value: 'all', label: 'כל הנהגים', icon: 'people-outline' },
-  { value: 'soon', label: 'רישיון קרוב לפוג', icon: 'hourglass-outline' },
-  { value: 'expired', label: 'רישיון פג / חסר', icon: 'warning' },
   { value: 'no_vehicle', label: 'ללא רכב משויך', icon: 'ban-outline' },
 ];
 
 // כותרת לכל סוג דוח
 const CATEGORY_TITLES: Record<ReportCategory, string> = {
   all: 'דוח כלל הנהגים',
-  soon: 'דוח נהגים עם רישיון קרוב לפוג',
-  expired: 'דוח נהגים ללא רישיון בתוקף',
   no_vehicle: 'דוח נהגים ללא רכב משויך',
 };
 
 // מסנן את הנהגים לפי סוג הדוח
 function filterDrivers(drivers: DriverRow[], category: ReportCategory): DriverRow[] {
   switch (category) {
-    case 'soon':
-      return drivers.filter((d) => expiryState(d.license_expiry) === 'soon');
-    case 'expired':
-      return drivers.filter((d) => ['expired', 'missing'].includes(expiryState(d.license_expiry)));
     case 'no_vehicle':
       return drivers.filter((d) => !d.vehicle_plate);
     default:
@@ -54,29 +47,6 @@ function buildHtml(company: Company, drivers: DriverRow[], category: ReportCateg
   const common = { company: { name: company.name, businessId: company.business_id }, title: CATEGORY_TITLES[category], unit: UNIT };
 
   switch (category) {
-    case 'soon':
-      return buildTableReport({
-        ...common,
-        columns: [{ label: 'שם מלא', width: 22 }, { label: 'טלפון', width: 18 }, { label: 'דרגת רישיון', width: 14 }, { label: 'רכב משויך', width: 18 }, { label: 'תוקף רישיון', width: 28 }],
-        sections: [{ title: '', rows: drivers.map((d) => [name(d), phone(d), classes(d), vehicle(d), expiry(d)]) }],
-        grandTitle: 'סה״כ נהגים עם רישיון קרוב לפוג',
-        note: 'הדוח כולל נהגים שהרישיון שלהם יפוג בתוך 30 הימים הקרובים.',
-        emptyText: 'אין נהגים עם רישיון קרוב לפוג',
-      });
-    case 'expired': {
-      const row = (d: DriverRow) => [name(d), phone(d), classes(d), vehicle(d), expiry(d)];
-      return buildTableReport({
-        ...common,
-        columns: [{ label: 'שם מלא', width: 22 }, { label: 'טלפון', width: 18 }, { label: 'דרגת רישיון', width: 14 }, { label: 'רכב משויך', width: 18 }, { label: 'תוקף רישיון', width: 28 }],
-        sections: [
-          { title: 'סה״כ רישיון פג תוקף', rows: drivers.filter((d) => expiryState(d.license_expiry) === 'expired').map(row) },
-          { title: 'סה״כ ללא תאריך רישיון', rows: drivers.filter((d) => expiryState(d.license_expiry) === 'missing').map(row) },
-        ],
-        grandTitle: 'סה״כ נהגים ללא רישיון בתוקף',
-        note: 'הדוח כולל נהגים שהרישיון שלהם פג או שלא הוזן להם תוקף רישיון.',
-        emptyText: 'לכל הנהגים יש רישיון בתוקף',
-      });
-    }
     case 'no_vehicle':
       return buildTableReport({
         ...common,

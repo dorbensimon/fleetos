@@ -15,15 +15,13 @@ import {
 import { TONE_BAD, TONE_NEUTRAL, TONE_OK, TONE_WARN, SERVICE_WARN_KM, remainingTone } from './fleetCardHelpers';
 import { buildTableReport, expiryCell, printOrShareReport, ReportCell } from './reportTemplate';
 
-export type VehicleReportCategory = 'all' | 'insurance' | 'comprehensive' | 'test' | 'service' | 'issues';
+// Expiry-only lists (insurance, test...) live in "תוקפים" (lib/validityList.ts), with an Excel export.
+export type VehicleReportCategory = 'all' | 'service' | 'issues';
 
 // סוגי הדוח לבחירה
 export const VEHICLE_REPORT_CATEGORIES: { value: VehicleReportCategory; label: string; icon: string }[] = [
   { value: 'all', label: 'כל הרכבים', icon: 'car-outline' },
   { value: 'issues', label: 'רכבים עם חריגה', icon: 'warning' },
-  { value: 'insurance', label: 'ביטוח חובה פג / חסר', icon: 'shield-checkmark-outline' },
-  { value: 'comprehensive', label: 'ביטוח מקיף פג / חסר', icon: 'shield-outline' },
-  { value: 'test', label: 'טסט פג / חסר', icon: 'construct-outline' },
   { value: 'service', label: 'טיפול קרוב / באיחור', icon: 'build-outline' },
 ];
 
@@ -31,9 +29,6 @@ export const VEHICLE_REPORT_CATEGORIES: { value: VehicleReportCategory; label: s
 const CATEGORY_TITLES: Record<VehicleReportCategory, string> = {
   all: 'דוח כלל הרכבים',
   issues: 'דוח רכבים עם חריגה',
-  insurance: 'דוח רכבים ללא ביטוח חובה בתוקף',
-  comprehensive: 'דוח רכבים ללא ביטוח מקיף בתוקף',
-  test: 'דוח רכבים ללא טסט בתוקף',
   service: 'דוח טיפולים',
 };
 
@@ -42,8 +37,6 @@ interface VehicleSummary {
   insurance: string | null;
   insDays: number | null;
   insTone: string;
-  comprehensive: string | null;
-  compDays: number | null;
   test: string | null;
   testDays: number | null;
   testTone: string;
@@ -61,13 +54,11 @@ function summarize(
 ): VehicleSummary {
   const items = compliance.get(vehicle.id) ?? [];
   const insuranceItem = items.find((c) => c.item_type === 'insurance_mandatory') ?? null;
-  const comprehensiveItem = items.find((c) => c.item_type === 'insurance_comprehensive') ?? null;
   const testItem = items.find((c) => c.item_type === 'annual_test') ?? null;
   const testDef = findComplianceDef('vehicle', 'annual_test');
 
   const insurance = insuranceItem?.expiry_date ?? null;
   const insDays = daysUntilExpiry(insurance);
-  const comprehensive = comprehensiveItem?.expiry_date ?? null;
   const rawTestDays = testDef ? complianceRemainingDays(testDef, testItem) : daysUntilExpiry(testItem?.expiry_date ?? null);
   const testDays = rawTestDays === Number.POSITIVE_INFINITY ? null : rawTestDays;
   const nextServiceKm = nextServiceKmOf(vehicle);
@@ -81,8 +72,6 @@ function summarize(
     insurance,
     insDays,
     insTone: remainingTone(insDays, 30),
-    comprehensive,
-    compDays: daysUntilExpiry(comprehensive),
     test: testDef ? complianceTargetDate(testDef, testItem) : testItem?.expiry_date ?? null,
     testDays,
     testTone: remainingTone(testDays, 30),
@@ -92,9 +81,6 @@ function summarize(
     driverName,
   };
 }
-
-// פג או חסר: מה שצריך טיפול עכשיו
-const expiredOrMissing = (days: number | null) => days == null || days < 0;
 
 // שמות הסטטוסים בדוח כלל הרכבים, לפי הסדר
 const STATUS_SECTIONS: [Vehicle['status'], string][] = [
@@ -131,42 +117,10 @@ function buildHtml(
       ? { text, tone: 'bad', sub: `באיחור של ${km(-s.kmToService)} ק״מ` }
       : { text, sub: `בעוד ${km(s.kmToService)} ק״מ` };
   };
-  // Two sections for the expiry reports: expired, then never entered.
-  const expirySections = (days: (s: VehicleSummary) => number | null, date: (s: VehicleSummary) => string | null, expired: string, missing: string) => [
-    { title: expired, rows: summaries.filter((s) => date(s) && (days(s) ?? 0) < 0).map((s) => [...base(s), expiryCell(date(s), days(s))]) },
-    { title: missing, rows: summaries.filter((s) => !date(s) || days(s) == null).map((s) => [...base(s), expiryCell(null, null)]) },
-  ];
 
   const common = { company: { name: company.name, businessId: company.business_id }, title: CATEGORY_TITLES[category], unit: UNIT };
 
   switch (category) {
-    case 'insurance':
-      return buildTableReport({
-        ...common,
-        columns: [PLATE, MODEL, TYPE, DEPT, DRIVER, { label: 'תוקף ביטוח חובה', width: 21 }],
-        sections: expirySections((s) => s.insDays, (s) => s.insurance, 'סה״כ ביטוח חובה פג תוקף', 'סה״כ ללא ביטוח חובה'),
-        grandTitle: 'סה״כ רכבים ללא ביטוח חובה בתוקף',
-        note: 'הדוח כולל רק רכבים שביטוח החובה שלהם פג או שלא הועלה להם ביטוח חובה.',
-        emptyText: 'לכל הרכבים יש ביטוח חובה בתוקף',
-      });
-    case 'comprehensive':
-      return buildTableReport({
-        ...common,
-        columns: [PLATE, MODEL, TYPE, DEPT, DRIVER, { label: 'תוקף ביטוח מקיף', width: 21 }],
-        sections: expirySections((s) => s.compDays, (s) => s.comprehensive, 'סה״כ ביטוח מקיף פג תוקף', 'סה״כ ללא ביטוח מקיף'),
-        grandTitle: 'סה״כ רכבים ללא ביטוח מקיף בתוקף',
-        note: 'הדוח כולל רק רכבים שביטוח המקיף שלהם פג או שלא הועלה להם ביטוח מקיף.',
-        emptyText: 'לכל הרכבים יש ביטוח מקיף בתוקף',
-      });
-    case 'test':
-      return buildTableReport({
-        ...common,
-        columns: [PLATE, MODEL, TYPE, DEPT, DRIVER, { label: 'תוקף טסט', width: 21 }],
-        sections: expirySections((s) => s.testDays, (s) => s.test, 'סה״כ טסט פג תוקף', 'סה״כ ללא תאריך טסט'),
-        grandTitle: 'סה״כ רכבים ללא טסט בתוקף',
-        note: 'הדוח כולל רק רכבים שהטסט שלהם פג או שלא הוזן להם תאריך טסט.',
-        emptyText: 'לכל הרכבים יש טסט בתוקף',
-      });
     case 'service':
       return buildTableReport({
         ...common,
@@ -217,13 +171,6 @@ function buildHtml(
 // מסנן רכבים לפי סוג הדוח
 function filterVehicles(summaries: VehicleSummary[], category: VehicleReportCategory): VehicleSummary[] {
   switch (category) {
-    // Only what needs action now: expired, or no date entered at all.
-    case 'insurance':
-      return summaries.filter((s) => expiredOrMissing(s.insDays));
-    case 'comprehensive':
-      return summaries.filter((s) => expiredOrMissing(s.compDays));
-    case 'test':
-      return summaries.filter((s) => expiredOrMissing(s.testDays));
     case 'service':
       return summaries.filter((s) => s.svcTone !== TONE_OK);
     case 'issues':

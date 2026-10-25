@@ -1,31 +1,33 @@
 // 'דורש טיפול' של המנהל
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ErrorState } from '../../components/ui';
-import { getAttentionDetails, summarizeAttention, type AttentionDetails } from '../../lib/adminApi';
+import { attentionRoute, type AttentionGroup } from '../../lib/attention';
+import { loadAttention } from '../../lib/adminApi/attention';
 import { useCompany } from '../../lib/CompanyContext';
 import { RootStackParamList } from '../../navigation/types';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
-import { DesktopShell } from '../../components/desktop/DesktopShell';
-import { AttentionDesktopView } from '../../components/desktop/AttentionDesktopView';
 import { AttentionMobile } from './mobile/AttentionMobile';
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Attention'>;
 
-// טוען ומציג מחשב או טלפון
+// טוען ומציג (בטלפון; במחשב הרשימה בתפריט שבראש הדשבורד)
 export default function AttentionScreen({ navigation }: Props) {
   const { companyId } = useCompany();
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
-  const [details, setDetails] = useState<AttentionDetails | null>(null);
+  const [groups, setGroups] = useState<AttentionGroup[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Desktop shows the same list in the dashboard's top-bar menu.
+  useEffect(() => {
+    if (isDesktop) navigation.replace('AdminHome');
+  }, [isDesktop, navigation]);
 
   const load = useCallback(async () => {
     if (!companyId) {
@@ -35,7 +37,7 @@ export default function AttentionScreen({ navigation }: Props) {
     }
     setError(null);
     try {
-      setDetails(await getAttentionDetails(companyId));
+      setGroups(await loadAttention(companyId));
     } catch (e: any) {
       setError(errorMessage(e, t('attention.loadFailed')));
     } finally {
@@ -46,25 +48,11 @@ export default function AttentionScreen({ navigation }: Props) {
   // Coming back from a fixed driver or vehicle shows the list without it.
   useFocusEffect(
     useCallback(() => {
-      void load();
-    }, [load])
+      if (!isDesktop) void load();
+    }, [load, isDesktop])
   );
 
-  if (isDesktop) {
-    const data = details ? summarizeAttention(details) : { license: 0, insurance: 0, unassignedVehicles: 0, missingLicenseDocuments: 0 };
-    const total = Object.values(data).reduce((a, b) => a + b, 0);
-    const rows = [
-      { count: data.license, icon: 'card-outline' as React.ComponentProps<typeof Ionicons>['name'], title: t('attention.licensesNeedAttention'), detail: t('attention.licensesExpiring30') },
-      { count: data.insurance, icon: 'shield-outline' as const, title: t('attention.vehiclesNoInsurance'), detail: t('attention.insuranceMissingExpired') },
-      { count: data.unassignedVehicles, icon: 'car-outline' as const, title: t('attention.vehiclesNoDriver'), detail: t('attention.noActiveAssignment') },
-      { count: data.missingLicenseDocuments, icon: 'document-outline' as const, title: t('attention.driversUnverified'), detail: t('attention.licensePhotoMissing') },
-    ].filter((x) => x.count > 0);
-    return (
-      <DesktopShell active="Attention" breadcrumbs={[t('nav.management'), t('status.needsAttention')]}>
-        {loading ? null : error ? <ErrorState message={error} onRetry={load} /> : <AttentionDesktopView rows={rows} total={total} />}
-      </DesktopShell>
-    );
-  }
+  if (isDesktop) return null;
 
   return (
     <AttentionMobile
@@ -73,7 +61,7 @@ export default function AttentionScreen({ navigation }: Props) {
       loading={loading}
       refreshing={refreshing}
       error={error}
-      details={details}
+      groups={groups}
       onBack={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('AdminHome'))}
       onRetry={() => {
         setLoading(true);
@@ -86,10 +74,11 @@ export default function AttentionScreen({ navigation }: Props) {
       }}
       onHome={() => navigation.navigate('AdminHome')}
       // Each task opens on the exact field or folder it is about, lit up.
-      onOpenLicense={(driverId) => navigation.navigate('DriverDetail', { driverId, focus: 'license_expiry' })}
-      onOpenInsurance={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, openFolder: 'insurance_mandatory', focus: 'insurance_mandatory' })}
-      onAssignDriver={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, openDrivers: true, focus: 'drivers' })}
-      onOpenLicenseDocs={(driverId) => navigation.navigate('DriverLicenseDocuments', { driverId })}
+      onOpen={(item) => {
+        const route = attentionRoute(item);
+        navigation.navigate(route.screen as any, route.params as any);
+      }}
+      onAllValidity={() => navigation.navigate('Notifications', { section: 'validity' })}
     />
   );
 }

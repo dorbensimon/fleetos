@@ -2,10 +2,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { DK, DKText, DriverPage, EmptyPanel, ErrorPanel, HeroTitle, ListRow, LoadingPanel, Pressy, Reveal, STATUS, Surface, relativeDays, type Status } from '../../../components/driverKit';
-import type { AttentionDetails } from '../../../lib/adminApi';
-import { formatDate, expiryState } from '../../../lib/theme';
-import { formatPlate } from '../../../lib/plate';
+import { DK, DKText, DriverPage, EmptyPanel, ErrorPanel, HeroTitle, ListRow, LoadingPanel, Pressy, Reveal, STATUS, Surface, type Status } from '../../../components/driverKit';
+import type { AttentionGroup, AttentionItem, AttentionKind } from '../../../lib/attention';
 import { t } from '../../../lib/i18n';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -16,15 +14,13 @@ type Props = {
   loading: boolean;
   refreshing: boolean;
   error: string | null;
-  details: AttentionDetails | null;
+  groups: AttentionGroup[] | null;
   onBack: () => void;
   onRetry: () => void;
   onRefresh: () => void;
   onHome: () => void;
-  onOpenLicense: (driverId: string) => void;
-  onOpenInsurance: (vehicleId: string) => void;
-  onAssignDriver: (vehicleId: string) => void;
-  onOpenLicenseDocs: (driverId: string) => void;
+  onOpen: (item: AttentionItem) => void;
+  onAllValidity: () => void;
 };
 
 type Row = { key: string; title: string; detail: string; status: Status; onPress: () => void };
@@ -33,77 +29,37 @@ type Group = { key: string; icon: IconName; title: string; hint: string; status:
 // כמה פריטים מוצגים לפני 'עוד'
 const PREVIEW = 4;
 
+// אייקון לכל קבוצה
+const ICON: Record<AttentionKind, IconName> = {
+  insurance: 'shield',
+  registration: 'document-text',
+  license: 'id-card',
+  licenseDocs: 'camera',
+  unassigned: 'car-sport',
+};
+
 // הקבוצות לפי דחיפות
 /**
- * What in the fleet is waiting on the manager, most urgent first. Every
- * group names the drivers or vehicles behind its count, and each one opens
- * straight to where it's fixed.
+ * What in the fleet is waiting on the manager, most urgent first — the same
+ * list as the desktop top-bar menu (lib/attention.ts). Every group names the
+ * drivers or vehicles behind its count, and each one opens straight to where
+ * it's fixed. Every other date is one tap away in "תוקפים".
  */
 export function AttentionMobile(p: Props) {
-  const d = p.details;
-  const groups: Group[] = d
-    ? [
-        {
-          key: 'license',
-          icon: 'id-card',
-          title: t('attention.drivingLicenses'),
-          hint: t('attention.expiredOrWithin30'),
-          status: d.licenseDrivers.some((x) => expiryState(x.license_expiry) === 'expired') ? 'expired' : 'soon',
-          rows: d.licenseDrivers.map((x) => {
-            const expired = expiryState(x.license_expiry) === 'expired';
-            return {
-              key: x.id,
-              title: x.full_name ?? t('common.unnamed'),
-              detail: `${expired ? t('status.expired') : t('attention.willExpire')} ${formatDate(x.license_expiry)} · ${relativeDays(x.license_expiry) ?? ''}`,
-              status: expired ? 'expired' : 'soon',
-              onPress: () => p.onOpenLicense(x.id),
-            };
-          }),
-        },
-        {
-          key: 'insurance',
-          icon: 'shield',
-          title: t('folder.mandatoryInsurance'),
-          hint: t('attention.missingInsuranceHint'),
-          status: 'expired',
-          rows: d.insuranceVehicles.map(({ vehicle, expiry }) => ({
-            key: vehicle.id,
-            title: `${formatPlate(vehicle.plate_number)}${vehicle.manufacturer || vehicle.model ? ` · ${[vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ')}` : ''}`,
-            detail: expiry ? t('attention.expiredWhenDetail', { expiry: formatDate(expiry), v1: relativeDays(expiry) ?? '' }) : t('attention.noInsuranceEntered'),
-            status: 'expired',
-            onPress: () => p.onOpenInsurance(vehicle.id),
-          })),
-        },
-        {
-          key: 'unassigned',
-          icon: 'car-sport',
-          title: t('attention.vehiclesWithoutDriver'),
-          hint: t('attention.noActiveAssignmentHint'),
-          status: 'soon',
-          rows: d.unassignedVehicles.map((vehicle) => ({
-            key: vehicle.id,
-            title: formatPlate(vehicle.plate_number),
-            detail: [vehicle.manufacturer, vehicle.model].filter(Boolean).join(' ') || t('vehicle.noModelShort'),
-            status: 'soon',
-            onPress: () => p.onAssignDriver(vehicle.id),
-          })),
-        },
-        {
-          key: 'docs',
-          icon: 'document-text',
-          title: t('attention.unverifiedLicenses'),
-          hint: t('attention.missingLicensePhoto'),
-          status: 'missing',
-          rows: d.missingLicenseDocuments.map(({ driver, missing }) => ({
-            key: driver.id,
-            title: driver.full_name ?? t('common.unnamed'),
-            detail: t('attention.missingV1', { v1: missing.join(', ') }),
-            status: 'missing',
-            onPress: () => p.onOpenLicenseDocs(driver.id),
-          })),
-        },
-      ].filter((g) => g.rows.length > 0) as Group[]
-    : [];
+  const groups: Group[] = (p.groups ?? []).map((g) => ({
+    key: g.kind,
+    icon: ICON[g.kind],
+    title: g.title,
+    hint: g.hint,
+    status: g.tone === 'bad' ? 'expired' : 'soon',
+    rows: g.items.map((item) => ({
+      key: `${item.ownerType}|${item.ownerId}`,
+      title: item.name ? `${item.title} · ${item.name}` : item.title,
+      detail: item.detail,
+      status: item.tone === 'bad' ? 'expired' : 'soon',
+      onPress: () => p.onOpen(item),
+    })),
+  }));
   const total = groups.reduce((sum, g) => sum + g.rows.length, 0);
   const subtitle = p.loading ? t('attention.checkingFleet') : p.error ? t('attention.checkIncomplete') : total ? t('attention.itemsForYou', { total, v1: total === 1 ? t('attention.itemWaiting') : t('attention.itemsWaiting') }) : t('attention.allHandled');
 
@@ -153,6 +109,9 @@ export function AttentionMobile(p: Props) {
               <GroupCard group={g} />
             </Reveal>
           ))}
+          <Surface>
+            <ListRow first icon="hourglass" title={t('attention.allValidity')} subtitle={t('attention.allValidityHint')} onPress={p.onAllValidity} />
+          </Surface>
         </>
       )}
     </DriverPage>
