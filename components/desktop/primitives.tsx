@@ -117,6 +117,18 @@ export function StatusPill({ tone, label }: { tone: DesktopTone; label: string }
   );
 }
 
+// כותרת עמודה שלחיצה עליה ממיינת
+/** A table header that sorts: an up arrow is "closest first", a down arrow "farthest first". */
+export function SortHeader({ label, dir, onPress, textStyle }: { label: string; dir: 'asc' | 'desc' | null; onPress: () => void; textStyle?: TextProps['style'] }) {
+  const hint = dir === 'asc' ? t('common.sortSoonFirst', { label }) : dir === 'desc' ? t('common.sortFarFirst', { label }) : t('common.sortTap', { label });
+  return (
+    <HoverPressable style={styles.sortHeader} hoverStyle={styles.sortHeaderHover} onPress={onPress} accessibilityRole="button" accessibilityLabel={hint} {...webOnly({ title: hint })}>
+      <DText weight="bold" style={[textStyle, dir && { color: DESKTOP_COLORS.brand }]} numberOfLines={1}>{label}</DText>
+      <Ionicons name={dir === 'asc' ? 'arrow-up' : dir === 'desc' ? 'arrow-down' : 'swap-vertical'} size={13} color={dir ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
+    </HoverPressable>
+  );
+}
+
 // שורת שדה: כותרת ותיבה
 /** Dense label-left / control-right row used by every desktop form (driver, vehicle, settings). */
 export function DesktopFieldRow({
@@ -479,6 +491,8 @@ const styles = StyleSheet.create({
   text: { color: DESKTOP_COLORS.ink, fontSize: 13.5, textAlign: textStart(), writingDirection: textDirection() },
   ltr: { writingDirection: 'ltr' },
   pill: { alignSelf: 'flex-end', borderRadius: 5, paddingHorizontal: 8, paddingVertical: 2.5 },
+  sortHeader: { flexDirection: 'row-reverse', alignItems: 'center', alignSelf: 'flex-end', gap: 4, marginHorizontal: -6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, maxWidth: '100%', ...webOnly({ cursor: 'pointer' }) },
+  sortHeaderHover: { backgroundColor: 'rgba(15, 23, 42, 0.06)' },
   pillText: { fontSize: 11 },
 });
 

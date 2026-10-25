@@ -208,6 +208,9 @@
     "writeYourItems": "כתבו את הסעיפים שלכם. Enter מוסיף סעיף חדש."
   },
   "common": {
+    "sortSoonFirst": "{{label}}, ממוין מהפג והקרוב ביותר",
+    "sortFarFirst": "{{label}}, ממוין מהרחוק ביותר",
+    "sortTap": "מיון לפי {{label}}",
     "9digits": "9 ספרות",
     "actionFailed": "הפעולה נכשלה",
     "actionFailedRetry": "הפעולה נכשלה, נסה שוב",

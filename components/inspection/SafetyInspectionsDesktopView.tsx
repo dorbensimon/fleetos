@@ -4,7 +4,9 @@ import { PageTour, type TourStep } from '../desktop/PageTour';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DesktopModal } from '../desktop/DesktopModal';
-import { DesktopInput, DLtrText, DText, HoverPressable, StatusPill } from '../desktop/primitives';
+import { DesktopInput, DLtrText, DText, HoverPressable, SortHeader, StatusPill } from '../desktop/primitives';
+import { nextSort, sortRows, type TableSort } from '../../lib/sortRows';
+import { daysUntilExpiry } from '../../lib/theme';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, type DesktopTone } from '../desktop/desktopTheme';
 import { Fact, GroupLabel, NIGHT_TONES, pageStyles } from '../desktop/record/RecordPage';
 import { InspectionRemindersCard } from './InspectionRemindersCard';
@@ -61,6 +63,7 @@ export function SafetyInspectionsDesktopView({
   const [picking, setPicking] = useState(false);
   const [pickQuery, setPickQuery] = useState('');
   const [touring, setTouring] = useState(false);
+  const [sort, setSort] = useState<TableSort>(null);
 
   const withState = useMemo(() => (rows ?? []).map((row) => ({ row, state: listStateOf(row) as InspectionState })), [rows]);
   const drafts = useMemo(() => new Set(withState.filter((x) => x.state === 'draft').map((x) => x.row.vehicle_id)), [withState]);
@@ -72,10 +75,12 @@ export function SafetyInspectionsDesktopView({
     (f === 'cancelled' && x.state === 'cancelled');
   const count = (f: InspectionFilter) => withState.filter((x) => matches(f, x)).length;
   const q = query.trim();
-  const shown = withState
+  const filtered = withState
     .filter((x) => matches(filter, x))
     .filter((x) => !q || [x.row.vehicle?.plate_number, formatPlate(x.row.vehicle?.plate_number), x.row.vehicle?.manufacturer, x.row.vehicle?.model, x.row.driver?.full_name, x.row.officer_name]
       .some((v) => (v ?? '').includes(q)));
+  // The date header sorts: the oldest inspection (the most overdue) first, then the newest first.
+  const shown = sortRows(filtered, sort ? (x) => daysUntilExpiry(x.row.inspection_date) : undefined, sort?.dir);
 
   const due = plan.filter((p) => p.nextDue && dueState(p.nextDue) !== 'later');
   const late = due.filter((p) => dueState(p.nextDue!) === 'late').length;
@@ -174,7 +179,9 @@ export function SafetyInspectionsDesktopView({
             </View>
 
             <View style={styles.tableHead}>
-              <DText weight="semiBold" style={[styles.th, styles.colDate]}>{t('inspection.colDate')}</DText>
+              <View style={styles.colDate}>
+                <SortHeader label={t('inspection.colDate')} dir={sort?.dir ?? null} onPress={() => setSort((s) => nextSort(s, 'date'))} textStyle={styles.th} />
+              </View>
               <DText weight="semiBold" style={[styles.th, styles.colVehicle]}>{t('inspection.colVehicle')}</DText>
               <DText weight="semiBold" style={[styles.th, styles.colPerson]}>{t('inspection.colDriver')}</DText>
               <DText weight="semiBold" style={[styles.th, styles.colPerson]}>{t('inspection.colOfficer')}</DText>
