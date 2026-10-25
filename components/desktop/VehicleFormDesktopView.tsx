@@ -12,7 +12,6 @@ import {
   ChoiceTiles,
   CreateDock,
   FormCell,
-  FormNote,
   FormPanel,
   FormSection,
   GhostBar,
@@ -24,6 +23,7 @@ import {
   type FormStep,
 } from './form/RecordFormKit';
 import { t, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../lib/i18n';
+import { REGISTRY_DETAIL_FIELDS } from '../../lib/vehicleRegistryFields';
 
 type FormVehicleType = VehicleType | '';
 
@@ -44,6 +44,8 @@ export interface FormState {
   usage_type: string;
   status: VehicleStatus;
   department_id: string | null;
+  /** Transport Ministry values without their own column (lib/vehicleRegistryFields.ts). */
+  registry_details: Record<string, string>;
 }
 
 type StepKey = 'identity' | 'details' | 'assign' | 'drivers';
@@ -111,6 +113,7 @@ export function VehicleFormDesktopView({
   vehicleId,
   form,
   set,
+  setRegistry,
   errors,
   departments,
   vehicleTypeOptions,
@@ -136,6 +139,7 @@ export function VehicleFormDesktopView({
   vehicleId?: string;
   form: FormState;
   set: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+  setRegistry: (key: string, value: string) => void;
   errors: Record<string, string>;
   departments: DesktopSelectOption<string>[];
   vehicleTypeOptions: { value: VehicleType; label: string; description: string }[];
@@ -170,7 +174,8 @@ export function VehicleFormDesktopView({
     { key: 'identity', label: t('vehicle.identification'), total: 2, filled: Number(hasPlate) + Number(hasType) },
     { key: 'details', label: t('vehicle.details'), total: 0, filled: 0 },
     { key: 'assign', label: t('common.status'), total: 1, filled: Number(hasStatus) },
-    { key: 'drivers', label: t('common.drivers'), total: 0, filled: 0 },
+    // A new vehicle gets its drivers after it is created; the note sits in the first panel instead.
+    ...(isEdit ? [{ key: 'drivers' as const, label: t('common.drivers'), total: 0, filled: 0 }] : []),
   ];
 
   const missing = [
@@ -269,6 +274,17 @@ export function VehicleFormDesktopView({
               hasError={!!errors.vehicle_type}
             />
           </FormCell>
+          {!isEdit && (
+            <FormCell label={t('common.drivers')}>
+              <View style={styles.driversNote}>
+                <Ionicons name="people" size={16} color={DESKTOP_COLORS.brand} />
+                <View style={styles.flex}>
+                  <DText weight="semiBold" style={styles.driversNoteTitle}>{t('vehicle.assignAfterCreate')}</DText>
+                  <DText style={styles.driversNoteText}>{t('vehicle.assignAfterCreateText')}</DText>
+                </View>
+              </View>
+            </FormCell>
+          )}
         </FormPanel>
       </FormSection>
 
@@ -361,6 +377,23 @@ export function VehicleFormDesktopView({
           <FormCell label={t('vehicle.internalCode')}>
             <DesktopInput large value={form.internal_code} onChangeText={(v) => set('internal_code', v)} placeholder={t('common.optionalShort')} ltr />
           </FormCell>
+          {/* What "מילוי אוטומטי" brought from the Transport Ministry; every value stays editable. */}
+          {REGISTRY_DETAIL_FIELDS.filter((f) => f.key in form.registry_details).map((f) => (
+            <FormCell key={f.key} label={f.label}>
+              {f.kind === 'date' ? (
+                <DesktopDateField large value={form.registry_details[f.key] || null} onChange={(iso) => setRegistry(f.key, iso ?? '')} placeholder={t('date.chooseDateAction')} />
+              ) : (
+                <DesktopInput
+                  large
+                  value={form.registry_details[f.key]}
+                  onChangeText={(v) => setRegistry(f.key, f.kind === 'number' ? v.replace(/\D/g, '') : v)}
+                  placeholder={t('common.optionalShort')}
+                  keyboardType={f.kind === 'number' ? 'number-pad' : undefined}
+                  ltr={f.ltr || f.kind === 'number'}
+                />
+              )}
+            </FormCell>
+          ))}
         </FormPanel>
       </FormSection>
 
@@ -401,14 +434,14 @@ export function VehicleFormDesktopView({
         </FormPanel>
       </FormSection>
 
-      <FormSection
-        index={3}
-        title={t('common.drivers')}
-        hint={t('vehicle.whoDrives')}
-        done={isEdit && vehicleDrivers.length > 0}
-        onLayout={track('drivers')}
-      >
-        {isEdit && vehicleId ? (
+      {isEdit && vehicleId && (
+        <FormSection
+          index={3}
+          title={t('common.drivers')}
+          hint={t('vehicle.whoDrives')}
+          done={vehicleDrivers.length > 0}
+          onLayout={track('drivers')}
+        >
           <View style={styles.driversPanel}>
             <VehicleDriversEditor
               vehicleId={vehicleId}
@@ -418,14 +451,8 @@ export function VehicleFormDesktopView({
               desktop
             />
           </View>
-        ) : (
-          <FormNote
-            icon="people"
-            title={t('vehicle.assignAfterCreate')}
-            text={t('vehicle.assignAfterCreateText')}
-          />
-        )}
-      </FormSection>
+        </FormSection>
+      )}
     </RecordFormPage>
   );
 }
@@ -591,6 +618,18 @@ const styles = StyleSheet.create({
   },
   lookupMessageText: { fontSize: 13, color: DESKTOP_COLORS.ink },
 
+  driversNote: {
+    minHeight: 44,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: DESKTOP_COLORS.brandFocusRing,
+  },
+  driversNoteTitle: { fontSize: 13, lineHeight: 17, color: DESKTOP_COLORS.ink },
+  driversNoteText: { fontSize: 12, lineHeight: 16, color: DESKTOP_COLORS.inkMuted },
   driversPanel: {
     backgroundColor: DESKTOP_COLORS.surface,
     borderRadius: 14,

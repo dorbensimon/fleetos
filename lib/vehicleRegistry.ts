@@ -13,6 +13,10 @@ export type VehicleRegistryDetails = {
   licenseExpiry: string | null;
   /** The app's vehicle type when the registry says it clearly (missing from older server versions). */
   vehicleType?: VehicleType | null;
+  vin?: string | null;
+  roadRegistrationDate?: string | null;
+  /** Everything else the registry has, by REGISTRY_DETAIL_FIELDS keys. */
+  details?: Record<string, string>;
 };
 
 type VehicleRegistryResponse =

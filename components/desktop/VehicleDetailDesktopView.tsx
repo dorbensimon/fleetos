@@ -28,6 +28,10 @@ import { formatPlate } from '../../lib/plate';
 import { deriveNextServiceKm, nextServiceKmOf } from '../../lib/serviceSchedule';
 import { vehicleFolderByKey } from '../../lib/vehicleFolderAlerts';
 import { requiresTachograph } from '../../lib/tachograph';
+import { lookupVehicleRegistry } from '../../lib/vehicleRegistry';
+import { cleanRegistryDetails, REGISTRY_DETAIL_FIELDS } from '../../lib/vehicleRegistryFields';
+import { errorMessage } from '../../lib/requestError';
+import { BrandLoader } from '../ui/BrandLoader';
 import { ISRAEL_COMMON_MANUFACTURERS } from '../../lib/manufacturers';
 import {
   DesktopSelectOption,
@@ -593,6 +597,8 @@ export function VehicleDetailDesktopView({
         </View>
       </View>
 
+      <RegistryDetailsBlock vehicle={vehicle} onSaveField={onSaveField} setEditor={setEditor} />
+
       {/* Documents */}
       <View style={styles.docsHead}>
         <DText weight="bold" style={styles.docsTitle}>{t('documents.documentsAndExpiry')}</DText>
@@ -654,6 +660,107 @@ export function VehicleDetailDesktopView({
       <FieldEditDialog editor={editor} onClose={() => setEditor(null)} />
 
     </ScrollView>
+  );
+}
+
+// נתוני משרד התחבורה
+/**
+ * Everything the Transport Ministry registry added beyond the regular
+ * fields, in two columns; each value edits in place and can be cleared. The
+ * update button pulls the registry again: it replaces these values, and fills
+ * the VIN and on-road date only where they are still empty.
+ */
+function RegistryDetailsBlock({
+  vehicle,
+  onSaveField,
+  setEditor,
+}: {
+  vehicle: Vehicle;
+  onSaveField: (patch: Partial<Vehicle>) => Promise<string | null>;
+  setEditor: (editor: FieldEditor | null) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const details = cleanRegistryDetails(vehicle.registry_details);
+  const fields = REGISTRY_DETAIL_FIELDS.filter((f) => f.key in details);
+  const half = Math.ceil(fields.length / 2);
+
+  const saveValue = (key: string, value: string | null) => {
+    const next = { ...details };
+    if (value && value.trim()) next[key] = value.trim();
+    else delete next[key];
+    return onSaveField({ registry_details: next });
+  };
+
+  const refresh = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const found = await lookupVehicleRegistry(vehicle.plate_number);
+      if (!found) return setMessage(t('registry.notFound'));
+      const patch: Partial<Vehicle> = { registry_details: cleanRegistryDetails(found.details) };
+      if (!vehicle.vin && found.vin) patch.vin = found.vin;
+      if (!vehicle.road_registration_date && found.roadRegistrationDate) patch.road_registration_date = found.roadRegistrationDate;
+      const error = await onSaveField(patch);
+      setMessage(error ?? t('registry.refreshed'));
+    } catch (err: any) {
+      setMessage(errorMessage(err, t('vehicle.lookupUnavailable')));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const row = (f: (typeof fields)[number], first: boolean) =>
+    f.kind === 'date' ? (
+      <DetailRow
+        key={f.key}
+        first={first}
+        label={f.label}
+        value={formatDate(details[f.key])}
+        ltr
+        onPress={() => setEditor({ kind: 'date', label: f.label, raw: details[f.key] ?? null, onSave: (v) => saveValue(f.key, v) })}
+      />
+    ) : (
+      <DetailRow
+        key={f.key}
+        first={first}
+        label={f.label}
+        value={f.kind === 'number' ? Number(details[f.key]).toLocaleString('he-IL') : details[f.key]}
+        ltr={f.ltr || f.kind === 'number'}
+        edit={{ kind: 'text', label: f.label, raw: details[f.key] ?? '', ltr: f.ltr || f.kind === 'number', numeric: f.kind === 'number', onSave: (v) => saveValue(f.key, v) }}
+      />
+    );
+
+  return (
+    <View style={styles.registryBlock}>
+      <GroupLabel
+        action={
+          <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={() => void refresh()} disabled={busy} accessibilityLabel={t('registry.refresh')}>
+            {busy ? <BrandLoader size="small" color={DESKTOP_COLORS.brand} /> : <Ionicons name="sparkles" size={13} color={DESKTOP_COLORS.brand} />}
+            <DText weight="semiBold" style={styles.linkText}>{busy ? t('registry.refreshing') : t('registry.refresh')}</DText>
+          </HoverPressable>
+        }
+      >
+        {t('registry.title')}
+      </GroupLabel>
+      {!!message && <DText style={[styles.mutedText, styles.registryMessage]}>{message}</DText>}
+      {fields.length === 0 ? (
+        <View style={[styles.card, styles.registryEmpty]}>
+          <DText style={styles.mutedText}>{t('registry.empty')}</DText>
+        </View>
+      ) : (
+        <View style={styles.gridRow}>
+          <View style={styles.halfCell}>
+            <View style={styles.card}>{fields.slice(0, half).map((f, i) => row(f, i === 0))}</View>
+          </View>
+          {fields.length > 1 && (
+            <View style={styles.halfCell}>
+              <View style={styles.card}>{fields.slice(half).map((f, i) => row(f, i === 0))}</View>
+            </View>
+          )}
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -738,6 +845,9 @@ function AccessoriesMenu({ selected, onSave, onClose }: { selected: string[]; on
 }
 
 const styles = StyleSheet.create({
+  registryBlock: { marginBottom: 4 },
+  registryMessage: { marginBottom: 8, paddingHorizontal: 4 },
+  registryEmpty: { padding: 16 },
   ...pageStyles,
 
   plateWrap: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },

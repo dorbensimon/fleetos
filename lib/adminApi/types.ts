@@ -50,6 +50,8 @@ export interface Vehicle {
   next_service_km: number | null;
   /** Keys of VEHICLE_ACCESSORY_LABELS kept in the vehicle. */
   accessories: string[];
+  /** Transport Ministry values without their own column (lib/vehicleRegistryFields.ts). */
+  registry_details: Record<string, string>;
   notes: string | null;
   created_at: string;
   updated_at: string;

@@ -34,6 +34,7 @@ import { formatPlate } from '../../../lib/plate';
 import { formatDate } from '../../../lib/theme';
 import { nextServiceKmOf } from '../../../lib/serviceSchedule';
 import { vehicleHealth } from './FleetCards';
+import { cleanRegistryDetails, REGISTRY_DETAIL_FIELDS } from '../../../lib/vehicleRegistryFields';
 import { SAFETY_FOLDER, VehicleInspectionsFolder } from '../../../components/inspection/VehicleInspectionsCard';
 import { t, dirIcon, getLocale } from '../../../lib/i18n';
 
@@ -256,6 +257,7 @@ function renderTab(p: Props, v: Vehicle) {
       </>
     );
   }
+  const registry = cleanRegistryDetails(v.registry_details);
   return (
     <>
       {archived && (
@@ -279,6 +281,22 @@ function renderTab(p: Props, v: Vehicle) {
         <InfoLine icon="card" label={t('vehicle.dealType')} value={v.acquisition_type ? ACQUISITION_TYPE_LABELS[v.acquisition_type] ?? v.acquisition_type : null} onPress={p.onEdit} />
         <AccessoriesLine selected={v.accessories ?? []} onSave={(accessories) => p.onSaveField({ accessories })} />
       </KitSection>
+      {/* Transport Ministry values; editing (and pulling again) happens in the edit form. */}
+      {REGISTRY_DETAIL_FIELDS.some((f) => f.key in registry) && (
+        <KitSection title={t('registry.title')}>
+          {REGISTRY_DETAIL_FIELDS.filter((f) => f.key in registry).map((f, i) => (
+            <InfoLine
+              key={f.key}
+              first={i === 0}
+              icon="document-text"
+              label={f.label}
+              value={f.kind === 'date' ? formatDate(registry[f.key]) : f.kind === 'number' ? Number(registry[f.key]).toLocaleString('he-IL') : registry[f.key]}
+              ltr={f.ltr || f.kind === 'number'}
+              onPress={p.onEdit}
+            />
+          ))}
+        </KitSection>
+      )}
       <KitSection title={t('common.actions')}>
         {archived ? (
           <ActionRow icon="arrow-undo" label={t('vehicle.takeOutOfArchive')} hint={t('vehicle.returnsToActive')} onPress={p.onRestore} />
