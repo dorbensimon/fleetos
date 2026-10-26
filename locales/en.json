@@ -3772,6 +3772,22 @@
       "range": { "title": "By offense date", "body": "Show only reports whose offense happened between two dates, for example one month." },
       "list": { "title": "The reports", "body": "Each row is a report: driver, vehicle, offense type, amount and the nearest deadline. Urgent reports come first. Click a row to update it, for example once it is paid or transferred." }
     },
+    "help": {
+      "driver": "Who got the report. Once you pick the vehicle and offense date, the driver who drove it that day appears first.",
+      "typeLabel": "The kind of offense, for example speeding, parking or a red light. Shows which offenses repeat.",
+      "offenseDate": "The day of the offense, as written on the report. The system uses it to know who drove the vehicle.",
+      "payBy": "The last day to pay without a surcharge. Managers get an alert before this date.",
+      "receivedAt": "The day the report reached the company. The system fills \"Transfer by\" from it automatically (30 days later).",
+      "transferBy": "The last day to transfer the report to the driver's name. You can change the date the system filled. An alert goes out before it.",
+      "amount": "How much the report says to pay, in shekels.",
+      "statusLabel": "Where the report stands now. Only an \"Open\" report needs handling and sends alerts.",
+      "responsibilityLabel": "Who pays: the driver (the report is transferred to them) or the company. No transfer alert when the company is responsible.",
+      "vehicle": "The vehicle the offense was made in. The report also shows on the vehicle's card.",
+      "issuer": "Who issued the report, for example the Israel Police or a city.",
+      "reportNumber": "The number printed on the report. Helps find it in search and when paying.",
+      "description": "Anything else worth remembering about the report: place, time, notes.",
+      "file": "A photo or scan of the report itself, image or PDF. Required for a new report."
+    },
     "add": "Add report",
     "typeLabel": "Report type",
     "offenseDate": "Offense date",
