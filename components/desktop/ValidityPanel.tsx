@@ -82,6 +82,7 @@ export function ValidityPanel({ onOpen, compact }: { onOpen: (row: ValidityRow) 
     { key: 'expired', label: t('status.expiredLong') },
     { key: 'soon', label: t('fleet.filter.aboutToExpire') },
     { key: 'all', label: t('validity.allDated') },
+    { key: 'missing', label: t('status.missing') },
   ];
 
   return (
@@ -139,7 +140,7 @@ export function ValidityPanel({ onOpen, compact }: { onOpen: (row: ValidityRow) 
       ) : (
         <View style={styles.list}>
           {visible.map((row, index) => {
-            const tone = row.days < 0 ? DESKTOP_TONES.bad : row.days <= 30 ? DESKTOP_TONES.warn : DESKTOP_TONES.ok;
+            const tone = row.days == null ? DESKTOP_TONES.neutral : row.days < 0 ? DESKTOP_TONES.bad : row.days <= 30 ? DESKTOP_TONES.warn : DESKTOP_TONES.ok;
             return (
               <HoverPressable
                 key={row.id}

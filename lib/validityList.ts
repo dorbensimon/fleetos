@@ -24,7 +24,8 @@ import { t } from './i18n';
  */
 
 export type ValidityOwner = 'vehicle' | 'driver';
-export type ValidityState = 'expired' | 'soon' | 'all';
+/** 'all' is every dated row; 'missing' is a folder with no date at all. */
+export type ValidityState = 'expired' | 'soon' | 'all' | 'missing';
 
 export interface ValidityFolder {
   key: string;
@@ -38,8 +39,9 @@ export interface ValidityRow {
   ownerId: string;
   folderKey: string;
   folderLabel: string;
-  until: string;
-  days: number;
+  /** Null: the folder has no date yet ("חסר"). */
+  until: string | null;
+  days: number | null;
   /** Plate (vehicles) or full name (drivers). */
   name: string;
   /** Manufacturer and model, or employee number. */
@@ -148,6 +150,15 @@ export async function loadValidity(companyId: string): Promise<ValidityData> {
       department: (departmentId && deptName.get(departmentId)) || '',
     });
   };
+  const pushMissing = (ownerType: ValidityOwner, ownerId: string, folderKey: string, name: string, detail: string, departmentId: string | null) => {
+    rows.push({
+      id: `${ownerType}|${ownerId}|${folderKey}`,
+      ownerType, ownerId, folderKey,
+      folderLabel: labelOf.get(`${ownerType}|${folderKey}`) ?? folderKey,
+      until: null, days: null, name, detail,
+      department: (departmentId && deptName.get(departmentId)) || '',
+    });
+  };
 
   for (const v of vehicles) {
     const name = formatPlate(v.plate_number);
@@ -180,7 +191,25 @@ export async function loadValidity(companyId: string): Promise<ValidityData> {
     const d = driverById.get(ownerId);
     if (d) push('driver', d.id, category, until, d.full_name?.trim() || t('common.unnamed'), d.employee_number ? t('driver.employeeNo', { employee_number: d.employee_number }) : '', d.department_id);
   }
-  rows.sort((a, b) => a.until.localeCompare(b.until) || a.name.localeCompare(b.name, 'he'));
+  // Every folder left without a date is "חסר" — except the ones that don't apply to that owner.
+  const seen = new Set(rows.map((r) => r.id));
+  for (const v of vehicles) {
+    for (const f of folders) {
+      if (f.ownerType !== 'vehicle' || seen.has(`vehicle|${v.id}|${f.key}`)) continue;
+      // The safety officer's plan lists only the vehicles it covers.
+      if (f.key === SAFETY_FOLDER && !plan.some((p) => p.vehicleId === v.id)) continue;
+      pushMissing('vehicle', v.id, f.key, formatPlate(v.plate_number), [v.manufacturer, v.model].filter(Boolean).join(' '), v.department_id);
+    }
+  }
+  for (const d of activeDrivers) {
+    for (const f of folders) {
+      if (f.ownerType !== 'driver' || seen.has(`driver|${d.id}|${f.key}`)) continue;
+      if (f.key === 'hazmat_permit_expiry' && !d.hazmat_approved) continue;
+      pushMissing('driver', d.id, f.key, d.full_name?.trim() || t('common.unnamed'), d.employee_number ? t('driver.employeeNo', { employee_number: d.employee_number }) : '', d.department_id);
+    }
+  }
+  // Dated rows soonest first, then the missing ones.
+  rows.sort((a, b) => (a.until ?? '￿').localeCompare(b.until ?? '￿') || a.name.localeCompare(b.name, 'he'));
   return { folders, rows };
 }
 
@@ -194,8 +223,9 @@ export function filterValidity(
   return rows.filter((r) => {
     if (r.ownerType !== filter.ownerType) return false;
     if (filter.folderKeys.size && !filter.folderKeys.has(r.folderKey)) return false;
-    if (filter.state === 'expired' && r.days >= 0) return false;
-    if (filter.state === 'soon' && (r.days < 0 || r.days > VALIDITY_SOON_DAYS)) return false;
+    if ((filter.state === 'missing') !== (r.days == null)) return false;
+    if (filter.state === 'expired' && r.days! >= 0) return false;
+    if (filter.state === 'soon' && (r.days! < 0 || r.days! > VALIDITY_SOON_DAYS)) return false;
     if (!q) return true;
     const text = `${r.name} ${r.detail} ${r.department}`.toLowerCase();
     return text.includes(q) || (!!digits && r.name.replace(/\D/g, '').includes(digits));
@@ -204,6 +234,7 @@ export function filterValidity(
 
 // הטקסט של מצב התוקף
 export function validityStatusText(row: Pick<ValidityRow, 'days'>): string {
+  if (row.days == null) return t('status.missing');
   if (row.days < 0) return -row.days > 365 ? t('expiry.expiredOverYear') : t('validity.expiredDaysAgo', { count: -row.days });
   if (row.days === 0) return t('validity.today');
   return t('validity.inDays', { count: row.days });

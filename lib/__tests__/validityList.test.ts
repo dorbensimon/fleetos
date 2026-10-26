@@ -14,6 +14,7 @@ const rows = [
   row({ days: 10, folderKey: 'tachograph_calibration' }),
   row({ days: 200 }),
   row({ ownerType: 'driver', name: 'דני', folderKey: 'license_docs', days: -1 }),
+  row({ folderKey: 'insurance_mandatory', until: null, days: null }),
 ];
 const all = new Set<string>();
 
@@ -23,6 +24,12 @@ describe('filterValidity', () => {
     expect(filterValidity(rows, { ownerType: 'vehicle', folderKeys: all, state: 'soon', query: '' })).toHaveLength(1);
     expect(filterValidity(rows, { ownerType: 'vehicle', folderKeys: all, state: 'all', query: '' })).toHaveLength(3);
     expect(filterValidity(rows, { ownerType: 'driver', folderKeys: all, state: 'expired', query: '' })).toHaveLength(1);
+  });
+
+  it('keeps undated folders only under "missing"', () => {
+    const got = filterValidity(rows, { ownerType: 'vehicle', folderKeys: all, state: 'missing', query: '' });
+    expect(got.map((r) => r.folderKey)).toEqual(['insurance_mandatory']);
+    expect(validityTable(got, 'vehicle')[1][4]).toBe('—');
   });
 
   it('keeps only the chosen folders', () => {
