@@ -23,7 +23,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DriverHome'>;
 export default function DriverHomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
-  const { company, profile, driver, vehicle, items: allItems, pendingRequests, unreadNotifications, loading, error, reload } = useDriverOverview();
+  const { company, profile, driver, vehicle, items: allItems, ownFolders, pendingRequests, unreadNotifications, loading, error, reload } = useDriverOverview();
   const pendingSignatures = pendingRequests.length;
   const fullName = driver?.full_name?.trim() || profile?.full_name?.trim() || ''; const firstName = fullName.split(/\s+/)[0] || ''; const managerName = company?.safety_officer_name?.trim() || ''; const managerPhone = company?.safety_officer_phone || ''; const licenseState = expiryState(driver?.license_expiry);
   const timelineItems = allItems.slice(0, 3);
@@ -129,6 +129,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
       firstName={firstName}
       vehicle={vehicle}
       items={allItems}
+      ownFolders={ownFolders}
       licenseExpiry={driver?.license_expiry ?? null}
       licenseClasses={driver?.license_classes ?? null}
       pendingSignatures={pendingSignatures}

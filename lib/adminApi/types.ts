@@ -150,6 +150,8 @@ export interface DocumentRow {
   /** Optional plain-language context supplied by the uploader. */
   description?: string | null;
   expiry_date: string | null;
+  /** Folder-specific fields (migration 124), e.g. a procedure 6 event. */
+  details?: Record<string, string>;
   created_at: string;
 }
 

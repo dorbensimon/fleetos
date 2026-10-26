@@ -41,6 +41,8 @@ type Props = {
   firstName: string;
   vehicle: Vehicle | null;
   items: Item[];
+  /** The driver's own dated folders; they count toward the summary but are listed on the attention screen. */
+  ownFolders?: { title: string; until: string }[];
   licenseExpiry: string | null;
   licenseClasses: string | null;
   pendingSignatures: number;
@@ -89,9 +91,10 @@ export function DriverHomeMobile(p: Props) {
     () =>
       summarize([
         ...p.items.map((i) => ({ label: i.title, date: i.target })),
+        ...(p.ownFolders ?? []).map((f) => ({ label: f.title, date: f.until })),
         { label: t('driver.drivingLicense'), date: p.licenseExpiry },
       ], p.pendingSignatures),
-    [p.items, p.licenseExpiry, p.pendingSignatures]
+    [p.items, p.ownFolders, p.licenseExpiry, p.pendingSignatures]
   );
   const licenseStatus = statusOfDate(p.licenseExpiry);
   const tabBarScroll = useTabBarScroll();

@@ -26,7 +26,8 @@ import { expiryStatusText, FolderListRow } from './record/FolderDocuments';
 import { DetailRow, Fact, FieldEditDialog, GroupLabel, NIGHT_TONES, pageStyles, type FieldEditor, type TextFieldEditor } from './record/RecordPage';
 import { DriverLicenseModal } from './driver/DriverLicenseModal';
 import { LICENSE_SIDE_STORED_TITLE } from '../../lib/licenseSides';
-import { DRIVER_DOCUMENT_GROUPS } from '../../lib/driverDocumentFolders';
+import { DRIVER_DOCUMENT_GROUPS, type DriverDocumentFolder } from '../../lib/driverDocumentFolders';
+import { PROCEDURE_6_CATEGORY } from '../../lib/procedure6Report';
 import { folderCategory, isCompanyFolderCategory, useCompanyFolders } from '../../lib/companyFolders';
 import { DriverVehiclesCard } from './driver/DriverVehiclesCard';
 import { DriverVehicleHistoryButton } from './driver/DriverVehicleHistory';
@@ -56,10 +57,15 @@ type DriverPatch = Partial<DriverDetails> & { full_name?: string | null; phone?:
 const LICENSE_FOLDER = 'license_docs';
 
 // תיקיות המסמכים של הנהג
-/** Driver folders take uploads without an expiry date, as on the phone. */
-const DOCUMENT_FOLDERS = (): RecordDocumentFolder[] => DRIVER_DOCUMENT_GROUPS.flatMap((group) =>
-  group.folders.map((folder) => ({ ...folder, requiresExpiry: false })),
-);
+/** Every driver folder asks for a valid-until date; some only optionally (lib/driverDocumentFolders.ts). */
+const recordFolder = (folder: DriverDocumentFolder): RecordDocumentFolder => ({
+  ...folder,
+  requiresExpiry: folder.expiry === 'required',
+  optionalExpiry: folder.expiry === 'optional',
+});
+const DOCUMENT_FOLDERS = (): RecordDocumentFolder[] => DRIVER_DOCUMENT_GROUPS.flatMap((group) => group.folders.map(recordFolder));
+// Dated folders show the current file and its history; procedure 6 lists each event.
+const folderLayout = (folder: RecordDocumentFolder) => (folder.category === PROCEDURE_6_CATEGORY ? 'records' : folder.requiresExpiry ? 'versions' : 'gallery');
 // קבוצות התיקיות
 // The two short groups sit last, so the three columns end as evenly as possible.
 const DOCUMENT_GROUPS = [...DRIVER_DOCUMENT_GROUPS].sort((a, b) => b.folders.length - a.folders.length);
@@ -601,10 +607,10 @@ export function DriverDetailDesktopView({
                   title={folder.title}
                   icon={folder.icon}
                   docs={docs.filter((d) => d.category === folder.category)}
-                  onPress={() => setOpenFolder({ ...folder, requiresExpiry: false })}
+                  onPress={() => setOpenFolder(recordFolder(folder))}
                   first={index === 0}
                   loading={!docsLoaded}
-                  plain
+                  plain={folder.expiry !== 'required'}
                 />
               ))}
             </View>
@@ -689,7 +695,7 @@ export function DriverDetailDesktopView({
           ownerId={driverId}
           folder={openFolder}
           docs={docs}
-          layout={openFolder.requiresExpiry ? 'versions' : 'gallery'}
+          layout={folderLayout(openFolder)}
           onClose={() => setOpenFolder(null)}
           onChanged={reloadDocs}
         />

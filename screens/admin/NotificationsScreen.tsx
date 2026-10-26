@@ -24,7 +24,7 @@ import {
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 import type { ValidityRow } from '../../lib/validityList';
-import { LICENSE_DOCS_CATEGORY } from '../../lib/driverDocumentFolders';
+import { isDriverDocumentFolder, LICENSE_DOCS_CATEGORY } from '../../lib/driverDocumentFolders';
 
 /**
  * Logs every driver self-edit (name/phone/ID/license/department) so
@@ -144,7 +144,7 @@ function CompanyNotificationsScreen({ navigation, route }: Props) {
   // A "תוקפים" row opens that folder (a driver's permit dates: that field).
   const openValidity = (row: ValidityRow) => {
     if (row.ownerType === 'vehicle') navigation.navigate('VehicleDetail', { vehicleId: row.ownerId, openFolder: row.folderKey });
-    else if (row.folderKey === LICENSE_DOCS_CATEGORY || row.folderKey.startsWith('folder:')) navigation.navigate('DriverDetail', { driverId: row.ownerId, openFolder: row.folderKey });
+    else if (row.folderKey === LICENSE_DOCS_CATEGORY || row.folderKey.startsWith('folder:') || isDriverDocumentFolder(row.folderKey)) navigation.navigate('DriverDetail', { driverId: row.ownerId, openFolder: row.folderKey });
     else navigation.navigate('DriverDetail', { driverId: row.ownerId, focus: row.folderKey });
   };
   const canSeeValidity = profile?.role === 'admin';

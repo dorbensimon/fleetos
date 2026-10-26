@@ -19,6 +19,8 @@ import { useDatePrompt } from '../../ui/DateField';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from '../desktopTheme';
 import { t, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../../lib/i18n';
 import { errorMessage } from '../../../lib/requestError';
+import { PROCEDURE_6_CATEGORY } from '../../../lib/procedure6Report';
+import { EMPTY_PROCEDURE_6, Procedure6Fields, procedure6Error, procedure6Upload, type Procedure6Event } from './Procedure6Fields';
 
 /**
  * Shared building blocks of the desktop record pages ("תיק רכב" and
@@ -467,6 +469,8 @@ export type RecordDocumentFolder = {
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
   requiresExpiry: boolean;
+  /** Ask for the valid-until date, but allow uploading without it. */
+  optionalExpiry?: boolean;
 };
 
 // אריח תיקייה
@@ -591,11 +595,20 @@ export function DocumentFolderUploadModal({
   const [expiryDate, setExpiryDate] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const expiryPrompt = useDatePrompt(t('documents.documentExpiry'));
+  // A procedure 6 file is stored with the event it records.
+  const isProcedure6 = folder.category === PROCEDURE_6_CATEGORY;
+  const [event, setEvent] = useState<Procedure6Event>(EMPTY_PROCEDURE_6);
+  const asksExpiry = folder.requiresExpiry || !!folder.optionalExpiry;
 
   /** Uploads one file into the folder; resolves to whether it uploaded. */
   const uploadFile = async (file: PickedFile, date = expiryDate): Promise<boolean> => {
     if (folder.requiresExpiry && !date) {
       showAlert(t('documents.expiryMissing'), t('documents.chooseExpiryBeforeUpload'));
+      return false;
+    }
+    const eventError = isProcedure6 ? procedure6Error(event) : null;
+    if (eventError) {
+      showAlert(folder.title, eventError);
       return false;
     }
     setUploading(true);
@@ -607,9 +620,11 @@ export function DocumentFolderUploadModal({
         category: folder.category,
         title: storedFolderTitle(folder.category, folder.title),
         file,
-        expiryDate: folder.requiresExpiry ? date : null,
+        expiryDate: asksExpiry ? date : null,
+        ...(isProcedure6 ? procedure6Upload(event) : {}),
       });
-      if (folder.requiresExpiry) setExpiryDate(null);
+      setExpiryDate(null);
+      setEvent(EMPTY_PROCEDURE_6);
       await onChanged();
       return true;
     } catch (err: any) {
@@ -650,6 +665,8 @@ export function DocumentFolderUploadModal({
         upload={
           <FolderUploadBar
             requiresExpiry={folder.requiresExpiry}
+            optionalExpiry={folder.optionalExpiry}
+            extraFields={isProcedure6 ? <Procedure6Fields event={event} onChange={setEvent} expiryDate={expiryDate} onExpiryChange={setExpiryDate} /> : undefined}
             inspectionMonths={inspectionValidityMonths(folder.category)}
             expiryDate={expiryDate}
             onExpiryChange={setExpiryDate}

@@ -142,6 +142,22 @@ export async function listActiveVehicleDrivers(vehicleId: string): Promise<Vehic
   });
 }
 
+// כל הנהגים שהיו רשומים על הרכב, מהחדש לישן
+/** Every assignment a vehicle ever had — active and ended — newest first. */
+export async function listVehicleDriverHistory(vehicleId: string): Promise<VehicleDriverWithProfile[]> {
+  const { data, error } = await supabase
+    .from('vehicle_drivers')
+    .select('*, profiles:driver_id(full_name, phone)')
+    .eq('vehicle_id', vehicleId)
+    .order('assigned_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).map((row: any) => {
+    const { profiles, ...rest } = row;
+    return { ...(rest as VehicleDriverAssignment), full_name: profiles?.full_name ?? null, phone: profiles?.phone ?? null, license_expiry: null };
+  });
+}
+
 // רשימת הנהגים הפעילים של הרבה רכבים בבת אחת (למסכי רשימה)
 /**
  * Same as `listActiveVehicleDrivers` but for many vehicles at once — used

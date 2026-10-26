@@ -39,7 +39,8 @@ import { addMonthsIso } from '../../../lib/tachograph';
 // Same curve as RecordKit's EASE_OUT; not imported, since RecordKit imports this file.
 const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
 
-export type FolderLayout = 'versions' | 'gallery';
+/** `records`: each file with the fields filled in when it was added (procedure 6 events), newest first. */
+export type FolderLayout = 'versions' | 'gallery' | 'records';
 
 // ממיין מהחדש לישן
 const newestFirst = (docs: DocumentRow[]) => [...docs].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
@@ -162,6 +163,7 @@ function canHover(): boolean {
  */
 export function FolderUploadBar({
   requiresExpiry,
+  optionalExpiry,
   expiryDate,
   onExpiryChange,
   onUpload,
@@ -172,6 +174,8 @@ export function FolderUploadBar({
   inspectionMonths,
 }: {
   requiresExpiry: boolean;
+  /** Ask for the valid-until date, but allow uploading without it. */
+  optionalExpiry?: boolean;
   expiryDate: string | null;
   onExpiryChange: (iso: string | null) => void;
   /** Uploads the chosen file; resolves to whether it uploaded, which clears the choice. */
@@ -198,7 +202,7 @@ export function FolderUploadBar({
   const choose = (picked: PickedFile) => {
     setFile(picked);
     setError(null);
-    if (!requiresExpiry || extraFields) return;
+    if (!(requiresExpiry || optionalExpiry) || extraFields) return;
     scanFor.current = picked;
     setScan('scanning');
     void scanDocumentDates(picked).then((dates) => {
@@ -297,9 +301,9 @@ export function FolderUploadBar({
           />
         </View>
       )}
-      {extraFields ?? (requiresExpiry && (
+      {extraFields ?? ((requiresExpiry || optionalExpiry) && (
         <View style={styles.uploadDate}>
-          <DText style={styles.uploadLabel}>{t('documents.validUntil')}</DText>
+          <DText style={styles.uploadLabel}>{requiresExpiry ? t('documents.validUntil') : t('documents.validUntilOptional')}</DText>
           <DesktopDateField value={expiryDate} onChange={(iso) => { onExpiryChange(iso); setError(null); }} placeholder={t('date.chooseDateAction')} large />
         </View>
       ))}
@@ -351,8 +355,8 @@ function GalleryTile({ doc, index, onDelete }: { doc: DocumentRow; index: number
         </View>
       </View>
       <DText weight="semiBold" style={styles.tileName} numberOfLines={2}>{documentDisplayName(doc)}</DText>
-      <DText style={styles.tileMeta}>{t('documents.uploadedOnPrefix')}</DText>
-      <DLtrText style={styles.tileMeta}>{formatDate(doc.created_at)}</DLtrText>
+      <DText style={styles.tileMeta}>{docDateLine(doc, true).prefix}</DText>
+      <DLtrText style={styles.tileMeta}>{docDateLine(doc, true).date}</DLtrText>
     </HoverPressable>
   );
 }
@@ -413,17 +417,23 @@ export function FolderDocumentsModal({
   const [olderOpen, setOlderOpen] = useState(false);
   const remove = (doc: DocumentRow) => confirmDeleteDocument(doc, onDeleted);
 
-  const subtitle = layout === 'gallery'
+  const subtitle = layout !== 'versions'
     ? (sorted.length ? t('documents.clickFileOpens', { v1: countLabel(sorted.length) }) : '')
     : sorted.length > 1 ? t('documents.latestSetsExpiryHistory') : sorted.length === 1 ? t('documents.latestSetsExpiry') : '';
 
   return (
-    <DesktopModal visible title={title} onClose={onClose} maxWidth={layout === 'gallery' ? 640 : 560}>
+    <DesktopModal visible title={title} onClose={onClose} maxWidth={layout === 'versions' ? 560 : 640}>
       <View style={styles.body}>
         {!!subtitle && <DText style={styles.subtitle}>{subtitle}</DText>}
 
         {sorted.length === 0 ? (
           <DText style={styles.subtitle}>{t('documents.folderEmpty')}</DText>
+        ) : layout === 'records' ? (
+          <View style={styles.records}>
+            {sorted.map((doc, index) => (
+              <RecordRow key={doc.id} doc={doc} first={index === 0} onDelete={() => remove(doc)} />
+            ))}
+          </View>
         ) : layout === 'gallery' ? (
           <View style={styles.gallery}>
             {sorted.map((doc, index) => (
@@ -499,6 +509,40 @@ export function FolderDocumentsModal({
   );
 }
 
+// שורת מסמך עם הפרטים שמולאו (נוהל 6)
+function RecordRow({ doc, first, onDelete }: { doc: DocumentRow; first: boolean; onDelete: () => void }) {
+  const d = doc.details ?? {};
+  const when = [doc.document_date ? formatDate(doc.document_date) : '', d.event_time ?? ''].filter(Boolean).join(' ');
+  const people = [d.complainant_name, d.complainant_phone].filter(Boolean).join(' · ');
+  return (
+    <View style={[styles.olderRow, styles.recordRow, !first && styles.rowDivider]}>
+      <HoverPressable hoverStyle={styles.previewHover} onPress={() => openDocumentExternally(doc)} accessibilityLabel={t('documents.viewDoc', { doc: documentDisplayName(doc) })}>
+        <DocumentPreview doc={doc} width={40} height={52} />
+      </HoverPressable>
+      <View style={styles.rowText}>
+        <View style={styles.rowMeta}>
+          <DText weight="semiBold" style={styles.olderName}>{t('procedure6.event')} </DText>
+          {!!when && <DLtrText weight="semiBold" style={styles.olderName}>{when}</DLtrText>}
+          {!!d.vehicle_plate && (
+            <>
+              <DText style={styles.fileMeta}> · {t('vehicle.numberShort')} </DText>
+              <DLtrText style={styles.fileMeta}>{d.vehicle_plate}</DLtrText>
+            </>
+          )}
+        </View>
+        {!!d.event_details && <DText style={styles.recordDetails}>{d.event_details}</DText>}
+        {!!people && <DText style={styles.fileMeta}>{t('procedure6.complainantName')}: {people}</DText>}
+        <DateLine doc={doc} current />
+      </View>
+      <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={() => void openDocumentExternally(doc)}>
+        <DText weight="semiBold" style={styles.softBtnText}>{t('common.view')}</DText>
+      </HoverPressable>
+      <SmallAction icon="download-outline" label={t('common.download')} onPress={() => void downloadDocumentWithAlert(doc)} />
+      <SmallAction icon="trash-outline" label={t('common.deleteAction')} danger onPress={onDelete} />
+    </View>
+  );
+}
+
 // תגית 'נוכחי'
 function CurrentTag({ doc }: { doc: DocumentRow }) {
   const state = doc.expiry_date ? expiryState(doc.expiry_date) : 'optional';
@@ -560,6 +604,9 @@ const styles = StyleSheet.create({
   olderName: { fontSize: 15 },
 
   // רשת התמונות
+  records: { maxHeight: 360, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 12, ...webOnly({ overflowY: 'auto' }) },
+  recordRow: { alignItems: 'flex-start' },
+  recordDetails: { fontSize: 14, color: DESKTOP_COLORS.ink, marginVertical: 2 },
   gallery: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, maxHeight: 360, marginHorizontal: -6, ...webOnly({ overflowY: 'auto' }) },
   // אריח תמונה
   tile: { width: '24%', flexGrow: 0, alignItems: 'center', paddingTop: 10, paddingBottom: 8, paddingHorizontal: 6, borderRadius: 12, ...webOnly({ transition: 'background-color 150ms ease' }) },

@@ -85,6 +85,7 @@ export function Procedure6FormModal({ visible, onClose, onSubmit }: Props) {
       await onSubmit(
         {
           eventDate: formatDate(eventDateIso!),
+          eventDateIso: eventDateIso!,
           eventTime: eventTime!,
           details: details.trim(),
           vehicleNumber: vehicleNumber.trim(),
