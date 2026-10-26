@@ -9,7 +9,7 @@ import { DesktopDateField, DesktopSelect, DLtrText, DText, HoverPressable } from
 import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, webOnly } from './desktopTheme';
 import { DesktopModal } from './DesktopModal';
 import { HeaderAction } from './DashboardWidgets';
-import { TrafficReportFields } from './record/TrafficReportFields';
+import { Field, TrafficReportFields } from './record/TrafficReportFields';
 import { useCompany } from '../../lib/CompanyContext';
 import { listDrivers } from '../../lib/adminApi/drivers';
 import { listVehicles } from '../../lib/adminApi/vehicles';
@@ -371,8 +371,7 @@ function TrafficReportEditor({
       {/* החלון עד 84% מהגובה: הטופס נגלל, השמירה נשארת למטה */}
       <ScrollView style={{ maxHeight: Math.max(240, windowHeight * 0.84 - 140) }} contentContainerStyle={styles.editorContent}>
         {isNew ? (
-          <View style={styles.driverBox}>
-            <DText style={styles.label}>{t('trafficReport.driver')}</DText>
+          <Field label={t('trafficReport.driver')} help={t('trafficReport.help.driver')}>
             <DesktopSelect
               value={driverId}
               options={driverOptions}
@@ -380,7 +379,7 @@ function TrafficReportEditor({
               large
             />
             {!!driverHint && <DText style={styles.muted}>{driverHint}</DText>}
-          </View>
+          </Field>
         ) : (
           <View style={styles.driverBox}>
             <DText style={styles.label}>{t('trafficReport.driver')}</DText>
@@ -391,13 +390,12 @@ function TrafficReportEditor({
         <TrafficReportFields report={report} onChange={setReport} vehicles={vehicles} />
 
         {isNew ? (
-          <View style={styles.driverBox}>
-            <DText style={styles.label}>{t('trafficReport.fileHint')}</DText>
+          <Field label={t('trafficReport.fileHint')} help={t('trafficReport.help.file')}>
             <HoverPressable style={styles.fileBtn} hoverStyle={styles.ghostHover} onPress={() => void chooseFile()}>
               <Ionicons name={file ? 'document-attach-outline' : 'cloud-upload-outline'} size={18} color={DESKTOP_COLORS.brand} />
               <DText weight="semiBold" style={styles.ghostText} numberOfLines={1}>{file ? file.name : t('documents.chooseDocument')}</DText>
             </HoverPressable>
-          </View>
+          </Field>
         ) : (
           <HoverPressable style={styles.ghost} hoverStyle={styles.ghostHover} onPress={() => void openDocumentExternally(row.doc)}>
             <Ionicons name="eye-outline" size={17} color={DESKTOP_COLORS.brand} />
