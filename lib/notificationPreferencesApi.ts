@@ -20,6 +20,7 @@ import { t, getLocale } from './i18n';
  */
 
 export type NotificationType =
+  | 'email_daily_digest'
   | 'driver_profile_update'
   | 'driver_document_upload'
   | 'vehicle_insurance_mandatory_expiry'
@@ -162,6 +163,11 @@ export const ADMIN_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     type: 'vehicle_safety_check_due',
     get label() { return t('prefs.type.safetyInspection'); },
     get description() { return t('prefs.type.safetyInspectionDesc'); },
+  },
+  {
+    type: 'email_daily_digest',
+    get label() { return t('prefs.type.emailDigest'); },
+    get description() { return t('prefs.type.emailDigestDesc'); },
   },
 ];
 
@@ -463,7 +469,7 @@ export function leadStepLabels(rule: LeadRule): { up: string; down: string } {
 }
 
 export interface NotificationGroup {
-  key: 'drivers' | 'licenses' | 'folders' | 'care' | 'personal' | 'customers' | 'billing' | 'compliance';
+  key: 'drivers' | 'licenses' | 'folders' | 'care' | 'email' | 'personal' | 'customers' | 'billing' | 'compliance';
   title: string;
   subtitle?: string;
   items: NotificationTypeInfo[];
@@ -487,6 +493,7 @@ const ADMIN_GROUP_OF: Partial<Record<NotificationType, NotificationGroup['key']>
   vehicle_odometer_stale: 'care',
   driver_meeting_due: 'care',
   vehicle_safety_check_due: 'care',
+  email_daily_digest: 'email',
 };
 
 // החלקים של דף הגדרות ההתראות
@@ -523,6 +530,7 @@ export function notificationGroups(types: NotificationTypeInfo[], isDriver: bool
         },
         folderGroup,
         { key: 'care', title: t('prefs.group.serviceAndMeetings'), items: rest.filter((entry) => ADMIN_GROUP_OF[entry.type] === 'care') },
+        { key: 'email', title: t('prefs.group.email'), items: rest.filter((entry) => ADMIN_GROUP_OF[entry.type] === 'email') },
       ];
   return groups.filter((group) => group.items.length > 0);
 }
