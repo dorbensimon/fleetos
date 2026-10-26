@@ -563,7 +563,30 @@ export function DriverDetailDesktopView({
               }))}
             />
           </View>
+        </View>
 
+        {/* The left column takes the right column's height and scrolls inside. */}
+        <View style={styles.sideCell}>
+          <GroupLabel action={<DriverVehicleHistoryButton driverId={driverId} refreshKey={vehicles.map((v) => v.id).join(',')} />}>
+            {t('driver.assignedVehicles')}
+          </GroupLabel>
+          <View style={styles.pinnedArea}>
+            <View style={StyleSheet.absoluteFill}>
+              <DriverVehiclesCard
+                companyId={companyId}
+                driverId={driverId}
+                initialVehicles={vehicles}
+                canEdit={!isArchived}
+                onOpenVehicle={onOpenVehicle}
+                onChanged={onVehiclesChanged}
+              />
+            </View>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.gridRow}>
+        <View style={styles.mainCell}>
           <GroupLabel>{t('driver.permitsGroup')}</GroupLabel>
           <View style={styles.card}>
             {expiryRow(t('driver.workAtHeightExpiry'), 'work_at_height_expiry', true)}
@@ -577,18 +600,32 @@ export function DriverDetailDesktopView({
           </View>
         </View>
 
-        <View style={[styles.sideCell, styles.vehiclesCell]}>
-          <GroupLabel action={<DriverVehicleHistoryButton driverId={driverId} refreshKey={vehicles.map((v) => v.id).join(',')} />}>
-            {t('driver.assignedVehicles')}
-          </GroupLabel>
-          <DriverVehiclesCard
-            companyId={companyId}
-            driverId={driverId}
-            initialVehicles={vehicles}
-            canEdit={!isArchived}
-            onOpenVehicle={onOpenVehicle}
-            onChanged={onVehiclesChanged}
-          />
+        <View style={styles.sideCell}>
+          <GroupLabel>{t('signing.formsToSign')}</GroupLabel>
+          <View style={styles.pinnedArea}>
+            <View style={[StyleSheet.absoluteFill, styles.card]}>
+              <ScrollView style={styles.pinnedScroll}>
+                <DriverSigningList
+                  companyId={companyId}
+                  driverId={driverId}
+                  vehicleId={(vehicles.find((v) => v.is_primary) ?? vehicles[0])?.id ?? null}
+                  canSend={canSendSigning}
+                  folders={signing.folders}
+                  loading={signing.loading}
+                  error={signing.error}
+                  onChanged={signing.reload}
+                  openFolderId={signingRequest}
+                  onFolderOpened={() => setSigningRequest(null)}
+                  onOpenSession={onOpenSigningSession}
+                />
+              </ScrollView>
+              {canSendSigning && (
+                <View style={[styles.pinnedFooter, styles.rowDivider]}>
+                  <NewFormButton companyId={companyId} takenTitles={signing.folders.filter((folder) => folder.template).map((folder) => folder.title)} onChanged={() => void signing.reload()} />
+                </View>
+              )}
+            </View>
+          </View>
         </View>
       </View>
 
@@ -636,30 +673,6 @@ export function DriverDetailDesktopView({
             </View>
           </View>
         )}
-      </View>
-
-      {/* Forms to sign */}
-      <View style={[styles.docsHead, styles.formsHead]}>
-        <View style={styles.formsHeadText}>
-          <DText weight="bold" style={styles.docsTitle}>{t('signing.formsToSign')}</DText>
-          <DText style={styles.mutedText}>{t('driver.formsHint')}</DText>
-        </View>
-        {canSendSigning && <NewFormButton companyId={companyId} takenTitles={signing.folders.filter((folder) => folder.template).map((folder) => folder.title)} onChanged={() => void signing.reload()} />}
-      </View>
-      <View style={[styles.card, styles.listCard]}>
-        <DriverSigningList
-          companyId={companyId}
-          driverId={driverId}
-          vehicleId={(vehicles.find((v) => v.is_primary) ?? vehicles[0])?.id ?? null}
-          canSend={canSendSigning}
-          folders={signing.folders}
-          loading={signing.loading}
-          error={signing.error}
-          onChanged={signing.reload}
-          openFolderId={signingRequest}
-          onFolderOpened={() => setSigningRequest(null)}
-          onOpenSession={onOpenSigningSession}
-        />
       </View>
 
       {!!driver?.created_at && (
@@ -784,8 +797,6 @@ const styles = StyleSheet.create({
   ...pageStyles,
 
   // "טפסים לחתימה" head with "+ הוסף תיקייה" beside it
-  formsHead: { flexDirection: 'row-reverse', alignItems: 'flex-end', gap: 12 },
-  formsHeadText: { flex: 1, minWidth: 0, gap: 1 },
 
   // Header portrait
   heroWho: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14 },
@@ -873,8 +884,10 @@ const styles = StyleSheet.create({
   // רשת התיקיות
   // Documents
   docsGrid: { alignItems: 'flex-start' },
-  // The vehicles card is as tall as its rows, not as the neighbouring column.
-  vehiclesCell: { alignSelf: 'flex-start' },
+  // Left-column cards: as tall as the card beside them, the list scrolls inside.
+  pinnedArea: { flexGrow: 1, minHeight: 160 },
+  pinnedScroll: { flex: 1, minHeight: 0 },
+  pinnedFooter: { flexDirection: 'row-reverse', padding: 12 },
   thirdCell: { flexGrow: 1, flexBasis: 280, minWidth: 0 },
 
   // תחתית הדף
