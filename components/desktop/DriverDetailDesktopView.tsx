@@ -28,6 +28,7 @@ import { DriverLicenseModal } from './driver/DriverLicenseModal';
 import { LICENSE_SIDE_STORED_TITLE } from '../../lib/licenseSides';
 import { DRIVER_DOCUMENT_GROUPS, type DriverDocumentFolder } from '../../lib/driverDocumentFolders';
 import { PROCEDURE_6_CATEGORY } from '../../lib/procedure6Report';
+import { TRAFFIC_REPORTS_CATEGORY } from '../../lib/trafficReports';
 import { folderCategory, isCompanyFolderCategory, useCompanyFolders } from '../../lib/companyFolders';
 import { DriverVehiclesCard } from './driver/DriverVehiclesCard';
 import { DriverVehicleHistoryButton } from './driver/DriverVehicleHistory';
@@ -65,7 +66,7 @@ const recordFolder = (folder: DriverDocumentFolder): RecordDocumentFolder => ({
 });
 const DOCUMENT_FOLDERS = (): RecordDocumentFolder[] => DRIVER_DOCUMENT_GROUPS.flatMap((group) => group.folders.map(recordFolder));
 // Dated folders show the current file and its history; procedure 6 lists each event.
-const folderLayout = (folder: RecordDocumentFolder) => (folder.category === PROCEDURE_6_CATEGORY ? 'records' : folder.requiresExpiry ? 'versions' : 'gallery');
+const folderLayout = (folder: RecordDocumentFolder) => (folder.category === PROCEDURE_6_CATEGORY || folder.category === TRAFFIC_REPORTS_CATEGORY ? 'records' : folder.requiresExpiry ? 'versions' : 'gallery');
 // קבוצות התיקיות
 // The two short groups sit last, so the three columns end as evenly as possible.
 const DOCUMENT_GROUPS = [...DRIVER_DOCUMENT_GROUPS].sort((a, b) => b.folders.length - a.folders.length);
@@ -697,6 +698,7 @@ export function DriverDetailDesktopView({
           folder={openFolder}
           docs={docs}
           layout={folderLayout(openFolder)}
+          defaultVehicleId={(vehicles.find((v) => v.is_primary) ?? vehicles[0])?.id ?? null}
           onClose={() => setOpenFolder(null)}
           onChanged={reloadDocs}
         />

@@ -21,6 +21,12 @@ import { t, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../../lib/i18n';
 import { errorMessage } from '../../../lib/requestError';
 import { PROCEDURE_6_CATEGORY } from '../../../lib/procedure6Report';
 import { EMPTY_PROCEDURE_6, Procedure6Fields, procedure6Error, procedure6Upload, type Procedure6Event } from './Procedure6Fields';
+import { TrafficReportFields } from './TrafficReportFields';
+import { EMPTY_TRAFFIC_REPORT, TRAFFIC_REPORTS_CATEGORY, trafficReportError, trafficReportUpload, type TrafficReport } from '../../../lib/trafficReports';
+import { listVehicles } from '../../../lib/adminApi/vehicles';
+import type { Vehicle } from '../../../lib/adminApi/types';
+import { vehicleName } from '../../../lib/attention';
+import { formatPlate } from '../../../lib/plate';
 
 /**
  * Shared building blocks of the desktop record pages ("תיק רכב" and
@@ -581,6 +587,7 @@ export function DocumentFolderUploadModal({
   onClose,
   onChanged,
   layout,
+  defaultVehicleId,
 }: {
   companyId: string;
   ownerType: OwnerType;
@@ -591,6 +598,8 @@ export function DocumentFolderUploadModal({
   onChanged: () => void | Promise<void>;
   /** Opt into the list-style folder window (current document + history, or a gallery). Omitted: the classic thumbnail grid. */
   layout?: FolderLayout;
+  /** Traffic reports: the driver's vehicle, picked in a new report until changed. */
+  defaultVehicleId?: string | null;
 }) {
   const [expiryDate, setExpiryDate] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -598,7 +607,26 @@ export function DocumentFolderUploadModal({
   // A procedure 6 file is stored with the event it records.
   const isProcedure6 = folder.category === PROCEDURE_6_CATEGORY;
   const [event, setEvent] = useState<Procedure6Event>(EMPTY_PROCEDURE_6);
-  const asksExpiry = folder.requiresExpiry || !!folder.optionalExpiry;
+  // A traffic report file is stored with the report's fields, and has no valid-until date.
+  const isTrafficReport = folder.category === TRAFFIC_REPORTS_CATEGORY;
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const freshReport = (list: Vehicle[] = vehicles): TrafficReport => {
+    const v = list.find((x) => x.id === defaultVehicleId);
+    return v ? { ...EMPTY_TRAFFIC_REPORT, vehicleId: v.id, vehiclePlate: formatPlate(v.plate_number), vehicleName: vehicleName(v) } : EMPTY_TRAFFIC_REPORT;
+  };
+  const [report, setReport] = useState<TrafficReport>(EMPTY_TRAFFIC_REPORT);
+  useEffect(() => {
+    if (!isTrafficReport) return;
+    let alive = true;
+    listVehicles(companyId).then((list) => {
+      if (!alive) return;
+      setVehicles(list);
+      setReport((r) => (r.vehicleId ? r : freshReport(list)));
+    }).catch(() => undefined);
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTrafficReport, companyId]);
+  const asksExpiry = !isTrafficReport && (folder.requiresExpiry || !!folder.optionalExpiry);
 
   /** Uploads one file into the folder; resolves to whether it uploaded. */
   const uploadFile = async (file: PickedFile, date = expiryDate): Promise<boolean> => {
@@ -606,7 +634,7 @@ export function DocumentFolderUploadModal({
       showAlert(t('documents.expiryMissing'), t('documents.chooseExpiryBeforeUpload'));
       return false;
     }
-    const eventError = isProcedure6 ? procedure6Error(event) : null;
+    const eventError = isProcedure6 ? procedure6Error(event) : isTrafficReport ? trafficReportError(report) : null;
     if (eventError) {
       showAlert(folder.title, eventError);
       return false;
@@ -622,9 +650,11 @@ export function DocumentFolderUploadModal({
         file,
         expiryDate: asksExpiry ? date : null,
         ...(isProcedure6 ? procedure6Upload(event) : {}),
+        ...(isTrafficReport ? trafficReportUpload(report) : {}),
       });
       setExpiryDate(null);
       setEvent(EMPTY_PROCEDURE_6);
+      setReport(freshReport());
       await onChanged();
       return true;
     } catch (err: any) {
@@ -666,7 +696,11 @@ export function DocumentFolderUploadModal({
           <FolderUploadBar
             requiresExpiry={folder.requiresExpiry}
             optionalExpiry={folder.optionalExpiry}
-            extraFields={isProcedure6 ? <Procedure6Fields event={event} onChange={setEvent} expiryDate={expiryDate} onExpiryChange={setExpiryDate} /> : undefined}
+            extraFields={
+              isProcedure6 ? <Procedure6Fields event={event} onChange={setEvent} expiryDate={expiryDate} onExpiryChange={setExpiryDate} />
+              : isTrafficReport ? <TrafficReportFields report={report} onChange={setReport} vehicles={vehicles} />
+              : undefined
+            }
             inspectionMonths={inspectionValidityMonths(folder.category)}
             expiryDate={expiryDate}
             onExpiryChange={setExpiryDate}

@@ -4,23 +4,26 @@ import { LICENSE_SIDE_STORED_TITLE } from './licenseSides';
 import { formatPlate } from './plate';
 import { daysUntilExpiry, expiredAgoText, formatDate } from './theme';
 import { t } from './i18n';
+import { TRAFFIC_REPORTS_CATEGORY, trafficReportTypeLabel } from './trafficReports';
 
 /**
  * The one "דורש טיפול" list: the phone screen, the phone home line and the
  * desktop top-bar menu all show these groups, and the owner console counts
  * them. Only what blocks work today: mandatory insurance, a lapsed vehicle
  * licence, driving licences, unverified licence photos and vehicles with no
- * driver. Every other date lives in "תוקפים" (lib/validityList.ts).
+ * driver, and open traffic reports. Every other date lives in "תוקפים"
+ * (lib/validityList.ts).
  * Every item says what is wrong and opens the exact spot that fixes it.
  */
 
-export type AttentionKind = 'insurance' | 'registration' | 'license' | 'licenseDocs' | 'unassigned';
+export type AttentionKind = 'insurance' | 'registration' | 'license' | 'licenseDocs' | 'trafficReports' | 'unassigned';
 
 export type AttentionTarget =
   | { openFolder: string }
   | { openDrivers: true }
   | { driverLicense: true }
-  | { licenseDocs: true };
+  | { licenseDocs: true }
+  | { driverFolder: string };
 
 export type AttentionItem = {
   ownerType: 'vehicle' | 'driver';
@@ -75,12 +78,15 @@ export function attentionGroups(input: {
   compliance: Map<string, ComplianceItem[]>;
   vehicleDrivers: Map<string, VehicleDriverWithProfile[]>;
   drivers?: { driver: DriverRow; licenseSides?: Set<string> }[];
+  /** Open traffic reports (details.status 'open'), each with its driver. */
+  trafficReports?: { ownerId: string; documentDate: string | null; details: Record<string, string> }[];
 }): AttentionGroup[] {
   const insurance: AttentionItem[] = [];
   const registration: AttentionItem[] = [];
   const unassigned: AttentionItem[] = [];
   const license: AttentionItem[] = [];
   const licenseDocs: AttentionItem[] = [];
+  const trafficReports: AttentionItem[] = [];
 
   for (const v of input.vehicles.filter((x) => x.status !== 'archived')) {
     const item = (detail: string, tone: AttentionItem['tone'], target: AttentionTarget): AttentionItem => ({
@@ -120,11 +126,28 @@ export function attentionGroups(input: {
     }
   }
 
+  // Overdue first, then by the payment date.
+  const driverName = new Map((input.drivers ?? []).map(({ driver }) => [driver.id, driver.full_name?.trim() || t('common.unnamed')]));
+  const reports = [...(input.trafficReports ?? [])].sort((a, b) => (a.details.pay_by ?? '9999').localeCompare(b.details.pay_by ?? '9999'));
+  for (const r of reports) {
+    const name = driverName.get(r.ownerId);
+    if (!name) continue;
+    const payBy = r.details.pay_by ?? null;
+    const payDays = daysUntilExpiry(payBy);
+    const detail = [
+      r.details.report_type ? trafficReportTypeLabel(r.details.report_type) : t('trafficReport.report'),
+      r.details.amount ? `₪${r.details.amount}` : '',
+      payBy ? (payDays != null && payDays < 0 ? `${t('trafficReport.overdue')} · ${formatDate(payBy)}` : t('trafficReport.payByShort', { date: formatDate(payBy) })) : (r.documentDate ? formatDate(r.documentDate) : ''),
+    ].filter(Boolean).join(' · ');
+    trafficReports.push({ ownerType: 'driver', ownerId: r.ownerId, title: name, name: '', detail, tone: payDays != null && payDays < 0 ? 'bad' : 'warn', target: { driverFolder: TRAFFIC_REPORTS_CATEGORY } });
+  }
+
   const groups: AttentionGroup[] = [
     { kind: 'insurance', title: t('attention.noValidMandatoryInsurance'), hint: t('attention.missingInsuranceHint'), action: t('attention.toInsurance'), tone: 'bad', items: insurance },
     { kind: 'registration', title: t('attention.vehicleLicenseExpired'), hint: t('attention.vehicleLicenseExpiredHint'), action: t('attention.toLicense'), tone: 'bad', items: registration },
     { kind: 'license', title: t('attention.drivingLicenses'), hint: t('attention.expiredOrWithin30'), action: t('attention.toLicense'), tone: license.some((i) => i.tone === 'bad') ? 'bad' : 'warn', items: license },
     { kind: 'licenseDocs', title: t('attention.unverifiedLicenses'), hint: t('attention.missingLicensePhoto'), action: t('attention.toPhotos'), tone: 'warn', items: licenseDocs },
+    { kind: 'trafficReports', title: t('trafficReport.attentionTitle'), hint: t('trafficReport.attentionHint'), action: t('trafficReport.attentionAction'), tone: trafficReports.some((i) => i.tone === 'bad') ? 'bad' : 'warn', items: trafficReports },
     { kind: 'unassigned', title: t('attention.vehiclesWithoutDriver'), hint: t('attention.noActiveAssignmentHint'), action: t('attention.assignDriver'), tone: 'warn', items: unassigned },
   ];
   return groups.filter((g) => g.items.length > 0);
@@ -141,11 +164,12 @@ export function attentionTotals(groups: AttentionGroup[]): { owners: number; iss
 /** The screen and params that open the fix; the same on phone and desktop. */
 export function attentionRoute(item: AttentionItem):
   | { screen: 'VehicleDetail'; params: { vehicleId: string; openFolder?: string; openDrivers?: boolean; focus?: string } }
-  | { screen: 'DriverDetail'; params: { driverId: string; focus?: string } }
+  | { screen: 'DriverDetail'; params: { driverId: string; focus?: string; openFolder?: string } }
   | { screen: 'DriverLicenseDocuments'; params: { driverId: string } } {
   const target = item.target;
   if ('openFolder' in target) return { screen: 'VehicleDetail', params: { vehicleId: item.ownerId, openFolder: target.openFolder, focus: target.openFolder } };
   if ('openDrivers' in target) return { screen: 'VehicleDetail', params: { vehicleId: item.ownerId, openDrivers: true, focus: 'drivers' } };
+  if ('driverFolder' in target) return { screen: 'DriverDetail', params: { driverId: item.ownerId, openFolder: target.driverFolder } };
   if ('licenseDocs' in target) return { screen: 'DriverLicenseDocuments', params: { driverId: item.ownerId } };
   return { screen: 'DriverDetail', params: { driverId: item.ownerId, focus: 'license_expiry' } };
 }
