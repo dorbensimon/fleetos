@@ -289,4 +289,19 @@ export const SCHEDULE_CSS = `
   .ws-print .p-printed{margin-top:12px;font-size:8.5pt;color:#8B98A4;text-align:end}
   .ws-print .p-empty{padding:24px;text-align:center;color:#5C6773}
 }
+
+/* ---------- מחשב: הכל במסך אחד בלי גלילה ---------- */
+.ws:not(.phone){display:flex;flex-direction:column;overflow:hidden}
+.ws:not(.phone) .hero{flex:none;margin:10px 16px 0;padding:8px 14px}
+.ws:not(.phone) main{flex:1;min-height:0;grid-template-rows:minmax(0,1fr);gap:12px;padding:10px 16px 12px}
+.ws:not(.phone) .cal{display:flex;flex-direction:column;min-height:0;align-self:stretch}
+.ws:not(.phone) .grid{flex:1;min-height:0;grid-auto-rows:minmax(0,1fr);gap:5px}
+.ws:not(.phone) .weekdays{gap:5px}
+.ws:not(.phone) .weekdays div{padding-bottom:2px}
+.ws:not(.phone) .day{height:auto;min-height:0;padding:6px;gap:3px}
+.ws:not(.phone) .day.sel{padding:5px}
+.ws:not(.phone) .day .num{font-size:14.5px}
+.ws:not(.phone) .day .pill{height:19px;font-size:11.5px}
+.ws:not(.phone) .legend{margin-top:6px}
+.ws:not(.phone) .panel{position:static;max-height:100%}
 `;
