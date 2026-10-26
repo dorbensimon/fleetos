@@ -330,6 +330,19 @@ export async function listDocuments(
   return (data ?? []) as DocumentRow[];
 }
 
+// מעדכן חלק מהפרטים שנשמרו ליד המסמך (למשל סטטוס של דוח)
+/** Merges `patch` into the document's details and returns the saved row. */
+export async function updateDocumentDetails(doc: DocumentRow, patch: Record<string, string>): Promise<DocumentRow> {
+  const { data, error } = await supabase
+    .from('documents')
+    .update({ details: { ...(doc.details ?? {}), ...patch } })
+    .eq('id', doc.id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as DocumentRow;
+}
+
 // מוחק את המסמך ואת הקובץ
 /** Removes both the row and the underlying file. */
 export async function deleteDocument(doc: DocumentRow) {

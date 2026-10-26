@@ -35,6 +35,7 @@ const ICON: Record<AttentionKind, IconName> = {
   registration: 'document-text',
   license: 'id-card',
   licenseDocs: 'camera',
+  trafficReports: 'warning',
   unassigned: 'car-sport',
 };
 

@@ -18,11 +18,22 @@ import {
   pickDocumentSource,
 } from '../../../lib/documentActions';
 import { DesktopModal } from '../DesktopModal';
-import { DesktopDateField, DLtrText, DText, HoverPressable, prefersReducedMotion } from '../primitives';
+import { DesktopDateField, DesktopSelect, DLtrText, DText, HoverPressable, prefersReducedMotion } from '../primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from '../desktopTheme';
 import { DocumentPreview } from './DocumentPreview';
 import { t, dirIcon } from '../../../lib/i18n';
 import { addMonthsIso } from '../../../lib/tachograph';
+import { updateDocumentDetails } from '../../../lib/documents';
+import { showAlert } from '../../../lib/platformAlert';
+import { errorMessage } from '../../../lib/requestError';
+import {
+  TRAFFIC_REPORTS_CATEGORY,
+  TRAFFIC_REPORT_STATUSES,
+  trafficReportResponsibilityLabel,
+  trafficReportStatusLabel,
+  trafficReportTypeLabel,
+  type TrafficReportStatus,
+} from '../../../lib/trafficReports';
 
 /**
  * Document folders as a calm list (one row per folder: name, status, date,
@@ -432,7 +443,9 @@ export function FolderDocumentsModal({
           <DText style={styles.subtitle}>{t('documents.folderEmpty')}</DText>
         ) : layout === 'records' ? (
           <View style={styles.records}>
-            {sorted.map((doc, index) => (
+            {sorted.map((doc, index) => doc.category === TRAFFIC_REPORTS_CATEGORY ? (
+              <TrafficReportRow key={doc.id} doc={doc} first={index === 0} onDelete={() => remove(doc)} onChanged={onDeleted} />
+            ) : (
               <RecordRow key={doc.id} doc={doc} first={index === 0} onDelete={() => remove(doc)} />
             ))}
           </View>
@@ -545,6 +558,76 @@ function RecordRow({ doc, first, onDelete }: { doc: DocumentRow; first: boolean;
   );
 }
 
+// שורת דוח תעבורה: סוג, סכום, מועד תשלום, וסטטוס שמשנים במקום
+const REPORT_STATUS_TONE: Record<TrafficReportStatus, string> = {
+  open: DESKTOP_TONES.bad.fg,
+  appeal: DESKTOP_TONES.warn.fg,
+  paid: DESKTOP_TONES.ok.fg,
+  transferred: DESKTOP_TONES.ok.fg,
+  cancelled: DESKTOP_COLORS.inkMuted,
+};
+
+function TrafficReportRow({ doc, first, onDelete, onChanged }: { doc: DocumentRow; first: boolean; onDelete: () => void; onChanged: () => void | Promise<void> }) {
+  const d = doc.details ?? {};
+  const [status, setStatus] = useState(d.status as TrafficReportStatus | undefined);
+  const overdue = status === 'open' && !!d.pay_by && expiryState(d.pay_by) === 'expired';
+  const saveStatus = async (next: TrafficReportStatus | null) => {
+    if (!next || next === status) return;
+    const previous = status;
+    setStatus(next);
+    try {
+      await updateDocumentDetails(doc, { status: next });
+      await onChanged();
+    } catch (err) {
+      setStatus(previous);
+      showAlert(t('trafficReport.statusSaveFailed'), errorMessage(err, t('common.tryAgain')));
+    }
+  };
+  const meta = [
+    d.amount ? `₪${d.amount}` : '',
+    d.vehicle_plate ?? '',
+    d.issuer ?? '',
+    d.report_number ? `#${d.report_number}` : '',
+    d.responsibility ? trafficReportResponsibilityLabel(d.responsibility) : '',
+  ].filter(Boolean).join(' · ');
+  return (
+    <View style={[styles.olderRow, styles.recordRow, !first && styles.rowDivider]}>
+      <HoverPressable hoverStyle={styles.previewHover} onPress={() => openDocumentExternally(doc)} accessibilityLabel={t('documents.viewDoc', { doc: documentDisplayName(doc) })}>
+        <DocumentPreview doc={doc} width={40} height={52} />
+      </HoverPressable>
+      <View style={styles.rowText}>
+        <View style={styles.rowMeta}>
+          <DText weight="semiBold" style={styles.olderName}>{d.report_type ? trafficReportTypeLabel(d.report_type) : t('trafficReport.report')} </DText>
+          {!!doc.document_date && <DLtrText weight="semiBold" style={styles.olderName}>{formatDate(doc.document_date)}</DLtrText>}
+        </View>
+        {!!meta && <DText style={styles.fileMeta}>{meta}</DText>}
+        {!!d.pay_by && (
+          <DText style={[styles.fileMeta, overdue && { color: DESKTOP_TONES.bad.fg }]}>
+            {overdue ? `${t('trafficReport.overdue')} · ` : ''}{t('trafficReport.payByShort', { date: formatDate(d.pay_by) })}
+          </DText>
+        )}
+        {!!d.description && <DText style={styles.recordDetails}>{d.description}</DText>}
+        {!d.report_type && <DateLine doc={doc} current />}
+      </View>
+      {status ? (
+        <View style={styles.reportStatus}>
+          <DesktopSelect
+            value={status}
+            options={TRAFFIC_REPORT_STATUSES.map((value) => ({ value, label: trafficReportStatusLabel(value) }))}
+            onChange={(next) => void saveStatus(next)}
+          />
+          <View style={[styles.statusDot, styles.reportStatusDot, { backgroundColor: REPORT_STATUS_TONE[status] }]} />
+        </View>
+      ) : null}
+      <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={() => void openDocumentExternally(doc)}>
+        <DText weight="semiBold" style={styles.softBtnText}>{t('common.view')}</DText>
+      </HoverPressable>
+      <SmallAction icon="download-outline" label={t('common.download')} onPress={() => void downloadDocumentWithAlert(doc)} />
+      <SmallAction icon="trash-outline" label={t('common.deleteAction')} danger onPress={onDelete} />
+    </View>
+  );
+}
+
 // תגית 'נוכחי'
 function CurrentTag({ doc }: { doc: DocumentRow }) {
   const state = doc.expiry_date ? expiryState(doc.expiry_date) : 'optional';
@@ -608,6 +691,8 @@ const styles = StyleSheet.create({
   // רשת התמונות
   records: { maxHeight: 360, borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 12, ...webOnly({ overflowY: 'auto' }) },
   recordRow: { alignItems: 'flex-start' },
+  reportStatus: { width: 128 },
+  reportStatusDot: { position: 'absolute', top: 14, end: 34 },
   recordDetails: { fontSize: 14, color: DESKTOP_COLORS.ink, marginVertical: 2 },
   gallery: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6, maxHeight: 360, marginHorizontal: -6, ...webOnly({ overflowY: 'auto' }) },
   // אריח תמונה

@@ -16,16 +16,21 @@ type Props = {
   onOpen: (doc: DocumentRow) => void;
   onDownload: (doc: DocumentRow) => void;
   onDelete?: (doc: DocumentRow) => void;
+  /** Replaces the file name and date line (e.g. a traffic report's type and amount). */
+  title?: string;
+  meta?: string;
+  /** An extra button before download (e.g. a traffic report's status). */
+  extraAction?: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void };
 };
 
 // לחיצה פותחת, בסוף הורדה ומחיקה
 /** One uploaded file: open it by tapping the row; download and delete sit at its end. */
-export function DocumentFileRow({ doc, variant = 'compact', showDate = false, showExpiry = false, onOpen, onDownload, onDelete }: Props) {
+export function DocumentFileRow({ doc, variant = 'compact', showDate = false, showExpiry = false, onOpen, onDownload, onDelete, title, meta: metaOverride, extraAction }: Props) {
   const isCard = variant === 'card';
   const state = doc.expiry_date ? expiryState(doc.expiry_date) : null;
   const flagged = state === 'expired' || state === 'soon';
-  const name = documentDisplayName(doc);
-  const meta = showDate ? (showExpiry ? (doc.expiry_date ? t('documents.validUntilV1', { v1: formatDate(doc.expiry_date) }) : t('license.noExpiry')) : t('documents.uploadedV1', { v1: formatDate(doc.created_at) })) : null;
+  const name = title ?? documentDisplayName(doc);
+  const meta = metaOverride ?? (showDate ? (showExpiry ? (doc.expiry_date ? t('documents.validUntilV1', { v1: formatDate(doc.expiry_date) }) : t('license.noExpiry')) : t('documents.uploadedV1', { v1: formatDate(doc.created_at) })) : null);
 
   return (
     <View style={[styles.base, isCard ? styles.card : styles.compact]}>
@@ -51,6 +56,11 @@ export function DocumentFileRow({ doc, variant = 'compact', showDate = false, sh
           </View>
         </View>
       </Pressy>
+      {extraAction && (
+        <Pressy onPress={extraAction.onPress} accessibilityLabel={extraAction.label} style={styles.action} pressScale={0.9}>
+          <Ionicons name={extraAction.icon} size={18} color={DK.accent} />
+        </Pressy>
+      )}
       <Pressy onPress={() => onDownload(doc)} accessibilityLabel={t('common.downloadName', { name })} style={styles.action} pressScale={0.9}>
         <Ionicons name="download-outline" size={18} color={DK.accent} />
       </Pressy>

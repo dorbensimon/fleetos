@@ -14,11 +14,14 @@ import { scanDocumentDates } from '../../lib/documentDateScan';
 import { suggestedDates } from '../../lib/documentDates';
 import { DocumentFileRow } from '../../components/documents/DocumentFileRow';
 import { Procedure6FormModal } from '../../components/documents/Procedure6FormModal';
+import { TrafficReportFormModal } from '../../components/documents/TrafficReportFormModal';
+import { TRAFFIC_REPORTS_CATEGORY, TRAFFIC_REPORT_STATUSES, trafficReportStatusLabel, trafficReportSummary, trafficReportUpload, type TrafficReport } from '../../lib/trafficReports';
+import { formatDate } from '../../lib/theme';
 import { useCompany } from '../../lib/CompanyContext';
 import { DocumentRow, getVehicle, type Vehicle } from '../../lib/adminApi';
 import { vehicleName } from '../../lib/attention';
 import { formatPlate } from '../../lib/plate';
-import { listDocuments, readPickedFileBase64, storedFolderTitle, uploadDocument, type PickedFile } from '../../lib/documents';
+import { listDocuments, readPickedFileBase64, storedFolderTitle, updateDocumentDetails, uploadDocument, type PickedFile } from '../../lib/documents';
 import { createProcedure6Report, Procedure6FormValues } from '../../lib/procedure6Report';
 import { chooseDocumentSource, confirmDeleteDocument, documentDisplayName, documentViewerMode, downloadDocumentWithAlert, getDocumentViewUrl, pickDocumentSource, type DocumentSource } from '../../lib/documentActions';
 import { RootStackParamList } from '../../navigation/types';
@@ -79,6 +82,12 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const isProcedure6 = category === 'procedure_6';
   const canCreateProcedure6 = isProcedure6 && profile?.role !== 'driver';
   const [showProcedure6Form, setShowProcedure6Form] = useState(false);
+  // Traffic reports: only an admin adds them, through the report form.
+  const isTrafficReport = category === TRAFFIC_REPORTS_CATEGORY;
+  const canManage = profile?.role !== 'driver';
+  const [showReportForm, setShowReportForm] = useState(false);
+  const usesForm = isProcedure6 || isTrafficReport;
+  const openForm = () => (isProcedure6 ? setShowProcedure6Form(true) : setShowReportForm(true));
 
   const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -173,6 +182,37 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
     setShowProcedure6Form(false);
   };
 
+  const createTrafficReport = async (report: TrafficReport, file: PickedFile) => {
+    if (!companyId) return;
+    await uploadDocument({ companyId, ownerType, ownerId, category, title: storedFolderTitle(category, title), file, ...trafficReportUpload(report) });
+    await load();
+    setShowReportForm(false);
+  };
+
+  // A report's details and, for an admin, a button that changes its status.
+  const reportRowProps = (doc: DocumentRow) => {
+    const summary = isTrafficReport ? trafficReportSummary(doc, formatDate) : null;
+    if (!summary) return {};
+    return {
+      ...summary,
+      extraAction: canManage && doc.details?.status ? {
+        icon: 'swap-horizontal-outline' as const,
+        label: t('trafficReport.changeStatus'),
+        onPress: () => showAlert(t('trafficReport.changeStatus'), undefined, [
+          ...TRAFFIC_REPORT_STATUSES.filter((s) => s !== doc.details?.status).map((s) => ({
+            text: trafficReportStatusLabel(s),
+            onPress: () => void updateDocumentDetails(doc, { status: s }).then(load, (err) => showAlert(t('trafficReport.statusSaveFailed'), errorMessage(err, t('common.tryAgain')))),
+          })),
+          { text: t('common.cancel'), style: 'cancel' as const },
+        ]),
+      } : undefined,
+    };
+  };
+
+  const reportForm = isTrafficReport && companyId ? (
+    <TrafficReportFormModal visible={showReportForm} companyId={companyId} onClose={() => setShowReportForm(false)} onSubmit={createTrafficReport} />
+  ) : undefined;
+
   const openDocument = async (doc: DocumentRow) => {
     const url = await getDocumentViewUrl(doc);
     if (!url) return;
@@ -213,28 +253,29 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
               showExpiry={requiresExpiry}
               onOpen={openDocument}
               onDownload={downloadDocumentWithAlert}
-              onDelete={allowDelete ? (item) => confirmDeleteDocument(item, load) : undefined}
+              onDelete={allowDelete && (!isTrafficReport || canManage) ? (item) => confirmDeleteDocument(item, load) : undefined}
+              {...reportRowProps(doc)}
             />
           ))}
         </View>
       )}
 
-      {(!isProcedure6 || canCreateProcedure6) && (
+      {(isTrafficReport ? canManage : !isProcedure6 || canCreateProcedure6) && (
         <>
           {expiryPrompt.element}
           <HoverPressable
             style={desktopStyles.uploadBtn}
             hoverStyle={{ backgroundColor: DESKTOP_COLORS.brandHover }}
-            onPress={() => (isProcedure6 ? setShowProcedure6Form(true) : addDocument())}
+            onPress={() => (usesForm ? openForm() : addDocument())}
             disabled={uploading}
           >
             {uploading ? (
               <BrandLoader color="#FFFFFF" />
             ) : (
               <>
-                <Ionicons name={isProcedure6 ? 'add-circle-outline' : 'cloud-upload-outline'} size={15} color="#FFFFFF" />
+                <Ionicons name={usesForm ? 'add-circle-outline' : 'cloud-upload-outline'} size={15} color="#FFFFFF" />
                 <DText weight="semiBold" style={desktopStyles.uploadText}>
-                  {isProcedure6 ? t('procedure6.addReport') : t('documents.uploadDocument')}
+                  {isProcedure6 ? t('procedure6.addReport') : isTrafficReport ? t('trafficReport.add') : t('documents.uploadDocument')}
                 </DText>
               </>
             )}
@@ -253,11 +294,12 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
         {isProcedure6 && (
           <Procedure6FormModal visible={showProcedure6Form} onClose={() => setShowProcedure6Form(false)} onSubmit={createProcedure6} />
         )}
+        {reportForm}
       </>
     );
   }
 
-  const canAdd = !isProcedure6 || canCreateProcedure6;
+  const canAdd = isTrafficReport ? canManage : !isProcedure6 || canCreateProcedure6;
   const icon = CATEGORY_HERO_ICONS[category] ?? 'document-text-outline';
   return (
     <DriverPage
@@ -274,15 +316,15 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       footer={
         canAdd && !loading && !error ? (
           <PrimaryAction
-            label={isProcedure6 ? t('procedure6.newReport') : t('documents.addDocument')}
-            icon={isProcedure6 ? 'add-circle-outline' : 'cloud-upload-outline'}
+            label={isProcedure6 ? t('procedure6.newReport') : isTrafficReport ? t('trafficReport.add') : t('documents.addDocument')}
+            icon={usesForm ? 'add-circle-outline' : 'cloud-upload-outline'}
             loading={uploading}
-            onPress={() => (isProcedure6 ? setShowProcedure6Form(true) : void addDocument())}
+            onPress={() => (usesForm ? openForm() : void addDocument())}
           />
         ) : undefined
       }
       overlay={
-        isProcedure6 ? <Procedure6FormModal visible={showProcedure6Form} onClose={() => setShowProcedure6Form(false)} onSubmit={createProcedure6} /> : undefined
+        isProcedure6 ? <Procedure6FormModal visible={showProcedure6Form} onClose={() => setShowProcedure6Form(false)} onSubmit={createProcedure6} /> : reportForm
       }
     >
       {loading ? (
@@ -315,7 +357,8 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
                   showExpiry={requiresExpiry}
                   onOpen={openDocument}
                   onDownload={downloadDocumentWithAlert}
-                  onDelete={allowDelete ? (item) => confirmDeleteDocument(item, load) : undefined}
+                  onDelete={allowDelete && (!isTrafficReport || canManage) ? (item) => confirmDeleteDocument(item, load) : undefined}
+                  {...reportRowProps(doc)}
                 />
               </Reveal>
             ))

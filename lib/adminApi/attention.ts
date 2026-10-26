@@ -7,15 +7,19 @@ import { listActiveVehicleDriversForVehicles } from './assignments';
 import { fetchAllPages } from './paging';
 import { LICENSE_DOCS_CATEGORY } from '../driverDocumentFolders';
 import { attentionGroups, type AttentionGroup } from '../attention';
+import { TRAFFIC_REPORTS_CATEGORY } from '../trafficReports';
 
 // טוען את כל מה שדורש טיפול בחברה
 export async function loadAttention(companyId: string): Promise<AttentionGroup[]> {
   const [drivers, vehicles] = await Promise.all([listDrivers(companyId), listVehicles(companyId)]);
-  const [compliance, vehicleDrivers, licenseDocs] = await Promise.all([
+  const [compliance, vehicleDrivers, licenseDocs, reports] = await Promise.all([
     listComplianceForOwners('vehicle', vehicles.map((v) => v.id)),
     listActiveVehicleDriversForVehicles(vehicles.map((v) => v.id)),
     fetchAllPages<{ owner_id: string; title: string }>((from, to) =>
       supabase.from('documents').select('owner_id, title').eq('company_id', companyId).eq('owner_type', 'driver').eq('category', LICENSE_DOCS_CATEGORY).order('id').range(from, to)
+    ),
+    fetchAllPages<{ owner_id: string; document_date: string | null; details: Record<string, string> }>((from, to) =>
+      supabase.from('documents').select('owner_id, document_date, details').eq('company_id', companyId).eq('owner_type', 'driver').eq('category', TRAFFIC_REPORTS_CATEGORY).eq('details->>status', 'open').order('id').range(from, to)
     ),
   ]);
   const sides = new Map<string, Set<string>>();
@@ -25,5 +29,6 @@ export async function loadAttention(companyId: string): Promise<AttentionGroup[]
     compliance,
     vehicleDrivers,
     drivers: drivers.map((driver) => ({ driver, licenseSides: sides.get(driver.id) ?? new Set() })),
+    trafficReports: reports.map((r) => ({ ownerId: r.owner_id, documentDate: r.document_date, details: r.details ?? {} })),
   });
 }

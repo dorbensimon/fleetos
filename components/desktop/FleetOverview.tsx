@@ -504,6 +504,7 @@ const GROUP_ICON: Record<AttentionGroup['kind'], IconName> = {
   registration: 'document-text-outline',
   license: 'id-card-outline',
   licenseDocs: 'camera-outline',
+  trafficReports: 'warning-outline',
   unassigned: 'person-add-outline',
 };
 
