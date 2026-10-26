@@ -17,7 +17,8 @@ export type OwnerNotificationType =
   | 'owner_carrier_license_expiry'
   | 'owner_trial_ending'
   | 'owner_renewal_due'
-  | 'owner_vehicle_limit';
+  | 'owner_vehicle_limit'
+  | 'owner_system_job_failed';
 
 export type OwnerNotificationTone = 'info' | 'good' | 'warn' | 'bad';
 

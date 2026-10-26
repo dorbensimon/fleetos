@@ -34,6 +34,7 @@ const TYPE_ICON: Record<OwnerNotificationType, IconName> = {
   owner_trial_ending: 'timer',
   owner_renewal_due: 'card',
   owner_vehicle_limit: 'trending-up',
+  owner_system_job_failed: 'warning',
 };
 
 // צבע לכל דחיפות

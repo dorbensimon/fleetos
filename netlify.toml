@@ -35,7 +35,7 @@
       style-src 'self' 'unsafe-inline' https://cdn.docuseal.com https://cdn.docuseal.eu https://docuseal.com https://docuseal.eu; \
       img-src 'self' data: blob: https:; \
       font-src 'self' data: https://cdn.docuseal.com https://cdn.docuseal.eu https://docuseal.com https://docuseal.eu; \
-      connect-src 'self' blob: data: https://lnflftptzrfuzfecmhho.supabase.co wss://lnflftptzrfuzfecmhho.supabase.co https://docuseal.com https://*.docuseal.com https://docuseal.eu https://*.docuseal.eu https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; \
+      connect-src 'self' blob: data: https://lnflftptzrfuzfecmhho.supabase.co wss://lnflftptzrfuzfecmhho.supabase.co https://docuseal.com https://*.docuseal.com https://docuseal.eu https://*.docuseal.eu https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io; \
       frame-src 'self' blob: data: https://lnflftptzrfuzfecmhho.supabase.co https://docuseal.com https://*.docuseal.com https://docuseal.eu https://*.docuseal.eu; \
       worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; \
       media-src 'self' blob: data: https://lnflftptzrfuzfecmhho.supabase.co; \

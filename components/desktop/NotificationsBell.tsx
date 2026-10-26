@@ -100,6 +100,7 @@ const OWNER_ICON: Record<OwnerNotification['notification_type'], IconName> = {
   owner_trial_ending: 'timer-outline',
   owner_renewal_due: 'card-outline',
   owner_vehicle_limit: 'trending-up-outline',
+  owner_system_job_failed: 'warning-outline',
 };
 
 // הפעמון של הבעלים
