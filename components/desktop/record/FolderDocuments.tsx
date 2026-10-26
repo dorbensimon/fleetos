@@ -338,26 +338,28 @@ function GalleryTile({ doc, index, onDelete }: { doc: DocumentRow; index: number
   const [hovered, setHovered] = useState(false);
   const showActions = hovered || !canHover();
   const reduceMotion = prefersReducedMotion();
+  // The actions sit beside the open button, not inside it: a button nested in
+  // a button never gets the click on the web, so delete used to open the file.
   return (
-    <HoverPressable
-      style={[styles.tile, !reduceMotion && styles.tileEnter, !reduceMotion && { animationDelay: `${Math.min(index, 11) * 35}ms` } as object]}
-      hoverStyle={styles.tileHover}
-      onHoverIn={() => setHovered(true)}
-      onHoverOut={() => setHovered(false)}
-      onPress={() => void openDocumentExternally(doc)}
-      accessibilityLabel={t('documents.openDoc', { doc: documentDisplayName(doc) })}
+    <View
+      style={[styles.tile, hovered && styles.tileHover, !reduceMotion && styles.tileEnter, !reduceMotion && { animationDelay: `${Math.min(index, 11) * 35}ms` } as object]}
+      {...({ onPointerEnter: () => setHovered(true), onPointerLeave: () => setHovered(false) } as object)}
     >
-      <View style={[styles.tilePreview, hovered && !reduceMotion && styles.tilePreviewHover]}>
-        <DocumentPreview doc={doc} width={78} height={102} />
+      <HoverPressable style={styles.tileOpen} onPress={() => void openDocumentExternally(doc)} accessibilityLabel={t('documents.openDoc', { doc: documentDisplayName(doc) })}>
+        <View style={[styles.tilePreview, hovered && !reduceMotion && styles.tilePreviewHover]}>
+          <DocumentPreview doc={doc} width={78} height={102} />
+        </View>
+        <DText weight="semiBold" style={styles.tileName} numberOfLines={2}>{documentDisplayName(doc)}</DText>
+        <DText style={styles.tileMeta}>{docDateLine(doc, true).prefix}</DText>
+        <DLtrText style={styles.tileMeta}>{docDateLine(doc, true).date}</DLtrText>
+      </HoverPressable>
+      <View style={[styles.tileActionsFrame, { pointerEvents: 'none' }]}>
         <View style={[styles.tileActions, showActions && styles.tileActionsOn, { pointerEvents: showActions ? 'auto' : 'none' }]}>
           <TileAction icon="download-outline" label={t('common.download')} onPress={() => void downloadDocumentWithAlert(doc)} />
           <TileAction icon="trash-outline" label={t('common.deleteAction')} danger onPress={onDelete} />
         </View>
       </View>
-      <DText weight="semiBold" style={styles.tileName} numberOfLines={2}>{documentDisplayName(doc)}</DText>
-      <DText style={styles.tileMeta}>{docDateLine(doc, true).prefix}</DText>
-      <DLtrText style={styles.tileMeta}>{docDateLine(doc, true).date}</DLtrText>
-    </HoverPressable>
+    </View>
   );
 }
 
@@ -621,6 +623,9 @@ const styles = StyleSheet.create({
   tilePreviewHover: webOnly({ transform: 'scale(1.04)' }),
   tileActions: { position: 'absolute', top: 4, start: 4, flexDirection: 'column', gap: 4, opacity: 0, ...webOnly({ transition: 'opacity 150ms ease' }) },
   tileActionsOn: { opacity: 1 },
+  tileOpen: { alignSelf: 'stretch', alignItems: 'center' },
+  // Over the miniature (78×102, below the tile's top padding), so the actions keep their old spot.
+  tileActionsFrame: { position: 'absolute', top: 10, alignSelf: 'center', width: 78, height: 102 },
   tileAction: {
     width: 28,
     height: 28,

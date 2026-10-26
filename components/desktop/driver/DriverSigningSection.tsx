@@ -29,6 +29,7 @@ import { t, dirIcon, getLocale } from '../../../lib/i18n';
 import { errorMessage } from '../../../lib/requestError';
 import { useSigningStyles } from '../signing/folderCss';
 import { CreateDocumentSheet } from '../signing/CreateDocumentSheet';
+import { INSPECTION_TITLE } from '../../../lib/inspectionTitle';
 
 type FolderStatus = ReturnType<typeof signingFolderStatus>;
 // טקסט לכל מצב תיקייה
@@ -100,6 +101,7 @@ const STATUS_COLOR: Record<FolderStatus, string> = {
 export function DriverSigningList({
   companyId,
   driverId,
+  vehicleId,
   canSend,
   folders,
   loading,
@@ -111,6 +113,8 @@ export function DriverSigningList({
 }: {
   companyId: string;
   driverId: string;
+  /** The driver's primary vehicle: a new safety officer inspection starts on it. */
+  vehicleId?: string | null;
   canSend: boolean;
   folders: SigningFolder[];
   loading: boolean;
@@ -180,6 +184,7 @@ export function DriverSigningList({
         <SigningFolderModal
           companyId={companyId}
           driverId={driverId}
+          vehicleId={vehicleId}
           canSend={canSend}
           folder={openFolder}
           onClose={() => setOpenId(null)}
@@ -222,6 +227,7 @@ export function NewFormButton({ companyId, takenTitles, onChanged }: { companyId
 function SigningFolderModal({
   companyId,
   driverId,
+  vehicleId,
   canSend,
   folder,
   onClose,
@@ -230,6 +236,7 @@ function SigningFolderModal({
 }: {
   companyId: string;
   driverId: string;
+  vehicleId?: string | null;
   canSend: boolean;
   folder: SigningFolder;
   onClose: () => void;
@@ -307,7 +314,6 @@ function SigningFolderModal({
   }, [folder.id]);
 
   const pending = folder.requests.find((item) => item.status === 'pending' && !!item.docuseal_submitter_slug);
-  const completed = folder.requests.find((item) => item.status === 'completed');
 
   const open = async (item: SignatureRequest) => {
     setOpening(item.id);
@@ -383,32 +389,46 @@ function SigningFolderModal({
         )}
         {canSend && folder.template && !meetings.checklist && (
           <View style={styles.actions}>
-          {!(completed && !pending) && (
-            <HoverPressable
-              style={[styles.previewBtn, opening === 'preview' && recordStyles.disabled]}
-              hoverStyle={styles.previewHover}
-              pressStyle={recordStyles.pressDown}
-              disabled={opening === 'preview' || sending}
-              onPress={preview}
-              accessibilityLabel={t('signing.viewBeforeSending')}
-            >
-              <Ionicons name="eye-outline" size={16} color={DESKTOP_COLORS.ink} />
-              <DText weight="semiBold" style={styles.previewText}>{opening === 'preview' ? t('common.opening') : t('signing.viewDocument')}</DText>
-            </HoverPressable>
-          )}
+          <HoverPressable
+            style={[styles.previewBtn, opening === 'preview' && recordStyles.disabled]}
+            hoverStyle={styles.previewHover}
+            pressStyle={recordStyles.pressDown}
+            disabled={opening === 'preview' || sending}
+            onPress={preview}
+            accessibilityLabel={t('signing.viewBeforeSending')}
+          >
+            <Ionicons name="eye-outline" size={16} color={DESKTOP_COLORS.ink} />
+            <DText weight="semiBold" style={styles.previewText}>{opening === 'preview' ? t('common.opening') : t('signing.viewDocument')}</DText>
+          </HoverPressable>
           <HoverPressable
             style={[styles.sendBtn, sending && recordStyles.disabled]}
             hoverStyle={recordStyles.rowHover}
             pressStyle={recordStyles.pressDown}
             disabled={sending}
-            onPress={() => (completed && !pending ? open(completed) : send())}
+            onPress={() => void send()}
           >
-            <Ionicons name={completed && !pending ? 'document-text-outline' : 'send-outline'} size={14} color={DESKTOP_COLORS.brand} />
+            <Ionicons name="send-outline" size={14} color={DESKTOP_COLORS.brand} />
             <DText weight="semiBold" style={styles.sendText}>
-              {sending ? t('common.sending') : pending ? t('signing.resendForSignature') : completed ? t('signing.viewSigned') : t('signing.sendForSignature')}
+              {sending ? t('common.sending') : pending ? t('signing.resendForSignature') : t('signing.sendForSignature')}
             </DText>
           </HoverPressable>
           </View>
+        )}
+        {canSend && !folder.template && folder.title === INSPECTION_TITLE && (
+          // No template: the driver signs it at the end of the vehicle's inspection, so a new one starts there.
+          vehicleId ? (
+            <HoverPressable
+              style={styles.sendBtn}
+              hoverStyle={recordStyles.rowHover}
+              pressStyle={recordStyles.pressDown}
+              onPress={() => { onClose(); navigation.navigate('SafetyInspection', { vehicleId }); }}
+            >
+              <Ionicons name="add-circle-outline" size={16} color={DESKTOP_COLORS.brand} />
+              <DText weight="semiBold" style={styles.sendText}>{t('inspection.new')}</DText>
+            </HoverPressable>
+          ) : (
+            <DText style={styles.message}>{t('driver.noAssignedVehicle')}</DText>
+          )
         )}
         {!!message && <DText style={styles.error}>{message}</DText>}
         {meetings.drafts.length > 0 && (

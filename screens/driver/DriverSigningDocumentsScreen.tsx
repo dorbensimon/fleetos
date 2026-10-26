@@ -12,6 +12,7 @@ import { assignSigningTemplate, downloadSignedRequest, getSigningSession, getSig
 import { eraseSigningRequest, eraseWarning } from '../../lib/signingSend';
 import { buildSigningFolders, type SigningFolder, requestTitle } from '../../lib/signingFolders';
 import { getDriver, type DriverRow } from '../../lib/adminApi';
+import { INSPECTION_TITLE } from '../../lib/inspectionTitle';
 import { useCompany } from '../../lib/CompanyContext';
 import type { RootStackParamList } from '../../navigation/types';
 import { showAlert } from '../../lib/platformAlert';
@@ -225,7 +226,6 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
     );
   };
   const pending = folder?.requests.find(item => item.status === 'pending' && !!item.docuseal_submitter_slug);
-  const completed = folder?.requests.find(item => item.status === 'completed');
 
   if (isDesktop) {
     return (
@@ -280,11 +280,11 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
                     style={[ds.sendButton, sending && ds.disabled]}
                     hoverStyle={{ backgroundColor: DESKTOP_COLORS.rowHover }}
                     disabled={sending}
-                    onPress={() => (completed && !pending ? open(completed) : send())}
+                    onPress={() => void send()}
                   >
-                    <Ionicons name={completed && !pending ? 'document-text-outline' : 'send-outline'} size={14} color={DESKTOP_COLORS.brand} />
+                    <Ionicons name="send-outline" size={14} color={DESKTOP_COLORS.brand} />
                     <DText weight="semiBold" style={ds.sendText}>
-                      {sending ? t('common.sending') : pending ? t('signing.resendTitle', { title: folder.title }) : completed ? t('signing.viewDocument') : t('signing.sendTitleForSignature', { title: folder.title })}
+                      {sending ? t('common.sending') : pending ? t('signing.resendTitle', { title: folder.title }) : t('signing.sendTitleForSignature', { title: folder.title })}
                     </DText>
                   </HoverPressable>
                 )}
@@ -363,7 +363,9 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
 
   // The manager's view: every folder (empty ones are where sending starts),
   // and inside one, what was sent and its state, with send / resend on top.
-  const sendLabel = sending ? t('common.sending') : pending ? t('signing.resendForSignature') : completed ? t('signing.viewSigned') : t('signing.sendForSignature');
+  // A signed form can be sent again; its signed copies open from the list.
+  const inspectionVehicleId = (driver?.vehicles.find((v) => v.is_primary) ?? driver?.vehicles[0])?.id ?? null;
+  const sendLabel = sending ? t('common.sending') : pending ? t('signing.resendForSignature') : t('signing.sendForSignature');
   return (
     <DriverPage
       insetTop={insets.top}
@@ -377,18 +379,21 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
           </View>
         ) : folderId && folder && canSend && folder.template ? (
           <View style={styles.footer}>
-            {!(completed && !pending) && (
-              <PrimaryAction label={t('common.view')} icon="eye-outline" tone="ghost" loading={opening === 'preview'} disabled={sending} onPress={() => void preview()} style={styles.grow} />
-            )}
+            <PrimaryAction label={t('common.view')} icon="eye-outline" tone="ghost" loading={opening === 'preview'} disabled={sending} onPress={() => void preview()} style={styles.grow} />
             <PrimaryAction
               label={sendLabel}
-              icon={completed && !pending ? 'eye-outline' : 'send'}
-              tone={completed && !pending ? 'ghost' : 'accent'}
-              loading={sending || (!!completed && !pending && opening === completed.id)}
+              icon="send"
+              tone="accent"
+              loading={sending}
               disabled={opening === 'preview'}
-              onPress={() => (completed && !pending ? void open(completed) : void send())}
+              onPress={() => void send()}
               style={styles.flex2}
             />
+          </View>
+        ) : folderId && folder && canSend && !folder.template && folder.title === INSPECTION_TITLE && inspectionVehicleId ? (
+          // The driver signs this one at the end of the vehicle's inspection, so a new one starts there.
+          <View style={styles.footer}>
+            <PrimaryAction label={t('inspection.new')} icon="add-circle-outline" onPress={() => navigation.navigate('SafetyInspection', { vehicleId: inspectionVehicleId })} style={styles.flex2} />
           </View>
         ) : undefined
       }
