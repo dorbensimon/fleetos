@@ -1,4 +1,4 @@
-// דוח בדיקות קצין בטיחות להורדה (PDF)
+// דוח בדיקות קצין בטיחות להורדה (PDF או אקסל)
 import type { Company } from './supabase';
 import { daysBetween } from './meetingPlan';
 import { formatPlate } from './plate';
@@ -15,7 +15,7 @@ import {
   type InspectionPlanRow,
   type InspectionState,
 } from './inspections';
-import { buildTableReport, printOrShareReport, ReportCell } from './reportTemplate';
+import { deliverTableReport, ReportCell, type ReportFormat, type TableReportOptions } from './reportTemplate';
 import { listDepartments } from './adminApi/departments';
 import { listVehicles } from './adminApi/vehicles';
 import { VEHICLE_TYPE_LABELS } from './compliance';
@@ -116,14 +116,14 @@ type VehicleFacts = Map<string, { type: string; department: string | null }>;
 const VEHICLES = { one: 'רכב אחד', many: 'רכבים' };
 const INSPECTIONS = { one: 'בדיקה אחת', many: 'בדיקות' };
 
-// בונה את ה-HTML של הדוח
-function buildHtml(
+// בונה את טבלת הדוח
+function buildReport(
   company: Company,
   category: InspectionReportCategory,
   picked: ReturnType<typeof selectInspectionReport>,
   today: string,
   facts: VehicleFacts,
-): string {
+): TableReportOptions {
   const common = { company: { name: company.name, businessId: company.business_id }, title: TITLES[category] };
   const plate = (value: string | null | undefined): ReportCell => ({ text: value ? formatPlate(value) : null, ltr: true });
   const inspectionCells = (row: InspectionListRow): ReportCell[] => [
@@ -142,7 +142,7 @@ function buildHtml(
     const row = ({ row: r }: Entry) => [...inspectionCells(r), r.defect_count > 0
       ? { text: r.defect_count === 1 ? 'ליקוי אחד' : `${r.defect_count} ליקויים`, tone: 'bad' as const }
       : { text: 'אין' }];
-    return buildTableReport({
+    return ({
       ...common,
       unit: INSPECTIONS,
       columns: [...inspectionColumns, { label: 'ליקויים', width: 18 }],
@@ -161,7 +161,7 @@ function buildHtml(
       const days = Math.max(0, daysBetween(r.inspection_date, today));
       return [...inspectionCells(r), { text: days === 1 ? 'יום אחד' : `${days} ימים`, tone: days > 7 ? 'bad' : undefined }];
     };
-    return buildTableReport({
+    return ({
       ...common,
       unit: INSPECTIONS,
       columns: [...inspectionColumns, { label: 'ממתין', width: 18 }],
@@ -181,7 +181,7 @@ function buildHtml(
       const key = line.row.vehicle?.plate_number ?? line.row.facts?.plate ?? '';
       byVehicle.set(key, [...(byVehicle.get(key) ?? []), line]);
     }
-    return buildTableReport({
+    return ({
       ...common,
       unit: { one: 'ליקוי אחד', many: 'ליקויים' },
       columns: [
@@ -206,7 +206,7 @@ function buildHtml(
       p.lastInspection ? { text: formatIsoDay(p.lastInspection), ltr: true } : { text: 'בדיקה ראשונה', tone: 'muted' },
       dueCell(p.nextDue!, today),
     ];
-    return buildTableReport({
+    return ({
       ...common,
       unit: VEHICLES,
       columns: [
@@ -223,7 +223,7 @@ function buildHtml(
     });
   }
 
-  return buildTableReport({
+  return ({
     ...common,
     unit: VEHICLES,
     columns: [
@@ -254,7 +254,7 @@ async function loadVehicleFacts(companyId: string): Promise<VehicleFacts> {
 }
 
 // מפיק ומוריד את הדוח
-export async function exportInspectionsReport(company: Company, category: InspectionReportCategory): Promise<void> {
+export async function exportInspectionsReport(company: Company, category: InspectionReportCategory, format: ReportFormat = 'pdf'): Promise<void> {
   const needsList = category === 'insp_quarter' || category === 'insp_awaiting' || category === 'insp_defects';
   const needsPlan = category === 'insp_defects' || category === 'insp_due' || category === 'insp_never';
   const needsFacts = category === 'insp_due' || category === 'insp_never';
@@ -265,5 +265,5 @@ export async function exportInspectionsReport(company: Company, category: Inspec
   ]);
   const today = todayIso();
   const picked = selectInspectionReport(category, { inspections, plan }, today);
-  await printOrShareReport(buildHtml(company, category, picked, today, facts), TITLES[category]);
+  await deliverTableReport(buildReport(company, category, picked, today, facts), TITLES[category], format);
 }

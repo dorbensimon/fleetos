@@ -25,6 +25,7 @@ import { useFormReports } from '../reports/useFormReports';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
+import type { ReportFormat } from '../../lib/reportTemplate';
 import { INSPECTION_REPORT_CATEGORIES, exportInspectionsReport, type InspectionReportCategory } from '../../lib/inspectionReport';
 import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, webOnly } from './desktopTheme';
@@ -178,10 +179,12 @@ export function ReportsQuickAction() {
     if (!loaded) void load();
   };
 
+  const [format, setFormat] = useState<ReportFormat>('pdf');
+
   const exportDrivers = async (category: ReportCategory) => {
     if (!company) return;
     setExporting(category);
-    try { await exportDriversReport(company, drivers, category); setKind(null); }
+    try { await exportDriversReport(company, drivers, category, format); setKind(null); }
     catch (err: any) { showAlert(t('reports.exportFailed'), String(errorMessage(err, t('common.tryAgain')))); }
     finally { setExporting(null); }
   };
@@ -189,7 +192,7 @@ export function ReportsQuickAction() {
   const exportVehicles = async (category: VehicleReportCategory) => {
     if (!company) return;
     setExporting(category);
-    try { await exportVehiclesReport(company, vehicles, compliance, assignments, category); setKind(null); }
+    try { await exportVehiclesReport(company, vehicles, compliance, assignments, category, format); setKind(null); }
     catch (err: any) { showAlert(t('reports.exportFailed'), String(errorMessage(err, t('common.tryAgain')))); }
     finally { setExporting(null); }
   };
@@ -208,7 +211,7 @@ export function ReportsQuickAction() {
   const exportInspections = async (category: InspectionReportCategory) => {
     if (!company) return;
     setExporting(category);
-    try { await exportInspectionsReport(company, category); setKind(null); }
+    try { await exportInspectionsReport(company, category, format); setKind(null); }
     catch (err: any) { showAlert(t('reports.exportFailed'), String(errorMessage(err, t('common.tryAgain')))); }
     finally { setExporting(null); }
   };
@@ -228,6 +231,8 @@ export function ReportsQuickAction() {
             forms={forms}
             inspectionCategories={INSPECTION_REPORT_CATEGORIES}
             exportingCategory={exporting}
+            format={format}
+            onFormatChange={setFormat}
             onSelectDriverCategory={(value) => void exportDrivers(value as ReportCategory)}
             onSelectVehicleCategory={(value) => void exportVehicles(value as VehicleReportCategory)}
             onSelectFormCategory={(value) => void exportForm(value as FormReportCategory)}

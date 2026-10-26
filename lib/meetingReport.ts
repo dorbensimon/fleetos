@@ -6,7 +6,7 @@ import { listSigningTemplates } from './docuseal';
 import { formatIsoDay, meetingState, readForm, todayIso, type MeetingState } from './checklistForms';
 import { daysBetween, isDueSoon, loadMeetingPlan, type PlanRow } from './meetingPlan';
 import { formatPhone } from './phone';
-import { buildTableReport, printOrShareReport, ReportCell } from './reportTemplate';
+import { deliverTableReport, ReportCell, type TableReportOptions } from './reportTemplate';
 
 /**
  * "ייצוא דוחות" → "טפסים לנהגים": reports on ONE "רשימת סעיפים" form at a
@@ -194,8 +194,8 @@ const STUCK_ACTION: Record<Stuck, string> = {
 const FILLS = { one: 'מילוי אחד', many: 'מילויים' };
 const DRIVERS = { one: 'נהג אחד', many: 'נהגים' };
 
-// בונה את ה-HTML של הדוח
-function buildHtml(company: Company, form: ReportForm, category: FormReportCategory, drivers: DriverRow[], data: FormReportData, pick: FormReportPick, today: string): string {
+// בונה את טבלת הדוח
+function buildReport(company: Company, form: ReportForm, category: FormReportCategory, drivers: DriverRow[], data: FormReportData, pick: FormReportPick, today: string): TableReportOptions {
   const byId = new Map(drivers.map((d) => [d.id, d]));
   const plan = new Map(data.plan.map((row) => [row.driverId, row]));
   const note = (driverId: string): ReportCell => {
@@ -211,7 +211,7 @@ function buildHtml(company: Company, form: ReportForm, category: FormReportCateg
 
   if (category === 'filled') {
     const repeats = form.repeatMonths > 0;
-    return buildTableReport({
+    return ({
       ...common,
       unit: FILLS,
       columns: repeats
@@ -244,7 +244,7 @@ function buildHtml(company: Company, form: ReportForm, category: FormReportCateg
       { text: STUCK_ACTION[state as Stuck] },
     ];
     const of = (state: Stuck) => pick.meetings.filter((m) => m.state === state).map(row);
-    return buildTableReport({
+    return ({
       ...common,
       unit: FILLS,
       columns: [{ label: 'שם הנהג', width: 22 }, { label: 'ת.ז', width: 15 }, { label: 'תאריך', width: 14 }, { label: 'מצב', width: 20 }, { label: 'מה לעשות', width: 29 }],
@@ -266,7 +266,7 @@ function buildHtml(company: Company, form: ReportForm, category: FormReportCateg
       note(r.driverId),
       dueCell(r.nextDue, today),
     ];
-    return buildTableReport({
+    return ({
       ...common,
       unit: DRIVERS,
       columns: [{ label: 'שם הנהג', width: 22 }, { label: 'ת.ז', width: 15 }, { label: 'מילוי אחרון', width: 16 }, { label: 'הערה', width: 21 }, { label: 'המועד', width: 26 }],
@@ -280,7 +280,7 @@ function buildHtml(company: Company, form: ReportForm, category: FormReportCateg
     });
   }
 
-  return buildTableReport({
+  return ({
     ...common,
     unit: DRIVERS,
     columns: [{ label: 'שם הנהג', width: 22 }, { label: 'ת.ז', width: 15 }, { label: 'טלפון', width: 18 }, { label: 'תחילת עבודה', width: 18 }, { label: 'הערה', width: 27 }],
@@ -304,5 +304,6 @@ export async function exportFormReport(company: Company, drivers: DriverRow[], f
   const today = todayIso();
   const pick = selectFormReport(category, form, data, drivers, today);
   const title = formReportTitle(form, category);
-  await printOrShareReport(buildHtml(company, form, category, drivers, data, pick, today), title);
+  // Signed-form reports stay PDF only, so nobody can edit them.
+  await deliverTableReport(buildReport(company, form, category, drivers, data, pick, today), title, 'pdf');
 }

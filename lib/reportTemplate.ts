@@ -12,7 +12,8 @@ import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 import { t, textDirection } from './i18n';
 import { safeFileName } from './fileNames';
-import { shareFileOnWeb } from './webDownload';
+import { downloadRemoteFileOnWeb, shareFileOnWeb } from './webDownload';
+import { XLSX_MIME, xlsxBytes } from './xlsx';
 import { formatDate } from './theme';
 
 export type TagTone = 'accent' | 'accent2' | 'neutral' | 'outline';
@@ -543,6 +544,35 @@ export function buildTableReport(opts: TableReportOptions): string {
   <script>${FIT_SHEETS_SCRIPT}</script>
 </body>
 </html>`;
+}
+
+// אותה טבלה כשורות לאקסל
+/**
+ * The same table as spreadsheet rows: one header row, then every row. When the
+ * sections have titles, a first "קבוצה" column keeps each row's section; a
+ * cell's small line follows its text.
+ */
+export function tableReportRows(opts: TableReportOptions): string[][] {
+  const sections = opts.sections.filter((s) => s.rows.length > 0);
+  const grouped = sections.some((s) => s.title);
+  const cell = (c: ReportCell) => [c.text, c.sub].filter(Boolean).join(' · ');
+  return [
+    [...(grouped ? ['קבוצה'] : []), ...opts.columns.map((c) => c.label)],
+    ...sections.flatMap((s) => s.rows.map((row) => [...(grouped ? [s.title] : []), ...row.map(cell)])),
+  ];
+}
+
+export type ReportFormat = 'pdf' | 'xlsx';
+
+// מוציא דוח טבלה כ-PDF או כקובץ אקסל
+export async function deliverTableReport(opts: TableReportOptions, title: string, format: ReportFormat): Promise<void> {
+  if (format === 'pdf') return printOrShareReport(buildTableReport(opts), title);
+  const url = URL.createObjectURL(new Blob([xlsxBytes(tableReportRows(opts), { sheetName: title })], { type: XLSX_MIME }));
+  try {
+    await downloadRemoteFileOnWeb(url, `${safeFileName(title, 'report')} ${formatDate(new Date().toISOString()).replace(/\//g, '.')}.xlsx`);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 // הופך דוח ל-PDF לשיתוף או הדפסה

@@ -1,10 +1,10 @@
-// דוח נהגים להורדה (PDF)
+// דוח נהגים להורדה (PDF או אקסל)
 import { Company } from './supabase';
 import { DriverRow } from './adminApi';
 import { daysUntilExpiry } from './theme';
 import { formatPlate } from './plate';
 import { formatPhone } from './phone';
-import { buildTableReport, expiryCell, printOrShareReport, ReportCell } from './reportTemplate';
+import { expiryCell, deliverTableReport, ReportCell, type ReportFormat, type TableReportOptions } from './reportTemplate';
 
 // Licence expiry lists live in "תוקפים" (lib/validityList.ts), with an Excel export.
 export type ReportCategory = 'all' | 'no_vehicle';
@@ -33,8 +33,8 @@ function filterDrivers(drivers: DriverRow[], category: ReportCategory): DriverRo
 
 const UNIT = { one: 'נהג אחד', many: 'נהגים' };
 
-// בונה את ה-HTML של הדוח
-function buildHtml(company: Company, drivers: DriverRow[], category: ReportCategory): string {
+// בונה את טבלת הדוח
+function buildReport(company: Company, drivers: DriverRow[], category: ReportCategory): TableReportOptions {
   const name = (d: DriverRow): ReportCell => ({ text: d.full_name });
   const phone = (d: DriverRow): ReportCell => ({ text: d.phone ? formatPhone(d.phone) : null, ltr: true });
   const job = (d: DriverRow): ReportCell => ({ text: d.job_title });
@@ -48,7 +48,7 @@ function buildHtml(company: Company, drivers: DriverRow[], category: ReportCateg
 
   switch (category) {
     case 'no_vehicle':
-      return buildTableReport({
+      return ({
         ...common,
         columns: [{ label: 'שם מלא', width: 24 }, { label: 'טלפון', width: 20 }, { label: 'תפקיד', width: 20 }, { label: 'דרגת רישיון', width: 14 }, { label: 'תוקף רישיון', width: 22 }],
         sections: [{ title: '', rows: drivers.map((d) => [name(d), phone(d), job(d), classes(d), expiry(d)]) }],
@@ -57,7 +57,7 @@ function buildHtml(company: Company, drivers: DriverRow[], category: ReportCateg
         emptyText: 'לכל הנהגים יש רכב משויך',
       });
     default:
-      return buildTableReport({
+      return ({
         ...common,
         columns: [{ label: 'שם מלא', width: 20 }, { label: 'טלפון', width: 17 }, { label: 'תפקיד', width: 15 }, { label: 'דרגת רישיון', width: 13 }, { label: 'רכב משויך', width: 15 }, { label: 'תוקף רישיון', width: 20 }],
         sections: [{ title: '', rows: drivers.map((d) => [name(d), phone(d), job(d), classes(d), vehicle(d), expiry(d)]) }],
@@ -72,9 +72,9 @@ function buildHtml(company: Company, drivers: DriverRow[], category: ReportCateg
 export async function exportDriversReport(
   company: Company,
   drivers: DriverRow[],
-  category: ReportCategory
+  category: ReportCategory,
+  format: ReportFormat = 'pdf'
 ): Promise<void> {
   const filtered = filterDrivers(drivers, category);
-  const html = buildHtml(company, filtered, category);
-  await printOrShareReport(html, CATEGORY_TITLES[category]);
+  await deliverTableReport(buildReport(company, filtered, category), CATEGORY_TITLES[category], format);
 }
