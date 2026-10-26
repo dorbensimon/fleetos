@@ -649,6 +649,7 @@ export function DriverDetailDesktopView({
         <DriverSigningList
           companyId={companyId}
           driverId={driverId}
+          vehicleId={(vehicles.find((v) => v.is_primary) ?? vehicles[0])?.id ?? null}
           canSend={canSendSigning}
           folders={signing.folders}
           loading={signing.loading}
