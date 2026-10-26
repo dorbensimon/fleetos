@@ -1,6 +1,6 @@
 // כפתור 'דוחות תעבורה' בכותרת: כל הדוחות של החברה, סינון, ייצוא לאקסל, דוח חדש
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -274,6 +274,7 @@ function TrafficReportEditor({
   onClose: () => void;
   onSaved: () => void | Promise<void>;
 }) {
+  const { height: windowHeight } = useWindowDimensions();
   const isNew = !row;
   const [report, setReport] = useState<TrafficReport>(() => (row ? trafficReportFromDoc(row.doc) : EMPTY_TRAFFIC_REPORT));
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -366,7 +367,8 @@ function TrafficReportEditor({
 
   return (
     <DesktopModal visible title={isNew ? t('trafficReport.new') : t('trafficReport.edit')} onClose={() => !saving && onClose()} maxWidth={720}>
-      <ScrollView style={styles.editor} contentContainerStyle={styles.editorContent}>
+      {/* החלון עד 84% מהגובה: הטופס נגלל, השמירה נשארת למטה */}
+      <ScrollView style={{ maxHeight: Math.max(240, windowHeight * 0.84 - 140) }} contentContainerStyle={styles.editorContent}>
         {isNew ? (
           <View style={styles.driverBox}>
             <DText style={styles.label}>{t('trafficReport.driver')}</DText>
@@ -455,9 +457,8 @@ const styles = StyleSheet.create({
   muted: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
   label: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
   state: { alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 48 },
-  editor: { maxHeight: 560 },
-  editorContent: { gap: 14, paddingBottom: 4 },
+  editorContent: { gap: 14, paddingHorizontal: 18, paddingVertical: 16 },
   driverBox: { gap: 6 },
   fileBtn: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 8, height: 46, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', borderColor: DESKTOP_COLORS.borderInput, backgroundColor: DESKTOP_COLORS.surface },
-  footer: { flexDirection: 'row-reverse', gap: 10, paddingTop: 14 },
+  footer: { flexDirection: 'row-reverse', gap: 10, paddingHorizontal: 18, paddingVertical: 12, borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.border },
 });
