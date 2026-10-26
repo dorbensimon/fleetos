@@ -3760,6 +3760,7 @@
     }
   },
   "trafficReport": {
+    "pageSubtitle": "All company reports: payment and transfer dates, the driver by offense date, Excel export",
     "add": "Add report",
     "typeLabel": "Report type",
     "offenseDate": "Offense date",

@@ -33,6 +33,7 @@ const ROUTE_ACCESS: Record<RouteName, Access> = {
   CompanyDocuments: ['admin'],
   Attention: ['admin'],
   Reports: ['admin'],
+  TrafficReports: ['admin'],
   CompanySettings: ['admin'],
   // The owner opens them for one company, from its page.
   SignedDocuments: ['admin', 'owner'],

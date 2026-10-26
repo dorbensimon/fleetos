@@ -2,6 +2,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BrandLoader } from '../ui/BrandLoader';
 import { DesktopDateField, DesktopSelect, DLtrText, DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, webOnly } from './desktopTheme';
@@ -42,18 +44,12 @@ import { daysUntilExpiry, formatDate } from '../../lib/theme';
 import { showAlert } from '../../lib/platformAlert';
 import { errorMessage } from '../../lib/requestError';
 import { t } from '../../lib/i18n';
+import type { RootStackParamList } from '../../navigation/types';
 
-// הכפתור בכותרת הכחולה
+// הכפתור בכותרת הכחולה: פותח את מסך דוחות התעבורה
 export function TrafficReportsQuickAction() {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <HeaderAction icon="warning-outline" label={t('folder.trafficReports')} onPress={() => setOpen(true)} />
-      <DesktopModal visible={open} title={t('folder.trafficReports')} onClose={() => setOpen(false)} maxWidth={1080}>
-        {open && <TrafficReportsPanel />}
-      </DesktopModal>
-    </>
-  );
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  return <HeaderAction icon="warning-outline" label={t('folder.trafficReports')} onPress={() => navigation.navigate('TrafficReports')} />;
 }
 
 // צבע הסטטוס
