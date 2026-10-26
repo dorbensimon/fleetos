@@ -23,6 +23,7 @@ import {
   trafficReportResponsibilityLabel,
   trafficReportStatusLabel,
   trafficReportTypeLabel,
+  withReceivedDate,
   type TrafficReport,
 } from '../../lib/trafficReports';
 import { DK, NightBar, PrimaryAction } from '../driverKit';
@@ -97,7 +98,10 @@ export function TrafficReportFormModal({
               <DateField value={report.payByIso} onChange={(payByIso) => set({ payByIso })} disabled={saving} />
             </Field>
             <Field label={t('trafficReport.receivedAt')} optional>
-              <DateField value={report.receivedIso} onChange={(receivedIso) => set({ receivedIso })} disabled={saving} />
+              <DateField value={report.receivedIso} onChange={(iso) => setReport((r) => withReceivedDate(r, iso))} disabled={saving} />
+            </Field>
+            <Field label={t('trafficReport.transferBy')} optional>
+              <DateField value={report.transferByIso} onChange={(transferByIso) => set({ transferByIso })} disabled={saving} />
             </Field>
 
             <AppText weight="bold" style={styles.section}>{t('trafficReport.sectionAmounts')}</AppText>

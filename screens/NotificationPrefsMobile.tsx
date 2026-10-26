@@ -62,6 +62,7 @@ const ICON: Partial<Record<NotificationType, IconName>> = {
   vehicle_custom_folder_expiry: 'folder-open',
   driver_custom_folder_expiry: 'folder-open',
   driver_extra_expiry: 'id-card',
+  traffic_report_due: 'warning',
   vehicle_service_due: 'build',
   vehicle_odometer_stale: 'speedometer',
   driver_meeting_due: 'people',

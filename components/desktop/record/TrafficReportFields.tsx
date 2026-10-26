@@ -13,6 +13,7 @@ import {
   trafficReportResponsibilityLabel,
   trafficReportStatusLabel,
   trafficReportTypeLabel,
+  withReceivedDate,
   type TrafficReport,
 } from '../../../lib/trafficReports';
 import { t } from '../../../lib/i18n';
@@ -51,8 +52,13 @@ export function TrafficReportFields({
         <Field label={t('trafficReport.payBy')}>
           <DesktopDateField value={report.payByIso} onChange={(payByIso) => set({ payByIso })} placeholder={t('date.chooseDateAction')} large />
         </Field>
+      </View>
+      <View style={styles.pair}>
         <Field label={t('trafficReport.receivedAt')}>
-          <DesktopDateField value={report.receivedIso} onChange={(receivedIso) => set({ receivedIso })} placeholder={t('date.chooseDateAction')} large />
+          <DesktopDateField value={report.receivedIso} onChange={(iso) => onChange(withReceivedDate(report, iso))} placeholder={t('date.chooseDateAction')} large />
+        </Field>
+        <Field label={t('trafficReport.transferBy')}>
+          <DesktopDateField value={report.transferByIso} onChange={(transferByIso) => set({ transferByIso })} placeholder={t('date.chooseDateAction')} large />
         </Field>
       </View>
 
