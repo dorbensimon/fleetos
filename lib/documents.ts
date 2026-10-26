@@ -139,6 +139,8 @@ async function storeDocumentBytes(params: {
   documentDate?: string | null;
   description?: string | null;
   expiryDate?: string | null;
+  /** Folder-specific fields (migration 124), e.g. a procedure 6 event. */
+  details?: Record<string, string>;
 }): Promise<DocumentRow> {
   const ext = extensionForMimeType(params.mimeType);
   const path = `${params.companyId}/${params.ownerType}/${params.ownerId}/${Date.now()}-${Math.random()
@@ -167,6 +169,7 @@ async function storeDocumentBytes(params: {
       document_date: params.documentDate ?? null,
       description: params.description?.trim() || null,
       expiry_date: params.expiryDate ?? null,
+      ...(params.details && Object.keys(params.details).length ? { details: params.details } : {}),
     })
     .select()
     .single();
@@ -241,6 +244,7 @@ export async function uploadDocument(params: {
   documentDate?: string | null;
   description?: string | null;
   expiryDate?: string | null;
+  details?: Record<string, string>;
 }): Promise<DocumentRow> {
   const { file } = params;
   if (!isAllowedDocumentMimeType(file.mimeType)) {
@@ -266,6 +270,7 @@ export async function uploadDocument(params: {
     documentDate: params.documentDate,
     description: params.description,
     expiryDate: params.expiryDate,
+    details: params.details,
   });
 }
 
@@ -283,6 +288,8 @@ export async function uploadGeneratedDocument(params: {
   fileName: string;
   mimeType: string;
   base64: string;
+  documentDate?: string | null;
+  details?: Record<string, string>;
 }): Promise<DocumentRow> {
   const bytes = decode(rawBase64(params.base64));
   if (bytes.byteLength > MAX_DOCUMENT_BYTES) {
@@ -298,6 +305,8 @@ export async function uploadGeneratedDocument(params: {
     fileName: params.fileName,
     mimeType: params.mimeType,
     bytes,
+    documentDate: params.documentDate,
+    details: params.details,
   });
 }
 

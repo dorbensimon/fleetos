@@ -1,5 +1,8 @@
 // שדות נוספים ממשרד התחבורה
 import { t } from './i18n';
+import { formatDate } from './theme';
+import type { Vehicle } from './adminApi';
+import type { VehicleRegistryDetails } from './vehicleRegistry';
 
 export type RegistryDetails = Record<string, string>;
 export type RegistryFieldKind = 'text' | 'number' | 'date';
@@ -43,4 +46,69 @@ export function cleanRegistryDetails(details: unknown): RegistryDetails {
     if (value != null && String(value).trim()) out[key] = String(value).trim();
   }
   return out;
+}
+
+// השוואה בין כרטיס הרכב לבין משרד התחבורה: מה ישתנה אם מעדכנים
+/** One field where the ministry has a value that differs from the vehicle card. */
+export interface RegistryChange {
+  key: string;
+  label: string;
+  /** Shown in the window. */
+  current: string;
+  next: string;
+  ltr?: boolean;
+  /** Applied when the field is picked. */
+  patch: Partial<Vehicle>;
+}
+
+type CoreField = { key: 'manufacturer' | 'model' | 'color' | 'production_year' | 'vin' | 'road_registration_date'; kind: RegistryFieldKind; ltr?: boolean; label: () => string; from: (f: VehicleRegistryDetails) => string | number | null | undefined };
+const CORE_FIELDS: CoreField[] = [
+  { key: 'manufacturer', kind: 'text', label: () => t('vehicle.manufacturer'), from: (f) => f.manufacturer },
+  { key: 'model', kind: 'text', label: () => t('vehicle.model'), from: (f) => f.model },
+  { key: 'production_year', kind: 'text', ltr: true, label: () => t('vehicle.productionYear'), from: (f) => f.productionYear },
+  { key: 'color', kind: 'text', label: () => t('vehicle.color'), from: (f) => f.color },
+  { key: 'vin', kind: 'text', ltr: true, label: () => t('vehicle.vin'), from: (f) => f.vin },
+  { key: 'road_registration_date', kind: 'date', ltr: true, label: () => t('vehicle.onRoadDate'), from: (f) => f.roadRegistrationDate },
+];
+
+const show = (value: string, kind: RegistryFieldKind) =>
+  !value ? '—' : kind === 'date' ? formatDate(value) : kind === 'number' ? Number(value).toLocaleString('he-IL') : value;
+const same = (a: string, b: string, kind: RegistryFieldKind) =>
+  kind === 'number' ? Number(a) === Number(b) : a.trim().toUpperCase() === b.trim().toUpperCase();
+
+/**
+ * Fields the ministry would change. A field the ministry has no value for is
+ * left out, so an update never blanks what the company entered.
+ */
+export function registryChanges(vehicle: Vehicle, found: VehicleRegistryDetails): RegistryChange[] {
+  const changes: RegistryChange[] = [];
+  for (const f of CORE_FIELDS) {
+    const raw = f.from(found);
+    const next = raw == null ? '' : String(raw).trim();
+    const current = vehicle[f.key] == null ? '' : String(vehicle[f.key]).trim();
+    if (!next || same(current, next, f.kind)) continue;
+    const value = f.key === 'production_year' ? Number(next) : next;
+    changes.push({ key: f.key, label: f.label(), current: show(current, f.kind), next: show(next, f.kind), ltr: f.ltr, patch: { [f.key]: value } as Partial<Vehicle> });
+  }
+  const currentDetails = cleanRegistryDetails(vehicle.registry_details);
+  const nextDetails = cleanRegistryDetails(found.details);
+  for (const f of REGISTRY_DETAIL_FIELDS) {
+    const next = nextDetails[f.key] ?? '';
+    const current = currentDetails[f.key] ?? '';
+    if (!next || same(current, next, f.kind)) continue;
+    changes.push({ key: f.key, label: f.label, current: show(current, f.kind), next: show(next, f.kind), ltr: f.ltr || f.kind === 'number', patch: { registry_details: { [f.key]: next } } });
+  }
+  return changes;
+}
+
+/** The one update for the picked changes; registry values merge into what the vehicle already has. */
+export function registryPatch(vehicle: Vehicle, picked: RegistryChange[]): Partial<Vehicle> {
+  const patch: Partial<Vehicle> = {};
+  let details: RegistryDetails | null = null;
+  for (const change of picked) {
+    if (change.patch.registry_details) details = { ...(details ?? cleanRegistryDetails(vehicle.registry_details)), ...change.patch.registry_details };
+    else Object.assign(patch, change.patch);
+  }
+  if (details) patch.registry_details = details;
+  return patch;
 }

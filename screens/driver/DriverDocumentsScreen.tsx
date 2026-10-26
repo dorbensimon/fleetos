@@ -25,6 +25,7 @@ import { DriverDocumentsMobile } from './DriverDocumentsMobile';
 import { dateOnlyIsoFromLocalDate } from '../../lib/driverFormValidation';
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
+import { driverFolderRequiresExpiry } from '../../lib/driverDocumentFolders';
 
 /**
  * The driver's self-service dossier intentionally uses the same card
@@ -149,6 +150,7 @@ export default function DriverDocumentsScreen({ navigation }: Props) {
         ownerId: profileId,
         category,
         title: row.label,
+        requiresExpiry: driverFolderRequiresExpiry(category),
         allowDelete: false,
       });
     }

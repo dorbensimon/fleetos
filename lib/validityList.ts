@@ -9,7 +9,7 @@ import { complianceTargetDate, newestDocument, VEHICLE_COMPLIANCE } from './comp
 import { VEHICLE_FOLDER_ALERTS } from './vehicleFolderAlerts';
 import { loadInspectionPlan } from './inspections';
 import { folderCategory, listCompanyFolders } from './companyFolders';
-import { LICENSE_DOCS_CATEGORY } from './driverDocumentFolders';
+import { DRIVER_DOCUMENT_GROUPS, LICENSE_DOCS_CATEGORY } from './driverDocumentFolders';
 import { daysUntilExpiry, formatDate } from './theme';
 import { formatPlate } from './plate';
 import { dateOnlyIsoFromLocalDate } from './driverFormValidation';
@@ -31,6 +31,8 @@ export interface ValidityFolder {
   key: string;
   label: string;
   ownerType: ValidityOwner;
+  /** The date may be left empty: an undated folder is not "missing". */
+  optional?: boolean;
 }
 
 export interface ValidityRow {
@@ -116,6 +118,7 @@ export async function loadValidity(companyId: string): Promise<ValidityData> {
   const dated = companyFolders.filter((f) => f.tracks_expiry);
   const vehicleCustom = dated.filter((f) => f.owner_type === 'vehicle').map((f) => ({ key: folderCategory(f), label: f.title }));
   const driverCustom = dated.filter((f) => f.owner_type === 'driver').map((f) => ({ key: folderCategory(f), label: f.title }));
+  const driverFolders = DRIVER_DOCUMENT_GROUPS.flatMap((g) => g.folders).map((f) => ({ key: f.category, label: f.title, optional: f.expiry === 'optional' }));
   const today = dateOnlyIsoFromLocalDate(new Date());
   const activeDrivers = drivers.filter((d) => !d.employment_end_date || d.employment_end_date >= today);
 
@@ -126,6 +129,7 @@ export async function loadValidity(companyId: string): Promise<ValidityData> {
     ...vehicleCustom.map((f) => ({ ...f, ownerType: 'vehicle' as const })),
     { key: LICENSE_DOCS_CATEGORY, label: t('driver.licenseExpiry'), ownerType: 'driver' },
     ...DRIVER_DATES.map((f) => ({ key: f.key, label: f.label(), ownerType: 'driver' as const })),
+    ...driverFolders.map((f) => ({ ...f, ownerType: 'driver' as const })),
     ...driverCustom.map((f) => ({ ...f, ownerType: 'driver' as const })),
   ];
   const labelOf = new Map(folders.map((f) => [`${f.ownerType}|${f.key}`, f.label]));
@@ -133,7 +137,7 @@ export async function loadValidity(companyId: string): Promise<ValidityData> {
   const [compliance, vehicleDocs, driverDocs, plan] = await Promise.all([
     listComplianceForOwners('vehicle', vehicles.map((v) => v.id)),
     folderExpiries(companyId, 'vehicle', vehicles.map((v) => v.id), [...VEHICLE_DOC_FOLDERS.map((f) => f.folderKey), ...vehicleCustom.map((f) => f.key)]),
-    folderExpiries(companyId, 'driver', activeDrivers.map((d) => d.id), driverCustom.map((f) => f.key)),
+    folderExpiries(companyId, 'driver', activeDrivers.map((d) => d.id), [...driverFolders, ...driverCustom].map((f) => f.key)),
     // The safety officer's next inspection, as the vehicle card and its alert count it.
     loadInspectionPlan(companyId).catch(() => []),
   ]);
@@ -203,7 +207,7 @@ export async function loadValidity(companyId: string): Promise<ValidityData> {
   }
   for (const d of activeDrivers) {
     for (const f of folders) {
-      if (f.ownerType !== 'driver' || seen.has(`driver|${d.id}|${f.key}`)) continue;
+      if (f.ownerType !== 'driver' || f.optional || seen.has(`driver|${d.id}|${f.key}`)) continue;
       if (f.key === 'hazmat_permit_expiry' && !d.hazmat_approved) continue;
       pushMissing('driver', d.id, f.key, d.full_name?.trim() || t('common.unnamed'), d.employee_number ? t('driver.employeeNo', { employee_number: d.employee_number }) : '', d.department_id);
     }

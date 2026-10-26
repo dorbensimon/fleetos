@@ -16,7 +16,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DriverAttention'>;
 /** Opened from the home screen's "דורש טיפול" panel. */
 export default function DriverAttentionScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const { driver, vehicle, items, pendingRequests, loading, error, reload } = useDriverOverview();
+  const { driver, vehicle, items, ownFolders, pendingRequests, loading, error, reload } = useDriverOverview();
 
   const plate = vehicle?.plate_number;
   const license = driver?.license_expiry ?? null;
@@ -40,6 +40,20 @@ export default function DriverAttentionScreen({ navigation }: Props) {
         onPress: () => openVehicle(item.item.item_type),
       };
       (status === 'expired' ? expiredTasks : soonTasks).push(task);
+    }
+    for (const folder of ownFolders) {
+      const status = statusOfDate(folder.until);
+      if (status !== 'expired' && status !== 'soon') continue;
+      (status === 'expired' ? expiredTasks : soonTasks).push({
+        key: `folder-${folder.category}`,
+        status,
+        icon: 'folder-open',
+        title: folder.title,
+        detail: `${status === 'expired' ? expiredDetail(folder.until) : soonDetail(folder.until)} · ${formatDate(folder.until)}`,
+        hint: status === 'expired' ? t('driver.attention.docExpired') : t('driver.attention.renewSoon'),
+        action: t('driver.attention.toMyFile'),
+        onPress: () => navigation.navigate('DriverDocuments'),
+      });
     }
     const licenseStatus = statusOfDate(license);
     if (licenseStatus === 'expired' || licenseStatus === 'soon') {
@@ -71,7 +85,7 @@ export default function DriverAttentionScreen({ navigation }: Props) {
       };
     });
     return { expired: expiredTasks, soon: soonTasks, signatures: signatureTasks };
-  }, [items, license, navigation, pendingRequests, plate]);
+  }, [items, license, navigation, ownFolders, pendingRequests, plate]);
 
   return (
     <DriverAttentionMobile

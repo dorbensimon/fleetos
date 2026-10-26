@@ -30,7 +30,8 @@ import { MAX_KM, deriveNextServiceKm, nextServiceKmOf } from '../../lib/serviceS
 import { vehicleFolderByKey } from '../../lib/vehicleFolderAlerts';
 import { requiresTachograph } from '../../lib/tachograph';
 import { lookupVehicleRegistry } from '../../lib/vehicleRegistry';
-import { cleanRegistryDetails, REGISTRY_DETAIL_FIELDS } from '../../lib/vehicleRegistryFields';
+import { cleanRegistryDetails, REGISTRY_DETAIL_FIELDS, registryChanges, registryPatch, type RegistryChange } from '../../lib/vehicleRegistryFields';
+import { DesktopModal } from './DesktopModal';
 import { errorMessage } from '../../lib/requestError';
 import { BrandLoader } from '../ui/BrandLoader';
 import { ISRAEL_COMMON_MANUFACTURERS } from '../../lib/manufacturers';
@@ -53,6 +54,7 @@ import {
 import { expiryStatusText, FolderListRow, folderStatus } from './record/FolderDocuments';
 import { DetailRow, Fact, FieldEditDialog, GroupLabel, NIGHT_TONES, digitsOnly, pageStyles, type FieldEditor, type TextFieldEditor } from './record/RecordPage';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
+import { VehicleDriverHistoryButton } from './driver/DriverVehicleHistory';
 import { t, dirIcon, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../lib/i18n';
 
 // מצבי הרכב שאפשר לבחור
@@ -564,9 +566,12 @@ export function VehicleDetailDesktopView({
         <View style={styles.sideCell}>
           <GroupLabel
             action={
-              <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={driversMenu.toggle} accessibilityLabel={t('vehicle.changeAssignedDrivers')}>
-                <DText weight="semiBold" style={styles.linkText}>{t('common.change')}</DText>
-              </HoverPressable>
+              <View style={styles.driversActions}>
+                <VehicleDriverHistoryButton vehicleId={vehicleId} refreshKey={drivers.map((d) => d.id).join(',')} />
+                <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={driversMenu.toggle} accessibilityLabel={t('vehicle.changeAssignedDrivers')}>
+                  <DText weight="semiBold" style={styles.linkText}>{t('common.change')}</DText>
+                </HoverPressable>
+              </View>
             }
           >
             {t('vehicle.assignedDrivers')}
@@ -673,8 +678,8 @@ export function VehicleDetailDesktopView({
 /**
  * Everything the Transport Ministry registry added beyond the regular
  * fields, in two columns; each value edits in place and can be cleared. The
- * update button pulls the registry again: it replaces these values, and fills
- * the VIN and on-road date only where they are still empty.
+ * update button pulls the registry again and opens a window of what differs;
+ * only the fields the manager leaves ticked are saved.
  */
 function RegistryDetailsBlock({
   vehicle,
@@ -687,6 +692,7 @@ function RegistryDetailsBlock({
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [review, setReview] = useState<RegistryChange[] | null>(null);
   const details = cleanRegistryDetails(vehicle.registry_details);
   const fields = REGISTRY_DETAIL_FIELDS.filter((f) => f.key in details);
   const half = Math.ceil(fields.length / 2);
@@ -704,11 +710,9 @@ function RegistryDetailsBlock({
     try {
       const found = await lookupVehicleRegistry(vehicle.plate_number);
       if (!found) return setMessage(t('registry.notFound'));
-      const patch: Partial<Vehicle> = { registry_details: cleanRegistryDetails(found.details) };
-      if (!vehicle.vin && found.vin) patch.vin = found.vin;
-      if (!vehicle.road_registration_date && found.roadRegistrationDate) patch.road_registration_date = found.roadRegistrationDate;
-      const error = await onSaveField(patch);
-      setMessage(error ?? t('registry.refreshed'));
+      const changes = registryChanges(vehicle, found);
+      if (!changes.length) return setMessage(t('registry.upToDate'));
+      setReview(changes);
     } catch (err: any) {
       setMessage(errorMessage(err, t('vehicle.lookupUnavailable')));
     } finally {
@@ -750,6 +754,21 @@ function RegistryDetailsBlock({
         {t('registry.title')}
       </GroupLabel>
       {!!message && <DText style={[styles.mutedText, styles.registryMessage]}>{message}</DText>}
+      {review && (
+        <RegistryReviewDialog
+          plate={formatPlate(vehicle.plate_number)}
+          changes={review}
+          onClose={() => setReview(null)}
+          onApply={async (picked) => {
+            const error = await onSaveField(registryPatch(vehicle, picked));
+            if (!error) {
+              setReview(null);
+              setMessage(t('registry.refreshed'));
+            }
+            return error;
+          }}
+        />
+      )}
       {fields.length === 0 ? (
         <View style={[styles.card, styles.registryEmpty]}>
           <DText style={styles.mutedText}>{t('registry.empty')}</DText>
@@ -767,6 +786,86 @@ function RegistryDetailsBlock({
         </View>
       )}
     </View>
+  );
+}
+
+// חלון אישור: מה ישתנה מול משרד התחבורה, ומה לעדכן
+function RegistryReviewDialog({ plate, changes, onClose, onApply }: { plate: string; changes: RegistryChange[]; onClose: () => void; onApply: (picked: RegistryChange[]) => Promise<string | null> }) {
+  const [picked, setPicked] = useState(() => new Set(changes.map((c) => c.key)));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const toggle = (key: string) => setPicked((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  const apply = async () => {
+    setSaving(true);
+    setError(null);
+    const result = await onApply(changes.filter((c) => picked.has(c.key)));
+    setSaving(false);
+    if (result) setError(result);
+  };
+
+  return (
+    <DesktopModal visible title={t('registry.reviewTitle', { plate })} onClose={onClose} maxWidth={720}>
+      <View style={pageStyles.editBody}>
+        <DText style={pageStyles.editHint}>{t('registry.reviewHint', { count: changes.length })}</DText>
+        <View style={styles.reviewTable}>
+          <View style={[styles.reviewRow, styles.reviewHead]}>
+            <View style={styles.reviewCheck} />
+            <DText weight="semiBold" style={[styles.reviewField, styles.reviewHeadText]}>{t('registry.colField')}</DText>
+            <DText weight="semiBold" style={[styles.reviewValue, styles.reviewHeadText]}>{t('registry.colCard')}</DText>
+            <DText weight="semiBold" style={[styles.reviewValue, styles.reviewHeadText]}>{t('registry.colMinistry')}</DText>
+          </View>
+          <ScrollView style={styles.reviewList}>
+            {changes.map((c) => {
+              const on = picked.has(c.key);
+              return (
+                <HoverPressable
+                  key={c.key}
+                  style={[styles.reviewRow, styles.rowDivider]}
+                  hoverStyle={styles.rowHover}
+                  onPress={() => toggle(c.key)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: on }}
+                  accessibilityLabel={`${c.label}: ${c.current} → ${c.next}`}
+                >
+                  <View style={styles.reviewCheck}>
+                    <Ionicons name={on ? 'checkbox' : 'square-outline'} size={20} color={on ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
+                  </View>
+                  <DText weight="semiBold" style={styles.reviewField}>{c.label}</DText>
+                  {c.ltr ? <DLtrText style={[styles.reviewValue, styles.mutedText]}>{c.current}</DLtrText> : <DText style={[styles.reviewValue, styles.mutedText]}>{c.current}</DText>}
+                  {c.ltr
+                    ? <DLtrText weight="semiBold" style={[styles.reviewValue, on && styles.reviewNext]}>{c.next}</DLtrText>
+                    : <DText weight="semiBold" style={[styles.reviewValue, on && styles.reviewNext]}>{c.next}</DText>}
+                </HoverPressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+        {!!error && <DText style={pageStyles.editError}>{error}</DText>}
+        <View style={styles.reviewActions}>
+          <HoverPressable
+            style={[pageStyles.primaryBtn, pageStyles.editActionBtn, (saving || !picked.size) && pageStyles.disabled]}
+            hoverStyle={pageStyles.primaryBtnHover}
+            pressStyle={pageStyles.pressDown}
+            onPress={() => void apply()}
+            disabled={saving || !picked.size}
+          >
+            {saving && <BrandLoader size="small" color="#FFFFFF" />}
+            <DText weight="semiBold" style={pageStyles.primaryBtnText}>{t('registry.apply', { count: picked.size })}</DText>
+          </HoverPressable>
+          <HoverPressable style={[pageStyles.plainBtn, pageStyles.editActionBtn]} hoverStyle={pageStyles.plainBtnHover} pressStyle={pageStyles.pressDown} onPress={onClose}>
+            <DText weight="semiBold" style={pageStyles.plainBtnText}>{t('common.cancel')}</DText>
+          </HoverPressable>
+          <View style={styles.flex} />
+          <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={() => setPicked(picked.size ? new Set() : new Set(changes.map((c) => c.key)))}>
+            <DText weight="semiBold" style={styles.linkText}>{picked.size ? t('registry.clearPick') : t('registry.pickAll')}</DText>
+          </HoverPressable>
+        </View>
+      </View>
+    </DesktopModal>
   );
 }
 
@@ -854,6 +953,16 @@ const styles = StyleSheet.create({
   registryBlock: { marginBottom: 4 },
   registryMessage: { marginBottom: 8, paddingHorizontal: 4 },
   registryEmpty: { padding: 16 },
+  reviewTable: { borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 12, overflow: 'hidden' },
+  reviewHead: { backgroundColor: DESKTOP_COLORS.surfaceMuted },
+  reviewHeadText: { fontSize: 13, color: DESKTOP_COLORS.inkMuted },
+  reviewList: { maxHeight: 420 },
+  reviewRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 46, paddingHorizontal: 14, paddingVertical: 8 },
+  reviewCheck: { width: 22, alignItems: 'center' },
+  reviewField: { flex: 1.2, fontSize: 14, color: DESKTOP_COLORS.ink },
+  reviewValue: { flex: 1, fontSize: 14, color: DESKTOP_COLORS.ink, textAlign: 'right' },
+  reviewNext: { color: DESKTOP_COLORS.brand },
+  reviewActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, marginTop: 4 },
   ...pageStyles,
 
   plateWrap: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
@@ -913,6 +1022,7 @@ const styles = StyleSheet.create({
   // כרטיס הנהגים
   // Drivers
   driversCard: { paddingHorizontal: 0 },
+  driversActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
   // שורת נהג
   driverRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 9, ...webOnly({ transition: 'background-color 150ms ease' }) },
   driverName: { fontSize: 14.5 },

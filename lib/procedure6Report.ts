@@ -4,9 +4,12 @@ import { buildReportDocument, esc } from './reportTemplate';
 import { uploadGeneratedDocument } from './documents';
 import { DocumentRow, OwnerType } from './adminApi';
 
+export const PROCEDURE_6_CATEGORY = 'procedure_6';
+
 /** Field order matches the agreed layout: date & time, then the event, then who reported it. */
 export interface Procedure6FormValues {
   eventDate: string; // DD/MM/YYYY, for display
+  eventDateIso: string; // YYYY-MM-DD, kept as the document's date
   eventTime: string; // HH:MM
   details: string;
   vehicleNumber: string;
@@ -56,10 +59,28 @@ export async function createProcedure6Report(params: {
     companyId: params.companyId,
     ownerType: params.ownerType,
     ownerId: params.ownerId,
-    category: 'procedure_6',
+    category: PROCEDURE_6_CATEGORY,
     title: `נוהל 6 – ${params.values.eventDate}`,
     fileName: `נוהל-6-${params.values.eventDate.replace(/\//g, '-')}.pdf`,
     mimeType: 'application/pdf',
     base64,
+    // Also kept beside the PDF (migration 124), so the folder lists each event.
+    documentDate: params.values.eventDateIso,
+    details: procedure6Details(params.values),
   });
+}
+
+// הפרטים שנשמרים ליד המסמך (עמודת details)
+/** The event fields as stored in `documents.details`; empty ones are left out. */
+export function procedure6Details(values: Omit<Procedure6FormValues, 'eventDate' | 'eventDateIso'>): Record<string, string> {
+  const out: Record<string, string> = {};
+  const pairs: [string, string][] = [
+    ['event_time', values.eventTime],
+    ['event_details', values.details],
+    ['vehicle_plate', values.vehicleNumber],
+    ['complainant_name', values.complainantName],
+    ['complainant_phone', values.complainantPhone],
+  ];
+  for (const [key, value] of pairs) if (value?.trim()) out[key] = value.trim();
+  return out;
 }

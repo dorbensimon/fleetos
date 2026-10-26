@@ -734,6 +734,7 @@
     "tryOtherName": "נסה לחפש בשם אחר."
   },
   "documents": {
+    "validUntilOptional": "בתוקף עד (לא חובה)",
     "addDocument": "הוספת מסמך",
     "backSide": "צד אחורי",
     "cannotOpen": "לא ניתן לפתוח את המסמך כרגע",
@@ -895,7 +896,9 @@
       "sentToYou": "נשלח אליך {{v1}}",
       "thingWaiting": "דבר מחכה",
       "thingsWaiting": "דברים מחכים",
+      "docExpired": "המסמך כבר לא בתוקף. העלה מסמך מעודכן לתיק שלך או פנה למנהל הצי.",
       "toLicenseUpdate": "לעדכון הרישיון",
+      "toMyFile": "לתיק שלי",
       "toVehicleDetails": "לפרטי הרכב",
       "vehiclePlate": "הרכב {{plate}}"
     },
@@ -2354,6 +2357,7 @@
     "validityOf": "תוקף {{label}}"
   },
   "procedure6": {
+    "event": "אירוע",
     "addDocument": "הוסף מסמך נוהל 6",
     "addDocumentation": "הוספת תיעוד",
     "addReport": "הוסף דיווח נוהל 6",
@@ -2894,6 +2898,9 @@
     "assignAfterSave": "אחרי שמירת הרכב אפשר לשייך אליו נהגים מתוך תיק הרכב.",
     "assignDriverFailed": "שיוך הנהג נכשל",
     "assignedDrivers": "נהגים משויכים",
+    "driverHistory": "היסטוריית נהגים",
+    "driverHistoryHint": "כל הנהגים שהיו רשומים על הרכב ומתי",
+    "driverHistoryEmpty": "עוד לא שויך נהג לרכב",
     "assignmentAndStatus": "שיוך וסטטוס",
     "assignmentHint": "האם הרכב על הכביש, ולאיזו מחלקה הוא שייך.",
     "assignmentRemoved": "השיוך הוסר",
@@ -3261,8 +3268,8 @@
     "addedToCompanies": "התיקייה נוספה ל-{{count}} חברות. חברות שכבר הייתה להן תיקייה בשם הזה לא השתנו.",
     "moreFolders": "תיקיות נוספות",
     "alertLabel": "תוקף בתיקיות שנוספו",
-    "driverAlertLabel": "תוקף בתיקיות שנוספו לתיק הנהג",
-    "driverAlertDesc": "כשקובץ באחת התיקיות הנוספות בתיק נהג עומד לפוג או פג",
+    "driverAlertLabel": "תוקף מסמכים בתיק הנהג",
+    "driverAlertDesc": "כשמסמך באחת התיקיות בתיק נהג עומד לפוג או פג",
     "myAlertLabel": "תוקף מסמכים בתיקיות שלי",
     "myAlertDesc": "כשמסמך באחת התיקיות בתיק שלך עומד לפוג או פג",
     "driverTimelineLabel": "תיקיות נוספות"
@@ -3643,6 +3650,15 @@
   },
   "registry": {
     "title": "נתוני משרד התחבורה",
+    "reviewTitle": "עדכון ממשרד התחבורה · רכב {{plate}}",
+    "reviewHint": "נמצאו {{count}} שדות שונים. סמן אילו לעדכן בכרטיס הרכב.",
+    "colField": "שדה",
+    "colCard": "בכרטיס הרכב",
+    "colMinistry": "במשרד התחבורה",
+    "apply": "עדכון {{count}} שדות",
+    "clearPick": "נקה בחירה",
+    "pickAll": "בחר הכל",
+    "upToDate": "כרטיס הרכב כבר מעודכן לפי משרד התחבורה",
     "hint": "נמשכו ממאגר משרד התחבורה. אפשר לערוך או למחוק כל ערך.",
     "refresh": "עדכון ממשרד התחבורה",
     "refreshing": "מעדכן…",

@@ -734,6 +734,7 @@
     "tryOtherName": "Try searching for another name."
   },
   "documents": {
+    "validUntilOptional": "Valid until (optional)",
     "addDocument": "Add document",
     "backSide": "Back side",
     "cannotOpen": "The document can't be opened right now",
@@ -895,7 +896,9 @@
       "sentToYou": "Sent to you {{v1}}",
       "thingWaiting": "thing waiting",
       "thingsWaiting": "things waiting",
+      "docExpired": "This document is no longer valid. Upload an updated one to your file or contact the fleet manager.",
       "toLicenseUpdate": "Update the license",
+      "toMyFile": "To my file",
       "toVehicleDetails": "To vehicle details",
       "vehiclePlate": "vehicle {{plate}}"
     },
@@ -2354,6 +2357,7 @@
     "validityOf": "{{label}} validity"
   },
   "procedure6": {
+    "event": "Event",
     "addDocument": "Add a Procedure 6 document",
     "addDocumentation": "Add documentation",
     "addReport": "Add a Procedure 6 report",
@@ -2894,6 +2898,9 @@
     "assignAfterSave": "After saving the vehicle, you can assign drivers to it from the vehicle file.",
     "assignDriverFailed": "Failed to assign the driver",
     "assignedDrivers": "Assigned drivers",
+    "driverHistory": "Driver history",
+    "driverHistoryHint": "Every driver who was on this vehicle, and when",
+    "driverHistoryEmpty": "No driver has been assigned to this vehicle yet",
     "assignmentAndStatus": "Assignment and status",
     "assignmentHint": "Whether the vehicle is on the road, and which department it belongs to.",
     "assignmentRemoved": "Assignment removed",
@@ -3261,8 +3268,8 @@
     "addedToCompanies": "The folder was added to {{count}} companies. Companies that already had a folder by this name were left as they were.",
     "moreFolders": "More folders",
     "alertLabel": "Expiry in added folders",
-    "driverAlertLabel": "Expiry in added driver-file folders",
-    "driverAlertDesc": "When a file in one of the added driver-file folders is about to expire or has expired",
+    "driverAlertLabel": "Document expiry in the driver file",
+    "driverAlertDesc": "When a document in one of the driver-file folders is about to expire or has expired",
     "myAlertLabel": "Expiry of documents in my folders",
     "myAlertDesc": "When a document in one of the folders in your file is about to expire or has expired",
     "driverTimelineLabel": "More folders"
@@ -3643,6 +3650,15 @@
   },
   "registry": {
     "title": "Transport Ministry data",
+    "reviewTitle": "Update from the Ministry of Transport · vehicle {{plate}}",
+    "reviewHint": "{{count}} fields differ. Pick which to update on the vehicle card.",
+    "colField": "Field",
+    "colCard": "On the vehicle card",
+    "colMinistry": "At the Ministry",
+    "apply": "Update {{count}} fields",
+    "clearPick": "Clear selection",
+    "pickAll": "Select all",
+    "upToDate": "The vehicle card already matches the Ministry of Transport",
     "hint": "Pulled from the Transport Ministry registry. You can edit or clear any value.",
     "refresh": "Update from the Transport Ministry",
     "refreshing": "Updating…",

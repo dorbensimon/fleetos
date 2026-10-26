@@ -8,9 +8,14 @@ import { listSignatureRequests, type SignatureRequest } from './docuseal';
 import { expiryState, formatDate, type ExpiryState } from './theme';
 import { t } from './i18n';
 import { errorMessage } from './requestError';
+import { folderCategory, listCompanyFolders } from './companyFolders';
+import { DRIVER_DOCUMENT_GROUPS } from './driverDocumentFolders';
+import { folderExpiries } from './validityList';
 
 export type Severity = 'danger' | 'warning' | 'success';
 export type OverviewItem = { title: string; detail: string; severity: Severity; item: ComplianceItem; target: string | null };
+/** A dated folder in the driver's own file: the newest document's valid-until date. */
+export type OwnFolderDate = { category: string; title: string; until: string };
 
 // סדר חומרה
 const RANK: Record<Severity, number> = { danger: 0, warning: 1, success: 2 };
@@ -38,6 +43,7 @@ export function useDriverOverview() {
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [compliance, setCompliance] = useState<ComplianceItem[]>([]);
+  const [ownFolders, setOwnFolders] = useState<OwnFolderDate[]>([]);
   const [pendingRequests, setPendingRequests] = useState<SignatureRequest[]>([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -55,11 +61,12 @@ export function useDriverOverview() {
     const requestId = ++loadRequest.current;
     try {
       setError('');
-      const [loadedDriver, assignments, signatures, unread] = await Promise.all([
+      const [loadedDriver, assignments, signatures, unread, folderDates] = await Promise.all([
         getDriver(profile.id),
         listActiveDriverVehicles(profile.id),
         listSignatureRequests(),
         company?.id ? countUnreadNotifications(company.id) : Promise.resolve(0),
+        company?.id ? loadOwnFolderDates(company.id, profile.id) : Promise.resolve([]),
       ]);
       if (requestId !== loadRequest.current) return;
       const primary = assignments.find((a) => a.is_primary) ?? assignments[0] ?? null;
@@ -69,6 +76,7 @@ export function useDriverOverview() {
       setVehicle(primary?.vehicle ?? null);
       setCompliance(loadedCompliance);
       setPendingRequests(signatures.filter(isAwaitingSignature));
+      setOwnFolders(folderDates);
       setUnreadNotifications(unread);
     } catch (err: any) {
       if (requestId === loadRequest.current) setError(errorMessage(err, t('common.screenLoadFailed')));
@@ -112,5 +120,20 @@ export function useDriverOverview() {
     load();
   }, [load]);
 
-  return { company, profile, driver, vehicle, items, pendingRequests, unreadNotifications, loading, error, reload };
+  return { company, profile, driver, vehicle, items, ownFolders, pendingRequests, unreadNotifications, loading, error, reload };
+}
+
+// התוקפים בתיקיות של הנהג עצמו
+/** The driver file's dated folders (fixed and company-added), as in "תוקפים" and the daily alerts. */
+async function loadOwnFolderDates(companyId: string, driverId: string): Promise<OwnFolderDate[]> {
+  const added = (await listCompanyFolders(companyId)).filter((f) => f.owner_type === 'driver' && f.tracks_expiry);
+  const folders = [
+    ...DRIVER_DOCUMENT_GROUPS.flatMap((g) => g.folders).map((f) => ({ category: f.category, title: f.title })),
+    ...added.map((f) => ({ category: folderCategory(f), title: f.title })),
+  ];
+  const dates = await folderExpiries(companyId, 'driver', [driverId], folders.map((f) => f.category));
+  return folders.flatMap((f) => {
+    const until = dates.get(`${driverId}|${f.category}`);
+    return until ? [{ ...f, until }] : [];
+  });
 }

@@ -132,7 +132,7 @@ export async function adminNotificationTarget<N extends NotificationTargetFields
     return { screen: 'DriverDetail', params: focus ? { driverId: n.actor_id, focus } : { driverId: n.actor_id } };
   }
 
-  // A folder the owner added to the driver files (migration 112) opens in that driver's file.
+  // A dated driver folder, fixed or added by the company (migrations 112, 125), opens in that driver's file.
   if (type === 'driver_custom_folder_expiry' && n.actor_id) {
     return { screen: 'DriverDetail', params: { driverId: n.actor_id, openFolder: n.folder_key ?? undefined } };
   }
