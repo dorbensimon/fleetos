@@ -91,6 +91,7 @@ export function DesktopShell({
         { key: 'WorkSchedule', label: t('schedule.title'), icon: 'calendar' },
         { key: 'SignedDocuments', label: t('nav.signedDocuments'), icon: 'create' },
         { key: 'SafetyInspections', label: t('nav.safetyInspections'), icon: 'shield-checkmark' },
+        { key: 'Notifications', label: t('nav.updatesAndValidity'), icon: 'notifications' },
       ]
     : isOwner
     ? [
@@ -103,21 +104,12 @@ export function DesktopShell({
         { key: 'DriverSigningDocuments', label: t('nav.signingDocuments'), icon: 'create' },
       ]
     : [];
-  const accountItems: NavItem[] = isAdmin
-    ? [
-        { key: 'AdminProfile', label: t('nav.myDetails'), icon: 'person' },
-      ]
-    : isOwner
-    ? [
-        { key: 'AdminProfile', label: t('nav.myDetails'), icon: 'person' },
-        { key: 'SystemSettings', label: t('nav.systemSettings'), icon: 'cog' },
-      ]
-    : isDriver
-    ? [
-        { key: 'DriverProfile', label: t('nav.myDetails'), icon: 'person' },
-        { key: 'SystemSettings', label: t('nav.systemSettings'), icon: 'cog' },
-      ]
+  // The user's own details open from the name block at the top of the sidebar.
+  const accountItems: NavItem[] = isOwner || isDriver
+    ? [{ key: 'SystemSettings', label: t('nav.systemSettings'), icon: 'cog' }]
     : [];
+  const profileKey: NavKey = isDriver ? 'DriverProfile' : 'AdminProfile';
+  const profileActive = active === profileKey;
 
   const go = (key: NavKey) => {
     // `active` is only a highlight hint — detail screens (driver/vehicle)
@@ -179,12 +171,24 @@ export function DesktopShell({
         <View style={styles.brandRow}>
           <BrandLogo onDark height={24} />
         </View>
-        <View style={styles.companyBlock}>
-          <DText weight="semiBold" style={styles.companyName} numberOfLines={1}>
-            {company?.name ?? (isOwner ? t('nav.systemManagement') : '')}
-          </DText>
-          <DText style={styles.companyRole}>{roleLabel}</DText>
-        </View>
+        <HoverPressable
+          style={[styles.companyBlock, profileActive && styles.companyBlockActive]}
+          hoverStyle={profileActive ? undefined : styles.navItemHover}
+          onPress={() => go(profileKey)}
+          accessibilityLabel={t('nav.myDetails')}
+          accessibilityState={{ selected: profileActive }}
+        >
+          <View style={styles.userAvatar}>
+            <DText weight="bold" style={styles.userAvatarText}>{initials}</DText>
+          </View>
+          <View style={styles.companyText}>
+            <DText weight="semiBold" style={styles.companyName} numberOfLines={1}>
+              {company?.name ?? (isOwner ? t('nav.systemManagement') : '')}
+            </DText>
+            <DText style={styles.companyRole} numberOfLines={1}>{roleLabel} · {t('nav.myDetails')}</DText>
+          </View>
+          <Ionicons name="chevron-back" size={14} color={DESKTOP_COLORS.sidebarMeta} />
+        </HoverPressable>
 
         <ScrollView style={styles.nav} contentContainerStyle={styles.navContent}>
           {manageItems.length > 0 && <DText weight="bold" style={styles.navSection}>{t('nav.management')}</DText>}
@@ -325,11 +329,18 @@ const styles = StyleSheet.create({
   },
   // שם החברה והתפקיד
   companyBlock: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: DESKTOP_COLORS.sidebarDivider,
+    borderEndWidth: 2,
+    borderEndColor: 'transparent',
   },
+  companyBlockActive: { backgroundColor: DESKTOP_COLORS.sidebarActiveBg, borderEndColor: DESKTOP_COLORS.brand },
+  companyText: { flex: 1, minWidth: 0 },
   companyName: { color: DESKTOP_COLORS.sidebarTextStrong, fontSize: 12.5 },
   companyRole: { color: DESKTOP_COLORS.sidebarMeta, fontSize: 11, marginTop: 1 },
 

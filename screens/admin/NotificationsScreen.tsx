@@ -151,7 +151,10 @@ function CompanyNotificationsScreen({ navigation, route }: Props) {
 
   if (isDesktop) {
     return (
-      <DesktopShell active="SystemSettings" breadcrumbs={[t('nav.systemSettings'), t('notifications.title')]}>
+      <DesktopShell
+        active={canSeeValidity && route.params?.section !== 'settings' ? 'Notifications' : 'SystemSettings'}
+        breadcrumbs={canSeeValidity && route.params?.section !== 'settings' ? [t('nav.updatesAndValidity')] : [t('nav.systemSettings'), t('notifications.title')]}
+      >
         <NotificationsHubDesktopView
           items={items}
           unreadIds={unreadIds}
