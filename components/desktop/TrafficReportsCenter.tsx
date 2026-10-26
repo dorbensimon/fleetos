@@ -126,7 +126,7 @@ export function TrafficReportsPanel({ vehicleId }: { vehicleId?: string }) {
   return (
     <View style={styles.root}>
       {!vehicleId && (
-        <View style={styles.totals}>
+        <View nativeID="tour-totals" style={styles.totals}>
           <Total label={t('trafficReport.totalOpen')} value={String(totals.open)} />
           <Total label={t('trafficReport.totalOpenAmount')} value={`₪${totals.openAmount.toLocaleString('he-IL')}`} />
           <Total label={t('trafficReport.totalSoon', { days: TRAFFIC_REPORT_SOON_DAYS })} value={String(totals.soon)} tone={totals.soon ? DESKTOP_TONES.warn.fg : undefined} />
@@ -135,7 +135,7 @@ export function TrafficReportsPanel({ vehicleId }: { vehicleId?: string }) {
       )}
 
       <View style={styles.toolbar}>
-        <View style={styles.segment} accessibilityRole="tablist">
+        <View nativeID="tour-views" style={styles.segment} accessibilityRole="tablist">
           {views.map((item) => {
             const active = item.key === view;
             return (
@@ -153,7 +153,7 @@ export function TrafficReportsPanel({ vehicleId }: { vehicleId?: string }) {
             );
           })}
         </View>
-        <View style={styles.search}>
+        <View nativeID="tour-search" style={styles.search}>
           <Ionicons name="search" size={17} color={DESKTOP_COLORS.inkFaint} />
           <TextInput
             value={query}
@@ -165,6 +165,7 @@ export function TrafficReportsPanel({ vehicleId }: { vehicleId?: string }) {
           />
         </View>
         <HoverPressable
+          nativeID="tour-export"
           style={[styles.ghost, (!visible.length || exporting) && styles.disabled]}
           hoverStyle={styles.ghostHover}
           onPress={visible.length && !exporting ? () => void exportXlsx() : undefined}
@@ -172,13 +173,13 @@ export function TrafficReportsPanel({ vehicleId }: { vehicleId?: string }) {
           <Ionicons name="download-outline" size={17} color={DESKTOP_COLORS.brand} />
           <DText weight="semiBold" style={styles.ghostText}>{t('trafficReport.export')}</DText>
         </HoverPressable>
-        <HoverPressable style={styles.primary} hoverStyle={styles.primaryHover} onPress={() => setEditing('new')}>
+        <HoverPressable nativeID="tour-new" style={styles.primary} hoverStyle={styles.primaryHover} onPress={() => setEditing('new')}>
           <Ionicons name="add" size={18} color="#FFFFFF" />
           <DText weight="semiBold" style={styles.onBrandText}>{t('trafficReport.new')}</DText>
         </HoverPressable>
       </View>
 
-      <View style={styles.range}>
+      <View nativeID="tour-range" style={styles.range}>
         <DText style={styles.muted}>{t('trafficReport.offenseFrom')}</DText>
         <View style={styles.rangeField}><DesktopDateField value={fromIso} onChange={setFromIso} placeholder={t('date.chooseDateAction')} /></View>
         <DText style={styles.muted}>{t('trafficReport.offenseTo')}</DText>
@@ -191,12 +192,12 @@ export function TrafficReportsPanel({ vehicleId }: { vehicleId?: string }) {
       </View>
 
       {visible.length === 0 ? (
-        <View style={styles.state}>
+        <View nativeID="tour-list" style={styles.state}>
           <Ionicons name="checkmark-circle-outline" size={28} color={DESKTOP_TONES.ok.fg} />
           <DText style={styles.muted}>{t('trafficReport.none')}</DText>
         </View>
       ) : (
-        <View style={styles.list}>
+        <View nativeID="tour-list" style={styles.list}>
           {visible.map((row, index) => <ReportRow key={row.doc.id} row={row} first={index === 0} onPress={() => setEditing(row)} />)}
         </View>
       )}
