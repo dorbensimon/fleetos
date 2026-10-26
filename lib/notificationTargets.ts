@@ -141,6 +141,11 @@ export async function adminNotificationTarget<N extends NotificationTargetFields
     return { screen: 'DriverDetail', params: { driverId: n.actor_id } };
   }
 
+  // A traffic report deadline (migration 127) opens that driver's reports folder.
+  if (type === 'traffic_report_due' && n.actor_id) {
+    return { screen: 'DriverDetail', params: { driverId: n.actor_id, openFolder: 'traffic_reports' } };
+  }
+
   if (type === 'driver_license_expiry' && n.actor_id) {
     return { screen: 'DriverDetail', params: { driverId: n.actor_id, focus: LICENSE_FOCUS } };
   }

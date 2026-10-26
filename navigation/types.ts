@@ -32,6 +32,8 @@ export type RootStackParamList = {
   CompanyDocuments: undefined;
   Attention: undefined;
   Reports: undefined;
+  /** "דוחות תעבורה": every traffic report of the company, with Excel export. */
+  TrafficReports: undefined;
   AdminProfile: undefined;
   CompanySettings: undefined;
   /** `openMeeting`: a repeating form's id, to open its "מפגש חדש" list (from a "meetings due" notification). */

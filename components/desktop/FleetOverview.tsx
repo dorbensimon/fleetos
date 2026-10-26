@@ -7,6 +7,7 @@ import { attentionTotals, type AttentionGroup, type AttentionItem } from '../../
 import { DLtrText, DText, HoverPressable, prefersReducedMotion } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { DepartmentsQuickAction, ReportsQuickAction } from './DashboardWidgets';
+import { TrafficReportsQuickAction } from './TrafficReportsCenter';
 import { HeaderMenuBackdrop, headerMenuEnter, headerMenuStyles, useHeaderMenu } from './headerMenu';
 import { t, dirIcon, getLocale } from '../../lib/i18n';
 import { pageStyles } from './record/RecordPage';
@@ -87,6 +88,7 @@ export function FleetHeader() {
       </View>
       <View style={styles.headerActions}>
         <ReportsQuickAction />
+        <TrafficReportsQuickAction />
         <DepartmentsQuickAction />
       </View>
     </View>

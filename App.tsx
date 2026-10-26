@@ -41,6 +41,7 @@ import DepartmentsScreen from './screens/admin/DepartmentsScreen';
 import CompanyDocumentsScreen from './screens/admin/CompanyDocumentsScreen';
 import AttentionScreen from './screens/admin/AttentionScreen';
 import ReportsScreen from './screens/admin/ReportsScreen';
+import TrafficReportsScreen from './screens/admin/TrafficReportsScreen';
 import AdminProfileScreen from './screens/admin/AdminProfileScreen';
 import CompanySettingsScreen from './screens/admin/CompanySettingsScreen';
 import LegalScreen from './screens/LegalScreen';
@@ -154,6 +155,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       CompanyDocuments: 'company-documents',
       Attention: 'attention',
       Reports: 'reports',
+      TrafficReports: 'traffic-reports',
       AdminProfile: 'admin/profile',
       CompanySettings: 'admin/company-settings',
       SignedDocuments: 'signed-documents',
@@ -404,6 +406,7 @@ export default function App() {
               <Stack.Screen name="CompanyDocuments" component={CompanyDocumentsScreen} />
               <Stack.Screen name="Attention" component={AttentionScreen} />
               <Stack.Screen name="Reports" component={ReportsScreen} />
+              <Stack.Screen name="TrafficReports" component={TrafficReportsScreen} />
               <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
               <Stack.Screen name="CompanySettings" component={CompanySettingsScreen} />
               <Stack.Screen name="SignedDocuments" component={SignedDocumentsScreen} />

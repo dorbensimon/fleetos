@@ -95,6 +95,7 @@ const TYPE_ICON: Partial<Record<NotificationType, IconName>> = {
   vehicle_custom_folder_expiry: 'folder-open-outline',
   driver_custom_folder_expiry: 'folder-open-outline',
   driver_extra_expiry: 'id-card-outline',
+  traffic_report_due: 'warning-outline',
   vehicle_service_due: 'build-outline',
   driver_meeting_due: 'people-outline',
   vehicle_safety_check_due: 'shield-checkmark-outline',

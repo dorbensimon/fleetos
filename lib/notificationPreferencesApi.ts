@@ -38,6 +38,7 @@ export type NotificationType =
   | 'vehicle_custom_folder_expiry'
   | 'driver_custom_folder_expiry'
   | 'driver_extra_expiry'
+  | 'traffic_report_due'
   | 'vehicle_service_due'
   | 'signature_request_assigned'
   | 'vehicle_assignment'
@@ -125,6 +126,11 @@ export const ADMIN_NOTIFICATION_TYPES: NotificationTypeInfo[] = [
     type: 'driver_extra_expiry',
     get label() { return t('prefs.type.driverExtraExpiry'); },
     get description() { return t('prefs.type.driverExtraExpiryDesc'); },
+  },
+  {
+    type: 'traffic_report_due',
+    get label() { return t('prefs.type.trafficReportDue'); },
+    get description() { return t('prefs.type.trafficReportDueDesc'); },
   },
   {
     type: 'driver_custom_folder_expiry',
@@ -410,6 +416,7 @@ export const LEAD_RULES: Partial<Record<NotificationType, LeadRule>> = {
   driver_license_expiry: { unit: 'days', min: 1, max: 90, step: 1, presets: [14, 30, 60, 90] },
   driver_custom_folder_expiry: FOLDER_LEAD_RULE,
   driver_extra_expiry: FOLDER_LEAD_RULE,
+  traffic_report_due: { unit: 'days', min: 1, max: 30, step: 1, presets: [3, 7, 14, 30] },
   company_carrier_license_expiry: { unit: 'days', min: 1, max: 90, step: 1, presets: [14, 30, 60, 90] },
   vehicle_odometer_stale: { unit: 'idle', min: 7, max: 90, step: 1, presets: [14, 30, 45, 60] },
 };
@@ -428,6 +435,7 @@ const FIXED_LEAD_DEFAULTS: Partial<Record<NotificationType, number>> = {
   driver_license_expiry: 30,
   driver_custom_folder_expiry: 30,
   driver_extra_expiry: 30,
+  traffic_report_due: 7,
   company_carrier_license_expiry: 30,
   vehicle_odometer_stale: 30,
 };
@@ -473,6 +481,7 @@ const ADMIN_GROUP_OF: Partial<Record<NotificationType, NotificationGroup['key']>
   driver_license_expiry: 'licenses',
   driver_custom_folder_expiry: 'licenses',
   driver_extra_expiry: 'licenses',
+  traffic_report_due: 'drivers',
   company_carrier_license_expiry: 'licenses',
   vehicle_service_due: 'care',
   vehicle_odometer_stale: 'care',

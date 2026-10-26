@@ -12,6 +12,7 @@ import type {
   VehicleType,
 } from '../../lib/adminApi';
 import { ComplianceSection } from '../ComplianceSection';
+import { TrafficReportsPanel } from './TrafficReportsCenter';
 import { VehicleDriversEditor } from '../VehicleDriversEditor';
 import { SAFETY_FOLDER, VehicleInspectionsDesktopSection } from '../inspection/VehicleInspectionsDesktopSection';
 import { VehicleServiceFolderRow } from '../service/VehicleServiceRecords';
@@ -654,6 +655,13 @@ export function VehicleDetailDesktopView({
           </View>
         </View>
       </View>
+
+      {/* Traffic reports recorded on this vehicle; each lives in its driver's folder. */}
+      <View style={styles.docsHead}>
+        <DText weight="bold" style={styles.docsTitle}>{t('folder.trafficReports')}</DText>
+        <DText style={styles.mutedText}>{t('trafficReport.vehicleHint')}</DText>
+      </View>
+      <TrafficReportsPanel vehicleId={vehicleId} />
 
       {openDocumentFolder && (
         <DocumentFolderUploadModal

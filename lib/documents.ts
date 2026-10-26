@@ -343,6 +343,19 @@ export async function updateDocumentDetails(doc: DocumentRow, patch: Record<stri
   return data as DocumentRow;
 }
 
+// שומר מחדש את כל הפרטים ואת תאריך המסמך (עריכת דוח תעבורה)
+/** Replaces the document's details and date; fields left empty are removed. */
+export async function replaceDocumentDetails(docId: string, documentDate: string | null, details: Record<string, string>): Promise<DocumentRow> {
+  const { data, error } = await supabase
+    .from('documents')
+    .update({ document_date: documentDate, details })
+    .eq('id', docId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as DocumentRow;
+}
+
 // מוחק את המסמך ואת הקובץ
 /** Removes both the row and the underlying file. */
 export async function deleteDocument(doc: DocumentRow) {

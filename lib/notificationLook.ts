@@ -27,6 +27,7 @@ export function notificationIcon(type: string | null): keyof typeof Ionicons.gly
   if (type === 'signature_request_completed') return 'checkmark-done-outline';
   if (type === 'signature_expiry') return 'hourglass-outline';
   if (type === 'driver_license_expiry' || type === 'driver_extra_expiry') return 'id-card-outline';
+  if (type === 'traffic_report_due') return 'warning-outline';
   if (type === 'vehicle_custom_folder_expiry' || type === 'driver_custom_folder_expiry') return 'folder-open-outline';
   if (type === 'company_carrier_license_expiry') return 'business-outline';
   if (type === 'vehicle_odometer_stale') return 'speedometer-outline';
@@ -53,6 +54,8 @@ export function notificationTone(n: Pick<Notification, 'notification_type' | 'me
   }
   // Signature validity (supabase/sql/105): ahead is a heads-up, run out is urgent.
   if (type === 'signature_expiry') return n.message.includes('תפוג בעוד') ? 'warn' : 'bad';
+  // Traffic report deadlines (supabase/sql/127): ahead is a heads-up, past is urgent.
+  if (type === 'traffic_report_due') return n.message.includes('עבר מועד') ? 'bad' : 'warn';
   if (type === 'vehicle_service_due' || type === 'license_update_requested' || type === 'vehicle_odometer_stale') return 'warn';
   // Meeting reminders (supabase/sql/97): a week ahead is a heads-up, due or late is urgent.
   // A heads-up before the date (any lead the company picked); due or late is urgent.

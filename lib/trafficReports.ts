@@ -31,6 +31,8 @@ export interface TrafficReport {
   offenseDateIso: string | null;
   payByIso: string | null;
   receivedIso: string | null;
+  /** Last day to transfer the report to the driver; received + 30 days unless changed. */
+  transferByIso: string | null;
   amount: string;
   status: TrafficReportStatus;
   responsibility: TrafficReportResponsibility | null;
@@ -43,7 +45,7 @@ export interface TrafficReport {
 }
 
 export const EMPTY_TRAFFIC_REPORT: TrafficReport = {
-  type: null, offenseDateIso: null, payByIso: null, receivedIso: null, amount: '', status: 'open',
+  type: null, offenseDateIso: null, payByIso: null, receivedIso: null, transferByIso: null, amount: '', status: 'open',
   responsibility: null, vehicleId: null, vehiclePlate: '', vehicleName: '', issuer: '', reportNumber: '', description: '',
 };
 
@@ -70,6 +72,7 @@ export function trafficReportUpload(report: TrafficReport): { documentDate: stri
     ['report_type', report.type],
     ['pay_by', report.payByIso],
     ['received_at', report.receivedIso],
+    ['transfer_by', report.transferByIso],
     ['amount', report.amount],
     ['status', report.status],
     ['responsibility', report.responsibility],
@@ -83,6 +86,54 @@ export function trafficReportUpload(report: TrafficReport): { documentDate: stri
   const details: Record<string, string> = {};
   for (const [key, value] of pairs) if (value?.trim()) details[key] = value.trim();
   return { documentDate: report.offenseDateIso, details };
+}
+
+// ימים להסבת דוח מיום הקבלה
+export const TRANSFER_DAYS = 30;
+
+const plusDays = (iso: string, days: number) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
+// תאריך הקבלה משנה גם את מועד ההסבה, אלא אם המנהל שינה אותו ידנית
+/** Moves "transfer by" along with the received date while it still holds the automatic value. */
+export function withReceivedDate(report: TrafficReport, receivedIso: string | null): TrafficReport {
+  const auto = report.receivedIso ? plusDays(report.receivedIso, TRANSFER_DAYS) : null;
+  const followed = !report.transferByIso || report.transferByIso === auto;
+  return {
+    ...report,
+    receivedIso,
+    transferByIso: followed ? (receivedIso ? plusDays(receivedIso, TRANSFER_DAYS) : null) : report.transferByIso,
+  };
+}
+
+// דוח שמור בחזרה לטופס (לעריכה)
+export function trafficReportFromDoc(doc: Pick<DocumentRow, 'details' | 'document_date'>): TrafficReport {
+  const d = doc.details ?? {};
+  return {
+    type: (d.report_type as TrafficReportType) ?? null,
+    offenseDateIso: doc.document_date ?? null,
+    payByIso: d.pay_by ?? null,
+    receivedIso: d.received_at ?? null,
+    transferByIso: d.transfer_by ?? null,
+    amount: d.amount ?? '',
+    status: (d.status as TrafficReportStatus) ?? 'open',
+    responsibility: (d.responsibility as TrafficReportResponsibility) ?? null,
+    vehicleId: d.vehicle_id ?? null,
+    vehiclePlate: d.vehicle_plate ?? '',
+    vehicleName: d.vehicle_name ?? '',
+    issuer: d.issuer ?? '',
+    reportNumber: d.report_number ?? '',
+    description: d.description ?? '',
+  };
+}
+
+// מי נהג ברכב ביום העבירה
+/** Drivers assigned to the vehicle on that day (an assignment that ended that day still counts). */
+export function driversOnDate<A extends { driver_id: string; assigned_at: string; unassigned_at: string | null }>(history: A[], dateIso: string): A[] {
+  return history.filter((a) => a.assigned_at.slice(0, 10) <= dateIso && (!a.unassigned_at || a.unassigned_at.slice(0, 10) >= dateIso));
 }
 
 // האם הדוח עדיין פתוח
