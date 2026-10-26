@@ -3761,6 +3761,17 @@
   },
   "trafficReport": {
     "pageSubtitle": "All company reports: payment and transfer dates, the driver by offense date, Excel export",
+    "tourHelp": "Explain this page",
+    "tour": {
+      "intro": { "title": "Traffic tickets – all in one place", "body": "Here you see all of the company's traffic reports: what is still open, when it must be paid or transferred, and who drove the vehicle on the offense date. Let's walk through the page, it takes a minute." },
+      "totals": { "title": "The key numbers", "body": "How many reports are still open, how much they add up to, how many deadlines fall in the next 7 days, and how many have passed. A red or orange number needs attention." },
+      "views": { "title": "Open, closed or all", "body": "\"Open\" reports still need handling. \"Closed\" ones were paid, transferred, appealed or cancelled. The number next to each tab shows how many it holds." },
+      "search": { "title": "Search", "body": "Type a driver name, plate or report number and the list narrows right away." },
+      "export": { "title": "Export to Excel", "body": "Downloads an Excel file with the reports currently shown, using your filters. Handy for bookkeeping." },
+      "new": { "title": "New report", "body": "Add a report: pick the vehicle and offense date, and the system suggests the driver who drove it that day. Fill in the amount and deadlines and attach a photo of the report." },
+      "range": { "title": "By offense date", "body": "Show only reports whose offense happened between two dates, for example one month." },
+      "list": { "title": "The reports", "body": "Each row is a report: driver, vehicle, offense type, amount and the nearest deadline. Urgent reports come first. Click a row to update it, for example once it is paid or transferred." }
+    },
     "add": "Add report",
     "typeLabel": "Report type",
     "offenseDate": "Offense date",
