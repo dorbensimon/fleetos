@@ -1784,7 +1784,8 @@
     "signingIn": "מתחבר…",
     "tagline": "ניהול צי הרכב, הנהגים והמסמכים — במקום אחד",
     "welcome": "ברוכים הבאים",
-    "wrongCredentials": "מייל או סיסמה שגויים"
+    "wrongCredentials": "מייל או סיסמה שגויים",
+    "tooManyAttempts": "יותר מדי ניסיונות כניסה. נסה שוב בעוד כמה דקות"
   },
   "logo": {
     "photosPermissionRequired": "נדרשת הרשאת גישה לתמונות כדי להעלות לוגו",
