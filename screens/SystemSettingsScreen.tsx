@@ -13,6 +13,9 @@ import { pageStyles } from '../components/desktop/record/RecordPage';
 import { useIsDesktop } from '../lib/useDesktopLayout';
 import type { RootStackParamList } from '../navigation/types';
 import { t, dirIcon } from '../lib/i18n';
+import { useCompany } from '../lib/CompanyContext';
+import { loadMyCompanies } from '../lib/companySwitch';
+import { showAlert } from '../lib/platformAlert';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SystemSettings'>;
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -36,6 +39,18 @@ export default function SystemSettingsScreen({ navigation }: Props) {
   const openLegal = (doc: RootStackParamList['Legal']['doc']) => navigation.navigate('Legal', { doc });
   // Every notification setting of the app lives on the notifications page.
   const openNotifications = () => navigation.navigate('Notifications', { section: 'settings' });
+  const { profile, company } = useCompany();
+  const isManager = profile?.role === 'admin';
+  // A manager with one company stays put and is told why.
+  const openCompanies = async () => {
+    try {
+      const companies = await loadMyCompanies();
+      if (companies.length > 1) navigation.navigate('CompanyPicker');
+      else showAlert(t('companyPicker.onlyOneTitle'), t('companyPicker.onlyOne'));
+    } catch {
+      showAlert(t('companyPicker.loadFailed'), t('common.tryAgainShortly'));
+    }
+  };
 
   if (isDesktop) {
     return (
@@ -54,6 +69,19 @@ export default function SystemSettingsScreen({ navigation }: Props) {
             </View>
           </View>
           <View style={ds.columns}>
+            {isManager && (
+              <View style={ds.column}>
+                <DText weight="bold" style={ds.sectionTitle}>{t('companyPicker.section')}</DText>
+                <View style={ds.card}>
+                  <HoverPressable style={ds.row} hoverStyle={ds.rowHover} onPress={openCompanies} accessibilityRole="button">
+                    <Ionicons name="swap-horizontal-outline" size={16} color={DESKTOP_COLORS.brand} />
+                    <DText weight="medium" style={ds.rowLabel}>{t('companyPicker.switch')}</DText>
+                    {company?.name ? <DText style={ds.rowValue} numberOfLines={1}>{company.name}</DText> : null}
+                    <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
+                  </HoverPressable>
+                </View>
+              </View>
+            )}
             <View style={ds.column}>
               <DText weight="bold" style={ds.sectionTitle}>{t('notifications.title')}</DText>
               <View style={ds.card}>
@@ -90,6 +118,13 @@ export default function SystemSettingsScreen({ navigation }: Props) {
 
   return (
     <DriverPage insetTop={insets.top} insetBottom={insets.bottom} hero={<HeroTitle title={t('nav.systemSettings')} onBack={() => navigation.goBack()} />}>
+      {isManager && (
+        <Reveal>
+          <KitSection title={t('companyPicker.section')}>
+            <ListRow first icon="swap-horizontal" title={t('companyPicker.switch')} subtitle={company?.name} onPress={openCompanies} />
+          </KitSection>
+        </Reveal>
+      )}
       <Reveal>
         <KitSection title={t('notifications.title')}>
           <ListRow first icon="notifications" title={t('owner.notif.manage')} onPress={() => navigation.navigate('NotificationPreferences')} />
@@ -122,4 +157,5 @@ const ds = StyleSheet.create({
   rowDivider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
   rowLabel: { flex: 1, fontSize: 13, color: DESKTOP_COLORS.ink },
+  rowValue: { fontSize: 13, color: DESKTOP_COLORS.inkMuted, maxWidth: 200 },
 });

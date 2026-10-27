@@ -228,7 +228,12 @@ export default function OwnerHomeScreen({ navigation, route }: Props) {
       // The subscription is the owner's own record; a failure here leaves the
       // default trial in place and is fixable from the company's page.
       if (companyId) await saveCompanyAccount(companyId, formToAccountInput(form.account)).catch(() => {});
-      setCreated({ companyId, companyName: form.name.trim(), email: form.email.trim(), password: form.password, phone: form.phone });
+      // An existing manager signs in as before: there are no new details to hand over.
+      if (data.linkedExisting) {
+        showAlert(t('addCompany.linkedTitle'), t('addCompany.linkedBody', { companyName: form.name.trim(), name: form.existingManager?.fullName || form.email.trim() }));
+      } else {
+        setCreated({ companyId, companyName: form.name.trim(), email: form.email.trim(), password: form.password, phone: form.phone });
+      }
       setForm(emptyOwnerCompanyForm());
       setAddOpen(false);
       await loadCompanies();

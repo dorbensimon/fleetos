@@ -384,7 +384,10 @@ function UsersCard(p: Props) {
               </View>
               <View style={styles.userName}>
                 <DText weight="semiBold" style={styles.userTitle} numberOfLines={1}>{user.full_name || t('common.unnamed')}</DText>
-                <DText style={pageStyles.rowNote}>{t('companyPage.addedOn', { date: formatDate(user.created_at) })}</DText>
+                <DText style={pageStyles.rowNote}>
+                  {t('companyPage.addedOn', { date: formatDate(user.created_at) })}
+                  {(user.company_count ?? 1) > 1 ? ` · ${t('users.managerOfCompanies', { count: user.company_count })}` : ''}
+                </DText>
               </View>
               <HoverPressable style={styles.email} hoverStyle={styles.emailHover} onPress={() => copy(user)} disabled={!user.email} accessibilityLabel={`${t('companyPage.copyEmail')}: ${user.email ?? ''}`}>
                 <DLtrText style={styles.cellText} numberOfLines={1}>{copied === user.id ? t('companyPage.copied') : user.email || '—'}</DLtrText>

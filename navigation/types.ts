@@ -98,4 +98,5 @@ export type RootStackParamList = {
   Menu: undefined;
   /** "הגדרות מערכת": language and the legal pages, for every role. */
   SystemSettings: undefined;
+  CompanyPicker: undefined;
 };

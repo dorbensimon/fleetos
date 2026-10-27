@@ -7,6 +7,7 @@
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyOwner } from '../_shared/verifyOwner.ts';
 import { isValidTemporaryPassword } from '../_shared/accountSecurity.ts';
+import { findAccountByEmail, managerLinkBlock } from '../_shared/existingAccount.ts';
 
 // מקבל בקשה ויוצר מנהל
 Deno.serve(async (req) => {
@@ -25,6 +26,21 @@ Deno.serve(async (req) => {
     }
     const { adminClient } = verify;
 
+    const body = await req.json();
+
+    // The form asks, as the owner leaves the email field, whether this
+    // email is already a manager (then no name, phone or password is needed).
+    if (body.checkEmail) {
+      const account = body.adminEmail?.trim() ? await findAccountByEmail(adminClient, body.adminEmail) : null;
+      return new Response(
+        JSON.stringify({
+          success: true,
+          account: account ? { fullName: account.fullName, block: managerLinkBlock(account) } : null,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const {
       companyName,
       logoUrl,
@@ -35,7 +51,57 @@ Deno.serve(async (req) => {
       adminEmail,
       adminPassword,
       adminPhone,
-    } = await req.json();
+    } = body;
+
+    // An existing manager gets the new company on their account: same email,
+    // same password, nothing else about them changes.
+    const existing = adminEmail?.trim() ? await findAccountByEmail(adminClient, adminEmail) : null;
+    if (existing) {
+      const block = managerLinkBlock(existing);
+      if (block) {
+        return new Response(JSON.stringify({ error: block }), {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (!companyName?.trim()) {
+        return new Response(JSON.stringify({ error: 'שם חברה הוא שדה חובה' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { data: linkedCompany, error: linkedCompanyError } = await adminClient
+        .from('companies')
+        .insert({
+          name: companyName.trim(),
+          logo_url: logoUrl?.trim() || null,
+          company_type: companyType || null,
+          business_id: businessId?.trim() || null,
+          status: 'active',
+        })
+        .select()
+        .single();
+      if (linkedCompanyError || !linkedCompany) {
+        return new Response(JSON.stringify({ error: 'יצירת החברה נכשלה' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { error: membershipError } = await adminClient
+        .from('company_memberships')
+        .insert({ user_id: existing.id, company_id: linkedCompany.id });
+      if (membershipError) {
+        await adminClient.from('companies').delete().eq('id', linkedCompany.id);
+        return new Response(JSON.stringify({ error: 'שיוך המנהל לחברה נכשל' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(
+        JSON.stringify({ success: true, companyId: linkedCompany.id, linkedExisting: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (
       !companyName?.trim() ||

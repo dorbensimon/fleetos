@@ -47,6 +47,9 @@
     "yearlyPriceHint": "حتى في الفوترة السنوية، أدخل ما يعادل الشهر."
   },
   "addCompany": {
+    "existingManager": "البريد مسجّل في النظام. ستُضاف الشركة إلى حساب {{name}}، وسيدخل بنفس البريد ونفس كلمة المرور.",
+    "linkedTitle": "تم إنشاء الشركة",
+    "linkedBody": "أُضيفت {{companyName}} إلى حساب {{name}}. في الدخول القادم سيختارها من قائمة شركاته.",
     "backToStep": "العودة إلى الخطوة {{v1}}: {{title}}",
     "beforeCreating": "قبل الإنشاء",
     "create": "إنشاء الشركة",
@@ -477,6 +480,25 @@
     "verified": "موثّق",
     "view": "عرض",
     "years": "سنوات"
+  },
+  "companyPicker": {
+    "title": "اختيار شركة",
+    "greeting": "مرحبًا {{name}}، إلى أي شركة تريد الدخول؟",
+    "greetingNoName": "إلى أي شركة تريد الدخول؟",
+    "vehicles": "{{count}} مركبات",
+    "drivers": "{{count}} سائقين",
+    "lastUsed": "آخر دخول",
+    "current": "الشركة الحالية",
+    "inactive": "غير نشطة",
+    "search": "البحث عن شركة",
+    "noResults": "لا توجد شركة بهذا الاسم",
+    "noneActive": "لا توجد حاليًا شركة نشطة في حسابك. للتفاصيل تواصل مع الدعم.",
+    "loadFailed": "تعذّر تحميل الشركات",
+    "switchFailed": "تعذّر الانتقال إلى الشركة. ربما لم تعد متاحة لك.",
+    "section": "الشركة",
+    "switch": "تبديل الشركة",
+    "onlyOneTitle": "لا يوجد ما تنتقل إليه",
+    "onlyOne": "لا توجد شركة أخرى للانتقال إليها. حسابك مرتبط بشركة واحدة فقط."
   },
   "company": {
     "activeF": "نشطة",
@@ -2852,6 +2874,14 @@
     "kmValue": "{{v1}} كم"
   },
   "users": {
+    "managerOfCompanies": "مدير في {{count}} شركات",
+    "existingManager": "البريد مسجّل في النظام. سيحصل {{name}} على وصول إلى {{companyName}} أيضًا، بنفس البريد ونفس كلمة المرور.",
+    "linkedTitle": "تم ربط المدير",
+    "linkedBody": "يمكن لـ{{name}} الآن اختيار هذه الشركة من قائمة شركاته.",
+    "removeFromCompanyQuestion": "إزالة {{v1}} من الشركة؟",
+    "removeSharedManagerWarning": "يدير {{count}} شركات أخرى وسيستمر في إدارتها. يمكن أيضًا حذف حسابه بالكامل.",
+    "deleteFromAllCompanies": "حذف من كل الشركات ({{count}})",
+    "removeFromCompany": "إزالة من الشركة",
     "additionalManager": "مدير إضافي",
     "awaitingPassword": "بانتظار تعيين كلمة المرور",
     "canManageFleet": "سيتمكن من إدارة أسطول {{companyName}}.",

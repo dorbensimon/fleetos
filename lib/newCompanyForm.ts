@@ -21,6 +21,8 @@ export type OwnerCompanyForm = {
   phone: string;
   password: string;
   account: AccountForm;
+  /** The email already belongs to an account: a manager to link (block null), or why it cannot be. */
+  existingManager: { fullName: string | null; block: string | null } | null;
 };
 
 // טופס ריק
@@ -36,6 +38,7 @@ export function emptyOwnerCompanyForm(): OwnerCompanyForm {
     phone: '',
     password: '',
     account: emptyAccountForm(),
+    existingManager: null,
   };
 }
 
@@ -51,6 +54,11 @@ export function validateCompanyStep(step: CompanyStep, form: OwnerCompanyForm): 
   if (step === 0) {
     if (!form.name.trim()) errors.name = t('validation.companyNameRequired');
     if (form.businessId.trim() && !/^\d{8,9}$/.test(form.businessId.trim())) errors.businessId = t('validation.8or9Digits');
+  }
+  if (step === 1 && form.existingManager) {
+    // An existing manager keeps their name, phone and password.
+    if (form.existingManager.block) errors.email = form.existingManager.block;
+    return errors;
   }
   if (step === 1) {
     if (!form.adminFirstName.trim()) errors.adminFirstName = t('validation.required');

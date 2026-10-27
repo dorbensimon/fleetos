@@ -115,15 +115,56 @@ describe('resolveRouteForUser', () => {
     expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
   });
 
-  it('signs out and blocks access when the company is disabled', async () => {
+  it('signs out a driver whose company is disabled', async () => {
     (supabase.from as jest.Mock)
-      .mockReturnValueOnce(chain({ data: baseProfile, error: null }))
+      .mockReturnValueOnce(chain({ data: { ...baseProfile, role: 'driver' }, error: null }))
       .mockReturnValueOnce(chain({ data: { status: 'disabled' }, error: null }));
 
     const result = await resolveRouteForUser('u1');
 
     expect(result).toEqual({ ok: false, error: 'החשבון מושבת זמנית' });
     expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends a manager whose active company is disabled to the company picker', async () => {
+    (supabase.from as jest.Mock)
+      .mockReturnValueOnce(chain({ data: baseProfile, error: null }))
+      .mockReturnValueOnce(chain({ data: { status: 'disabled' }, error: null }));
+
+    const result = await resolveRouteForUser('u1');
+
+    expect(result).toEqual({ ok: true, route: 'CompanyPicker' });
+    expect(supabase.auth.signOut).not.toHaveBeenCalled();
+  });
+
+  it('sends a manager to the company picker right after signing in', async () => {
+    (supabase.from as jest.Mock).mockReturnValueOnce(chain({ data: baseProfile, error: null }));
+
+    const result = await resolveRouteForUser('u1', { freshSignIn: true });
+
+    expect(result).toEqual({ ok: true, route: 'CompanyPicker' });
+    expect(supabase.from).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends a manager with no active company to the company picker', async () => {
+    (supabase.from as jest.Mock).mockReturnValueOnce(
+      chain({ data: { ...baseProfile, company_id: null }, error: null })
+    );
+
+    const result = await resolveRouteForUser('u1');
+
+    expect(result).toEqual({ ok: true, route: 'CompanyPicker' });
+    expect(supabase.auth.signOut).not.toHaveBeenCalled();
+  });
+
+  it('still asks a new manager to set a password before choosing a company', async () => {
+    (supabase.from as jest.Mock).mockReturnValueOnce(
+      chain({ data: { ...baseProfile, must_change_password: true }, error: null })
+    );
+
+    const result = await resolveRouteForUser('u1', { freshSignIn: true });
+
+    expect(result).toEqual({ ok: true, route: 'SetPassword' });
   });
 
   it('signs out and returns an error when the company fails to load', async () => {

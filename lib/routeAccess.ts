@@ -22,6 +22,7 @@ const ROUTE_ACCESS: Record<RouteName, Access> = {
   OwnerHome: ['owner'],
   CompanyDetail: ['owner'],
 
+  CompanyPicker: ['admin'],
   AdminHome: ['admin'],
   VehicleDetail: ['admin'],
   VehicleForm: ['admin'],

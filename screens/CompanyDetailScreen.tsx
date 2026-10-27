@@ -348,6 +348,11 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
 
   const validateNewAdminForm = () => {
     const errors: Record<string, string> = {};
+    // An existing manager is linked as they are: only the email counts.
+    if (newAdminForm.existingManager) {
+      if (newAdminForm.existingManager.block) errors.email = newAdminForm.existingManager.block;
+      return errors;
+    }
     if (!newAdminForm.firstName.trim()) errors.firstName = t('validation.required');
     if (!newAdminForm.lastName.trim()) errors.lastName = t('validation.required');
     if (!newAdminForm.email.trim()) errors.email = t('validation.required');
@@ -379,7 +384,9 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
         setAddAdminError(await functionErrorMessage(error, data, t('company.addAdminFailed'), false));
         return;
       }
-      setCredentials({
+      if (data.linkedExisting) {
+        showAlert(t('users.linkedTitle'), t('users.linkedBody', { name: newAdminForm.existingManager?.fullName || newAdminForm.email.trim() }));
+      } else setCredentials({
         title: t('company.managerAdded'),
         subtitle: t('company.managerAddedHint'),
         name: newAdminForm.firstName.trim(),
@@ -398,10 +405,10 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
     }
   };
 
-  const removeUser = async () => {
+  const removeUser = async (scope: 'company' | 'all') => {
     if (!removeTarget) return;
     setRemoving(true);
-    const { data, error } = await deleteCompanyUser(removeTarget.id);
+    const { data, error } = await deleteCompanyUser(removeTarget.id, scope === 'company' ? companyId : undefined);
     setRemoving(false);
     if (error || !data?.success) {
       showAlert(t('company.deleteUserFailed'), await functionErrorMessage(error, data, t('common.tryAgain'), false));
@@ -531,6 +538,7 @@ export default function CompanyDetailScreen({ route, navigation }: Props) {
 
       <AddAdminSheet
         visible={addAdminOpen}
+        companyId={companyId}
         companyName={company.name}
         form={newAdminForm}
         fieldErrors={newAdminFieldErrors}

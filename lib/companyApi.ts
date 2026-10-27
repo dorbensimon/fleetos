@@ -45,8 +45,9 @@ export function addCompanyAdmin(body: Record<string, unknown>) {
 }
 
 // מוחק משתמש
-export function deleteCompanyUser(userId: string) {
-  return supabase.functions.invoke('delete-company-user', { body: { userId } });
+// companyId: only from that company (a manager of other companies keeps the account).
+export function deleteCompanyUser(userId: string, companyId?: string) {
+  return supabase.functions.invoke('delete-company-user', { body: { userId, companyId } });
 }
 
 // מאפס סיסמה למשתמש

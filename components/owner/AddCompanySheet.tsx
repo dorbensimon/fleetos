@@ -1,5 +1,5 @@
 // הוספת חברה חדשה (בעלים)
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { openWhatsapp, useSendMessage, whatsappNumber } from '../companyDetail/CompanyDetailSheets';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,8 @@ import { AccountFields } from './CompanyAccountSheet';
 import { ChoiceChips } from './ownerKit';
 import { t, dirIcon, textEnd } from '../../lib/i18n';
 import { COMPANY_TYPES, companyTypeLabel } from '../../lib/companyType';
+import { isValidEmail } from '../../lib/validation';
+import { createCompanyAdmin } from '../../lib/ownerApi';
 
 /**
  * Opening a new customer, in three short steps on one sheet (a dialog on
@@ -73,12 +75,40 @@ export function AddCompanySheet({
     }
   }, [visible]);
 
+  // Is this email already someone's account? Asked as the owner types, so
+  // the fields an existing manager does not need disappear before "continue".
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const emailCheck = useRef(0);
+  useEffect(() => {
+    const email = form.email.trim();
+    const version = ++emailCheck.current;
+    onChangeForm((f) => (f.existingManager ? { ...f, existingManager: null } : f));
+    if (!visible || !isValidEmail(email)) {
+      setCheckingEmail(false);
+      return;
+    }
+    setCheckingEmail(true);
+    const timer = setTimeout(async () => {
+      const { data } = await createCompanyAdmin({ checkEmail: true, adminEmail: email }).catch(() => ({ data: null }));
+      if (version !== emailCheck.current) return;
+      setCheckingEmail(false);
+      const account = data?.account ?? null;
+      onChangeForm((f) => ({ ...f, existingManager: account ? { fullName: account.fullName ?? null, block: account.block ?? null } : null }));
+    }, 450);
+    return () => clearTimeout(timer);
+    // onChangeForm is a new function every render of the owner screen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.email, visible]);
+  const existing = form.existingManager;
+  const linking = !!existing && !existing.block;
+
   const set = <K extends keyof OwnerCompanyForm>(key: K, value: OwnerCompanyForm[K]) => {
     onChangeForm((f) => ({ ...f, [key]: value }));
     if (errors[key as string]) setErrors((e) => ({ ...e, [key as string]: '' }));
   };
 
   const next = () => {
+    if (step === 1 && checkingEmail) return;
     const found = validateCompanyStep(step, form);
     setErrors(found);
     if (Object.values(found).some(Boolean)) return;
@@ -118,7 +148,7 @@ export function AddCompanySheet({
               label={step < 2 ? t('common.continue') : t('addCompany.create')}
               icon={step < 2 ? dirIcon('arrow-back') : 'checkmark'}
               onPress={next}
-              loading={creating}
+              loading={creating || (step === 1 && checkingEmail)}
               style={styles.grow}
             />
           </SheetActions>
@@ -184,15 +214,8 @@ export function AddCompanySheet({
       {step === 1 && (
         <View style={styles.stack}>
           <KitSection title={t('addCompany.managerDetails')}>
-            <View style={styles.pairRow}>
-              <View style={styles.flex}>
-                <EditField first label={t('common.firstName')} required value={form.adminFirstName} onChangeText={(v) => set('adminFirstName', v)} placeholder={t('common.firstNameExample')} error={errors.adminFirstName} />
-              </View>
-              <View style={styles.flex}>
-                <EditField first label={t('common.lastName')} required value={form.adminLastName} onChangeText={(v) => set('adminLastName', v)} placeholder={t('common.lastNameExample')} error={errors.adminLastName} />
-              </View>
-            </View>
             <EditField
+              first
               label={t('common.emailShort')}
               required
               value={form.email}
@@ -201,59 +224,82 @@ export function AddCompanySheet({
               autoComplete="off"
               ltr
               placeholder="admin@company.co.il"
-              error={errors.email}
-              hint={t('addCompany.managerSignsInWith')}
+              error={errors.email || existing?.block || undefined}
+              hint={linking ? undefined : t('addCompany.managerSignsInWith')}
             />
-            <EditField
-              label={t('common.mobilePhone')}
-              required
-              value={formatPhone(form.phone)}
-              onChangeText={(v) => set('phone', v.replace(/\D/g, ''))}
-              keyboardType="phone-pad"
-              ltr
-              placeholder="050-0000000"
-              error={errors.phone}
-            />
-          </KitSection>
-
-          <KitSection
-            title={t('password.temporary')}
-            trailing={
-              <Pressy onPress={() => set('password', randomDigits(6))} accessibilityLabel={t('password.generateRandom')} style={styles.linkChip} pressScale={0.95}>
-                <Ionicons name="sparkles" size={14} color={DK.accent} />
-                <DKText variant="micro" color={DK.accent}>
-                  {t('password.autoGenerate')}
+            {linking ? (
+              <View style={styles.note}>
+                <Ionicons name="person-circle" size={16} color={DK.accent} />
+                <DKText variant="caption" color={DK.inkSoft} style={styles.flex}>
+                  {t('addCompany.existingManager', { name: existing?.fullName || form.email.trim() })}
                 </DKText>
-              </Pressy>
-            }
-          >
-            <EditField
-              first
-              label={t('common.password')}
-              required
-              value={form.password}
-              onChangeText={(v) => set('password', v.replace(/\D/g, ''))}
-              keyboardType="number-pad"
-              secureTextEntry={!showPassword}
-              autoComplete="off"
-              ltr
-              placeholder={t('validation.min4DigitsPlaceholder')}
-              error={errors.password}
-            />
-            <Pressy onPress={() => setShowPassword((v) => !v)} accessibilityLabel={showPassword ? t('password.hideThe') : t('password.showThe')} style={styles.showRow} pressScale={0.98}>
-              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={17} color={DK.muted} />
-              <DKText variant="caption" color={DK.muted}>
-                {showPassword ? t('password.hideThe') : t('password.showThe')}
-              </DKText>
-            </Pressy>
+              </View>
+            ) : (
+              <>
+                <View style={styles.pairRow}>
+                  <View style={styles.flex}>
+                    <EditField label={t('common.firstName')} required value={form.adminFirstName} onChangeText={(v) => set('adminFirstName', v)} placeholder={t('common.firstNameExample')} error={errors.adminFirstName} />
+                  </View>
+                  <View style={styles.flex}>
+                    <EditField label={t('common.lastName')} required value={form.adminLastName} onChangeText={(v) => set('adminLastName', v)} placeholder={t('common.lastNameExample')} error={errors.adminLastName} />
+                  </View>
+                </View>
+                <EditField
+                  label={t('common.mobilePhone')}
+                  required
+                  value={formatPhone(form.phone)}
+                  onChangeText={(v) => set('phone', v.replace(/\D/g, ''))}
+                  keyboardType="phone-pad"
+                  ltr
+                  placeholder="050-0000000"
+                  error={errors.phone}
+                />
+              </>
+            )}
           </KitSection>
 
-          <View style={styles.note}>
-            <Ionicons name="shield-checkmark" size={16} color={DK.accent} />
-            <DKText variant="caption" color={DK.inkSoft} style={styles.flex}>
-              {t('addCompany.tempPasswordNote')}
-            </DKText>
-          </View>
+          {!linking && (
+            <>
+              <KitSection
+                title={t('password.temporary')}
+                trailing={
+                  <Pressy onPress={() => set('password', randomDigits(6))} accessibilityLabel={t('password.generateRandom')} style={styles.linkChip} pressScale={0.95}>
+                    <Ionicons name="sparkles" size={14} color={DK.accent} />
+                    <DKText variant="micro" color={DK.accent}>
+                      {t('password.autoGenerate')}
+                    </DKText>
+                  </Pressy>
+                }
+              >
+                <EditField
+                  first
+                  label={t('common.password')}
+                  required
+                  value={form.password}
+                  onChangeText={(v) => set('password', v.replace(/\D/g, ''))}
+                  keyboardType="number-pad"
+                  secureTextEntry={!showPassword}
+                  autoComplete="off"
+                  ltr
+                  placeholder={t('validation.min4DigitsPlaceholder')}
+                  error={errors.password}
+                />
+                <Pressy onPress={() => setShowPassword((v) => !v)} accessibilityLabel={showPassword ? t('password.hideThe') : t('password.showThe')} style={styles.showRow} pressScale={0.98}>
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={17} color={DK.muted} />
+                  <DKText variant="caption" color={DK.muted}>
+                    {showPassword ? t('password.hideThe') : t('password.showThe')}
+                  </DKText>
+                </Pressy>
+              </KitSection>
+
+              <View style={styles.note}>
+                <Ionicons name="shield-checkmark" size={16} color={DK.accent} />
+                <DKText variant="caption" color={DK.inkSoft} style={styles.flex}>
+                  {t('addCompany.tempPasswordNote')}
+                </DKText>
+              </View>
+            </>
+          )}
         </View>
       )}
 
@@ -308,7 +354,7 @@ function Stepper({ step, onJump }: { step: CompanyStep; onJump: (s: CompanyStep)
 function Summary({ form }: { form: OwnerCompanyForm }) {
   const lines: [string, string][] = [
     [t('owner.col.company'), [form.name.trim(), companyTypeLabel(form.companyType)].filter(Boolean).join(' ')],
-    [t('role.manager'), `${form.adminFirstName.trim()} ${form.adminLastName.trim()}`.trim()],
+    [t('role.manager'), form.existingManager ? form.existingManager.fullName ?? '' : `${form.adminFirstName.trim()} ${form.adminLastName.trim()}`.trim()],
     [t('addCompany.signIn'), form.email.trim()],
   ];
   return (

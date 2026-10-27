@@ -47,6 +47,9 @@
     "yearlyPriceHint": "Even with yearly billing, enter what it comes to per month."
   },
   "addCompany": {
+    "existingManager": "This email is already registered. The company will be added to {{name}}'s account, and they will sign in with the same email and password.",
+    "linkedTitle": "Company created",
+    "linkedBody": "{{companyName}} was added to {{name}}'s account. Next time they sign in, they can choose it from their list of companies.",
     "backToStep": "Back to step {{v1}}: {{title}}",
     "beforeCreating": "Before creating",
     "create": "Create the company",
@@ -477,6 +480,25 @@
     "verified": "Verified",
     "view": "View",
     "years": "years"
+  },
+  "companyPicker": {
+    "title": "Choose a company",
+    "greeting": "Hello {{name}}, which company do you want to enter?",
+    "greetingNoName": "Which company do you want to enter?",
+    "vehicles": "{{count}} vehicles",
+    "drivers": "{{count}} drivers",
+    "lastUsed": "Last entered",
+    "current": "Current company",
+    "inactive": "Inactive",
+    "search": "Search companies",
+    "noResults": "No company with that name",
+    "noneActive": "Your account has no active company right now. Contact support for details.",
+    "loadFailed": "Couldn't load your companies",
+    "switchFailed": "Couldn't switch company. It may no longer be available to you.",
+    "section": "Company",
+    "switch": "Switch company",
+    "onlyOneTitle": "Nowhere to switch to",
+    "onlyOne": "There is no other company to switch to. Your account belongs to one company only."
   },
   "company": {
     "activeF": "Active",
@@ -2852,6 +2874,14 @@
     "kmValue": "{{v1}} km"
   },
   "users": {
+    "managerOfCompanies": "Manager of {{count}} companies",
+    "existingManager": "This email is already registered. {{name}} will also get access to {{companyName}}, with the same email and password.",
+    "linkedTitle": "Manager linked",
+    "linkedBody": "{{name}} can now choose this company from their list of companies.",
+    "removeFromCompanyQuestion": "Remove {{v1}} from this company?",
+    "removeSharedManagerWarning": "They manage {{count}} more companies and will keep managing them. You can also delete their account completely.",
+    "deleteFromAllCompanies": "Delete from all {{count}} companies",
+    "removeFromCompany": "Remove from company",
     "additionalManager": "Additional manager",
     "awaitingPassword": "Awaiting password setup",
     "canManageFleet": "Will be able to manage {{companyName}}'s fleet.",
