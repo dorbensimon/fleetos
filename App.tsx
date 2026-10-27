@@ -67,6 +67,7 @@ import DriverProfileScreen from './screens/driver/DriverProfileScreen';
 import DriverOdometerScreen from './screens/driver/DriverOdometerScreen';
 import DriverAttentionScreen from './screens/driver/DriverAttentionScreen';
 import MenuScreen from './screens/MenuScreen';
+import CompanyPickerScreen from './screens/CompanyPickerScreen';
 import SystemSettingsScreen from './screens/SystemSettingsScreen';
 import { RootStackParamList } from './navigation/types';
 import { refreshBackFallback } from './lib/refreshSafeBack';
@@ -142,6 +143,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Legal: 'legal/:doc',
       SetPassword: 'set-password',
       OwnerHome: 'owner',
+      CompanyPicker: 'companies',
       AdminHome: 'fleet',
       DriverHome: 'driver',
       CompanyDetail: 'companies/:companyId',
@@ -346,7 +348,7 @@ export default function App() {
           <FirstProfileGate signedIn={initialRoute !== 'Login'}>
           <LegalConsentGate
             onAccepted={async (userId) => {
-              const result = await resolveRouteForUser(userId);
+              const result = await resolveRouteForUser(userId, { freshSignIn: true });
               setResumeSavedState(false);
               setInitialRoute(result.ok ? result.route : 'Login');
             }}
@@ -392,6 +394,7 @@ export default function App() {
               <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
               <Stack.Screen name="Menu" component={MenuScreen} />
               <Stack.Screen name="SystemSettings" component={SystemSettingsScreen} />
+              <Stack.Screen name="CompanyPicker" component={CompanyPickerScreen} />
 
               {/* Admin module — no tab bar; drivers and vehicles are one
                   screen (FleetScreen) that crossfades its body via the

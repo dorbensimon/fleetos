@@ -79,7 +79,7 @@ export default function SetPasswordScreen({ navigation, route }: Props) {
         return;
       }
 
-      const result = await resolveRouteForUser(userData.user.id);
+      const result = await resolveRouteForUser(userData.user.id, { freshSignIn: !voluntary });
       if (!result.ok) {
         setGeneralError(result.error);
         return;

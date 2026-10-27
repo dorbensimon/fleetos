@@ -101,13 +101,14 @@ Deno.serve(async (req) => {
       } else {
         // A company's own updates go to that company's managers only; the
         // owner has a feed of their own (owner_notifications).
+        // Every manager of the company, including those who are in another
+        // of their companies right now.
         const { data: managers, error: managerError } = await admin
-          .from('profiles')
-          .select('id')
-          .eq('role', 'admin')
+          .from('company_memberships')
+          .select('user_id')
           .eq('company_id', row.company_id);
         if (managerError) throw managerError;
-        recipientIds = (managers ?? []).map((manager) => manager.id as string);
+        recipientIds = (managers ?? []).map((manager) => manager.user_id as string);
       }
       outgoing = {
         recipientIds,

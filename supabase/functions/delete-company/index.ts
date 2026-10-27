@@ -82,9 +82,33 @@ Deno.serve(async (req) => {
       return json({ error: 'איסוף נתוני החברה למחיקה נכשל' }, 500);
     }
 
+    // A manager who also manages other companies stays: their active company
+    // moves to one of those, and only this company's membership goes (with
+    // the company, by cascade).
+    const profileIds = (profilesResult.data ?? []).map((p: { id: string }) => p.id);
+    const { data: elsewhere, error: elsewhereError } = profileIds.length
+      ? await adminClient
+        .from('company_memberships')
+        .select('user_id, company_id, last_used_at')
+        .in('user_id', profileIds)
+        .neq('company_id', companyId)
+        .order('last_used_at', { ascending: false, nullsFirst: false })
+      : { data: [], error: null };
+    if (elsewhereError) return json({ error: 'איסוף נתוני החברה למחיקה נכשל' }, 500);
+    const nextCompany = new Map<string, string>();
+    for (const row of elsewhere ?? []) {
+      if (!nextCompany.has(row.user_id)) nextCompany.set(row.user_id, row.company_id);
+    }
+
     let deletedUsers = 0;
     let failedUsers = 0;
     for (const profile of profilesResult.data ?? []) {
+      const moveTo = nextCompany.get(profile.id);
+      if (moveTo) {
+        const { error } = await adminClient.from('profiles').update({ company_id: moveTo }).eq('id', profile.id);
+        if (error) failedUsers += 1;
+        continue;
+      }
       const { error } = await adminClient.auth.admin.deleteUser(profile.id);
       if (error) failedUsers += 1;
       else deletedUsers += 1;

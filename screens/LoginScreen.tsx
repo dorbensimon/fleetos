@@ -323,7 +323,7 @@ export default function LoginScreen({ navigation }: Props) {
       }
 
       setSuccessMessage(t('login.accountOk'));
-      const result = await resolveRouteForUser(authData.user.id);
+      const result = await resolveRouteForUser(authData.user.id, { freshSignIn: true });
       if (!result.ok) {
         fail(result.error);
         return;

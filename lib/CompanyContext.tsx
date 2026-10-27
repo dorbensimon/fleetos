@@ -4,6 +4,7 @@ import { isAuthApiError, isAuthSessionMissingError } from '@supabase/supabase-js
 import { supabase, Company, Profile } from './supabase';
 import { t } from './i18n';
 import { errorMessage } from './requestError';
+import { onCompanySwitchedElsewhere, reopenInActiveCompany } from './companySwitch';
 
 /**
  * Supplies the admin screens with the company they are operating on.
@@ -171,6 +172,30 @@ export function CompanyProvider({
 
     return () => subscription.unsubscribe();
   }, [load]);
+
+  // A manager may switch company in another tab or on another device; this
+  // page must then leave the previous company instead of showing its data.
+  // Another tab says so at once; another device is noticed when the page
+  // comes back into view. (Writes to the old company are refused by RLS.)
+  const activeCompanyId = profile?.role === 'admin' ? profile.company_id : null;
+  useEffect(() => {
+    if (!activeCompanyId || companyIdOverride) return;
+    const leave = (next: string | null) => {
+      if (next && next !== activeCompanyId && !reopenInActiveCompany()) load();
+    };
+    const offTabs = onCompanySwitchedElsewhere(leave);
+    if (typeof document === 'undefined') return offTabs;
+    const onVisible = async () => {
+      if (document.visibilityState !== 'visible' || !profile) return;
+      const { data } = await supabase.from('profiles').select('company_id').eq('id', profile.id).maybeSingle<{ company_id: string | null }>();
+      if (data) leave(data.company_id);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      offTabs();
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [activeCompanyId, companyIdOverride, profile, load]);
 
   const value = useMemo<CompanyContextValue>(
     () => ({

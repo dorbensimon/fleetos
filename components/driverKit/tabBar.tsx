@@ -77,7 +77,7 @@ export const TAB_BAR_SPACE = 76;
 
 // מסכים בלי סרגל
 /** Screens that own the whole screen or have no signed-in user yet. */
-const HIDDEN_ROUTES = new Set<Route>(['Login', 'SetPassword', 'DocusealWebView', 'DriverSignDocument', 'ChecklistMeeting']);
+const HIDDEN_ROUTES = new Set<Route>(['Login', 'SetPassword', 'CompanyPicker', 'DocusealWebView', 'DriverSignDocument', 'ChecklistMeeting']);
 
 // כמה גלילה למטה מסתירה את הסרגל
 // Distance a finger must travel one way before the bar reacts, so a

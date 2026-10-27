@@ -28,7 +28,10 @@ Deno.serve(async (req) => {
     }
     const { adminClient } = verify;
 
-    const { userId } = await req.json();
+    // companyId: remove a manager from this one company only. A manager with
+    // other companies keeps the account; without companyId (or when this is
+    // their last company) the whole account goes, as before.
+    const { userId, companyId } = await req.json();
 
     if (!userId) {
       return new Response(JSON.stringify({ error: 'חסר מזהה משתמש' }), {
@@ -48,6 +51,52 @@ Deno.serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    if (target.role === 'admin' && companyId) {
+      const { data: memberships, error: membershipsError } = await adminClient
+        .from('company_memberships')
+        .select('company_id, last_used_at')
+        .eq('user_id', userId)
+        .order('last_used_at', { ascending: false, nullsFirst: false });
+      if (membershipsError) {
+        return new Response(JSON.stringify({ error: 'מחיקת המשתמש נכשלה' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const others = (memberships ?? []).filter((m) => m.company_id !== companyId);
+      if (others.length > 0) {
+        // Move the active company first: profiles.company_id cascades on
+        // company delete and must never point at a company they left.
+        if (target.company_id === companyId) {
+          const { error: moveError } = await adminClient
+            .from('profiles')
+            .update({ company_id: others[0].company_id })
+            .eq('id', userId);
+          if (moveError) {
+            return new Response(JSON.stringify({ error: 'הסרת המנהל מהחברה נכשלה' }), {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+        const { error: unlinkError } = await adminClient
+          .from('company_memberships')
+          .delete()
+          .eq('user_id', userId)
+          .eq('company_id', companyId);
+        if (unlinkError) {
+          return new Response(JSON.stringify({ error: 'הסרת המנהל מהחברה נכשלה' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        return new Response(JSON.stringify({ success: true, removedFromCompany: true }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // Deletes only this one account. Drivers in the same company (if

@@ -1,11 +1,13 @@
 // החלונות של דף החברה אצל הבעלים: פעולות על אדם, הוספת מנהל, סיסמה, הסרה ושליחת פרטים
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Linking, Platform, Share, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DK, DKText, EditField, KitSection, KitSheet, ListRow, PrimaryAction, Pressy, SheetActions, STATUS, Surface } from '../driverKit';
 import { formatPhone } from '../../lib/phone';
 import { CompanyUser } from './types';
 import { t, textEnd } from '../../lib/i18n';
+import { isValidEmail } from '../../lib/validation';
+import { addCompanyAdmin } from '../../lib/companyApi';
 
 /**
  * Every dialog of the owner's company page, in the app kit (a sheet on the
@@ -94,7 +96,11 @@ export function UserActionsSheet({
       visible={!!user}
       onClose={onClose}
       title={user?.full_name || t('common.unnamed')}
-      subtitle={[role, user?.must_change_password ? t('users.notSignedInYet') : null].filter(Boolean).join(' · ')}
+      subtitle={[
+        role,
+        (user?.company_count ?? 1) > 1 ? t('users.managerOfCompanies', { count: user?.company_count }) : null,
+        user?.must_change_password ? t('users.notSignedInYet') : null,
+      ].filter(Boolean).join(' · ')}
     >
       <Surface style={styles.list}>
         <ListRow
@@ -121,13 +127,22 @@ export function UserActionsSheet({
 
 // ── Add a manager ────────────────────────────────────────────────────────
 
-export type NewAdminForm = { firstName: string; lastName: string; email: string; phone: string; password: string };
+export type NewAdminForm = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  password: string;
+  /** The email already belongs to an account: a manager to link (block null), or why it cannot be. */
+  existingManager?: { fullName: string | null; block: string | null } | null;
+};
 // טופס מנהל חדש ריק
 export const EMPTY_NEW_ADMIN_FORM: NewAdminForm = { firstName: '', lastName: '', email: '', phone: '', password: '' };
 
 // חלון הוספת מנהל
 export function AddAdminSheet({
   visible,
+  companyId,
   companyName,
   form,
   fieldErrors,
@@ -138,6 +153,7 @@ export function AddAdminSheet({
   onSubmit,
 }: {
   visible: boolean;
+  companyId: string;
   companyName: string;
   form: NewAdminForm;
   fieldErrors: Record<string, string>;
@@ -148,6 +164,32 @@ export function AddAdminSheet({
   onSubmit: () => void;
 }) {
   const set = <K extends keyof NewAdminForm>(key: K, value: NewAdminForm[K]) => onChangeForm((f) => ({ ...f, [key]: value }));
+  // An email that is already a manager is linked instead (same email and
+  // password), so their name, phone and password are not asked for.
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const emailCheck = useRef(0);
+  useEffect(() => {
+    const email = form.email.trim();
+    const version = ++emailCheck.current;
+    onChangeForm((f) => (f.existingManager ? { ...f, existingManager: null } : f));
+    if (!visible || !isValidEmail(email)) {
+      setCheckingEmail(false);
+      return;
+    }
+    setCheckingEmail(true);
+    const timer = setTimeout(async () => {
+      const { data } = await addCompanyAdmin({ checkEmail: true, companyId, adminEmail: email }).catch(() => ({ data: null }));
+      if (version !== emailCheck.current) return;
+      setCheckingEmail(false);
+      const account = data?.account ?? null;
+      onChangeForm((f) => ({ ...f, existingManager: account ? { fullName: account.fullName ?? null, block: account.block ?? null } : null }));
+    }, 450);
+    return () => clearTimeout(timer);
+    // onChangeForm is a new function every render of the company page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.email, visible, companyId]);
+  const existing = form.existingManager;
+  const linking = !!existing && !existing.block;
   return (
     <KitSheet
       visible={visible}
@@ -161,22 +203,15 @@ export function AddAdminSheet({
           <ErrorLine message={submitError} />
           <SheetActions>
             <PrimaryAction label={t('common.cancel')} tone="ghost" onPress={onClose} disabled={submitting} style={styles.grow} />
-            <PrimaryAction label={t('common.add')} icon="checkmark" onPress={onSubmit} loading={submitting} style={styles.grow} />
+            <PrimaryAction label={t('common.add')} icon="checkmark" onPress={onSubmit} loading={submitting || checkingEmail} style={styles.grow} />
           </SheetActions>
         </View>
       }
     >
       <View style={styles.stack}>
         <KitSection>
-          <View style={styles.pairRow}>
-            <View style={styles.flex}>
-              <EditField first label={t('common.firstName')} required value={form.firstName} onChangeText={(v) => set('firstName', v)} error={fieldErrors.firstName} />
-            </View>
-            <View style={styles.flex}>
-              <EditField first label={t('common.lastName')} required value={form.lastName} onChangeText={(v) => set('lastName', v)} error={fieldErrors.lastName} />
-            </View>
-          </View>
           <EditField
+            first
             label={t('common.emailShort')}
             required
             value={form.email}
@@ -185,20 +220,39 @@ export function AddAdminSheet({
             autoComplete="off"
             ltr
             placeholder="name@company.co.il"
-            error={fieldErrors.email}
+            error={fieldErrors.email || existing?.block || undefined}
           />
-          <EditField
-            label={t('common.mobilePhone')}
-            required
-            value={formatPhone(form.phone)}
-            onChangeText={(v) => set('phone', v.replace(/\D/g, ''))}
-            keyboardType="phone-pad"
-            ltr
-            placeholder="050-0000000"
-            error={fieldErrors.phone}
-          />
+          {linking ? (
+            <View style={styles.linkNote}>
+              <Ionicons name="person-circle" size={16} color={DK.accent} />
+              <DKText variant="caption" color={DK.inkSoft} style={styles.flex}>
+                {t('users.existingManager', { name: existing?.fullName || form.email.trim(), companyName })}
+              </DKText>
+            </View>
+          ) : (
+            <>
+              <View style={styles.pairRow}>
+                <View style={styles.flex}>
+                  <EditField label={t('common.firstName')} required value={form.firstName} onChangeText={(v) => set('firstName', v)} error={fieldErrors.firstName} />
+                </View>
+                <View style={styles.flex}>
+                  <EditField label={t('common.lastName')} required value={form.lastName} onChangeText={(v) => set('lastName', v)} error={fieldErrors.lastName} />
+                </View>
+              </View>
+              <EditField
+                label={t('common.mobilePhone')}
+                required
+                value={formatPhone(form.phone)}
+                onChangeText={(v) => set('phone', v.replace(/\D/g, ''))}
+                keyboardType="phone-pad"
+                ltr
+                placeholder="050-0000000"
+                error={fieldErrors.phone}
+              />
+            </>
+          )}
         </KitSection>
-        <PasswordField value={form.password} onChange={(v) => set('password', v)} error={fieldErrors.password} />
+        {!linking && <PasswordField value={form.password} onChange={(v) => set('password', v)} error={fieldErrors.password} />}
       </View>
     </KitSheet>
   );
@@ -326,9 +380,12 @@ export function RemoveUserSheet({
   target: CompanyUser | null;
   removing: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  /** 'company': only from this company (a manager of other companies keeps the account); 'all': the whole account. */
+  onConfirm: (scope: 'company' | 'all') => void;
 }) {
   const admin = target?.role === 'admin';
+  const others = admin ? (target?.company_count ?? 1) - 1 : 0;
+  const name = target?.full_name || target?.email || t('users.theUser');
   return (
     <KitSheet
       visible={!!target}
@@ -336,16 +393,27 @@ export function RemoveUserSheet({
       dismissable={!removing}
       icon="trash"
       tone="danger"
-      title={t('users.removeQuestion', { v1: target?.full_name || target?.email || t('users.theUser') })}
+      title={others > 0 ? t('users.removeFromCompanyQuestion', { v1: name }) : t('users.removeQuestion', { v1: name })}
       subtitle={
-        admin
-          ? t('users.removeManagerWarning')
-          : t('users.removeDriverWarning')
+        others > 0
+          ? t('users.removeSharedManagerWarning', { count: others })
+          : admin
+            ? t('users.removeManagerWarning')
+            : t('users.removeDriverWarning')
       }
       footer={
         <SheetActions>
           <PrimaryAction label={t('common.keep')} tone="ghost" onPress={onClose} disabled={removing} style={styles.grow} />
-          <PrimaryAction label={t('users.removePermanently')} tone="destructive" onPress={onConfirm} loading={removing} style={styles.grow} />
+          {others > 0 && (
+            <PrimaryAction label={t('users.deleteFromAllCompanies', { count: others + 1 })} tone="ghost" onPress={() => onConfirm('all')} disabled={removing} style={styles.grow} />
+          )}
+          <PrimaryAction
+            label={others > 0 ? t('users.removeFromCompany') : t('users.removePermanently')}
+            tone="destructive"
+            onPress={() => onConfirm(others > 0 ? 'company' : 'all')}
+            loading={removing}
+            style={styles.grow}
+          />
         </SheetActions>
       }
     />
@@ -453,6 +521,7 @@ const styles = StyleSheet.create({
   gap: { marginTop: 12 },
   list: { overflow: 'hidden' },
   pairRow: { flexDirection: 'row-reverse' },
+  linkNote: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 8, paddingHorizontal: 16, paddingVertical: 12 },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: DK.hairline },
   // תיבת שגיאה
   errorBox: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14, backgroundColor: STATUS.expired.soft },

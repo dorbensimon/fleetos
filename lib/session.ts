@@ -20,7 +20,13 @@ function isUserRole(role: unknown): role is UserRole {
 }
 
 // מוצא את המסך הראשי של המשתמש
-export async function resolveRouteForUser(userId: string): Promise<RouteResult> {
+// freshSignIn: the user has just signed in (not a refresh or a restored
+// session). A manager then picks the company to enter, every time, even with
+// one company; a refresh keeps them in the company they picked.
+export async function resolveRouteForUser(
+  userId: string,
+  { freshSignIn = false }: { freshSignIn?: boolean } = {},
+): Promise<RouteResult> {
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
@@ -37,7 +43,7 @@ export async function resolveRouteForUser(userId: string): Promise<RouteResult> 
     return { ok: false, error: t('session.invalidRole') };
   }
 
-  if (profile.role !== 'owner' && !profile.company_id) {
+  if (profile.role === 'driver' && !profile.company_id) {
     await supabase.auth.signOut();
     return { ok: false, error: t('session.noCompany') };
   }
@@ -45,6 +51,12 @@ export async function resolveRouteForUser(userId: string): Promise<RouteResult> 
   // חשבון חדש שטרם קבע סיסמה קבועה - חייב לעשות זאת לפני כל בדיקה אחרת
   if (profile.must_change_password) {
     return { ok: true, route: 'SetPassword' };
+  }
+
+  // A manager with no active company, or whose active company was disabled,
+  // chooses again; the picker explains when none of theirs is open.
+  if (profile.role === 'admin' && (freshSignIn || !profile.company_id)) {
+    return { ok: true, route: 'CompanyPicker' };
   }
 
   if (profile.role !== 'owner') {
@@ -57,6 +69,10 @@ export async function resolveRouteForUser(userId: string): Promise<RouteResult> 
     if (companyError || !company) {
       await supabase.auth.signOut();
       return { ok: false, error: t('session.companyLoadError') };
+    }
+
+    if (company.status !== 'active' && profile.role === 'admin') {
+      return { ok: true, route: 'CompanyPicker' };
     }
 
     if (company.status === 'disabled') {

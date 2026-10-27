@@ -47,6 +47,9 @@
     "yearlyPriceHint": "גם בחיוב שנתי, הזן כמה זה יוצא לחודש."
   },
   "addCompany": {
+    "existingManager": "המייל קיים במערכת. החברה תצורף לחשבון של {{name}}, והוא ייכנס עם אותו מייל ואותה סיסמה.",
+    "linkedTitle": "החברה נוצרה",
+    "linkedBody": "החברה {{companyName}} צורפה לחשבון של {{name}}. בכניסה הבאה הוא יבחר אליה מתוך רשימת החברות שלו.",
     "backToStep": "חזרה לשלב {{v1}}: {{title}}",
     "beforeCreating": "לפני היצירה",
     "create": "יצירת החברה",
@@ -477,6 +480,25 @@
     "verified": "מאומת",
     "view": "צפייה",
     "years": "שנים"
+  },
+  "companyPicker": {
+    "title": "בחירת חברה",
+    "greeting": "שלום {{name}}, לאיזו חברה להיכנס?",
+    "greetingNoName": "לאיזו חברה להיכנס?",
+    "vehicles": "{{count}} רכבים",
+    "drivers": "{{count}} נהגים",
+    "lastUsed": "נכנסת לאחרונה",
+    "current": "החברה הנוכחית",
+    "inactive": "לא פעילה",
+    "search": "חיפוש חברה",
+    "noResults": "לא נמצאה חברה בשם הזה",
+    "noneActive": "אין כרגע חברה פעילה בחשבון שלך. לפרטים פנה לתמיכה.",
+    "loadFailed": "טעינת החברות נכשלה",
+    "switchFailed": "המעבר לחברה נכשל. ייתכן שהחברה כבר לא זמינה לך.",
+    "section": "חברה",
+    "switch": "החלפת חברה",
+    "onlyOneTitle": "אין לאן לעבור",
+    "onlyOne": "אין חברה אחרת לעבור אליה. החשבון שלך משויך לחברה אחת בלבד."
   },
   "company": {
     "activeF": "פעילה",
@@ -2852,6 +2874,14 @@
     "kmValue": "{{v1}} ק״מ"
   },
   "users": {
+    "managerOfCompanies": "מנהל ב־{{count}} חברות",
+    "existingManager": "המייל קיים במערכת. {{name}} יקבל גישה גם ל{{companyName}}, עם אותו מייל ואותה סיסמה.",
+    "linkedTitle": "המנהל שויך",
+    "linkedBody": "{{name}} יכול עכשיו לבחור גם בחברה הזו מתוך רשימת החברות שלו.",
+    "removeFromCompanyQuestion": "להסיר את {{v1}} מהחברה?",
+    "removeSharedManagerWarning": "הוא מנהל עוד {{count}} חברות וימשיך לנהל אותן. אפשר גם למחוק את החשבון שלו לגמרי.",
+    "deleteFromAllCompanies": "מחק מכל {{count}} החברות",
+    "removeFromCompany": "הסר מהחברה",
     "additionalManager": "מנהל נוסף",
     "awaitingPassword": "ממתין לקביעת סיסמה",
     "canManageFleet": "יוכל לנהל את הצי של {{companyName}}.",

@@ -7,4 +7,6 @@ export interface CompanyUser {
   must_change_password: boolean;
   created_at: string;
   email: string | null;
+  /** How many companies a manager manages (1 for drivers). */
+  company_count?: number;
 }
