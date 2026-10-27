@@ -317,7 +317,8 @@ export default function LoginScreen({ navigation }: Props) {
       });
 
       if (authError || !authData.user) {
-        fail(t('login.wrongCredentials'));
+        // 429: Supabase's per-IP sign-in limit; it clears by itself within 5 minutes.
+        fail(t(authError?.status === 429 ? 'login.tooManyAttempts' : 'login.wrongCredentials'));
         return;
       }
 

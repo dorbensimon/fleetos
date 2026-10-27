@@ -17,6 +17,9 @@ type UserResult =
     }
   | { ok: false; status: number; error: string };
 
+// Far above normal use (a busy screen calls a handful of functions).
+const RATE_LIMIT_PER_MINUTE = 60;
+
 // מחזיר את המשתמש לפי האסימון
 export async function verifyUser(
   authHeader: string | null,
@@ -32,6 +35,15 @@ export async function verifyUser(
   if (error || !data.user?.email) return { ok: false, status: 401, error: 'לא מחובר' };
 
   const adminClient = createClient(url, serviceKey);
+
+  // Per-user cap across all functions (migration 131). Fails open: a counting
+  // error must not lock everyone out.
+  const { data: allowed } = await adminClient.rpc('edge_rate_limit_hit', {
+    p_user: data.user.id,
+    p_max: RATE_LIMIT_PER_MINUTE,
+  });
+  if (allowed === false) return { ok: false, status: 429, error: 'יותר מדי פעולות. נסה שוב בעוד דקה' };
+
   const { data: profile, error: profileError } = await adminClient
     .from('profiles')
     .select('role, company_id, full_name, must_change_password')

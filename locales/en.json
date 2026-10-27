@@ -1784,7 +1784,8 @@
     "signingIn": "Signing in…",
     "tagline": "Your fleet, drivers and documents — in one place",
     "welcome": "Welcome",
-    "wrongCredentials": "Wrong email or password"
+    "wrongCredentials": "Wrong email or password",
+    "tooManyAttempts": "Too many sign-in attempts. Try again in a few minutes"
   },
   "logo": {
     "photosPermissionRequired": "Photo access is needed to upload a logo",
