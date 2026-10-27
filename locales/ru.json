@@ -3849,6 +3849,9 @@
     "driverMissing": "Выберите водителя",
     "viewFile": "Открыть штраф",
     "vehicleHint": "Штрафы, записанные на эту машину, с водителем каждого",
+    "vehicleNone": "Нет штрафов на эту машину",
+    "vehicleCountOne": "1 штраф",
+    "vehicleCount": "Штрафов: {{count}}",
     "type": {
       "traffic_offense": "Нарушение ПДД",
       "speeding": "Превышение скорости",

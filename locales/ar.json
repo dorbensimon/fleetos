@@ -3849,6 +3849,9 @@
     "driverMissing": "اختر سائقًا",
     "viewFile": "عرض المخالفة",
     "vehicleHint": "المخالفات المسجلة على هذه المركبة مع سائق كل مخالفة",
+    "vehicleNone": "لا توجد مخالفات على هذه المركبة",
+    "vehicleCountOne": "مخالفة واحدة",
+    "vehicleCount": "{{count}} مخالفات",
     "type": {
       "traffic_offense": "مخالفة سير",
       "speeding": "مخالفة سرعة",

@@ -43,13 +43,50 @@ import { downloadRemoteFileOnWeb } from '../../lib/webDownload';
 import { daysUntilExpiry, formatDate } from '../../lib/theme';
 import { showAlert } from '../../lib/platformAlert';
 import { errorMessage } from '../../lib/requestError';
-import { t } from '../../lib/i18n';
+import { dirIcon, t } from '../../lib/i18n';
 import type { RootStackParamList } from '../../navigation/types';
 
 // הכפתור בכותרת הכחולה: פותח את מסך דוחות התעבורה
 export function TrafficReportsQuickAction() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   return <HeaderAction icon="warning-outline" label={t('folder.trafficReports')} onPress={() => navigation.navigate('TrafficReports')} />;
+}
+
+// שורת 'דוחות תעבורה' בתיק הרכב: כמה דוחות יש, ולחיצה פותחת את מסך הדוחות מחופש לפי הרכב
+export function VehicleTrafficReportsRow({ vehicleId, plate }: { vehicleId: string; plate: string }) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { companyId } = useCompany();
+  const [count, setCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (!companyId) return;
+    let alive = true;
+    loadTrafficReports(companyId, vehicleId).then((rows) => { if (alive) setCount(rows.length); }).catch(() => undefined);
+    return () => { alive = false; };
+  }, [companyId, vehicleId]);
+  const meta = count == null ? t('common.loadingEllipsis') : count === 0 ? t('trafficReport.vehicleNone') : count === 1 ? t('trafficReport.vehicleCountOne') : t('trafficReport.vehicleCount', { count });
+  return (
+    <HoverPressable
+      style={[styles.vehicleRow, styles.vehicleRowDivider]}
+      hoverStyle={styles.vehicleRowHover}
+      onPress={() => navigation.navigate('TrafficReports', { query: formatPlate(plate) })}
+      accessibilityRole="button"
+      accessibilityLabel={`${t('folder.trafficReports')}, ${meta}`}
+    >
+      <View style={[styles.vehicleRowIcon, !!count && styles.vehicleRowIconFilled]}>
+        <Ionicons name="warning-outline" size={16} color={count ? DESKTOP_TONES.bad.fg : DESKTOP_COLORS.inkMuted} />
+      </View>
+      <View style={styles.vehicleRowText}>
+        <DText weight="semiBold" style={styles.vehicleRowTitle} numberOfLines={1}>{t('folder.trafficReports')}</DText>
+        <DText style={styles.vehicleRowMeta} numberOfLines={1}>{meta}</DText>
+      </View>
+      {!!count && (
+        <View style={styles.vehicleRowBadge}>
+          <DText weight="bold" style={styles.vehicleRowBadgeText}>{count}</DText>
+        </View>
+      )}
+      <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
+    </HoverPressable>
+  );
 }
 
 // צבע הסטטוס
@@ -67,12 +104,12 @@ const STATUS_TONE: Record<string, { fg: string; bg: string }> = {
  * A row opens the report to edit; "דוח חדש" picks the driver by the vehicle
  * and the offense date.
  */
-export function TrafficReportsPanel({ vehicleId }: { vehicleId?: string }) {
+export function TrafficReportsPanel({ vehicleId, initialQuery }: { vehicleId?: string; initialQuery?: string }) {
   const { companyId } = useCompany();
   const [rows, setRows] = useState<TrafficReportListRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<TrafficReportView>('open');
-  const [query, setQuery] = useState('');
+  const [view, setView] = useState<TrafficReportView>(initialQuery ? 'all' : 'open');
+  const [query, setQuery] = useState(initialQuery ?? '');
   const [fromIso, setFromIso] = useState<string | null>(null);
   const [toIso, setToIso] = useState<string | null>(null);
   const [editing, setEditing] = useState<TrafficReportListRow | 'new' | null>(null);
@@ -418,6 +455,16 @@ function TrafficReportEditor({
 
 const styles = StyleSheet.create({
   root: { gap: 14 },
+  vehicleRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 54, paddingHorizontal: 16, paddingVertical: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },
+  vehicleRowDivider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
+  vehicleRowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
+  vehicleRowIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: DESKTOP_COLORS.canvas, alignItems: 'center', justifyContent: 'center' },
+  vehicleRowIconFilled: { backgroundColor: DESKTOP_TONES.bad.bg },
+  vehicleRowText: { flex: 1, minWidth: 0 },
+  vehicleRowTitle: { fontSize: 14.5 },
+  vehicleRowMeta: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+  vehicleRowBadge: { minWidth: 24, height: 24, paddingHorizontal: 7, borderRadius: 12, backgroundColor: DESKTOP_TONES.bad.bg, alignItems: 'center', justifyContent: 'center' },
+  vehicleRowBadgeText: { fontSize: 13, color: DESKTOP_TONES.bad.fg, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   totals: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 },
   total: { flex: 1, minWidth: 150, gap: 4, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: DESKTOP_COLORS.border, backgroundColor: DESKTOP_COLORS.surface },
   totalValue: { fontSize: 20, color: DESKTOP_COLORS.ink, textAlign: 'right', ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },

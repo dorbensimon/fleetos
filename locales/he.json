@@ -3849,6 +3849,9 @@
     "driverMissing": "בחרו נהג",
     "viewFile": "צפייה בדוח",
     "vehicleHint": "דוחות שנרשמו על הרכב הזה, עם הנהג של כל דוח",
+    "vehicleNone": "אין דוחות על הרכב",
+    "vehicleCountOne": "דוח אחד",
+    "vehicleCount": "{{count}} דוחות",
     "type": {
       "traffic_offense": "עבירת תנועה",
       "speeding": "עבירת מהירות",
