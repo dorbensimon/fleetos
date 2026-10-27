@@ -1,6 +1,6 @@
 // כרטיס הרכבים של נהג בתיק הנהג
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   assignDriverToVehicle,
@@ -142,42 +142,44 @@ export function DriverVehiclesCard({
   };
 
   return (
-    <View style={pageStyles.card}>
-      {rows.length === 0 ? (
-        <View style={styles.empty}>
-          <DText style={pageStyles.mutedText}>{t('driver.noAssignedVehicle')}</DText>
-        </View>
-      ) : (
-        rows.map((row, index) => (
-          <View key={row.vehicleId} style={[styles.row, index > 0 && pageStyles.rowDivider]}>
-            <HoverPressable
-              style={styles.rowMain}
-              hoverStyle={pageStyles.rowHover}
-              onPress={() => onOpenVehicle(row.vehicleId)}
-              accessibilityLabel={t('vehicle.openFile', { plate: row.plate })}
-            >
-              <MiniPlate plate={row.plate} />
-              <View style={styles.rowText}>
-                {!!row.name && <DText weight="semiBold" style={styles.name} numberOfLines={1}>{row.name}</DText>}
-                <DText style={pageStyles.mutedText}>{row.isPrimary ? t('driver.primaryInVehicle') : t('driver.secondaryInVehicle')}</DText>
-              </View>
-              <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
-            </HoverPressable>
-            {canEdit && (
-              <HoverPressable
-                style={[styles.remove, (!row.assignmentId || busy === row.assignmentId) && styles.disabled]}
-                hoverStyle={styles.removeHover}
-                pressStyle={pageStyles.pressDown}
-                disabled={!row.assignmentId || busy === row.assignmentId}
-                onPress={() => remove(row)}
-                accessibilityLabel={t('driver.removeVehicleLabel', { plate: row.plate })}
-              >
-                <Ionicons name="close" size={18} color={DESKTOP_TONES.bad.fg} />
-              </HoverPressable>
-            )}
+    <View style={[pageStyles.card, styles.fit]}>
+      <ScrollView style={styles.list}>
+        {rows.length === 0 ? (
+          <View style={styles.empty}>
+            <DText style={pageStyles.mutedText}>{t('driver.noAssignedVehicle')}</DText>
           </View>
-        ))
-      )}
+        ) : (
+          rows.map((row, index) => (
+            <View key={row.vehicleId} style={[styles.row, index > 0 && pageStyles.rowDivider]}>
+              <HoverPressable
+                style={styles.rowMain}
+                hoverStyle={pageStyles.rowHover}
+                onPress={() => onOpenVehicle(row.vehicleId)}
+                accessibilityLabel={t('vehicle.openFile', { plate: row.plate })}
+              >
+                <MiniPlate plate={row.plate} />
+                <View style={styles.rowText}>
+                  {!!row.name && <DText weight="semiBold" style={styles.name} numberOfLines={1}>{row.name}</DText>}
+                  <DText style={pageStyles.mutedText}>{row.isPrimary ? t('driver.primaryInVehicle') : t('driver.secondaryInVehicle')}</DText>
+                </View>
+                <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
+              </HoverPressable>
+              {canEdit && (
+                <HoverPressable
+                  style={[styles.remove, (!row.assignmentId || busy === row.assignmentId) && styles.disabled]}
+                  hoverStyle={styles.removeHover}
+                  pressStyle={pageStyles.pressDown}
+                  disabled={!row.assignmentId || busy === row.assignmentId}
+                  onPress={() => remove(row)}
+                  accessibilityLabel={t('driver.removeVehicleLabel', { plate: row.plate })}
+                >
+                  <Ionicons name="close" size={18} color={DESKTOP_TONES.bad.fg} />
+                </HoverPressable>
+              )}
+            </View>
+          ))
+        )}
+      </ScrollView>
 
       {canEdit && (
         <View style={[styles.addRow, pageStyles.rowDivider]}>
@@ -223,6 +225,9 @@ export function MiniPlate({ plate }: { plate: string }) {
 // עיצוב הכרטיס
 const styles = StyleSheet.create({
   empty: { padding: 16 },
+  // The card keeps the height it is given: the rows scroll, the add row stays at the bottom.
+  fit: { flexShrink: 1, minHeight: 0 },
+  list: { flex: 1, minHeight: 0 },
   // שורת רכב
   row: { flexDirection: 'row-reverse', alignItems: 'center', paddingStart: 10 },
   rowMain: { flex: 1, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 16, paddingVertical: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },
