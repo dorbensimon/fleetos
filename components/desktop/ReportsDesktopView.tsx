@@ -7,6 +7,7 @@ import { DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS } from './desktopTheme';
 import { t } from '../../lib/i18n';
 import type { FormReportsState } from '../reports/useFormReports';
+import type { ReportFormat } from '../../lib/reportTemplate';
 
 /**
  * Desktop body of the reports screen: two export groups (drivers/vehicles),
@@ -26,6 +27,8 @@ export function ReportsDesktopView({
   forms,
   inspectionCategories,
   exportingCategory,
+  format,
+  onFormatChange,
   onSelectDriverCategory,
   onSelectVehicleCategory,
   onSelectFormCategory,
@@ -40,6 +43,8 @@ export function ReportsDesktopView({
   forms: FormReportsState;
   inspectionCategories: Category[];
   exportingCategory: string | null;
+  format: ReportFormat;
+  onFormatChange: (format: ReportFormat) => void;
   onSelectDriverCategory: (value: string) => void;
   onSelectVehicleCategory: (value: string) => void;
   onSelectFormCategory: (value: string) => void;
@@ -51,7 +56,24 @@ export function ReportsDesktopView({
 }) {
   return (
     <View style={styles.wrap}>
-      <DText style={styles.hint}>{t('reports.chooseType')}</DText>
+      <View style={styles.formatRow}>
+        <DText style={styles.hint}>{t('reports.chooseType')}</DText>
+        <View style={styles.formatToggle} accessibilityRole="radiogroup" accessibilityLabel={t('reports.format')}>
+          {(['pdf', 'xlsx'] as const).map((value) => (
+            <HoverPressable
+              key={value}
+              style={[styles.formatOption, format === value && styles.formatOptionOn]}
+              hoverStyle={format === value ? undefined : styles.categoryRowHover}
+              onPress={() => onFormatChange(value)}
+              accessibilityRole="radio"
+              aria-checked={format === value}
+            >
+              <Ionicons name={value === 'pdf' ? 'document-text-outline' : 'grid-outline'} size={14} color={format === value ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkMuted} />
+              <DText weight="semiBold" style={[styles.formatText, format === value && styles.formatTextOn]}>{t(value === 'pdf' ? 'reports.formatPdf' : 'reports.formatExcel')}</DText>
+            </HoverPressable>
+          ))}
+        </View>
+      </View>
 
       <ReportGroup
         icon="people-outline"
@@ -76,7 +98,7 @@ export function ReportsDesktopView({
       <ReportGroup
         icon="clipboard-outline"
         title={t('reports.meetings')}
-        subtitle={t('reports.meetingsHint')}
+        subtitle={format === 'xlsx' ? t('reports.meetingsPdfOnly') : t('reports.meetingsHint')}
         open={open === 'meetings'}
         onPress={() => onToggle('meetings')}
         categories={forms.categories}
@@ -251,7 +273,13 @@ function ReportGroup({
 // עיצוב חלון הדוחות
 const styles = StyleSheet.create({
   wrap: { padding: 24, gap: 14, maxWidth: 640 },
-  hint: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint, marginBottom: 4 },
+  hint: { flex: 1, fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
+  formatRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+  formatToggle: { flexDirection: 'row', padding: 3, gap: 2, borderRadius: 10, borderWidth: 1, borderColor: DESKTOP_COLORS.border, backgroundColor: DESKTOP_COLORS.surface },
+  formatOption: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, minHeight: 30, borderRadius: 7 },
+  formatOptionOn: { backgroundColor: '#E6F2F9' },
+  formatText: { fontSize: 13, color: DESKTOP_COLORS.inkMuted },
+  formatTextOn: { color: DESKTOP_COLORS.brand },
 
   // קבוצת דוחות
   group: {

@@ -1,4 +1,4 @@
-// דוח רכבים להורדה (PDF)
+// דוח רכבים להורדה (PDF או אקסל)
 import { Company } from './supabase';
 import { Vehicle, ComplianceItem, VehicleDriverWithProfile } from './adminApi';
 import { listDepartments } from './adminApi/departments';
@@ -13,7 +13,7 @@ import {
   vehicleTest,
 } from './compliance';
 import { TONE_BAD, TONE_NEUTRAL, TONE_OK, TONE_WARN, SERVICE_WARN_KM, remainingTone } from './fleetCardHelpers';
-import { buildTableReport, expiryCell, printOrShareReport, ReportCell } from './reportTemplate';
+import { expiryCell, deliverTableReport, ReportCell, type ReportFormat, type TableReportOptions } from './reportTemplate';
 
 // Expiry-only lists (insurance, test...) live in "תוקפים" (lib/validityList.ts), with an Excel export.
 export type VehicleReportCategory = 'all' | 'service' | 'issues';
@@ -95,13 +95,13 @@ const TYPE = { label: 'סוג', width: 11 };
 const DEPT = { label: 'מחלקה', width: 13 };
 const DRIVER = { label: 'נהג משויך', width: 18 };
 
-// בונה את ה-HTML של הדוח
-function buildHtml(
+// בונה את טבלת הדוח
+function buildReport(
   company: Company,
   summaries: VehicleSummary[],
   category: VehicleReportCategory,
   departments: Map<string, string>
-): string {
+): TableReportOptions {
   const plate = (s: VehicleSummary): ReportCell => ({ text: formatPlate(s.vehicle.plate_number), ltr: true });
   const model = (s: VehicleSummary): ReportCell => ({ text: [s.vehicle.manufacturer, s.vehicle.model].filter(Boolean).join(' ') });
   const type = (s: VehicleSummary): ReportCell => ({ text: VEHICLE_TYPE_LABELS[s.vehicle.vehicle_type] ?? s.vehicle.vehicle_type });
@@ -121,7 +121,7 @@ function buildHtml(
 
   switch (category) {
     case 'service':
-      return buildTableReport({
+      return ({
         ...common,
         columns: [PLATE, MODEL, TYPE, DEPT, { label: 'ק״מ נוכחי', width: 14 }, { label: 'טיפול הבא', width: 25 }],
         sections: [
@@ -138,7 +138,7 @@ function buildHtml(
       });
     case 'issues': {
       const short = (s: VehicleSummary) => [plate(s), model(s), dept(s), driver(s)];
-      return buildTableReport({
+      return ({
         ...common,
         columns: [PLATE, MODEL, { label: 'מחלקה', width: 13 }, DRIVER, { label: 'פירוט', width: 32 }],
         sections: [
@@ -153,7 +153,7 @@ function buildHtml(
       });
     }
     default:
-      return buildTableReport({
+      return ({
         ...common,
         columns: [PLATE, MODEL, TYPE, DEPT, DRIVER, { label: 'סטטוס', width: 21 }],
         sections: STATUS_SECTIONS.map(([status, title]) => ({
@@ -185,11 +185,11 @@ export async function exportVehiclesReport(
   vehicles: Vehicle[],
   compliance: Map<string, ComplianceItem[]>,
   vehicleDrivers: Map<string, VehicleDriverWithProfile[]>,
-  category: VehicleReportCategory
+  category: VehicleReportCategory,
+  format: ReportFormat = 'pdf'
 ): Promise<void> {
   const activeVehicles = vehicles.filter((v) => v.status !== 'archived');
   const summaries = activeVehicles.map((v) => summarize(v, compliance, vehicleDrivers));
   const departments = new Map((await listDepartments(company.id)).map((d) => [d.id, d.name]));
-  const html = buildHtml(company, filterVehicles(summaries, category), category, departments);
-  await printOrShareReport(html, CATEGORY_TITLES[category]);
+  await deliverTableReport(buildReport(company, filterVehicles(summaries, category), category, departments), CATEGORY_TITLES[category], format);
 }

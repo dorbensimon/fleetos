@@ -21,6 +21,7 @@ import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { ReportsDesktopView } from '../../components/desktop/ReportsDesktopView';
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
+import type { ReportFormat } from '../../lib/reportTemplate';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reports'>;
 // בחירת סוג דוח והורדה
@@ -29,15 +30,15 @@ export default function ReportsScreen({ navigation }: Props) {
   const isDesktop = useIsDesktop();
   const [drivers, setDrivers] = useState<DriverRow[]>([]); const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [compliance, setCompliance] = useState<Map<string, ComplianceItem[]>>(new Map()); const [assignments, setAssignments] = useState<Map<string, VehicleDriverWithProfile[]>>(new Map());
-  const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [kind, setKind] = useState<'drivers' | 'vehicles' | 'meetings' | 'inspections' | null>(null); const [exporting, setExporting] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [kind, setKind] = useState<'drivers' | 'vehicles' | 'meetings' | 'inspections' | null>(null); const [exporting, setExporting] = useState<string | null>(null); const [format, setFormat] = useState<ReportFormat>('pdf');
   const load = useCallback(async () => { if (!companyId) { setError(t('company.noLinkedCompany')); setLoading(false); return; } setLoading(true); setError(null); try { const [d, v] = await Promise.all([listDrivers(companyId), listVehicles(companyId, true)]); const [c, a] = await Promise.all([listComplianceForOwners('vehicle', v.map((x) => x.id)), listActiveVehicleDriversForVehicles(v.map((x) => x.id))]); setDrivers(d); setVehicles(v); setCompliance(c); setAssignments(a); } catch (e: any) { setError(errorMessage(e, t('reports.loadFailed'))); } finally { setLoading(false); } }, [companyId]);
   useEffect(() => { load(); }, [load]);
-  const exportDrivers = async (category: ReportCategory) => { if (!company) return; setExporting(category); try { await exportDriversReport(company, drivers, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setExporting(null); } };
+  const exportDrivers = async (category: ReportCategory) => { if (!company) return; setExporting(category); try { await exportDriversReport(company, drivers, category, format); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setExporting(null); } };
   const forms = useFormReports(companyId, drivers);
   const pickKind = (next: typeof kind) => { setKind(next); if (next === 'meetings') void forms.open(isDesktop); };
   const exportForm = async (category: FormReportCategory) => { if (!company || !forms.form || !forms.data) return; setExporting(category); try { await exportFormReport(company, drivers, forms.form, forms.data, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setExporting(null); } };
-  const exportInspections = async (category: InspectionReportCategory) => { if (!company) return; setExporting(category); try { await exportInspectionsReport(company, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setExporting(null); } };
-  const exportVehicles = async (category: VehicleReportCategory) => { if (!company) return; setExporting(category); try { await exportVehiclesReport(company, vehicles, compliance, assignments, category); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setExporting(null); } };
+  const exportInspections = async (category: InspectionReportCategory) => { if (!company) return; setExporting(category); try { await exportInspectionsReport(company, category, format); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setExporting(null); } };
+  const exportVehicles = async (category: VehicleReportCategory) => { if (!company) return; setExporting(category); try { await exportVehiclesReport(company, vehicles, compliance, assignments, category, format); if (isDesktop) setKind(null); } catch (e: any) { showAlert(t('reports.exportFailed'), String(errorMessage(e, t('common.tryAgain')))); } finally { setExporting(null); } };
 
   if (isDesktop) {
     return (
@@ -53,6 +54,8 @@ export default function ReportsScreen({ navigation }: Props) {
             forms={forms}
             inspectionCategories={INSPECTION_REPORT_CATEGORIES}
             exportingCategory={exporting}
+            format={format}
+            onFormatChange={setFormat}
             onSelectDriverCategory={(value) => void exportDrivers(value as ReportCategory)}
             onSelectVehicleCategory={(value) => void exportVehicles(value as VehicleReportCategory)}
             onSelectFormCategory={(value) => void exportForm(value as FormReportCategory)}
@@ -126,6 +129,16 @@ export default function ReportsScreen({ navigation }: Props) {
         <ErrorPanel message={t('reports.loadFailed')} hint={forms.dataError} onRetry={() => void forms.retry()} />
       ) : (
         <Reveal key={mode === 'meetings' ? `form-${forms.form?.id}` : mode}>
+          {mode !== 'meetings' && <View style={s.format}>
+            <Segmented<ReportFormat>
+              value={format}
+              onChange={setFormat}
+              options={[
+                { value: 'pdf', label: t('reports.formatPdf'), icon: 'document-text' },
+                { value: 'xlsx', label: t('reports.formatExcel'), icon: 'grid' },
+              ]}
+            />
+          </View>}
           <Surface>
             {mode === 'meetings' && forms.form && (
               <View style={s.formHead}>
@@ -150,7 +163,7 @@ export default function ReportsScreen({ navigation }: Props) {
                   icon={category.icon as React.ComponentProps<typeof Ionicons>['name']}
                   tint={category.value === 'issues' || category.value === 'due' || category.value === 'unfinished' || category.value === 'insp_due' || category.value === 'insp_defects' ? STATUS.expired.fg : DK.accent}
                   title={category.label}
-                  subtitle={busy ? t('reports.preparingFile') : 'count' in category ? [category.count === null ? t('common.loading') : t('reports.rowsInReport', { count: category.count }), category.hint].filter(Boolean).join(' · ') : t('reports.exportExcel')}
+                  subtitle={busy ? t('reports.preparingFile') : 'count' in category ? [category.count === null ? t('common.loading') : t('reports.rowsInReport', { count: category.count }), category.hint].filter(Boolean).join(' · ') : t(format === 'xlsx' && mode !== 'meetings' ? 'reports.exportExcel' : 'reports.exportPdf')}
                   trailing={
                     busy ? (
                       <BrandLoader size={22} />
@@ -181,6 +194,7 @@ export default function ReportsScreen({ navigation }: Props) {
 // עיצוב המסך
 const s = StyleSheet.create({
   validity: { marginTop: 14 },
+  format: { marginBottom: 12 },
   segment: { marginTop: 18 },
   download: { width: 36, height: 36, borderRadius: 12, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
   note: { textAlign: 'center', marginTop: 12 },
