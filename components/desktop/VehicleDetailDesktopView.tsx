@@ -351,6 +351,7 @@ export function VehicleDetailDesktopView({
         </View>
 
         <LicensePlate plate={formatPlate(vehicle.plate_number)} />
+        <RegistryRefreshAction vehicle={vehicle} onSaveField={onSaveField} />
       </View>
 
       {isArchived && (
@@ -682,35 +683,16 @@ export function VehicleDetailDesktopView({
   );
 }
 
-// נתוני משרד התחבורה
+// עדכון ממשרד התחבורה (הכפתור בכותרת)
 /**
- * Everything the Transport Ministry registry added beyond the regular
- * fields, in two columns; each value edits in place and can be cleared. The
- * update button pulls the registry again and opens a window of what differs;
- * only the fields the manager leaves ticked are saved.
+ * The header's "update from the Transport Ministry" action: pulls the registry
+ * again and opens a window of what differs; only the fields the manager
+ * leaves ticked are saved. A short result line shows under the button.
  */
-function RegistryDetailsBlock({
-  vehicle,
-  onSaveField,
-  setEditor,
-}: {
-  vehicle: Vehicle;
-  onSaveField: (patch: Partial<Vehicle>) => Promise<string | null>;
-  setEditor: (editor: FieldEditor | null) => void;
-}) {
+function RegistryRefreshAction({ vehicle, onSaveField }: { vehicle: Vehicle; onSaveField: (patch: Partial<Vehicle>) => Promise<string | null> }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [review, setReview] = useState<RegistryChange[] | null>(null);
-  const details = cleanRegistryDetails(vehicle.registry_details);
-  const fields = REGISTRY_DETAIL_FIELDS.filter((f) => f.key in details);
-  const half = Math.ceil(fields.length / 2);
-
-  const saveValue = (key: string, value: string | null) => {
-    const next = { ...details };
-    if (value && value.trim()) next[key] = value.trim();
-    else delete next[key];
-    return onSaveField({ registry_details: next });
-  };
 
   const refresh = async () => {
     setBusy(true);
@@ -726,6 +708,58 @@ function RegistryDetailsBlock({
     } finally {
       setBusy(false);
     }
+  };
+
+  return (
+    <View style={styles.heroAction}>
+      <HoverPressable style={styles.heroActionBtn} hoverStyle={styles.heroActionBtnHover} pressStyle={styles.pressDown} onPress={() => void refresh()} disabled={busy} accessibilityLabel={t('registry.refresh')}>
+        {busy ? <BrandLoader size="small" color="#FFFFFF" /> : <Ionicons name="sparkles" size={14} color="#FFFFFF" />}
+        <DText weight="semiBold" style={styles.heroActionText}>{busy ? t('registry.refreshing') : t('registry.refresh')}</DText>
+      </HoverPressable>
+      {!!message && <DText style={styles.heroActionMessage}>{message}</DText>}
+      {review && (
+        <RegistryReviewDialog
+          plate={formatPlate(vehicle.plate_number)}
+          changes={review}
+          onClose={() => setReview(null)}
+          onApply={async (picked) => {
+            const error = await onSaveField(registryPatch(vehicle, picked));
+            if (!error) {
+              setReview(null);
+              setMessage(t('registry.refreshed'));
+            }
+            return error;
+          }}
+        />
+      )}
+    </View>
+  );
+}
+
+// נתוני משרד התחבורה
+/**
+ * Everything the Transport Ministry registry added beyond the regular
+ * fields, in two columns; each value edits in place and can be cleared. The
+ * update button lives in the page header (RegistryRefreshAction).
+ */
+function RegistryDetailsBlock({
+  vehicle,
+  onSaveField,
+  setEditor,
+}: {
+  vehicle: Vehicle;
+  onSaveField: (patch: Partial<Vehicle>) => Promise<string | null>;
+  setEditor: (editor: FieldEditor | null) => void;
+}) {
+  const details = cleanRegistryDetails(vehicle.registry_details);
+  const fields = REGISTRY_DETAIL_FIELDS.filter((f) => f.key in details);
+  const half = Math.ceil(fields.length / 2);
+
+  const saveValue = (key: string, value: string | null) => {
+    const next = { ...details };
+    if (value && value.trim()) next[key] = value.trim();
+    else delete next[key];
+    return onSaveField({ registry_details: next });
   };
 
   const row = (f: (typeof fields)[number], first: boolean) =>
@@ -751,32 +785,7 @@ function RegistryDetailsBlock({
 
   return (
     <View style={styles.registryBlock}>
-      <GroupLabel
-        action={
-          <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={() => void refresh()} disabled={busy} accessibilityLabel={t('registry.refresh')}>
-            {busy ? <BrandLoader size="small" color={DESKTOP_COLORS.brand} /> : <Ionicons name="sparkles" size={13} color={DESKTOP_COLORS.brand} />}
-            <DText weight="semiBold" style={styles.linkText}>{busy ? t('registry.refreshing') : t('registry.refresh')}</DText>
-          </HoverPressable>
-        }
-      >
-        {t('registry.title')}
-      </GroupLabel>
-      {!!message && <DText style={[styles.mutedText, styles.registryMessage]}>{message}</DText>}
-      {review && (
-        <RegistryReviewDialog
-          plate={formatPlate(vehicle.plate_number)}
-          changes={review}
-          onClose={() => setReview(null)}
-          onApply={async (picked) => {
-            const error = await onSaveField(registryPatch(vehicle, picked));
-            if (!error) {
-              setReview(null);
-              setMessage(t('registry.refreshed'));
-            }
-            return error;
-          }}
-        />
-      )}
+      <GroupLabel>{t('registry.title')}</GroupLabel>
       {fields.length === 0 ? (
         <View style={[styles.card, styles.registryEmpty]}>
           <DText style={styles.mutedText}>{t('registry.empty')}</DText>
@@ -973,6 +982,12 @@ const styles = StyleSheet.create({
   reviewActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, marginTop: 4 },
   ...pageStyles,
 
+  // כפתור 'עדכון ממשרד התחבורה' בכותרת, באותו זכוכית כמו מסגרת הלוחית
+  heroAction: { alignItems: 'center', gap: 6, maxWidth: 220 },
+  heroActionBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 14, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
+  heroActionBtnHover: { backgroundColor: 'rgba(255,255,255,0.16)' },
+  heroActionText: { fontSize: 13.5, color: '#FFFFFF' },
+  heroActionMessage: { fontSize: 12.5, color: 'rgba(255,255,255,0.7)', textAlign: 'center' },
   plateWrap: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   // לוחית הרישוי
   plate: {
