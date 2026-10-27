@@ -12,7 +12,7 @@ import type {
   VehicleType,
 } from '../../lib/adminApi';
 import { ComplianceSection } from '../ComplianceSection';
-import { TrafficReportsPanel } from './TrafficReportsCenter';
+import { VehicleTrafficReportsRow } from './TrafficReportsCenter';
 import { VehicleDriversEditor } from '../VehicleDriversEditor';
 import { SAFETY_FOLDER, VehicleInspectionsDesktopSection } from '../inspection/VehicleInspectionsDesktopSection';
 import { VehicleServiceFolderRow } from '../service/VehicleServiceRecords';
@@ -350,8 +350,11 @@ export function VehicleDetailDesktopView({
           <Fact onDark label={t('vehicle.assignedDrivers')} value={String(drivers.length)} />
         </View>
 
-        <LicensePlate plate={formatPlate(vehicle.plate_number)} />
-        <RegistryRefreshAction vehicle={vehicle} onSaveField={onSaveField} />
+        {/* The plate at the far end, with the ministry update under it, inside the header's own height. */}
+        <View style={styles.plateColumn}>
+          <LicensePlate plate={formatPlate(vehicle.plate_number)} />
+          <RegistryRefreshAction vehicle={vehicle} onSaveField={onSaveField} />
+        </View>
       </View>
 
       {isArchived && (
@@ -653,16 +656,11 @@ export function VehicleDetailDesktopView({
               />
             ))}
             <VehicleServiceFolderRow companyId={companyId} vehicleId={vehicleId} />
+            {/* Traffic reports live in the drivers' folders; the row opens the reports screen searched by this plate. */}
+            <VehicleTrafficReportsRow vehicleId={vehicleId} plate={vehicle.plate_number} />
           </View>
         </View>
       </View>
-
-      {/* Traffic reports recorded on this vehicle; each lives in its driver's folder. */}
-      <View style={styles.docsHead}>
-        <DText weight="bold" style={styles.docsTitle}>{t('folder.trafficReports')}</DText>
-        <DText style={styles.mutedText}>{t('trafficReport.vehicleHint')}</DText>
-      </View>
-      <TrafficReportsPanel vehicleId={vehicleId} />
 
       {openDocumentFolder && (
         <DocumentFolderUploadModal
@@ -983,17 +981,18 @@ const styles = StyleSheet.create({
   ...pageStyles,
 
   // כפתור 'עדכון ממשרד התחבורה' בכותרת, באותו זכוכית כמו מסגרת הלוחית
-  heroAction: { alignItems: 'center', gap: 6, maxWidth: 220 },
-  heroActionBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 14, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
+  plateColumn: { gap: 4 },
+  heroAction: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  heroActionBtn: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, height: 26, paddingHorizontal: 12, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
   heroActionBtnHover: { backgroundColor: 'rgba(255,255,255,0.16)' },
-  heroActionText: { fontSize: 13.5, color: '#FFFFFF' },
-  heroActionMessage: { fontSize: 12.5, color: 'rgba(255,255,255,0.7)', textAlign: 'center' },
-  plateWrap: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  heroActionText: { fontSize: 12.5, color: '#FFFFFF' },
+  heroActionMessage: { position: 'absolute', end: '100%', marginEnd: 8, width: 180, fontSize: 12.5, color: 'rgba(255,255,255,0.75)', textAlign: 'right' },
+  plateWrap: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   // לוחית הרישוי
   plate: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    height: 52,
+    height: 34,
     borderRadius: 8,
     borderWidth: 2.5,
     borderColor: '#16222E',
@@ -1007,12 +1006,12 @@ const styles = StyleSheet.create({
   },
   plateTilted: webOnly({ transform: 'perspective(700px) rotateX(6deg) rotateY(-8deg)' }),
   plateFlat: webOnly({ transform: 'perspective(700px) rotateX(0deg) rotateY(0deg)' }),
-  plateBand: { width: 30, alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: '#1A55A6' },
+  plateBand: { width: 24, alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: '#1A55A6' },
   plateFlag: { width: 16, height: 11, borderRadius: 1.5, backgroundColor: '#FFFFFF', justifyContent: 'space-between', paddingVertical: 1.5, alignItems: 'center' },
   plateFlagStripe: { width: '100%', height: 2, backgroundColor: '#1A55A6' },
   plateFlagStar: { width: 5, height: 5, borderWidth: 1, borderColor: '#1A55A6', transform: [{ rotate: '45deg' }] },
   plateBandText: { fontSize: 10, color: '#FFFFFF', letterSpacing: 0.4 },
-  plateText: { fontSize: 30, lineHeight: 46, color: '#111111', paddingHorizontal: 14, letterSpacing: 0.6, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+  plateText: { fontSize: 20, lineHeight: 30, color: '#111111', paddingHorizontal: 14, letterSpacing: 0.6, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
 
 
   // כרטיס התחזוקה

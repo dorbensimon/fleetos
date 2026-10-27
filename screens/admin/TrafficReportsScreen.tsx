@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRoute, type RouteProp } from '@react-navigation/native';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { DText, HoverPressable } from '../../components/desktop/primitives';
 import { webOnly } from '../../components/desktop/desktopTheme';
@@ -10,9 +11,11 @@ import { pageStyles } from '../../components/desktop/record/RecordPage';
 import { TrafficReportsPanel } from '../../components/desktop/TrafficReportsCenter';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { t } from '../../lib/i18n';
+import type { RootStackParamList } from '../../navigation/types';
 
 /**
- * The company's traffic reports, opened from the dashboard header button.
+ * The company's traffic reports, opened from the dashboard header button
+ * or from a vehicle's card (then searched by its plate).
  * Same night header as the other desktop pages; the list, filters, export
  * and the report editor are TrafficReportsPanel. On a computer the "?"
  * next to the title walks through the page.
@@ -20,6 +23,8 @@ import { t } from '../../lib/i18n';
 export default function TrafficReportsScreen() {
   const isDesktop = useIsDesktop();
   const [touring, setTouring] = useState(false);
+  // Opened from a vehicle's card: the search starts on its plate.
+  const query = useRoute<RouteProp<RootStackParamList, 'TrafficReports'>>().params?.query;
   const page = (
     <ScrollView style={pageStyles.root} contentContainerStyle={pageStyles.content}>
       <View nativeID="tour-hero" style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
@@ -48,7 +53,7 @@ export default function TrafficReportsScreen() {
         </View>
       </View>
       <View style={[pageStyles.card, styles.card]}>
-        <TrafficReportsPanel />
+        <TrafficReportsPanel key={query ?? ''} initialQuery={query} />
       </View>
       {touring && <PageTour steps={TOUR_STEPS()} onClose={() => setTouring(false)} />}
     </ScrollView>

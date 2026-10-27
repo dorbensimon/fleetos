@@ -3849,6 +3849,9 @@
     "driverMissing": "Choose a driver",
     "viewFile": "View report",
     "vehicleHint": "Reports recorded on this vehicle, with each report's driver",
+    "vehicleNone": "No reports on this vehicle",
+    "vehicleCountOne": "1 report",
+    "vehicleCount": "{{count}} reports",
     "type": {
       "traffic_offense": "Traffic offense",
       "speeding": "Speeding",
