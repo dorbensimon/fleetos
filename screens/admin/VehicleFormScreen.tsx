@@ -385,7 +385,7 @@ export default function VehicleFormScreen({ route, navigation }: Props) {
 
       showToast(isEdit ? t('common.changesSaved') : t('vehicle.created'));
       // A new vehicle opens its record, where its drivers and documents are added.
-      if (isEdit) navigation.goBack();
+      if (isEdit && navigation.canGoBack()) navigation.goBack();
       else navigation.replace('VehicleDetail', { vehicleId: savedVehicleId });
     } catch (err: any) {
       const message = String(err?.message ?? '');

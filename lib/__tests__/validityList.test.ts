@@ -44,13 +44,15 @@ describe('filterValidity', () => {
 });
 
 describe('validity export', () => {
-  it('is an xlsx zip with a right-to-left sheet and escaped Hebrew', () => {
+  it('is an xlsx zip that reads right-to-left in any viewer, with escaped Hebrew', () => {
     const table = validityTable([row({ detail: 'דגם "מיוחד" & <חדש>' })], 'vehicle');
     expect(table).toHaveLength(2);
     const bytes = xlsxBytes(table, { sheetName: 'תוקפים' });
     expect([...bytes.slice(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04]);
     const text = new TextDecoder().decode(bytes);
-    expect(text).toContain('rightToLeft="1"');
+    // Columns are written in reverse so the first column sits at the right edge.
+    expect(text).toContain(`<c r="A1" t="inlineStr" s="3"><is><t xml:space="preserve">${table[0][table[0].length - 1]}</t>`);
+    expect(text).toContain('readingOrder="2"');
     expect(text).toContain('דגם &quot;מיוחד&quot; &amp; &lt;חדש&gt;');
   });
 });

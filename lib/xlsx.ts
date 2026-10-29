@@ -1,8 +1,10 @@
 // קובץ אקסל אמיתי (xlsx) מימין לשמאל, בלי ספרייה
 /**
  * A CSV has no direction, so Excel and Numbers open it left-to-right. This
- * builds a one-sheet .xlsx whose sheet is right-to-left, with a bold frozen
- * header row. The zip is "stored" (uncompressed): a few KB more, no library.
+ * builds a one-sheet .xlsx that reads right-to-left in every viewer: the
+ * columns are written in reverse (Numbers, Google Sheets and phone previews
+ * ignore a sheet's rightToLeft flag), and every cell is right-aligned with an
+ * RTL reading order. Bold frozen header row. The zip is "stored" (uncompressed): a few KB more, no library.
  * ponytail: columns A–Z only; add two-letter columns if a table ever passes 26.
  */
 
@@ -13,12 +15,13 @@ const PKG = 'http://schemas.openxmlformats.org/package/2006/relationships';
 const esc = (v: string) =>
   v.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-function sheetXml(rows: string[][], rtl: boolean): string {
+function sheetXml(input: string[][], rtl: boolean): string {
+  const rows = rtl ? input.map((r) => [...r].reverse()) : input;
   const widths = (rows[0] ?? []).map((_, i) => Math.min(50, Math.max(8, ...rows.map((r) => (r[i] ?? '').length + 2))));
   const cols = widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('');
   const data = rows.map((r, y) => `<row r="${y + 1}">${r.map((v, x) =>
-    `<c r="${String.fromCharCode(65 + x)}${y + 1}" t="inlineStr"${y === 0 ? ' s="1"' : ''}><is><t xml:space="preserve">${esc(v)}</t></is></c>`).join('')}</row>`).join('');
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="${MAIN}"><sheetViews><sheetView workbookViewId="0"${rtl ? ' rightToLeft="1"' : ''}><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${cols}</cols><sheetData>${data}</sheetData></worksheet>`;
+    `<c r="${String.fromCharCode(65 + x)}${y + 1}" t="inlineStr"${rtl ? ` s="${y === 0 ? 3 : 2}"` : y === 0 ? ' s="1"' : ''}><is><t xml:space="preserve">${esc(v)}</t></is></c>`).join('')}</row>`).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="${MAIN}"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${cols}</cols><sheetData>${data}</sheetData></worksheet>`;
 }
 
 function parts(rows: string[][], sheetName: string, rtl: boolean): [string, string][] {
@@ -27,7 +30,7 @@ function parts(rows: string[][], sheetName: string, rtl: boolean): [string, stri
     ['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${PKG}"><Relationship Id="rId1" Type="${REL}/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
     ['xl/workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="${MAIN}" xmlns:r="${REL}"><sheets><sheet name="${esc(sheetName.replace(/[\[\]:*?/\\]/g, '').slice(0, 31) || 'Sheet1')}" sheetId="1" r:id="rId1"/></sheets></workbook>`],
     ['xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${PKG}"><Relationship Id="rId1" Type="${REL}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${REL}/styles" Target="styles.xml"/></Relationships>`],
-    ['xl/styles.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="${MAIN}"><fonts count="2"><font><sz val="11"/><name val="Arial"/></font><font><b/><sz val="11"/><name val="Arial"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>`],
+    ['xl/styles.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="${MAIN}"><fonts count="2"><font><sz val="11"/><name val="Arial"/></font><font><b/><sz val="11"/><name val="Arial"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment horizontal="right" readingOrder="2"/></xf><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment horizontal="right" readingOrder="2"/></xf></cellXfs></styleSheet>`],
     ['xl/worksheets/sheet1.xml', sheetXml(rows, rtl)],
   ];
 }

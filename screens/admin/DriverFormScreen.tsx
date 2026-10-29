@@ -196,7 +196,9 @@ export default function DriverFormScreen({ route, navigation }: Props) {
         }
       }
       showToast(isEdit ? t('common.changesSaved') : t('driver.created'));
-      if (!isEdit) navigation.goBack();
+      // An edit returns to the driver's screen it was opened from.
+      if (navigation.canGoBack()) navigation.goBack();
+      else if (isEdit) navigation.replace('DriverDetail', { driverId: driverId! });
     } catch (err: any) {
       const message = String(err?.message ?? '');
       if (isStaleDepartmentError(message)) {
