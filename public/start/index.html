@@ -2,15 +2,953 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex">
-  <title>iCar</title>
+  <meta name="theme-color" content="#070F1C">
+  <title>iCar · ניהול צי רכב</title>
+  <meta name="description" content="רכבים, נהגים, מסמכים ותוקפים במקום אחד. iCar מתריעה לפני שמשהו פג.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://icar-app.com/start/">
+  <meta property="og:title" content="iCar · כל הצי שלך במקום אחד">
+  <meta property="og:description" content="רכבים, נהגים, מסמכים ותוקפים במקום אחד. iCar מתריעה לפני שמשהו פג.">
+  <meta property="og:image" content="https://icar-app.com/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/favicon.svg">
+  <!-- Optimistic: lay the page out for motion from the first paint; undone below if motion can't run. -->
+  <script>if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('motion');</script>
   <style>
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: system-ui, sans-serif; background: #0b1b33; color: #fff; }
+    @font-face { font-family: Assistant; font-weight: 400; font-display: swap; src: url(fonts/Assistant_400Regular.ttf) format("truetype"); }
+    @font-face { font-family: Assistant; font-weight: 600; font-display: swap; src: url(fonts/Assistant_600SemiBold.ttf) format("truetype"); }
+    @font-face { font-family: Assistant; font-weight: 800; font-display: swap; src: url(fonts/Assistant_800ExtraBold.ttf) format("truetype"); }
+
+    :root {
+      --night: #070F1C;
+      --navy: #0E1F3D;
+      --blue: #2F5BFF;
+      --cyan: #19C6F0;
+      --mint: #2EE6A6;
+      --amber: #F5A524;
+      --red: #F04438;
+      --ink: #0B1424;
+      --ink-2: #4A5568;
+      --line: #E3E8F0;
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+      --gutter: clamp(16px, 5vw, 64px);
+      color-scheme: dark;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    html.lenis, html.lenis body { height: auto; }
+    .lenis.lenis-smooth { scroll-behavior: auto !important; }
+    body {
+      margin: 0;
+      background: var(--night);
+      color: #fff;
+      font: 400 1.0625rem/1.6 Assistant, system-ui, -apple-system, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: clip;
+    }
+    a { color: inherit; }
+    h1, h2, h3, h4, p { margin: 0; }
+
+    /* ---------- buttons ---------- */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: .5em;
+      min-height: 52px; padding: 0 1.6em; border-radius: 999px;
+      font: 600 1.0625rem/1 inherit; font-family: inherit; text-decoration: none;
+      transition: transform 140ms var(--ease-out), background-color 200ms ease, box-shadow 200ms ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--blue); color: #fff; box-shadow: 0 10px 30px -10px rgba(47, 91, 255, .7); }
+    .btn-ghost { color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
+    @media (hover: hover) and (pointer: fine) {
+      .btn-primary:hover { background: #4670FF; }
+      .btn-ghost:hover { background: rgba(255, 255, 255, .08); }
+    }
+    .btn:focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
+
+    /* ---------- top bar ---------- */
+    .topbar {
+      position: fixed; inset: 0 0 auto; z-index: 50;
+      padding: 14px var(--gutter);
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(7, 15, 28, .55);
+      backdrop-filter: blur(18px) saturate(160%);
+      -webkit-backdrop-filter: blur(18px) saturate(160%);
+    }
+    .logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 800; font-size: 1.5rem; letter-spacing: -.01em; direction: ltr; }
+    .logo img { width: 30px; height: 30px; border-radius: 8px; }
+    .topbar .btn { min-height: 40px; padding: 0 1.1em; font-size: .95rem; }
+    @media (prefers-reduced-transparency: reduce) { .topbar { background: var(--night); backdrop-filter: none; } }
+
+    /* ---------- hero ---------- */
+    .hero {
+      position: relative; min-height: 100svh;
+      display: grid; place-items: center; text-align: center;
+      padding: 120px var(--gutter) 80px;
+      background:
+        radial-gradient(60% 50% at 50% 0%, rgba(47, 91, 255, .35), transparent 70%),
+        radial-gradient(40% 40% at 85% 70%, rgba(25, 198, 240, .14), transparent 70%),
+        linear-gradient(180deg, #0B1A33 0%, var(--night) 100%);
+      overflow: hidden;
+    }
+    .hero-inner { max-width: 980px; will-change: transform, opacity; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: .95rem; color: var(--cyan); letter-spacing: .02em; }
+    .eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 12px var(--mint); }
+    .hero h1 { margin-top: 22px; font-weight: 800; font-size: clamp(2.75rem, 8vw, 6.25rem); line-height: 1.02; letter-spacing: -.015em; text-wrap: balance; }
+    .grad { background: linear-gradient(90deg, var(--cyan), #7EA0FF); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero .sub { margin: 24px auto 0; max-width: 40ch; font-size: clamp(1.125rem, 2.2vw, 1.5rem); line-height: 1.5; color: rgba(255, 255, 255, .72); text-wrap: pretty; }
+    .ctas { margin-top: 40px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .scroll-hint { position: absolute; bottom: 28px; inset-inline: 0; margin: auto; width: max-content; font-size: .85rem; color: rgba(255, 255, 255, .45); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .scroll-hint::after { content: ""; width: 1px; height: 36px; background: linear-gradient(rgba(255, 255, 255, .5), transparent); }
+    [data-rise] { animation: rise 900ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 70ms + 100ms); }
+    @keyframes rise { from { opacity: 0; transform: translateY(24px); } }
+    @media (prefers-reduced-motion: reduce) {
+      [data-rise] { animation-name: fade; animation-duration: 400ms; }
+      @keyframes fade { from { opacity: 0; } }
+    }
+
+    /* ---------- scenes (shared) ---------- */
+    .scene {
+      position: relative; overflow: hidden;
+      padding: 120px var(--gutter) 96px;
+      display: flex; flex-direction: column; align-items: center; gap: clamp(28px, 4svh, 48px);
+      perspective: 1400px;
+    }
+    .scene:nth-of-type(even) { background: #04070E; }
+    .motion .scene { height: 100svh; padding: 76px var(--gutter) 24px; justify-content: center; }
+    .copy { text-align: center; max-width: 760px; }
+    .kicker { display: block; font-weight: 600; font-size: .95rem; color: var(--cyan); letter-spacing: .02em; margin-bottom: 10px; }
+    .copy h2 { font-weight: 800; font-size: clamp(2rem, 4.6vw, 3.6rem); line-height: 1.06; letter-spacing: -.015em; text-wrap: balance; }
+    .copy p { margin: 14px auto 0; max-width: 46ch; color: rgba(255, 255, 255, .66); font-size: clamp(1rem, 1.6vw, 1.2rem); text-wrap: pretty; }
+    .w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .08em; margin-bottom: -.08em; }
+    .w > span, .ch { display: inline-block; }
+    .light-card { background: #fff; color: var(--ink); border-radius: 22px; box-shadow: 0 40px 100px -30px rgba(47, 91, 255, .45); }
+
+    /* ---------- 1. work schedule ---------- */
+    .cal { width: min(900px, 100%); padding: 20px; transform-style: preserve-3d; will-change: transform; }
+    .cal-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+    .cal-head b { font-size: 1.3rem; font-weight: 800; }
+    .cal-head span { color: var(--ink-2); font-size: .9rem; }
+    .cal-days, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; transform-style: preserve-3d; }
+    .cal-days { margin-bottom: 6px; text-align: center; font-size: .8rem; font-weight: 600; color: var(--ink-2); }
+    .cal-cell { min-height: clamp(54px, 9.5svh, 92px); border-radius: 10px; background: #F2F5FA; padding: 6px; display: flex; flex-direction: column; gap: 3px; font-size: .75rem; overflow: hidden; }
+    .cal-cell .num { font-weight: 700; color: var(--ink-2); }
+    .cal-cell.sat { background: repeating-linear-gradient(135deg, #F2F5FA 0 6px, #E7ECF3 6px 12px); }
+    .cal-cell.sat .num::after { content: " · שבת"; font-weight: 400; }
+    .cal-cell.today { box-shadow: inset 0 0 0 2px var(--blue); }
+    .cal-cell.today .num { color: var(--blue); }
+    .cal-cell.empty { background: none; }
+    .chip { border-radius: 6px; padding: 2px 6px; font-size: .68rem; line-height: 1.35; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .c-blue { background: var(--blue); } .c-cyan { background: #0EA5C9; } .c-mint { background: #12B886; } .c-amber { background: #E08E0B; }
+    @media (max-width: 640px) {
+      .cal { padding: 12px; }
+      .cal-cell { padding: 4px; }
+      .cal-cell.sat .num::after { content: none; }
+      .chip { font-size: 0; height: 5px; padding: 0; }
+    }
+    .copy .big { font-weight: 800; font-size: clamp(3.4rem, 13vw, 10rem); line-height: .95; letter-spacing: -.02em; }
+    .motion #schedule .copy { position: absolute; inset: 0; margin: auto; height: max-content; padding-inline: var(--gutter); max-width: none; pointer-events: none; }
+
+    /* ---------- 2. validity ---------- */
+    .val { width: min(940px, 100%); display: grid; gap: 18px; grid-template-columns: 280px 1fr; align-items: start; perspective: 1200px; }
+    .val-side { display: grid; gap: 12px; }
+    .glass { background: rgba(255, 255, 255, .06); border-radius: 18px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .09); }
+    .dial { padding: 20px 22px; }
+    .dial small { color: rgba(255, 255, 255, .55); font-size: .85rem; }
+    .dial .date { display: block; direction: ltr; text-align: right; font-weight: 800; font-size: 2.3rem; line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+    .dial .plus { color: var(--cyan); font-weight: 600; font-size: .95rem; }
+    .note { display: flex; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 16px; background: #fff; color: var(--ink); font-size: .9rem; line-height: 1.3; box-shadow: 0 20px 50px -20px rgba(0, 0, 0, .6); }
+    .note .bell { flex: none; width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: #FFF4DE; font-size: 1.05rem; }
+    .note b { display: block; }
+    .note small { color: var(--ink-2); }
+    .rows { display: grid; gap: 10px; transform-style: preserve-3d; }
+    .doc-row { padding: 14px 18px; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; }
+    .doc-row b { font-weight: 700; }
+    .doc-row small { color: rgba(255, 255, 255, .5); grid-row: 2; }
+    .doc-row .left { grid-row: 1 / 3; font-weight: 700; font-size: .95rem; font-variant-numeric: tabular-nums; }
+    .track { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .1); margin-top: 8px; overflow: hidden; }
+    .fill { height: 100%; border-radius: inherit; transform-origin: 100% 50%; }
+    @media (max-width: 760px) {
+      .val { grid-template-columns: 1fr; gap: 10px; }
+      .val-side { grid-template-columns: 1fr; gap: 8px; }
+      .dial { padding: 12px 16px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+      .dial .date { font-size: 1.5rem; }
+      .note { padding: 8px 12px; font-size: .82rem; }
+      .note .bell { width: 28px; height: 28px; }
+      .doc-row { padding: 10px 14px; font-size: .92rem; }
+      .track { margin-top: 4px; }
+    }
+    @media (max-width: 760px) and (max-height: 780px) { .note small, .doc-row small { display: none; } }
+
+    /* ---------- 3. signature ---------- */
+    .sig-row { position: relative; display: flex; align-items: center; gap: 120px; transform-style: preserve-3d; }
+    .phone { width: 260px; height: 520px; border-radius: 44px; background: #0D0F14; padding: 11px; box-shadow: inset 0 0 0 1px #2A2F3A, 0 40px 100px -30px rgba(47, 91, 255, .55); will-change: transform; }
+    .phone-screen { position: relative; height: 100%; border-radius: 34px; background: #fff; color: var(--ink); padding: 46px 20px 20px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+    .phone-screen::before { content: ""; position: absolute; top: 10px; inset-inline: 0; margin: auto; width: 88px; height: 24px; border-radius: 14px; background: #0D0F14; }
+    .phone h4 { font-size: 1.05rem; font-weight: 800; }
+    .phone .meta { font-size: .8rem; color: var(--ink-2); margin-top: -6px; margin-bottom: 4px; }
+    .ln { height: 8px; border-radius: 4px; background: #E6EBF2; }
+    .sig-box { position: relative; margin-top: auto; height: 130px; border-radius: 14px; border: 1.5px dashed #C9D2E0; }
+    .sig-box > small { position: absolute; bottom: 8px; inset-inline-start: 12px; font-size: .75rem; color: var(--ink-2); }
+    .sig { position: absolute; inset: 10px 14px 24px; width: calc(100% - 28px); height: calc(100% - 34px); }
+    .sig path { fill: none; stroke: var(--blue); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; }
+    .stamp { position: absolute; top: 44%; left: 50%; margin-left: -62px; width: 124px; text-align: center; padding: 6px 0; border: 3px solid #16A34A; border-radius: 12px; color: #16A34A; font-weight: 800; font-size: 1.35rem; background: rgba(255, 255, 255, .9); transform: rotate(-12deg); }
+    .folder { width: 180px; padding: 22px 20px; text-align: center; }
+    .folder .ico { position: relative; width: 74px; height: 56px; margin: 0 auto 14px; border-radius: 6px 6px 10px 10px; background: linear-gradient(#4670FF, var(--blue)); }
+    .folder .ico::before { content: ""; position: absolute; top: -8px; inset-inline-start: 0; width: 30px; height: 12px; border-radius: 5px 5px 0 0; background: #4670FF; }
+    .folder b { display: block; font-weight: 800; }
+    .folder small { color: rgba(255, 255, 255, .55); }
+    .count { display: inline-grid; margin-top: 10px; min-width: 34px; padding: 2px 10px; border-radius: 999px; background: var(--mint); color: var(--ink); font-weight: 800; overflow: hidden; }
+    .count span { grid-area: 1 / 1; }
+    .count .a { opacity: 0; }
+    .fly-doc { position: absolute; right: 60px; top: 150px; width: 140px; height: 180px; padding: 16px 14px; border-radius: 10px; background: #fff; box-shadow: 0 20px 50px -15px rgba(0, 0, 0, .6); display: grid; gap: 8px; align-content: start; opacity: 0; pointer-events: none; }
+    .fly-doc b { color: var(--red); font-size: .8rem; font-weight: 800; direction: ltr; text-align: right; }
+    .fly-doc .ln { height: 6px; }
+    @media (max-width: 640px) { .sig-row { scale: .6; margin-block: -104px; } }
+
+    /* ---------- 4. safety check ---------- */
+    .safety { display: flex; align-items: center; gap: 64px; }
+    .car { position: relative; width: 200px; flex: none; }
+    .car svg { display: block; width: 100%; height: auto; }
+    .hs { position: absolute; width: 16px; height: 16px; margin: -8px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 6px rgba(46, 230, 166, .22), 0 0 18px var(--mint); }
+    .hs.bad { background: var(--amber); box-shadow: 0 0 0 6px rgba(245, 165, 36, .25), 0 0 18px var(--amber); }
+    .check { width: min(420px, 100%); padding: 22px; }
+    .check-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+    .check-head b { display: block; font-weight: 800; font-size: 1.1rem; }
+    .check-head small { color: var(--ink-2); }
+    .ring { position: relative; flex: none; width: 60px; height: 60px; }
+    .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .ring circle { fill: none; stroke-width: 6; }
+    .ring .bg { stroke: #EDF1F7; }
+    .ring .fg { stroke: var(--blue); stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; }
+    .ring span { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 800; font-size: .9rem; font-variant-numeric: tabular-nums; }
+    .ck { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-weight: 600; }
+    .box { position: relative; flex: none; width: 26px; height: 26px; border-radius: 50%; box-shadow: inset 0 0 0 2px #CBD5E1; }
+    .mark { position: absolute; inset: 0; border-radius: 50%; background: #12B886; color: #fff; display: grid; place-items: center; font-size: .85rem; font-weight: 800; }
+    .ck.bad .mark { background: var(--amber); }
+    .pill { margin-inline-start: auto; font-size: .8rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: #E3F8EF; color: #0B8A5F; }
+    .ck.bad .pill { background: #FFF1D9; color: #A86200; }
+    .pdf { margin-top: 14px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: #EEF3FF; font-size: .88rem; font-weight: 600; color: var(--navy); }
+    @media (max-width: 760px) {
+      .car { display: none; }
+      .check { padding: 16px; }
+      .ck { padding: 7px 0; font-size: .95rem; }
+    }
+
+    /* ---------- 5. alerts ---------- */
+    .bell-stage { position: relative; width: min(980px, 100%); height: 400px; }
+    .flash { position: absolute; inset: 0; background: radial-gradient(40% 50% at 50% 55%, rgba(240, 68, 56, .32), transparent 70%); opacity: 0; pointer-events: none; display: none; }
+    .bell-big { position: absolute; left: 50%; top: 50%; width: 170px; margin: -95px 0 0 -85px; }
+    .bell-big svg { position: relative; display: block; width: 100%; height: auto; overflow: visible; filter: drop-shadow(0 24px 50px rgba(240, 68, 56, .5)); }
+    .wave { position: absolute; left: 50%; top: 52%; width: 200px; height: 200px; margin: -100px; border-radius: 50%; border: 2px solid var(--red); opacity: 0; display: none; }
+    .motion .wave, .motion .flash { display: block; }
+    .badge { position: absolute; z-index: 1; top: 4px; right: 6px; min-width: 46px; height: 46px; padding: 0 10px; border-radius: 23px; background: #fff; color: var(--red); font-weight: 800; font-size: 1.45rem; display: grid; place-items: center; box-shadow: 0 0 0 4px #04070E, 0 10px 24px -6px rgba(0, 0, 0, .6); font-variant-numeric: tabular-nums; }
+    .alert { position: absolute; left: calc(50% + var(--x)); top: calc(50% + var(--y)); translate: -50% -50%; width: 262px; display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 16px; background: #fff; color: var(--ink); font-size: .9rem; line-height: 1.3; box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .8); }
+    .alert .dot { flex: none; width: 34px; height: 34px; border-radius: 11px; background: #FFE4E1; display: grid; place-items: center; }
+    .alert .dot::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 4px rgba(240, 68, 56, .2); }
+    .alert b { display: block; }
+    .alert small { color: var(--ink-2); }
+    .a1 { --x: 310px; --y: -110px; } .a2 { --x: 340px; --y: 50px; } .a3 { --x: -310px; --y: -110px; } .a4 { --x: -340px; --y: 50px; } .a5 { --x: 0px; --y: 168px; }
+    @media (max-width: 760px) {
+      .bell-stage { height: 430px; }
+      .bell-big { width: 110px; margin: -205px 0 0 -55px; }
+      .badge { min-width: 34px; height: 34px; border-radius: 17px; font-size: 1.05rem; top: 0; right: 0; }
+      .alert { width: min(290px, 88vw); padding: 9px 12px; font-size: .84rem; }
+      .alert .dot { width: 28px; height: 28px; }
+      .a1 { --x: -10px; --y: -58px; } .a2 { --x: 10px; --y: 0px; } .a3 { --x: -10px; --y: 58px; } .a4 { --x: 10px; --y: 116px; } .a5 { --x: -10px; --y: 174px; }
+    }
+    @media (max-width: 760px) and (max-height: 740px) { .bell-stage { scale: .84; margin-block: -34px; } .alert small { display: none; } }
+
+    /* ---------- 6. computer and phone ---------- */
+    .devices { position: relative; flex: none; width: 900px; height: 470px; transform-style: preserve-3d; }
+    .laptop { position: absolute; right: 20px; top: 0; width: 680px; perspective: 1400px; perspective-origin: 50% -40%; }
+    .lid { width: 600px; height: 380px; margin: 0 auto; padding: 12px; border-radius: 18px 18px 6px 6px; background: #0D0F14; box-shadow: inset 0 0 0 1px #2A2F3A, 0 40px 100px -30px rgba(47, 91, 255, .5); transform-origin: 50% 100%; }
+    .lcd { height: 100%; border-radius: 8px; background: #F4F6FA; color: var(--ink); display: flex; overflow: hidden; font-size: 11px; line-height: 1.3; }
+    .base { position: relative; height: 16px; border-radius: 2px 2px 14px 14px; background: linear-gradient(#D5DAE3, #8D94A3); }
+    .base::before { content: ""; position: absolute; top: 0; left: 50%; width: 96px; margin-left: -48px; height: 6px; border-radius: 0 0 8px 8px; background: #9AA1AF; }
+    .l-side { width: 112px; flex: none; background: var(--navy); padding: 14px 12px; display: grid; gap: 9px; align-content: start; }
+    .l-side b { color: #fff; font-size: 15px; font-weight: 800; direction: ltr; text-align: right; margin-bottom: 6px; }
+    .l-side i { height: 7px; border-radius: 4px; background: rgba(255, 255, 255, .18); }
+    .l-side i.on { background: var(--blue); }
+    .l-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .l-head { background: var(--night); color: #fff; font-weight: 800; font-size: 13px; padding: 12px 16px; }
+    .l-body { padding: 14px 16px; display: grid; gap: 12px; }
+    .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .tile { height: 64px; border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px var(--line); padding: 10px 12px; display: flex; flex-direction: column; justify-content: space-between; }
+    .tile small { color: var(--ink-2); font-weight: 600; }
+    .tile b { font-size: 20px; font-weight: 800; line-height: 1; }
+    .tile.warn b { color: #C27400; }
+    .l-table { border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px var(--line); overflow: hidden; }
+    .l-row { display: grid; grid-template-columns: 90px 1fr auto; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--line); font-weight: 600; }
+    .l-row:last-child { border-bottom: 0; }
+    .l-row span:first-child { direction: ltr; text-align: right; font-variant-numeric: tabular-nums; }
+    .st { display: inline-grid; justify-items: center; font-weight: 700; font-size: 10px; }
+    .st > span, .st.ok { grid-area: 1 / 1; padding: 2px 9px; border-radius: 999px; background: #E3F8EF; color: #0B8A5F; }
+    .st .a { background: #FFF1D9; color: #A86200; opacity: 0; }
+    .handset { position: absolute; left: 80px; bottom: 0; width: 190px; height: 390px; border-radius: 34px; background: #0D0F14; padding: 9px; box-shadow: inset 0 0 0 1px #2A2F3A, 0 30px 70px -20px rgba(0, 0, 0, .8); transform-origin: 0 100%; }
+    .h-screen { position: relative; height: 100%; border-radius: 26px; background: #F4F6FA; color: var(--ink); padding: 34px 12px 12px; display: flex; flex-direction: column; gap: 8px; font-size: 11px; line-height: 1.3; }
+    .h-screen::before { content: ""; position: absolute; top: 9px; inset-inline: 0; margin: auto; width: 62px; height: 18px; border-radius: 10px; background: #0D0F14; }
+    .h-head { font-weight: 800; font-size: 14px; margin-bottom: 2px; }
+    .h-screen .tile { height: 44px; flex-direction: row; align-items: center; }
+    .h-screen .tile b { font-size: 17px; }
+    .h-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 8px 10px; border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px var(--line); }
+    .h-row b { display: block; direction: ltr; text-align: right; }
+    .h-row small { color: var(--ink-2); }
+    .h-btn { position: relative; overflow: hidden; margin-top: auto; padding: 10px; border-radius: 12px; background: var(--blue); color: #fff; font-weight: 700; text-align: center; }
+    .tap { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px; border-radius: 50%; background: rgba(255, 255, 255, .55); opacity: 0; }
+    .pulse { position: absolute; left: 0; top: 0; width: 16px; height: 16px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 0 6px rgba(25, 198, 240, .25), 0 0 24px var(--cyan); opacity: 0; pointer-events: none; }
+    @media (max-width: 960px) { .devices { scale: .7; margin-block: -70px; } }
+    @media (max-width: 760px) {
+      .devices { scale: .38; margin: -96px 0 -146px; }
+      .handset { scale: 1.5; }
+    }
+
+    /* ---------- 7. always on ---------- */
+    #always { --u: min(1px, calc((100svh - 160px) / 540)); }
+    .held { position: relative; z-index: 2; flex: none; width: calc(260 * var(--u)); height: calc(540 * var(--u)); }
+    .iphone { position: relative; height: 100%; padding: calc(10 * var(--u)); border-radius: calc(44 * var(--u)); background: #0D0F14; box-shadow: inset 0 0 0 1px #2A2F3A, 0 40px 80px -30px rgba(0, 0, 0, .8); }
+    .i-screen { position: relative; height: 100%; border-radius: calc(34 * var(--u)); overflow: hidden; background: #000; container-type: size; }
+    .island { position: absolute; z-index: 3; top: 3cqw; left: 50%; width: 30cqw; height: 8.5cqw; margin-left: -15cqw; border-radius: 5cqw; background: #000; }
+    .layer { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2cqw; text-align: center; color: #fff; }
+    .layer > b { font-weight: 800; font-size: 13cqw; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+    .layer > span { font-size: 4.4cqw; font-weight: 600; padding-inline: 8cqw; opacity: .92; }
+    .l1 { background: linear-gradient(160deg, #FFC24B, #FF6A3D); }
+    .l2 { background: linear-gradient(160deg, #2F5BFF, #19C6F0); }
+    .l3 { background: linear-gradient(160deg, #6A3DF0, #1B1150); }
+    .motion .layer { clip-path: circle(150% at 50% 50%); }
+    .road { display: block; }
+    .scenery { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .lanes, .posts { position: absolute; inset: 45.4% 0 0; overflow: visible; }
+    .lanes i, .posts i { position: absolute; inset: 0; transform-origin: 50% 0; animation: lane 1.1s cubic-bezier(.55, 0, 1, .45) infinite; }
+    .lanes i::before { content: ""; position: absolute; left: 50%; top: 0; width: 2.4cqw; margin-left: -1.2cqw; height: 9%; border-radius: 1cqw; background: #FFE3A3; }
+    .lanes i:nth-child(2) { animation-delay: -.275s; } .lanes i:nth-child(3) { animation-delay: -.55s; } .lanes i:nth-child(4) { animation-delay: -.825s; }
+    @keyframes lane { from { transform: translateY(0) scale(.06); opacity: 0; } 20% { opacity: 1; } to { transform: translateY(100%) scale(1.6); opacity: 1; } }
+    .posts i { animation-name: post-l; animation-duration: 1.6s; }
+    .posts i.r { animation-name: post-r; }
+    .posts i:nth-child(2) { animation-delay: -.4s; } .posts i:nth-child(3) { animation-delay: -.8s; } .posts i:nth-child(4) { animation-delay: -1.2s; }
+    .posts i::before { content: ""; position: absolute; left: 50%; bottom: 100%; width: 1.2cqw; margin-left: -.6cqw; height: 30%; background: #39425A; }
+    .posts i::after { content: ""; position: absolute; left: 50%; bottom: 130%; width: 4cqw; height: 1.6cqw; margin-left: -2cqw; border-radius: 1cqw; background: #FFE7B0; box-shadow: 0 0 4cqw 1.5cqw rgba(255, 214, 140, .45); }
+    @keyframes post-l { from { transform: translate(0, 0) scale(.05); opacity: 0; } 25% { opacity: 1; } to { transform: translate(-80%, 100%) scale(2.2); opacity: 1; } }
+    @keyframes post-r { from { transform: translate(0, 0) scale(.05); opacity: 0; } 25% { opacity: 1; } to { transform: translate(80%, 100%) scale(2.2); opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) {
+      .lanes i, .posts i { animation: none; }
+      .posts { display: none; }
+      .lanes i:nth-child(1) { transform: translateY(14%) scale(.35); } .lanes i:nth-child(2) { transform: translateY(40%) scale(.8); }
+      .lanes i:nth-child(3) { transform: translateY(74%) scale(1.3); } .lanes i:nth-child(4) { display: none; }
+    }
+    .status { position: absolute; top: 0; inset-inline: 0; height: 14.5cqw; padding: 0 9cqw; display: flex; align-items: center; justify-content: space-between; font-size: 4cqw; font-weight: 700; }
+    .status i { width: 7cqw; height: 3.4cqw; border-radius: 1cqw; box-shadow: inset 0 0 0 .5cqw rgba(255, 255, 255, .8); background: linear-gradient(90deg, #fff 70%, transparent 70%) content-box; padding: .9cqw; }
+    .mail { position: absolute; z-index: 2; top: 16cqw; inset-inline: 4cqw; padding: 3.4cqw; border-radius: 6cqw; background: rgba(245, 247, 250, .9); color: var(--ink); display: flex; gap: 3cqw; align-items: flex-start; text-align: start; font-size: 3.7cqw; line-height: 1.3; box-shadow: 0 3cqw 8cqw -2cqw rgba(0, 0, 0, .6); }
+    .mail.m2 { top: 41cqw; }
+    .mail img { flex: none; width: 9.5cqw; height: 9.5cqw; border-radius: 2.4cqw; }
+    .mail > span { flex: 1; }
+    .mail b { display: flex; justify-content: space-between; gap: 2cqw; }
+    .mail b em { font-style: normal; font-weight: 400; color: var(--ink-2); }
+    .hand { position: absolute; left: calc(-110 * var(--u)); top: 0; width: calc(480 * var(--u)); height: calc(900 * var(--u)); pointer-events: none; overflow: visible; }
+    @media (min-width: 900px) {
+      #always { flex-direction: row; gap: clamp(48px, 8vw, 120px); }
+      #always .copy { text-align: start; max-width: 460px; }
+      #always .copy p { margin-inline: 0; }
+    }
+    @media (max-width: 899px) { #always { --u: min(.8px, calc((100svh - 330px) / 540)); } }
+
+    /* ---------- 8. everything else ---------- */
+    .more { padding: clamp(96px, 14vw, 180px) 0; text-align: center; overflow: hidden; }
+    .more h2 { font-weight: 800; font-size: clamp(2rem, 5vw, 3.5rem); letter-spacing: -.01em; padding-inline: var(--gutter); }
+    .mq { margin-top: 48px; display: grid; gap: 10px; }
+    .mq-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 .5em; padding-inline: var(--gutter); font-weight: 800; font-size: clamp(2rem, 6vw, 4.75rem); line-height: 1.15; letter-spacing: -.01em; }
+    .mq-row span:nth-child(even) { color: transparent; -webkit-text-stroke: 1.5px rgba(255, 255, 255, .45); }
+    .mq-row i { font-style: normal; color: var(--cyan); }
+    .motion .mq-row { flex-wrap: nowrap; justify-content: flex-start; width: max-content; padding: 0; will-change: transform; }
+
+    /* ---------- CTA ---------- */
+    .cta {
+      text-align: center; padding: clamp(96px, 14vw, 180px) var(--gutter);
+      background:
+        radial-gradient(50% 60% at 50% 100%, rgba(47, 91, 255, .35), transparent 70%),
+        linear-gradient(180deg, var(--night), #0B1A33);
+    }
+    .cta h2 { font-weight: 800; font-size: clamp(2.25rem, 6vw, 4.25rem); line-height: 1.05; letter-spacing: -.015em; text-wrap: balance; }
+    .cta p { margin: 18px auto 0; max-width: 42ch; color: rgba(255, 255, 255, .7); font-size: clamp(1.0625rem, 2vw, 1.3rem); }
+    footer { background: #0B1A33; color: rgba(255, 255, 255, .5); font-size: .9rem; padding: 28px var(--gutter) calc(28px + env(safe-area-inset-bottom)); display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: center; }
+    footer a { color: rgba(255, 255, 255, .7); text-decoration: none; }
+    footer a:hover { color: #fff; }
   </style>
 </head>
 <body>
-  <h1>iCar — דף נחיתה</h1>
+
+  <header class="topbar">
+    <a class="logo" href="#top" aria-label="iCar"><img src="/favicon.svg" alt="">icar</a>
+    <a class="btn btn-ghost" href="/">כניסה למערכת</a>
+  </header>
+
+  <main id="top">
+    <!-- 1. Hero -->
+    <section class="hero">
+      <div class="hero-inner">
+        <span class="eyebrow" data-rise style="--i:0">ניהול צי רכב</span>
+        <h1 data-rise style="--i:1">כל הצי שלך.<br><span class="grad">במקום אחד.</span></h1>
+        <p class="sub" data-rise style="--i:2">רכבים, נהגים, מסמכים ותוקפים. iCar עוקבת אחרי הכול ומתריעה לפני שמשהו פג.</p>
+        <div class="ctas" data-rise style="--i:3">
+          <a class="btn btn-primary" href="#contact">רוצה לראות את זה אצלי</a>
+          <a class="btn btn-ghost" href="#schedule">איך זה עובד</a>
+        </div>
+      </div>
+      <div class="scroll-hint" aria-hidden="true">גלול</div>
+    </section>
+
+    <!-- 2. Scene: work schedule. The calendar flies in, zooms into the camera and breaks into the title. -->
+    <section class="scene" id="schedule">
+      <div class="cal light-card" aria-hidden="true">
+        <div class="cal-head"><b>אוקטובר 2026</b><span>סידור עבודה</span></div>
+        <div class="cal-days"><span>א׳</span><span>ב׳</span><span>ג׳</span><span>ד׳</span><span>ה׳</span><span>ו׳</span><span>ש׳</span></div>
+        <div class="cal-grid"></div>
+      </div>
+      <div class="copy">
+        <h2 class="big" data-chars>סידורי עבודה</h2>
+        <p>לא צריך לשבור את הראש. נסיעות קבועות לכל החודש.</p>
+      </div>
+    </section>
+
+    <!-- 3. Scene: validity. Days roll forward, bars drain, alerts drop in. -->
+    <section class="scene" id="validity">
+      <div class="copy">
+        <span class="kicker">תוקפים והתראות</span>
+        <h2 data-words>שום דבר לא פג בהפתעה.</h2>
+        <p>רישיונות, ביטוחים, טסטים ובדיקות. אתה בוחר כמה ימים מראש, ו־iCar מתריעה בפעמון ובמייל.</p>
+      </div>
+      <div class="val" aria-hidden="true">
+        <div class="val-side">
+          <div class="dial glass"><small>היום</small><span class="date">29.10.2026</span><span class="plus">+0 ימים</span></div>
+          <div class="note"><span class="bell">🔔</span><span><b>טסט שנתי · עוד 14 ימים</b><small>רכב 45-678-90</small></span></div>
+          <div class="note"><span class="bell">🔔</span><span><b>ביטוח חובה · עוד 14 ימים</b><small>רכב 12-345-67</small></span></div>
+        </div>
+        <div class="rows">
+          <div class="doc-row glass" data-left="40" data-span="90"><b>ביטוח חובה</b><small>12-345-67</small><span class="left"></span><div class="track"><div class="fill"></div></div></div>
+          <div class="doc-row glass" data-left="22" data-span="90"><b>טסט שנתי</b><small>45-678-90</small><span class="left"></span><div class="track"><div class="fill"></div></div></div>
+          <div class="doc-row glass" data-left="75" data-span="90"><b>רישיון נהיגה</b><small>נהג 0412</small><span class="left"></span><div class="track"><div class="fill"></div></div></div>
+          <div class="doc-row glass" data-left="18" data-span="90"><b>בדיקת קצין בטיחות</b><small>12-345-67</small><span class="left"></span><div class="track"><div class="fill"></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Scene: signature. The phone lifts in, the driver signs, the stamp lands, the PDF files itself. -->
+    <section class="scene" id="signature">
+      <div class="copy">
+        <span class="kicker">מסמכים לחתימה</span>
+        <h2 data-words>הנהג חותם מהטלפון.</h2>
+        <p>שולחים מסמך לנהג אחד או לכולם. כל חתימה נשמרת כ־PDF בתיק הנהג.</p>
+      </div>
+      <div class="sig-row" aria-hidden="true">
+        <div class="phone">
+          <div class="phone-screen">
+            <h4>טופס קבלת רכב</h4>
+            <div class="meta">רכב 12-345-67</div>
+            <div class="ln" style="width:100%"></div>
+            <div class="ln" style="width:86%"></div>
+            <div class="ln" style="width:94%"></div>
+            <div class="ln" style="width:62%"></div>
+            <div class="ln" style="width:90%"></div>
+            <div class="ln" style="width:74%"></div>
+            <div class="sig-box">
+              <svg class="sig" viewBox="0 0 220 90" preserveAspectRatio="none"><path pathLength="1" d="M14 62 C 24 20, 44 14, 46 46 S 60 86, 76 50 S 96 12, 104 44 S 118 74, 132 46 C 140 30, 150 30, 152 48 S 170 66, 186 34 L 206 52"/></svg>
+              <small>חתימת הנהג</small>
+              <div class="stamp">נחתם ✓</div>
+            </div>
+          </div>
+        </div>
+        <div class="folder glass">
+          <div class="ico"></div>
+          <b>תיק הנהג</b>
+          <small>מסמכים חתומים</small><br>
+          <span class="count"><span class="a">3</span><span class="b">4</span></span>
+        </div>
+        <div class="fly-doc"><b>PDF</b><div class="ln"></div><div class="ln" style="width:80%"></div><div class="ln"></div><div class="ln" style="width:60%"></div></div>
+      </div>
+    </section>
+
+    <!-- 5. Scene: safety officer check. Each item ticks, its spot on the car lights up, the ring fills. -->
+    <section class="scene" id="safety">
+      <div class="copy">
+        <span class="kicker">בדיקת קצין בטיחות</span>
+        <h2 data-words>בדיקה מלאה. בלי ניירת.</h2>
+        <p>מסמנים תקין או ליקוי, הקצין והנהג חותמים, ודוח PDF נשמר בתיק הרכב.</p>
+      </div>
+      <div class="safety" aria-hidden="true">
+        <div class="car">
+          <svg viewBox="0 0 200 380">
+            <rect x="8" y="58" width="16" height="54" rx="6" fill="#0B1424" stroke="#2A3A5C"/>
+            <rect x="176" y="58" width="16" height="54" rx="6" fill="#0B1424" stroke="#2A3A5C"/>
+            <rect x="8" y="262" width="16" height="54" rx="6" fill="#0B1424" stroke="#2A3A5C"/>
+            <rect x="176" y="262" width="16" height="54" rx="6" fill="#0B1424" stroke="#2A3A5C"/>
+            <rect x="2" y="128" width="20" height="11" rx="5" fill="#22345A"/>
+            <rect x="178" y="128" width="20" height="11" rx="5" fill="#22345A"/>
+            <rect x="18" y="8" width="164" height="364" rx="62" fill="#1B2A4A" stroke="rgba(47,91,255,.5)" stroke-width="1.5"/>
+            <path d="M48 142 L152 142 L142 96 L58 96 Z" fill="#0B1424" stroke="rgba(25,198,240,.45)"/>
+            <rect x="52" y="152" width="96" height="128" rx="14" fill="#22345A"/>
+            <path d="M54 290 L146 290 L138 322 L62 322 Z" fill="#0B1424" stroke="rgba(25,198,240,.35)"/>
+            <rect x="40" y="18" width="30" height="8" rx="4" fill="#FDE68A"/>
+            <rect x="130" y="18" width="30" height="8" rx="4" fill="#FDE68A"/>
+            <rect x="40" y="356" width="28" height="6" rx="3" fill="#F04438"/>
+            <rect x="132" y="356" width="28" height="6" rx="3" fill="#F04438"/>
+          </svg>
+          <span class="hs" style="left:27%; top:6%"></span>
+          <span class="hs" style="left:50%; top:31%"></span>
+          <span class="hs" style="left:5%; top:35%"></span>
+          <span class="hs" style="left:92%; top:22%"></span>
+          <span class="hs bad" style="left:8%; top:76%"></span>
+          <span class="hs" style="left:50%; top:91%"></span>
+        </div>
+        <div class="check light-card">
+          <div class="check-head">
+            <span><b>בדיקת קצין בטיחות</b><small>רכב 12-345-67</small></span>
+            <span class="ring"><svg viewBox="0 0 64 64"><circle class="bg" cx="32" cy="32" r="27"/><circle class="fg" cx="32" cy="32" r="27" pathLength="1"/></svg><span>100%</span></span>
+          </div>
+          <div class="ck"><span class="box"><span class="mark">✓</span></span>אורות<span class="pill">תקין</span></div>
+          <div class="ck"><span class="box"><span class="mark">✓</span></span>מגבים<span class="pill">תקין</span></div>
+          <div class="ck"><span class="box"><span class="mark">✓</span></span>מראות<span class="pill">תקין</span></div>
+          <div class="ck"><span class="box"><span class="mark">✓</span></span>בלמים<span class="pill">תקין</span></div>
+          <div class="ck bad"><span class="box"><span class="mark">!</span></span>צמיגים<span class="pill">ליקוי</span></div>
+          <div class="ck"><span class="box"><span class="mark">✓</span></span>ציוד חירום<span class="pill">תקין</span></div>
+          <div class="pdf">📄 דוח PDF נשמר · חתמו הקצין והנהג</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Scene: alerts. The red bell rings, and every ring throws out a notification. -->
+    <section class="scene" id="alerts">
+      <div class="flash" aria-hidden="true"></div>
+      <div class="copy">
+        <span class="kicker">התראות</span>
+        <h2 data-words>הפעמון מצלצל לפני שזה כואב.</h2>
+        <p>תוקף שמתקרב, דוח חדש, חתימה של נהג, ליקוי בבדיקה. כל מה שקורה בצי מגיע אליך בפעמון ובמייל.</p>
+      </div>
+      <div class="bell-stage" aria-hidden="true">
+        <div class="bell-big">
+          <span class="wave"></span><span class="wave"></span><span class="wave"></span><span class="wave"></span><span class="wave"></span>
+          <svg viewBox="0 0 120 132">
+            <defs><linearGradient id="bellG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF6B5E"/><stop offset="1" stop-color="#C81E12"/></linearGradient></defs>
+            <g class="bell-body">
+              <circle class="clap" cx="60" cy="112" r="11" fill="#9E1A10"/>
+              <circle cx="60" cy="10" r="7" fill="#C81E12"/>
+              <path d="M60 14 C 32 14 24 38 24 62 L 24 82 L 10 98 C 7 102 9 106 14 106 L 106 106 C 111 106 113 102 110 98 L 96 82 L 96 62 C 96 38 88 14 60 14 Z" fill="url(#bellG)"/>
+              <path d="M40 34 C 34 44 33 56 33 72" stroke="rgba(255,255,255,.45)" stroke-width="6" stroke-linecap="round" fill="none"/>
+            </g>
+          </svg>
+          <span class="badge"><span>5</span></span>
+        </div>
+        <div class="alert a1"><span class="dot"></span><span><b>ביטוח חובה · עוד 7 ימים</b><small>רכב 12-345-67</small></span></div>
+        <div class="alert a2"><span class="dot"></span><span><b>דוח תעבורה חדש</b><small>רכב 45-678-90 · 250 ₪</small></span></div>
+        <div class="alert a3"><span class="dot"></span><span><b>נחתם טופס קבלת רכב</b><small>נהג 0412</small></span></div>
+        <div class="alert a4"><span class="dot"></span><span><b>ליקוי בבדיקת קצין בטיחות</b><small>צמיגים · רכב 12-345-67</small></span></div>
+        <div class="alert a5"><span class="dot"></span><span><b>טיפול 15,000 ק״מ</b><small>רכב 33-221-08</small></span></div>
+      </div>
+    </section>
+
+    <!-- 7. Scene: computer and phone. The laptop opens, its tiles fly into the phone, a tap on the phone updates the laptop. -->
+    <section class="scene" id="devices">
+      <div class="copy">
+        <span class="kicker">מחשב וטלפון</span>
+        <h2 data-words>המשרד שלך. בכל מקום.</h2>
+        <p>ממשק מלא במחשב, ממשק נוח בטלפון. כל שינוי מופיע מיד בשניהם.</p>
+      </div>
+      <div class="devices" aria-hidden="true">
+        <div class="laptop">
+          <div class="lid">
+            <div class="lcd">
+              <div class="l-side"><b>icar</b><i class="on"></i><i></i><i></i><i></i><i></i></div>
+              <div class="l-main">
+                <div class="l-head">לוח בקרה</div>
+                <div class="l-body">
+                  <div class="tiles">
+                    <div class="tile"><small>רכבים</small><b>42</b></div>
+                    <div class="tile"><small>נהגים</small><b>37</b></div>
+                    <div class="tile warn"><small>דורש טיפול</small><b>3</b></div>
+                  </div>
+                  <div class="l-table">
+                    <div class="l-row"><span>12-345-67</span><span>טויוטה קורולה</span><span class="st"><span class="a">בטיפול</span><span class="b">תקין</span></span></div>
+                    <div class="l-row"><span>45-678-90</span><span>יונדאי i30</span><span class="st ok">תקין</span></div>
+                    <div class="l-row"><span>33-221-08</span><span>קיה ספורטאז׳</span><span class="st ok">תקין</span></div>
+                    <div class="l-row"><span>78-904-12</span><span>סקודה אוקטביה</span><span class="st ok">תקין</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="base"></div>
+        </div>
+        <div class="handset">
+          <div class="h-screen">
+            <div class="h-head">לוח בקרה</div>
+            <div class="tile"><small>רכבים</small><b>42</b></div>
+            <div class="tile"><small>נהגים</small><b>37</b></div>
+            <div class="tile warn"><small>דורש טיפול</small><b>3</b></div>
+            <div class="h-row"><span><b>12-345-67</b><small>טויוטה קורולה</small></span><span class="st"><span class="a">בטיפול</span><span class="b">תקין</span></span></div>
+            <div class="h-btn">סמן כתקין<i class="tap"></i></div>
+          </div>
+        </div>
+        <span class="pulse"></span>
+      </div>
+    </section>
+
+    <!-- 8. Scene: 24/7. The colours of the day flash by, then the road; the camera pulls back to a phone in your hand. -->
+    <section class="scene" id="always">
+      <div class="copy">
+        <span class="kicker">24/7</span>
+        <h2 data-words>זמין תמיד. גם בדרך.</h2>
+        <p>על כל דבר שקורה בצי נשלח אליך מייל. לא משנה איפה אתה ומה השעה.</p>
+      </div>
+      <div class="held" aria-hidden="true">
+        <svg class="hand" viewBox="-110 0 480 900">
+          <defs><linearGradient id="skin" gradientUnits="userSpaceOnUse" x1="-110" y1="200" x2="370" y2="900"><stop offset="0" stop-color="#E6AE8C"/><stop offset="1" stop-color="#B0704F"/></linearGradient></defs>
+          <path fill="url(#skin)" d="M-30 200 C -70 290 -66 420 -42 480 C -24 560 4 620 40 680 C 56 740 60 820 62 900 L 262 900 C 266 820 280 760 296 700 C 312 640 312 580 290 540 L 0 200 Z"/>
+        </svg>
+        <div class="iphone">
+          <div class="i-screen">
+            <div class="layer l1"><b>07:00</b><span>יצאו 12 נסיעות בוקר</span></div>
+            <div class="layer l2"><b>13:30</b><span>נהג חתם על טופס קבלת רכב</span></div>
+            <div class="layer l3"><b>23:40</b><span>ביטוח חובה פג בעוד 7 ימים</span></div>
+            <div class="layer road">
+              <svg class="scenery" viewBox="0 0 240 520" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#040816"/><stop offset=".4" stop-color="#18214A"/><stop offset=".454" stop-color="#4A2F5E"/></linearGradient>
+                  <linearGradient id="asphalt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#121722"/><stop offset="1" stop-color="#2B313E"/></linearGradient>
+                  <radialGradient id="beam" cx=".5" cy="1" r=".7"><stop offset="0" stop-color="#FFD68C" stop-opacity=".38"/><stop offset="1" stop-color="#FFD68C" stop-opacity="0"/></radialGradient>
+                </defs>
+                <rect width="240" height="520" fill="url(#sky)"/>
+                <g fill="#0A0F22"><rect x="0" y="196" width="26" height="40"/><rect x="24" y="210" width="18" height="26"/><rect x="44" y="186" width="22" height="50"/><rect x="70" y="214" width="20" height="22"/><rect x="150" y="206" width="22" height="30"/><rect x="172" y="182" width="26" height="54"/><rect x="200" y="200" width="16" height="36"/><rect x="216" y="190" width="24" height="46"/></g>
+                <g fill="#FFD58A" opacity=".75"><rect x="6" y="204" width="3" height="3"/><rect x="14" y="214" width="3" height="3"/><rect x="50" y="194" width="3" height="3"/><rect x="58" y="206" width="3" height="3"/><rect x="50" y="218" width="3" height="3"/><rect x="178" y="190" width="3" height="3"/><rect x="188" y="204" width="3" height="3"/><rect x="178" y="216" width="3" height="3"/><rect x="222" y="198" width="3" height="3"/><rect x="230" y="212" width="3" height="3"/></g>
+                <rect y="236" width="240" height="284" fill="#07090F"/>
+                <path d="M113 236 L127 236 L270 520 L-30 520 Z" fill="url(#asphalt)"/>
+                <path d="M113 236 L-30 520 M127 236 L270 520" stroke="rgba(255,255,255,.6)" stroke-width="2.4" fill="none"/>
+                <rect y="236" width="240" height="284" fill="url(#beam)"/>
+              </svg>
+              <div class="posts"><i></i><i class="r"></i><i></i><i class="r"></i></div>
+              <div class="lanes"><i></i><i></i><i></i><i></i></div>
+              <div class="status"><span>23:41</span><i></i></div>
+              <div class="mail"><img src="/favicon.svg" alt=""><span><b>iCar · מייל חדש<em>עכשיו</em></b>ליקוי בבדיקת קצין בטיחות · רכב 12-345-67</span></div>
+              <div class="mail m2"><img src="/favicon.svg" alt=""><span><b>iCar · מייל חדש<em>עכשיו</em></b>ביטוח חובה פג בעוד 7 ימים · רכב 45-678-90</span></div>
+            </div>
+            <div class="island"></div>
+          </div>
+        </div>
+        <svg class="hand" viewBox="-110 0 480 900" fill="none" stroke-linecap="round">
+          <g stroke="#9A5B40">
+            <path d="M-48 386 Q -26 380 -6 384" stroke-width="47"/>
+            <path d="M-52 336 Q -28 330 -6 334" stroke-width="51"/>
+            <path d="M-54 286 Q -28 280 -6 284" stroke-width="51"/>
+            <path d="M-50 236 Q -26 228 -6 232" stroke-width="47"/>
+            <path d="M300 650 C 302 574 286 508 256 462" stroke-width="45"/>
+          </g>
+          <g stroke="url(#skin)">
+            <path d="M-48 386 Q -26 380 -6 384" stroke-width="44"/>
+            <path d="M-52 336 Q -28 330 -6 334" stroke-width="48"/>
+            <path d="M-54 286 Q -28 280 -6 284" stroke-width="48"/>
+            <path d="M-50 236 Q -26 228 -6 232" stroke-width="44"/>
+            <path d="M300 650 C 302 574 286 508 256 462" stroke-width="42"/>
+          </g>
+          <ellipse cx="262" cy="474" rx="10" ry="14" transform="rotate(-30 262 474)" fill="#F2C7AC" opacity=".85"/>
+        </svg>
+      </div>
+    </section>
+
+    <!-- 9. Everything else: two rows of words sliding against each other. -->
+    <section class="more">
+      <h2>וזה רק חלק.</h2>
+      <div class="mq" aria-label="עוד ב־iCar">
+        <div class="mq-row"><span>צי רכב</span><i>·</i><span>נהגים</span><i>·</i><span>אפליקציה לנהג</span><i>·</i><span>דוחות תעבורה</span><i>·</i><span>טיפולים</span><i>·</i><span>מילוי ממשרד התחבורה</span></div>
+        <div class="mq-row"><span>דוחות PDF ואקסל</span><i>·</i><span>תקציר יומי במייל</span><i>·</i><span>נוהל 6</span><i>·</i><span>מחלקות</span><i>·</i><span>יומן פעילות</span><i>·</i><span>4 שפות</span></div>
+      </div>
+    </section>
+
+    <!-- 10. CTA -->
+    <section class="cta" id="contact">
+      <h2>מוכן לסדר את הצי?</h2>
+      <p>נפתח לך חשבון ונעזור להכניס את הרכבים והנהגים הראשונים.</p>
+      <div class="ctas">
+        <!-- CTA link: swap for a WhatsApp link (https://wa.me/972XXXXXXXXX) when ready -->
+        <a class="btn btn-primary" href="mailto:trytolvex@gmail.com?subject=iCar">דברו איתנו</a>
+        <a class="btn btn-ghost" href="/">כניסה למערכת</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>© iCar</span>
+    <a href="/legal/terms">תנאי שימוש</a>
+    <a href="/legal/privacy">מדיניות פרטיות</a>
+    <a href="/legal/cookies">עוגיות</a>
+    <a href="/legal/accessibility">הצהרת נגישות</a>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js" defer></script>
+  <script>
+    // ---- Build the mock UIs (runs with or without motion) ----
+    (function () {
+      // October 2026 starts on a Thursday; weeks start on Sunday.
+      var shifts = [
+        ['c-blue', '07:00 הסעת עובדים'], ['c-cyan', '09:30 משלוח'],
+        ['c-mint', '13:00 לקוח'], ['c-amber', '16:00 החזרה']
+      ];
+      var html = '';
+      for (var i = 0; i < 35; i++) {
+        var day = i - 3, col = i % 7;
+        if (day < 1 || day > 31) { html += '<div class="cal-cell empty"></div>'; continue; }
+        var cls = 'cal-cell' + (col === 6 ? ' sat' : '') + (day === 29 ? ' today' : '');
+        var chips = '';
+        if (col !== 6) {
+          var n = col === 5 ? 1 : 1 + (day * 7 + col) % 3;
+          for (var k = 0; k < n; k++) {
+            var s = shifts[(day + k * 2) % shifts.length];
+            chips += '<span class="chip ' + s[0] + '">' + s[1] + '</span>';
+          }
+        }
+        html += '<div class="' + cls + '"><span class="num">' + day + '</span>' + chips + '</div>';
+      }
+      document.querySelector('.cal-grid').innerHTML = html;
+    })();
+
+    // Validity rows: days left, bar length and colour for a given day offset.
+    var renderValidity = (function () {
+      var rows = [].slice.call(document.querySelectorAll('.doc-row'));
+      var date = document.querySelector('.dial .date'), plus = document.querySelector('.dial .plus');
+      var start = new Date(2026, 9, 29);
+      function pad(n) { return (n < 10 ? '0' : '') + n; }
+      return function (d) {
+        d = Math.round(d);
+        var now = new Date(start); now.setDate(now.getDate() + d);
+        date.textContent = pad(now.getDate()) + '.' + pad(now.getMonth() + 1) + '.' + now.getFullYear();
+        plus.textContent = '+' + d + ' ימים';
+        rows.forEach(function (r) {
+          var left = +r.dataset.left - d;
+          var color = left <= 0 ? 'var(--red)' : left <= 14 ? 'var(--amber)' : 'var(--mint)';
+          var label = r.querySelector('.left');
+          label.textContent = left <= 0 ? 'פג' : 'עוד ' + left + ' ימים';
+          label.style.color = color;
+          var fill = r.querySelector('.fill');
+          fill.style.background = color;
+          fill.style.transform = 'scaleX(' + Math.max(0, Math.min(1, left / r.dataset.span)) + ')';
+        });
+      };
+    })();
+    renderValidity(30);
+
+    // ---- Motion ----
+    addEventListener('DOMContentLoaded', function () {
+      var gsap = window.gsap, ScrollTrigger = window.ScrollTrigger;
+      var root = document.documentElement;
+      if (!gsap || !ScrollTrigger || !root.classList.contains('motion')) { root.classList.remove('motion'); return; }
+      gsap.registerPlugin(ScrollTrigger);
+      // A reload mid-story would land inside a pinned scene; start at the top.
+      history.scrollRestoration = 'manual';
+      scrollTo(0, 0);
+
+      if (window.Lenis) {
+        var lenis = window.lenis = new Lenis({ lerp: 0.12 });
+        lenis.on('scroll', ScrollTrigger.update);
+        gsap.ticker.add(function (t) { lenis.raf(t * 1000); });
+        gsap.ticker.lagSmoothing(0);
+        document.querySelectorAll('a[href^="#"]').forEach(function (a) {
+          a.addEventListener('click', function (e) {
+            var target = document.querySelector(a.getAttribute('href'));
+            if (!target) return;
+            e.preventDefault();
+            lenis.scrollTo(target === document.getElementById('top') ? 0 : target);
+          });
+        });
+      }
+
+      // Split headings: letters for the big title, masked words for the rest.
+      document.querySelectorAll('[data-chars]').forEach(function (el) {
+        el.innerHTML = el.textContent.split(' ').map(function (word) {
+          return '<span style="display:inline-block;white-space:nowrap">' +
+            word.split('').map(function (c) { return '<span class="ch">' + c + '</span>'; }).join('') + '</span>';
+        }).join(' ');
+      });
+      document.querySelectorAll('[data-words]').forEach(function (el) {
+        el.innerHTML = el.textContent.split(' ').map(function (w) { return '<span class="w"><span>' + w + '</span></span>'; }).join(' ');
+      });
+
+      var R = gsap.utils.random;
+      // Pin at the top, but start playing while the scene is still sliding in, so there is no dead scroll between scenes.
+      function scene(id, length) {
+        ScrollTrigger.create({ trigger: id, start: 'top top', end: '+=' + length + '%', pin: true, anticipatePin: 1 });
+        return gsap.timeline({
+          defaults: { ease: 'none' },
+          scrollTrigger: { trigger: id, start: 'top 85%', end: '+=' + (length + 85) + '%', scrub: 0.8 }
+        });
+      }
+      function wordsIn(tl, id, at) {
+        tl.from(id + ' .w > span', { yPercent: 110, duration: 0.5, stagger: 0.06, ease: 'power3.out' }, at)
+          .from([id + ' .kicker', id + ' .copy p'], { y: 20, autoAlpha: 0, duration: 0.4, stagger: 0.1, ease: 'power2.out' }, at + 0.15);
+      }
+
+      // Hero drifts back as the first scene takes over.
+      gsap.to('.hero-inner', {
+        yPercent: -12, scale: 0.94, autoAlpha: 0, ease: 'none',
+        scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true }
+      });
+      gsap.to('.scroll-hint', { autoAlpha: 0, scrollTrigger: { trigger: '.hero', start: 'top top', end: '15% top', scrub: true } });
+
+      // 1. Calendar comes in on a diagonal, fills with shifts, rushes the camera and shatters into the title.
+      var s1 = scene('#schedule', 315);
+      s1.from('.cal', { x: '-45vw', y: '65vh', rotationX: 58, rotationY: -20, rotationZ: -26, scale: 0.4, autoAlpha: 0, duration: 1.2, ease: 'power2.out' }, 0)
+        .from('.cal .chip', { scaleX: 0, autoAlpha: 0, transformOrigin: '100% 50%', duration: 0.25, stagger: 0.01, ease: 'power2.out' }, 0.6)
+        .to('.cal', { scale: 2.3, rotationX: -10, duration: 1, ease: 'power2.in' }, 1.7)
+        .to('.cal-head, .cal-days', { autoAlpha: 0, duration: 0.3 }, 1.9)
+        .to('.cal', { backgroundColor: 'rgba(255,255,255,0)', boxShadow: '0 0 0 rgba(0,0,0,0)', duration: 0.4 }, 2.2)
+        .to('.cal-cell', {
+          x: function () { return R(-900, 900); }, y: function () { return R(-600, 600); }, z: function () { return R(100, 600); },
+          rotation: function () { return R(-120, 120); }, autoAlpha: 0,
+          duration: 1, ease: 'power2.out', stagger: { each: 0.006, from: 'center' }
+        }, 2.2)
+        .from('#schedule .ch', {
+          x: function () { return R(-500, 500); }, y: function () { return R(-400, 400); }, rotation: function () { return R(-90, 90); },
+          scale: 0.2, autoAlpha: 0, duration: 1, ease: 'power3.out', stagger: { each: 0.04, from: 'random' }
+        }, 2.5)
+        .from('#schedule .copy p', { y: 24, autoAlpha: 0, duration: 0.4, ease: 'power2.out' }, 3.4)
+        .to({}, { duration: 0.25 });
+
+      // 2. Cards are dealt in, then time runs: bars drain, colours turn, alerts drop.
+      var clock = { d: 0 };
+      renderValidity(0);
+      var s2 = scene('#validity', 229);
+      wordsIn(s2, '#validity', 0);
+      s2.from('.dial', { scale: 0.9, autoAlpha: 0, duration: 0.5, ease: 'power2.out' }, 0.3)
+        .from('.doc-row', { rotationX: -85, y: 60, autoAlpha: 0, transformOrigin: '50% 0%', duration: 0.6, stagger: 0.12, ease: 'power3.out' }, 0.4)
+        .to(clock, { d: 30, duration: 2, onUpdate: function () { renderValidity(clock.d); } }, 1.2)
+        .from('.note:nth-of-type(2)', { y: -30, scale: 0.94, autoAlpha: 0, duration: 0.3, ease: 'back.out(1.6)' }, 1.72)
+        .from('.note:nth-of-type(3)', { y: -30, scale: 0.94, autoAlpha: 0, duration: 0.3, ease: 'back.out(1.6)' }, 2.92)
+        .to({}, { duration: 0.25 });
+
+      // 3. Phone lifts in, the form writes itself, the driver signs, the stamp lands, the PDF flies to the folder.
+      var s3 = scene('#signature', 249);
+      wordsIn(s3, '#signature', 0);
+      s3.from('.phone', { y: '60vh', rotationX: 35, rotationY: -25, rotationZ: 8, autoAlpha: 0, duration: 1, ease: 'power3.out' }, 0.1)
+        .from('.folder', { x: -80, autoAlpha: 0, duration: 0.6, ease: 'power3.out' }, 0.5)
+        .from('.phone .ln', { scaleX: 0, transformOrigin: '100% 50%', duration: 0.3, stagger: 0.06, ease: 'power2.out' }, 0.8)
+        .fromTo('.sig path', { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1, ease: 'power1.inOut' }, 1.3)
+        .from('.stamp', { scale: 2.4, rotation: -30, autoAlpha: 0, duration: 0.22, ease: 'power4.in' }, 2.35)
+        .fromTo('.phone', { x: 0 }, { keyframes: [{ x: -6 }, { x: 5 }, { x: 0 }], duration: 0.15 }, 2.57)
+        .fromTo('.fly-doc', { autoAlpha: 1, x: 0, y: 0, scale: 1, rotation: 0 }, { x: -340, y: 50, scale: 0.35, rotation: -14, duration: 0.8, ease: 'power2.inOut', immediateRender: false }, 2.8)
+        .to('.fly-doc', { autoAlpha: 0, duration: 0.1 }, 3.5)
+        .fromTo('.folder', { scale: 1 }, { keyframes: [{ scale: 1.08 }, { scale: 1 }], duration: 0.3 }, 3.5)
+        .fromTo('.count .a', { yPercent: 0, autoAlpha: 1 }, { yPercent: -100, autoAlpha: 0, duration: 0.2 }, 3.55)
+        .fromTo('.count .b', { yPercent: 100, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.2 }, 3.55)
+        .to({}, { duration: 0.25 });
+
+      // 4. Items tick one by one, each lighting its spot on the car, while the ring fills.
+      var s4 = scene('#safety', 230);
+      var pct = document.querySelector('.ring span'), progress = { p: 0 };
+      wordsIn(s4, '#safety', 0);
+      s4.from('.car', { y: 80, rotation: -6, autoAlpha: 0, duration: 0.7, ease: 'power3.out' }, 0.1)
+        .from('.check', { y: 60, rotationX: 20, autoAlpha: 0, duration: 0.7, ease: 'power3.out' }, 0.2)
+        .fromTo('.ring .fg', { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 2.1 }, 0.9)
+        .fromTo(progress, { p: 0 }, { p: 100, duration: 2.1, onUpdate: function () { pct.textContent = Math.round(progress.p) + '%'; } }, 0.9);
+      var hotspots = gsap.utils.toArray('.hs');
+      gsap.utils.toArray('.ck').forEach(function (row, i) {
+        var at = 0.9 + i * 0.35;
+        s4.from(row.querySelector('.mark'), { scale: 0, autoAlpha: 0, duration: 0.2, ease: 'back.out(2)' }, at)
+          .from(row.querySelector('.pill'), { x: -12, autoAlpha: 0, duration: 0.2, ease: 'power2.out' }, at + 0.05)
+          .from(hotspots[i], { scale: 0, autoAlpha: 0, duration: 0.25, ease: 'back.out(2.5)' }, at);
+      });
+      s4.from('.pdf', { y: 16, autoAlpha: 0, duration: 0.3, ease: 'power2.out' }, 3.1)
+        .to({}, { duration: 0.25 });
+
+      // 5. The red bell rings; every ring throws a notification out of it and the badge counts up.
+      var stage = document.querySelector('.bell-stage'), bellEl = stage.querySelector('.bell-big');
+      var kSt = stage.getBoundingClientRect().width / stage.offsetWidth, br = bellEl.getBoundingClientRect();
+      var bx = br.left + br.width / 2, by = br.top + br.height / 2;
+      var badge = document.querySelector('.badge span'), count = { n: 0 }, waves = gsap.utils.toArray('.wave');
+      var flashes = [];
+      for (var f = 0; f < 5; f++) flashes.push({ opacity: 1, duration: 0.04 }, { opacity: 0, duration: 0.26 });
+      gsap.set('.bell-body', { svgOrigin: '60 10' });
+      var s5 = scene('#alerts', 225);
+      wordsIn(s5, '#alerts', 0);
+      gsap.utils.toArray('.alert').forEach(function (c, i) {
+        var r = c.getBoundingClientRect(), t = 1 + i * 0.3;
+        s5.from(c, { x: (bx - r.left - r.width / 2) / kSt, y: (by - r.top - r.height / 2) / kSt, scale: 0.2, rotation: R(-25, 25), autoAlpha: 0, duration: 0.6, ease: 'power3.out' }, t)
+          .to(waves[i], { keyframes: [{ autoAlpha: 0.8, scale: 0.6, duration: 0.01 }, { autoAlpha: 0, scale: 3.2, duration: 0.6, ease: 'power2.out' }] }, t);
+      });
+      s5.from('.bell-big', { y: 140, scale: 0.5, rotation: -25, autoAlpha: 0, duration: 0.7, ease: 'back.out(1.4)' }, 0.2)
+        .to('.bell-body', { keyframes: [{ rotation: 16 }, { rotation: -14 }, { rotation: 12 }, { rotation: -10 }, { rotation: 8 }, { rotation: -6 }, { rotation: 4 }, { rotation: 0 }], duration: 1.8 }, 1)
+        .to('.clap', { keyframes: [{ x: -7 }, { x: 7 }, { x: -6 }, { x: 5 }, { x: -4 }, { x: 3 }, { x: -2 }, { x: 0 }], duration: 1.8 }, 1.04)
+        .from('.badge', { scale: 0, autoAlpha: 0, duration: 0.25, ease: 'back.out(2)' }, 1)
+        .fromTo(count, { n: 0 }, { n: 5, duration: 1.5, onUpdate: function () { badge.textContent = Math.max(1, Math.ceil(count.n)); } }, 1)
+        .to('.flash', { keyframes: flashes }, 1)
+        .to({}, { duration: 0.25 });
+
+      // 6. The laptop opens, its tiles fly into the phone, and a tap on the phone updates the laptop.
+      var hs = document.querySelector('.h-screen'), dev = document.querySelector('.devices');
+      var kTile = hs.getBoundingClientRect().width / hs.offsetWidth, kDev = dev.getBoundingClientRect().width / dev.offsetWidth;
+      var lapTiles = gsap.utils.toArray('.lcd .tile'), dr = dev.getBoundingClientRect();
+      var flips = gsap.utils.toArray('.h-screen .tile').map(function (t, i) {
+        var a = lapTiles[i].getBoundingClientRect(), b = t.getBoundingClientRect();
+        return { el: t, x: (a.left + a.width / 2 - b.left - b.width / 2) / kTile, y: (a.top + a.height / 2 - b.top - b.height / 2) / kTile, scaleX: a.width / b.width, scaleY: a.height / b.height };
+      });
+      function spot(sel) { var r = document.querySelector(sel).getBoundingClientRect(); return { x: (r.left + r.width / 2 - dr.left) / kDev - 8, y: (r.top + r.height / 2 - dr.top) / kDev - 8 }; }
+      var p0 = spot('.h-btn'), p1 = spot('.l-row .st');
+      gsap.set('.pulse', { x: p0.x, y: p0.y });
+      var s6 = scene('#devices', 250);
+      wordsIn(s6, '#devices', 0);
+      s6.from('.devices', { y: 120, rotationX: 28, autoAlpha: 0, duration: 0.8, ease: 'power3.out' }, 0.1)
+        .fromTo('.lid', { rotationX: 86 }, { rotationX: 0, duration: 0.8, ease: 'power2.inOut' }, 0.5)
+        .from('.lcd', { backgroundColor: '#0B0D12', duration: 0.3 }, 1.2)
+        .from('.lcd > *', { autoAlpha: 0, duration: 0.3 }, 1.2)
+        .from('.handset', { x: -140, y: 60, rotation: -14, autoAlpha: 0, duration: 0.6, ease: 'power3.out' }, 1.4);
+      flips.forEach(function (f, i) {
+        s6.from(f.el, { x: f.x, y: f.y, scaleX: f.scaleX, scaleY: f.scaleY, autoAlpha: 0, duration: 0.6, ease: 'power3.inOut' }, 2 + i * 0.12);
+      });
+      s6.from('.h-row, .h-btn', { y: 14, autoAlpha: 0, duration: 0.3, stagger: 0.08, ease: 'power2.out' }, 2.5)
+        .to('.tap', { keyframes: [{ scale: 0.2, autoAlpha: 0.7, duration: 0.01 }, { scale: 2.6, autoAlpha: 0, duration: 0.4, ease: 'power2.out' }] }, 2.95)
+        .fromTo('.h-row .st .a', { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.15 }, 3)
+        .fromTo('.h-row .st .b', { autoAlpha: 0, scale: 0.6 }, { autoAlpha: 1, scale: 1, duration: 0.25, ease: 'back.out(2)' }, 3)
+        .to('.pulse', { keyframes: [
+          { autoAlpha: 1, duration: 0.05 },
+          { x: (p0.x + p1.x) / 2, y: Math.min(p0.y, p1.y) - 90, duration: 0.25, ease: 'power1.out' },
+          { x: p1.x, y: p1.y, duration: 0.25, ease: 'power1.in' },
+          { autoAlpha: 0, scale: 2.5, duration: 0.12 }] }, 3.05)
+        .fromTo('.l-row .st .a', { autoAlpha: 1 }, { autoAlpha: 0, duration: 0.15 }, 3.6)
+        .fromTo('.l-row .st .b', { autoAlpha: 0, scale: 0.6 }, { autoAlpha: 1, scale: 1, duration: 0.25, ease: 'back.out(2)' }, 3.6)
+        .to('.l-row:first-child', { keyframes: [{ backgroundColor: 'rgba(46,230,166,.28)', duration: 0.1 }, { backgroundColor: 'rgba(46,230,166,0)', duration: 0.4 }] }, 3.6)
+        .to({}, { duration: 0.25 });
+
+      // 7. The day's colours flash by, then the road; the camera pulls back to a phone in your hand.
+      var held = document.querySelector('.held'), scr = held.querySelector('.i-screen');
+      var sec = document.getElementById('always').getBoundingClientRect(), sr = scr.getBoundingClientRect(), hr = held.getBoundingClientRect();
+      var cx = sr.left + sr.width / 2, cy = sr.top + sr.height / 2;
+      gsap.set(held, { transformOrigin: (cx - hr.left) + 'px ' + (cy - hr.top) + 'px' });
+      var s7 = scene('#always', 296);
+      [['.l2', 0.5], ['.l3', 1.1], ['.road', 1.7]].forEach(function (l) {
+        s7.from('#always ' + l[0], { clipPath: 'circle(0% at 50% 50%)', duration: 0.35, ease: 'power2.inOut' }, l[1]);
+        if (l[0] !== '.road') s7.from('#always ' + l[0] + ' > b', { yPercent: 60, autoAlpha: 0, duration: 0.3, ease: 'power3.out' }, l[1] + 0.12);
+      });
+      s7.fromTo(held,
+          { x: sec.left + sec.width / 2 - cx, y: sec.top + sec.height / 2 - cy, scale: Math.max(sec.width / sr.width, sec.height / sr.height) * 1.02 },
+          { x: 0, y: 0, scale: 1, duration: 1.4, ease: 'power2.inOut' }, 2.1)
+        .from(scr, { borderRadius: 0, duration: 0.6 }, 2.4)
+        .from('.hand, .island', { autoAlpha: 0, duration: 0.5 }, 2.6)
+        .from('.mail', { yPercent: -140, autoAlpha: 0, duration: 0.4, stagger: 0.35, ease: 'power3.out' }, 3.4);
+      wordsIn(s7, '#always', 3.2);
+      s7.to({}, { duration: 0.25 });
+
+      // 8. Word rows slide against each other with the scroll.
+      var rows = gsap.utils.toArray('.mq-row');
+      rows.forEach(function (row) { row.innerHTML += row.innerHTML; }); // doubled so the slide never runs dry
+      gsap.fromTo(rows[0], { xPercent: 0 }, { xPercent: 25, ease: 'none', scrollTrigger: { trigger: '.more', start: 'top bottom', end: 'bottom top', scrub: true } });
+      gsap.fromTo(rows[1], { xPercent: 25 }, { xPercent: 0, ease: 'none', scrollTrigger: { trigger: '.more', start: 'top bottom', end: 'bottom top', scrub: true } });
+
+      gsap.from('.cta > *', {
+        y: 28, autoAlpha: 0, duration: 0.8, stagger: 0.08, ease: 'power3.out',
+        scrollTrigger: { trigger: '.cta', start: 'top 70%', once: true }
+      });
+
+      addEventListener('load', function () { ScrollTrigger.refresh(); });
+    });
+  </script>
 </body>
 </html>
