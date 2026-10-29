@@ -306,18 +306,14 @@
     }
 
     /* ---------- 7. always on ---------- */
-    #always { --u: min(1px, calc((100svh - 160px) / 540)); }
-    .held { position: relative; z-index: 2; flex: none; width: calc(260 * var(--u)); height: calc(540 * var(--u)); }
-    .iphone { position: relative; height: 100%; padding: calc(10 * var(--u)); border-radius: calc(44 * var(--u)); background: #0D0F14; box-shadow: inset 0 0 0 1px #2A2F3A, 0 40px 80px -30px rgba(0, 0, 0, .8); }
-    .i-screen { position: relative; height: 100%; border-radius: calc(34 * var(--u)); overflow: hidden; background: #000; container-type: size; }
+    /* --k = screen px per photo px; the held box is the phone's part of the photo (620×1090), the arm runs off to the left. */
+    #always { --k: min(.62px, calc((100svh - 140px) / 1090)); }
+    .held { position: relative; z-index: 2; flex: none; width: calc(620 * var(--k)); height: calc(1090 * var(--k)); }
+    .hand { position: absolute; left: calc(-620 * var(--k)); top: 0; width: calc(1240 * var(--k)); height: 100%; pointer-events: none; background: url(hand.jpg) 0 0 / 100% 100%; -webkit-mask: url(hand-mask.png) 0 0 / 100% 100%; mask: url(hand-mask.png) 0 0 / 100% 100%; }
+    .held::before { content: ""; position: absolute; inset: 0 -30% 0 -70%; background: radial-gradient(closest-side, rgba(140, 165, 215, .16), transparent); pointer-events: none; }
+    .i-screen { position: absolute; left: 0; top: 0; width: calc(397 * var(--k)); height: calc(848 * var(--k)); transform-origin: 0 0; border-radius: calc(46 * var(--k)); overflow: hidden; background: #000; container-type: size; }
     .island { position: absolute; z-index: 3; top: 3cqw; left: 50%; width: 30cqw; height: 8.5cqw; margin-left: -15cqw; border-radius: 5cqw; background: #000; }
     .layer { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2cqw; text-align: center; color: #fff; }
-    .layer > b { font-weight: 800; font-size: 13cqw; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-    .layer > span { font-size: 4.4cqw; font-weight: 600; padding-inline: 8cqw; opacity: .92; }
-    .l1 { background: linear-gradient(160deg, #FFC24B, #FF6A3D); }
-    .l2 { background: linear-gradient(160deg, #2F5BFF, #19C6F0); }
-    .l3 { background: linear-gradient(160deg, #6A3DF0, #1B1150); }
-    .motion .layer { clip-path: circle(150% at 50% 50%); }
     .road { display: block; }
     .scenery { position: absolute; inset: 0; width: 100%; height: 100%; }
     .lanes, .posts { position: absolute; inset: 45.4% 0 0; overflow: visible; }
@@ -346,13 +342,12 @@
     .mail > span { flex: 1; }
     .mail b { display: flex; justify-content: space-between; gap: 2cqw; }
     .mail b em { font-style: normal; font-weight: 400; color: var(--ink-2); }
-    .hand { position: absolute; left: calc(-110 * var(--u)); top: 0; width: calc(480 * var(--u)); height: calc(900 * var(--u)); pointer-events: none; overflow: visible; }
     @media (min-width: 900px) {
       #always { flex-direction: row; gap: clamp(48px, 8vw, 120px); }
       #always .copy { text-align: start; max-width: 460px; }
       #always .copy p { margin-inline: 0; }
     }
-    @media (max-width: 899px) { #always { --u: min(.8px, calc((100svh - 330px) / 540)); } }
+    @media (max-width: 899px) { #always { --k: min(.5px, calc((100svh - 300px) / 1090)); } }
 
     /* ---------- 8. everything else ---------- */
     .more { padding: clamp(96px, 14vw, 180px) 0; text-align: center; overflow: hidden; }
@@ -601,56 +596,31 @@
         <p>על כל דבר שקורה בצי נשלח אליך מייל. לא משנה איפה אתה ומה השעה.</p>
       </div>
       <div class="held" aria-hidden="true">
-        <svg class="hand" viewBox="-110 0 480 900">
-          <defs><linearGradient id="skin" gradientUnits="userSpaceOnUse" x1="-110" y1="200" x2="370" y2="900"><stop offset="0" stop-color="#E6AE8C"/><stop offset="1" stop-color="#B0704F"/></linearGradient></defs>
-          <path fill="url(#skin)" d="M-30 200 C -70 290 -66 420 -42 480 C -24 560 4 620 40 680 C 56 740 60 820 62 900 L 262 900 C 266 820 280 760 296 700 C 312 640 312 580 290 540 L 0 200 Z"/>
-        </svg>
-        <div class="iphone">
-          <div class="i-screen">
-            <div class="layer l1"><b>07:00</b><span>יצאו 12 נסיעות בוקר</span></div>
-            <div class="layer l2"><b>13:30</b><span>נהג חתם על טופס קבלת רכב</span></div>
-            <div class="layer l3"><b>23:40</b><span>ביטוח חובה פג בעוד 7 ימים</span></div>
-            <div class="layer road">
-              <svg class="scenery" viewBox="0 0 240 520" preserveAspectRatio="xMidYMid slice">
-                <defs>
-                  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#040816"/><stop offset=".4" stop-color="#18214A"/><stop offset=".454" stop-color="#4A2F5E"/></linearGradient>
-                  <linearGradient id="asphalt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#121722"/><stop offset="1" stop-color="#2B313E"/></linearGradient>
-                  <radialGradient id="beam" cx=".5" cy="1" r=".7"><stop offset="0" stop-color="#FFD68C" stop-opacity=".38"/><stop offset="1" stop-color="#FFD68C" stop-opacity="0"/></radialGradient>
-                </defs>
-                <rect width="240" height="520" fill="url(#sky)"/>
-                <g fill="#0A0F22"><rect x="0" y="196" width="26" height="40"/><rect x="24" y="210" width="18" height="26"/><rect x="44" y="186" width="22" height="50"/><rect x="70" y="214" width="20" height="22"/><rect x="150" y="206" width="22" height="30"/><rect x="172" y="182" width="26" height="54"/><rect x="200" y="200" width="16" height="36"/><rect x="216" y="190" width="24" height="46"/></g>
-                <g fill="#FFD58A" opacity=".75"><rect x="6" y="204" width="3" height="3"/><rect x="14" y="214" width="3" height="3"/><rect x="50" y="194" width="3" height="3"/><rect x="58" y="206" width="3" height="3"/><rect x="50" y="218" width="3" height="3"/><rect x="178" y="190" width="3" height="3"/><rect x="188" y="204" width="3" height="3"/><rect x="178" y="216" width="3" height="3"/><rect x="222" y="198" width="3" height="3"/><rect x="230" y="212" width="3" height="3"/></g>
-                <rect y="236" width="240" height="284" fill="#07090F"/>
-                <path d="M113 236 L127 236 L270 520 L-30 520 Z" fill="url(#asphalt)"/>
-                <path d="M113 236 L-30 520 M127 236 L270 520" stroke="rgba(255,255,255,.6)" stroke-width="2.4" fill="none"/>
-                <rect y="236" width="240" height="284" fill="url(#beam)"/>
-              </svg>
-              <div class="posts"><i></i><i class="r"></i><i></i><i class="r"></i></div>
-              <div class="lanes"><i></i><i></i><i></i><i></i></div>
-              <div class="status"><span>23:41</span><i></i></div>
-              <div class="mail"><img src="/favicon.svg" alt=""><span><b>iCar · מייל חדש<em>עכשיו</em></b>ליקוי בבדיקת קצין בטיחות · רכב 12-345-67</span></div>
-              <div class="mail m2"><img src="/favicon.svg" alt=""><span><b>iCar · מייל חדש<em>עכשיו</em></b>ביטוח חובה פג בעוד 7 ימים · רכב 45-678-90</span></div>
-            </div>
-            <div class="island"></div>
+        <div class="hand"></div>
+        <div class="i-screen">
+          <div class="layer road">
+            <svg class="scenery" viewBox="0 0 240 520" preserveAspectRatio="xMidYMid slice">
+              <defs>
+                <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#040816"/><stop offset=".4" stop-color="#18214A"/><stop offset=".454" stop-color="#4A2F5E"/></linearGradient>
+                <linearGradient id="asphalt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#121722"/><stop offset="1" stop-color="#2B313E"/></linearGradient>
+                <radialGradient id="beam" cx=".5" cy="1" r=".7"><stop offset="0" stop-color="#FFD68C" stop-opacity=".38"/><stop offset="1" stop-color="#FFD68C" stop-opacity="0"/></radialGradient>
+              </defs>
+              <rect width="240" height="520" fill="url(#sky)"/>
+              <g fill="#0A0F22"><rect x="0" y="196" width="26" height="40"/><rect x="24" y="210" width="18" height="26"/><rect x="44" y="186" width="22" height="50"/><rect x="70" y="214" width="20" height="22"/><rect x="150" y="206" width="22" height="30"/><rect x="172" y="182" width="26" height="54"/><rect x="200" y="200" width="16" height="36"/><rect x="216" y="190" width="24" height="46"/></g>
+              <g fill="#FFD58A" opacity=".75"><rect x="6" y="204" width="3" height="3"/><rect x="14" y="214" width="3" height="3"/><rect x="50" y="194" width="3" height="3"/><rect x="58" y="206" width="3" height="3"/><rect x="50" y="218" width="3" height="3"/><rect x="178" y="190" width="3" height="3"/><rect x="188" y="204" width="3" height="3"/><rect x="178" y="216" width="3" height="3"/><rect x="222" y="198" width="3" height="3"/><rect x="230" y="212" width="3" height="3"/></g>
+              <rect y="236" width="240" height="284" fill="#07090F"/>
+              <path d="M113 236 L127 236 L270 520 L-30 520 Z" fill="url(#asphalt)"/>
+              <path d="M113 236 L-30 520 M127 236 L270 520" stroke="rgba(255,255,255,.6)" stroke-width="2.4" fill="none"/>
+              <rect y="236" width="240" height="284" fill="url(#beam)"/>
+            </svg>
+            <div class="posts"><i></i><i class="r"></i><i></i><i class="r"></i></div>
+            <div class="lanes"><i></i><i></i><i></i><i></i></div>
+            <div class="status"><span>23:41</span><i></i></div>
+            <div class="mail"><img src="/favicon.svg" alt=""><span><b>iCar · מייל חדש<em>עכשיו</em></b>ליקוי בבדיקת קצין בטיחות · רכב 12-345-67</span></div>
+            <div class="mail m2"><img src="/favicon.svg" alt=""><span><b>iCar · מייל חדש<em>עכשיו</em></b>ביטוח חובה פג בעוד 7 ימים · רכב 45-678-90</span></div>
           </div>
+          <div class="island"></div>
         </div>
-        <svg class="hand" viewBox="-110 0 480 900" fill="none" stroke-linecap="round">
-          <g stroke="#9A5B40">
-            <path d="M-48 386 Q -26 380 -6 384" stroke-width="47"/>
-            <path d="M-52 336 Q -28 330 -6 334" stroke-width="51"/>
-            <path d="M-54 286 Q -28 280 -6 284" stroke-width="51"/>
-            <path d="M-50 236 Q -26 228 -6 232" stroke-width="47"/>
-            <path d="M300 650 C 302 574 286 508 256 462" stroke-width="45"/>
-          </g>
-          <g stroke="url(#skin)">
-            <path d="M-48 386 Q -26 380 -6 384" stroke-width="44"/>
-            <path d="M-52 336 Q -28 330 -6 334" stroke-width="48"/>
-            <path d="M-54 286 Q -28 280 -6 284" stroke-width="48"/>
-            <path d="M-50 236 Q -26 228 -6 232" stroke-width="44"/>
-            <path d="M300 650 C 302 574 286 508 256 462" stroke-width="42"/>
-          </g>
-          <ellipse cx="262" cy="474" rx="10" ry="14" transform="rotate(-30 262 474)" fill="#F2C7AC" opacity=".85"/>
-        </svg>
       </div>
     </section>
 
@@ -669,7 +639,7 @@
       <p>נפתח לך חשבון ונעזור להכניס את הרכבים והנהגים הראשונים.</p>
       <div class="ctas">
         <!-- CTA link: swap for a WhatsApp link (https://wa.me/972XXXXXXXXX) when ready -->
-        <a class="btn btn-primary" href="mailto:trytolvex@gmail.com?subject=iCar">דברו איתנו</a>
+        <a class="btn btn-primary" href="https://wa.me/972526768544" target="_blank" rel="noopener">דברו איתנו</a>
         <a class="btn btn-ghost" href="/">כניסה למערכת</a>
       </div>
     </section>
@@ -736,6 +706,33 @@
       };
     })();
     renderValidity(30);
+
+    // ---- The 24/7 phone: our live screen is warped onto the screen in the photo ----
+    // Photo screen corners (TL, TR, BR, BL) in photo px, inside the held box.
+    var QUAD = [[64.7, 44.1], [464.2, 113.3], [455.5, 968.3], [74.8, 886]];
+    var screenT = 1;
+    // Square-to-quad homography (Heckbert) as a CSS matrix3d, for an element w×h with origin 0 0.
+    function quadMatrix(w, h, q) {
+      var x0 = q[0][0], y0 = q[0][1], x1 = q[1][0], y1 = q[1][1], x2 = q[2][0], y2 = q[2][1], x3 = q[3][0], y3 = q[3][1];
+      var dx1 = x1 - x2, dy1 = y1 - y2, dx2 = x3 - x2, dy2 = y3 - y2, sx = x0 - x1 + x2 - x3, sy = y0 - y1 + y2 - y3;
+      var det = dx1 * dy2 - dx2 * dy1, g = (sx * dy2 - dx2 * sy) / det, k = (dx1 * sy - sx * dy1) / det;
+      var a = x1 - x0 + g * x1, b = x3 - x0 + k * x3, d = y1 - y0 + g * y1, e = y3 - y0 + k * y3;
+      return 'matrix3d(' + [a / w, d / w, 0, g / w, b / h, e / h, 0, k / h, 0, 0, 1, 0, x0, y0, 0, 1].join(',') + ')';
+    }
+    // t = 0: flat and upright over the screen's centre; t = 1: lying exactly on the photo's screen (1.004 hides its edge).
+    function placeScreen(t) {
+      var held = document.querySelector('.held'), scr = held.querySelector('.i-screen');
+      var k = held.offsetWidth / 620, w = scr.offsetWidth, h = scr.offsetHeight, cx = 0, cy = 0;
+      QUAD.forEach(function (p) { cx += p[0] / 4; cy += p[1] / 4; });
+      var flat = [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]];
+      scr.style.transform = quadMatrix(w, h, QUAD.map(function (p, i) {
+        var fx = cx * k + flat[i][0], fy = cy * k + flat[i][1];
+        return [fx + ((cx + (p[0] - cx) * 1.004) * k - fx) * t, fy + ((cy + (p[1] - cy) * 1.004) * k - fy) * t];
+      }));
+      screenT = t;
+    }
+    placeScreen(1);
+    addEventListener('resize', function () { placeScreen(screenT); });
 
     // ---- Motion ----
     addEventListener('DOMContentLoaded', function () {
@@ -917,23 +914,21 @@
         .to('.l-row:first-child', { keyframes: [{ backgroundColor: 'rgba(46,230,166,.28)', duration: 0.1 }, { backgroundColor: 'rgba(46,230,166,0)', duration: 0.4 }] }, 3.6)
         .to({}, { duration: 0.25 });
 
-      // 7. The day's colours flash by, then the road; the camera pulls back to a phone in your hand.
-      var held = document.querySelector('.held'), scr = held.querySelector('.i-screen');
+      // 7. Driving at night; the camera pulls back to a phone in your hand.
+      var held = document.querySelector('.held'), scr = held.querySelector('.i-screen'), pose = { t: 0 };
+      placeScreen(0);
       var sec = document.getElementById('always').getBoundingClientRect(), sr = scr.getBoundingClientRect(), hr = held.getBoundingClientRect();
       var cx = sr.left + sr.width / 2, cy = sr.top + sr.height / 2;
       gsap.set(held, { transformOrigin: (cx - hr.left) + 'px ' + (cy - hr.top) + 'px' });
-      var s7 = scene('#always', 296);
-      [['.l2', 0.5], ['.l3', 1.1], ['.road', 1.7]].forEach(function (l) {
-        s7.from('#always ' + l[0], { clipPath: 'circle(0% at 50% 50%)', duration: 0.35, ease: 'power2.inOut' }, l[1]);
-        if (l[0] !== '.road') s7.from('#always ' + l[0] + ' > b', { yPercent: 60, autoAlpha: 0, duration: 0.3, ease: 'power3.out' }, l[1] + 0.12);
-      });
+      var s7 = scene('#always', 200);
       s7.fromTo(held,
           { x: sec.left + sec.width / 2 - cx, y: sec.top + sec.height / 2 - cy, scale: Math.max(sec.width / sr.width, sec.height / sr.height) * 1.02 },
-          { x: 0, y: 0, scale: 1, duration: 1.4, ease: 'power2.inOut' }, 2.1)
-        .from(scr, { borderRadius: 0, duration: 0.6 }, 2.4)
-        .from('.hand, .island', { autoAlpha: 0, duration: 0.5 }, 2.6)
-        .from('.mail', { yPercent: -140, autoAlpha: 0, duration: 0.4, stagger: 0.35, ease: 'power3.out' }, 3.4);
-      wordsIn(s7, '#always', 3.2);
+          { x: 0, y: 0, scale: 1, duration: 1.4, ease: 'power2.inOut' }, 0.6)
+        .fromTo(pose, { t: 0 }, { t: 1, duration: 1.4, ease: 'power2.inOut', onUpdate: function () { placeScreen(pose.t); } }, 0.6)
+        .from(scr, { borderRadius: 0, duration: 0.6 }, 0.9)
+        .from('.hand, .island', { autoAlpha: 0, duration: 0.45 }, 1.4)
+        .from('.mail', { yPercent: -140, autoAlpha: 0, duration: 0.4, stagger: 0.35, ease: 'power3.out' }, 1.9);
+      wordsIn(s7, '#always', 1.7);
       s7.to({}, { duration: 0.25 });
 
       // 8. Word rows slide against each other with the scroll.
