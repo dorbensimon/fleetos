@@ -29,6 +29,7 @@ import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from './
 import { FORM_PAGE_STYLES, heroEnter, useReducedMotion } from './form/RecordFormKit';
 import { t, getLocale } from '../../lib/i18n';
 import { COMPANY_TYPE_OPTIONS, companyTypeLabel, type CompanyType } from '../../lib/companyType';
+import { CompanyFoldersPanel } from '../companyDetail/CompanyFoldersPanel';
 
 /**
  * Desktop body of the company settings page. Three zones fill the width:
@@ -72,7 +73,7 @@ export interface CompanySettingsForm {
   stampUri: string | null;
 }
 
-type SectionKey = 'details' | 'contact' | 'report' | 'people' | 'safety' | 'branding';
+type SectionKey = 'details' | 'contact' | 'report' | 'people' | 'safety' | 'folders' | 'branding';
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 // חלקי הדף (פרטים, תקשורת, דוח, אנשי קשר, קציני בטיחות, לוגו)
@@ -113,6 +114,12 @@ const SECTIONS: {
     icon: 'shield-checkmark-outline',
   },
   {
+    key: 'folders',
+    get label() { return t('settings.section.folders'); },
+    get hint() { return t('settings.section.foldersHint'); },
+    icon: 'folder-open-outline',
+  },
+  {
     key: 'branding',
     get label() { return t('settings.section.logoStamp'); },
     get hint() { return t('settings.section.logoStampHint'); },
@@ -142,6 +149,7 @@ const PAGE_TOP = 24; // the page's top padding; section offsets are measured ins
 
 // הדף: תפריט צד, כותרת החברה, כל החלקים וכפתור שמירה צף
 export function CompanySettingsDesktopView({
+  companyId,
   form,
   errors,
   joinedAt,
@@ -157,6 +165,7 @@ export function CompanySettingsDesktopView({
   onSave,
   onDiscard,
 }: {
+  companyId: string | null;
   form: CompanySettingsForm;
   errors: Record<string, string>;
   joinedAt: string | null;
@@ -412,7 +421,13 @@ export function CompanySettingsDesktopView({
             </View>
           </Section>
 
-          <Section {...sectionProps('branding', 5)} last>
+          {!!companyId && (
+            <Section {...sectionProps('folders', 5)}>
+              <CompanyFoldersPanel companyId={companyId} companyName={form.name} hideTitle />
+            </Section>
+          )}
+
+          <Section {...sectionProps('branding', 6)} last>
             <View style={styles.brandingRow}>
               <View style={styles.brandingSlots}>
               <ImageSlot

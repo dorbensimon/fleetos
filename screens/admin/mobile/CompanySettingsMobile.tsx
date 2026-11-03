@@ -9,8 +9,10 @@ import { LiquidGlassSwitch } from '../../../components/ui/LiquidGlassSwitch';
 import type { CompanyContactForm, CompanySettingsForm, SafetyOfficerForm } from '../../../components/desktop/CompanySettingsDesktopView';
 import { COMPANY_TYPE_OPTIONS } from '../../../lib/companyType';
 import { t } from '../../../lib/i18n';
+import { CompanyFoldersPanel } from '../../../components/companyDetail/CompanyFoldersPanel';
 
 type Props = {
+  companyId: string | null;
   insetTop: number;
   insetBottom: number;
   form: CompanySettingsForm;
@@ -128,6 +130,8 @@ export function CompanySettingsMobile(p: Props) {
           </DKText>
         </KitSection>
       </Reveal>
+
+      {!!p.companyId && <CompanyFoldersPanel companyId={p.companyId} companyName={form.name} />}
     </DriverPage>
   );
 }

@@ -201,7 +201,7 @@ export function CompanyDetailMobile(p: Props) {
         <ListRow first icon="folder-open" title={t('companyPage.documentsAction')} subtitle={t('companyPage.documentsHint')} onPress={p.onDocuments} />
       </KitSection>
 
-      <CompanyFoldersPanel companyId={p.company.id} companyName={p.company.name} />
+      <CompanyFoldersPanel companyId={p.company.id} companyName={p.company.name} owner />
 
       <PaymentsSection companyId={p.company.id} monthlyPrice={a?.monthly_price ?? null} />
 

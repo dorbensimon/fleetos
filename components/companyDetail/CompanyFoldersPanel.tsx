@@ -37,7 +37,19 @@ type Draft = { id: string | null; title: string; ownerType: FolderOwnerType; tra
 const emptyDraft = (ownerType: FolderOwnerType = 'vehicle'): Draft => ({ id: null, title: '', ownerType, tracksExpiry: false, allCompanies: false });
 
 // הטעינה, הפעולות והחלונות; המראה לפי מחשב או טלפון
-export function CompanyFoldersPanel({ companyId, companyName }: { companyId: string; companyName: string }) {
+export function CompanyFoldersPanel({
+  companyId,
+  companyName,
+  owner = false,
+  hideTitle = false,
+}: {
+  companyId: string;
+  companyName: string;
+  /** The owner may also add a folder to every company at once. */
+  owner?: boolean;
+  /** Inside a page section that already names it. */
+  hideTitle?: boolean;
+}) {
   const desktop = useIsDesktop();
   const [folders, setFolders] = useState<CompanyFolder[] | null>(null);
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
@@ -118,7 +130,7 @@ export function CompanyFoldersPanel({ companyId, companyName }: { companyId: str
   };
 
   const form = draft ? (
-    <FolderForm desktop={desktop} draft={draft} companyName={companyName} onChange={setDraft} />
+    <FolderForm desktop={desktop} draft={draft} companyName={companyName} owner={owner} onChange={setDraft} />
   ) : null;
 
   if (desktop) {
@@ -132,7 +144,7 @@ export function CompanyFoldersPanel({ companyId, companyName }: { companyId: str
             </HoverPressable>
           }
         >
-          {t('companyFolders.title')}
+          {hideTitle ? '' : t('companyFolders.title')}
         </GroupLabel>
         <View style={[pageStyles.card, pageStyles.listCard]}>
           {folders == null && !failed ? (
@@ -278,7 +290,7 @@ export function CompanyFoldersPanel({ companyId, companyName }: { companyId: str
 }
 
 // שדות הטופס
-function FolderForm({ desktop, draft, companyName, onChange }: { desktop: boolean; draft: Draft; companyName: string; onChange: (d: Draft) => void }) {
+function FolderForm({ desktop, draft, companyName, owner, onChange }: { desktop: boolean; draft: Draft; companyName: string; owner: boolean; onChange: (d: Draft) => void }) {
   const set = (patch: Partial<Draft>) => onChange({ ...draft, ...patch });
   const whereOptions = [
     { value: 'vehicle' as const, label: t('companyFolders.inVehicle') },
@@ -311,7 +323,7 @@ function FolderForm({ desktop, draft, companyName, onChange }: { desktop: boolea
           <DesktopSelect value={draft.tracksExpiry ? 'yes' : 'no'} onChange={(v) => set({ tracksExpiry: v === 'yes' })} options={expiryOptions} large />
           <DText style={[pageStyles.rowNote, d.hint]}>{t('companyFolders.expiryHint')}</DText>
         </View>
-        {!draft.id && (
+        {!draft.id && owner && (
           <View>
             <DText style={pageStyles.editFieldLabel}>{t('companyFolders.scopeLabel')}</DText>
             <DesktopSelect value={draft.allCompanies ? 'all' : 'one'} onChange={(v) => set({ allCompanies: v === 'all' })} options={scopeOptions} large />
@@ -335,7 +347,7 @@ function FolderForm({ desktop, draft, companyName, onChange }: { desktop: boolea
         hint={t('companyFolders.expiryHint')}
         editor={<ChoiceChips label={t('companyFolders.expiryLabel')} value={draft.tracksExpiry ? 'yes' : 'no'} onChange={(v) => set({ tracksExpiry: v === 'yes' })} options={expiryOptions} />}
       />
-      {!draft.id && (
+      {!draft.id && owner && (
         <EditField
           label={t('companyFolders.scopeLabel')}
           editor={<ChoiceChips label={t('companyFolders.scopeLabel')} value={draft.allCompanies ? 'all' : 'one'} onChange={(v) => set({ allCompanies: v === 'all' })} options={scopeOptions} />}
