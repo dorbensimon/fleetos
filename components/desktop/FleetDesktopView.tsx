@@ -358,20 +358,6 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
             </View>
           )}
         </HoverPressable>
-        <HoverPressable
-          style={[styles.primaryButton, tight && styles.primaryButtonTight]}
-          hoverMotionStyle={styles.primaryButtonHover}
-          pressMotionStyle={styles.pressDown}
-          onPress={onAdd}
-          accessibilityLabel={isDrivers ? t('driver.new') : t('vehicle.new')}
-        >
-          <Ionicons name="add" size={22} color="#FFFFFF" />
-          {!tight && (
-            <DText weight="semiBold" style={styles.primaryButtonText}>
-              {isDrivers ? t('driver.new') : t('vehicle.new')}
-            </DText>
-          )}
-        </HoverPressable>
       </View>
 
       <View style={enter(2)}>
@@ -419,6 +405,19 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
               </HoverPressable>
             </View>
           )}
+          <View style={styles.listHeadSpacer} />
+          <HoverPressable
+            style={styles.primaryButton}
+            hoverMotionStyle={styles.primaryButtonHover}
+            pressMotionStyle={styles.pressDown}
+            onPress={onAdd}
+            accessibilityLabel={isDrivers ? t('driver.new') : t('vehicle.new')}
+          >
+            <Ionicons name="add" size={22} color="#FFFFFF" />
+            <DText weight="semiBold" style={styles.primaryButtonText}>
+              {isDrivers ? t('driver.new') : t('vehicle.new')}
+            </DText>
+          </HoverPressable>
         </View>
 
         {error ? (
@@ -1021,7 +1020,6 @@ const styles = StyleSheet.create({
       transition: `transform 180ms ${EASE_OUT}, box-shadow 200ms ${EASE_OUT}`,
     }),
   },
-  primaryButtonTight: { width: 40, paddingStart: 0, paddingEnd: 0 },
   primaryButtonHover: {
     transform: [{ translateY: -1 }],
     ...webOnly({ boxShadow: '0 14px 28px rgba(47,91,255,0.38)' }),
@@ -1049,6 +1047,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 10,
   },
+  listHeadSpacer: { flex: 1 },
   listTitle: { fontSize: 17, lineHeight: 22, color: DESKTOP_COLORS.ink, letterSpacing: -0.3, flexShrink: 1 },
   listCount: { fontSize: 13.5, color: DESKTOP_COLORS.inkFaint, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   searchChip: {
