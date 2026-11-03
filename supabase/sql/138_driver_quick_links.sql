@@ -37,3 +37,4 @@ create index if not exists driver_quick_links_driver_idx on public.driver_quick_
 
 alter table public.driver_quick_links enable row level security;
 revoke all on public.driver_quick_links from anon, authenticated;
+grant select, insert, update, delete on public.driver_quick_links to service_role;

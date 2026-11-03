@@ -3934,6 +3934,7 @@
   },
   "quickLink": {
     "sendWhatsapp": "Отправить в WhatsApp",
+    "askDriver": "Запросить у водителя в WhatsApp",
     "askOdometer": "Запросить пробег в WhatsApp",
     "askDocument": "Запросить у водителя в WhatsApp",
     "noPhone": "У водителя нет корректного мобильного номера",

@@ -10,7 +10,8 @@ export function useWhatsappQuickLink() {
   const { showToast } = useToast();
   const [busy, setBusy] = useState(false);
 
-  const send = async (request: QuickLinkRequest, phoneHint?: string | null) => {
+  /** `request` may be a step that runs first (e.g. sending the form), inside the same click. */
+  const send = async (request: QuickLinkRequest | (() => Promise<QuickLinkRequest>), phoneHint?: string | null) => {
     if (busy) return;
     if (phoneHint !== undefined && !whatsappNumber(phoneHint)) {
       showToast(t('quickLink.noPhone'), 'warning');
@@ -22,7 +23,7 @@ export function useWhatsappQuickLink() {
     if (tab) tab.opener = null;
     setBusy(true);
     try {
-      const { phone, message } = await prepareQuickLink(request);
+      const { phone, message } = await prepareQuickLink(typeof request === 'function' ? await request() : request);
       const number = whatsappNumber(phone);
       if (!number) {
         tab?.close();
