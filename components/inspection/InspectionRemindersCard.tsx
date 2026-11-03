@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { DText, HoverPressable } from '../desktop/primitives';
-import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from '../desktop/desktopTheme';
+import { DesktopSelect, DText, HoverPressable } from '../desktop/primitives';
+import { DESKTOP_COLORS, DESKTOP_TONES } from '../desktop/desktopTheme';
 import { pageStyles } from '../desktop/record/RecordPage';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -52,26 +52,12 @@ export function InspectionRemindersCard({
           <Ionicons name="repeat" size={16} color={DESKTOP_COLORS.inkMuted} />
           <DText weight="semiBold" style={styles.headText}>{t('inspection.howOftenEach')}</DText>
         </View>
-        <View style={styles.chips} accessibilityRole="radiogroup">
-          {INSPECTION_REPEAT_OPTIONS.map((option) => {
-            const on = option.months === repeatMonths;
-            return (
-              <HoverPressable
-                key={option.months}
-                style={[styles.chip, on && styles.chipOn]}
-                hoverStyle={on ? undefined : styles.chipHover}
-                pressMotionStyle={pageStyles.pressDown}
-                onPress={() => void choose(option.months)}
-                disabled={saving !== null}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: on, busy: saving === option.months }}
-                accessibilityLabel={option.label}
-              >
-                {on && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
-                <DText weight="semiBold" style={[styles.chipText, on && styles.chipTextOn]}>{option.label}</DText>
-              </HoverPressable>
-            );
-          })}
+        <View style={styles.select}>
+          <DesktopSelect
+            value={String(repeatMonths)}
+            options={INSPECTION_REPEAT_OPTIONS.map((option) => ({ value: String(option.months), label: option.label }))}
+            onChange={(v) => v != null && void choose(Number(v))}
+          />
         </View>
         <DText style={styles.hint}>{repeatMonths === 0 ? t('inspection.noRemindersHint') : t('inspection.nextDateHint')}</DText>
         {!!error && <DText style={styles.error} accessibilityRole="alert">{error}</DText>}
@@ -104,24 +90,8 @@ const styles = StyleSheet.create({
   divider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
   head: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   headText: { fontSize: 14.5 },
-  // כפתורי הבחירה
-  chips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 },
-  chip: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 4,
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
-    backgroundColor: DESKTOP_COLORS.surface,
-    ...webOnly({ transition: 'background-color 150ms ease, border-color 150ms ease, transform 120ms ease-out' }),
-  },
-  chipHover: { backgroundColor: DESKTOP_COLORS.rowHover, borderColor: DESKTOP_COLORS.borderInput },
-  chipOn: { backgroundColor: DESKTOP_COLORS.brand, borderColor: DESKTOP_COLORS.brand, ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW }) },
-  chipText: { fontSize: 13, color: DESKTOP_COLORS.ink },
-  chipTextOn: { color: '#FFFFFF' },
+  // הרשימה הנפתחת
+  select: { width: 240, maxWidth: '100%', alignSelf: 'flex-end' },
   hint: { fontSize: 12.5, lineHeight: 18, color: DESKTOP_COLORS.inkMuted },
   error: { fontSize: 13, color: DESKTOP_TONES.bad.fg },
   // שורת ההתראה

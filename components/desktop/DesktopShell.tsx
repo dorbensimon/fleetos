@@ -12,7 +12,7 @@ import { DText, HoverPressable } from './primitives';
 import { BrandLogo } from '../ui/Brand';
 import { HeaderMenuProvider } from './headerMenu';
 import { NotificationsBell, OwnerNotificationsBell } from './NotificationsBell';
-import { DESKTOP_COLORS, DESKTOP_HEADER_HEIGHT, DESKTOP_SIDEBAR_WIDTH, webOnly } from './desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_HEADER_HEIGHT, DESKTOP_SIDEBAR_WIDTH } from './desktopTheme';
 import { t } from '../../lib/i18n';
 import { AnnouncementBanner } from '../AnnouncementBanner';
 
@@ -50,15 +50,12 @@ export function DesktopShell({
   active,
   breadcrumbs,
   headerAccessory,
-  hero,
   children,
 }: {
   active: NavKey;
   breadcrumbs: Breadcrumb[];
   /** Page-specific control shown in the top bar beside the notifications bell. */
   headerAccessory?: React.ReactNode;
-  /** Takes the breadcrumbs' place and turns the top bar night blue (the dashboard greeting). */
-  hero?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -230,14 +227,8 @@ export function DesktopShell({
       </View>
 
       <View style={styles.main}>
-        <View style={[styles.header, !!hero && styles.headerNight]}>
-          {/* The glow is clipped in its own layer so the bar's dropdowns can still hang below it. */}
-          {hero && (
-            <View style={[StyleSheet.absoluteFill, styles.nightGlowClip, { pointerEvents: 'none' }]}>
-              <View style={styles.nightGlow} />
-            </View>
-          )}
-          {hero ?? <View style={styles.breadcrumbs}>
+        <View style={styles.header}>
+          <View style={styles.breadcrumbs}>
             {breadcrumbs.map((breadcrumb, index) => {
               const last = index === breadcrumbs.length - 1;
               const crumb = typeof breadcrumb === 'string' ? breadcrumb : breadcrumb.label;
@@ -261,25 +252,25 @@ export function DesktopShell({
                 </React.Fragment>
               );
             })}
-          </View>}
+          </View>
 
           <HeaderMenuProvider>
             <View style={styles.headerActions}>
               {headerAccessory}
               {isAdmin && !!companyId && <NotificationsBell companyId={companyId} role={profile?.role} />}
               {isOwner && <OwnerNotificationsBell />}
-              <View style={[styles.headerDivider, !!hero && styles.headerDividerNight]} />
+              <View style={styles.headerDivider} />
               <HoverPressable
                 style={styles.user}
                 onPress={() => go(isDriver ? 'DriverProfile' : 'AdminProfile')}
                 accessibilityLabel={t('nav.myDetails')}
               >
-                <View style={[styles.userAvatar, !!hero && styles.userAvatarNight]}>
+                <View style={styles.userAvatar}>
                   <DText weight="bold" style={styles.userAvatarText}>{initials}</DText>
                 </View>
                 <View>
-                  <DText weight="semiBold" style={[styles.userName, !!hero && styles.textNight]}>{fullName}</DText>
-                  <DText style={[styles.userRole, !!hero && styles.textNightMuted]}>{roleLabel}</DText>
+                  <DText weight="semiBold" style={styles.userName}>{fullName}</DText>
+                  <DText style={styles.userRole}>{roleLabel}</DText>
                 </View>
               </HoverPressable>
             </View>
@@ -413,27 +404,6 @@ const styles = StyleSheet.create({
     borderBottomColor: DESKTOP_COLORS.border,
     zIndex: 20,
   },
-  // הסרגל העליון הכחול של הדשבורד, עם הברכה
-  headerNight: {
-    height: 76,
-    paddingHorizontal: 24,
-    backgroundColor: '#12306E',
-    borderBottomColor: 'transparent',
-    ...webOnly({ backgroundImage: 'linear-gradient(180deg, #12306E 0%, #0B1C45 100%)' }),
-  },
-  nightGlowClip: { overflow: 'hidden' },
-  nightGlow: {
-    position: 'absolute',
-    top: -180,
-    end: -120,
-    width: 380,
-    height: 380,
-    ...webOnly({ backgroundImage: 'radial-gradient(closest-side, rgba(47,91,255,0.38), rgba(47,91,255,0) 100%)' }),
-  },
-  headerDividerNight: { backgroundColor: 'rgba(255,255,255,0.16)' },
-  userAvatarNight: { backgroundColor: 'rgba(255,255,255,0.14)' },
-  textNight: { color: '#FFFFFF' },
-  textNightMuted: { color: 'rgba(255,255,255,0.66)' },
   // שביל הניווט (חשבון / הגדרות)
   breadcrumbs: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
   crumb: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },

@@ -13,7 +13,7 @@ import { daysUntilExpiry, formatDate } from '../../lib/theme';
 import { nextSort, sortRows, type TableSort } from '../../lib/sortRows';
 import { DLtrText, DText, HoverPressable, SortHeader } from './primitives';
 import { DESKTOP_AVATAR_COLORS, DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, DesktopTone, webOnly, DESKTOP_BRAND_SHADOW } from './desktopTheme';
-import { enter, enterRow, FilterCard, FilterCards, FleetMode, ModeSwitch } from './FleetOverview';
+import { enter, enterRow, FilterCard, FilterCards, FleetHeader, FleetMode, ModeSwitch } from './FleetOverview';
 import { t, dirIcon, textStart, textDirection, dirSign } from '../../lib/i18n';
 
 /**
@@ -282,6 +282,8 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
 
   return (
     <View style={[styles.root, compact && styles.rootCompact]}>
+      <FleetHeader />
+
       {/* What am I looking at (drivers / vehicles), then find, archive and add. */}
       <View
         style={[styles.toolbar, enter(1)]}
