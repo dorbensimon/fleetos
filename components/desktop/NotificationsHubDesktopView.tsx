@@ -6,6 +6,8 @@ import { BrandLoader } from '../ui/BrandLoader';
 import type { Notification } from '../../lib/adminApi';
 import {
   LEAD_RULES,
+  isCompanyFolderAlert,
+  leadRuleOf,
   leadPhrase,
   leadStepLabels,
   leadUnitWord,
@@ -514,11 +516,12 @@ function FeedRow({
 }) {
   const tone = notificationTone(n);
   const colors = tone === 'brand' ? { bg: '#E6F2F9', fg: DESKTOP_COLORS.brand } : DESKTOP_TONES[tone];
-  const type = n.notification_type as NotificationType | null;
+  // An added folder's alert is set on that folder's own row.
+  const type = (n.folder_key && isCompanyFolderAlert(n.folder_key) && typeInfo.has(n.folder_key) ? n.folder_key : n.notification_type) as NotificationType | null;
   const info = type ? typeInfo.get(type) : undefined;
   const category = categoryOf(n.notification_type);
   const canMute = !!info && !muted;
-  const hasLead = showLead && !!type && !!LEAD_RULES[type] && !!info;
+  const hasLead = showLead && !!type && !!leadRuleOf(type) && !!info;
 
   return (
     <View
@@ -769,7 +772,7 @@ function TypeCard({
   registerCard: (type: NotificationType, node: View | null) => void;
 }) {
   const value = prefs.prefs?.[item.type] ?? true;
-  const rule = LEAD_RULES[item.type];
+  const rule = leadRuleOf(item.type);
   const leadValue = prefs.leads?.values[item.type];
   const leadEditable = canEditLeads && !!rule && leadValue != null && (prefs.leads!.perType || isVehicleFolderNotification(item.type));
   const label = compact ? shortLabel(item.label) : item.label;
@@ -787,7 +790,7 @@ function TypeCard({
       {flashNonce != null && <View key={flashNonce} style={[StyleSheet.absoluteFill, styles.cardFlash, { pointerEvents: 'none' }]} />}
       <View style={styles.cardHead}>
         <View style={[styles.cardIcon, !value && styles.cardIconOff]}>
-          <Ionicons name={TYPE_ICON[item.type] ?? 'notifications-outline'} size={18} color={value ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
+          <Ionicons name={TYPE_ICON[item.type] ?? (isCompanyFolderAlert(item.type) ? 'folder-open-outline' : 'notifications-outline')} size={18} color={value ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
         </View>
         <View style={styles.cardCopy}>
           <DText weight="bold" style={[styles.cardTitle, !value && styles.cardTitleOff]} numberOfLines={1}>{label}</DText>

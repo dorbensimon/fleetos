@@ -1,5 +1,5 @@
 // טעינה ושמירה של הגדרות ההתראות במסך
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useToast } from '../components/ui';
 import { useCompany } from './CompanyContext';
@@ -7,8 +7,11 @@ import {
   ADMIN_NOTIFICATION_TYPES,
   DRIVER_NOTIFICATION_TYPES,
   OWNER_NOTIFICATION_TYPES,
-  LEAD_RULES,
   NotificationLeads,
+  NotificationTypeInfo,
+  SHARED_FOLDER_TYPES,
+  companyFolderTypes,
+  leadRuleOf,
   NotificationPreferencesMap,
   NotificationType,
   getNotificationLeads,
@@ -19,6 +22,7 @@ import {
   setVehicleExpiryLeadDays,
 } from './notificationPreferencesApi';
 import { isVehicleFolderNotification } from './vehicleFolderAlerts';
+import { listCompanyFolders } from './companyFolders';
 import { t } from './i18n';
 import { errorMessage } from './requestError';
 
@@ -40,6 +44,8 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
   // Per-type lead times (admins only).
   const [leads, setLeads] = useState<NotificationLeads | null>(null);
   const [savingLeadType, setSavingLeadType] = useState<NotificationType | null>(null);
+  // A manager's row per company folder with an expiry date.
+  const [folderTypes, setFolderTypes] = useState<NotificationTypeInfo[]>([]);
   const loadRequest = useRef(0);
   // The latest values, for saves started one after another before a re-render.
   const prefsRef = useRef<NotificationPreferencesMap | null>(null);
@@ -50,7 +56,15 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
   const isDriver = profile?.role === 'driver';
   const isOwner = profile?.role === 'owner';
   const profileId = profile?.id;
-  const visibleTypes = isDriver ? DRIVER_NOTIFICATION_TYPES : isOwner ? OWNER_NOTIFICATION_TYPES : ADMIN_NOTIFICATION_TYPES;
+  const visibleTypes = useMemo(
+    () =>
+      isDriver
+        ? DRIVER_NOTIFICATION_TYPES
+        : isOwner
+          ? OWNER_NOTIFICATION_TYPES
+          : [...ADMIN_NOTIFICATION_TYPES.filter((entry) => !SHARED_FOLDER_TYPES.includes(entry.type)), ...folderTypes],
+    [isDriver, isOwner, folderTypes]
+  );
 
   const load = useCallback(async () => {
     const requestId = ++loadRequest.current;
@@ -68,9 +82,11 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
       if (requestId !== loadRequest.current) return;
       setPrefs(data);
       if (!isDriver && companyId) {
+        const folders = isOwner ? [] : companyFolderTypes(await listCompanyFolders(companyId).catch(() => []));
         // Hidden rather than failing the whole screen if the setting can't be read.
-        const perType = await getNotificationLeads(companyId).catch(() => null);
+        const perType = await getNotificationLeads(companyId, folders).catch(() => null);
         if (requestId !== loadRequest.current) return;
+        setFolderTypes(folders);
         setLeads(perType);
       }
     } catch (err: any) {
@@ -78,7 +94,7 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
     } finally {
       if (requestId === loadRequest.current) setLoading(false);
     }
-  }, [profileId, isDriver, companyId]);
+  }, [profileId, isDriver, isOwner, companyId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -128,7 +144,7 @@ export function useNotificationPreferences({ enabled = true }: { enabled?: boole
    * the vehicle folders can change, and they change together.
    */
   const setLead = async (type: NotificationType, value: number): Promise<boolean> => {
-    const rule = LEAD_RULES[type];
+    const rule = leadRuleOf(type);
     const leads = leadsRef.current;
     if (!companyId || !leads || !rule) return false;
     const next = Math.max(rule.min, Math.min(rule.max, Math.round(value / rule.step) * rule.step));

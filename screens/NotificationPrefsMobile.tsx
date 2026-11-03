@@ -8,6 +8,8 @@ import { ErrorState, LoadingState } from '../components/ui';
 import { LiquidGlassSwitch } from '../components/ui/LiquidGlassSwitch';
 import {
   LEAD_RULES,
+  isCompanyFolderAlert,
+  leadRuleOf,
   leadPhrase,
   leadStepLabels,
   leadUnitWord,
@@ -300,7 +302,7 @@ function Row({
   reduceMotion: boolean;
 }) {
   const value = state.prefs?.[item.type] ?? true;
-  const rule = LEAD_RULES[item.type];
+  const rule = leadRuleOf(item.type);
   const leadValue = state.leads?.values[item.type];
   const leadEditable = canEditLeads && !!rule && leadValue != null && (state.leads!.perType || isVehicleFolderNotification(item.type));
   const label = compact ? shortLabel(item.label) : item.label;
@@ -310,7 +312,7 @@ function Row({
     <View style={[styles.row, !first && styles.divider]}>
       <View style={styles.rowTop}>
         <View style={[styles.icon, !value && styles.iconOff]}>
-          <Ionicons name={ICON[item.type] ?? 'notifications'} size={19} color={value ? DK.accent : DK.faint} />
+          <Ionicons name={ICON[item.type] ?? (isCompanyFolderAlert(item.type) ? 'folder-open' : 'notifications')} size={19} color={value ? DK.accent : DK.faint} />
         </View>
         <View style={styles.text}>
           <DKText variant="label" color={value ? DK.ink : DK.muted}>
