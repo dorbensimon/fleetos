@@ -4,7 +4,6 @@ import { docusealFetch } from '../_shared/docuseal.ts';
 import { signaturePng } from '../_shared/checklistDocument.ts';
 import { verifyUser } from '../_shared/verifyUser.ts';
 import {
-  DEFAULT_INSPECTION_FORM,
   DRIVER_FIELD,
   DRIVER_ROLE,
   INSPECTION_LIMITS,
@@ -24,6 +23,7 @@ import {
   type InspectionFacts,
   type InspectionForm,
 } from '../_shared/inspectionDocument.ts';
+import { INSPECTION_KINDS, READY_INSPECTION_FORMS, inspectionKindOf, type InspectionKind } from '../_shared/inspectionKinds.ts';
 
 /**
  * "בדיקות בטיחות": the safety officer's periodic check of a vehicle
@@ -42,7 +42,7 @@ import {
  *              "בוטל", and the vehicle's next date goes back.
  * document     a short-lived link to the finished PDF.
  * set-next     moves one vehicle's next inspection.
- * settings     how often vehicles are checked, and the company's own list.
+ * settings     how often vehicles are checked, and the company's own list for one kind of vehicle.
  *
  * Only the company's managers (and the platform owner) reach any of these.
  */
@@ -177,9 +177,9 @@ Deno.serve(async (req) => {
 
       const { vehicleId } = body;
       if (typeof vehicleId !== 'string' || !UUID.test(vehicleId)) return json({ error: 'חסר הרכב לבדיקה' }, 400);
-      const { data: vehicle } = await db.from('vehicles').select('id, status').eq('id', vehicleId).eq('company_id', companyId).maybeSingle();
+      const { data: vehicle } = await db.from('vehicles').select('id, status, vehicle_type').eq('id', vehicleId).eq('company_id', companyId).maybeSingle();
       if (!vehicle || vehicle.status === 'archived') return json({ error: 'אפשר לבדוק רק רכב פעיל של החברה' }, 400);
-      const form = await companyForm(db, companyId);
+      const form = await companyForm(db, companyId, inspectionKindOf(vehicle.vehicle_type));
       const { data: created, error } = await db.from('vehicle_inspections').insert({
         company_id: companyId,
         vehicle_id: vehicleId,
@@ -725,17 +725,21 @@ Deno.serve(async (req) => {
         patch.repeat_months = body.repeatMonths;
       }
       if (body.form !== undefined) {
-        if (body.form === null) patch.form = null;
+        const kind = body.kind as InspectionKind;
+        if (!INSPECTION_KINDS.includes(kind)) return json({ error: 'סוג הרשימה אינו מוכר' }, 400);
+        const forms = { ...(await companySettings(db, companyId)).forms };
+        if (body.form === null) delete forms[kind];
         else {
           const form = parseInspectionForm(body.form);
           if (!form) return json({ error: 'רשימת הסעיפים אינה תקינה. בדקו שלכל קבוצה יש שם ולפחות סעיף אחד.' }, 400);
-          patch.form = form;
+          forms[kind] = form;
         }
+        patch.forms = forms;
       }
       if (!Object.keys(patch).length) return json({ error: 'אין מה לשמור' }, 400);
       const { data: saved, error } = await db.from('vehicle_inspection_settings')
         .upsert({ company_id: companyId, ...patch, updated_by: user.userId }, { onConflict: 'company_id' })
-        .select('company_id, repeat_months, form').single();
+        .select('company_id, repeat_months, forms').single();
       if (error || !saved) return json({ error: 'שמירת ההגדרות נכשלה' }, 500);
       return json({ settings: saved });
     }
@@ -764,16 +768,22 @@ function letterheadOf(company: { name?: string | null; logo_url?: string | null 
 }
 
 // הגדרות הבדיקות של החברה
-async function companySettings(db: Db, companyId: string): Promise<{ repeatMonths: number; form: InspectionForm | null }> {
-  const { data } = await db.from('vehicle_inspection_settings').select('repeat_months, form').eq('company_id', companyId).maybeSingle();
+/** forms: the company's own list for each kind it changed. */
+async function companySettings(db: Db, companyId: string): Promise<{ repeatMonths: number; forms: Partial<Record<InspectionKind, InspectionForm>> }> {
+  const { data } = await db.from('vehicle_inspection_settings').select('repeat_months, forms').eq('company_id', companyId).maybeSingle();
   const months = typeof data?.repeat_months === 'number' ? data.repeat_months : 1;
-  return { repeatMonths: months, form: data?.form ? parseInspectionForm(data.form) : null };
+  const forms: Partial<Record<InspectionKind, InspectionForm>> = {};
+  for (const kind of INSPECTION_KINDS) {
+    const form = parseInspectionForm(data?.forms?.[kind]);
+    if (form) forms[kind] = form;
+  }
+  return { repeatMonths: months, forms };
 }
 
 // הרשימה שבדיקה מתחילה ממנה
-/** The list a new inspection starts from: the company's own, or the ready-made one. */
-async function companyForm(db: Db, companyId: string): Promise<InspectionForm> {
-  return (await companySettings(db, companyId)).form ?? DEFAULT_INSPECTION_FORM;
+/** The list a new inspection of a vehicle of this kind starts from: the company's own, or the ready-made one. */
+async function companyForm(db: Db, companyId: string, kind: InspectionKind): Promise<InspectionForm> {
+  return (await companySettings(db, companyId)).forms[kind] ?? READY_INSPECTION_FORMS[kind];
 }
 
 // ה-PDF הגמור מ-DocuSeal

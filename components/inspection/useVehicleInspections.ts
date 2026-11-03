@@ -34,7 +34,7 @@ export function useVehicleInspections(companyId: string | null | undefined, vehi
       const [rows, planRows, settings] = await Promise.all([
         listInspections(companyId, vehicleId),
         loadInspectionPlan(companyId).catch(() => [] as InspectionPlanRow[]),
-        getInspectionSettings(companyId).catch(() => ({ repeatMonths: 1, form: null })),
+        getInspectionSettings(companyId).catch(() => ({ repeatMonths: 1, forms: {} })),
       ]);
       if (current !== generation.current) return;
       setEntries(rows.map((row) => ({ row, state: listStateOf(row) })));

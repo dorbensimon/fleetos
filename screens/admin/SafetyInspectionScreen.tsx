@@ -34,7 +34,6 @@ import { formatPlate } from '../../lib/plate';
 import { vehicleTest } from '../../lib/compliance';
 import { downloadRemoteFileOnWeb } from '../../lib/webDownload';
 import {
-  DEFAULT_INSPECTION_FORM,
   INSPECTION_DISCLAIMER,
   INSPECTION_LIMITS,
   INSPECTION_STATE_META,
@@ -54,7 +53,9 @@ import {
   inspectionState,
   notifyInspectionDriver,
   readExtraDefects,
+  inspectionKindOf,
   readInspectionForm,
+  READY_INSPECTION_FORMS,
   recentInspectorNames,
   saveInspectionDraft,
   signInspection,
@@ -210,7 +211,8 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
           if (target.status === 'archived') throw new Error(t('inspection.archivedVehicle'));
           const settings = await getInspectionSettings(target.company_id).catch(() => null);
           if (!active) return;
-          setForm(settings?.form ?? DEFAULT_INSPECTION_FORM);
+          const kind = inspectionKindOf(target.vehicle_type);
+          setForm(settings?.forms[kind] ?? READY_INSPECTION_FORMS[kind]);
           // The vehicle's own driver, the primary one first.
           const own = companyDrivers
             .filter((d) => d.vehicles.some((v) => v.id === vehicleId))

@@ -1,16 +1,20 @@
 jest.mock('../supabase', () => ({ supabase: {} }));
 
 import {
-  DEFAULT_INSPECTION_FORM,
+  INSPECTION_KINDS,
+  READY_INSPECTION_FORMS,
   cleanList,
   defectLines,
   formItems,
   hasDocument,
+  inspectionKindOf,
   inspectionProblem,
   inspectionState,
   listProblem,
   newListId,
   readInspectionForm,
+  readInspectionForms,
+  vehicleTypesOfKind,
   type InspectionAnswers,
   type InspectionForm,
   type InspectionListRow,
@@ -29,12 +33,27 @@ const small: InspectionForm = {
   ],
 };
 
-describe('the ready-made list', () => {
-  test('every item has its own id, fit for the server', () => {
-    const ids = formItems(DEFAULT_INSPECTION_FORM).map((item) => item.id);
+describe('the ready-made lists', () => {
+  test.each(INSPECTION_KINDS)('%s: every item has its own id, fit for the server', (kind) => {
+    const form = READY_INSPECTION_FORMS[kind];
+    const ids = formItems(form).map((item) => item.id);
     expect(new Set(ids).size).toBe(ids.length);
     ids.forEach((id) => expect(id).toMatch(/^[A-Za-z0-9_-]{1,40}$/));
-    expect(listProblem(DEFAULT_INSPECTION_FORM)).toBeNull();
+    expect(listProblem(form)).toBeNull();
+  });
+
+  test('every vehicle type belongs to one kind, unknown ones to the car list', () => {
+    const types = INSPECTION_KINDS.flatMap(vehicleTypesOfKind);
+    expect(types).toHaveLength(21);
+    expect(inspectionKindOf('forklift')).toBe('forklift');
+    expect(inspectionKindOf('touring_bus')).toBe('bus');
+    expect(inspectionKindOf('spaceship')).toBe('car');
+    expect(inspectionKindOf(null)).toBe('car');
+  });
+
+  test('a company keeps only the kinds it changed, and only valid lists', () => {
+    expect(readInspectionForms({ truck: small, bus: { groups: 'x' }, rocket: small })).toEqual({ truck: small });
+    expect(readInspectionForms(null)).toEqual({});
   });
 
   test('new ids fit the server too', () => {
