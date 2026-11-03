@@ -13,7 +13,7 @@ import { daysUntilExpiry, formatDate } from '../../lib/theme';
 import { nextSort, sortRows, type TableSort } from '../../lib/sortRows';
 import { DLtrText, DText, HoverPressable, SortHeader } from './primitives';
 import { DESKTOP_AVATAR_COLORS, DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, DesktopTone, webOnly, DESKTOP_BRAND_SHADOW } from './desktopTheme';
-import { enter, enterRow, FilterCard, FilterCards, FleetHeader, FleetMode, ModeSwitch } from './FleetOverview';
+import { enter, enterRow, FilterCard, FilterCards, FleetMode, ModeSwitch } from './FleetOverview';
 import { t, dirIcon, textStart, textDirection, dirSign } from '../../lib/i18n';
 
 /**
@@ -282,8 +282,6 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
 
   return (
     <View style={[styles.root, compact && styles.rootCompact]}>
-      <FleetHeader />
-
       {/* What am I looking at (drivers / vehicles), then find, archive and add. */}
       <View
         style={[styles.toolbar, enter(1)]}
@@ -413,6 +411,7 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
             onPress={onAdd}
             accessibilityLabel={isDrivers ? t('driver.new') : t('vehicle.new')}
           >
+            <Ionicons name="add" size={16} color={DESKTOP_COLORS.ink} />
             <DText weight="semiBold" style={styles.headButtonText}>
               {isDrivers ? t('driver.new') : t('vehicle.new')}
             </DText>
@@ -1025,9 +1024,9 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: { color: '#FFFFFF', fontSize: 14.5 },
   // A text-only add button in the list header; the negative margin keeps the header its own height.
-  headButton: { height: 30, marginVertical: -4, paddingHorizontal: 6, justifyContent: 'center', ...webOnly({ cursor: 'pointer' }) },
+  headButton: { height: 30, marginVertical: -4, paddingHorizontal: 6, flexDirection: 'row-reverse', alignItems: 'center', gap: 4, ...webOnly({ cursor: 'pointer' }) },
   headButtonHover: { opacity: 0.7 },
-  headButtonText: { fontSize: 13, color: DESKTOP_COLORS.brand },
+  headButtonText: { fontSize: 13, color: DESKTOP_COLORS.ink },
 
   // כרטיס הטבלה
   listCard: {

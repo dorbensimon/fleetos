@@ -29,7 +29,7 @@ import { useIsDesktop } from '../../lib/useDesktopLayout';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
 import { FleetDesktopView } from '../../components/desktop/FleetDesktopView';
 import { loadInspectionPlan } from '../../lib/inspections';
-import { AttentionMenu } from '../../components/desktop/FleetOverview';
+import { AttentionMenu, FleetHeader } from '../../components/desktop/FleetOverview';
 import { attentionRoute, type AttentionGroup, type AttentionItem } from '../../lib/attention';
 import { loadAttention } from '../../lib/adminApi/attention';
 import { FleetMobile, type DriverFilter, type VehicleFilter } from './mobile/FleetMobile';
@@ -430,6 +430,7 @@ export default function FleetScreen() {
       <DesktopShell
         active="AdminHome"
         breadcrumbs={[t('nav.dashboard')]}
+        hero={<FleetHeader />}
         headerAccessory={
           <AttentionMenu
             groups={attention}
