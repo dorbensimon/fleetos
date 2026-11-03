@@ -757,8 +757,8 @@ const styles = StyleSheet.create({
     textAlign: textStart(),
     textAlignVertical: 'top',
   },
-  dialogActions: { flexDirection: 'row-reverse', gap: 12, marginTop: 4 },
-  dialogBtn: { flex: 1, height: 50, borderRadius: 13, justifyContent: 'center' },
-  dialogBtnPrimaryText: { fontSize: 16, color: '#FFFFFF' },
-  dialogBtnText: { fontSize: 16, color: DESKTOP_COLORS.ink },
+  dialogActions: { flexDirection: 'row-reverse', gap: 8, marginTop: 4 },
+  dialogBtn: { height: 36, minWidth: 96, paddingHorizontal: 16, borderRadius: 9, justifyContent: 'center', ...webOnly({ boxShadow: 'none' }) },
+  dialogBtnPrimaryText: { fontSize: 14.5, color: '#FFFFFF' },
+  dialogBtnText: { fontSize: 14.5, color: DESKTOP_COLORS.ink },
 });

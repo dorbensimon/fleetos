@@ -591,8 +591,9 @@ export const pageStyles = StyleSheet.create({
   editHint: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
   editFieldLabel: { fontSize: 13, color: DESKTOP_COLORS.inkMuted, marginBottom: 4 },
   editError: { fontSize: 13.5, color: DESKTOP_TONES.bad.fg },
-  editActions: { flexDirection: 'row-reverse', gap: 10, marginTop: 6 },
-  editActionBtn: { flex: 1, justifyContent: 'center' },
+  // כפתורי שמירה וביטול בחלון צף: קטנים, לפי גודל הטקסט
+  editActions: { flexDirection: 'row-reverse', gap: 8, marginTop: 6 },
+  editActionBtn: { height: 36, minWidth: 96, paddingHorizontal: 16, borderRadius: 9, justifyContent: 'center', ...webOnly({ boxShadow: 'none' }) },
   monthYearRow: { flexDirection: 'row-reverse', gap: 12 },
   monthYearCell: { flex: 1 },
 });
