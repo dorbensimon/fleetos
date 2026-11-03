@@ -76,6 +76,14 @@ const DRIVER_DATES = [
   { key: 'hazmat_permit_expiry', label: () => t('driver.hazmatPermitExpiry') },
 ] as const;
 
+// אפשר לבקש מהנהג בוואטסאפ עותק חדש
+/** A driver's document folder that has run out (or soon will, or is missing): the driver can upload a new copy from a link. */
+export function canAskDriverForDocument(row: ValidityRow): boolean {
+  return row.ownerType === 'driver'
+    && (row.days == null || row.days <= VALIDITY_SOON_DAYS)
+    && !DRIVER_DATES.some((d) => d.key === row.folderKey);
+}
+
 // התוקף של כל תיקיית מסמכים, לכל בעלים: לפי הקובץ האחרון שהועלה
 /** `owner_id|category` → the expiry of that folder's newest file (folders whose newest file has no date are left out). */
 export async function folderExpiries(companyId: string, ownerType: ValidityOwner, ownerIds: string[], categories: string[]) {

@@ -14,6 +14,8 @@ type Props = {
   saving: boolean;
   onSave: () => void;
   onBack: () => void;
+  /** Replaces the default line under the title, e.g. the vehicle on a link page. */
+  subtitle?: string;
 };
 
 // מספר גדול והפרש מהקריאה הקודמת
@@ -35,7 +37,7 @@ export function DriverOdometerMobile(p: Props) {
     <DriverPage
       insetTop={p.insetTop}
       insetBottom={p.insetBottom}
-      hero={<HeroTitle title={t('odometer.updateKm')} subtitle={t('odometer.dashboardNumber')} onBack={p.onBack} />}
+      hero={<HeroTitle title={t('odometer.updateKm')} subtitle={p.subtitle ?? t('odometer.dashboardNumber')} onBack={p.onBack} />}
       footer={
         <PrimaryAction
           label={t('odometer.saveMileage')}

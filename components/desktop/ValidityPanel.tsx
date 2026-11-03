@@ -6,12 +6,13 @@ import { BrandLoader } from '../ui/BrandLoader';
 import { DLtrText, DText, HoverPressable } from './primitives';
 import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, webOnly } from './desktopTheme';
 import { useCompany } from '../../lib/CompanyContext';
-import { filterValidity, loadValidity, validityStatusText, validityTable, type ValidityData, type ValidityOwner, type ValidityRow, type ValidityState } from '../../lib/validityList';
+import { canAskDriverForDocument, filterValidity, loadValidity, validityStatusText, validityTable, type ValidityData, type ValidityOwner, type ValidityRow, type ValidityState } from '../../lib/validityList';
 import { XLSX_MIME, xlsxBytes } from '../../lib/xlsx';
 import { downloadRemoteFileOnWeb } from '../../lib/webDownload';
 import { formatDate } from '../../lib/theme';
 import { errorMessage } from '../../lib/requestError';
 import { t, dirIcon } from '../../lib/i18n';
+import { useWhatsappQuickLink } from '../../lib/useWhatsappQuickLink';
 
 /**
  * Every dated folder of every vehicle and driver, as it stands right now:
@@ -21,6 +22,7 @@ import { t, dirIcon } from '../../lib/i18n';
  */
 export function ValidityPanel({ onOpen, compact }: { onOpen: (row: ValidityRow) => void; compact?: boolean }) {
   const { companyId } = useCompany();
+  const whatsapp = useWhatsappQuickLink();
   const [data, setData] = useState<ValidityData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [owner, setOwner] = useState<ValidityOwner>('vehicle');
@@ -163,6 +165,16 @@ export function ValidityPanel({ onOpen, compact }: { onOpen: (row: ValidityRow) 
                     <DText weight="semiBold" style={[styles.tagText, { color: tone.fg }]}>{validityStatusText(row)}</DText>
                   </View>
                 </View>
+                {canAskDriverForDocument(row) && (
+                  <HoverPressable
+                    style={styles.whatsapp}
+                    hoverStyle={styles.rowHover}
+                    onPress={() => void whatsapp.send({ kind: 'document', driverId: row.ownerId, category: row.folderKey, title: row.folderLabel })}
+                    accessibilityLabel={t('quickLink.askDocument')}
+                  >
+                    <Ionicons name="logo-whatsapp" size={17} color={DESKTOP_COLORS.brand} />
+                  </HoverPressable>
+                )}
                 <Ionicons name={dirIcon('chevron-back')} size={16} color={DESKTOP_COLORS.inkFaint} />
               </HoverPressable>
             );
@@ -240,6 +252,7 @@ const styles = StyleSheet.create({
   chipCount: { fontSize: 12, color: DESKTOP_COLORS.inkFaint, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   total: { fontSize: 13, color: DESKTOP_COLORS.inkMuted },
   list: { backgroundColor: DESKTOP_COLORS.surface, borderRadius: 14, borderWidth: 1, borderColor: DESKTOP_COLORS.border, overflow: 'hidden' },
+  whatsapp: { padding: 6, borderRadius: 6 },
   row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 12 },
   rowCompact: { flexWrap: 'wrap', gap: 8 },
   rowBorder: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },

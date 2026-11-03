@@ -3931,5 +3931,31 @@
       "transfer": "Transfer to the driver",
       "company": "Paid by the company"
     }
+  },
+  "quickLink": {
+    "sendWhatsapp": "Send on WhatsApp",
+    "askOdometer": "Ask for odometer on WhatsApp",
+    "askDocument": "Ask driver on WhatsApp",
+    "noPhone": "The driver has no valid mobile number",
+    "failed": "Could not create the link",
+    "msgSign": "Hi {{name}}, you have a document to sign from {{company}}: {{title}}\nSign here: {{url}}",
+    "msgOdometer": "Hi {{name}}, please update the odometer of vehicle {{plate}} ({{company}}).\nUpdate here: {{url}}\nThe link is valid for 7 days.",
+    "msgDocument": "Hi {{name}}, please update the document \"{{title}}\" ({{company}}).\nUpload a new copy: {{url}}\nThe link is valid for 7 days.",
+    "hello": "Hi {{name}}",
+    "odometerTitle": "Odometer update",
+    "vehicleOf": "Vehicle {{plate}} · {{company}}",
+    "lastOdometer": "Last odometer: {{km}}",
+    "odometerLabel": "Current odometer",
+    "send": "Send",
+    "odometerDone": "Thank you! The odometer was updated.",
+    "documentTitle": "Upload a document",
+    "pickFile": "Take a photo or choose a file",
+    "uploaded": "{{count}} of {{max}} files uploaded. You can add another page or close this page.",
+    "badNumber": "Enter a number",
+    "copied": "The browser blocked WhatsApp from opening. The message with the link was copied — paste it to the driver.",
+    "expiryLabel": "Expiry date of the new document",
+    "expiryOptional": "Expiry date (optional)",
+    "expiryFirst": "Choose the expiry date first",
+    "invalid": "This link is not valid"
   }
 }

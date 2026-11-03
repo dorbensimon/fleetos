@@ -17,6 +17,7 @@ type Access = 'public' | readonly UserRole[];
 const ROUTE_ACCESS: Record<RouteName, Access> = {
   Login: 'public',
   Legal: 'public',
+  QuickLink: 'public',
   SetPassword: 'public',
 
   OwnerHome: ['owner'],

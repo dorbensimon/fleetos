@@ -45,6 +45,7 @@ import TrafficReportsScreen from './screens/admin/TrafficReportsScreen';
 import AdminProfileScreen from './screens/admin/AdminProfileScreen';
 import CompanySettingsScreen from './screens/admin/CompanySettingsScreen';
 import LegalScreen from './screens/LegalScreen';
+import QuickLinkScreen from './screens/QuickLinkScreen';
 import { LegalConsentGate } from './components/legal/LegalConsentGate';
 import { LEGAL_DOCUMENTS, isLegalDocId } from './lib/legal/documents';
 import SignedDocumentsScreen from './screens/admin/SignedDocumentsScreen';
@@ -141,6 +142,7 @@ const linking: LinkingOptions<RootStackParamList> = {
     screens: {
       Login: 'login',
       Legal: 'legal/:doc',
+      QuickLink: 'd/:token',
       SetPassword: 'set-password',
       OwnerHome: 'owner',
       CompanyPicker: 'companies',
@@ -385,6 +387,7 @@ export default function App() {
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
               <Stack.Screen name="Legal" component={LegalScreen} />
+              <Stack.Screen name="QuickLink" component={QuickLinkScreen} />
               <Stack.Screen name="OwnerHome" component={OwnerHomeScreen} />
               <Stack.Screen name="DriverHome" component={DriverHomeScreen} />
               <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />

@@ -11,7 +11,21 @@ import { BrandLoader } from './components/ui/BrandLoader';
 // sendDefaultPii stays off and there is no session replay.
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
 if (Platform.OS === 'web' && sentryDsn) {
-  Sentry.init({ dsn: sentryDsn, environment: __DEV__ ? 'development' : 'production' });
+  // A driver's personal link (/d/<token>) works without a password; keep the token out of reports.
+  const hideToken = (url?: string) => url?.replace(/\/d\/[^/?#]+/g, '/d/[link]');
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: __DEV__ ? 'development' : 'production',
+    beforeSend(event) {
+      if (event.request?.url) event.request.url = hideToken(event.request.url);
+      return event;
+    },
+    beforeBreadcrumb(crumb) {
+      if (crumb.data?.from) crumb.data.from = hideToken(crumb.data.from);
+      if (crumb.data?.to) crumb.data.to = hideToken(crumb.data.to);
+      return crumb;
+    },
+  });
 }
 
 // טוען את השפה ואז את האפליקציה

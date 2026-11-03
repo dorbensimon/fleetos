@@ -27,6 +27,7 @@ import { showAlert } from '../../../lib/platformAlert';
 import { eraseSigningRequest, eraseWarning } from '../../../lib/signingSend';
 import { t, dirIcon, getLocale } from '../../../lib/i18n';
 import { errorMessage } from '../../../lib/requestError';
+import { useWhatsappQuickLink } from '../../../lib/useWhatsappQuickLink';
 import { useSigningStyles } from '../signing/folderCss';
 import { CreateDocumentSheet } from '../signing/CreateDocumentSheet';
 import { INSPECTION_TITLE } from '../../../lib/inspectionTitle';
@@ -245,6 +246,7 @@ function SigningFolderModal({
 }) {
   const [sending, setSending] = useState(false);
   const [opening, setOpening] = useState('');
+  const whatsapp = useWhatsappQuickLink();
   const [message, setMessage] = useState('');
   const sendingLock = useRef(false);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -504,6 +506,11 @@ function SigningFolderModal({
                   {ready && meeting && canSend && (
                     <HoverPressable onPress={() => startMeeting(meeting.id)} accessibilityLabel={t('signing.driverSignsNowHere')} style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
                       <DText weight="semiBold" style={styles.rowLink}>{t('signing.signNow')}</DText>
+                    </HoverPressable>
+                  )}
+                  {ready && canSend && (
+                    <HoverPressable onPress={() => void whatsapp.send({ kind: 'sign', requestId: item.id })} accessibilityLabel={t('quickLink.sendWhatsapp')} style={styles.rowAction} hoverStyle={recordStyles.rowHover}>
+                      <DText weight="semiBold" style={styles.rowLink}>{t('quickLink.sendWhatsapp')}</DText>
                     </HoverPressable>
                   )}
                   {openable && <DText weight="semiBold" style={styles.rowLink}>{opening === item.id ? t('common.opening') : t('common.view')}</DText>}
