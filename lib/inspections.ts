@@ -2,6 +2,15 @@
 import { supabase } from './supabase';
 import { functionErrorMessage } from './functionError';
 import { t } from './i18n';
+import { INSPECTION_KINDS, READY_INSPECTION_FORMS, type InspectionKind } from '../supabase/functions/_shared/inspectionKinds';
+
+export {
+  INSPECTION_KINDS,
+  READY_INSPECTION_FORMS,
+  inspectionKindOf,
+  vehicleTypesOfKind,
+  type InspectionKind,
+} from '../supabase/functions/_shared/inspectionKinds';
 
 /**
  * "בדיקות בטיחות": the safety officer walks around a vehicle, marks every item
@@ -40,53 +49,20 @@ export const INSPECTION_LIMITS = {
 export const INSPECTION_DISCLAIMER =
   'בדיקה זו נעשית במבט חיצוני בלבד ואינה מחליפה טיפול או בדיקה במוסך. על הנהג לדווח מיד לממונה על כל תקלה, או חשד לתקלה, שעלולה לפגוע בבטיחות הנסיעה.';
 
-// רשימת הבדיקה המוכנה, לפי סדר ההליכה סביב הרכב
-/** The ready-made list, in the order you walk around a vehicle. Same as the server's DEFAULT_INSPECTION_FORM. */
-export const DEFAULT_INSPECTION_FORM: InspectionForm = {
-  version: 1,
-  groups: [
-    { id: 'outside', title: 'מבחוץ', items: [
-      { id: 'out-glass', text: 'שמשות, מגבים ומתזים' },
-      { id: 'out-mirrors', text: 'מראות' },
-      { id: 'out-doors', text: 'דלתות ונעילה' },
-      { id: 'out-body', text: 'פחחות: פגיעות ושריטות' },
-      { id: 'out-signs', text: 'שילוט על דפנות הרכב' },
-    ] },
-    { id: 'wheels', title: 'גלגלים ובלימה', items: [
-      { id: 'whl-tyres', text: 'מצב הצמיגים ולחץ האוויר' },
-      { id: 'whl-nuts', text: 'הידוק ברגי הגלגלים' },
-      { id: 'whl-brakes', text: 'בלמים ובלם עזר' },
-      { id: 'whl-spare', text: 'גלגל חלופי, מגבה ומפתח' },
-    ] },
-    { id: 'under', title: 'מתחת למכסה ומתחת לרכב', items: [
-      { id: 'und-leaks', text: 'נזילות: שמן, סולר, מים' },
-      { id: 'und-air', text: 'דליפות אוויר' },
-      { id: 'und-steer', text: 'היגוי' },
-      { id: 'und-exhaust', text: 'מערכת פליטה' },
-      { id: 'und-battery', text: 'מצברים וכבלים' },
-    ] },
-    { id: 'lights', title: 'תאורה ולוח שעונים', items: [
-      { id: 'lgt-lamps', text: 'פנסים ואיתות' },
-      { id: 'lgt-inside', text: 'תאורת פנים' },
-      { id: 'lgt-warn', text: 'נורות אזהרה בלוח' },
-      { id: 'lgt-tacho', text: 'מד מהירות וטכוגרף' },
-      { id: 'lgt-horn', text: 'צופר וזמזם רוורס' },
-      { id: 'lgt-ac', text: 'מיזוג' },
-    ] },
-    { id: 'cabin', title: 'תא הנוסעים', items: [
-      { id: 'cab-clean', text: 'ניקיון כללי' },
-      { id: 'cab-seats', text: 'מושבים וחגורות' },
-      { id: 'cab-exits', text: 'פטישי חילוץ ויציאות חירום' },
-      { id: 'cab-audio', text: 'רמקולים ומיקרופון' },
-    ] },
-    { id: 'kit', title: 'ציוד חובה ומסמכים', items: [
-      { id: 'kit-fire', text: 'מטפי כיבוי' },
-      { id: 'kit-aid', text: 'ערכת עזרה ראשונה' },
-      { id: 'kit-triangle', text: 'משולש אזהרה ואפוד זוהר' },
-      { id: 'kit-papers', text: 'רישיון רכב וביטוח ברכב' },
-    ] },
-  ],
+// השם של כל סוג רשימה
+export const INSPECTION_KIND_LABELS: Record<InspectionKind, string> = {
+  get car() { return t('inspection.kindCar'); },
+  get bus() { return t('inspection.kindBus'); },
+  get truck() { return t('inspection.kindTruck'); },
+  get trailer() { return t('inspection.kindTrailer'); },
+  get forklift() { return t('inspection.kindForklift'); },
+  get equipment() { return t('inspection.kindEquipment'); },
+  get small() { return t('inspection.kindSmall'); },
 };
+
+// רשימת הבדיקה המוכנה כשאין סוג רכב
+/** The ready-made list for a vehicle of no known kind; every kind's list is in READY_INSPECTION_FORMS. */
+export const DEFAULT_INSPECTION_FORM: InspectionForm = READY_INSPECTION_FORMS.car;
 
 // מילים, אייקונים וצבעים לכל תשובה
 /**
@@ -347,7 +323,20 @@ export async function recentInspectorNames(companyId: string): Promise<string[]>
 
 // ── Settings ─────────────────────────────────────────────────────────────
 
-export type InspectionSettings = { repeatMonths: number; form: InspectionForm | null };
+/** forms: the company's own list for each kind it changed; a kind left out keeps its ready-made list. */
+export type InspectionSettings = { repeatMonths: number; forms: Partial<Record<InspectionKind, InspectionForm>> };
+
+// הרשימות של החברה, לפי סוג
+/** The company's own lists, by kind, read defensively. */
+export function readInspectionForms(value: unknown): Partial<Record<InspectionKind, InspectionForm>> {
+  const forms: Partial<Record<InspectionKind, InspectionForm>> = {};
+  if (!value || typeof value !== 'object') return forms;
+  for (const kind of INSPECTION_KINDS) {
+    const form = readInspectionForm((value as Record<string, unknown>)[kind]);
+    if (form) forms[kind] = form;
+  }
+  return forms;
+}
 
 // כל כמה זמן בודקים
 export const INSPECTION_REPEAT_OPTIONS = [
@@ -366,11 +355,11 @@ export function inspectionRepeatLabel(months: number): string {
 
 // הגדרות הבדיקות של החברה
 export async function getInspectionSettings(companyId: string): Promise<InspectionSettings> {
-  const { data, error } = await supabase.from('vehicle_inspection_settings').select('repeat_months, form').eq('company_id', companyId).maybeSingle();
+  const { data, error } = await supabase.from('vehicle_inspection_settings').select('repeat_months, forms').eq('company_id', companyId).maybeSingle();
   if (error) throw error;
   return {
     repeatMonths: typeof data?.repeat_months === 'number' ? data.repeat_months : 1,
-    form: data?.form ? readInspectionForm(data.form) : null,
+    forms: readInspectionForms(data?.forms),
   };
 }
 
@@ -484,14 +473,15 @@ export async function inspectionDocument(companyId: string, inspectionId: string
 }
 
 // שומר את הגדרות הבדיקות
-/** How often vehicles are checked, and/or the company's own list (null brings back the ready-made one). */
+/** How often vehicles are checked, and/or the company's own list for one kind (null brings back the ready-made one). */
 export async function saveInspectionSettings(
   companyId: string,
-  patch: { repeatMonths?: number; form?: InspectionForm | null },
+  patch: { repeatMonths?: number } | { kind: InspectionKind; form: InspectionForm | null },
 ): Promise<InspectionSettings> {
-  const { settings } = await invoke<{ settings: { repeat_months: number; form: unknown } }>(
-    { action: 'settings', companyId, ...patch, ...(patch.form ? { form: cleanList(patch.form) } : {}) },
+  const body = 'kind' in patch ? { kind: patch.kind, form: patch.form ? cleanList(patch.form) : null } : patch;
+  const { settings } = await invoke<{ settings: { repeat_months: number; forms: unknown } }>(
+    { action: 'settings', companyId, ...body },
     t('common.saveSettingsFailed'),
   );
-  return { repeatMonths: settings.repeat_months, form: settings.form ? readInspectionForm(settings.form) : null };
+  return { repeatMonths: settings.repeat_months, forms: readInspectionForms(settings.forms) };
 }

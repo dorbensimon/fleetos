@@ -11,6 +11,8 @@
  * in the driver's place.
  */
 
+import { READY_INSPECTION_FORMS } from './inspectionKinds.ts';
+
 // תפקיד הקצין
 export const OFFICER_ROLE = 'החברה';
 // תפקיד הנהג
@@ -53,56 +55,9 @@ const STATUSES: InspectionStatus[] = ['ok', 'not_ok', 'na'];
 // תבנית מזהה
 const ID = /^[A-Za-z0-9_-]{1,40}$/;
 
-// רשימת הבדיקה המוכנה
-/**
- * The ready-made list, in the order you walk around a vehicle. The same list
- * is in lib/inspections.ts (DEFAULT_INSPECTION_FORM); keep the two in step.
- */
-export const DEFAULT_INSPECTION_FORM: InspectionForm = {
-  version: 1,
-  groups: [
-    { id: 'outside', title: 'מבחוץ', items: [
-      { id: 'out-glass', text: 'שמשות, מגבים ומתזים' },
-      { id: 'out-mirrors', text: 'מראות' },
-      { id: 'out-doors', text: 'דלתות ונעילה' },
-      { id: 'out-body', text: 'פחחות: פגיעות ושריטות' },
-      { id: 'out-signs', text: 'שילוט על דפנות הרכב' },
-    ] },
-    { id: 'wheels', title: 'גלגלים ובלימה', items: [
-      { id: 'whl-tyres', text: 'מצב הצמיגים ולחץ האוויר' },
-      { id: 'whl-nuts', text: 'הידוק ברגי הגלגלים' },
-      { id: 'whl-brakes', text: 'בלמים ובלם עזר' },
-      { id: 'whl-spare', text: 'גלגל חלופי, מגבה ומפתח' },
-    ] },
-    { id: 'under', title: 'מתחת למכסה ומתחת לרכב', items: [
-      { id: 'und-leaks', text: 'נזילות: שמן, סולר, מים' },
-      { id: 'und-air', text: 'דליפות אוויר' },
-      { id: 'und-steer', text: 'היגוי' },
-      { id: 'und-exhaust', text: 'מערכת פליטה' },
-      { id: 'und-battery', text: 'מצברים וכבלים' },
-    ] },
-    { id: 'lights', title: 'תאורה ולוח שעונים', items: [
-      { id: 'lgt-lamps', text: 'פנסים ואיתות' },
-      { id: 'lgt-inside', text: 'תאורת פנים' },
-      { id: 'lgt-warn', text: 'נורות אזהרה בלוח' },
-      { id: 'lgt-tacho', text: 'מד מהירות וטכוגרף' },
-      { id: 'lgt-horn', text: 'צופר וזמזם רוורס' },
-      { id: 'lgt-ac', text: 'מיזוג' },
-    ] },
-    { id: 'cabin', title: 'תא הנוסעים', items: [
-      { id: 'cab-clean', text: 'ניקיון כללי' },
-      { id: 'cab-seats', text: 'מושבים וחגורות' },
-      { id: 'cab-exits', text: 'פטישי חילוץ ויציאות חירום' },
-      { id: 'cab-audio', text: 'רמקולים ומיקרופון' },
-    ] },
-    { id: 'kit', title: 'ציוד חובה ומסמכים', items: [
-      { id: 'kit-fire', text: 'מטפי כיבוי' },
-      { id: 'kit-aid', text: 'ערכת עזרה ראשונה' },
-      { id: 'kit-triangle', text: 'משולש אזהרה ואפוד זוהר' },
-      { id: 'kit-papers', text: 'רישיון רכב וביטוח ברכב' },
-    ] },
-  ],
-};
+// רשימת הבדיקה המוכנה כשאין סוג רכב
+/** The ready-made list for a vehicle of no known kind; every kind's list is in inspectionKinds.ts. */
+export const DEFAULT_INSPECTION_FORM: InspectionForm = READY_INSPECTION_FORMS.car;
 
 // טקסט בשורה אחת
 function oneLine(value: unknown, max: number): string {

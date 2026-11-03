@@ -31,24 +31,30 @@ import { InspectionRemindersCard } from '../../components/inspection/InspectionR
 import { useCompany } from '../../lib/CompanyContext';
 import { useIsDesktop } from '../../lib/useDesktopLayout';
 import {
-  DEFAULT_INSPECTION_FORM,
+  INSPECTION_KINDS,
+  INSPECTION_KIND_LABELS,
   INSPECTION_LIMITS,
   INSPECTION_REPEAT_OPTIONS,
   formItems,
   getInspectionSettings,
   listProblem,
   newListId,
+  READY_INSPECTION_FORMS,
   saveInspectionSettings,
+  vehicleTypesOfKind,
   type InspectionForm,
+  type InspectionKind,
 } from '../../lib/inspections';
+import { VEHICLE_TYPE_LABELS } from '../../lib/compliance';
 import type { RootStackParamList } from '../../navigation/types';
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
 
 /**
  * Settings of "בדיקות בטיחות": how often each vehicle is checked, and the
- * company's own list of items (groups and the items in them). An edit to the
- * list applies to inspections started after it; one already open keeps its own.
+ * company's own list of items (groups and the items in them) for each kind of
+ * vehicle. An edit to a list applies to inspections started after it; one
+ * already open keeps its own.
  */
 type Props = NativeStackScreenProps<RootStackParamList, 'SafetyInspectionSettings'>;
 type Busy = '' | 'repeat' | 'list' | 'reset';
@@ -77,8 +83,9 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [repeatMonths, setRepeatMonths] = useState(1);
-  const [custom, setCustom] = useState(false);
-  const [list, setList] = useState<InspectionForm>(() => copyForm(DEFAULT_INSPECTION_FORM));
+  const [forms, setForms] = useState<Partial<Record<InspectionKind, InspectionForm>>>({});
+  const [kind, setKind] = useState<InspectionKind>('car');
+  const [list, setList] = useState<InspectionForm>(() => copyForm(READY_INSPECTION_FORMS.car));
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<Busy>('');
   const [error, setError] = useState('');
@@ -93,25 +100,33 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
     try {
       const settings = await getInspectionSettings(companyId);
       setRepeatMonths(settings.repeatMonths);
-      setCustom(!!settings.form);
-      setList(copyForm(settings.form ?? DEFAULT_INSPECTION_FORM));
+      setForms(settings.forms);
+      setList(copyForm(settings.forms[kind] ?? READY_INSPECTION_FORMS[kind]));
       setDirty(false);
       setLoadError('');
       setLoaded(true);
     } catch (e) {
       setLoadError(errorMessage(e, t('inspection.settingsLoadFailed')));
     }
+    // Reloads only when the company changes; the chosen kind is read as it is then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
   useEffect(() => {
     void load();
   }, [load]);
+  const custom = !!forms[kind];
 
   useEffect(
     () =>
       navigation.addListener('beforeRemove', (event) => {
         if (allowLeave.current || !dirty) return;
         event.preventDefault();
-        setLeaving({ go: () => navigation.dispatch(event.data.action) });
+        setLeaving({
+          go: () => {
+            allowLeave.current = true;
+            navigation.dispatch(event.data.action);
+          },
+        });
       }),
     [dirty, navigation],
   );
@@ -128,7 +143,25 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
     setGroups(list.groups.map((group, i) => (i === gi ? { ...group, ...patch } : group)));
   const updateItems = (gi: number, items: InspectionForm['groups'][number]['items']) => updateGroup(gi, { items });
 
+  const openKind = (next: InspectionKind) => {
+    setKind(next);
+    setList(copyForm(forms[next] ?? READY_INSPECTION_FORMS[next]));
+    setDirty(false);
+    setShowErrors(false);
+    setError('');
+    setNotice('');
+  };
+  // החלפת סוג רכב; שינויים שלא נשמרו שואלים קודם
+  const chooseKind = (next: InspectionKind) => {
+    if (next === kind || busy) return;
+    if (dirty) setLeaving({ go: () => openKind(next) });
+    else openKind(next);
+  };
+
   const itemCount = formItems(list).length;
+  const kindTypes = vehicleTypesOfKind(kind).map((type) => VEHICLE_TYPE_LABELS[type] ?? type).join(', ');
+  const kindLabel = (k: InspectionKind) =>
+    `${INSPECTION_KIND_LABELS[k]}${forms[k] ? `, ${t('inspection.kindChanged')}` : ''}${k === kind ? t('common.selectedSuffix') : ''}`;
   const problem = listProblem(list);
 
   const chooseRepeat = async (months: number) => {
@@ -156,9 +189,9 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
     setBusy('list');
     setError('');
     try {
-      const saved = await saveInspectionSettings(companyId, { form: list });
-      setCustom(!!saved.form);
-      setList(copyForm(saved.form ?? DEFAULT_INSPECTION_FORM));
+      const saved = await saveInspectionSettings(companyId, { kind, form: list });
+      setForms(saved.forms);
+      setList(copyForm(saved.forms[kind] ?? READY_INSPECTION_FORMS[kind]));
       setDirty(false);
       setShowErrors(false);
       setNotice(t('inspection.listSaved'));
@@ -173,9 +206,9 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
     setBusy('reset');
     setError('');
     try {
-      await saveInspectionSettings(companyId, { form: null });
-      setCustom(false);
-      setList(copyForm(DEFAULT_INSPECTION_FORM));
+      const saved = await saveInspectionSettings(companyId, { kind, form: null });
+      setForms(saved.forms);
+      setList(copyForm(READY_INSPECTION_FORMS[kind]));
       setDirty(false);
       setShowErrors(false);
       setResetting(false);
@@ -189,7 +222,6 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
   };
 
   const discardChanges = () => {
-    allowLeave.current = true;
     const go = leaving?.go;
     setLeaving(null);
     go?.();
@@ -197,7 +229,7 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
 
   const resetPress = () => {
     if (!custom) {
-      setList(copyForm(DEFAULT_INSPECTION_FORM));
+      setList(copyForm(READY_INSPECTION_FORMS[kind]));
       setDirty(false);
       setShowErrors(false);
       setError('');
@@ -254,6 +286,28 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
               )}
               <View style={pageStyles.gridRow}>
                 <View style={pageStyles.mainCell}>
+                  <View style={[pageStyles.card, pageStyles.listCard, desk.kinds]}>
+                    <DText style={desk.noteText}>{t('inspection.kindHint')}</DText>
+                    <View style={desk.kindRow}>
+                      {INSPECTION_KINDS.map((k) => {
+                        const on = k === kind;
+                        return (
+                          <HoverPressable
+                            key={k}
+                            style={[desk.kind, on && desk.kindOn]}
+                            hoverStyle={on ? desk.kindOn : desk.kindHover}
+                            onPress={() => chooseKind(k)}
+                            disabled={!!busy}
+                            accessibilityLabel={kindLabel(k)}
+                          >
+                            <DText weight="semiBold" style={[desk.kindText, on && desk.kindTextOn]}>{INSPECTION_KIND_LABELS[k]}</DText>
+                            {!!forms[k] && <View style={[desk.kindDot, on && desk.kindDotOn]} />}
+                          </HoverPressable>
+                        );
+                      })}
+                    </View>
+                    <DText style={desk.noteText}>{kindTypes}</DText>
+                  </View>
                   <GroupLabel
                     action={
                       <DText style={pageStyles.mutedText}>
@@ -469,6 +523,35 @@ export default function SafetyInspectionSettingsScreen({ navigation }: Props) {
           </KitSection>
 
           <View>
+            <DKText variant="caption" color={DK.muted} style={styles.listNote}>
+              {t('inspection.kindHint')}
+            </DKText>
+            <View style={[styles.repeat, styles.kinds]}>
+              {INSPECTION_KINDS.map((k) => {
+                const on = k === kind;
+                return (
+                  <Pressy
+                    key={k}
+                    onPress={() => chooseKind(k)}
+                    disabled={!!busy}
+                    accessibilityLabel={kindLabel(k)}
+                    pressScale={0.95}
+                    style={[styles.chip, on ? styles.chipOn : styles.chipOff]}
+                  >
+                    <DKText variant="label" color={on ? '#FFFFFF' : DK.inkSoft}>
+                      {INSPECTION_KIND_LABELS[k]}
+                    </DKText>
+                    {!!forms[k] && <View style={[styles.kindDot, on && styles.kindDotOn]} />}
+                  </Pressy>
+                );
+              })}
+            </View>
+            <DKText variant="caption" color={DK.muted} style={styles.listNote}>
+              {kindTypes}
+            </DKText>
+          </View>
+
+          <View>
             <View style={styles.listHead}>
               <DKText variant="heading" accessibilityRole="header" style={styles.flex}>
                 {t('inspection.itemList')}
@@ -628,6 +711,9 @@ const styles = StyleSheet.create({
   hint: { paddingHorizontal: 16, paddingBottom: 14 },
   listHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, paddingHorizontal: 4, marginTop: 8 },
   listNote: { paddingHorizontal: 4, marginTop: 4 },
+  kinds: { paddingHorizontal: 0 },
+  kindDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: DK.accent },
+  kindDotOn: { backgroundColor: '#FFFFFF' },
   group: { padding: 14, gap: 10 },
   groupHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
   groupTitle: { fontSize: 17 },
@@ -650,6 +736,16 @@ const desk = StyleSheet.create({
   bannerOk: { backgroundColor: DESKTOP_TONES.ok.bg },
   bannerBad: { backgroundColor: DESKTOP_TONES.bad.bg },
   bannerText: { fontSize: 14, flex: 1 },
+  // בחירת סוג הרכב
+  kinds: { gap: 10, padding: 14, marginBottom: 14 },
+  kindRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 6 },
+  kind: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, height: 32, paddingHorizontal: 12, borderRadius: 999, backgroundColor: DESKTOP_COLORS.surfaceMuted, ...webOnly({ cursor: 'pointer', transition: 'background-color 150ms ease' }) },
+  kindHover: { backgroundColor: DESKTOP_COLORS.canvas },
+  kindOn: { backgroundColor: DESKTOP_COLORS.brand },
+  kindText: { fontSize: 13, color: DESKTOP_COLORS.inkMuted },
+  kindTextOn: { color: '#FFFFFF' },
+  kindDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: DESKTOP_COLORS.brand },
+  kindDotOn: { backgroundColor: '#FFFFFF' },
   // רשימת הקבוצות
   groups: { gap: 12 },
   groupHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, padding: 12, backgroundColor: DESKTOP_COLORS.surfaceMuted, borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
