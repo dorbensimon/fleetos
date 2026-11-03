@@ -62,12 +62,36 @@ export type NotificationType =
   | 'owner_carrier_license_expiry'
   | 'owner_trial_ending'
   | 'owner_renewal_due'
-  | 'owner_vehicle_limit';
+  | 'owner_vehicle_limit'
+  // One company folder with an expiry date (migration 135): its key, like notifications.folder_key.
+  | `folder:${string}`;
 
 export interface NotificationTypeInfo {
   type: NotificationType;
   label: string;
   description: string;
+  /** Set on a company folder's own row: which section it belongs to. */
+  folderOwner?: 'vehicle' | 'driver';
+}
+
+// האם זו התראה של תיקייה אחת שהחברה הוסיפה
+export const isCompanyFolderAlert = (type: string): type is `folder:${string}` => type.startsWith('folder:');
+
+// השורות המשותפות לכל התיקיות שנוספו; אצל מנהל במקומן שורה לכל תיקייה
+/** The shared rows a manager no longer sees: each folder has a row of its own instead. */
+export const SHARED_FOLDER_TYPES: NotificationType[] = ['vehicle_custom_folder_expiry', 'driver_custom_folder_expiry'];
+
+// שורה לכל תיקייה עם תאריך תוקף
+/** One row per company folder that tracks an expiry date, named after the folder. */
+export function companyFolderTypes(folders: { id: string; owner_type: 'vehicle' | 'driver'; title: string; tracks_expiry: boolean }[]): NotificationTypeInfo[] {
+  return folders
+    .filter((folder) => folder.tracks_expiry)
+    .map((folder) => ({
+      type: `folder:${folder.id}` as const,
+      label: folder.title,
+      get description() { return t(folder.owner_type === 'vehicle' ? 'prefs.type.vehicleFolderDesc' : 'companyFolders.driverAlertDesc'); },
+      folderOwner: folder.owner_type,
+    }));
 }
 
 // שם בלי המילה 'תוקף' (למקומות צפופים)
@@ -316,7 +340,7 @@ export async function getPreferences(userId: string): Promise<NotificationPrefer
   if (error) throw error;
 
   for (const row of (data ?? []) as NotificationPreferenceRow[]) {
-    if (row.notification_type in defaults) {
+    if (row.notification_type in defaults || isCompanyFolderAlert(row.notification_type)) {
       defaults[row.notification_type as NotificationType] = row.enabled;
     }
   }
@@ -431,6 +455,11 @@ export const LEAD_RULES: Partial<Record<NotificationType, LeadRule>> = {
   vehicle_odometer_stale: { unit: 'idle', min: 7, max: 90, step: 1, presets: [14, 30, 45, 60] },
 };
 
+// הכללים של סוג אחד, כולל תיקייה שנוספה
+export function leadRuleOf(type: NotificationType): LeadRule | undefined {
+  return isCompanyFolderAlert(type) ? FOLDER_LEAD_RULE : LEAD_RULES[type];
+}
+
 // ברירת מחדל למילויים (ימים)
 export const MEETING_LEAD_DEFAULT = 7;
 // ברירת מחדל לטיפול (ק"מ)
@@ -511,7 +540,7 @@ export function notificationGroups(types: NotificationTypeInfo[], isDriver: bool
     ];
     return ownerGroups.filter((group) => group.items.length > 0);
   }
-  const folders = types.filter((entry) => isVehicleFolderNotification(entry.type));
+  const folders = types.filter((entry) => isVehicleFolderNotification(entry.type) || entry.folderOwner === 'vehicle');
   const rest = types.filter((entry) => !folders.includes(entry));
   const folderGroup: NotificationGroup = {
     key: 'folders',
@@ -530,7 +559,7 @@ export function notificationGroups(types: NotificationTypeInfo[], isDriver: bool
           key: 'licenses',
           title: t('prefs.group.licenses'),
           subtitle: t('prefs.group.licensesDesc'),
-          items: rest.filter((entry) => ADMIN_GROUP_OF[entry.type] === 'licenses'),
+          items: rest.filter((entry) => ADMIN_GROUP_OF[entry.type] === 'licenses' || entry.folderOwner === 'driver'),
         },
         folderGroup,
         { key: 'care', title: t('prefs.group.serviceAndMeetings'), items: rest.filter((entry) => ADMIN_GROUP_OF[entry.type] === 'care') },
@@ -549,7 +578,7 @@ export interface NotificationLeads {
 }
 
 // מחשב את 'כמה זמן מראש' לכל סוג
-function resolveLeads(folderDefault: number, own: Record<string, unknown>, perType: boolean): NotificationLeads {
+function resolveLeads(folderDefault: number, own: Record<string, unknown>, perType: boolean, folders: NotificationTypeInfo[]): NotificationLeads {
   const values: Partial<Record<NotificationType, number>> = {};
   const custom = new Set<NotificationType>();
   for (const type of Object.keys(LEAD_RULES) as NotificationType[]) {
@@ -562,11 +591,21 @@ function resolveLeads(folderDefault: number, own: Record<string, unknown>, perTy
       values[type] = fallback;
     }
   }
+  // A folder without its own value follows the shared row of its kind.
+  for (const folder of folders) {
+    const value = own[folder.type];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      values[folder.type] = value;
+      custom.add(folder.type);
+    } else {
+      values[folder.type] = values[folder.folderOwner === 'driver' ? 'driver_custom_folder_expiry' : 'vehicle_custom_folder_expiry'];
+    }
+  }
   return { values, custom, perType };
 }
 
 // מביא את 'כמה זמן מראש' של החברה
-export async function getNotificationLeads(companyId: string): Promise<NotificationLeads> {
+export async function getNotificationLeads(companyId: string, folders: NotificationTypeInfo[] = []): Promise<NotificationLeads> {
   const { data, error } = await supabase
     .from('companies')
     .select('vehicle_expiry_lead_days, notification_lead_days')
@@ -574,11 +613,11 @@ export async function getNotificationLeads(companyId: string): Promise<Notificat
     .single();
   if (!error) {
     const row = data as { vehicle_expiry_lead_days: number | null; notification_lead_days: Record<string, unknown> | null };
-    return resolveLeads(row.vehicle_expiry_lead_days ?? DEFAULT_VEHICLE_EXPIRY_LEAD_DAYS, row.notification_lead_days ?? {}, true);
+    return resolveLeads(row.vehicle_expiry_lead_days ?? DEFAULT_VEHICLE_EXPIRY_LEAD_DAYS, row.notification_lead_days ?? {}, true, folders);
   }
   // Before migration 100 the column doesn't exist: fall back to the shared value.
   const days = await getVehicleExpiryLeadDays(companyId);
-  return resolveLeads(days, {}, false);
+  return resolveLeads(days, {}, false, folders);
 }
 
 // שומר 'כמה זמן מראש' לסוג אחד

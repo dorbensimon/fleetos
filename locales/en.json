@@ -3306,7 +3306,7 @@
     "expiryLabel": "Expiry date",
     "noExpiry": "No expiry",
     "askExpiry": "With expiry date",
-    "expiryHint": "With an expiry date, every upload asks until when the file is valid, and an alert goes out before it expires.",
+    "expiryHint": "With an expiry date, every upload asks until when the file is valid. The folder also gets an alert of its own in \"Updates and expiries\": turn it on or off there and set how many days before expiry it goes out.",
     "scopeLabel": "Which companies",
     "onlyThisCompany": "Only {{name}}",
     "allCompanies": "All companies",
