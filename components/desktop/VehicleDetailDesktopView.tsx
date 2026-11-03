@@ -37,6 +37,7 @@ import { errorMessage } from '../../lib/requestError';
 import { BrandLoader } from '../ui/BrandLoader';
 import { ISRAEL_COMMON_MANUFACTURERS } from '../../lib/manufacturers';
 import {
+  DesktopInput,
   DesktopSelectOption,
   DLtrText,
   supportsFinePointerHoverMotion,
@@ -467,10 +468,10 @@ export function VehicleDetailDesktopView({
           <FocusTarget id="odometer,service" radius={8} tint={DESKTOP_COLORS.brand}>
           <View style={[styles.card, styles.maintCard]}>
             <View style={styles.maintTop}>
-              <View style={styles.odoRow}>
-                <DLtrText weight="bold" style={styles.odoValue}>{km(vehicle.odometer)}</DLtrText>
-                <DText style={styles.odoUnit}>{t('unit.km')}</DText>
-              </View>
+              <OdometerField
+                value={km(vehicle.odometer)}
+                edit={kmEditor(t('vehicle.currentOdometer'), vehicle.odometer, (v) => onSaveField({ odometer: v ?? 0 }), t('vehicle.currentOdometerHint'))}
+              />
               <View style={styles.inlineMeta}>
                 <DText style={styles.mutedText}>{vehicle.odometer_updated_at ? t('vehicle.odometerUpdatedOn') : t('vehicle.odometerNotUpdated')}</DText>
                 {!!vehicle.odometer_updated_at && <DLtrText style={styles.mutedText}>{formatDate(vehicle.odometer_updated_at)}</DLtrText>}
@@ -531,16 +532,6 @@ export function VehicleDetailDesktopView({
                 edit={derivedNextServiceKm != null ? undefined : kmEditor(t('vehicle.kmToNextService'), vehicle.next_service_km, (v) => onSaveField({ next_service_km: v }))}
               />
             </View>
-
-            <HoverPressable
-              style={[styles.primaryBtn, styles.maintButton]}
-              hoverStyle={styles.primaryBtnHover}
-              pressStyle={styles.pressDown}
-              onPress={() => setEditor(kmEditor(t('vehicle.currentOdometer'), vehicle.odometer, (v) => onSaveField({ odometer: v ?? 0 }), t('vehicle.currentOdometerHint')))}
-            >
-              <Ionicons name="add" size={16} color="#FFFFFF" />
-              <DText weight="semiBold" style={styles.primaryBtnText}>{t('vehicle.updateOdometer')}</DText>
-            </HoverPressable>
           </View>
           </FocusTarget>
         </View>
@@ -964,6 +955,99 @@ function AccessoriesMenu({ selected, onSave, onClose }: { selected: string[]; on
   );
 }
 
+// מד האוץ בראש כרטיס התחזוקה; לחיצה הופכת את המספר לשדה עם ✓ / ✕
+/** The odometer at the top of the maintenance card, edited in place like a DetailRow. */
+function OdometerField({ value, edit }: { value: string; edit: TextFieldEditor }) {
+  const [editing, setEditing] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const boxRef = useRef<View>(null);
+
+  const cancel = () => {
+    setEditing(false);
+    setError(null);
+  };
+  const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    const result = await edit.onSave(draft);
+    setSaving(false);
+    if (result) setError(result);
+    else cancel();
+  };
+
+  // A click outside drops the change, like ✕.
+  useEffect(() => {
+    if (!editing || saving || typeof document === 'undefined') return;
+    const onDown = (event: MouseEvent) => {
+      const node = boxRef.current as unknown as HTMLElement | null;
+      if (node && !node.contains(event.target as Node)) cancel();
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [editing, saving]);
+
+  if (!editing) {
+    return (
+      <HoverPressable
+        style={styles.odoHead}
+        hoverStyle={pageStyles.rowHover}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        onPress={() => {
+          setDraft(edit.raw);
+          setError(null);
+          setEditing(true);
+        }}
+        accessibilityLabel={`${edit.label}: ${value} ${t('unit.km')}. ${t('common.edit')}`}
+      >
+        <View style={styles.odoRow}>
+          <DLtrText weight="bold" style={styles.odoValue}>{value}</DLtrText>
+          <DText style={styles.odoUnit}>{t('unit.km')}</DText>
+        </View>
+        <View style={pageStyles.rowEdit}>
+          <DText style={[pageStyles.rowEditText, hovered && pageStyles.rowEditTextHover]}>{t('common.edit')}</DText>
+          <Ionicons name={dirIcon('chevron-back')} size={13} color={hovered ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
+        </View>
+      </HoverPressable>
+    );
+  }
+
+  return (
+    <View ref={boxRef}>
+      <View style={styles.odoEditRow}>
+        <DesktopInput
+          value={edit.format ? edit.format(draft) : draft}
+          onChangeText={(v) => {
+            setDraft(edit.parse ? edit.parse(v) : v);
+            setError(null);
+          }}
+          ltr
+          keyboardType="number-pad"
+          hasError={!!error}
+          onSubmitEditing={() => void save()}
+          autoFocus
+          selectTextOnFocus
+          onKeyPress={(e) => {
+            if (e.nativeEvent.key === 'Escape') cancel();
+          }}
+          accessibilityLabel={edit.label}
+          style={styles.odoInput}
+        />
+        <HoverPressable style={[pageStyles.inlineBtn, pageStyles.inlineSave]} hoverStyle={pageStyles.inlineSaveHover} pressMotionStyle={pageStyles.inlineBtnPress} onPress={() => void save()} disabled={saving} accessibilityLabel={t('common.save')}>
+          {saving ? <BrandLoader size="small" color="#FFFFFF" /> : <Ionicons name="checkmark" size={18} color="#FFFFFF" />}
+        </HoverPressable>
+        <HoverPressable style={[pageStyles.inlineBtn, pageStyles.inlineCancel]} hoverStyle={pageStyles.inlineCancelHover} pressMotionStyle={pageStyles.inlineBtnPress} onPress={cancel} disabled={saving} accessibilityLabel={t('common.cancel')}>
+          <Ionicons name="close" size={18} color={DESKTOP_COLORS.inkMuted} />
+        </HoverPressable>
+      </View>
+      {!!(error || edit.hint) && <DText style={error ? pageStyles.inlineError : pageStyles.inlineHint}>{error ?? edit.hint}</DText>}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   registryBlock: { marginBottom: 4 },
   registryMessage: { marginBottom: 8, paddingHorizontal: 4 },
@@ -1019,7 +1103,10 @@ const styles = StyleSheet.create({
   maintCard: { flexDirection: 'column' },
   maintTop: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 },
   // שורת הקילומטראז'
+  odoHead: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginHorizontal: -8, paddingHorizontal: 8, borderRadius: 8, ...webOnly({ cursor: 'pointer', transition: 'background-color 150ms ease' }) },
   odoRow: { flexDirection: 'row-reverse', alignItems: 'baseline', gap: 6 },
+  odoEditRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  odoInput: { flex: 1, height: 40, fontSize: 20, fontWeight: '700' },
   odoValue: { fontSize: 28, lineHeight: 33, letterSpacing: -0.5, color: DESKTOP_COLORS.ink, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   odoUnit: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
   progressBlock: { marginTop: 12, gap: 5 },
@@ -1039,7 +1126,6 @@ const styles = StyleSheet.create({
   serviceHint: { marginTop: 12, flexDirection: 'row-reverse', gap: 8, padding: 10, borderRadius: 10, backgroundColor: DESKTOP_COLORS.canvas },
   serviceHintIcon: { marginTop: 2 },
   maintRows: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
-  maintButton: { marginHorizontal: 16, marginBottom: 14, marginTop: 'auto', justifyContent: 'center' },
 
   // כרטיס הנהגים
   // Drivers

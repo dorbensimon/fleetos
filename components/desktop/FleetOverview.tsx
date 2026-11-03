@@ -67,7 +67,8 @@ function greetingFor(hour: number): string {
 /* Header                                                              */
 /* ------------------------------------------------------------------ */
 
-// הכותרת הכחולה עם הברכה והכפתורים
+// הברכה והכפתורים, בסרגל העליון הכחול של הדשבורד
+/** The greeting and quick buttons; DesktopShell's `hero` puts them in the night top bar. */
 export function FleetHeader() {
   const { profile } = useCompany();
   const now = new Date();
@@ -76,15 +77,14 @@ export function FleetHeader() {
   const dateLine = now.toLocaleDateString(getLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    // The night header shared with the other desktop pages.
-    <View style={[pageStyles.hero, pageStyles.heroNight, enter(0)]}>
-      <View style={[pageStyles.heroGlow, pageStyles.heroGlowBlue, { pointerEvents: 'none' }]} />
-      <View style={[pageStyles.heroGlow, pageStyles.heroGlowCyan, { pointerEvents: 'none' }]} />
-      <View style={pageStyles.heroIdentity}>
-        <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">
+    <View style={styles.headerBar}>
+      <View style={styles.headerIdentity}>
+        <DText weight="bold" style={[styles.greeting, pageStyles.heroNameOnDark]} accessibilityRole="header" numberOfLines={1}>
           {greeting}
         </DText>
-        <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark]}>{dateLine}</DText>
+        <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark, styles.greetingDate]} numberOfLines={1}>
+          {dateLine}
+        </DText>
       </View>
       <View style={styles.headerActions}>
         <ReportsQuickAction />
@@ -563,7 +563,11 @@ export function enterRow(index: number) {
 
 // עיצוב ראש הדשבורד
 const styles = StyleSheet.create({
-  headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10 },
+  headerBar: { flex: 1, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 24, marginStart: 16 },
+  headerIdentity: { minWidth: 0, flexShrink: 1, gap: 1 },
+  greeting: { fontSize: 20, lineHeight: 25, letterSpacing: -0.2 },
+  greetingDate: { fontSize: 13 },
+  headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
 
   // המתג
   segmented: {

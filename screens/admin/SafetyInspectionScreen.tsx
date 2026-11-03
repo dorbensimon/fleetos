@@ -29,6 +29,9 @@ import { InspectionItemCard } from '../../components/inspection/InspectionItemCa
 import { InspectionItemRow } from '../../components/inspection/InspectionItemRow';
 import { SignaturePad } from '../../components/checklist/SignaturePad';
 import { DesktopShell } from '../../components/desktop/DesktopShell';
+import { DText, HoverPressable } from '../../components/desktop/primitives';
+import { pageStyles } from '../../components/desktop/record/RecordPage';
+import { webOnly } from '../../components/desktop/desktopTheme';
 import { getVehicle, listCompliance, listDrivers, type ComplianceItem, type DriverRow, type Vehicle } from '../../lib/adminApi';
 import { formatPlate } from '../../lib/plate';
 import { vehicleTest } from '../../lib/compliance';
@@ -396,9 +399,9 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
 
   if (loadError || !form || !vehicle) {
     return inShell(
-      <DriverPage insetTop={topInset} insetBottom={bottomInset} hero={<HeroTitle title={t('notifications.cat.safetyCheck')} onBack={leave} />}>
+      <InspectionPage desk={isDesktop ? { title: t('notifications.cat.safetyCheck'), onBack: leave } : undefined} insetTop={topInset} insetBottom={bottomInset} hero={<HeroTitle title={t('notifications.cat.safetyCheck')} onBack={leave} />}>
         {loadError ? <ErrorPanel message={loadError} /> : <LoadingPanel />}
-      </DriverPage>,
+      </InspectionPage>,
     );
   }
 
@@ -565,8 +568,28 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
           )}
         </Surface>
     );
+    const saveButton = (
+      <Pressy onPress={() => void saveDraft()} disabled={!!busy} accessibilityLabel={t('common.saveAndContinueLater')} style={[styles.glassPill, isDesktop && styles.glassPillDesk]} pressScale={0.94}>
+        <Ionicons name={busy === 'save' ? 'hourglass-outline' : 'bookmark-outline'} size={isDesktop ? 15 : 17} color={DK.onNight} />
+        <DKText variant="label" color={DK.onNight}>
+          {t('common.save')}
+        </DKText>
+      </Pressy>
+    );
     return inShell(
-      <DriverPage
+      <InspectionPage
+        desk={
+          isDesktop
+            ? {
+                title: t('notifications.cat.safetyCheck'),
+                subtitle: `${vehicleLabel || t('vehicle.vehicle')} · ${t('inspection.todayComma')} ${formatIsoDay(today)}`,
+                onBack: leave,
+                chips: <Plate number={plate} size="sm" />,
+                right: saveButton,
+                below: <Progress marked={marked} total={items.length} compact />,
+              }
+            : undefined
+        }
         key={step}
         insetTop={topInset}
         insetBottom={bottomInset}
@@ -577,14 +600,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
             <HeroTitle
               title={t('notifications.cat.safetyCheck')}
               onBack={leave}
-              right={
-                <Pressy onPress={() => void saveDraft()} disabled={!!busy} accessibilityLabel={t('common.saveAndContinueLater')} style={styles.glassPill} pressScale={0.94}>
-                  <Ionicons name={busy === 'save' ? 'hourglass-outline' : 'bookmark-outline'} size={17} color={DK.onNight} />
-                  <DKText variant="label" color={DK.onNight}>
-                    {t('common.save')}
-                  </DKText>
-                </Pressy>
-              }
+              right={saveButton}
             />
             <View style={styles.who}>
               <Plate number={plate} />
@@ -831,7 +847,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
           </Pressy>
         )}
         <CancelSheet visible={cancelling} draft onClose={() => setCancelling(false)} onConfirm={() => void cancel()} loading={busy === 'cancel'} />
-      </DriverPage>,
+      </InspectionPage>,
     );
   }
 
@@ -910,7 +926,8 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
         </Reveal>
     );
     return inShell(
-      <DriverPage
+      <InspectionPage
+        desk={isDesktop ? { title: t('inspection.officerSignature'), subtitle: `${formatPlate(plate)}, ${formatIsoDay(today)}`, onBack: () => setStep('fill') } : undefined}
         key={step}
         insetTop={topInset}
         insetBottom={bottomInset}
@@ -941,7 +958,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
             {oDisclaimer}
           </>
         )}
-      </DriverPage>,
+      </InspectionPage>,
     );
   }
 
@@ -984,7 +1001,15 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
         </Reveal>
     );
     return inShell(
-      <DriverPage key={step} insetTop={topInset} insetBottom={bottomInset} scrollRef={scrollRef} maxWidth={wide} hero={<HeroTitle title={t('signature.ofFirst', { first })} subtitle={t('signature.chooseWay')} onBack={() => setStep('view')} />}>
+      <InspectionPage
+        desk={isDesktop ? { title: t('signature.ofFirst', { first }), subtitle: t('signature.chooseWay'), onBack: () => setStep('view') } : undefined}
+        key={step}
+        insetTop={topInset}
+        insetBottom={bottomInset}
+        scrollRef={scrollRef}
+        maxWidth={wide}
+        hero={<HeroTitle title={t('signature.ofFirst', { first })} subtitle={t('signature.chooseWay')} onBack={() => setStep('view')} />}
+      >
         {messages}
         {isDesktop ? (
           split(
@@ -1001,7 +1026,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
             {cSend}
           </>
         )}
-      </DriverPage>,
+      </InspectionPage>,
     );
   }
 
@@ -1265,7 +1290,28 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
         </Pressy>
       );
   return inShell(
-    <DriverPage
+    <InspectionPage
+      desk={
+        isDesktop
+          ? {
+              title: t('notifications.cat.safetyCheck'),
+              subtitle: `${vehicleLabel ? `${vehicleLabel} · ` : ''}${formatIsoDay(inspection?.inspection_date)}`,
+              onBack: leave,
+              chips: (
+                <>
+                  <Plate number={plate} size="sm" />
+                  {meta && (
+                    <View style={styles.statePill}>
+                      <DKText variant="label" color={DK.onNight}>
+                        {meta.label}
+                      </DKText>
+                    </View>
+                  )}
+                </>
+              ),
+            }
+          : undefined
+      }
       key={step}
       insetTop={topInset}
       insetBottom={bottomInset}
@@ -1352,11 +1398,45 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
           {vCancel}
         </>
       )}
-    </DriverPage>,
+    </InspectionPage>,
   );
 }
 
 // ── pieces ───────────────────────────────────────────────────────────────
+
+type DeskHead = { title: string; subtitle?: string; onBack: () => void; chips?: React.ReactNode; right?: React.ReactNode; below?: React.ReactNode };
+
+// מסגרת הדף: בטלפון הכותרת של הטלפון, במחשב כותרת המחשב הכהה והקומפקטית
+/**
+ * The phone gets the kit page as is. The desktop gets the desktop pages'
+ * night header (RecordPage), and the content under it slightly smaller,
+ * since the kit is sized for a phone held close.
+ */
+function InspectionPage({ desk, ...page }: React.ComponentProps<typeof DriverPage> & { desk?: DeskHead }) {
+  if (!desk) return <DriverPage {...page} />;
+  return (
+    <View style={pageStyles.root}>
+      <ScrollView ref={page.scrollRef} scrollEnabled={page.scrollEnabled ?? true} style={pageStyles.root} contentContainerStyle={[pageStyles.content, page.maxWidth != null && { maxWidth: page.maxWidth }]} keyboardShouldPersistTaps="handled">
+        <View style={[pageStyles.hero, pageStyles.heroNight, pageStyles.enter]}>
+          <View style={[pageStyles.heroGlow, pageStyles.heroGlowBlue, { pointerEvents: 'none' }]} />
+          <View style={[pageStyles.heroGlow, pageStyles.heroGlowCyan, { pointerEvents: 'none' }]} />
+          <HoverPressable style={styles.deskBack} hoverStyle={styles.deskBackHover} onPress={desk.onBack} accessibilityLabel={t('common.goBack')}>
+            <Ionicons name={dirIcon('chevron-forward')} size={18} color="#FFFFFF" />
+          </HoverPressable>
+          <View style={pageStyles.heroIdentity}>
+            <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header" numberOfLines={1}>{desk.title}</DText>
+            {!!desk.subtitle && <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark]} numberOfLines={1}>{desk.subtitle}</DText>}
+          </View>
+          {desk.chips && <View style={styles.deskChips}>{desk.chips}</View>}
+          {desk.right}
+          {desk.below && <View style={styles.deskBelow}>{desk.below}</View>}
+        </View>
+        <View style={styles.deskZoom}>{page.children}</View>
+      </ScrollView>
+      {page.overlay}
+    </View>
+  );
+}
 
 // תוקף ביטוח וטסט
 function Validity({ label, date }: { label: string; date: string | null }) {
@@ -1493,7 +1573,7 @@ function CancelSheet({ visible, draft = false, onClose, onConfirm, loading }: { 
 }
 
 // פס התקדמות
-function Progress({ marked, total }: { marked: number; total: number }) {
+function Progress({ marked, total, compact }: { marked: number; total: number; compact?: boolean }) {
   const reduce = useReducedMotion();
   const value = total ? marked / total : 0;
   const width = useRef(new Animated.Value(value)).current;
@@ -1501,7 +1581,7 @@ function Progress({ marked, total }: { marked: number; total: number }) {
     Animated.timing(width, { toValue: value, duration: reduce ? 0 : 240, easing: EASE_OUT, useNativeDriver: false }).start();
   }, [reduce, value, width]);
   return (
-    <View style={styles.progress} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: marked }} accessibilityLabel={t('common.markedOfTotal', { marked, total })}>
+    <View style={[styles.progress, compact && styles.progressCompact]} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: total, now: marked }} accessibilityLabel={t('common.markedOfTotal', { marked, total })}>
       <View style={styles.progressRow}>
         <DKText variant="caption" color={DK.onNightMuted}>
           {t('common.progress')}
@@ -1642,11 +1722,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: DK.glassBorder,
   },
+  glassPillDesk: { height: 36, paddingHorizontal: 12, borderRadius: 18 },
+  // כותרת המחשב
+  deskBack: { width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease' }) },
+  deskBackHover: { backgroundColor: 'rgba(255,255,255,0.2)' },
+  deskChips: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  deskBelow: { flexBasis: '100%' },
+  // the kit is sized for a phone; a touch smaller reads right on a desktop screen
+  deskZoom: { gap: 16, ...webOnly({ zoom: 0.88 }) },
   who: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, marginTop: 4 },
   heroChips: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, marginTop: 14, flexWrap: 'wrap' },
   statePill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: DK.glass, borderWidth: 1, borderColor: DK.glassBorder },
   // פס ההתקדמות
   progress: { marginTop: 18, gap: 8, padding: 14, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
+  progressCompact: { marginTop: 0, padding: 10, gap: 6, borderRadius: 12 },
   progressRow: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center' },
   progressTrack: { height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.16)', overflow: 'hidden', flexDirection: 'row-reverse' },
   progressFill: { height: '100%', borderRadius: 4, backgroundColor: DK.mint },
