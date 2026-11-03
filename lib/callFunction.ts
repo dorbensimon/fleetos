@@ -28,5 +28,7 @@ export async function callFunction<T>(name: string, body: Record<string, unknown
     }
   }
   const message = typeof payload?.error === 'string' && payload.error ? payload.error : fallback;
-  throw new FunctionActionError(message, typeof payload?.code === 'string' ? payload.code : undefined, payload ?? undefined);
+  // The request never reached the server (no internet, blocked): code 'network'.
+  const code = typeof payload?.code === 'string' ? payload.code : (error as { name?: string } | null)?.name === 'FunctionsFetchError' ? 'network' : undefined;
+  throw new FunctionActionError(message, code, payload ?? undefined);
 }
