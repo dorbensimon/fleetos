@@ -40,6 +40,8 @@ export const VEHICLE_FOLDER_ALERTS: VehicleFolderAlert[] = [
   { folderKey: 'brakes_annual', notificationType: 'vehicle_brakes_annual_expiry', get label() { return t('folder.brakesAnnual'); }, source: 'document' },
   { folderKey: 'winter_inspection', notificationType: 'vehicle_winter_inspection_expiry', get label() { return t('folder.winterCheck'); }, source: 'document' },
   { folderKey: 'child_detection', notificationType: 'vehicle_child_detection_expiry', get label() { return t('folder.childLeftBehind'); }, source: 'document' },
+  { folderKey: 'temperature_calibration', notificationType: 'vehicle_temperature_calibration_expiry', get label() { return t('folder.temperatureCalibration'); }, source: 'document' },
+  { folderKey: 'leasing_end', notificationType: 'vehicle_leasing_end_expiry', get label() { return t('folder.leasingEnd'); }, source: 'document' },
   // Every folder the owner added (migration 112) shares one alert type; its own
   // notifications carry the folder's real key, `folder:<id>`.
   { folderKey: COMPANY_FOLDERS_ALERT_KEY, notificationType: 'vehicle_custom_folder_expiry', get label() { return t('companyFolders.alertLabel'); }, source: 'document' },

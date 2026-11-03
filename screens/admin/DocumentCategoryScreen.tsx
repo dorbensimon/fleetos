@@ -66,6 +66,8 @@ const CATEGORY_HERO_ICONS: Record<string, HeroIcon> = {
   brakes_annual: 'disc-outline',
   winter_inspection: 'snow-outline',
   child_detection: 'eye-outline',
+  temperature_calibration: 'thermometer-outline',
+  leasing_end: 'key-outline',
   license_annex: 'document-attach-outline',
 };
 
