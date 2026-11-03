@@ -9,7 +9,6 @@ import {
   isCompanyFolderAlert,
   leadRuleOf,
   leadPhrase,
-  leadStepLabels,
   leadUnitWord,
   notificationGroups,
   type LeadRule,
@@ -898,9 +897,9 @@ function SigningRulesSection() {
   );
 }
 
-// בחירת 'כמה זמן מראש' עם + ו-
+// בחירת 'כמה זמן מראש': מספר שעורכים
 /**
- * One type's lead time: − value + with the unit in words, and a few presets.
+ * One type's lead time: an editable number with the unit in words, and a few presets.
  * Steps and typing settle for a moment before saving, so a run of clicks is one save.
  */
 export function LeadControl({
@@ -919,7 +918,7 @@ export function LeadControl({
   value: number;
   saving: boolean;
   dimmed: boolean;
-  /** Just the − value + row, for a card's title line: no divider, no presets. */
+  /** Just the number row, for a card's title line: no divider, no presets. */
   inline?: boolean;
   onCommit: (value: number) => Promise<boolean>;
 }) {
@@ -948,9 +947,7 @@ export function LeadControl({
   };
 
   const current = Number(draft) || value;
-  const step = (dir: 1 | -1) => schedule(String(clamp(current + dir * rule.step)));
   const unitWord = leadUnitWord(current, rule);
-  const stepLabels = leadStepLabels(rule);
 
   const row = (
       <View style={[styles.leadRow, inline && styles.leadRowInline]}>
@@ -958,16 +955,6 @@ export function LeadControl({
         {!inline && <Ionicons name="time-outline" size={16} color={DESKTOP_COLORS.inkMuted} />}
         {!inline && <DText weight="semiBold" style={styles.leadLabel}>{t('notifications.alert')}</DText>}
         <View style={[styles.stepper, inline && styles.stepperInline]}>
-          <HoverPressable
-            style={[styles.stepBtn, inline && styles.stepBtnInline]}
-            hoverStyle={styles.stepBtnHover}
-            pressMotionStyle={styles.pressDown}
-            onPress={() => step(1)}
-            disabled={current >= rule.max}
-            accessibilityLabel={`${label}: ${stepLabels.up}`}
-          >
-            <Ionicons name="add" size={17} color={current >= rule.max ? DESKTOP_COLORS.inkFaint : DESKTOP_COLORS.brand} />
-          </HoverPressable>
           <TextInput
             value={draft}
             onChangeText={(v) => schedule(v.replace(/\D/g, '').slice(0, rule.unit === 'km' ? 4 : 2))}
@@ -979,16 +966,6 @@ export function LeadControl({
             style={[styles.stepInput, inline && styles.stepInputInline, rule.unit === 'km' && styles.stepInputWide]}
             selectTextOnFocus
           />
-          <HoverPressable
-            style={[styles.stepBtn, inline && styles.stepBtnInline]}
-            hoverStyle={styles.stepBtnHover}
-            pressMotionStyle={styles.pressDown}
-            onPress={() => step(-1)}
-            disabled={current <= rule.min}
-            accessibilityLabel={`${label}: ${stepLabels.down}`}
-          >
-            <Ionicons name="remove" size={17} color={current <= rule.min ? DESKTOP_COLORS.inkFaint : DESKTOP_COLORS.brand} />
-          </HoverPressable>
         </View>
         {/* On a row days need no words; kilometres keep a short "ק״מ" so 1000 isn't read as days. */}
         {!inline && <DText style={styles.leadUnit} numberOfLines={1}>{unitWord}</DText>}
@@ -1308,8 +1285,6 @@ const styles = StyleSheet.create({
     backgroundColor: DESKTOP_COLORS.surfaceMuted,
     overflow: 'hidden',
   },
-  stepBtn: { width: 32, height: 34, alignItems: 'center', justifyContent: 'center', ...webOnly({ transition: 'background-color 150ms ease' }) },
-  stepBtnHover: { backgroundColor: BRAND_SOFT },
   stepInput: {
     width: 42,
     height: 34,
@@ -1318,16 +1293,12 @@ const styles = StyleSheet.create({
     fontFamily: DESKTOP_FONT.bold,
     color: DESKTOP_COLORS.ink,
     backgroundColor: DESKTOP_COLORS.surface,
-    borderStartWidth: 1,
-    borderEndWidth: 1,
-    borderColor: DESKTOP_COLORS.border,
     ...webOnly({ outlineStyle: 'none', fontVariantNumeric: 'tabular-nums' }),
   },
   stepInputWide: { width: 60 },
-  // The smaller stepper that sits on a card's title row
+  // The smaller number box that sits on a card's title row
   stepperInline: { height: 30, borderRadius: 9 },
-  stepBtnInline: { width: 24, height: 28 },
-  stepInputInline: { width: 32, height: 28, fontSize: 14 },
+  stepInputInline: { width: 44, height: 28, fontSize: 14 },
   leadUnitInline: { fontSize: 13, color: DESKTOP_COLORS.inkMuted },
   presets: { flexDirection: 'row-reverse', gap: 6 },
   ruleError: { color: DESKTOP_TONES.bad.fg },
