@@ -418,8 +418,8 @@ export function SignedDocumentsDesktopView({
             <h1 className="sd-xb">{companyName ? t('signing.titleFor', { name: companyName }) : t('nav.signedDocuments')}</h1>
             <p>{t('signing.intro')}</p>
             <div className="sd-hero-actions">
-              <button type="button" className="sd-btn sd-btn-primary sd-btn-lg" onClick={() => setCreating(true)}>
-                <Ionicons name="add" size={17} color="#fff" />
+              <button type="button" className="sd-btn sd-btn-lg" onClick={() => setCreating(true)}>
+                <Ionicons name="add" size={17} color="rgba(255,255,255,0.8)" />
                 {t('signing.newDocument')}
               </button>
             </div>
@@ -479,7 +479,7 @@ export function SignedDocumentsDesktopView({
             <div className="sd-grid">
               <button type="button" className="sd-card sd-card-new" onClick={() => setCreating(true)}>
                 <span className="sd-card-new-icon">
-                  <Ionicons name="add" size={24} color="#2F5BFF" />
+                  <Ionicons name="add" size={28} color="#2F5BFF" />
                 </span>
                 <span className="sd-b">{t('signing.newDocument')}</span>
               </button>

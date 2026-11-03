@@ -1,5 +1,6 @@
 // מסמכי החברה - תצוגת מחשב (מדף של מסמכים עם תצוגה מקדימה)
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { HeaderAction } from './DashboardWidgets';
 import { Platform, ScrollView, StyleSheet, TextInput, View, type LayoutChangeEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { DocumentRow } from '../../lib/adminApi';
@@ -97,7 +98,7 @@ export function CompanyDocumentsDesktopView({
           <DText weight="bold" style={[pageStyles.heroName, pageStyles.heroNameOnDark]} accessibilityRole="header">{t('companyDocs.title')}</DText>
           <DText style={[pageStyles.heroSubText, pageStyles.heroSubTextOnDark]}>{t('companyDocs.intro')}</DText>
         </View>
-        {!empty && <AddButton onPress={() => setAdding(true)} />}
+        {!empty && <HeaderAction icon="add" label={t('documents.addDocument')} onPress={() => setAdding(true)} />}
       </View>
 
       {docs.length > 0 && (

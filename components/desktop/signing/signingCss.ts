@@ -97,15 +97,15 @@ export const SIGNING_CSS = `
 .sd-send-failed { text-align: start; background: rgba(255,149,0,0.1); border-radius: 16px; padding: 14px 18px; color: #6B3A00; }
 .sd-send-failed ul { margin: 8px 0 0; padding-inline-start: 20px; }
 .sd-send-failed li { margin: 4px 0; }
-.sd-page { max-width: 1120px; margin: 0 auto; padding: 22px 28px 64px; }
+.sd-page { max-width: 1180px; margin: 0 auto; padding: 24px 30px 72px; }
 
 .sd-hero {
   position: relative; overflow: hidden; isolation: isolate;
-  border-radius: 18px; padding: 18px 24px 16px;
+  border-radius: 21px; padding: 21px 28px 18px;
   /* the night header of the safety officer check (DK.night) */
   background: linear-gradient(180deg, #12306E 0%, #0B1C45 60%, #0A1626 100%); color: #fff;
   box-shadow: 0 18px 40px -18px rgba(10,22,38,0.55), inset 0 0 0 1px rgba(255,255,255,0.06);
-  display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px 22px; align-items: center;
+  display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px 25px; align-items: center;
   animation: sd-rise 700ms var(--sd-ease) both;
 }
 .sd-aurora { position: absolute; inset: -30%; z-index: -1; filter: blur(60px) saturate(140%); opacity: 0.9; }
@@ -115,13 +115,18 @@ export const SIGNING_CSS = `
 .sd-aurora span:nth-child(3) { width: 36%; height: 50%; bottom: 8%; inset-inline-end: 38%; background: radial-gradient(circle, rgba(47,91,255,0.16), transparent 65%); animation-duration: 32s; animation-delay: -12s; }
 .sd-hero-grain { position: absolute; inset: 0; z-index: -1; opacity: 0.12; mix-blend-mode: soft-light;
   background-image: radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px); background-size: 3px 3px; }
-.sd-hero h1 { margin: 0; font-size: 22px; line-height: 1.08; letter-spacing: -0.02em; }
-.sd-hero p { margin: 4px 0 12px; font-size: 13px; line-height: 1.55; color: rgba(255,255,255,0.72); max-width: 500px; }
-.sd-hero .sd-btn-lg { min-height: 34px; padding: 0 14px; font-size: 13px; border-radius: 10px; }
+.sd-hero h1 { margin: 0; font-size: 25px; line-height: 1.08; letter-spacing: -0.02em; }
+.sd-hero p { margin: 5px 0 14px; font-size: 14px; line-height: 1.55; color: rgba(255,255,255,0.72); max-width: 500px; }
+/* the same glass button as "דוחות" on the dashboard header */
+.sd-hero .sd-btn-lg { min-height: 38px; padding: 0 14px; font-size: 14px; border-radius: 10px; color: #fff;
+  background: rgba(255,255,255,0.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16); }
+@media (hover: hover) and (pointer: fine) {
+  .sd-hero .sd-btn-lg:hover:not(:disabled) { background: rgba(255,255,255,0.16); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.28); }
+}
 .sd-hero-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 
 /* hero art: a small stack of papers being signed */
-.sd-art { position: relative; height: 118px; perspective: 1200px; transform: scale(0.48); transform-origin: 50% 0; }
+.sd-art { position: relative; height: 134px; perspective: 1200px; transform: scale(0.54); transform-origin: 50% 0; }
 .sd-paper {
   position: absolute; top: 12px; left: 50%; width: 190px; height: 238px; margin-left: -95px;
   background: #fff; border-radius: 14px; box-shadow: var(--sd-depth-2);
@@ -144,24 +149,24 @@ export const SIGNING_CSS = `
   transform: scale(0.6); opacity: 0; animation: sd-pop 520ms var(--sd-ease) 2400ms forwards;
 }
 
-.sd-steps { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.sd-steps { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
 .sd-step {
-  background: rgba(255,255,255,0.07); border-radius: 11px; padding: 8px 11px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
-  display: flex; gap: 8px; align-items: flex-start; animation: sd-rise 600ms var(--sd-ease) both;
+  background: rgba(255,255,255,0.07); border-radius: 12px; padding: 9px 12px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+  display: flex; gap: 9px; align-items: flex-start; animation: sd-rise 600ms var(--sd-ease) both;
 }
-.sd-step-num { flex: none; width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; font-size: 11.5px; color: #fff; background: rgba(47,91,255,0.55); }
-.sd-step h3 { margin: 1px 0 2px; font-size: 12.5px; }
-.sd-hero .sd-step p { margin: 0; font-size: 11.5px; line-height: 1.45; color: rgba(255,255,255,0.62); max-width: none; }
+.sd-step-num { flex: none; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font-size: 12px; color: #fff; background: rgba(47,91,255,0.55); }
+.sd-step h3 { margin: 2px 0 2px; font-size: 13.5px; }
+.sd-hero .sd-step p { margin: 0; font-size: 12.5px; line-height: 1.45; color: rgba(255,255,255,0.62); max-width: none; }
 
-.sd-section { margin-top: 22px; }
-.sd-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 4px 10px; }
-.sd-section-head h2 { margin: 0; font-size: 16px; letter-spacing: -0.01em; }
-.sd-section-head span { font-size: 13px; color: var(--sd-ink-3); }
+.sd-section { margin-top: 25px; }
+.sd-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 5px 12px; }
+.sd-section-head h2 { margin: 0; font-size: 18px; letter-spacing: -0.01em; }
+.sd-section-head span { font-size: 14px; color: var(--sd-ink-3); }
 
-.sd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 12px; }
+.sd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 14px; }
 .sd-card {
   position: relative; text-align: start; display: flex; flex-direction: column;
-  background: var(--sd-card); border-radius: 15px; padding: 6px 6px 10px;
+  background: var(--sd-card); border-radius: 17px; padding: 7px 7px 11px;
   box-shadow: var(--sd-depth-1), inset 0 0 0 1px rgba(0,0,0,0.035);
   transition: transform 420ms var(--sd-ease), box-shadow 420ms var(--sd-ease);
   animation: sd-rise 620ms var(--sd-ease) both;
@@ -173,24 +178,24 @@ export const SIGNING_CSS = `
   .sd-card:hover .sd-thumb canvas { transform: scale(1.035); }
 }
 .sd-card:active { transform: scale(0.98) !important; }
-.sd-thumb { position: relative; overflow: hidden; border-radius: 11px; aspect-ratio: 4 / 3.6; background: linear-gradient(180deg, #F4F6FA, #ECEFF5); }
+.sd-thumb { position: relative; overflow: hidden; border-radius: 13px; aspect-ratio: 4 / 3.6; background: linear-gradient(180deg, #F4F6FA, #ECEFF5); }
 .sd-thumb canvas { position: absolute; top: 12px; left: 50%; width: 78%; margin-left: -39%; border-radius: 6px; box-shadow: 0 6px 20px rgba(16,34,50,0.14); background: #fff; transition: transform 600ms var(--sd-ease); transform-origin: 50% 0; }
 .sd-thumb-shine { position: absolute; inset: 0; opacity: 0; transform: translateX(120%) skewX(-18deg); transition: transform 900ms var(--sd-ease), opacity 200ms ease;
   background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.65) 50%, transparent 70%); pointer-events: none; }
 .sd-thumb-placeholder { position: absolute; inset: 0; display: grid; place-items: center; color: #B8C2CF; }
-.sd-card h4 { margin: 8px 5px 3px; font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.sd-card-meta { margin: 0 5px; font-size: 11.5px; color: var(--sd-ink-3); display: flex; align-items: center; gap: 6px; }
+.sd-card h4 { margin: 9px 6px 4px; font-size: 14.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sd-card-meta { margin: 0 6px; font-size: 12.5px; color: var(--sd-ink-3); display: flex; align-items: center; gap: 6px; }
 .sd-badge { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border-radius: 12px; font-size: 13px; background: rgba(52,199,89,0.13); color: #1E9E4C; }
 .sd-card-new {
   border: 2px dashed rgba(47,91,255,0.35); background: rgba(47,91,255,0.035); box-shadow: none;
-  align-items: center; justify-content: center; gap: 8px; min-height: 180px; color: var(--sd-tint-deep);
+  align-items: center; justify-content: center; gap: 9px; min-height: 200px; color: var(--sd-tint-deep);
 }
-.sd-card-new-icon { width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; background: #fff; box-shadow: var(--sd-depth-2); transition: transform 420ms var(--sd-ease); }
+.sd-card-new-icon { width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center; background: #fff; box-shadow: var(--sd-depth-2); transition: transform 420ms var(--sd-ease); }
 @media (hover: hover) and (pointer: fine) {
   .sd-card-new:hover { background: rgba(47,91,255,0.07); box-shadow: none; }
   .sd-card-new:hover .sd-card-new-icon { transform: rotate(90deg) scale(1.06); }
 }
-.sd-card-new span { font-size: 13.5px; }
+.sd-card-new span { font-size: 15px; }
 
 .sd-empty {
   border-radius: 26px; padding: 44px 24px; text-align: center; background: var(--sd-card); box-shadow: var(--sd-depth-1);
