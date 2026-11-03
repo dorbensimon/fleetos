@@ -58,6 +58,7 @@ import { DetailRow, Fact, FieldEditDialog, GroupLabel, NIGHT_TONES, digitsOnly, 
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { VehicleDriverHistoryButton } from './driver/DriverVehicleHistory';
 import { t, dirIcon, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../lib/i18n';
+import { useWhatsappQuickLink } from '../../lib/useWhatsappQuickLink';
 
 // מצבי הרכב שאפשר לבחור
 /** Statuses an admin can pick from the header pill; archiving has its own action. */
@@ -271,6 +272,9 @@ export function VehicleDetailDesktopView({
   // Editing
   const [editor, setEditor] = useState<FieldEditor | null>(null);
   const driversMenu = useHeaderMenu('vehicle-drivers');
+  const whatsapp = useWhatsappQuickLink();
+  // The odometer request goes to the vehicle's main driver.
+  const kmDriver = drivers.find((d) => d.is_primary) ?? drivers[0];
   const accessoriesMenu = useHeaderMenu('vehicle-accessories');
   useEffect(() => {
     if (!openDrivers) return;
@@ -476,6 +480,18 @@ export function VehicleDetailDesktopView({
                 <DText style={styles.mutedText}>{vehicle.odometer_updated_at ? t('vehicle.odometerUpdatedOn') : t('vehicle.odometerNotUpdated')}</DText>
                 {!!vehicle.odometer_updated_at && <DLtrText style={styles.mutedText}>{formatDate(vehicle.odometer_updated_at)}</DLtrText>}
               </View>
+              {!!kmDriver && (
+                <HoverPressable
+                  style={styles.linkBtn}
+                  hoverStyle={styles.softBtnHover}
+                  disabled={whatsapp.busy}
+                  onPress={() => void whatsapp.send({ kind: 'odometer', driverId: kmDriver.driver_id, vehicleId: vehicle.id }, kmDriver.phone)}
+                  accessibilityLabel={t('quickLink.askOdometer')}
+                >
+                  <Ionicons name="logo-whatsapp" size={14} color={DESKTOP_COLORS.brand} />
+                  <DText weight="semiBold" style={styles.linkText}>{t('quickLink.askOdometer')}</DText>
+                </HoverPressable>
+              )}
 
               {serviceSpan == null && (
                 <View style={styles.serviceHint}>
