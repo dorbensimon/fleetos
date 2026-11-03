@@ -85,14 +85,7 @@ export function OwnerConsoleDesktop(p: Props) {
         <View style={styles.headerActions}>
           <HeaderAction icon="copy-outline" label={t('templates.managerTitle')} onPress={() => setTemplatesOpen(true)} />
           <HeaderAction icon="download-outline" label={t('owner.customersReport')} onPress={p.onExport} disabled={!p.overview} />
-          <HoverPressable style={styles.addBtn} hoverStyle={styles.addBtnHover} pressMotionStyle={pageStyles.pressDown} onPress={p.onAddCompany} accessibilityLabel={t('owner.newCompany')}>
-            <View style={styles.addBtnIcon}>
-              <Ionicons name="add" size={18} color={DESKTOP_COLORS.brand} />
-            </View>
-            <DText weight="semiBold" style={styles.addBtnText}>
-              {t('owner.newCompany')}
-            </DText>
-          </HoverPressable>
+          <HeaderAction icon="add" label={t('owner.newCompany')} onPress={p.onAddCompany} />
         </View>
       </View>
 
@@ -795,21 +788,6 @@ const styles = StyleSheet.create({
 
   // הכותרת
   headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  // כפתור 'חברה חדשה' על הכותרת הכהה (כמו 'מסמך חדש')
-  addBtn: {
-    height: 40,
-    paddingEnd: 6,
-    paddingStart: 14,
-    borderRadius: 10,
-    backgroundColor: DESKTOP_COLORS.brand,
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 10,
-    ...webOnly({ boxShadow: DESKTOP_BRAND_SHADOW, transition: 'background-color 150ms ease, transform 120ms ease-out' }),
-  },
-  addBtnHover: { backgroundColor: DESKTOP_COLORS.brandHover },
-  addBtnIcon: { width: 28, height: 28, borderRadius: 8, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
-  addBtnText: { fontSize: 14.5, color: '#FFFFFF' },
   primaryButton: {
     flexDirection: 'row-reverse',
     alignItems: 'center',

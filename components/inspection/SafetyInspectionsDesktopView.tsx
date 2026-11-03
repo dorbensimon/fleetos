@@ -1,5 +1,6 @@
 // דף בדיקות קצין בטיחות - תצוגת מחשב
 import React, { useMemo, useState } from 'react';
+import { HeaderAction } from '../desktop/DashboardWidgets';
 import { PageTour, type TourStep } from '../desktop/PageTour';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -134,17 +135,15 @@ export function SafetyInspectionsDesktopView({
             <Fact nativeID="tour-defects" onDark label={t('inspection.kpiDefects')} value={String(withDefects)} color={withDefects ? NIGHT_TONES.bad : undefined} muted={!withDefects} />
           </View>
         )}
-        <HoverPressable
-          nativeID="tour-new"
-          style={pageStyles.primaryBtn}
-          hoverStyle={pageStyles.primaryBtnHover}
-          pressStyle={pageStyles.pressDown}
-          onPress={() => setPicking(true)}
-          disabled={!plan.length}
-        >
-          <Ionicons name="add" size={17} color="#FFFFFF" />
-          <DText weight="semiBold" style={pageStyles.primaryBtnText}>{t('inspection.new')}</DText>
-        </HoverPressable>
+        <View style={styles.heroActions}>
+          <View nativeID="tour-new">
+            <HeaderAction icon="add" label={t('inspection.new')} onPress={() => setPicking(true)} disabled={!plan.length} />
+          </View>
+          <HoverPressable nativeID="tour-items" style={styles.heroLinkBtn} hoverStyle={styles.heroLinkBtnHover} pressStyle={pageStyles.pressDown} onPress={onEditList}>
+            <Ionicons name="list-outline" size={14} color="#FFFFFF" />
+            <DText weight="semiBold" style={styles.heroLinkText}>{t('inspection.itemList')}</DText>
+          </HoverPressable>
+        </View>
       </View>
 
       <View style={pageStyles.gridRow}>
@@ -300,20 +299,6 @@ export function SafetyInspectionsDesktopView({
           <View nativeID="tour-reminders">
             <InspectionRemindersCard companyId={companyId} repeatMonths={repeatMonths} onRepeatSaved={onRepeatSaved} />
           </View>
-
-          <View style={styles.sideGap} />
-          <View nativeID="tour-items" style={[pageStyles.card, pageStyles.listCard]}>
-            <HoverPressable style={styles.linkRow} hoverStyle={pageStyles.rowHover} onPress={onEditList}>
-              <View style={styles.dueIcon}>
-                <Ionicons name="list-outline" size={16} color={DESKTOP_COLORS.inkMuted} />
-              </View>
-              <View style={pageStyles.flex}>
-                <DText weight="semiBold" style={styles.plate}>{t('inspection.itemList')}</DText>
-                <DText style={styles.sub}>{t('inspection.editListHint')}</DText>
-              </View>
-              <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
-            </HoverPressable>
-          </View>
         </View>
       </View>
 
@@ -408,7 +393,11 @@ const styles = StyleSheet.create({
   allGoodTitle: { fontSize: 14.5 },
   dueRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 54, paddingHorizontal: 16, paddingVertical: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },
   dueIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: DESKTOP_COLORS.canvas, alignItems: 'center', justifyContent: 'center' },
-  linkRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, minHeight: 58, paddingHorizontal: 16, paddingVertical: 10, ...webOnly({ transition: 'background-color 150ms ease' }) },
+  // הכפתורים בכותרת: בדיקה חדשה ומתחתיו רשימת הסעיפים
+  heroActions: { gap: 6 },
+  heroLinkBtn: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, height: 26, paddingHorizontal: 12, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
+  heroLinkBtnHover: { backgroundColor: 'rgba(255,255,255,0.16)' },
+  heroLinkText: { fontSize: 12.5, color: '#FFFFFF' },
   sideGap: { height: 10 },
   pickBody: { padding: 16, gap: 12 },
 });
