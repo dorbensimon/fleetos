@@ -407,14 +407,13 @@ export function FleetDesktopView<LF extends string, SF extends string>(props: Fl
           )}
           <View style={styles.listHeadSpacer} />
           <HoverPressable
-            style={[styles.primaryButton, styles.headButton]}
-            hoverMotionStyle={styles.primaryButtonHover}
+            style={styles.headButton}
+            hoverMotionStyle={styles.headButtonHover}
             pressMotionStyle={styles.pressDown}
             onPress={onAdd}
             accessibilityLabel={isDrivers ? t('driver.new') : t('vehicle.new')}
           >
-            <Ionicons name="add" size={17} color="#FFFFFF" />
-            <DText weight="semiBold" style={[styles.primaryButtonText, styles.headButtonText]}>
+            <DText weight="semiBold" style={styles.headButtonText}>
               {isDrivers ? t('driver.new') : t('vehicle.new')}
             </DText>
           </HoverPressable>
@@ -1025,9 +1024,10 @@ const styles = StyleSheet.create({
     ...webOnly({ boxShadow: '0 14px 28px rgba(47,91,255,0.38)' }),
   },
   primaryButtonText: { color: '#FFFFFF', fontSize: 14.5 },
-  // A small add button in the list header; the negative margin keeps the header its own height.
-  headButton: { height: 30, marginVertical: -4, paddingStart: 12, paddingEnd: 9, gap: 4, borderRadius: 8 },
-  headButtonText: { fontSize: 13 },
+  // A text-only add button in the list header; the negative margin keeps the header its own height.
+  headButton: { height: 30, marginVertical: -4, paddingHorizontal: 6, justifyContent: 'center', ...webOnly({ cursor: 'pointer' }) },
+  headButtonHover: { opacity: 0.7 },
+  headButtonText: { fontSize: 13, color: DESKTOP_COLORS.brand },
 
   // כרטיס הטבלה
   listCard: {
