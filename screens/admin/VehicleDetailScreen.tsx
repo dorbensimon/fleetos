@@ -40,6 +40,8 @@ const VEHICLE_DOCUMENT_FOLDERS = [
   { category: 'brakes_annual', get title() { return t('folder.brakesAnnual'); }, icon: 'disc-outline', color: '#0A7FD0', requiresExpiry: true },
   { category: 'winter_inspection', get title() { return t('folder.winterCheck'); }, icon: 'snow-outline', color: '#14B8A6', requiresExpiry: true },
   { category: 'child_detection', get title() { return t('folder.childLeftBehind'); }, icon: 'eye-outline', color: '#AF52DE', requiresExpiry: true },
+  { category: 'temperature_calibration', get title() { return t('folder.temperatureCalibration'); }, icon: 'thermometer-outline', color: '#EF4444', requiresExpiry: true },
+  { category: 'leasing_end', get title() { return t('folder.leasingEnd'); }, icon: 'key-outline', color: '#F59E0B', requiresExpiry: true },
   { category: 'general', get title() { return t('folder.generalDocs'); }, icon: 'folder-open-outline', color: '#8E8E93', requiresExpiry: true },
 ] as const;
 // האם הערך הוא לשונית חוקית

@@ -34,6 +34,8 @@ export type NotificationType =
   | 'vehicle_brakes_annual_expiry'
   | 'vehicle_winter_inspection_expiry'
   | 'vehicle_child_detection_expiry'
+  | 'vehicle_temperature_calibration_expiry'
+  | 'vehicle_leasing_end_expiry'
   | 'vehicle_engineer_report_expiry'
   | 'vehicle_license_annex_expiry'
   | 'vehicle_custom_folder_expiry'
@@ -416,6 +418,8 @@ const FOLDER_LEAD_RULE: LeadRule = { unit: 'days', min: 1, max: 90, step: 1, pre
 // כללי 'כמה זמן מראש' לכל סוג
 export const LEAD_RULES: Partial<Record<NotificationType, LeadRule>> = {
   ...Object.fromEntries(VEHICLE_FOLDER_ALERTS.map((folder) => [folder.notificationType, FOLDER_LEAD_RULE])),
+  // Returning or renewing a leased vehicle is arranged months ahead.
+  vehicle_leasing_end_expiry: { unit: 'days', min: 1, max: 180, step: 1, presets: [30, 60, 90, 120] },
   driver_meeting_due: { unit: 'days', min: 1, max: 30, step: 1, presets: [3, 7, 14, 30] },
   vehicle_safety_check_due: { unit: 'days', min: 1, max: 30, step: 1, presets: [3, 7, 14, 30] },
   vehicle_service_due: { unit: 'km', min: 100, max: 5000, step: 100, presets: [500, 1000, 2000, 3000] },

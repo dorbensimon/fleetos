@@ -202,6 +202,9 @@ export async function loadValidity(companyId: string): Promise<ValidityData> {
       if (f.ownerType !== 'vehicle' || seen.has(`vehicle|${v.id}|${f.key}`)) continue;
       // The safety officer's plan lists only the vehicles it covers.
       if (f.key === SAFETY_FOLDER && !plan.some((p) => p.vehicleId === v.id)) continue;
+      // Only refrigerated vehicles are calibrated, only leased ones end a lease.
+      if (f.key === 'temperature_calibration') continue;
+      if (f.key === 'leasing_end' && v.acquisition_type !== 'leasing') continue;
       pushMissing('vehicle', v.id, f.key, formatPlate(v.plate_number), [v.manufacturer, v.model].filter(Boolean).join(' '), v.department_id);
     }
   }

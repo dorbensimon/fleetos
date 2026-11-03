@@ -191,6 +191,8 @@ const FOLDER_TITLE_KEY: Record<string, string> = {
   brakes_semiannual: 'folder.brakesSemiAnnual',
   certifications: 'folder.certifications',
   child_detection: 'folder.childLeftBehind',
+  leasing_end: 'folder.leasingEnd',
+  temperature_calibration: 'folder.temperatureCalibration',
   driver_file: 'folder.driverFile',
   general: 'folder.generalDocs',
   hazmat: 'folder.hazmat',
