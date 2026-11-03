@@ -196,6 +196,7 @@ export default function CompanySettingsScreen({ navigation }: Props) {
   if (!isDesktop) {
     return (
       <CompanySettingsMobile
+        companyId={company?.id ?? null}
         insetTop={insets.top}
         insetBottom={insets.bottom}
         form={form}
@@ -221,6 +222,7 @@ export default function CompanySettingsScreen({ navigation }: Props) {
   return (
     <DesktopShell active="CompanySettings" breadcrumbs={[t('nav.account'), t('nav.companySettings')]}>
       <CompanySettingsDesktopView
+        companyId={company?.id ?? null}
         form={form}
         errors={errors}
         joinedAt={company?.created_at ?? null}

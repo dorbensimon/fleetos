@@ -160,7 +160,7 @@ export function CompanyDetailDesktop(p: Props) {
               </View>
             </View>
 
-            <CompanyFoldersPanel companyId={company.id} companyName={company.name} />
+            <CompanyFoldersPanel companyId={company.id} companyName={company.name} owner />
 
             <UsersCard {...p} />
 

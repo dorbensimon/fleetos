@@ -2528,7 +2528,9 @@
       "odometerReport": "Monthly odometer report",
       "odometerReportHint": "On the 1st of every month, an Excel file with every vehicle's mileage is sent to this email.",
       "safetyOfficers": "Safety officers",
-      "safetyOfficersHint": "The inspecting company and its contacts."
+      "safetyOfficersHint": "The inspecting company and its contacts.",
+      "folders": "Vehicle and driver folders",
+      "foldersHint": "Your own folders on every vehicle card or driver file, with an expiry date and alert if needed."
     },
     "sectionHasErrors": "{{label}}, has fields to fix",
     "toEmail": "to {{email}}",
