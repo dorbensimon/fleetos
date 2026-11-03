@@ -3934,6 +3934,7 @@
   },
   "quickLink": {
     "sendWhatsapp": "Send on WhatsApp",
+    "askDriver": "Ask the driver on WhatsApp",
     "askOdometer": "Ask for odometer on WhatsApp",
     "askDocument": "Ask driver on WhatsApp",
     "noPhone": "The driver has no valid mobile number",

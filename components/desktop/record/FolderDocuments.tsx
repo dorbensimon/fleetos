@@ -183,6 +183,7 @@ export function FolderUploadBar({
   replacesCurrent,
   extraFields,
   inspectionMonths,
+  onAskDriver,
 }: {
   requiresExpiry: boolean;
   /** Ask for the valid-until date, but allow uploading without it. */
@@ -200,6 +201,8 @@ export function FolderUploadBar({
   extraFields?: React.ReactNode;
   /** Folders whose expiry follows an inspection date: picking it fills the expiry this many months later (still editable). */
   inspectionMonths?: number | null;
+  /** Driver folders: sends the driver a WhatsApp link to upload the file himself. */
+  onAskDriver?: () => void;
 }) {
   const [inspected, setInspected] = useState<string | null>(null);
   const [file, setFile] = useState<PickedFile | null>(null);
@@ -333,6 +336,12 @@ export function FolderUploadBar({
           {uploading ? <BrandLoader size="small" color="#FFFFFF" /> : <Ionicons name="cloud-upload-outline" size={18} color="#FFFFFF" />}
           <DText weight="semiBold" style={styles.primaryBtnText}>{uploading ? t('common.uploading') : t('common.upload')}</DText>
         </HoverPressable>
+        {onAskDriver && (
+          <HoverPressable style={[styles.closeBtn, styles.actionBtn]} hoverStyle={styles.closeBtnHover} pressStyle={styles.pressDown} onPress={onAskDriver} disabled={uploading}>
+            <Ionicons name="logo-whatsapp" size={17} color="#1FA855" />
+            <DText weight="semiBold" style={styles.closeBtnText}>{t('quickLink.askDriver')}</DText>
+          </HoverPressable>
+        )}
         {onClose && (
           <HoverPressable style={[styles.closeBtn, styles.actionBtn]} hoverStyle={styles.closeBtnHover} pressStyle={styles.pressDown} onPress={onClose}>
             <DText weight="semiBold" style={styles.closeBtnText}>{t('common.close')}</DText>

@@ -27,6 +27,7 @@ import { listVehicles } from '../../../lib/adminApi/vehicles';
 import type { Vehicle } from '../../../lib/adminApi/types';
 import { vehicleName } from '../../../lib/attention';
 import { formatPlate } from '../../../lib/plate';
+import { useWhatsappQuickLink } from '../../../lib/useWhatsappQuickLink';
 
 /**
  * Shared building blocks of the desktop record pages ("תיק רכב" and
@@ -627,6 +628,11 @@ export function DocumentFolderUploadModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTrafficReport, companyId]);
   const asksExpiry = !isTrafficReport && (folder.requiresExpiry || !!folder.optionalExpiry);
+  const whatsapp = useWhatsappQuickLink();
+  // The driver's link page has no procedure 6 / traffic report fields.
+  const askDriver = ownerType === 'driver' && !isProcedure6 && !isTrafficReport
+    ? () => void whatsapp.send({ kind: 'document', driverId: ownerId, category: folder.category, title: folder.title })
+    : undefined;
 
   /** Uploads one file into the folder; resolves to whether it uploaded. */
   const uploadFile = async (file: PickedFile, date = expiryDate): Promise<boolean> => {
@@ -705,6 +711,7 @@ export function DocumentFolderUploadModal({
             expiryDate={expiryDate}
             onExpiryChange={setExpiryDate}
             onUpload={uploadFile}
+            onAskDriver={askDriver}
             onClose={onClose}
             uploading={uploading}
             replacesCurrent={layout === 'versions' && folderDocs.length > 0}

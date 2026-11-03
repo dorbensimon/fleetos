@@ -366,6 +366,20 @@ function SigningFolderModal({
     }
   };
 
+  // Sends the form first when it has not gone out, then opens WhatsApp with its signing link.
+  const sendWhatsapp = () => whatsapp.send(async () => {
+    const templateId = folder.template!.id;
+    if (!pending) {
+      const result = await assignSigningTemplate(companyId, templateId, [driverId]);
+      await onChanged();
+      if (!result.success || result.created !== 1) throw new Error(result.message || t('signing.sendNotApprovedRetry'));
+    }
+    const target = pending ?? (await listDriverSigningRequests(driverId))
+      .find((item) => item.template_id === templateId && item.status === 'pending' && !!item.docuseal_submitter_slug);
+    if (!target) throw new Error(t('signing.sendNotApprovedRetry'));
+    return { kind: 'sign', requestId: target.id };
+  });
+
   return (
     <DesktopModal visible title={folder.title} onClose={onClose} maxWidth={520}>
       <View style={styles.body}>
@@ -413,6 +427,16 @@ function SigningFolderModal({
             <DText weight="semiBold" style={styles.sendText}>
               {sending ? t('common.sending') : pending ? t('signing.resendForSignature') : t('signing.sendForSignature')}
             </DText>
+          </HoverPressable>
+          <HoverPressable
+            style={[styles.sendBtn, (sending || whatsapp.busy) && recordStyles.disabled]}
+            hoverStyle={recordStyles.rowHover}
+            pressStyle={recordStyles.pressDown}
+            disabled={sending || whatsapp.busy}
+            onPress={() => void sendWhatsapp()}
+          >
+            <Ionicons name="logo-whatsapp" size={15} color="#1FA855" />
+            <DText weight="semiBold" style={styles.sendText}>{t('quickLink.sendWhatsapp')}</DText>
           </HoverPressable>
           </View>
         )}
