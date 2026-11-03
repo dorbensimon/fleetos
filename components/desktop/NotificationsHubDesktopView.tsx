@@ -356,6 +356,7 @@ export function NotificationsHubDesktopView({
                           key={n.id}
                           n={n}
                           first={index === 0}
+                          last={index === group.items.length - 1}
                           unread={unreadIds.has(n.id)}
                           index={index}
                           reduceMotion={reduceMotion}
@@ -483,6 +484,7 @@ function SectionSwitch({
 function FeedRow({
   n,
   first,
+  last,
   unread,
   index,
   reduceMotion,
@@ -499,6 +501,7 @@ function FeedRow({
 }: {
   n: Notification;
   first: boolean;
+  last: boolean;
   unread: boolean;
   index: number;
   reduceMotion: boolean;
@@ -532,7 +535,7 @@ function FeedRow({
       ]}
     >
       <HoverPressable
-        style={[styles.row, unread && styles.rowUnread]}
+        style={[styles.row, first && styles.rowFirst, last && styles.rowLast, unread && styles.rowUnread]}
         hoverStyle={styles.rowHover}
         onPress={() => onOpen(n)}
         accessibilityLabel={`${unread ? t('notifications.newPrefix') : ''}${n.message}. ${timeAgo}${action ? `. ${action}` : ''}`}
@@ -1114,7 +1117,6 @@ const styles = StyleSheet.create({
     backgroundColor: DESKTOP_COLORS.surface,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.border,
-    overflow: 'hidden',
     ...webOnly({ boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 10px 30px rgba(16,34,50,0.04)' }),
   },
   rowWrap: { position: 'relative' },
@@ -1136,6 +1138,9 @@ const styles = StyleSheet.create({
     ...webOnly({ transition: 'background-color 150ms ease' }),
   },
   // שורה שלא נקראה
+  // The list no longer clips (so hover names can rise above a row); the end rows round their own corners.
+  rowFirst: { borderTopLeftRadius: 13, borderTopRightRadius: 13 },
+  rowLast: { borderBottomLeftRadius: 13, borderBottomRightRadius: 13 },
   rowUnread: { backgroundColor: '#F5F9FD' },
   rowHover: { backgroundColor: '#EEF5FA' },
   unreadEdge: { position: 'absolute', end: 0, top: 12, bottom: 12, width: 4, borderTopStartRadius: 4, borderBottomStartRadius: 4, backgroundColor: DESKTOP_COLORS.brand },
