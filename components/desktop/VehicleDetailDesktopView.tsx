@@ -16,7 +16,7 @@ import { VehicleTrafficReportsRow } from './TrafficReportsCenter';
 import { VehicleDriversEditor } from '../VehicleDriversEditor';
 import { SAFETY_FOLDER, VehicleInspectionsDesktopSection } from '../inspection/VehicleInspectionsDesktopSection';
 import { VehicleServiceFolderRow } from '../service/VehicleServiceRecords';
-import { HeaderMenuBackdrop, headerMenuEnter, headerMenuStyles, useHeaderMenu } from './headerMenu';
+import { headerMenuEnter, headerMenuStyles, useHeaderMenu } from './headerMenu';
 import {
   ACQUISITION_TYPE_LABELS,
   VEHICLE_ACCESSORY_LABELS,
@@ -37,7 +37,6 @@ import { errorMessage } from '../../lib/requestError';
 import { BrandLoader } from '../ui/BrandLoader';
 import { ISRAEL_COMMON_MANUFACTURERS } from '../../lib/manufacturers';
 import {
-  DesktopInput,
   DesktopSelectOption,
   DLtrText,
   supportsFinePointerHoverMotion,
@@ -54,7 +53,7 @@ import {
   useOwnerDocuments,
 } from './record/RecordKit';
 import { expiryStatusText, FolderListRow, folderStatus } from './record/FolderDocuments';
-import { DetailRow, Fact, FieldEditDialog, GroupLabel, NIGHT_TONES, digitsOnly, pageStyles, type FieldEditor, type TextFieldEditor } from './record/RecordPage';
+import { DetailRow, EditableSection, Fact, FieldEditDialog, GroupLabel, NIGHT_TONES, SectionFieldControl, digitsOnly, pageStyles, useSectionEdit, type FieldEditor, type TextFieldEditor } from './record/RecordPage';
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { VehicleDriverHistoryButton } from './driver/DriverVehicleHistory';
 import { t, dirIcon, fixedLayoutProps, FIXED_LAYOUT_STYLE } from '../../lib/i18n';
@@ -271,14 +270,14 @@ export function VehicleDetailDesktopView({
 
   // Editing
   const [editor, setEditor] = useState<FieldEditor | null>(null);
-  const driversMenu = useHeaderMenu('vehicle-drivers');
+  const [driversOpen, setDriversOpen] = useState(false);
   const whatsapp = useWhatsappQuickLink();
   // The odometer request goes to the vehicle's main driver.
   const kmDriver = drivers.find((d) => d.is_primary) ?? drivers[0];
   const accessoriesMenu = useHeaderMenu('vehicle-accessories');
   useEffect(() => {
     if (!openDrivers) return;
-    driversMenu.setOpen(true);
+    setDriversOpen(true);
     onDriversOpened?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openDrivers]);
@@ -343,6 +342,29 @@ export function VehicleDetailDesktopView({
         </View>
 
         <View style={styles.facts}>
+          {/* Assigned drivers, right of the odometer; more drivers add further right (like the driver page's vehicles). */}
+          <HoverPressable
+            style={styles.heroDriversEdit}
+            hoverStyle={styles.heroDriversEditHover}
+            onPress={() => setDriversOpen(true)}
+            accessibilityLabel={t('vehicle.changeAssignedDrivers')}
+            {...webOnly({ title: t('vehicle.changeAssignedDrivers') })}
+          >
+            <Ionicons name={drivers.length ? 'create-outline' : 'person-add-outline'} size={16} color="#FFFFFF" />
+            {!drivers.length && <DText weight="semiBold" style={styles.heroDriversEditText}>{t('attention.assignDriver')}</DText>}
+          </HoverPressable>
+          {[...drivers].sort((x, y) => Number(x.is_primary) - Number(y.is_primary)).map((driver) => (
+            <HoverPressable
+              key={driver.id}
+              style={[styles.fact, styles.factOnDark, styles.heroDriver]}
+              hoverStyle={styles.heroDriverHover}
+              onPress={() => onOpenDriver(driver.driver_id)}
+              accessibilityLabel={t('driver.openCard', { fullName: driver.full_name ?? t('common.unnamed') })}
+            >
+              <DText style={[styles.factLabel, styles.factLabelOnDark]}>{driver.is_primary ? t('vehicle.primaryDriver') : t('vehicle.secondaryDriver')}</DText>
+              <DText weight="bold" style={[styles.factValue, styles.factValueOnDark, styles.heroDriverName]} numberOfLines={1}>{driver.full_name ?? t('common.unnamed')}</DText>
+            </HoverPressable>
+          ))}
           <Fact onDark label={t('vehicle.odometer')} value={km(vehicle.odometer)} unit={t('unit.km')} />
           <Fact
             onDark
@@ -352,7 +374,6 @@ export function VehicleDetailDesktopView({
             color={serviceState === 'expired' ? NIGHT_TONES.bad : serviceState === 'soon' ? NIGHT_TONES.warn : undefined}
             muted={serviceRemaining == null}
           />
-          <Fact onDark label={t('vehicle.assignedDrivers')} value={String(drivers.length)} />
         </View>
 
         {/* The plate at the far end, with the ministry update under it, inside the header's own height. */}
@@ -408,17 +429,17 @@ export function VehicleDetailDesktopView({
         </View>
       )}
 
-      {/* Details + maintenance, then usage + drivers — two rows whose cells line up */}
-      <View style={styles.gridRow}>
-        <View style={styles.mainCell}>
-          <GroupLabel>{t('vehicle.vehicle')}</GroupLabel>
-          <View style={styles.card}>
+      {/* Vehicle details on the right, usage and Transport Ministry data in the middle,
+          maintenance on the left; each section edits as one with a single update button. */}
+      <View style={[styles.gridRow, accessoriesMenu.open && headerMenuStyles.wrapOpen]}>
+        <View style={styles.cell3Wide}>
+          <EditableSection title={t('vehicle.vehicle')}>
             <DetailRow
               first
               label={t('vehicle.plateNumber')}
               value={formatPlate(vehicle.plate_number)}
               ltr
-              edit={{
+              field={{
                 kind: 'text',
                 label: t('vehicle.plateNumber'),
                 raw: vehicle.plate_number,
@@ -431,28 +452,28 @@ export function VehicleDetailDesktopView({
                 onSave: (v) => onSaveField({ plate_number: v }),
               }}
             />
-            <DetailRow label={t('vehicle.manufacturer')} value={vehicle.manufacturer} onPress={() => setEditor({ kind: 'select', label: t('vehicle.manufacturer'), raw: vehicle.manufacturer, options: manufacturerOptions, allowClear: true, placeholder: t('vehicle.chooseManufacturer'), onSave: (v) => onSaveField({ manufacturer: v }) })} />
-            <DetailRow label={t('vehicle.model')} value={vehicle.model} edit={{ kind: 'text', label: t('vehicle.model'), raw: vehicle.model ?? '', onSave: (v) => onSaveField({ model: v.trim() || null }) }} />
-            <DetailRow label={t('vehicle.typeLabel')} value={VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type} onPress={() => setEditor({ kind: 'select', label: t('vehicle.typeLabel'), raw: vehicle.vehicle_type, options: VEHICLE_TYPE_OPTIONS(), onSave: (v) => onSaveField({ vehicle_type: (v ?? vehicle.vehicle_type) as VehicleType }) })} />
+            <DetailRow label={t('vehicle.manufacturer')} value={vehicle.manufacturer} field={{ kind: 'select', label: t('vehicle.manufacturer'), raw: vehicle.manufacturer, options: manufacturerOptions, allowClear: true, placeholder: t('vehicle.chooseManufacturer'), onSave: (v) => onSaveField({ manufacturer: v }) }} />
+            <DetailRow label={t('vehicle.model')} value={vehicle.model} field={{ kind: 'text', label: t('vehicle.model'), raw: vehicle.model ?? '', onSave: (v) => onSaveField({ model: v.trim() || null }) }} />
+            <DetailRow label={t('vehicle.typeLabel')} value={VEHICLE_TYPE_LABELS[vehicle.vehicle_type] ?? vehicle.vehicle_type} field={{ kind: 'select', label: t('vehicle.typeLabel'), raw: vehicle.vehicle_type, options: VEHICLE_TYPE_OPTIONS(), onSave: (v) => onSaveField({ vehicle_type: (v ?? vehicle.vehicle_type) as VehicleType }) }} />
             <DetailRow
               label={t('vehicle.productionYear')}
               value={productionLabel}
               ltr
-              onPress={() => setEditor({
+              field={{
                 kind: 'monthYear',
                 label: t('vehicle.productionYear'),
                 month: vehicle.production_month ? String(vehicle.production_month) : '',
                 year: vehicle.production_year ? String(vehicle.production_year) : '',
                 onSave: (month, year) => onSaveField({ production_month: month ? Number(month) : null, production_year: year ? Number(year) : null }),
-              })}
+              }}
             />
-            <DetailRow label={t('vehicle.color')} value={vehicle.color} edit={{ kind: 'text', label: t('vehicle.color'), raw: vehicle.color ?? '', onSave: (v) => onSaveField({ color: v.trim() || null }) }} />
-            <DetailRow label={t('vehicle.onRoadDate')} value={vehicle.road_registration_date ? formatDate(vehicle.road_registration_date) : null} ltr onPress={() => setEditor({ kind: 'date', label: t('vehicle.onRoadDate'), raw: vehicle.road_registration_date, onSave: (v) => onSaveField({ road_registration_date: v }) })} />
+            <DetailRow label={t('vehicle.color')} value={vehicle.color} field={{ kind: 'text', label: t('vehicle.color'), raw: vehicle.color ?? '', onSave: (v) => onSaveField({ color: v.trim() || null }) }} />
+            <DetailRow label={t('vehicle.onRoadDate')} value={vehicle.road_registration_date ? formatDate(vehicle.road_registration_date) : null} ltr field={{ kind: 'date', label: t('vehicle.onRoadDate'), raw: vehicle.road_registration_date, onSave: (v) => onSaveField({ road_registration_date: v }) }} />
             <DetailRow
               label={t('vehicle.vin')}
               value={vehicle.vin}
               ltr
-              edit={{
+              field={{
                 kind: 'text',
                 label: t('vehicle.vin'),
                 raw: vehicle.vin ?? '',
@@ -463,18 +484,41 @@ export function VehicleDetailDesktopView({
                 onSave: (v) => onSaveField({ vin: v || null }),
               }}
             />
+          </EditableSection>
+        </View>
+
+        <View style={[styles.cell3, styles.stack, accessoriesMenu.open && headerMenuStyles.wrapOpen]}>
+          <View style={[styles.stackItem, accessoriesMenu.open && headerMenuStyles.wrapOpen]}>
+            <EditableSection title={t('vehicle.companyUse')}>
+            <DetailRow first label={t('common.department')} value={department} field={{ kind: 'select', label: t('common.department'), raw: vehicle.department_id, options: departmentOptions, allowClear: true, placeholder: t('common.noDepartment'), onSave: (v) => onSaveField({ department_id: v }) }} />
+            <DetailRow label={t('vehicle.purpose')} value={vehicle.usage_type} field={{ kind: 'text', label: t('vehicle.purpose'), raw: vehicle.usage_type ?? '', onSave: (v) => onSaveField({ usage_type: v.trim() || null }) }} />
+            <DetailRow
+              label={t('vehicle.dealType')}
+              value={vehicle.acquisition_type ? ACQUISITION_TYPE_LABELS[vehicle.acquisition_type] ?? vehicle.acquisition_type : null}
+              field={{ kind: 'select', label: t('vehicle.dealType'), raw: vehicle.acquisition_type, options: ACQUISITION_TYPE_OPTIONS(), allowClear: true, placeholder: t('common.notSelected'), onSave: (v) => onSaveField({ acquisition_type: v as AcquisitionType | null }) }}
+            />
+            <DetailRow label={t('vehicle.internalCode')} value={vehicle.internal_code} ltr field={{ kind: 'text', label: t('vehicle.internalCode'), raw: vehicle.internal_code ?? '', ltr: true, onSave: (v) => onSaveField({ internal_code: v.trim() || null }) }} />
+            <DetailRow
+              label={t('vehicle.accessories')}
+              value={(vehicle.accessories ?? []).map((key) => VEHICLE_ACCESSORY_LABELS[key] ?? key).join(', ') || null}
+              onPress={accessoriesMenu.toggle}
+            />
+            </EditableSection>
+          {/* Outside the card: the card clips its overflow. Opens right under the last row. */}
+          {accessoriesMenu.open && <AccessoriesMenu selected={vehicle.accessories ?? []} onSave={(accessories) => onSaveField({ accessories })} onClose={accessoriesMenu.close} />}
+          </View>
+          <View style={styles.stackItem}>
+            <RegistryDetailsBlock vehicle={vehicle} onSaveField={onSaveField} />
           </View>
         </View>
 
-        <View style={[styles.sideCell, driversMenu.open && headerMenuStyles.wrapOpen]}>
-          {driversMenu.open && <HeaderMenuBackdrop onClose={driversMenu.close} />}
-          <GroupLabel>{t('vehicle.maintenance')}</GroupLabel>
+        <View style={styles.cell3}>
           <FocusTarget id="odometer,service" radius={8} tint={DESKTOP_COLORS.brand}>
-          <View style={[styles.card, styles.maintCard]}>
+          <EditableSection title={t('vehicle.maintenance')} cardStyle={styles.maintCard}>
             <View style={styles.maintTop}>
               <OdometerField
                 value={km(vehicle.odometer)}
-                edit={kmEditor(t('vehicle.currentOdometer'), vehicle.odometer, (v) => onSaveField({ odometer: v ?? 0 }), t('vehicle.currentOdometerHint'))}
+                field={kmEditor(t('vehicle.currentOdometer'), vehicle.odometer, (v) => onSaveField({ odometer: v ?? 0 }), t('vehicle.currentOdometerHint'))}
               />
               <View style={styles.inlineMeta}>
                 <DText style={styles.mutedText}>{vehicle.odometer_updated_at ? t('vehicle.odometerUpdatedOn') : t('vehicle.odometerNotUpdated')}</DText>
@@ -526,7 +570,7 @@ export function VehicleDetailDesktopView({
                 label={t('vehicle.atLastService')}
                 // 0 is what a new vehicle starts with: nothing was entered yet.
                 value={vehicle.last_service_km ? t('unit.kmValue', { v1: km(vehicle.last_service_km) }) : null}
-                edit={kmEditor(t('vehicle.kmAtLastService'), vehicle.last_service_km, (value) => {
+                field={kmEditor(t('vehicle.kmAtLastService'), vehicle.last_service_km, (value) => {
                   const last = value ?? 0;
                   const next = deriveNextServiceKm(last, vehicle.service_interval_km);
                   return onSaveField(next != null ? { last_service_km: last, next_service_km: next } : { last_service_km: last });
@@ -536,7 +580,7 @@ export function VehicleDetailDesktopView({
                 compact
                 label={t('vehicle.serviceEvery')}
                 value={vehicle.service_interval_km ? t('unit.kmValue', { v1: km(vehicle.service_interval_km) }) : null}
-                edit={kmEditor(t('vehicle.serviceInterval'), vehicle.service_interval_km, (interval) => {
+                field={kmEditor(t('vehicle.serviceInterval'), vehicle.service_interval_km, (interval) => {
                   const next = deriveNextServiceKm(vehicle.last_service_km, interval);
                   return onSaveField(next != null ? { service_interval_km: interval, next_service_km: next } : { service_interval_km: interval });
                 }, t('vehicle.serviceIntervalHint'))}
@@ -545,80 +589,14 @@ export function VehicleDetailDesktopView({
                 compact
                 label={t('vehicle.nextServiceAt')}
                 value={nextServiceKm != null ? t('unit.kmNext', { nextServiceKm: km(nextServiceKm) }) : null}
-                edit={derivedNextServiceKm != null ? undefined : kmEditor(t('vehicle.kmToNextService'), vehicle.next_service_km, (v) => onSaveField({ next_service_km: v }))}
+                field={derivedNextServiceKm != null ? undefined : kmEditor(t('vehicle.kmToNextService'), vehicle.next_service_km, (v) => onSaveField({ next_service_km: v }))}
               />
             </View>
-          </View>
+          </EditableSection>
           </FocusTarget>
         </View>
       </View>
 
-      <View style={[styles.gridRow, (accessoriesMenu.open || driversMenu.open) && headerMenuStyles.wrapOpen]}>
-        <View style={[styles.mainCell, accessoriesMenu.open && headerMenuStyles.wrapOpen]}>
-          <GroupLabel>{t('vehicle.companyUse')}</GroupLabel>
-          <View style={styles.card}>
-            <DetailRow first label={t('common.department')} value={department} onPress={() => setEditor({ kind: 'select', label: t('common.department'), raw: vehicle.department_id, options: departmentOptions, allowClear: true, placeholder: t('common.noDepartment'), onSave: (v) => onSaveField({ department_id: v }) })} />
-            <DetailRow label={t('vehicle.purpose')} value={vehicle.usage_type} edit={{ kind: 'text', label: t('vehicle.purpose'), raw: vehicle.usage_type ?? '', onSave: (v) => onSaveField({ usage_type: v.trim() || null }) }} />
-            <DetailRow
-              label={t('vehicle.dealType')}
-              value={vehicle.acquisition_type ? ACQUISITION_TYPE_LABELS[vehicle.acquisition_type] ?? vehicle.acquisition_type : null}
-              onPress={() => setEditor({ kind: 'select', label: t('vehicle.dealType'), raw: vehicle.acquisition_type, options: ACQUISITION_TYPE_OPTIONS(), allowClear: true, placeholder: t('common.notSelected'), onSave: (v) => onSaveField({ acquisition_type: v as AcquisitionType | null }) })}
-            />
-            <DetailRow label={t('vehicle.internalCode')} value={vehicle.internal_code} ltr edit={{ kind: 'text', label: t('vehicle.internalCode'), raw: vehicle.internal_code ?? '', ltr: true, onSave: (v) => onSaveField({ internal_code: v.trim() || null }) }} />
-            <DetailRow
-              label={t('vehicle.accessories')}
-              value={(vehicle.accessories ?? []).map((key) => VEHICLE_ACCESSORY_LABELS[key] ?? key).join(', ') || null}
-              onPress={accessoriesMenu.toggle}
-            />
-          </View>
-          {/* Outside the card: the card clips its overflow. Opens right under the last row. */}
-          {accessoriesMenu.open && <AccessoriesMenu selected={vehicle.accessories ?? []} onSave={(accessories) => onSaveField({ accessories })} onClose={accessoriesMenu.close} />}
-        </View>
-
-        <View style={styles.sideCell}>
-          <GroupLabel
-            action={
-              <View style={styles.driversActions}>
-                <VehicleDriverHistoryButton vehicleId={vehicleId} refreshKey={drivers.map((d) => d.id).join(',')} />
-                <HoverPressable style={styles.linkBtn} hoverStyle={styles.softBtnHover} onPress={driversMenu.toggle} accessibilityLabel={t('vehicle.changeAssignedDrivers')}>
-                  <DText weight="semiBold" style={styles.linkText}>{t('common.change')}</DText>
-                </HoverPressable>
-              </View>
-            }
-          >
-            {t('vehicle.assignedDrivers')}
-          </GroupLabel>
-          <View style={[styles.card, styles.driversCard]}>
-            {drivers.length === 0 ? (
-              <View style={styles.driversEmpty}>
-                <DText style={styles.mutedText}>{t('vehicle.noAssignedDrivers')}</DText>
-                <HoverPressable style={styles.softBtn} hoverStyle={styles.softBtnHover} pressStyle={styles.pressDown} onPress={driversMenu.toggle}>
-                  <Ionicons name="person-add-outline" size={16} color={DESKTOP_COLORS.brand} />
-                  <DText weight="semiBold" style={styles.softBtnText}>{t('attention.assignDriver')}</DText>
-                </HoverPressable>
-              </View>
-            ) : (
-              drivers.map((driver, index) => <DriverRow key={driver.id} driver={driver} first={index === 0} onPress={() => onOpenDriver(driver.driver_id)} />)
-            )}
-          </View>
-          {driversMenu.open && (
-            <View style={[headerMenuStyles.menu, styles.driversMenu, headerMenuEnter()]} role="dialog" aria-label={t('vehicle.assignedDrivers')}>
-              <View style={styles.driversModalContent}>
-                <VehicleDriversEditor
-                  vehicleId={vehicleId}
-                  assignments={drivers}
-                  driverOptions={driverOptions}
-                  onChanged={onDriversChanged}
-                  onOpenDriver={onOpenDriver}
-                  desktop
-                />
-              </View>
-            </View>
-          )}
-        </View>
-      </View>
-
-      <RegistryDetailsBlock vehicle={vehicle} onSaveField={onSaveField} setEditor={setEditor} />
 
       {/* Documents */}
       <View style={styles.docsHead}>
@@ -681,6 +659,22 @@ export function VehicleDetailDesktopView({
           onChanged={reloadFolderDocs}
         />
       )}
+
+      <DesktopModal visible={driversOpen} title={t('vehicle.assignedDrivers')} onClose={() => setDriversOpen(false)} maxWidth={560}>
+        <View style={styles.driversModal}>
+          <View style={styles.driversModalHistory}>
+            <VehicleDriverHistoryButton vehicleId={vehicleId} refreshKey={drivers.map((d) => d.id).join(',')} />
+          </View>
+          <VehicleDriversEditor
+            vehicleId={vehicleId}
+            assignments={drivers}
+            driverOptions={driverOptions}
+            onChanged={onDriversChanged}
+            onOpenDriver={(id) => { setDriversOpen(false); onOpenDriver(id); }}
+            desktop
+          />
+        </View>
+      </DesktopModal>
 
       <FieldEditDialog editor={editor} onClose={() => setEditor(null)} />
 
@@ -750,15 +744,12 @@ function RegistryRefreshAction({ vehicle, onSaveField }: { vehicle: Vehicle; onS
 function RegistryDetailsBlock({
   vehicle,
   onSaveField,
-  setEditor,
 }: {
   vehicle: Vehicle;
   onSaveField: (patch: Partial<Vehicle>) => Promise<string | null>;
-  setEditor: (editor: FieldEditor | null) => void;
 }) {
   const details = cleanRegistryDetails(vehicle.registry_details);
   const fields = REGISTRY_DETAIL_FIELDS.filter((f) => f.key in details);
-  const half = Math.ceil(fields.length / 2);
 
   const saveValue = (key: string, value: string | null) => {
     const next = { ...details };
@@ -775,7 +766,7 @@ function RegistryDetailsBlock({
         label={f.label}
         value={formatDate(details[f.key])}
         ltr
-        onPress={() => setEditor({ kind: 'date', label: f.label, raw: details[f.key] ?? null, onSave: (v) => saveValue(f.key, v) })}
+        field={{ kind: 'date', label: f.label, raw: details[f.key] ?? null, onSave: (v) => saveValue(f.key, v) }}
       />
     ) : (
       <DetailRow
@@ -784,28 +775,26 @@ function RegistryDetailsBlock({
         label={f.label}
         value={f.kind === 'number' ? Number(details[f.key]).toLocaleString('he-IL') : details[f.key]}
         ltr={f.ltr || f.kind === 'number'}
-        edit={{ kind: 'text', label: f.label, raw: details[f.key] ?? '', ltr: f.ltr || f.kind === 'number', numeric: f.kind === 'number', onSave: (v) => saveValue(f.key, v) }}
+        field={{ kind: 'text', label: f.label, raw: details[f.key] ?? '', ltr: f.ltr || f.kind === 'number', numeric: f.kind === 'number', onSave: (v) => saveValue(f.key, v) }}
       />
     );
 
   return (
     <View style={styles.registryBlock}>
-      <GroupLabel>{t('registry.title')}</GroupLabel>
       {fields.length === 0 ? (
-        <View style={[styles.card, styles.registryEmpty]}>
-          <DText style={styles.mutedText}>{t('registry.empty')}</DText>
-        </View>
-      ) : (
-        <View style={styles.gridRow}>
-          <View style={styles.halfCell}>
-            <View style={styles.card}>{fields.slice(0, half).map((f, i) => row(f, i === 0))}</View>
+        <>
+          <GroupLabel>{t('registry.title')}</GroupLabel>
+          <View style={[styles.card, styles.registryEmpty]}>
+            <DText style={styles.mutedText}>{t('registry.empty')}</DText>
           </View>
-          {fields.length > 1 && (
-            <View style={styles.halfCell}>
-              <View style={styles.card}>{fields.slice(half).map((f, i) => row(f, i === 0))}</View>
-            </View>
-          )}
-        </View>
+        </>
+      ) : (
+        <EditableSection title={t('registry.title')}>
+          {/* Short fields side by side, as many to a line as fit; none stretched across the page. */}
+          <View style={styles.registryCols}>
+            {fields.map((f) => <View key={f.key} style={styles.registryCol}>{row(f, true)}</View>)}
+          </View>
+        </EditableSection>
       )}
     </View>
   );
@@ -891,35 +880,6 @@ function RegistryReviewDialog({ plate, changes, onClose, onApply }: { plate: str
   );
 }
 
-// שורת נהג ברכב
-function DriverRow({ driver, first, onPress }: { driver: VehicleDriverWithProfile; first: boolean; onPress: () => void }) {
-  const fullName = driver.full_name ?? t('common.unnamed');
-  const initials = fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('');
-  const license = driver.license_expiry ? expiryState(driver.license_expiry) : null;
-  const licenseColor = license === 'expired' ? DESKTOP_TONES.bad.fg : license === 'soon' ? DESKTOP_TONES.warn.fg : DESKTOP_COLORS.inkMuted;
-
-  return (
-    <HoverPressable style={[styles.driverRow, !first && styles.rowDivider]} hoverStyle={styles.rowHover} onPress={onPress} accessibilityLabel={t('driver.openCard', { fullName })}>
-      <View style={styles.avatar}>
-        <DText weight="bold" style={styles.avatarText}>{initials}</DText>
-      </View>
-      <View style={styles.flex}>
-        <DText weight="semiBold" style={styles.driverName} numberOfLines={1}>{fullName}</DText>
-        {!!driver.phone && <DLtrText style={styles.mutedText}>{driver.phone}</DLtrText>}
-        {license && (
-          <View style={styles.inlineMeta}>
-            <DText style={[styles.driverLicense, { color: licenseColor }]} weight={license === 'ok' ? 'regular' : 'semiBold'}>
-              {license === 'expired' ? t('driver.licenseExpiredOn') : license === 'soon' ? t('driver.licenseExpiresOn') : t('driver.licenseValidUntil')}
-            </DText>
-            <DLtrText style={[styles.driverLicense, { color: licenseColor }]} weight={license === 'ok' ? 'regular' : 'semiBold'}>{formatDate(driver.license_expiry)}</DLtrText>
-          </View>
-        )}
-      </View>
-      <Ionicons name={dirIcon('chevron-back')} size={15} color={DESKTOP_COLORS.inkFaint} />
-    </HoverPressable>
-  );
-}
-
 // עיצוב תיק הרכב
 // תפריט הציוד הנלווה: כל לחיצה מסמנת/מבטלת ונשמרת מיד
 function AccessoriesMenu({ selected, onSave, onClose }: { selected: string[]; onSave: (accessories: string[]) => Promise<string | null>; onClose: () => void }) {
@@ -973,94 +933,33 @@ function AccessoriesMenu({ selected, onSave, onClose }: { selected: string[]; on
 
 // מד האוץ בראש כרטיס התחזוקה; לחיצה הופכת את המספר לשדה עם ✓ / ✕
 /** The odometer at the top of the maintenance card, edited in place like a DetailRow. */
-function OdometerField({ value, edit }: { value: string; edit: TextFieldEditor }) {
-  const [editing, setEditing] = useState(false);
-  const [hovered, setHovered] = useState(false);
-  const [draft, setDraft] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const boxRef = useRef<View>(null);
-
-  const cancel = () => {
-    setEditing(false);
-    setError(null);
-  };
-  const save = async () => {
-    if (saving) return;
-    setSaving(true);
-    const result = await edit.onSave(draft);
-    setSaving(false);
-    if (result) setError(result);
-    else cancel();
-  };
-
-  // A click outside drops the change, like ✕.
-  useEffect(() => {
-    if (!editing || saving || typeof document === 'undefined') return;
-    const onDown = (event: MouseEvent) => {
-      const node = boxRef.current as unknown as HTMLElement | null;
-      if (node && !node.contains(event.target as Node)) cancel();
-    };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [editing, saving]);
-
-  if (!editing) {
+function OdometerField({ value, field }: { value: string; field: TextFieldEditor }) {
+  // Edits with the rest of the maintenance section: a click opens the section, "עדכון" saves.
+  const section = useSectionEdit();
+  if (section) section.register('odometer', field);
+  if (section?.editing) {
     return (
-      <HoverPressable
-        style={styles.odoHead}
-        hoverStyle={pageStyles.rowHover}
-        onHoverIn={() => setHovered(true)}
-        onHoverOut={() => setHovered(false)}
-        onPress={() => {
-          setDraft(edit.raw);
-          setError(null);
-          setEditing(true);
-        }}
-        accessibilityLabel={`${edit.label}: ${value} ${t('unit.km')}. ${t('common.edit')}`}
-      >
-        <View style={styles.odoRow}>
-          <DLtrText weight="bold" style={styles.odoValue}>{value}</DLtrText>
-          <DText style={styles.odoUnit}>{t('unit.km')}</DText>
+      <View style={styles.odoEditRow}>
+        <View style={styles.flex}>
+          <SectionFieldControl fieldKey="odometer" field={field} label={field.label} />
         </View>
-        <View style={pageStyles.rowEdit}>
-          <DText style={[pageStyles.rowEditText, hovered && pageStyles.rowEditTextHover]}>{t('common.edit')}</DText>
-          <Ionicons name={dirIcon('chevron-back')} size={13} color={hovered ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkFaint} />
-        </View>
-      </HoverPressable>
+        <DText style={styles.odoUnit}>{t('unit.km')}</DText>
+        {!!section.errors.odometer && <DText style={pageStyles.inlineError}>{section.errors.odometer}</DText>}
+      </View>
     );
   }
-
   return (
-    <View ref={boxRef}>
-      <View style={styles.odoEditRow}>
-        <DesktopInput
-          value={edit.format ? edit.format(draft) : draft}
-          onChangeText={(v) => {
-            setDraft(edit.parse ? edit.parse(v) : v);
-            setError(null);
-          }}
-          ltr
-          keyboardType="number-pad"
-          hasError={!!error}
-          onSubmitEditing={() => void save()}
-          autoFocus
-          selectTextOnFocus
-          onKeyPress={(e) => {
-            if (e.nativeEvent.key === 'Escape') cancel();
-          }}
-          accessibilityLabel={edit.label}
-          style={styles.odoInput}
-        />
-        <HoverPressable style={[pageStyles.inlineBtn, pageStyles.inlineSave]} hoverStyle={pageStyles.inlineSaveHover} pressMotionStyle={pageStyles.inlineBtnPress} onPress={() => void save()} disabled={saving} accessibilityLabel={t('common.save')}>
-          {saving ? <BrandLoader size="small" color="#FFFFFF" /> : <Ionicons name="checkmark" size={18} color="#FFFFFF" />}
-        </HoverPressable>
-        <HoverPressable style={[pageStyles.inlineBtn, pageStyles.inlineCancel]} hoverStyle={pageStyles.inlineCancelHover} pressMotionStyle={pageStyles.inlineBtnPress} onPress={cancel} disabled={saving} accessibilityLabel={t('common.cancel')}>
-          <Ionicons name="close" size={18} color={DESKTOP_COLORS.inkMuted} />
-        </HoverPressable>
+    <HoverPressable
+      style={styles.odoHead}
+      hoverStyle={pageStyles.rowHover}
+      onPress={() => section?.start('odometer')}
+      accessibilityLabel={`${field.label}: ${value} ${t('unit.km')}`}
+    >
+      <View style={styles.odoRow}>
+        <DLtrText weight="bold" style={styles.odoValue}>{value}</DLtrText>
+        <DText style={styles.odoUnit}>{t('unit.km')}</DText>
       </View>
-      {!!(error || edit.hint) && <DText style={error ? pageStyles.inlineError : pageStyles.inlineHint}>{error ?? edit.hint}</DText>}
-    </View>
+    </HoverPressable>
   );
 }
 
@@ -1079,6 +978,26 @@ const styles = StyleSheet.create({
   reviewNext: { color: DESKTOP_COLORS.brand },
   reviewActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, marginTop: 4 },
   ...pageStyles,
+
+  // Three columns from a laptop (~1000px of content) up; narrower screens wrap.
+  cell3Wide: { flexGrow: 1.25, flexBasis: 380, minWidth: 0 },
+  cell3: { flexGrow: 1, flexBasis: 290, minWidth: 0 },
+  // Usage and Transport Ministry data stacked in the left column.
+  stack: { gap: 18 },
+  stackItem: { minWidth: 0 },
+  content: { ...pageStyles.content, maxWidth: 1760 },
+  // נהגים בכותרת
+  heroDriver: { gap: 4, borderRadius: 8, paddingVertical: 4, maxWidth: 180, ...webOnly({ cursor: 'pointer', transition: 'background-color 150ms ease' }) },
+  heroDriverHover: { backgroundColor: 'rgba(255,255,255,0.08)' },
+  heroDriverName: { fontSize: 17 },
+  heroDriversEdit: { flexDirection: 'row-reverse', alignSelf: 'center', alignItems: 'center', gap: 6, minWidth: 32, height: 32, paddingHorizontal: 8, marginHorizontal: 8, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', ...webOnly({ cursor: 'pointer' }) },
+  heroDriversEditHover: { backgroundColor: 'rgba(255,255,255,0.22)' },
+  heroDriversEditText: { fontSize: 13, color: '#FFFFFF' },
+  driversModal: { gap: 10 },
+  driversModalHistory: { flexDirection: 'row-reverse' },
+  // Hairlines under each field; the last line's is hidden by the negative margin under the card's clip.
+  registryCols: { flexDirection: 'row-reverse', flexWrap: 'wrap', marginBottom: -1 },
+  registryCol: { flexGrow: 1, flexBasis: 280, minWidth: 0, borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
 
   // כפתור 'עדכון ממשרד התחבורה' בכותרת, באותו זכוכית כמו מסגרת הלוחית
   plateColumn: { gap: 4 },
@@ -1153,7 +1072,6 @@ const styles = StyleSheet.create({
   driverLicense: { fontSize: 13, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
   driversEmpty: { padding: 16, gap: 10, alignItems: 'flex-end' },
   // חלון הנהגים נפתח מתחת לכותרת
-  driversMenu: { top: 34, start: 0, end: 0, width: 'auto' },
   // תפריט הציוד הנלווה, נפתח מתחת לשורה
   accessoriesMenu: { top: '100%', marginTop: 4, end: 8, width: 300, paddingBottom: 6 },
   accessoryRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 8, ...webOnly({ transition: 'background-color 150ms ease' }) },

@@ -1,7 +1,7 @@
 // אבני הבניין של דפי התיק במחשב: כותרת כחולה, מספרים גדולים ושורות פרטים
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { FocusTarget } from '../../ui/FocusTarget';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
 import { BrandLoader } from '../../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { DesktopModal } from '../DesktopModal';
@@ -447,7 +447,7 @@ const SectionEditContext = createContext<SectionEdit | null>(null);
 
 // הערך השמור של שדה
 const rawOf = (field: FieldEditor): Draft =>
-  field.kind === 'selectPair' ? field.raw : field.kind === 'monthYear' ? `${field.month}/${field.year}` : field.raw;
+  field.kind === 'selectPair' ? field.raw : field.kind === 'monthYear' ? [field.month || null, field.year || null] : field.raw;
 const sameDraft = (a: Draft | undefined, b: Draft) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
 // שדה עריכה בתוך אזור
@@ -489,8 +489,35 @@ function SectionFieldControl({ fieldKey, field, label }: { fieldKey: string; fie
       </View>
     );
   }
+  if (field.kind === 'monthYear') {
+    const [month, year] = (Array.isArray(draft) ? draft : [field.month, field.year]) as [string | null, string | null];
+    const input = (value: string | null, onChange: (v: string) => void, placeholder: string, focus: boolean) => (
+      <TextInput
+        value={value ?? ''}
+        onChangeText={onChange}
+        autoFocus={focus}
+        placeholder={placeholder}
+        keyboardType="number-pad"
+        onSubmitEditing={section.save}
+        onKeyPress={(e) => { if (e.nativeEvent.key === 'Escape') section.cancel(); }}
+        style={[pageStyles.sectionInput, pageStyles.sectionInputLtr, pageStyles.flex, hasError && pageStyles.sectionInputError]}
+      />
+    );
+    return (
+      <View style={pageStyles.sectionPair}>
+        {input(year, (v) => section.setDraft(fieldKey, [month, digitsOnly(v).slice(0, 4)]), t('date.yearExample'), false)}
+        {input(month, (v) => section.setDraft(fieldKey, [digitsOnly(v).slice(0, 2), year]), t('date.monthExample'), section.focusKey === fieldKey)}
+      </View>
+    );
+  }
   return <DText style={pageStyles.rowValueEmpty}>{label}</DText>;
 }
+
+/** The editing state of the EditableSection around a custom field, if any. */
+export function useSectionEdit() {
+  return useContext(SectionEditContext);
+}
+export { SectionFieldControl };
 
 // אזור עם כפתור עריכה ליד השם
 /**
@@ -498,7 +525,7 @@ function SectionFieldControl({ fieldKey, field, label }: { fieldKey: string; fie
  * the title, or a click on any row, turns them all into fields with the caret
  * in place; "עדכון" saves only what changed, "ביטול" drops it.
  */
-export function EditableSection({ title, action, canEdit = true, children }: { title: string; action?: React.ReactNode; canEdit?: boolean; children: React.ReactNode }) {
+export function EditableSection({ title, action, canEdit = true, cardStyle, children }: { title: string; action?: React.ReactNode; canEdit?: boolean; cardStyle?: StyleProp<ViewStyle>; children: React.ReactNode }) {
   const fields = useRef(new Map<string, FieldEditor>()).current;
   fields.clear();
   const [editing, setEditing] = useState(false);
@@ -536,6 +563,7 @@ export function EditableSection({ title, action, canEdit = true, children }: { t
       const result = field.kind === 'text' ? await field.onSave(String(draft ?? ''))
         : field.kind === 'selectPair' ? await field.onSave(...(draft as [string | null, string | null]))
         : field.kind === 'select' || field.kind === 'date' ? await field.onSave((draft as string | null) ?? null)
+        : field.kind === 'monthYear' ? await field.onSave(...((draft as [string | null, string | null]).map((v) => v ?? '') as [string, string]))
         : null;
       if (result) found[k] = result;
     }
@@ -578,7 +606,7 @@ export function EditableSection({ title, action, canEdit = true, children }: { t
         </View>
         {action}
       </View>
-      <View style={pageStyles.card}>
+      <View style={[pageStyles.card, cardStyle]}>
         {children}
         {editing && (
           <View style={[pageStyles.sectionFooter, pageStyles.rowDivider]}>
