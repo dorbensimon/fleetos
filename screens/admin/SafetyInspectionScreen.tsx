@@ -442,6 +442,62 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
     const needOdometer = showErrors && odometerValue == null;
     // Items are numbered straight through, across groups.
     const firstNumber = form.groups.map((_, i) => form.groups.slice(0, i).reduce((sum, g) => sum + g.items.length, 1));
+    // מחשב: הקבוצות בשתי עמודות מאוזנות לפי מספר הסעיפים
+    const renderDeskGroup = (group: InspectionForm['groups'][number], groupIndex: number) => {
+        const open = group.items.filter((item) => !answers[item.id]?.status).length;
+        return (
+          <View key={group.id} nativeID={`group-${group.id}`} style={styles.deskAnchor}>
+            <Surface style={styles.deskGroup}>
+              <View style={styles.deskGroupHead}>
+                <View style={styles.groupNum}>
+                  <DKText variant="label" color={DK.accent}>
+                    {groupIndex + 1}
+                  </DKText>
+                </View>
+                <DKText variant="heading" style={styles.flex} accessibilityRole="header">
+                  {group.title}
+                </DKText>
+                {open > 0 ? (
+                  <Pressy onPress={() => markGroupOk(group.id)} accessibilityLabel={t('inspection.markRestOk', { title: group.title })} style={styles.deskMarkAll} pressScale={0.97}>
+                    <Ionicons name="checkmark-done" size={17} color={DK.accent} />
+                    <DKText variant="label" color={DK.accent}>
+                      {open === group.items.length ? t('common.allOk') : t('inspection.restOk')}
+                    </DKText>
+                  </Pressy>
+                ) : (
+                  <View style={[styles.countPill, { backgroundColor: STATUS.ok.soft }]}>
+                    <DKText variant="micro" color={STATUS.ok.fg}>
+                      {t('inspection.allMarkedShort')}
+                    </DKText>
+                  </View>
+                )}
+              </View>
+              {group.items.map((item, itemIndex) => (
+                <InspectionItemRow
+                  key={item.id}
+                  number={firstNumber[groupIndex] + itemIndex}
+                  item={item}
+                  answer={answers[item.id]}
+                  onStatus={setStatus}
+                  onNote={setNote}
+                  last={itemIndex === group.items.length - 1}
+                />
+              ))}
+            </Surface>
+          </View>
+        );
+      };
+    const deskColumns = (() => {
+      const groups = form.groups.map((group, groupIndex) => ({ group, groupIndex }));
+      const total = groups.reduce((n, g) => n + g.group.items.length + 1, 0);
+      let acc = 0;
+      let split = groups.length;
+      for (let i = 0; i < groups.length; i++) {
+        acc += groups[i].group.items.length + 1;
+        if (acc >= total / 2) { split = i + 1; break; }
+      }
+      return [groups.slice(0, split), groups.slice(split)].filter((col) => col.length);
+    })();
     const fillAction = (
           <View style={styles.footer}>
             <View style={styles.need} accessibilityLiveRegion="polite">
@@ -594,7 +650,7 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
         insetTop={topInset}
         insetBottom={bottomInset}
         scrollRef={scrollRef}
-        maxWidth={wide}
+        maxWidth={isDesktop ? 1760 : undefined}
         hero={
           <View>
             <HeroTitle
@@ -743,50 +799,14 @@ export default function SafetyInspectionScreen({ navigation, route }: Props) {
               </Surface>
             </View>
             <View style={styles.deskMain}>
-              {form.groups.map((group, groupIndex) => {
-                const open = group.items.filter((item) => !answers[item.id]?.status).length;
-                return (
-                  <View key={group.id} nativeID={`group-${group.id}`} style={styles.deskAnchor}>
-                    <Surface style={styles.deskGroup}>
-                      <View style={styles.deskGroupHead}>
-                        <View style={styles.groupNum}>
-                          <DKText variant="label" color={DK.accent}>
-                            {groupIndex + 1}
-                          </DKText>
-                        </View>
-                        <DKText variant="heading" style={styles.flex} accessibilityRole="header">
-                          {group.title}
-                        </DKText>
-                        {open > 0 ? (
-                          <Pressy onPress={() => markGroupOk(group.id)} accessibilityLabel={t('inspection.markRestOk', { title: group.title })} style={styles.deskMarkAll} pressScale={0.97}>
-                            <Ionicons name="checkmark-done" size={17} color={DK.accent} />
-                            <DKText variant="label" color={DK.accent}>
-                              {open === group.items.length ? t('common.allOk') : t('inspection.restOk')}
-                            </DKText>
-                          </Pressy>
-                        ) : (
-                          <View style={[styles.countPill, { backgroundColor: STATUS.ok.soft }]}>
-                            <DKText variant="micro" color={STATUS.ok.fg}>
-                              {t('inspection.allMarkedShort')}
-                            </DKText>
-                          </View>
-                        )}
-                      </View>
-                      {group.items.map((item, itemIndex) => (
-                        <InspectionItemRow
-                          key={item.id}
-                          number={firstNumber[groupIndex] + itemIndex}
-                          item={item}
-                          answer={answers[item.id]}
-                          onStatus={setStatus}
-                          onNote={setNote}
-                          last={itemIndex === group.items.length - 1}
-                        />
-                      ))}
-                    </Surface>
+              {/* Two balanced columns of groups on a wide screen (in order: right column first); one column when narrow. */}
+              <View style={styles.deskCols}>
+                {deskColumns.map((col, c) => (
+                  <View key={c} style={styles.deskCol}>
+                    {col.map(({ group, groupIndex }) => renderDeskGroup(group, groupIndex))}
                   </View>
-                );
-              })}
+                ))}
+              </View>
               {fillExtra}
             </View>
           </View>
@@ -1753,6 +1773,8 @@ const styles = StyleSheet.create({
   desk: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 24 },
   deskAside: { width: 340, gap: 16 },
   deskMain: { flex: 1, minWidth: 0, gap: 20 },
+  deskCols: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'flex-start', gap: 20 },
+  deskCol: { flexGrow: 1, flexBasis: 520, minWidth: 0, gap: 20 },
   // תפריט הצד במחשב
   deskNav: { paddingVertical: 8 },
   deskNavRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingHorizontal: 16, minHeight: 40 },

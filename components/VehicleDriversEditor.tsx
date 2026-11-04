@@ -5,7 +5,8 @@ import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
 import { AppText, useToast } from './ui';
 import { Select } from './ui/Select';
-import { DesktopSelect } from './desktop/primitives';
+import { DesktopSelect, DLtrText, DText, HoverPressable } from './desktop/primitives';
+import { DESKTOP_COLORS, DESKTOP_TONES, webOnly } from './desktop/desktopTheme';
 import { COLORS, RADIUS, SPACING } from '../lib/theme';
 import { Avatar, DK, DK_FONT, STATUS } from './driverKit';
 import { formatPhone } from '../lib/phone';
@@ -110,6 +111,83 @@ export function VehicleDriversEditor({
       },
     ]);
   };
+
+  // מחשב: רשימה בכרטיס עם תמונה, תגית ופעולות ברורות
+  if (desktop) {
+    return (
+      <View style={dk.wrap}>
+        <View style={dk.list}>
+          {assignments.length === 0 ? (
+            <DText style={dk.empty}>{t('vehicle.noDriversAssigned')}</DText>
+          ) : (
+            assignments.map((a, index) => {
+              const name = a.full_name ?? t('common.unnamed');
+              const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('');
+              return (
+                <View key={a.id} style={[dk.row, index > 0 && dk.rowDivider]}>
+                  <HoverPressable
+                    style={dk.rowMain}
+                    hoverStyle={dk.rowMainHover}
+                    disabled={!onOpenDriver}
+                    onPress={() => onOpenDriver?.(a.driver_id)}
+                    accessibilityLabel={t('driver.openDetails', { v1: name })}
+                  >
+                    <View style={[dk.avatar, a.is_primary && dk.avatarPrimary]}>
+                      <DText weight="bold" style={[dk.avatarText, a.is_primary && dk.avatarTextPrimary]}>{initials}</DText>
+                    </View>
+                    <View style={dk.text}>
+                      <View style={dk.nameRow}>
+                        <DText weight="semiBold" style={dk.name} numberOfLines={1}>{name}</DText>
+                        <View style={[dk.badge, a.is_primary && dk.badgePrimary]}>
+                          <DText weight="semiBold" style={[dk.badgeText, a.is_primary && dk.badgeTextPrimary]}>
+                            {a.is_primary ? t('common.primary') : t('common.secondary')}
+                          </DText>
+                        </View>
+                      </View>
+                      {!!a.phone && <DLtrText style={dk.meta}>{formatPhone(a.phone)}</DLtrText>}
+                    </View>
+                  </HoverPressable>
+                  <View style={dk.actions}>
+                    {!a.is_primary && (
+                      <HoverPressable style={dk.ghostBtn} hoverStyle={dk.ghostBtnHover} onPress={() => void makePrimary(a)} disabled={busyId === a.id} accessibilityLabel={t('vehicle.makePrimary')}>
+                        <Ionicons name="star-outline" size={14} color={DESKTOP_COLORS.brand} />
+                        <DText weight="semiBold" style={dk.ghostBtnText}>{t('vehicle.makePrimary')}</DText>
+                      </HoverPressable>
+                    )}
+                    <HoverPressable style={dk.iconBtn} hoverStyle={dk.iconBtnHover} onPress={() => confirmRemove(a)} disabled={busyId === a.id} accessibilityLabel={t('vehicle.removeDriverAssignment')} {...webOnly({ title: t('vehicle.removeDriverAssignment') })}>
+                      <Ionicons name="trash-outline" size={16} color={DESKTOP_TONES.bad.fg} />
+                    </HoverPressable>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </View>
+
+        <View style={dk.addRow}>
+          <View style={dk.addSelect}>
+            <DesktopSelect
+              value={addingDriverId}
+              onChange={setAddingDriverId}
+              options={availableOptions}
+              placeholder={availableOptions.length ? t('vehicle.addDriver') : t('vehicle.noDriversAvailable')}
+              allowClear
+            />
+          </View>
+          <HoverPressable
+            style={[dk.addBtn, (!addingDriverId || busyId === '__new__') && dk.addBtnOff]}
+            hoverStyle={dk.addBtnHover}
+            onPress={() => void addDriver()}
+            disabled={!addingDriverId || busyId === '__new__'}
+            accessibilityLabel={t('vehicle.confirmAddDriver')}
+          >
+            <Ionicons name="add" size={16} color="#FFFFFF" />
+            <DText weight="semiBold" style={dk.addBtnText}>{t('common.add')}</DText>
+          </HoverPressable>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.wrap, desktop && styles.desktopWrap]}>
@@ -270,4 +348,39 @@ const kit = StyleSheet.create({
   // כפתור הוספה
   addBtn: { width: 52, height: 52, borderRadius: 16, backgroundColor: DK.accent },
   empty: { fontFamily: DK_FONT.medium, fontSize: 14.5, color: DK.muted },
+});
+
+// עיצוב רשימת הנהגים (מחשב, בחלון)
+const dk = StyleSheet.create({
+  wrap: { gap: 12 },
+  list: { borderWidth: 1, borderColor: DESKTOP_COLORS.border, borderRadius: 12, overflow: 'hidden', backgroundColor: DESKTOP_COLORS.surface },
+  empty: { padding: 16, fontSize: 14, color: DESKTOP_COLORS.inkMuted, textAlign: 'right' },
+  row: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, paddingEnd: 12 },
+  rowDivider: { borderTopWidth: 1, borderTopColor: DESKTOP_COLORS.borderSoft },
+  rowMain: { flex: 1, minWidth: 0, flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 14, ...webOnly({ transition: 'background-color 150ms ease' }) },
+  rowMainHover: { backgroundColor: DESKTOP_COLORS.rowHover },
+  avatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: DESKTOP_COLORS.surfaceMuted },
+  avatarPrimary: { backgroundColor: 'rgba(47,91,255,0.10)' },
+  avatarText: { fontSize: 14, color: DESKTOP_COLORS.inkMuted },
+  avatarTextPrimary: { color: DESKTOP_COLORS.brand },
+  text: { flex: 1, minWidth: 0, gap: 2, alignItems: 'flex-end' },
+  nameRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, maxWidth: '100%' },
+  name: { fontSize: 15, color: DESKTOP_COLORS.ink, flexShrink: 1 },
+  meta: { fontSize: 13, color: DESKTOP_COLORS.inkMuted, ...webOnly({ fontVariantNumeric: 'tabular-nums' }) },
+  badge: { paddingHorizontal: 8, height: 20, borderRadius: 10, justifyContent: 'center', backgroundColor: DESKTOP_COLORS.surfaceMuted },
+  badgePrimary: { backgroundColor: 'rgba(47,91,255,0.10)' },
+  badgeText: { fontSize: 11.5, color: DESKTOP_COLORS.inkMuted },
+  badgeTextPrimary: { color: DESKTOP_COLORS.brand },
+  actions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
+  ghostBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, height: 30, paddingHorizontal: 10, borderRadius: 8, ...webOnly({ cursor: 'pointer', transition: 'background-color 150ms ease' }) },
+  ghostBtnHover: { backgroundColor: 'rgba(47,91,255,0.08)' },
+  ghostBtnText: { fontSize: 13, color: DESKTOP_COLORS.brand },
+  iconBtn: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', ...webOnly({ cursor: 'pointer', transition: 'background-color 150ms ease' }) },
+  iconBtnHover: { backgroundColor: DESKTOP_TONES.bad.bg },
+  addRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  addSelect: { flex: 1, minWidth: 0 },
+  addBtn: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, height: 38, paddingHorizontal: 14, borderRadius: 10, backgroundColor: DESKTOP_COLORS.brand, ...webOnly({ cursor: 'pointer', transition: 'background-color 150ms ease, opacity 150ms ease' }) },
+  addBtnHover: { backgroundColor: DESKTOP_COLORS.brandHover },
+  addBtnOff: { opacity: 0.45, ...webOnly({ cursor: 'default' }) },
+  addBtnText: { fontSize: 13.5, color: '#FFFFFF' },
 });
