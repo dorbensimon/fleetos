@@ -13,6 +13,7 @@ import { formatDate } from '../../lib/theme';
 import { errorMessage } from '../../lib/requestError';
 import { t, dirIcon } from '../../lib/i18n';
 import { useWhatsappQuickLink } from '../../lib/useWhatsappQuickLink';
+import { ChoiceSheet, Select } from '../ui/Select';
 
 /**
  * Every dated folder of every vehicle and driver, as it stands right now:
@@ -87,50 +88,82 @@ export function ValidityPanel({ onOpen, compact }: { onOpen: (row: ValidityRow) 
     { key: 'missing', label: t('status.missing') },
   ];
 
+  const ownerItems = [
+    { key: 'vehicle' as const, label: t('common.vehicles'), count: countFor({ ownerType: 'vehicle', folderKeys: none }) },
+    { key: 'driver' as const, label: t('common.drivers'), count: countFor({ ownerType: 'driver', folderKeys: none }) },
+  ];
+  const searchBox = (
+    <View style={[styles.search, compact && styles.searchFull]}>
+      <Ionicons name="search" size={17} color={DESKTOP_COLORS.inkFaint} />
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder={owner === 'vehicle' ? t('validity.searchVehicles') : t('validity.searchDrivers')}
+        placeholderTextColor={DESKTOP_COLORS.inkFaint}
+        style={styles.searchInput}
+        accessibilityLabel={t('validity.search')}
+      />
+    </View>
+  );
+
+  const exportButton = (
+    <HoverPressable
+      style={[styles.ghost, (!visible.length || exporting) && styles.disabled]}
+      hoverStyle={styles.ghostHover}
+      onPress={visible.length && !exporting ? () => void exportCsv() : undefined}
+      accessibilityLabel={t('validity.export')}
+    >
+      <Ionicons name="download-outline" size={17} color={DESKTOP_COLORS.brand} />
+      <DText weight="semiBold" style={styles.ghostText}>{t('validity.export')}</DText>
+    </HoverPressable>
+  );
+
   return (
     <View style={styles.root}>
+      {compact ? (
+        // The phone: the same filters as the computer, as dropdowns.
+        <View style={styles.filters}>
+          <View style={styles.filterRow}>
+            <View style={styles.filterCell}>
+              <Select value={owner} options={ownerItems.map((o) => ({ value: o.key, label: `${o.label} (${o.count})` }))} onChange={(v) => v && pickOwner(v)} />
+            </View>
+            <View style={styles.filterCell}>
+              <Select value={state} options={states.map((s) => ({ value: s.key, label: `${s.label} (${countFor({ state: s.key })})` }))} onChange={(v) => v && setState(v)} />
+            </View>
+          </View>
+          <FolderDropdown
+            folders={folders.map((f) => ({ key: f.key, label: f.label, count: countFor({ folderKeys: new Set([f.key]) }) }))}
+            allCount={countFor({ folderKeys: none })}
+            selected={folderKeys}
+            onToggle={toggleFolder}
+            onClear={() => setFolderKeys(new Set())}
+          />
+          <View style={styles.filterRow}>
+            <View style={styles.filterCell}>{searchBox}</View>
+            {exportButton}
+          </View>
+        </View>
+      ) : (
+      <>
       <View style={styles.toolbar}>
         <Segment
-          items={[
-            { key: 'vehicle', label: t('common.vehicles'), count: countFor({ ownerType: 'vehicle', folderKeys: none }) },
-            { key: 'driver', label: t('common.drivers'), count: countFor({ ownerType: 'driver', folderKeys: none }) },
-          ]}
+          items={ownerItems}
           value={owner}
           onChange={pickOwner}
         />
         <Segment items={states.map((s) => ({ ...s, count: countFor({ state: s.key }) }))} value={state} onChange={setState} />
-        <View style={[styles.search, compact && styles.searchFull]}>
-          <Ionicons name="search" size={17} color={DESKTOP_COLORS.inkFaint} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder={owner === 'vehicle' ? t('validity.searchVehicles') : t('validity.searchDrivers')}
-            placeholderTextColor={DESKTOP_COLORS.inkFaint}
-            style={styles.searchInput}
-            accessibilityLabel={t('validity.search')}
-          />
-        </View>
-        <HoverPressable
-          style={[styles.ghost, (!visible.length || exporting) && styles.disabled]}
-          hoverStyle={styles.ghostHover}
-          onPress={visible.length && !exporting ? () => void exportCsv() : undefined}
-          accessibilityLabel={t('validity.export')}
-        >
-          <Ionicons name="download-outline" size={17} color={DESKTOP_COLORS.brand} />
-          <DText weight="semiBold" style={styles.ghostText}>{t('validity.export')}</DText>
-        </HoverPressable>
+        {searchBox}
+        {exportButton}
       </View>
 
       <View style={styles.chips}>
         <Chip label={t('validity.allFolders')} count={countFor({ folderKeys: none })} active={!folderKeys.size} onPress={() => setFolderKeys(new Set())} />
-        {folders.map((f) => {
-          const count = countFor({ folderKeys: new Set([f.key]) });
-          const active = folderKeys.has(f.key);
-          // The phone hides empty folders, to save scrolling.
-          if (compact && !count && !active) return null;
-          return <Chip key={f.key} label={f.label} count={count} active={active} onPress={() => toggleFolder(f.key)} />;
-        })}
+        {folders.map((f) => (
+          <Chip key={f.key} label={f.label} count={countFor({ folderKeys: new Set([f.key]) })} active={folderKeys.has(f.key)} onPress={() => toggleFolder(f.key)} />
+        ))}
       </View>
+      </>
+      )}
 
       <DText weight="semiBold" style={styles.total}>{t('validity.rowsCount', { count: visible.length })}</DText>
 
@@ -182,6 +215,40 @@ export function ValidityPanel({ onOpen, compact }: { onOpen: (row: ValidityRow) 
         </View>
       )}
     </View>
+  );
+}
+
+// בחירת תיקיות ברשימה נפתחת (טלפון)
+const ALL_FOLDERS = '__all__';
+function FolderDropdown({ folders, allCount, selected, onToggle, onClear }: {
+  folders: { key: string; label: string; count: number }[];
+  allCount: number;
+  selected: Set<string>;
+  onToggle: (key: string) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const picked = folders.filter((f) => selected.has(f.key));
+  const label = !picked.length ? t('validity.allFolders') : picked.length === 1 ? picked[0].label : `${picked[0].label} +${picked.length - 1}`;
+  return (
+    <>
+      <HoverPressable style={styles.dropdown} onPress={() => setOpen(true)} accessibilityRole="button" accessibilityLabel={label}>
+        <Ionicons name="chevron-down" size={18} color={DESKTOP_COLORS.inkFaint} />
+        <DText weight="semiBold" style={styles.dropdownText} numberOfLines={1}>{label}</DText>
+        <Ionicons name="folder-open-outline" size={17} color={DESKTOP_COLORS.brand} />
+      </HoverPressable>
+      <ChoiceSheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title={t('validity.allFolders')}
+        checked={picked.length ? picked.map((f) => f.key) : [ALL_FOLDERS]}
+        options={[
+          { value: ALL_FOLDERS, label: `${t('validity.allFolders')} (${allCount})` },
+          ...folders.map((f) => ({ value: f.key, label: `${f.label} (${f.count})` })),
+        ]}
+        onPick={(v) => { if (!v || v === ALL_FOLDERS) onClear(); else onToggle(v); }}
+      />
+    </>
   );
 }
 
@@ -245,6 +312,11 @@ const styles = StyleSheet.create({
   ghostText: { fontSize: 13.5, color: DESKTOP_COLORS.brand },
   disabled: { opacity: 0.5 },
   chips: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 },
+  filters: { gap: 10 },
+  filterRow: { flexDirection: 'row-reverse', gap: 10 },
+  filterCell: { flex: 1, minWidth: 0 },
+  dropdown: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, minHeight: 52, paddingHorizontal: 14, borderRadius: 16, backgroundColor: DESKTOP_COLORS.surface, borderWidth: 1, borderColor: DESKTOP_COLORS.border },
+  dropdownText: { flex: 1, fontSize: 15, color: DESKTOP_COLORS.ink, textAlign: 'right' },
   chip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: DESKTOP_COLORS.border, backgroundColor: DESKTOP_COLORS.surface },
   chipActive: { backgroundColor: DESKTOP_COLORS.brand, borderColor: DESKTOP_COLORS.brand },
   chipHover: { backgroundColor: DESKTOP_COLORS.rowHover },

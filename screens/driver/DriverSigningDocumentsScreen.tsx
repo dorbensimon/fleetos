@@ -27,6 +27,7 @@ import { useNextMeeting } from '../../components/checklist/useNextMeeting';
 import { NextMeetingCard } from '../../components/checklist/NextMeetingCard';
 import { t, dirIcon, getLocale } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
+import { useWhatsappQuickLink } from '../../lib/useWhatsappQuickLink';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverSigningDocuments'>;
 // תאריך ושעה
@@ -54,6 +55,7 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
   const loadRequest = useRef(0);
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
+  const whatsapp = useWhatsappQuickLink();
   const canSend = !!driver && (profile?.role === 'owner' || (profile?.role === 'admin' && profile.company_id === driver.company_id));
   const meetings = useFolderMeetings(profile?.role === 'driver' ? null : driver?.id, folder?.template, folder?.requests);
   const reloadMeetings = meetings.reload;
@@ -137,6 +139,22 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
     } catch (err: any) { setError(errorMessage(err, t('signing.sendFailedRetry'))); }
     finally { sendingLock.current = false; setSending(false); }
   };
+  // Sends the form first when it has not gone out, then opens WhatsApp with its signing link.
+  // Works for a driver who never signed in: the link opens the form without a password.
+  const sendWhatsapp = () => whatsapp.send(async () => {
+    if (!canSend || !driver?.company_id || !folder?.template) throw new Error(t('signing.sendNotApprovedRetry'));
+    const templateId = folder.template.id;
+    let target = folder.requests.find(item => item.status === 'pending' && !!item.docuseal_submitter_slug);
+    if (!target) {
+      const result = await assignSigningTemplate(driver.company_id, templateId, [driver.id]);
+      await load();
+      if (!result.success || result.created !== 1) throw new Error(result.message || t('signing.sendNotApprovedRetry'));
+      target = (await listDriverSigningRequests(driver.id))
+        .find(item => item.template_id === templateId && item.status === 'pending' && !!item.docuseal_submitter_slug);
+    }
+    if (!target) throw new Error(t('signing.sendNotApprovedRetry'));
+    return { kind: 'sign', requestId: target.id };
+  });
   // The blank form as the driver will get it, so the manager can check it before sending.
   const preview = async () => {
     if (!folder?.template || opening) return;
@@ -378,16 +396,26 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
             <PrimaryAction label={t('meeting.new')} icon="add-circle-outline" onPress={() => startMeeting()} disabled={opening === 'preview'} style={styles.flex2} />
           </View>
         ) : folderId && folder && canSend && folder.template ? (
-          <View style={styles.footer}>
-            <PrimaryAction label={t('common.view')} icon="eye-outline" tone="ghost" loading={opening === 'preview'} disabled={sending} onPress={() => void preview()} style={styles.grow} />
+          <View style={styles.footerStack}>
+            <View style={styles.footer}>
+              <PrimaryAction label={t('common.view')} icon="eye-outline" tone="ghost" loading={opening === 'preview'} disabled={sending || whatsapp.busy} onPress={() => void preview()} style={styles.grow} />
+              <PrimaryAction
+                label={sendLabel}
+                icon="send"
+                tone="accent"
+                loading={sending}
+                disabled={opening === 'preview' || whatsapp.busy}
+                onPress={() => void send()}
+                style={styles.flex2}
+              />
+            </View>
             <PrimaryAction
-              label={sendLabel}
-              icon="send"
-              tone="accent"
-              loading={sending}
-              disabled={opening === 'preview'}
-              onPress={() => void send()}
-              style={styles.flex2}
+              label={t('quickLink.sendWhatsapp')}
+              icon="logo-whatsapp"
+              tone="ghost"
+              loading={whatsapp.busy}
+              disabled={sending || opening === 'preview'}
+              onPress={() => void sendWhatsapp()}
             />
           </View>
         ) : folderId && folder && canSend && !folder.template && folder.title === INSPECTION_TITLE && inspectionVehicleId ? (
@@ -545,6 +573,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   flex2: { flex: 2 },
   footer: { flexDirection: 'row-reverse', gap: 10 },
+  footerStack: { gap: 10 },
   cancel: { backgroundColor: STATUS.expired.soft },
   request: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, padding: 14 },
   requestIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },

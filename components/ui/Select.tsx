@@ -1,6 +1,6 @@
 // רשימה נפתחת כחלון שעולה מלמטה
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView, View } from 'react-native';
+import { Animated, Easing, TouchableOpacity, StyleSheet, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +17,26 @@ const ENTER_MS = 340;
 const EXIT_MS = 220;
 // עקומת אנימציה
 const SHEET_EASE = Easing.bezier(0.32, 0.72, 0, 1);
+
+// שומר את מיקום הגלילה של הדף כשהחלון נפתח ונסגר
+/**
+ * iPhone Safari scrolls the page behind when the sheet takes focus, so the
+ * form jumps to its end. Snapshots every scrolled box and puts it back
+ * after the sheet settles. Web only; returns the "put back" step.
+ */
+function keepPageScroll(): () => void {
+  if (Platform.OS !== 'web' || typeof document === 'undefined') return () => {};
+  const saved: [Element, number][] = [];
+  if (document.scrollingElement) saved.push([document.scrollingElement, document.scrollingElement.scrollTop]);
+  document.querySelectorAll('div').forEach((el) => { if (el.scrollTop > 0) saved.push([el, el.scrollTop]); });
+  const restore = () => saved.forEach(([el, top]) => { if (el.isConnected && el.scrollTop !== top) el.scrollTop = top; });
+  return () => {
+    restore();
+    requestAnimationFrame(restore);
+    setTimeout(restore, 120);
+    setTimeout(restore, ENTER_MS + 40);
+  };
+}
 
 export interface SelectOption<T extends string> {
   value: T;
@@ -106,8 +126,12 @@ export function ChoiceSheet<T extends string>({
   const translateY = useRef(new Animated.Value(1)).current;
   const scrimOpacity = useRef(new Animated.Value(0)).current;
 
+  // The page's scroll, kept from the moment the sheet opens until it has closed.
+  const restoreScroll = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (open) {
+      restoreScroll.current = keepPageScroll();
+      restoreScroll.current();
       setMounted(true);
       translateY.setValue(1);
       scrimOpacity.setValue(0);
@@ -122,7 +146,10 @@ export function ChoiceSheet<T extends string>({
       Animated.parallel([
         Animated.timing(translateY, { toValue: 1, duration: EXIT_MS, easing: SHEET_EASE, useNativeDriver: true }),
         Animated.timing(scrimOpacity, { toValue: 0, duration: EXIT_MS, useNativeDriver: true }),
-      ]).start(() => setMounted(false));
+      ]).start(() => {
+        setMounted(false);
+        restoreScroll.current?.();
+      });
     }
   }, [mounted, open, scrimOpacity, translateY]);
 
@@ -154,8 +181,9 @@ export function ChoiceSheet<T extends string>({
             {title}
           </AppText>
         )}
-        <Pressable onPress={(e) => e.stopPropagation()}>
-          <ScrollView bounces={false}>
+        {/* Bounded by the sheet's maxHeight, so a long list scrolls inside it instead of running off the screen. */}
+        <View style={styles.listWrap}>
+          <ScrollView bounces={false} style={styles.list} keyboardShouldPersistTaps="handled">
             {allowClear && (
               <TouchableOpacity style={[styles.option, phone && kit.option]} onPress={() => pick(null)}>
                 <AppText style={[styles.clearText, phone && kit.optionText, phone && { color: DK.muted }]}>{t('common.none')}</AppText>
@@ -199,7 +227,7 @@ export function ChoiceSheet<T extends string>({
               );
             })}
           </ScrollView>
-        </Pressable>
+        </View>
       </Animated.View>
     </Modal>
   );
@@ -228,6 +256,8 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.sm,
     ...CARD_SHADOW,
   },
+  listWrap: { flexShrink: 1, minHeight: 0 },
+  list: { flexGrow: 0 },
   grabHandle: {
     alignSelf: 'center',
     width: 36,

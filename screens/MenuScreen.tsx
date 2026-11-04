@@ -1,6 +1,7 @@
 // מסך התפריט
 import React from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { StackActions } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { signOut } from '../lib/signOut';
 import { showAlert } from '../lib/platformAlert';
@@ -138,7 +139,6 @@ export default function MenuScreen({ navigation }: Props) {
               title: t('menu.fleetManagement'),
               rows: [
                 { key: 'schedule', icon: 'calendar', title: t('schedule.title'), subtitle: t('schedule.menuSubtitle'), onPress: () => navigation.navigate('WorkSchedule') },
-                { key: 'departments', icon: 'business', title: t('departments.title'), subtitle: t('menu.departmentsSubtitle'), onPress: () => navigation.navigate('Departments') },
                 { key: 'archive', icon: 'archive', title: t('fleet.driverArchive'), subtitle: t('menu.archiveSubtitle'), onPress: () => navigation.navigate('DriverArchive') },
                 { key: 'reports', icon: 'stats-chart', title: t('reports.export'), subtitle: t('menu.reportsSubtitle'), onPress: () => navigation.navigate('Reports') },
               ],
@@ -173,6 +173,16 @@ export default function MenuScreen({ navigation }: Props) {
 
   const groups = [...roleGroups, system];
 
+  // "Back" leads to the home screen itself: a plain goBack landed on whatever
+  // came before (the drivers list, a record) or did nothing after a refresh.
+  const goHome = () => {
+    const home = role === 'driver' ? 'DriverHome' : role === 'owner' ? 'OwnerHome' : 'AdminHome';
+    const below = navigation.getState().routes.find((r) => r.name === home);
+    const params = home === 'DriverHome' ? undefined : { ...(below?.params as object | undefined), list: false };
+    if (below) navigation.dispatch(StackActions.popTo(home, params));
+    else navigation.reset({ index: 0, routes: [{ name: home, params } as never] });
+  };
+
   return (
     <MenuMobile
       insetTop={insets.top}
@@ -181,7 +191,7 @@ export default function MenuScreen({ navigation }: Props) {
       subtitle={profile?.job_title || (role ? ROLE_LABEL[role] : '')}
       companyName={company?.name || ''}
       groups={groups}
-      onBack={() => navigation.goBack()}
+      onBack={goHome}
       onProfile={() => navigation.navigate(role === 'driver' ? 'DriverProfile' : 'AdminProfile')}
       onLogout={logout}
     />

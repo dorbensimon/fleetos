@@ -6,6 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { formatDate, parseDateValue } from '../../lib/theme';
 import { t, dirIcon, textStart, textDirection, getLocale } from '../../lib/i18n';
+import { useIsDesktop } from '../../lib/useDesktopLayout';
+import { Select } from '../ui/Select';
 
 type Weight = keyof typeof DESKTOP_FONT;
 
@@ -272,10 +274,16 @@ export function DesktopSelect<T extends string>({
   allowClear?: boolean;
   hasError?: boolean;
 }) {
+  const isDesktop = useIsDesktop();
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<PopoverAnchor | null>(null);
   const triggerRef = useRef<View>(null);
   const selected = options.find((o) => o.value === value);
+
+  // On a phone the popover can't scroll and makes iPhone Safari jump the page; the bottom sheet does both right.
+  if (!isDesktop) {
+    return <Select value={value} options={options.map((o) => ({ value: o.value, label: o.label }))} onChange={onChange} placeholder={placeholder} allowClear={allowClear} hasError={hasError} />;
+  }
 
   const openMenu = () => {
     triggerRef.current?.measureInWindow((x, y, width, height) => {
