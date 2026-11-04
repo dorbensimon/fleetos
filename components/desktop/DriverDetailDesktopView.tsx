@@ -775,11 +775,11 @@ function LicenceCard({
       <View style={styles.licenceTop}>
         <View style={styles.licenceTitleRow}>
           <DLtrText weight="extraBold" style={styles.licenceTitleEn}>DRIVING LICENCE</DLtrText>
-          <DText weight="extraBold" style={styles.licenceTitle}>רשיון נהיגה</DText>
+          <DText weight="extraBold" style={styles.licenceTitle}>{t('driver.licenceCardTitle')}</DText>
         </View>
         <View style={styles.licenceTitleRow}>
           <DLtrText weight="semiBold" style={styles.licenceStateEn}>STATE OF ISRAEL</DLtrText>
-          <DText weight="semiBold" style={styles.licenceState}>מדינת ישראל</DText>
+          <DText weight="semiBold" style={styles.licenceState}>{t('driver.licenceCardState')}</DText>
         </View>
       </View>
       <View style={styles.licencePhoto}>

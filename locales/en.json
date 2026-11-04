@@ -1114,6 +1114,8 @@
     "phoneAddressLicense": "Phone, address and license",
     "preparingReport": "Preparing the report…",
     "primaryInVehicle": "Primary driver of the vehicle",
+    "licenceCardTitle": "רשיון נהיגה",
+    "licenceCardState": "מדינת ישראל",
     "primaryVehicle": "Primary vehicle",
     "profileEditHint": "Update what's needed and tap \"Save changes\". Company, employee number and department are managed by your fleet manager.",
     "profileUnavailable": "The driver profile isn't available",
