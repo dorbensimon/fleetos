@@ -2442,6 +2442,8 @@
     "generalChannel": "إشعارات عامة"
   },
   "record": {
+    "editSection": "تعديل {{title}}",
+    "update": "تحديث",
     "addPrefix": "إضافة",
     "calculated": "محسوب",
     "chooseAndSave": "اختاروا من القائمة وانقروا على \"حفظ\".",
