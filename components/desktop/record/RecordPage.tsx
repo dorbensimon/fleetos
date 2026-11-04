@@ -1,7 +1,7 @@
 // אבני הבניין של דפי התיק במחשב: כותרת כחולה, מספרים גדולים ושורות פרטים
-import React, { useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { FocusTarget } from '../../ui/FocusTarget';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 import { BrandLoader } from '../../ui/BrandLoader';
 import { Ionicons } from '@expo/vector-icons';
 import { DesktopModal } from '../DesktopModal';
@@ -16,7 +16,7 @@ import {
   prefersReducedMotion,
 } from '../primitives';
 import { EASE_OUT } from './RecordKit';
-import { DESKTOP_COLORS, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from '../desktopTheme';
+import { DESKTOP_COLORS, DESKTOP_FONT, DESKTOP_TONES, webOnly, DESKTOP_BRAND_SHADOW } from '../desktopTheme';
 import { t, dirIcon } from '../../../lib/i18n';
 
 /**
@@ -235,6 +235,7 @@ export function DetailRow({
   compact,
   valueColor,
   focusId,
+  field,
 }: {
   label: string;
   value: string | null;
@@ -248,7 +249,12 @@ export function DetailRow({
   valueColor?: string;
   /** Lights up and scrolls into view when the page is opened on this key (components/ui/FocusTarget). */
   focusId?: string;
+  /** Inside an EditableSection: the field this row edits when the section opens for editing. */
+  field?: FieldEditor;
 }) {
+  const section = useContext(SectionEditContext);
+  const fieldKey = focusId ?? label;
+  if (section && field) section.register(fieldKey, field);
   const [hovered, setHovered] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -292,6 +298,39 @@ export function DetailRow({
   }, [editing, saving]);
 
   const rowStyle = [pageStyles.detailRow, compact && pageStyles.detailRowCompact, !first && pageStyles.rowDivider];
+
+  // A row of an editable section: plain while reading (a click opens the section on it), a field while editing.
+  if (section && field) {
+    const row = section.editing ? (
+      <View style={[...rowStyle, pageStyles.sectionEditRow]}>
+        <DText style={[pageStyles.rowLabel, compact && pageStyles.rowLabelCompact, pageStyles.inlineLabel]} numberOfLines={1}>{label}</DText>
+        <View style={pageStyles.inlineField}>
+          <SectionFieldControl fieldKey={fieldKey} field={field} label={label} />
+          {!!section.errors[fieldKey] && <DText style={pageStyles.inlineError}>{section.errors[fieldKey]}</DText>}
+          {!section.errors[fieldKey] && field.kind === 'text' && !!field.hint && <DText style={pageStyles.inlineHint}>{field.hint}</DText>}
+        </View>
+      </View>
+    ) : (
+      <HoverPressable
+        style={rowStyle}
+        hoverStyle={pageStyles.rowHover}
+        onPress={() => section.start(fieldKey)}
+        accessibilityLabel={`${label}: ${value || t('common.notEntered')}`}
+        {...(accessory ? { accessibilityRole: 'none' as const } : null)}
+      >
+        <DText style={[pageStyles.rowLabel, compact && pageStyles.rowLabelCompact]} numberOfLines={1}>{label}</DText>
+        <View style={pageStyles.rowValueWrap}>
+          {empty ? (
+            <DText style={pageStyles.rowValueEmpty}>{t('common.notEntered')}</DText>
+          ) : (
+            <ValueText weight="semiBold" style={[pageStyles.rowValue, valueColor ? { color: valueColor } : null]} numberOfLines={1}>{value}</ValueText>
+          )}
+          {accessory}
+        </View>
+      </HoverPressable>
+    );
+    return focusId ? <FocusTarget id={focusId} radius={6} tint={DESKTOP_COLORS.brand}>{row}</FocusTarget> : row;
+  }
 
   if (editing && edit) {
     const row = (
@@ -386,6 +425,175 @@ export function DetailRow({
     </HoverPressable>
   );
   return focusId ? <FocusTarget id={focusId} radius={6} tint={DESKTOP_COLORS.brand}>{row}</FocusTarget> : row;
+}
+
+// ---------------------------------------------------------------------------
+// Section editing: a pen beside the section's name opens all its fields at once,
+// and one "עדכון" saves what changed.
+
+type Draft = string | null | [string | null, string | null];
+type SectionEdit = {
+  editing: boolean;
+  focusKey: string | null;
+  drafts: Record<string, Draft>;
+  errors: Record<string, string>;
+  register: (key: string, field: FieldEditor) => void;
+  setDraft: (key: string, value: Draft) => void;
+  start: (focusKey?: string) => void;
+  save: () => void;
+  cancel: () => void;
+};
+const SectionEditContext = createContext<SectionEdit | null>(null);
+
+// הערך השמור של שדה
+const rawOf = (field: FieldEditor): Draft =>
+  field.kind === 'selectPair' ? field.raw : field.kind === 'monthYear' ? `${field.month}/${field.year}` : field.raw;
+const sameDraft = (a: Draft | undefined, b: Draft) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+// שדה עריכה בתוך אזור
+function SectionFieldControl({ fieldKey, field, label }: { fieldKey: string; field: FieldEditor; label: string }) {
+  const section = useContext(SectionEditContext)!;
+  const draft = section.drafts[fieldKey];
+  const hasError = !!section.errors[fieldKey];
+  if (field.kind === 'text') {
+    const text = typeof draft === 'string' ? draft : field.raw;
+    return (
+      <TextInput
+        value={field.format ? field.format(text) : text}
+        onChangeText={(v) => section.setDraft(fieldKey, field.parse ? field.parse(v) : v)}
+        autoFocus={section.focusKey === fieldKey}
+        keyboardType={field.numeric ? 'number-pad' : 'default'}
+        onSubmitEditing={section.save}
+        onKeyPress={(e) => { if (e.nativeEvent.key === 'Escape') section.cancel(); }}
+        accessibilityLabel={label}
+        style={[pageStyles.sectionInput, field.ltr && pageStyles.sectionInputLtr, hasError && pageStyles.sectionInputError]}
+      />
+    );
+  }
+  if (field.kind === 'select') {
+    return <DesktopSelect value={(draft as string | null) ?? null} options={field.options} onChange={(v) => section.setDraft(fieldKey, v)} allowClear={field.allowClear} placeholder={field.placeholder} hasError={hasError} />;
+  }
+  if (field.kind === 'date') {
+    return <DesktopDateField value={(draft as string | null) ?? null} onChange={(v) => section.setDraft(fieldKey, v)} hasError={hasError} />;
+  }
+  if (field.kind === 'selectPair') {
+    const [first, second] = (Array.isArray(draft) ? draft : field.raw) as [string | null, string | null];
+    return (
+      <View style={pageStyles.sectionPair}>
+        <View style={pageStyles.flex}>
+          <DesktopSelect value={first} options={field.options} onChange={(v) => section.setDraft(fieldKey, [v, second])} placeholder={field.placeholders?.[0]} hasError={hasError} />
+        </View>
+        <View style={pageStyles.flex}>
+          <DesktopSelect value={second} options={field.options} onChange={(v) => section.setDraft(fieldKey, [first, v])} placeholder={field.placeholders?.[1]} allowClear />
+        </View>
+      </View>
+    );
+  }
+  return <DText style={pageStyles.rowValueEmpty}>{label}</DText>;
+}
+
+// אזור עם כפתור עריכה ליד השם
+/**
+ * A titled card whose DetailRows (with `field`) edit together: the pen beside
+ * the title, or a click on any row, turns them all into fields with the caret
+ * in place; "עדכון" saves only what changed, "ביטול" drops it.
+ */
+export function EditableSection({ title, action, canEdit = true, children }: { title: string; action?: React.ReactNode; canEdit?: boolean; children: React.ReactNode }) {
+  const fields = useRef(new Map<string, FieldEditor>()).current;
+  fields.clear();
+  const [editing, setEditing] = useState(false);
+  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  const start = (key?: string) => {
+    if (!canEdit) return;
+    const next: Record<string, Draft> = {};
+    fields.forEach((field, k) => { next[k] = rawOf(field); });
+    setDrafts(next);
+    setErrors({});
+    // The caret goes into the field clicked, or the first text field.
+    setFocusKey(key ?? [...fields].find(([, field]) => field.kind === 'text')?.[0] ?? null);
+    setEditing(true);
+  };
+  const cancel = () => { setEditing(false); setErrors({}); };
+  const save = async () => {
+    if (saving) return;
+    const changed = [...fields].filter(([k, field]) => !sameDraft(drafts[k], rawOf(field)));
+    const found: Record<string, string> = {};
+    for (const [k, field] of changed) {
+      const draft = drafts[k];
+      const invalid = field.kind === 'text' ? field.validate?.(String(draft ?? ''))
+        : field.kind === 'selectPair' ? field.validate?.(...(draft as [string | null, string | null]))
+        : null;
+      if (invalid) found[k] = invalid;
+    }
+    if (Object.keys(found).length) return setErrors(found);
+    setSaving(true);
+    for (const [k, field] of changed) {
+      const draft = drafts[k];
+      const result = field.kind === 'text' ? await field.onSave(String(draft ?? ''))
+        : field.kind === 'selectPair' ? await field.onSave(...(draft as [string | null, string | null]))
+        : field.kind === 'select' || field.kind === 'date' ? await field.onSave((draft as string | null) ?? null)
+        : null;
+      if (result) found[k] = result;
+    }
+    setSaving(false);
+    if (Object.keys(found).length) setErrors(found);
+    else setEditing(false);
+  };
+
+  const value: SectionEdit = {
+    editing,
+    focusKey,
+    drafts,
+    errors,
+    register: (k, field) => { fields.set(k, field); },
+    setDraft: (k, v) => {
+      setDrafts((prev) => ({ ...prev, [k]: v }));
+      setErrors((prev) => { if (!prev[k]) return prev; const next = { ...prev }; delete next[k]; return next; });
+    },
+    start,
+    save: () => void save(),
+    cancel,
+  };
+
+  return (
+    <SectionEditContext.Provider value={value}>
+      <View style={pageStyles.groupLabelRow}>
+        <View style={pageStyles.sectionTitle}>
+          <DText weight="semiBold" style={pageStyles.groupLabel}>{title}</DText>
+          {canEdit && !editing && (
+            <HoverPressable
+              style={pageStyles.sectionPen}
+              hoverStyle={pageStyles.sectionPenHover}
+              onPress={() => start()}
+              accessibilityLabel={t('record.editSection', { title })}
+              {...webOnly({ title: t('record.editSection', { title }) })}
+            >
+              <Ionicons name="pencil" size={13} color={DESKTOP_COLORS.inkFaint} />
+            </HoverPressable>
+          )}
+        </View>
+        {action}
+      </View>
+      <View style={pageStyles.card}>
+        {children}
+        {editing && (
+          <View style={[pageStyles.sectionFooter, pageStyles.rowDivider]}>
+            <HoverPressable style={[pageStyles.primaryBtn, pageStyles.sectionSaveBtn, saving && pageStyles.disabled]} hoverStyle={pageStyles.primaryBtnHover} pressStyle={pageStyles.pressDown} onPress={() => void save()} disabled={saving}>
+              {saving ? <BrandLoader size="small" color="#FFFFFF" /> : <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+              <DText weight="semiBold" style={pageStyles.sectionSaveText}>{t('record.update')}</DText>
+            </HoverPressable>
+            <HoverPressable style={pageStyles.sectionCancelBtn} hoverStyle={pageStyles.rowHover} onPress={cancel} disabled={saving}>
+              <DText weight="semiBold" style={pageStyles.sectionCancelText}>{t('common.cancel')}</DText>
+            </HoverPressable>
+          </View>
+        )}
+      </View>
+    </SectionEditContext.Provider>
+  );
 }
 
 // כותרת קבוצה
@@ -509,6 +717,31 @@ export const pageStyles = StyleSheet.create({
   halfCell: { flexGrow: 1, flexBasis: 380, minWidth: 0 },
   groupLabelRow: { height: 28, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 },
   groupLabel: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted },
+  // אזור לעריכה
+  sectionTitle: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4 },
+  sectionPen: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', ...webOnly({ cursor: 'pointer', transition: 'background-color 150ms ease' }) },
+  sectionPenHover: { backgroundColor: DESKTOP_COLORS.rowHover },
+  sectionEditRow: { minHeight: 48 },
+  sectionInput: {
+    width: '100%',
+    height: 34,
+    paddingHorizontal: 10,
+    borderRadius: 7,
+    backgroundColor: DESKTOP_COLORS.rowHover,
+    fontFamily: DESKTOP_FONT.semiBold,
+    fontSize: 14,
+    color: DESKTOP_COLORS.ink,
+    textAlign: 'right',
+    ...webOnly({ outlineStyle: 'none', caretColor: DESKTOP_COLORS.brand }),
+  },
+  sectionInputLtr: { textAlign: 'left', writingDirection: 'ltr' },
+  sectionInputError: { backgroundColor: DESKTOP_TONES.bad.bg },
+  sectionPair: { flexDirection: 'row-reverse', gap: 8 },
+  sectionFooter: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  sectionSaveBtn: { height: 34, paddingHorizontal: 16 },
+  sectionSaveText: { fontSize: 13.5, color: '#FFFFFF' },
+  sectionCancelBtn: { height: 34, paddingHorizontal: 12, borderRadius: 8, justifyContent: 'center' },
+  sectionCancelText: { fontSize: 13.5, color: DESKTOP_COLORS.inkMuted },
   card: {
     flexGrow: 1,
     backgroundColor: DESKTOP_COLORS.surface,

@@ -2442,6 +2442,8 @@
     "generalChannel": "General notifications"
   },
   "record": {
+    "editSection": "Edit {{title}}",
+    "update": "Update",
     "addPrefix": "Add",
     "calculated": "Calculated",
     "chooseAndSave": "Choose from the list and click \"Save\".",

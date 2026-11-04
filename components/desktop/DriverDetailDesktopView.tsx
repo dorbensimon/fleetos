@@ -23,14 +23,16 @@ import { DLtrText, DText, HoverPressable, prefersReducedMotion, StatusPill } fro
 import { DESKTOP_COLORS, DESKTOP_TONES, DesktopTone, webOnly } from './desktopTheme';
 import { DocumentFolderUploadModal, EASE_OUT, OverflowMenu, useOwnerDocuments, type RecordDocumentFolder } from './record/RecordKit';
 import { expiryStatusText, FolderListRow } from './record/FolderDocuments';
-import { DetailRow, Fact, FieldEditDialog, GroupLabel, NIGHT_TONES, pageStyles, type FieldEditor, type TextFieldEditor } from './record/RecordPage';
+import { DetailRow, EditableSection, Fact, FieldEditDialog, GroupLabel, NIGHT_TONES, pageStyles, type FieldEditor, type TextFieldEditor } from './record/RecordPage';
 import { DriverLicenseModal } from './driver/DriverLicenseModal';
 import { LICENSE_SIDE_STORED_TITLE } from '../../lib/licenseSides';
 import { DRIVER_DOCUMENT_GROUPS, type DriverDocumentFolder } from '../../lib/driverDocumentFolders';
 import { PROCEDURE_6_CATEGORY } from '../../lib/procedure6Report';
 import { TRAFFIC_REPORTS_CATEGORY } from '../../lib/trafficReports';
 import { folderCategory, isCompanyFolderCategory, useCompanyFolders } from '../../lib/companyFolders';
-import { DriverVehiclesCard } from './driver/DriverVehiclesCard';
+import { DriverVehiclesCard, MiniPlate } from './driver/DriverVehiclesCard';
+import { DesktopModal } from './DesktopModal';
+import { formatPlate } from '../../lib/plate';
 import { DriverVehicleHistoryButton } from './driver/DriverVehicleHistory';
 import { NewFormButton, DriverSigningList, useDriverSigningFolders, type SigningSessionTarget } from './driver/DriverSigningSection';
 import { t, dirIcon } from '../../lib/i18n';
@@ -175,6 +177,7 @@ export function DriverDetailDesktopView({
   const { docs, loaded: docsLoaded, reload: reloadDocs } = useOwnerDocuments('driver', driverId);
   const signing = useDriverSigningFolders(companyId, driverId);
   const [licenseOpen, setLicenseOpen] = useState(false);
+  const [vehiclesOpen, setVehiclesOpen] = useState(false);
   const [openFolder, setOpenFolder] = useState<RecordDocumentFolder | null>(null);
   // The folders the owner added to this company's driver files.
   const { folders: companyFolders } = useCompanyFolders(companyId, 'driver');
@@ -287,7 +290,7 @@ export function DriverDetailDesktopView({
         value={value ? formatDate(value) : null}
         ltr
         valueColor={EXPIRY_COLOR[expiryState(value)]}
-        onPress={() => setEditor(dateEditor(label, value, (v) => onSaveField({ [key]: v })))}
+        field={dateEditor(label, value, (v) => onSaveField({ [key]: v }))}
       />
     );
   };
@@ -296,11 +299,11 @@ export function DriverDetailDesktopView({
     <DetailRow
       label={label} focusId={key}
       value={on ? t('driver.yes') : t('driver.no')}
-      onPress={() => setEditor({
+      field={{
         kind: 'select', label, raw: on ? 'yes' : 'no',
         options: [{ value: 'yes', label: t('driver.yes') }, { value: 'no', label: t('driver.no') }],
         onSave: (v) => save(v === 'yes'),
-      })}
+      }}
     />
   );
 
@@ -337,6 +340,29 @@ export function DriverDetailDesktopView({
         </View>
 
         <View style={styles.facts}>
+          {/* Assigned vehicles, right of the licence; more vehicles add further right. */}
+          <HoverPressable
+            style={styles.heroVehiclesEdit}
+            hoverStyle={styles.heroVehiclesEditHover}
+            onPress={() => setVehiclesOpen(true)}
+            accessibilityLabel={t('driver.assignedVehicles')}
+            {...webOnly({ title: t('driver.assignedVehicles') })}
+          >
+            <Ionicons name={vehicles.length ? 'create-outline' : 'add'} size={16} color="#FFFFFF" />
+            {!vehicles.length && <DText weight="semiBold" style={styles.heroVehiclesEditText}>{t('driver.addVehicle')}</DText>}
+          </HoverPressable>
+          {[...vehicles].sort((x, y) => Number(x.is_primary) - Number(y.is_primary)).map((vehicle) => (
+            <HoverPressable
+              key={vehicle.id}
+              style={[styles.fact, styles.factOnDark, styles.heroVehicle]}
+              hoverStyle={styles.heroVehicleHover}
+              onPress={() => onOpenVehicle(vehicle.id)}
+              accessibilityLabel={t('vehicle.openFile', { plate: formatPlate(vehicle.plate_number) })}
+            >
+              <DText style={[styles.factLabel, styles.factLabelOnDark]}>{vehicle.is_primary ? t('driver.primaryInVehicle') : t('driver.secondaryInVehicle')}</DText>
+              <MiniPlate plate={formatPlate(vehicle.plate_number)} />
+            </HoverPressable>
+          ))}
           <Fact onDark label={t('driver.licenseValidUntilLabel')} value={licenseExpiry ? formatDate(licenseExpiry) : t('common.notEntered')} color={licenseState === 'expired' ? NIGHT_TONES.bad : licenseState === 'soon' ? NIGHT_TONES.warn : undefined} muted={!licenseExpiry} />
           <Fact onDark label={t('driver.classes')} value={classesLabel ? classesLabel.replace(',', ', ') : t('common.notEnteredPl')} muted={!classesLabel} />
           <Fact onDark label={t('driver.tenure')} value={inCompany?.value ?? t('common.notEntered')} unit={inCompany?.unit} muted={!inCompany} />
@@ -400,20 +426,19 @@ export function DriverDetailDesktopView({
       {/* Three columns: personal details, licence, work and permits */}
       <View style={styles.gridRow}>
         <View style={styles.cell3Wide}>
-          <GroupLabel>{t('driver.personalDetails')}</GroupLabel>
-          <View style={styles.card}>
+          <EditableSection title={t('driver.personalDetails')}>
             <DetailRow
               first
               label={t('common.fullName')} focusId="full_name"
               value={driver?.full_name?.trim() || null}
-              edit={textEditor(t('common.fullName'), driver?.full_name, (v) => onSaveField({ full_name: v.trim() }), { validate: (v) => (v.trim() ? null : t('validation.thisRequired')) })}
+              field={textEditor(t('common.fullName'), driver?.full_name, (v) => onSaveField({ full_name: v.trim() }), { validate: (v) => (v.trim() ? null : t('validation.thisRequired')) })}
             />
             <DetailRow
               label={t('common.mobilePhone')} focusId="phone"
               value={driver?.phone || null}
               ltr
               accessory={driver?.phone ? <DText style={styles.rowNote} numberOfLines={1}>{t('driver.alsoUsername')}</DText> : undefined}
-              edit={textEditor(t('common.mobilePhone'), driver?.phone, (v) => onSaveField({ phone: v.trim() }), {
+              field={textEditor(t('common.mobilePhone'), driver?.phone, (v) => onSaveField({ phone: v.trim() }), {
                 ltr: true,
                 numeric: true,
                 hint: t('driver.signsInWithNumber'),
@@ -424,7 +449,7 @@ export function DriverDetailDesktopView({
               label={t('common.emailAddress')}
               value={driver?.email || null}
               ltr
-              edit={textEditor(t('common.emailAddress'), driver?.email, (v) => onSaveEmail(v.trim().toLowerCase()), {
+              field={textEditor(t('common.emailAddress'), driver?.email, (v) => onSaveEmail(v.trim().toLowerCase()), {
                 ltr: true,
                 validate: (v) => (isValidEmail(v.trim()) ? null : t('validation.invalidEmail')),
               })}
@@ -443,7 +468,7 @@ export function DriverDetailDesktopView({
                   <DText weight="semiBold" style={styles.revealText}>{showNationalId ? t('common.hide') : t('common.show')}</DText>
                 </HoverPressable>
               ) : undefined}
-              edit={textEditor(t('field.nationalId'), driver?.national_id, (v) => onSaveField({ national_id: v || null }), {
+              field={textEditor(t('field.nationalId'), driver?.national_id, (v) => onSaveField({ national_id: v || null }), {
                 ltr: true,
                 numeric: true,
                 hint: t('driver.nationalIdHintDot'),
@@ -456,14 +481,14 @@ export function DriverDetailDesktopView({
               value={driver?.birth_date ? formatDate(driver.birth_date) : null}
               ltr
               accessory={age != null ? <DText style={styles.rowNote}>{t('driver.age')} {age}</DText> : undefined}
-              onPress={() => setEditor(dateEditor(t('driver.birthDate'), driver?.birth_date, (v) => onSaveField({ birth_date: v })))}
+              field={dateEditor(t('driver.birthDate'), driver?.birth_date, (v) => onSaveField({ birth_date: v }))}
             />
-            <DetailRow label={t('common.address')} focusId="address" value={driver?.address || null} edit={textEditor(t('common.address'), driver?.address, (v) => onSaveField({ address: v.trim() || null }))} />
+            <DetailRow label={t('common.address')} focusId="address" value={driver?.address || null} field={textEditor(t('common.address'), driver?.address, (v) => onSaveField({ address: v.trim() || null }))} />
             <DetailRow
               label={t('driver.homePhone')} focusId="home_phone"
               value={driver?.home_phone || null}
               ltr
-              edit={textEditor(t('driver.homePhone'), driver?.home_phone, (v) => onSaveField({ home_phone: v.trim() || null }), {
+              field={textEditor(t('driver.homePhone'), driver?.home_phone, (v) => onSaveField({ home_phone: v.trim() || null }), {
                 ltr: true,
                 numeric: true,
                 validate: (v) => (!v.trim() || isValidIsraeliPhone(v) ? null : t('validation.invalidPhone')),
@@ -472,19 +497,18 @@ export function DriverDetailDesktopView({
             <DetailRow
               label={t('driver.maritalStatus')} focusId="marital_status"
               value={storedValueLabel(driver?.marital_status)}
-              onPress={() => setEditor({ kind: 'select', label: t('driver.maritalStatus'), raw: driver?.marital_status || null, options: optionsWithCurrent(MARITAL_STATUS_OPTIONS, driver?.marital_status), allowClear: true, placeholder: t('common.notSelected'), onSave: (v) => onSaveField({ marital_status: v }) })}
+              field={{ kind: 'select', label: t('driver.maritalStatus'), raw: driver?.marital_status || null, options: optionsWithCurrent(MARITAL_STATUS_OPTIONS, driver?.marital_status), allowClear: true, placeholder: t('common.notSelected'), onSave: (v) => onSaveField({ marital_status: v }) }}
             />
             <DetailRow
               label={t('driver.education')} focusId="education"
               value={storedValueLabel(driver?.education)}
-              onPress={() => setEditor({ kind: 'select', label: t('driver.education'), raw: driver?.education || null, options: optionsWithCurrent(EDUCATION_OPTIONS, driver?.education), allowClear: true, placeholder: t('common.notSelectedF'), onSave: (v) => onSaveField({ education: v }) })}
+              field={{ kind: 'select', label: t('driver.education'), raw: driver?.education || null, options: optionsWithCurrent(EDUCATION_OPTIONS, driver?.education), allowClear: true, placeholder: t('common.notSelectedF'), onSave: (v) => onSaveField({ education: v }) }}
             />
-          </View>
+          </EditableSection>
         </View>
 
         <View style={styles.cell3}>
-          <GroupLabel>{t('driver.drivingLicense')}</GroupLabel>
-          <View style={styles.card}>
+          <EditableSection title={t('driver.drivingLicense')}>
             <View style={styles.licenceArea}>
               <LicenceCard
                 name={name}
@@ -511,14 +535,14 @@ export function DriverDetailDesktopView({
               label={t('field.licenseNumber')} focusId="license_number"
               value={driver?.license_number || null}
               ltr
-              edit={textEditor(t('field.licenseNumber'), driver?.license_number, (v) => onSaveField({ license_number: v.trim() || null }), { ltr: true, numeric: true })}
+              field={textEditor(t('field.licenseNumber'), driver?.license_number, (v) => onSaveField({ license_number: v.trim() || null }), { ltr: true, numeric: true })}
             />
             <DetailRow
               compact
               label={t('driver.classes')} focusId="license_classes"
               value={classesLabel ? classesLabel.replace(',', ', ') : null}
               ltr
-              onPress={() => setEditor({
+              field={{
                 kind: 'selectPair',
                 label: t('driver.licenseClasses'),
                 hint: t('driver.upToTwoClasses'),
@@ -528,43 +552,41 @@ export function DriverDetailDesktopView({
                 placeholders: [t('driver.chooseClass'), t('common.noneShort')],
                 validate: (first, second) => (first && second && first === second ? t('driver.chooseTwoDifferent') : null),
                 onSave: (first, second) => onSaveField({ license_classes: joinLicenseClasses(first ?? '', second ?? '') || null }),
-              })}
+              }}
             />
-            <DetailRow compact label={t('driver.issueDate')} focusId="license_issue_date" value={driver?.license_issue_date ? formatDate(driver.license_issue_date) : null} ltr onPress={() => setEditor(dateEditor(t('driver.issueDate'), driver?.license_issue_date, (v) => onSaveField({ license_issue_date: v })))} />
-            <DetailRow compact label={t('documents.validUntil')} focusId="license_expiry" value={licenseExpiry ? formatDate(licenseExpiry) : null} ltr valueColor={licenseColor} onPress={() => setEditor(dateEditor(t('license.expiry'), licenseExpiry, (v) => onSaveField({ license_expiry: v })))} />
-          </View>
+            <DetailRow compact label={t('driver.issueDate')} focusId="license_issue_date" value={driver?.license_issue_date ? formatDate(driver.license_issue_date) : null} ltr field={dateEditor(t('driver.issueDate'), driver?.license_issue_date, (v) => onSaveField({ license_issue_date: v }))} />
+            <DetailRow compact label={t('documents.validUntil')} focusId="license_expiry" value={licenseExpiry ? formatDate(licenseExpiry) : null} ltr valueColor={licenseColor} field={dateEditor(t('license.expiry'), licenseExpiry, (v) => onSaveField({ license_expiry: v }))} />
+          </EditableSection>
         </View>
         <View style={[styles.cell3, styles.stack]}>
           <View style={styles.stackItem}>
-            <GroupLabel>{t('driver.work')}</GroupLabel>
-            <View style={styles.card}>
-              <DetailRow first label={t('driver.employeeNumber')} focusId="employee_number" value={driver?.employee_number || null} ltr edit={textEditor(t('driver.employeeNumber'), driver?.employee_number, (v) => onSaveField({ employee_number: v.trim() || null }), { ltr: true })} />
+            <EditableSection title={t('driver.work')}>
+              <DetailRow first label={t('driver.employeeNumber')} focusId="employee_number" value={driver?.employee_number || null} ltr field={textEditor(t('driver.employeeNumber'), driver?.employee_number, (v) => onSaveField({ employee_number: v.trim() || null }), { ltr: true })} />
               <DetailRow
                 label={t('common.department')} focusId="department_id"
                 value={departmentName}
-                onPress={() => setEditor({ kind: 'select', label: t('common.department'), raw: driver?.department_id ?? null, options: departmentOptions, allowClear: true, placeholder: t('common.noDepartment'), onSave: (v) => onSaveField({ department_id: v }) })}
+                field={{ kind: 'select', label: t('common.department'), raw: driver?.department_id ?? null, options: departmentOptions, allowClear: true, placeholder: t('common.noDepartment'), onSave: (v) => onSaveField({ department_id: v }) }}
               />
               <DetailRow
                 label={t('driver.employmentStart')} focusId="employment_start_date"
                 value={driver?.employment_start_date ? formatDate(driver.employment_start_date) : null}
                 ltr
                 accessory={inCompany ? <DText style={styles.rowNote}>{`${inCompany.value} ${inCompany.unit}`}</DText> : undefined}
-                onPress={() => setEditor(dateEditor(t('driver.employmentStart'), driver?.employment_start_date, (v) => onSaveField({ employment_start_date: v })))}
+                field={dateEditor(t('driver.employmentStart'), driver?.employment_start_date, (v) => onSaveField({ employment_start_date: v }))}
               />
               <DetailRow
                 label={t('driver.employmentEnd')} focusId="employment_end_date"
                 value={driver?.employment_end_date ? formatDate(driver.employment_end_date) : null}
                 ltr
-                onPress={() => setEditor(dateEditor(t('driver.employmentEnd'), driver?.employment_end_date, async (v) => {
+                field={dateEditor(t('driver.employmentEnd'), driver?.employment_end_date, async (v) => {
                   if (v && driver?.employment_start_date && v < driver.employment_start_date) return t('driver.employmentEndBeforeStart');
                   return onSaveField({ employment_end_date: v });
-                }))}
+                })}
               />
-            </View>
+            </EditableSection>
           </View>
           <View style={styles.stackItem}>
-            <GroupLabel>{t('driver.permitsGroup')}</GroupLabel>
-            <View style={styles.card}>
+            <EditableSection title={t('driver.permitsGroup')}>
               {expiryRow(t('driver.workAtHeightExpiry'), 'work_at_height_expiry', true)}
               {expiryRow(t('driver.portEntryExpiry'), 'port_entry_expiry')}
               {expiryRow(t('driver.forkliftRefresherExpiry'), 'forklift_refresher_expiry')}
@@ -573,14 +595,14 @@ export function DriverDetailDesktopView({
                 {expiryRow(t('driver.hazmatPermitExpiry'), 'hazmat_permit_expiry')}
               </View>
               {yesNoRow(t('driver.previouslyDisqualified'), 'previously_disqualified', !!driver?.previously_disqualified, (on) => onSaveField({ previously_disqualified: on }))}
-            </View>
+            </EditableSection>
           </View>
         </View>
       </View>
 
-      {/* Documents, forms to sign and vehicles; a narrow screen wraps them below one another. */}
+      {/* Documents and forms to sign; a narrow screen puts the forms under the documents. */}
       <View style={styles.gridRow}>
-        <View style={styles.cell3Wide}>
+        <View style={styles.docsCell}>
         <View style={styles.docsHead}>
           <DText weight="bold" style={styles.docsTitle}>{t('common.documents')}</DText>
           <DText style={styles.mutedText}>{t('driver.foldersHint')}</DText>
@@ -653,23 +675,6 @@ export function DriverDetailDesktopView({
             </View>
           </View>
         </View>
-        <View style={styles.cell3}>
-          <GroupLabel action={<DriverVehicleHistoryButton driverId={driverId} refreshKey={vehicles.map((v) => v.id).join(',')} />}>
-            {t('driver.assignedVehicles')}
-          </GroupLabel>
-          <View style={styles.pinnedArea}>
-            <View style={StyleSheet.absoluteFill}>
-              <DriverVehiclesCard
-                companyId={companyId}
-                driverId={driverId}
-                initialVehicles={vehicles}
-                canEdit={!isArchived}
-                onOpenVehicle={onOpenVehicle}
-                onChanged={onVehiclesChanged}
-              />
-            </View>
-          </View>
-        </View>
       </View>
 
       {!!driver?.created_at && (
@@ -686,6 +691,24 @@ export function DriverDetailDesktopView({
       )}
 
       <FieldEditDialog editor={editor} onClose={() => setEditor(null)} />
+
+      <DesktopModal visible={vehiclesOpen} title={t('driver.assignedVehicles')} onClose={() => setVehiclesOpen(false)} maxWidth={520}>
+        <View style={styles.vehiclesModal}>
+          <View style={styles.vehiclesModalHistory}>
+            <DriverVehicleHistoryButton driverId={driverId} refreshKey={vehicles.map((v) => v.id).join(',')} />
+          </View>
+          <View style={styles.vehiclesModalCard}>
+            <DriverVehiclesCard
+              companyId={companyId}
+              driverId={driverId}
+              initialVehicles={vehicles}
+              canEdit={!isArchived}
+              onOpenVehicle={(id) => { setVehiclesOpen(false); onOpenVehicle(id); }}
+              onChanged={onVehiclesChanged}
+            />
+          </View>
+        </View>
+      </DesktopModal>
 
       <DriverLicenseModal
         visible={licenseOpen}
@@ -893,6 +916,16 @@ const styles = StyleSheet.create({
   stackItem: { flexGrow: 1, flexBasis: 330, minWidth: 0 },
   docsHead: { paddingHorizontal: 4, gap: 1, marginBottom: 6 },
   // The folder groups wrap two to a row inside the documents column.
+  // רכבים בכותרת
+  heroVehicle: { gap: 4, borderRadius: 8, paddingVertical: 4, ...webOnly({ cursor: 'pointer', transition: 'background-color 150ms ease' }) },
+  heroVehicleHover: { backgroundColor: 'rgba(255,255,255,0.08)' },
+  heroVehiclesEdit: { flexDirection: 'row-reverse', alignSelf: 'center', alignItems: 'center', gap: 6, minWidth: 32, height: 32, paddingHorizontal: 8, marginHorizontal: 8, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', ...webOnly({ cursor: 'pointer' }) },
+  heroVehiclesEditHover: { backgroundColor: 'rgba(255,255,255,0.22)' },
+  heroVehiclesEditText: { fontSize: 13, color: '#FFFFFF' },
+  vehiclesModal: { gap: 10 },
+  vehiclesModalHistory: { flexDirection: 'row-reverse' },
+  vehiclesModalCard: { height: 320 },
+  docsCell: { flexGrow: 2, flexBasis: 460, minWidth: 0 },
   docsStack: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14 },
   docsGroup: { flexGrow: 1, flexBasis: 280, minWidth: 0 },
   // This page uses the whole width of a large screen.

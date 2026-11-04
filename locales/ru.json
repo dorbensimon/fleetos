@@ -2442,6 +2442,8 @@
     "generalChannel": "Общие уведомления"
   },
   "record": {
+    "editSection": "Изменить: {{title}}",
+    "update": "Обновить",
     "addPrefix": "Добавить",
     "calculated": "Рассчитано",
     "chooseAndSave": "Выберите из списка и нажмите «Сохранить».",
