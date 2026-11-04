@@ -73,7 +73,7 @@ export interface CompanySettingsForm {
   stampUri: string | null;
 }
 
-type SectionKey = 'details' | 'contact' | 'report' | 'people' | 'safety' | 'folders' | 'branding';
+type SectionKey = 'details' | 'contact' | 'report' | 'safety' | 'people' | 'folders' | 'branding';
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 // חלקי הדף (פרטים, תקשורת, דוח, אנשי קשר, קציני בטיחות, לוגו)
@@ -102,16 +102,16 @@ const SECTIONS: {
     icon: 'speedometer-outline',
   },
   {
-    key: 'people',
-    get label() { return t('settings.section.contacts'); },
-    get hint() { return t('settings.section.contactsHint'); },
-    icon: 'people-outline',
-  },
-  {
     key: 'safety',
     get label() { return t('settings.section.safetyOfficers'); },
     get hint() { return t('settings.section.safetyOfficersHint'); },
     icon: 'shield-checkmark-outline',
+  },
+  {
+    key: 'people',
+    get label() { return t('settings.section.contacts'); },
+    get hint() { return t('settings.section.contactsHint'); },
+    icon: 'people-outline',
   },
   {
     key: 'folders',
@@ -185,6 +185,8 @@ export function CompanySettingsDesktopView({
 }) {
   const scrollRef = useRef<ScrollView>(null);
   const offsets = useRef<Partial<Record<SectionKey, number>>>({});
+  // Sections measure inside the grid, which sits under the company header.
+  const gridTop = useRef(0);
   const [current, setCurrent] = useState<SectionKey>('details');
   const jumpAfterSave = useRef(false);
 
@@ -213,7 +215,7 @@ export function CompanySettingsDesktopView({
   };
 
   const trackLayout = (key: SectionKey) => (e: { nativeEvent: { layout: { y: number } } }) => {
-    offsets.current[key] = PAGE_TOP + e.nativeEvent.layout.y;
+    offsets.current[key] = PAGE_TOP + gridTop.current + e.nativeEvent.layout.y;
   };
 
   // A failed save scrolls to the first section holding an error, so the
@@ -253,7 +255,9 @@ export function CompanySettingsDesktopView({
         <View style={styles.main}>
           <CompanyOverview form={form} onJump={jumpTo} />
 
-          <Section {...sectionProps('details', 0)}>
+          <View style={styles.grid} onLayout={(e) => { gridTop.current = e.nativeEvent.layout.y; }}>
+
+          <Section {...sectionProps('details', 0)} half>
             <Panel>
               <Cell label={t('company.name')} required error={errors.name}>
                 <DesktopInput value={form.name} onChangeText={(v) => onChange('name', v)} hasError={!!errors.name} />
@@ -294,7 +298,7 @@ export function CompanySettingsDesktopView({
             </DText>
           </Section>
 
-          <Section {...sectionProps('contact', 1)}>
+          <Section {...sectionProps('contact', 1)} half>
             <Panel>
               <Cell label={t('company.landline')} error={errors.landline}>
                 <PhoneInput
@@ -346,7 +350,7 @@ export function CompanySettingsDesktopView({
             </Panel>
           </Section>
 
-          <Section {...sectionProps('report', 2)}>
+          <Section {...sectionProps('report', 2)} half>
             <Panel>
               <ToggleRow
                 title={t('company.autoSend')}
@@ -367,7 +371,27 @@ export function CompanySettingsDesktopView({
             </Panel>
           </Section>
 
-          <Section {...sectionProps('people', 3)}>
+          <Section {...sectionProps('safety', 3)} half>
+            <View style={styles.panelStack}>
+              {form.officers.map((o, i) => (
+                <Panel key={i} half title={i === 0 ? t('company.safetyOfficer') : t('company.extraSafetyOfficer')} icon="shield-half-outline">
+                  <Cell label={t('common.name')}>
+                    <DesktopInput value={o.name} onChangeText={(v) => onChangeOfficer(i, 'name', v)} />
+                  </Cell>
+                  <Cell label={t('common.phone')} error={errors[`officer${i}Phone`]}>
+                    <PhoneInput
+                      value={o.phone}
+                      error={errors[`officer${i}Phone`]}
+                      onChange={(v) => onChangeOfficer(i, 'phone', v)}
+                      onBlur={() => onFieldBlur(`officer${i}Phone`)}
+                    />
+                  </Cell>
+                </Panel>
+              ))}
+            </View>
+          </Section>
+
+          <Section {...sectionProps('people', 4)}>
             <View style={styles.panelStack}>
               {form.contacts.map((c, i) => (
                 <Panel key={i} half title={t('company.contactN', { v1: i + 1 })} icon="person-circle-outline">
@@ -401,26 +425,6 @@ export function CompanySettingsDesktopView({
             </View>
           </Section>
 
-          <Section {...sectionProps('safety', 4)}>
-            <View style={styles.panelStack}>
-              {form.officers.map((o, i) => (
-                <Panel key={i} half title={i === 0 ? t('company.safetyOfficer') : t('company.extraSafetyOfficer')} icon="shield-half-outline">
-                  <Cell label={t('common.name')}>
-                    <DesktopInput value={o.name} onChangeText={(v) => onChangeOfficer(i, 'name', v)} />
-                  </Cell>
-                  <Cell label={t('common.phone')} error={errors[`officer${i}Phone`]}>
-                    <PhoneInput
-                      value={o.phone}
-                      error={errors[`officer${i}Phone`]}
-                      onChange={(v) => onChangeOfficer(i, 'phone', v)}
-                      onBlur={() => onFieldBlur(`officer${i}Phone`)}
-                    />
-                  </Cell>
-                </Panel>
-              ))}
-            </View>
-          </Section>
-
           {!!companyId && (
             <Section {...sectionProps('folders', 5)}>
               <CompanyFoldersPanel companyId={companyId} companyName={form.name} hideTitle />
@@ -448,6 +452,7 @@ export function CompanySettingsDesktopView({
               <LetterheadPreview form={form} />
             </View>
           </Section>
+          </View>
         </View>
       </ScrollView>
 
@@ -557,12 +562,15 @@ function Section({
   k,
   index,
   last,
+  half,
   onLayout,
   children,
 }: {
   k: SectionKey;
   index: number;
   last?: boolean;
+  /** Shares its row with a neighbouring section on a wide screen. */
+  half?: boolean;
   onLayout: (e: { nativeEvent: { layout: { y: number } } }) => void;
   children: React.ReactNode;
 }) {
@@ -585,7 +593,7 @@ function Section({
   return (
     <Animated.View
       onLayout={onLayout}
-      style={[styles.section, last && styles.sectionLast, { opacity: enter, transform: [{ translateY }] }]}
+      style={[styles.section, half && styles.sectionHalf, last && styles.sectionLast, { opacity: enter, transform: [{ translateY }] }]}
     >
       <View style={styles.sectionHead}>
         <View style={styles.sectionGlyph}>
@@ -1303,7 +1311,9 @@ const styles = StyleSheet.create({
   // Compact sizes for this page (the shared form kit stays as is).
   // Fields sit in a grid inside each panel: label above a short box, two or
   // three to a row, so a panel stays short and no box stretches across the page.
-  section: { marginBottom: 24 },
+  section: { width: '100%', minWidth: 0, marginBottom: 24 },
+  // חלק שחולק שורה עם השכן שלו
+  sectionHalf: { width: 'auto', flexGrow: 1, flexBasis: 520, minWidth: 0 },
   sectionHead: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, marginBottom: 10, paddingHorizontal: 2 },
   // כותרת חלק
   sectionTitle: { fontSize: 16, letterSpacing: -0.2, lineHeight: 21 },
@@ -1397,13 +1407,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 120,
     width: '100%',
-    maxWidth: 1260,
+    maxWidth: 1680,
     alignSelf: 'center',
   },
   // עמודת התפריט (נשארת במקום בגלילה)
   navColumn: { width: 240, flexShrink: 0, ...webOnly({ position: 'sticky', top: 24 }) },
   // עמודת התוכן
   main: { flex: 1, minWidth: 0 },
+  // רשת החלקים: שניים בשורה במסך רחב
+  grid: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'flex-start', columnGap: 24 },
   sectionLast: { marginBottom: 0 },
   sectionGlyph: {
     width: 30,
@@ -1425,7 +1437,7 @@ const styles = StyleSheet.create({
   // כרטיסים זה לצד זה
   panelStack: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 12 },
   panelHalf: { flexGrow: 1, flexBasis: 300, minWidth: 0 },
-  slotPanel: { padding: 20 },
+  slotPanel: { padding: 20, flexGrow: 1, flexBasis: 250, minWidth: 0 },
   panelHead: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -1737,7 +1749,7 @@ const styles = StyleSheet.create({
 
   // Branding: two upload slots beside a live letterhead
   brandingRow: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 16, alignItems: 'stretch' },
-  brandingSlots: { flexGrow: 1, flexBasis: 300, minWidth: 0, gap: 16 },
+  brandingSlots: { flexGrow: 2, flexBasis: 440, minWidth: 0, gap: 16, flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'flex-start' },
   paperStage: {
     flexGrow: 1,
     flexBasis: 320,
