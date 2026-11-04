@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { DK, DK_FONT, DK_SPACE, DKText, DriverPage, HeroTitle, PrimaryAction, Reveal, STATUS, Surface } from '../../components/driverKit';
 import { t, getLocale } from '../../lib/i18n';
+import { ShakeNote } from '../../components/quickLink/ShakeNote';
 
 type Props = {
   insetTop: number;
@@ -16,6 +17,8 @@ type Props = {
   onBack: () => void;
   /** Replaces the default line under the title, e.g. the vehicle on a link page. */
   subtitle?: string;
+  /** A failed save, shown under the number. */
+  error?: string | null;
 };
 
 // מספר גדול והפרש מהקריאה הקודמת
@@ -76,7 +79,9 @@ export function DriverOdometerMobile(p: Props) {
           </Pressable>
 
           <View style={styles.feedback} accessibilityLiveRegion="polite">
-            {tooLow ? (
+            {p.error && !tooLow ? (
+              <ShakeNote text={p.error} />
+            ) : tooLow ? (
               <View style={[styles.note, { backgroundColor: STATUS.expired.soft }]}>
                 <Ionicons name="alert-circle" size={16} color={STATUS.expired.fg} />
                 <DKText variant="caption" color={STATUS.expired.fg}>

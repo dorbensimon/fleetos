@@ -187,18 +187,18 @@ function contentMatches(bytes: Uint8Array, mimeType: string): boolean {
 
 // קישור תקף לפי אסימון
 async function openLink(admin: SupabaseClient, token: unknown): Promise<Link | Response> {
-  if (typeof token !== 'string' || token.length < 20 || token.length > 64) return json({ error: 'הקישור אינו תקין' }, 404);
+  if (typeof token !== 'string' || token.length < 20 || token.length > 64) return json({ error: 'הקישור אינו תקין', code: 'invalid' }, 404);
   const { data } = await admin
     .from('driver_quick_links')
     .select('id, company_id, driver_id, kind, vehicle_id, category, title, expires_at, used_at, uploads')
     .eq('token_hash', await sha256(token))
     .maybeSingle();
-  if (!data) return json({ error: 'הקישור אינו תקין' }, 404);
+  if (!data) return json({ error: 'הקישור אינו תקין', code: 'invalid' }, 404);
   const link = data as Link;
   const { data: allowed } = await admin.rpc('edge_rate_limit_hit', { p_user: link.id, p_max: PUBLIC_RATE_LIMIT });
-  if (allowed === false) return json({ error: 'יותר מדי ניסיונות. נסה שוב בעוד דקה' }, 429);
-  if (new Date(link.expires_at).getTime() < Date.now()) return json({ error: 'תוקף הקישור פג. בקש/י מהמנהל קישור חדש' }, 410);
-  if (link.used_at) return json({ error: 'הקישור כבר נוצל. תודה!' }, 410);
+  if (allowed === false) return json({ error: 'יותר מדי ניסיונות. נסה שוב בעוד דקה', code: 'wait' }, 429);
+  if (new Date(link.expires_at).getTime() < Date.now()) return json({ error: 'תוקף הקישור פג. בקש/י מהמנהל קישור חדש', code: 'expired' }, 410);
+  if (link.used_at) return json({ error: 'הקישור כבר נוצל. תודה!', code: 'used' }, 410);
   // A link outlives nothing the sign-in would refuse (verifyUser): an
   // archived driver, an inactive company, or a vehicle taken from the driver.
   const [{ data: driver }, { data: company }, assignment] = await Promise.all([
@@ -207,7 +207,7 @@ async function openLink(admin: SupabaseClient, token: unknown): Promise<Link | R
     link.vehicle_id ? activeAssignment(admin, link.vehicle_id, link.driver_id) : Promise.resolve({ data: true }),
   ]);
   if (driver?.status !== 'active' || company?.status !== 'active' || !assignment.data) {
-    return json({ error: 'הקישור כבר אינו בתוקף' }, 410);
+    return json({ error: 'הקישור כבר אינו בתוקף', code: 'closed' }, 410);
   }
   return link;
 }
@@ -266,7 +266,7 @@ async function publicAction(action: string, body: Record<string, unknown>) {
       .is('used_at', null)
       .select('id')
       .maybeSingle();
-    if (!claimed) return json({ error: 'הקישור כבר נוצל. תודה!' }, 410);
+    if (!claimed) return json({ error: 'הקישור כבר נוצל. תודה!', code: 'used' }, 410);
 
     const now = new Date().toISOString();
     // Only while the reading is still at most the new value: an update made
@@ -280,7 +280,7 @@ async function publicAction(action: string, body: Record<string, unknown>) {
       .maybeSingle();
     if (error || !updated) {
       await admin.from('driver_quick_links').update({ used_at: null }).eq('id', link.id);
-      return json({ error: error ? 'העדכון נכשל' : 'הקילומטראז׳ עודכן בינתיים. רענן/י את הדף ונסה/י שוב' }, error ? 500 : 409);
+      return json(error ? { error: 'העדכון נכשל', code: 'server' } : { error: 'הקילומטראז׳ עודכן בינתיים. רענן/י את הדף ונסה/י שוב' }, error ? 500 : 409);
     }
     const name = await driverName(admin, link.driver_id);
     // Same wording as update_own_vehicle_odometer (75), which the client parses.
@@ -296,7 +296,7 @@ async function publicAction(action: string, body: Record<string, unknown>) {
 
   if (action === 'upload') {
     if (link.kind !== 'document' || !link.category) return json({ error: 'הקישור אינו להעלאת מסמך' }, 400);
-    if (link.uploads >= MAX_UPLOADS) return json({ error: 'הועלו כבר מספיק קבצים בקישור הזה' }, 410);
+    if (link.uploads >= MAX_UPLOADS) return json({ error: 'הועלו כבר מספיק קבצים בקישור הזה', code: 'used' }, 410);
     const mimeType = String(body.mimeType ?? '').toLowerCase();
     const ext = UPLOAD_TYPES[mimeType];
     if (!ext) return json({ error: 'ניתן להעלות PDF או תמונה בלבד' }, 400);
@@ -311,17 +311,18 @@ async function publicAction(action: string, body: Record<string, unknown>) {
     if (!contentMatches(bytes, mimeType)) return json({ error: 'ניתן להעלות PDF או תמונה בלבד' }, 400);
     // The folder decides: a dated folder needs the new copy's expiry.
     const expiryRule = await driverFolderExpiry(admin, link.company_id, link.category);
-    if (!expiryRule) return json({ error: 'התיקייה כבר לא קיימת' }, 410);
+    if (!expiryRule) return json({ error: 'התיקייה כבר לא קיימת', code: 'closed' }, 410);
     const expiryDate = expiryRule === 'none' || !body.expiryDate ? null : validExpiry(body.expiryDate);
     if (body.expiryDate && expiryRule !== 'none' && !expiryDate) return json({ error: 'תאריך התוקף אינו תקין' }, 400);
     if (expiryRule === 'required' && !expiryDate) return json({ error: 'יש לבחור תאריך תוקף' }, 400);
 
-    // Count the upload first, so parallel requests cannot pass the cap.
+    // Claim the link first: one file per link, so a double tap or a return to the page cannot upload again.
     const { data: counted } = await admin
       .from('driver_quick_links')
-      .update({ uploads: link.uploads + 1 })
+      .update({ uploads: link.uploads + 1, used_at: new Date().toISOString() })
       .eq('id', link.id)
       .eq('uploads', link.uploads)
+      .is('used_at', null)
       .select('id')
       .maybeSingle();
     if (!counted) return json({ error: 'נסה/י שוב' }, 409);
@@ -329,10 +330,10 @@ async function publicAction(action: string, body: Record<string, unknown>) {
     const path = `${link.company_id}/driver/${link.driver_id}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
     const { error: uploadError } = await admin.storage.from('documents').upload(path, bytes, { contentType: mimeType, upsert: false });
     // A failed save gives the upload back.
-    const refund = () => admin.from('driver_quick_links').update({ uploads: link.uploads }).eq('id', link.id).eq('uploads', link.uploads + 1);
+    const refund = () => admin.from('driver_quick_links').update({ uploads: link.uploads, used_at: null }).eq('id', link.id).eq('uploads', link.uploads + 1);
     if (uploadError) {
       await refund();
-      return json({ error: 'שמירת הקובץ נכשלה' }, 500);
+      return json({ error: 'שמירת הקובץ נכשלה', code: 'server' }, 500);
     }
     const fileName = String(body.fileName ?? '').trim().slice(0, 120) || `${link.title}.${ext}`;
     const { error } = await admin.from('documents').insert({
@@ -351,7 +352,7 @@ async function publicAction(action: string, body: Record<string, unknown>) {
     if (error) {
       await admin.storage.from('documents').remove([path]);
       await refund();
-      return json({ error: 'שמירת המסמך נכשלה' }, 500);
+      return json({ error: 'שמירת המסמך נכשלה', code: 'server' }, 500);
     }
     const name = await driverName(admin, link.driver_id);
     // Same wording and target as log_driver_document_upload (93).
@@ -379,6 +380,6 @@ Deno.serve(async (req) => {
     return await publicAction(action, body);
   } catch (error) {
     console.error('driver-quick-link failed', error instanceof Error ? error.message : error);
-    return json({ error: 'אירעה שגיאה בלתי צפויה' }, 500);
+    return json({ error: 'אירעה שגיאה בלתי צפויה', code: 'server' }, 500);
   }
 });
