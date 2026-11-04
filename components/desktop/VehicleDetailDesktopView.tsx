@@ -35,6 +35,7 @@ import { cleanRegistryDetails, REGISTRY_DETAIL_FIELDS, registryChanges, registry
 import { DesktopModal } from './DesktopModal';
 import { errorMessage } from '../../lib/requestError';
 import { BrandLoader } from '../ui/BrandLoader';
+import { useToast } from '../ui/Toast';
 import { ISRAEL_COMMON_MANUFACTURERS } from '../../lib/manufacturers';
 import {
   DesktopSelectOption,
@@ -429,9 +430,9 @@ export function VehicleDetailDesktopView({
         </View>
       )}
 
-      {/* Vehicle details on the right, usage and Transport Ministry data in the middle,
-          maintenance on the left; each section edits as one with a single update button. */}
-      <View style={[styles.gridRow, accessoriesMenu.open && headerMenuStyles.wrapOpen]}>
+      {/* Vehicle details on the right, maintenance over company use in the middle,
+          Transport Ministry data on the left; each section edits as one with a single update button. */}
+      <View style={[styles.gridRow, styles.topRow, accessoriesMenu.open && headerMenuStyles.wrapOpen]}>
         <View style={styles.cell3Wide}>
           <EditableSection title={t('vehicle.vehicle')}>
             <DetailRow
@@ -488,31 +489,7 @@ export function VehicleDetailDesktopView({
         </View>
 
         <View style={[styles.cell3, styles.stack, accessoriesMenu.open && headerMenuStyles.wrapOpen]}>
-          <View style={[styles.stackItem, accessoriesMenu.open && headerMenuStyles.wrapOpen]}>
-            <EditableSection title={t('vehicle.companyUse')}>
-            <DetailRow first label={t('common.department')} value={department} field={{ kind: 'select', label: t('common.department'), raw: vehicle.department_id, options: departmentOptions, allowClear: true, placeholder: t('common.noDepartment'), onSave: (v) => onSaveField({ department_id: v }) }} />
-            <DetailRow label={t('vehicle.purpose')} value={vehicle.usage_type} field={{ kind: 'text', label: t('vehicle.purpose'), raw: vehicle.usage_type ?? '', onSave: (v) => onSaveField({ usage_type: v.trim() || null }) }} />
-            <DetailRow
-              label={t('vehicle.dealType')}
-              value={vehicle.acquisition_type ? ACQUISITION_TYPE_LABELS[vehicle.acquisition_type] ?? vehicle.acquisition_type : null}
-              field={{ kind: 'select', label: t('vehicle.dealType'), raw: vehicle.acquisition_type, options: ACQUISITION_TYPE_OPTIONS(), allowClear: true, placeholder: t('common.notSelected'), onSave: (v) => onSaveField({ acquisition_type: v as AcquisitionType | null }) }}
-            />
-            <DetailRow label={t('vehicle.internalCode')} value={vehicle.internal_code} ltr field={{ kind: 'text', label: t('vehicle.internalCode'), raw: vehicle.internal_code ?? '', ltr: true, onSave: (v) => onSaveField({ internal_code: v.trim() || null }) }} />
-            <DetailRow
-              label={t('vehicle.accessories')}
-              value={(vehicle.accessories ?? []).map((key) => VEHICLE_ACCESSORY_LABELS[key] ?? key).join(', ') || null}
-              onPress={accessoriesMenu.toggle}
-            />
-            </EditableSection>
-          {/* Outside the card: the card clips its overflow. Opens right under the last row. */}
-          {accessoriesMenu.open && <AccessoriesMenu selected={vehicle.accessories ?? []} onSave={(accessories) => onSaveField({ accessories })} onClose={accessoriesMenu.close} />}
-          </View>
           <View style={styles.stackItem}>
-            <RegistryDetailsBlock vehicle={vehicle} onSaveField={onSaveField} />
-          </View>
-        </View>
-
-        <View style={styles.cell3}>
           <FocusTarget id="odometer,service" radius={8} tint={DESKTOP_COLORS.brand}>
           <EditableSection title={t('vehicle.maintenance')} cardStyle={styles.maintCard}>
             <View style={styles.maintTop}>
@@ -566,7 +543,6 @@ export function VehicleDetailDesktopView({
             <View style={styles.maintRows}>
               <DetailRow
                 first
-                compact
                 label={t('vehicle.atLastService')}
                 // 0 is what a new vehicle starts with: nothing was entered yet.
                 value={vehicle.last_service_km ? t('unit.kmValue', { v1: km(vehicle.last_service_km) }) : null}
@@ -577,7 +553,6 @@ export function VehicleDetailDesktopView({
                 }, t('vehicle.kmAtLastServiceHint'))}
               />
               <DetailRow
-                compact
                 label={t('vehicle.serviceEvery')}
                 value={vehicle.service_interval_km ? t('unit.kmValue', { v1: km(vehicle.service_interval_km) }) : null}
                 field={kmEditor(t('vehicle.serviceInterval'), vehicle.service_interval_km, (interval) => {
@@ -586,7 +561,6 @@ export function VehicleDetailDesktopView({
                 }, t('vehicle.serviceIntervalHint'))}
               />
               <DetailRow
-                compact
                 label={t('vehicle.nextServiceAt')}
                 value={nextServiceKm != null ? t('unit.kmNext', { nextServiceKm: km(nextServiceKm) }) : null}
                 field={derivedNextServiceKm != null ? undefined : kmEditor(t('vehicle.kmToNextService'), vehicle.next_service_km, (v) => onSaveField({ next_service_km: v }))}
@@ -594,6 +568,30 @@ export function VehicleDetailDesktopView({
             </View>
           </EditableSection>
           </FocusTarget>
+          </View>
+          <View style={[styles.stackItem, accessoriesMenu.open && headerMenuStyles.wrapOpen]}>
+            <EditableSection title={t('vehicle.companyUse')}>
+            <DetailRow first label={t('common.department')} value={department} field={{ kind: 'select', label: t('common.department'), raw: vehicle.department_id, options: departmentOptions, allowClear: true, placeholder: t('common.noDepartment'), onSave: (v) => onSaveField({ department_id: v }) }} />
+            <DetailRow label={t('vehicle.purpose')} value={vehicle.usage_type} field={{ kind: 'text', label: t('vehicle.purpose'), raw: vehicle.usage_type ?? '', onSave: (v) => onSaveField({ usage_type: v.trim() || null }) }} />
+            <DetailRow
+              label={t('vehicle.dealType')}
+              value={vehicle.acquisition_type ? ACQUISITION_TYPE_LABELS[vehicle.acquisition_type] ?? vehicle.acquisition_type : null}
+              field={{ kind: 'select', label: t('vehicle.dealType'), raw: vehicle.acquisition_type, options: ACQUISITION_TYPE_OPTIONS(), allowClear: true, placeholder: t('common.notSelected'), onSave: (v) => onSaveField({ acquisition_type: v as AcquisitionType | null }) }}
+            />
+            <DetailRow label={t('vehicle.internalCode')} value={vehicle.internal_code} ltr field={{ kind: 'text', label: t('vehicle.internalCode'), raw: vehicle.internal_code ?? '', ltr: true, onSave: (v) => onSaveField({ internal_code: v.trim() || null }) }} />
+            <DetailRow
+              label={t('vehicle.accessories')}
+              value={(vehicle.accessories ?? []).map((key) => VEHICLE_ACCESSORY_LABELS[key] ?? key).join(', ') || null}
+              onPress={accessoriesMenu.toggle}
+            />
+            </EditableSection>
+          {/* Outside the card: the card clips its overflow. Opens right under the last row. */}
+          {accessoriesMenu.open && <AccessoriesMenu selected={vehicle.accessories ?? []} onSave={(accessories) => onSaveField({ accessories })} onClose={accessoriesMenu.close} />}
+          </View>
+        </View>
+
+        <View style={styles.cell3}>
+          <RegistryDetailsBlock vehicle={vehicle} onSaveField={onSaveField} />
         </View>
       </View>
 
@@ -690,7 +688,9 @@ export function VehicleDetailDesktopView({
  */
 function RegistryRefreshAction({ vehicle, onSaveField }: { vehicle: Vehicle; onSaveField: (patch: Partial<Vehicle>) => Promise<string | null> }) {
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  // The result shows as a toast: beside the button it fell outside the header.
+  const { showToast } = useToast();
+  const setMessage = (text: string | null) => { if (text) showToast(text); };
   const [review, setReview] = useState<RegistryChange[] | null>(null);
 
   const refresh = async () => {
@@ -715,7 +715,6 @@ function RegistryRefreshAction({ vehicle, onSaveField }: { vehicle: Vehicle; onS
         {busy ? <BrandLoader size="small" color="#FFFFFF" /> : <Ionicons name="sparkles" size={14} color="#FFFFFF" />}
         <DText weight="semiBold" style={styles.heroActionText}>{busy ? t('registry.refreshing') : t('registry.refresh')}</DText>
       </HoverPressable>
-      {!!message && <DText style={styles.heroActionMessage}>{message}</DText>}
       {review && (
         <RegistryReviewDialog
           plate={formatPlate(vehicle.plate_number)}
@@ -986,6 +985,8 @@ const styles = StyleSheet.create({
   stack: { gap: 18 },
   stackItem: { minWidth: 0 },
   content: { ...pageStyles.content, maxWidth: 1760 },
+  // Each card keeps its own height instead of stretching to the tallest column.
+  topRow: { alignItems: 'flex-start' },
   // נהגים בכותרת
   heroDriver: { gap: 4, borderRadius: 8, paddingVertical: 4, maxWidth: 180, ...webOnly({ cursor: 'pointer', transition: 'background-color 150ms ease' }) },
   heroDriverHover: { backgroundColor: 'rgba(255,255,255,0.08)' },
@@ -1005,7 +1006,6 @@ const styles = StyleSheet.create({
   heroActionBtn: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, height: 26, paddingHorizontal: 12, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
   heroActionBtnHover: { backgroundColor: 'rgba(255,255,255,0.16)' },
   heroActionText: { fontSize: 12.5, color: '#FFFFFF' },
-  heroActionMessage: { position: 'absolute', end: '100%', marginEnd: 8, width: 180, fontSize: 12.5, color: 'rgba(255,255,255,0.75)', textAlign: 'right' },
   plateWrap: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   // לוחית הרישוי
   plate: {
