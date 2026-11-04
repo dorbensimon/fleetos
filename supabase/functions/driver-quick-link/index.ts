@@ -61,6 +61,16 @@ function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 
+// שם הקובץ: שם התיקייה ותאריך ההעלאה
+/** "בדיקת חורף 17.10.2026.jpg", the date in Israel time. */
+function uploadedFileName(title: string, ext: string, now = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', year: 'numeric' }).formatToParts(now);
+  const part = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const [day, month, year] = [part('day'), part('month'), part('year')];
+  const safeTitle = title.replace(/[\\/\u0000-\u001f\u007f]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 100) || 'מסמך';
+  return `${safeTitle} ${day}.${month}.${year}.${ext}`;
+}
+
 // גיבוב האסימון
 async function sha256(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
@@ -335,7 +345,8 @@ async function publicAction(action: string, body: Record<string, unknown>) {
       await refund();
       return json({ error: 'שמירת הקובץ נכשלה', code: 'server' }, 500);
     }
-    const fileName = String(body.fileName ?? '').trim().slice(0, 120) || `${link.title}.${ext}`;
+    // Saved as the folder's name and the upload day, like the manager's uploads (lib/documents.ts uploadedFileName), not the phone's IMG_1234.
+    const fileName = uploadedFileName(link.title ?? 'מסמך', ext);
     const { error } = await admin.from('documents').insert({
       company_id: link.company_id,
       owner_type: 'driver',

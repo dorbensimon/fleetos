@@ -204,6 +204,7 @@ export default function CompanySettingsScreen({ navigation }: Props) {
         dirty={dirty}
         saving={saving}
         onBack={() => navigation.goBack()}
+        onOpenDepartments={() => navigation.navigate('Departments')}
         onChange={onChange}
         onChangeContact={onChangeContact}
         onChangeOfficer={onChangeOfficer}

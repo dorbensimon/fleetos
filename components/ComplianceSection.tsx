@@ -4,7 +4,7 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { BrandLoader } from './ui/BrandLoader';
 import { showAlert } from '../lib/platformAlert';
 import { Ionicons } from '@expo/vector-icons';
-import { AppText, Card, ExpiryBadge, PrimaryButton, useToast } from './ui';
+import { AppText, Card, ExpiryBadge, useToast } from './ui';
 import { DocumentFileRow } from './documents/DocumentFileRow';
 import { DateField, useDatePrompt } from './ui/DateField';
 import { COLORS, EXPIRY_STYLE, RADIUS, SPACING, expiryState, formatDate } from '../lib/theme';
@@ -333,13 +333,33 @@ export function ComplianceSection({
         </View>
 
         {isDirty && (
-          <PrimaryButton
-            label={t('common.ok')}
-            icon="checkmark-outline"
-            style={styles.confirmBtn}
-            loading={savingItem === def.itemType}
-            onPress={() => confirmDates(def)}
-          />
+          // Small save and cancel; cancel drops the unsaved dates and closes the folder.
+          <View style={styles.saveRow}>
+            <TouchableOpacity
+              style={[styles.saveBtn, savingItem === def.itemType && styles.btnBusy]}
+              activeOpacity={0.8}
+              onPress={() => confirmDates(def)}
+              disabled={savingItem === def.itemType}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.save')}
+            >
+              {savingItem === def.itemType ? <BrandLoader size="small" color="#FFFFFF" /> : <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+              <AppText weight="bold" style={styles.saveText}>{t('common.save')}</AppText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              activeOpacity={0.7}
+              onPress={() => {
+                setDrafts((prev) => { const next = { ...prev }; delete next[def.itemType]; return next; });
+                setExpanded(null);
+              }}
+              disabled={savingItem === def.itemType}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.cancel')}
+            >
+              <AppText weight="bold" style={styles.cancelText}>{t('common.cancel')}</AppText>
+            </TouchableOpacity>
+          </View>
         )}
       </>
     );
@@ -769,7 +789,13 @@ const styles = StyleSheet.create({
   dateLabel: { fontFamily: DK_FONT.medium, fontSize: 13.5, color: DK.inkSoft, width: 92 },
   dateInput: { flex: 1 },
   autoDateValue: { fontFamily: DK_FONT.medium, fontSize: 14, color: DK.muted, flex: 1 },
-  confirmBtn: { marginTop: 2 },
+  // שמירה וביטול קטנים
+  saveRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginTop: 2 },
+  saveBtn: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 38, paddingHorizontal: 16, borderRadius: 12, backgroundColor: DK.accent },
+  saveText: { fontFamily: DK_FONT.semibold, fontSize: 14, color: '#FFFFFF' },
+  btnBusy: { opacity: 0.7 },
+  cancelBtn: { alignItems: 'center', justifyContent: 'center', minHeight: 38, paddingHorizontal: 16, borderRadius: 12, backgroundColor: DK.surfaceSunk },
+  cancelText: { fontFamily: DK_FONT.semibold, fontSize: 14, color: DK.inkSoft },
 
   // כפתור ההעלאה
   uploadBtn: {

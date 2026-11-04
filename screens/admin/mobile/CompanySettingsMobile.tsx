@@ -2,7 +2,7 @@
 import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { DK, DKText, DriverPage, EditField, HeroTitle, KitSection, PrimaryAction, Pressy, Reveal, STATUS, Surface } from '../../../components/driverKit';
+import { DK, DKText, DriverPage, EditField, HeroTitle, KitSection, ListRow, PrimaryAction, Pressy, Reveal, STATUS, Surface } from '../../../components/driverKit';
 import { DateField } from '../../../components/ui/DateField';
 import { Select } from '../../../components/ui/Select';
 import { LiquidGlassSwitch } from '../../../components/ui/LiquidGlassSwitch';
@@ -20,6 +20,8 @@ type Props = {
   dirty: boolean;
   saving: boolean;
   onBack: () => void;
+  /** Opens the company's departments, kept here with the company's other settings. */
+  onOpenDepartments: () => void;
   onChange: <K extends keyof CompanySettingsForm>(field: K, value: CompanySettingsForm[K]) => void;
   onChangeContact: (index: number, field: keyof CompanyContactForm, value: string) => void;
   onChangeOfficer: (index: number, field: keyof SafetyOfficerForm, value: string) => void;
@@ -120,6 +122,12 @@ export function CompanySettingsMobile(p: Props) {
       ))}
 
       <Reveal index={7}>
+        <KitSection>
+          <ListRow first icon="business" title={t('departments.title')} subtitle={t('menu.departmentsSubtitle')} onPress={p.onOpenDepartments} />
+        </KitSection>
+      </Reveal>
+
+      <Reveal index={8}>
         <KitSection title={t('settings.section.logoStamp')}>
           <View style={styles.slots}>
             <ImageSlot title={t('company.logo')} icon="image-outline" uri={form.logoUri} onPick={() => p.onPickImage('logo')} onClear={() => p.onClearImage('logo')} />

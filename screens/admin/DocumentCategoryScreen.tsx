@@ -32,6 +32,7 @@ import { DText, HoverPressable } from '../../components/desktop/primitives';
 import { DESKTOP_COLORS, DESKTOP_BRAND_SHADOW, webOnly } from '../../components/desktop/desktopTheme';
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
+import { useWhatsappQuickLink } from '../../lib/useWhatsappQuickLink';
 
 /**
  * A generic "one category, one screen" document list — reused by every
@@ -77,6 +78,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   const { companyId, profile } = useCompany();
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
+  const whatsapp = useWhatsappQuickLink();
 
   // נוהל 6 replaces the plain "upload any file" flow with a structured
   // form that produces a PDF (see Procedure6FormModal) — drivers may only
@@ -302,6 +304,9 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
   }
 
   const canAdd = isTrafficReport ? canManage : !isProcedure6 || canCreateProcedure6;
+  // A driver's folder: the manager can ask the driver for the file on WhatsApp (the link page has no procedure 6 / report form).
+  const canAskDriver = ownerType === 'driver' && canManage && !usesForm;
+  const addLabel = isProcedure6 ? t('procedure6.newReport') : isTrafficReport ? t('trafficReport.add') : t('documents.addDocument');
   const icon = CATEGORY_HERO_ICONS[category] ?? 'document-text-outline';
   return (
     <DriverPage
@@ -317,12 +322,25 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
       }
       footer={
         canAdd && !loading && !error ? (
-          <PrimaryAction
-            label={isProcedure6 ? t('procedure6.newReport') : isTrafficReport ? t('trafficReport.add') : t('documents.addDocument')}
-            icon={usesForm ? 'add-circle-outline' : 'cloud-upload-outline'}
-            loading={uploading}
-            onPress={() => (usesForm ? openForm() : void addDocument())}
-          />
+          <View style={styles.footer}>
+            <PrimaryAction
+              label={addLabel}
+              icon={usesForm ? 'add-circle-outline' : 'cloud-upload-outline'}
+              loading={uploading}
+              disabled={whatsapp.busy}
+              onPress={() => (usesForm ? openForm() : void addDocument())}
+            />
+            {canAskDriver && (
+              <PrimaryAction
+                label={t('quickLink.askDriver')}
+                icon="logo-whatsapp"
+                tone="ghost"
+                loading={whatsapp.busy}
+                disabled={uploading}
+                onPress={() => void whatsapp.send({ kind: 'document', driverId: ownerId, category, title: storedFolderTitle(category, title) })}
+              />
+            )}
+          </View>
         ) : undefined
       }
       overlay={
@@ -374,6 +392,7 @@ export default function DocumentCategoryScreen({ route, navigation }: Props) {
 
 // עיצוב בטלפון
 const styles = StyleSheet.create({
+  footer: { gap: 10 },
   heroIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: DK.glass, borderWidth: 1, borderColor: DK.glassBorder, alignItems: 'center', justifyContent: 'center' },
 });
 
