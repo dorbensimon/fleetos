@@ -397,9 +397,9 @@ export function DriverDetailDesktopView({
         </View>
       )}
 
-      {/* Personal details + licence, then work + vehicles */}
+      {/* Three columns: personal details, licence, work and permits */}
       <View style={styles.gridRow}>
-        <View style={styles.mainCell}>
+        <View style={styles.cell3Wide}>
           <GroupLabel>{t('driver.personalDetails')}</GroupLabel>
           <View style={styles.card}>
             <DetailRow
@@ -482,7 +482,7 @@ export function DriverDetailDesktopView({
           </View>
         </View>
 
-        <View style={styles.sideCell}>
+        <View style={styles.cell3}>
           <GroupLabel>{t('driver.drivingLicense')}</GroupLabel>
           <View style={styles.card}>
             <View style={styles.licenceArea}>
@@ -534,73 +534,99 @@ export function DriverDetailDesktopView({
             <DetailRow compact label={t('documents.validUntil')} focusId="license_expiry" value={licenseExpiry ? formatDate(licenseExpiry) : null} ltr valueColor={licenseColor} onPress={() => setEditor(dateEditor(t('license.expiry'), licenseExpiry, (v) => onSaveField({ license_expiry: v })))} />
           </View>
         </View>
-      </View>
-
-      <View style={styles.gridRow}>
-        <View style={styles.mainCell}>
-          <GroupLabel>{t('driver.work')}</GroupLabel>
-          <View style={styles.card}>
-            <DetailRow first label={t('driver.employeeNumber')} focusId="employee_number" value={driver?.employee_number || null} ltr edit={textEditor(t('driver.employeeNumber'), driver?.employee_number, (v) => onSaveField({ employee_number: v.trim() || null }), { ltr: true })} />
-            <DetailRow
-              label={t('common.department')} focusId="department_id"
-              value={departmentName}
-              onPress={() => setEditor({ kind: 'select', label: t('common.department'), raw: driver?.department_id ?? null, options: departmentOptions, allowClear: true, placeholder: t('common.noDepartment'), onSave: (v) => onSaveField({ department_id: v }) })}
-            />
-            <DetailRow
-              label={t('driver.employmentStart')} focusId="employment_start_date"
-              value={driver?.employment_start_date ? formatDate(driver.employment_start_date) : null}
-              ltr
-              accessory={inCompany ? <DText style={styles.rowNote}>{`${inCompany.value} ${inCompany.unit}`}</DText> : undefined}
-              onPress={() => setEditor(dateEditor(t('driver.employmentStart'), driver?.employment_start_date, (v) => onSaveField({ employment_start_date: v })))}
-            />
-            <DetailRow
-              label={t('driver.employmentEnd')} focusId="employment_end_date"
-              value={driver?.employment_end_date ? formatDate(driver.employment_end_date) : null}
-              ltr
-              onPress={() => setEditor(dateEditor(t('driver.employmentEnd'), driver?.employment_end_date, async (v) => {
-                if (v && driver?.employment_start_date && v < driver.employment_start_date) return t('driver.employmentEndBeforeStart');
-                return onSaveField({ employment_end_date: v });
-              }))}
-            />
-          </View>
-        </View>
-
-        {/* The left column takes the right column's height and scrolls inside. */}
-        <View style={styles.sideCell}>
-          <GroupLabel action={<DriverVehicleHistoryButton driverId={driverId} refreshKey={vehicles.map((v) => v.id).join(',')} />}>
-            {t('driver.assignedVehicles')}
-          </GroupLabel>
-          <View style={styles.pinnedArea}>
-            <View style={StyleSheet.absoluteFill}>
-              <DriverVehiclesCard
-                companyId={companyId}
-                driverId={driverId}
-                initialVehicles={vehicles}
-                canEdit={!isArchived}
-                onOpenVehicle={onOpenVehicle}
-                onChanged={onVehiclesChanged}
+        <View style={[styles.cell3, styles.stack]}>
+          <View style={styles.stackItem}>
+            <GroupLabel>{t('driver.work')}</GroupLabel>
+            <View style={styles.card}>
+              <DetailRow first label={t('driver.employeeNumber')} focusId="employee_number" value={driver?.employee_number || null} ltr edit={textEditor(t('driver.employeeNumber'), driver?.employee_number, (v) => onSaveField({ employee_number: v.trim() || null }), { ltr: true })} />
+              <DetailRow
+                label={t('common.department')} focusId="department_id"
+                value={departmentName}
+                onPress={() => setEditor({ kind: 'select', label: t('common.department'), raw: driver?.department_id ?? null, options: departmentOptions, allowClear: true, placeholder: t('common.noDepartment'), onSave: (v) => onSaveField({ department_id: v }) })}
+              />
+              <DetailRow
+                label={t('driver.employmentStart')} focusId="employment_start_date"
+                value={driver?.employment_start_date ? formatDate(driver.employment_start_date) : null}
+                ltr
+                accessory={inCompany ? <DText style={styles.rowNote}>{`${inCompany.value} ${inCompany.unit}`}</DText> : undefined}
+                onPress={() => setEditor(dateEditor(t('driver.employmentStart'), driver?.employment_start_date, (v) => onSaveField({ employment_start_date: v })))}
+              />
+              <DetailRow
+                label={t('driver.employmentEnd')} focusId="employment_end_date"
+                value={driver?.employment_end_date ? formatDate(driver.employment_end_date) : null}
+                ltr
+                onPress={() => setEditor(dateEditor(t('driver.employmentEnd'), driver?.employment_end_date, async (v) => {
+                  if (v && driver?.employment_start_date && v < driver.employment_start_date) return t('driver.employmentEndBeforeStart');
+                  return onSaveField({ employment_end_date: v });
+                }))}
               />
             </View>
           </View>
+          <View style={styles.stackItem}>
+            <GroupLabel>{t('driver.permitsGroup')}</GroupLabel>
+            <View style={styles.card}>
+              {expiryRow(t('driver.workAtHeightExpiry'), 'work_at_height_expiry', true)}
+              {expiryRow(t('driver.portEntryExpiry'), 'port_entry_expiry')}
+              {expiryRow(t('driver.forkliftRefresherExpiry'), 'forklift_refresher_expiry')}
+              {yesNoRow(t('driver.hazmatApproved'), 'hazmat_approved', !!driver?.hazmat_approved, (on) => onSaveField(on ? { hazmat_approved: true } : { hazmat_approved: false, hazmat_permit_expiry: null }))}
+              <View style={driver?.hazmat_approved ? undefined : styles.rowOff} pointerEvents={driver?.hazmat_approved ? 'auto' : 'none'}>
+                {expiryRow(t('driver.hazmatPermitExpiry'), 'hazmat_permit_expiry')}
+              </View>
+              {yesNoRow(t('driver.previouslyDisqualified'), 'previously_disqualified', !!driver?.previously_disqualified, (on) => onSaveField({ previously_disqualified: on }))}
+            </View>
+          </View>
         </View>
       </View>
 
+      {/* Documents, forms to sign and vehicles; a narrow screen wraps them below one another. */}
       <View style={styles.gridRow}>
-        <View style={styles.mainCell}>
-          <GroupLabel>{t('driver.permitsGroup')}</GroupLabel>
-          <View style={styles.card}>
-            {expiryRow(t('driver.workAtHeightExpiry'), 'work_at_height_expiry', true)}
-            {expiryRow(t('driver.portEntryExpiry'), 'port_entry_expiry')}
-            {expiryRow(t('driver.forkliftRefresherExpiry'), 'forklift_refresher_expiry')}
-            {yesNoRow(t('driver.hazmatApproved'), 'hazmat_approved', !!driver?.hazmat_approved, (on) => onSaveField(on ? { hazmat_approved: true } : { hazmat_approved: false, hazmat_permit_expiry: null }))}
-            <View style={driver?.hazmat_approved ? undefined : styles.rowOff} pointerEvents={driver?.hazmat_approved ? 'auto' : 'none'}>
-              {expiryRow(t('driver.hazmatPermitExpiry'), 'hazmat_permit_expiry')}
-            </View>
-            {yesNoRow(t('driver.previouslyDisqualified'), 'previously_disqualified', !!driver?.previously_disqualified, (on) => onSaveField({ previously_disqualified: on }))}
-          </View>
+        <View style={styles.cell3Wide}>
+        <View style={styles.docsHead}>
+          <DText weight="bold" style={styles.docsTitle}>{t('common.documents')}</DText>
+          <DText style={styles.mutedText}>{t('driver.foldersHint')}</DText>
         </View>
-
-        <View style={styles.sideCell}>
+        <View style={styles.docsStack}>
+          {DOCUMENT_GROUPS.map((group) => (
+            <View key={group.title} style={styles.docsGroup}>
+              <GroupLabel>{group.title}</GroupLabel>
+              <View style={[styles.card, styles.listCard]}>
+                {group.folders.map((folder, index) => (
+                  <FolderListRow
+                    key={folder.category}
+                    title={folder.title}
+                    icon={folder.icon}
+                    docs={docs.filter((d) => d.category === folder.category)}
+                    onPress={() => setOpenFolder(recordFolder(folder))}
+                    first={index === 0}
+                    loading={!docsLoaded}
+                    plain={folder.expiry !== 'required'}
+                  />
+                ))}
+              </View>
+            </View>
+          ))}
+          {extraFolders.length > 0 && (
+            <View style={styles.docsGroup}>
+              <GroupLabel>{t('companyFolders.moreFolders')}</GroupLabel>
+              <View style={[styles.card, styles.listCard]}>
+                {extraFolders.map((folder, index) => (
+                  <FolderListRow
+                    key={folder.category}
+                    title={folder.title}
+                    icon={folder.icon}
+                    docs={docs.filter((d) => d.category === folder.category)}
+                    onPress={() => setOpenFolder(folder)}
+                    first={index === 0}
+                    loading={!docsLoaded}
+                    plain={!folder.requiresExpiry}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+        </View>
+        <View style={styles.cell3}>
           <GroupLabel>{t('signing.formsToSign')}</GroupLabel>
           <View style={styles.pinnedArea}>
             <View style={[StyleSheet.absoluteFill, styles.card]}>
@@ -627,52 +653,23 @@ export function DriverDetailDesktopView({
             </View>
           </View>
         </View>
-      </View>
-
-      {/* Documents */}
-      <View style={styles.docsHead}>
-        <DText weight="bold" style={styles.docsTitle}>{t('common.documents')}</DText>
-        <DText style={styles.mutedText}>{t('driver.foldersHint')}</DText>
-      </View>
-      <View style={[styles.gridRow, styles.docsGrid]}>
-        {DOCUMENT_GROUPS.map((group) => (
-          <View key={group.title} style={styles.thirdCell}>
-            <GroupLabel>{group.title}</GroupLabel>
-            <View style={[styles.card, styles.listCard]}>
-              {group.folders.map((folder, index) => (
-                <FolderListRow
-                  key={folder.category}
-                  title={folder.title}
-                  icon={folder.icon}
-                  docs={docs.filter((d) => d.category === folder.category)}
-                  onPress={() => setOpenFolder(recordFolder(folder))}
-                  first={index === 0}
-                  loading={!docsLoaded}
-                  plain={folder.expiry !== 'required'}
-                />
-              ))}
+        <View style={styles.cell3}>
+          <GroupLabel action={<DriverVehicleHistoryButton driverId={driverId} refreshKey={vehicles.map((v) => v.id).join(',')} />}>
+            {t('driver.assignedVehicles')}
+          </GroupLabel>
+          <View style={styles.pinnedArea}>
+            <View style={StyleSheet.absoluteFill}>
+              <DriverVehiclesCard
+                companyId={companyId}
+                driverId={driverId}
+                initialVehicles={vehicles}
+                canEdit={!isArchived}
+                onOpenVehicle={onOpenVehicle}
+                onChanged={onVehiclesChanged}
+              />
             </View>
           </View>
-        ))}
-        {extraFolders.length > 0 && (
-          <View style={styles.thirdCell}>
-            <GroupLabel>{t('companyFolders.moreFolders')}</GroupLabel>
-            <View style={[styles.card, styles.listCard]}>
-              {extraFolders.map((folder, index) => (
-                <FolderListRow
-                  key={folder.category}
-                  title={folder.title}
-                  icon={folder.icon}
-                  docs={docs.filter((d) => d.category === folder.category)}
-                  onPress={() => setOpenFolder(folder)}
-                  first={index === 0}
-                  loading={!docsLoaded}
-                  plain={!folder.requiresExpiry}
-                />
-              ))}
-            </View>
-          </View>
-        )}
+        </View>
       </View>
 
       {!!driver?.created_at && (
@@ -883,12 +880,23 @@ const styles = StyleSheet.create({
 
   // רשת התיקיות
   // Documents
-  docsGrid: { alignItems: 'flex-start' },
   // Left-column cards: as tall as the card beside them, the list scrolls inside.
-  pinnedArea: { flexGrow: 1, minHeight: 160 },
+  pinnedArea: { flexGrow: 1, minHeight: 320 },
   pinnedScroll: { flex: 1, minHeight: 0 },
   pinnedFooter: { flexDirection: 'row-reverse', padding: 12 },
-  thirdCell: { flexGrow: 1, flexBasis: 280, minWidth: 0 },
+  // שלוש עמודות למעלה, ושתיים מתחת
+  // Three columns need ~1160px; a narrower screen wraps the licence and work under the details.
+  cell3Wide: { flexGrow: 1.25, flexBasis: 460, minWidth: 0 },
+  cell3: { flexGrow: 1, flexBasis: 330, minWidth: 0 },
+  // Work and permits: stacked in a narrow column, side by side when it wraps to full width.
+  stack: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignContent: 'flex-start', gap: 18 },
+  stackItem: { flexGrow: 1, flexBasis: 330, minWidth: 0 },
+  docsHead: { paddingHorizontal: 4, gap: 1, marginBottom: 6 },
+  // The folder groups wrap two to a row inside the documents column.
+  docsStack: { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14 },
+  docsGroup: { flexGrow: 1, flexBasis: 280, minWidth: 0 },
+  // This page uses the whole width of a large screen.
+  content: { ...pageStyles.content, maxWidth: 1760 },
 
   // תחתית הדף
   footer: { flexDirection: 'row-reverse', justifyContent: 'center', flexWrap: 'wrap', marginTop: 14 },
