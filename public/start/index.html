@@ -745,7 +745,12 @@
       scrollTo(0, 0);
 
       if (window.Lenis) {
-        var lenis = window.lenis = new Lenis({ lerp: 0.1, wheelMultiplier: 0.9, touchMultiplier: 0.9 });
+        var lenis = window.lenis = new Lenis({
+          lerp: 0.08, wheelMultiplier: 0.8,
+          // Phones: Lenis drives the swipe too, with a softer fling, so a flick doesn't race through a whole scene.
+          syncTouch: true, syncTouchLerp: 0.075, touchMultiplier: 0.9, touchInertiaMultiplier: 22
+        });
+        ScrollTrigger.config({ ignoreMobileResize: true });
         lenis.on('scroll', ScrollTrigger.update);
         gsap.ticker.add(function (t) { lenis.raf(t * 1000); });
         gsap.ticker.lagSmoothing(0);
