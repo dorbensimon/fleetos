@@ -40,6 +40,7 @@
     html { -webkit-text-size-adjust: 100%; }
     html.lenis, html.lenis body { height: auto; }
     .lenis.lenis-smooth { scroll-behavior: auto !important; }
+    .lenis.lenis-stopped { overflow: hidden; }
     body {
       margin: 0;
       background: var(--night);
@@ -744,8 +745,9 @@
       history.scrollRestoration = 'manual';
       scrollTo(0, 0);
 
+      var lenis = null, navTarget = null;
       if (window.Lenis) {
-        var lenis = window.lenis = new Lenis({
+        lenis = window.lenis = new Lenis({
           lerp: 0.08, wheelMultiplier: 0.8,
           // Phones: Lenis drives the swipe too, with a softer fling, so a flick doesn't race through a whole scene.
           syncTouch: true, syncTouchLerp: 0.075, touchMultiplier: 0.9, touchInertiaMultiplier: 22
@@ -759,7 +761,10 @@
             var target = document.querySelector(a.getAttribute('href'));
             if (!target) return;
             e.preventDefault();
-            lenis.scrollTo(target === document.getElementById('top') ? 0 : target);
+            // Scenes passed on the way are shown finished; only the destination plays.
+            navTarget = target;
+            lenis.start();
+            lenis.scrollTo(target === document.getElementById('top') ? 0 : target, { force: true, onComplete: function () { navTarget = null; } });
           });
         });
       }
@@ -776,13 +781,37 @@
       });
 
       var R = gsap.utils.random;
-      // Pin at the top, but start playing while the scene is still sliding in, so there is no dead scroll between scenes.
-      function scene(id, length) {
-        ScrollTrigger.create({ trigger: id, start: 'top top', end: '+=' + length + '%', pin: true, anticipatePin: 1 });
-        return gsap.timeline({
-          defaults: { ease: 'none' },
-          scrollTrigger: { trigger: id, start: 'top 85%', end: '+=' + (length + 85) + '%', scrub: 0.8 }
+      // Section-by-section: once a scene is half in view the page glides it to the top and
+      // its animation plays on its own (input paused). Only a short tail after it needs scrolling.
+      var TAIL = 30; // % of viewport the user scrolls through after the animation, before the next scene
+      var gliding = false;
+      function glide(y, done) {
+        gliding = true;
+        if (lenis) lenis.scrollTo(y + 1, { duration: 0.9, lock: true, force: true, onComplete: function () { gliding = false; if (done) done(); } });
+        else { window.scrollTo({ top: y + 1, behavior: 'smooth' }); gliding = false; }
+      }
+      var pins = [];
+      function scene(id) {
+        var el = document.querySelector(id), idx = pins.length;
+        var tl = gsap.timeline({ paused: true, defaults: { ease: 'none' } });
+        var pin = ScrollTrigger.create({
+          trigger: id, start: 'top top', end: '+=' + TAIL + '%', pin: true, anticipatePin: 1,
+          // Scrolling up: leaving a scene's top glides to the previous scene (finished) or the hero.
+          onLeaveBack: function () { if (!navTarget && !gliding) glide(idx ? pins[idx - 1].start : 0); }
         });
+        pins.push(pin);
+        ScrollTrigger.create({
+          trigger: id, start: 'top 50%',
+          onEnter: function () {
+            if (navTarget && navTarget !== el) { tl.progress(1); return; }
+            tl.restart();
+            // Hold the page still while the scene plays; released in onComplete.
+            glide(pin.start, function () { if (tl.isActive()) lenis.stop(); });
+          },
+          onLeaveBack: function () { tl.pause(0); if (lenis) lenis.start(); }
+        });
+        tl.eventCallback('onComplete', function () { if (lenis) lenis.start(); });
+        return tl;
       }
       function wordsIn(tl, id, at) {
         tl.from(id + ' .w > span', { yPercent: 110, duration: 0.5, stagger: 0.06, ease: 'power3.out' }, at)
@@ -797,7 +826,7 @@
       gsap.to('.scroll-hint', { autoAlpha: 0, scrollTrigger: { trigger: '.hero', start: 'top top', end: '15% top', scrub: true } });
 
       // 1. Calendar comes in on a diagonal, fills with shifts, rushes the camera and shatters into the title.
-      var s1 = scene('#schedule', 315);
+      var s1 = scene('#schedule');
       s1.from('.cal', { x: '-45vw', y: '65vh', rotationX: 58, rotationY: -20, rotationZ: -26, scale: 0.4, autoAlpha: 0, duration: 1.2, ease: 'power2.out' }, 0)
         .from('.cal .chip', { scaleX: 0, autoAlpha: 0, transformOrigin: '100% 50%', duration: 0.25, stagger: 0.01, ease: 'power2.out' }, 0.6)
         .to('.cal', { scale: 2.3, rotationX: -10, duration: 1, ease: 'power2.in' }, 1.7)
@@ -818,7 +847,7 @@
       // 2. Cards are dealt in, then time runs: bars drain, colours turn, alerts drop.
       var clock = { d: 0 };
       renderValidity(0);
-      var s2 = scene('#validity', 229);
+      var s2 = scene('#validity');
       wordsIn(s2, '#validity', 0);
       s2.from('.dial', { scale: 0.9, autoAlpha: 0, duration: 0.5, ease: 'power2.out' }, 0.3)
         .from('.doc-row', { rotationX: -85, y: 60, autoAlpha: 0, transformOrigin: '50% 0%', duration: 0.6, stagger: 0.12, ease: 'power3.out' }, 0.4)
@@ -828,7 +857,7 @@
         .to({}, { duration: 0.25 });
 
       // 3. Phone lifts in, the form writes itself, the driver signs, the stamp lands, the PDF flies to the folder.
-      var s3 = scene('#signature', 249);
+      var s3 = scene('#signature');
       wordsIn(s3, '#signature', 0);
       s3.from('.phone', { y: '60vh', rotationX: 35, rotationY: -25, rotationZ: 8, autoAlpha: 0, duration: 1, ease: 'power3.out' }, 0.1)
         .from('.folder', { x: -80, autoAlpha: 0, duration: 0.6, ease: 'power3.out' }, 0.5)
@@ -844,7 +873,7 @@
         .to({}, { duration: 0.25 });
 
       // 4. Items tick one by one, each lighting its spot on the car, while the ring fills.
-      var s4 = scene('#safety', 230);
+      var s4 = scene('#safety');
       var pct = document.querySelector('.ring span'), progress = { p: 0 };
       wordsIn(s4, '#safety', 0);
       s4.from('.car', { y: 80, rotation: -6, autoAlpha: 0, duration: 0.7, ease: 'power3.out' }, 0.1)
@@ -869,7 +898,7 @@
       var flashes = [];
       for (var f = 0; f < 5; f++) flashes.push({ opacity: 1, duration: 0.04 }, { opacity: 0, duration: 0.26 });
       gsap.set('.bell-body', { svgOrigin: '60 10' });
-      var s5 = scene('#alerts', 225);
+      var s5 = scene('#alerts');
       wordsIn(s5, '#alerts', 0);
       gsap.utils.toArray('.alert').forEach(function (c, i) {
         var r = c.getBoundingClientRect(), t = 1 + i * 0.3;
@@ -895,7 +924,7 @@
       function spot(sel) { var r = document.querySelector(sel).getBoundingClientRect(); return { x: (r.left + r.width / 2 - dr.left) / kDev - 8, y: (r.top + r.height / 2 - dr.top) / kDev - 8 }; }
       var p0 = spot('.h-btn'), p1 = spot('.l-row .st');
       gsap.set('.pulse', { x: p0.x, y: p0.y });
-      var s6 = scene('#devices', 250);
+      var s6 = scene('#devices');
       wordsIn(s6, '#devices', 0);
       s6.from('.devices', { y: 120, rotationX: 28, autoAlpha: 0, duration: 0.8, ease: 'power3.out' }, 0.1)
         .fromTo('.lid', { rotationX: 86 }, { rotationX: 0, duration: 0.8, ease: 'power2.inOut' }, 0.5)
@@ -925,7 +954,7 @@
       var sec = document.getElementById('always').getBoundingClientRect(), sr = scr.getBoundingClientRect(), hr = held.getBoundingClientRect();
       var cx = sr.left + sr.width / 2, cy = sr.top + sr.height / 2;
       gsap.set(held, { transformOrigin: (cx - hr.left) + 'px ' + (cy - hr.top) + 'px' });
-      var s7 = scene('#always', 200);
+      var s7 = scene('#always');
       s7.fromTo(held,
           { x: sec.left + sec.width / 2 - cx, y: sec.top + sec.height / 2 - cy, scale: Math.max(sec.width / sr.width, sec.height / sr.height) * 1.02 },
           { x: 0, y: 0, scale: 1, duration: 1.4, ease: 'power2.inOut' }, 0.6)
