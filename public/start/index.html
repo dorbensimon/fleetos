@@ -745,7 +745,7 @@
       scrollTo(0, 0);
 
       if (window.Lenis) {
-        var lenis = window.lenis = new Lenis({ lerp: 0.12 });
+        var lenis = window.lenis = new Lenis({ lerp: 0.1, wheelMultiplier: 0.9, touchMultiplier: 0.9 });
         lenis.on('scroll', ScrollTrigger.update);
         gsap.ticker.add(function (t) { lenis.raf(t * 1000); });
         gsap.ticker.lagSmoothing(0);
