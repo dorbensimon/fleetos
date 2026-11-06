@@ -347,14 +347,14 @@ export function FieldPlacer({
         <p className="sd-panel-sub">{t('field.placerHelp')}</p>
 
         <div className="sd-group-label sd-sb">{t('editor.driverFills')}</div>
-        <div className="sd-palette">
+        <div className="sd-tiles">
           {DRIVER_FIELDS.map((kind) => (
             <FieldTool key={kind} kind={kind} draggable onDragStart={dragStart(kind)} onPress={() => addToVisiblePage(kind)} />
           ))}
         </div>
 
         <div className="sd-group-label sd-sb">{t('editor.autoFromDriverFile')}</div>
-        <div className="sd-palette">
+        <div className="sd-tiles">
           {AUTO_FIELDS.map((kind) => (
             <FieldTool key={kind} kind={kind} draggable onDragStart={dragStart(kind)} onPress={() => addToVisiblePage(kind)} />
           ))}
