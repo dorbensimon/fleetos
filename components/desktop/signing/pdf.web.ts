@@ -11,6 +11,26 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 const PDFJS_VERSION = (pdfjs as unknown as { version: string }).version;
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/legacy/build/pdf.worker.min.mjs`;
 
+// דפדפני אפל מציגים גופנים מוטמעים בצורה שבורה
+/**
+ * Safari (every browser on iPhone/iPad is Safari underneath) can reject the
+ * fonts pdf.js rebuilds from a PDF's embedded fonts and silently falls back to
+ * a system font: Hebrew letters come out the wrong shape and spread apart.
+ * There pdf.js draws each glyph itself instead of loading the font.
+ */
+function needsDrawnGlyphs(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  const appleMobile = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const desktopSafari = /Safari/.test(ua) && !/Chrome|Chromium|Edg|OPR|Firefox/.test(ua);
+  return appleMobile || desktopSafari;
+}
+
+// פתיחת קובץ PDF
+function openPdf(url: string) {
+  return pdfjs.getDocument({ url, disableFontFace: needsDrawnGlyphs() });
+}
+
 export type LoadedPdf = {
   doc: PDFDocumentProxy;
   /** Page sizes in PDF points, 1-based page N at index N-1. */
@@ -19,7 +39,7 @@ export type LoadedPdf = {
 
 // טוען PDF מכתובת
 export async function loadPdf(url: string): Promise<LoadedPdf> {
-  const doc = await pdfjs.getDocument({ url }).promise;
+  const doc = await openPdf(url).promise;
   const pages = await Promise.all(
     Array.from({ length: doc.numPages }, async (_, i) => {
       const page = await doc.getPage(i + 1);
@@ -50,7 +70,7 @@ export async function renderPage(doc: PDFDocumentProxy, pageNumber: number, canv
  * document folders. Loads only page 1, never the whole file's page list.
  */
 export async function renderPdfThumbnail(url: string, cssWidth: number): Promise<string | null> {
-  const task = pdfjs.getDocument({ url });
+  const task = openPdf(url);
   try {
     const doc = await task.promise;
     const canvas = document.createElement('canvas');
