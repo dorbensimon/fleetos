@@ -11,7 +11,7 @@ import { AccountFields } from './CompanyAccountSheet';
 import { ChoiceChips } from './ownerKit';
 import { t, dirIcon, textEnd } from '../../lib/i18n';
 import { COMPANY_TYPES, companyTypeLabel } from '../../lib/companyType';
-import { isValidEmail } from '../../lib/validation';
+import { generateTemporaryPassword, isValidEmail } from '../../lib/validation';
 import { createCompanyAdmin } from '../../lib/ownerApi';
 
 /**
@@ -34,12 +34,6 @@ const STEPS: { title: string; subtitle: string; icon: React.ComponentProps<typeo
 ];
 
 // סיסמה זמנית אקראית
-function randomDigits(length: number): string {
-  let out = '';
-  for (let i = 0; i < length; i++) out += String(Math.floor(Math.random() * 10));
-  return out;
-}
-
 // החלון עם השלבים
 export function AddCompanySheet({
   visible,
@@ -263,7 +257,7 @@ export function AddCompanySheet({
               <KitSection
                 title={t('password.temporary')}
                 trailing={
-                  <Pressy onPress={() => set('password', randomDigits(6))} accessibilityLabel={t('password.generateRandom')} style={styles.linkChip} pressScale={0.95}>
+                  <Pressy onPress={() => { set('password', generateTemporaryPassword()); setShowPassword(true); }} accessibilityLabel={t('password.generateRandom')} style={styles.linkChip} pressScale={0.95}>
                     <Ionicons name="sparkles" size={14} color={DK.accent} />
                     <DKText variant="micro" color={DK.accent}>
                       {t('password.autoGenerate')}
@@ -276,8 +270,7 @@ export function AddCompanySheet({
                   label={t('common.password')}
                   required
                   value={form.password}
-                  onChangeText={(v) => set('password', v.replace(/\D/g, ''))}
-                  keyboardType="number-pad"
+                  onChangeText={(v) => set('password', v.replace(/\s/g, ''))}
                   secureTextEntry={!showPassword}
                   autoComplete="off"
                   ltr

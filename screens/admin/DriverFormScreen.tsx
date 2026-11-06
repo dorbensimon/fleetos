@@ -23,6 +23,7 @@ import { ConsentCheck } from '../../components/legal/ConsentCheck';
 import { DRIVER_DATA_NOTICE } from '../../lib/legal/documents';
 import { t } from '../../lib/i18n';
 import { errorMessage } from '../../lib/requestError';
+import { generateTemporaryPassword } from '../../lib/validation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DriverForm'>;
 
@@ -368,7 +369,19 @@ export default function DriverFormScreen({ route, navigation }: Props) {
       </Reveal>
 
       <Reveal index={2}>
-        <KitSection title={t('driver.appAccess')}>
+        <KitSection
+          title={t('driver.appAccess')}
+          trailing={
+            isEdit ? undefined : (
+              <Pressy onPress={() => setForm((f) => ({ ...f, password: generateTemporaryPassword(), showPassword: true }))} accessibilityLabel={t('password.generateRandom')} style={styles.linkChip} pressScale={0.95}>
+                <Ionicons name="sparkles" size={14} color={DK.accent} />
+                <DKText variant="micro" color={DK.accent}>
+                  {t('password.autoGenerate')}
+                </DKText>
+              </Pressy>
+            )
+          }
+        >
           {isEdit ? (
             <InfoLine first icon="mail" label={t('driver.signInEmail')} value={form.email || null} ltr locked />
           ) : (
@@ -385,8 +398,9 @@ export default function DriverFormScreen({ route, navigation }: Props) {
                       value={form.password}
                       onChangeText={(v) => set('password', v)}
                       secureTextEntry={!form.showPassword}
-                      placeholder="••••"
-                      keyboardType="number-pad"
+                      placeholder="••••••••"
+                      autoCapitalize="none"
+                      autoComplete="off"
                       ltr
                       hasError={!!errors.password}
                       accessibilityLabel={t('password.temporary')}
@@ -427,5 +441,6 @@ const styles = StyleSheet.create({
   noticeRule: { height: StyleSheet.hairlineWidth, backgroundColor: DK.hairline, marginHorizontal: 16 },
   noticeLink: { paddingHorizontal: 16, paddingBottom: 14, marginTop: -6, textDecorationLine: 'underline' },
   password: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  linkChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, minHeight: 32, paddingHorizontal: 10, borderRadius: 999, backgroundColor: DK.accentSoft },
   eye: { width: 52, height: 52, borderRadius: 16, backgroundColor: DK.accentSoft, alignItems: 'center', justifyContent: 'center' },
 });

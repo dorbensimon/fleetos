@@ -9,7 +9,7 @@
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
-import { isValidTemporaryPassword } from '../_shared/accountSecurity.ts';
+import { authPasswordErrorMessage, isValidTemporaryPassword, TEMP_PASSWORD_ERROR } from '../_shared/accountSecurity.ts';
 
 // תשובת JSON
 const json = (body: unknown, status: number) =>
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
       return json({ error: 'שם, טלפון, מייל וסיסמה הם שדות חובה' }, 400);
     }
     if (!isValidTemporaryPassword(password)) {
-      return json({ error: 'הסיסמה חייבת להכיל לפחות 4 ספרות בלבד' }, 400);
+      return json({ error: TEMP_PASSWORD_ERROR }, 400);
     }
 
     const { data: newUser, error: createUserError } = await adminClient.auth.admin.createUser({
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
           409
         );
       }
-      return json({ error: message || 'יצירת המשתמש נכשלה' }, 500);
+      return json({ error: authPasswordErrorMessage(message) || message || 'יצירת המשתמש נכשלה' }, 500);
     }
 
     const driverId = newUser.user.id;

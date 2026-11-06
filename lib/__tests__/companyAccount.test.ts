@@ -25,12 +25,13 @@ describe('company account form', () => {
 });
 
 describe('new company steps', () => {
-  it('asks for a name first, then the manager and a numeric temporary password', () => {
+  it('asks for a name first, then the manager and an 8+ character temporary password', () => {
     const form = emptyOwnerCompanyForm();
     expect(validateCompanyStep(0, form)).toHaveProperty('name');
     const filled = { ...form, name: 'אלמוג', adminFirstName: 'דוד', adminLastName: 'כהן', email: 'd@a.co.il', phone: '0501234567', password: '12' };
     expect(validateCompanyStep(0, filled)).toEqual({});
-    expect(validateCompanyStep(1, filled)).toEqual({ password: 'לפחות 4 ספרות, ספרות בלבד' });
-    expect(validateCompanyStep(1, { ...filled, password: '123456' })).toEqual({});
+    expect(validateCompanyStep(1, filled)).toEqual({ password: 'לפחות 8 תווים, בלי רווחים' });
+    expect(validateCompanyStep(1, { ...filled, password: '123456' })).toHaveProperty('password');
+    expect(validateCompanyStep(1, { ...filled, password: 'Ab3dEf7h9k' })).toEqual({});
   });
 });

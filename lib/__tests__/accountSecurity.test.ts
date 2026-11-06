@@ -1,5 +1,6 @@
-import { isValidTemporaryPassword as isValidClientTempPassword } from '../validation';
+import { generateTemporaryPassword, isValidTemporaryPassword as isValidClientTempPassword } from '../validation';
 import {
+  authPasswordErrorMessage,
   isValidTemporaryPassword as isValidServerTempPassword,
   mayUseAuthenticatedCapabilities,
   mayManageAccount,
@@ -9,16 +10,38 @@ describe.each([
   ['client', isValidClientTempPassword],
   ['server', isValidServerTempPassword],
 ])('temporary password validation (%s)', (_name, validate) => {
-  it.each(['0000', '1234', '123456'])('accepts at least four digits: %s', (value) => {
+  it.each(['8402716395', 'Ab3dEf7h', 'abcdefgh', '12345678'])('accepts 8+ non-space characters: %s', (value) => {
     expect(validate(value)).toBe(true);
   });
 
-  it.each(['123', 'abcd', '12ab', '１２３４', '', null, undefined])(
-    'rejects non-numeric or too-short values: %s',
+  it.each(['1234', '1357901', 'abc def12', 'a'.repeat(73), '', null, undefined])(
+    'rejects short, spaced or oversized values: %s',
     (value) => {
       expect(validate(value as any)).toBe(false);
     },
   );
+});
+
+describe('generateTemporaryPassword', () => {
+  it('produces valid, mixed, unambiguous passwords', () => {
+    for (let i = 0; i < 200; i++) {
+      const value = generateTemporaryPassword();
+      expect(value).toHaveLength(10);
+      expect(isValidClientTempPassword(value)).toBe(true);
+      expect(isValidServerTempPassword(value)).toBe(true);
+      expect(value).toMatch(/\d/);
+      expect(value).toMatch(/[A-Za-z]/);
+      expect(value).not.toMatch(/[0O1lI]/);
+    }
+  });
+});
+
+describe('authPasswordErrorMessage', () => {
+  it('translates Supabase weak-password errors', () => {
+    expect(authPasswordErrorMessage('Password is known to be weak and easy to guess, please choose a different one.')).toContain('נפוצה');
+    expect(authPasswordErrorMessage('Password should be at least 6 characters.')).toContain('חלשה');
+    expect(authPasswordErrorMessage('Something else')).toBeNull();
+  });
 });
 
 describe('account-management authorization', () => {
