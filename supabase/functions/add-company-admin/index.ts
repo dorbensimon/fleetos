@@ -5,7 +5,7 @@
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyOwner } from '../_shared/verifyOwner.ts';
-import { isValidTemporaryPassword } from '../_shared/accountSecurity.ts';
+import { authPasswordErrorMessage, isValidTemporaryPassword, TEMP_PASSWORD_ERROR } from '../_shared/accountSecurity.ts';
 import { findAccountByEmail, managerLinkBlock } from '../_shared/existingAccount.ts';
 
 // מקבל בקשה, בודק הרשאה ויוצר מנהל
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
     }
 
     if (!isValidTemporaryPassword(adminPassword)) {
-      return new Response(JSON.stringify({ error: 'הסיסמה חייבת להכיל לפחות 4 ספרות בלבד' }), {
+      return new Response(JSON.stringify({ error: TEMP_PASSWORD_ERROR }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
 
     if (createUserError || !newUser.user) {
       return new Response(
-        JSON.stringify({ error: createUserError?.message || 'יצירת המשתמש נכשלה' }),
+        JSON.stringify({ error: authPasswordErrorMessage(createUserError?.message) || createUserError?.message || 'יצירת המשתמש נכשלה' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

@@ -11,6 +11,7 @@ import { ChoiceTiles, CreateDock, FormCell, FormPanel, FormSection, GhostBar, Li
 import { ConsentCheck } from '../legal/ConsentCheck';
 import { DRIVER_DATA_NOTICE } from '../../lib/legal/documents';
 import { t } from '../../lib/i18n';
+import { generateTemporaryPassword } from '../../lib/validation';
 
 export interface FormState {
   full_name: string;
@@ -277,7 +278,7 @@ export function DriverFormDesktopView({
                     value={form.password}
                     onChangeText={(v) => set('password', v)}
                     placeholder={t('validation.min4DigitsPlaceholder')}
-                    keyboardType="number-pad"
+                    autoCapitalize="none"
                     secureTextEntry={!form.showPassword}
                     ltr
                     hasError={!!errors.password}
@@ -292,6 +293,20 @@ export function DriverFormDesktopView({
                     <Ionicons name={form.showPassword ? 'eye-off-outline' : 'eye-outline'} size={19} color={DESKTOP_COLORS.brand} />
                     <DText weight="semiBold" style={styles.passwordToggleText}>
                       {form.showPassword ? t('common.hide') : t('common.show')}
+                    </DText>
+                  </HoverPressable>
+                  <HoverPressable
+                    style={styles.passwordToggle}
+                    hoverStyle={styles.passwordToggleHover}
+                    onPress={() => {
+                      set('password', generateTemporaryPassword());
+                      set('showPassword', true);
+                    }}
+                    accessibilityLabel={t('password.generateRandom')}
+                  >
+                    <Ionicons name="sparkles" size={17} color={DESKTOP_COLORS.brand} />
+                    <DText weight="semiBold" style={styles.passwordToggleText}>
+                      {t('password.autoGenerate')}
                     </DText>
                   </HoverPressable>
                 </View>

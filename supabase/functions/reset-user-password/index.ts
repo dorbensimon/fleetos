@@ -6,7 +6,7 @@
 
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyCompanyAccess } from '../_shared/verifyCompanyAccess.ts';
-import { isValidTemporaryPassword, mayManageAccount } from '../_shared/accountSecurity.ts';
+import { authPasswordErrorMessage, isValidTemporaryPassword, TEMP_PASSWORD_ERROR, mayManageAccount } from '../_shared/accountSecurity.ts';
 
 // מאפס
 Deno.serve(async (req) => {
@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     }
 
     if (!isValidTemporaryPassword(newPassword)) {
-      return new Response(JSON.stringify({ error: 'הסיסמה חייבת להכיל לפחות 4 ספרות בלבד' }), {
+      return new Response(JSON.stringify({ error: TEMP_PASSWORD_ERROR }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
       // Keep the account pending. Rolling this marker back can race another
       // successful reset and expose its temporary password as fully activated.
       return new Response(JSON.stringify({
-        error: 'איפוס הסיסמה נכשל. החשבון נשאר חסום עד להשלמת החלפת סיסמה',
+        error: authPasswordErrorMessage(updateUserError.message) ?? 'איפוס הסיסמה נכשל. החשבון נשאר חסום עד להשלמת החלפת סיסמה',
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

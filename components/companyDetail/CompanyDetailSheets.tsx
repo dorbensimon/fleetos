@@ -6,7 +6,7 @@ import { DK, DKText, EditField, KitSection, KitSheet, ListRow, PrimaryAction, Pr
 import { formatPhone } from '../../lib/phone';
 import { CompanyUser } from './types';
 import { t, textEnd } from '../../lib/i18n';
-import { isValidEmail } from '../../lib/validation';
+import { generateTemporaryPassword, isValidEmail } from '../../lib/validation';
 import { addCompanyAdmin } from '../../lib/companyApi';
 
 /**
@@ -17,12 +17,6 @@ import { addCompanyAdmin } from '../../lib/companyApi';
  */
 
 // סיסמה זמנית אקראית מספרות
-function randomDigits(length: number): string {
-  let out = '';
-  for (let i = 0; i < length; i++) out += String(Math.floor(Math.random() * 10));
-  return out;
-}
-
 // שורת שגיאה בחלון
 function ErrorLine({ message }: { message: string }) {
   if (!message) return null;
@@ -42,7 +36,7 @@ function PasswordField({ value, onChange, error }: { value: string; onChange: (v
     <KitSection
       title={t('password.temporary')}
       trailing={
-        <Pressy onPress={() => onChange(randomDigits(6))} accessibilityLabel={t('password.generateRandom')} style={styles.linkChip} pressScale={0.95}>
+        <Pressy onPress={() => onChange(generateTemporaryPassword())} accessibilityLabel={t('password.generateRandom')} style={styles.linkChip} pressScale={0.95}>
           <Ionicons name="sparkles" size={14} color={DK.accent} />
           <DKText variant="micro" color={DK.accent}>
             {t('password.autoGenerate')}
@@ -55,8 +49,7 @@ function PasswordField({ value, onChange, error }: { value: string; onChange: (v
         label={t('common.password')}
         required
         value={value}
-        onChangeText={(v) => onChange(v.replace(/\D/g, ''))}
-        keyboardType="number-pad"
+        onChangeText={(v) => onChange(v.replace(/\s/g, ''))}
         autoComplete="off"
         ltr
         placeholder={t('validation.min4DigitsPlaceholder')}
