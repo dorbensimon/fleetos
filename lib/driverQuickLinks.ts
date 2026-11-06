@@ -4,6 +4,7 @@
 import { Platform } from 'react-native';
 import { callFunction } from './callFunction';
 import { t } from './i18n';
+import { LICENSE_SIDE_STORED_TITLE, type LicenseSide } from './licenseSides';
 
 const SITE_URL = 'https://icar-app.com';
 
@@ -53,6 +54,30 @@ export async function prepareQuickLink(request: QuickLinkRequest): Promise<{ pho
   return {
     phone: data.phone,
     message: quickLinkMessage(request.kind, { name: data.driverName, company: data.companyName, url, title: data.title, plate: data.plate }),
+  };
+}
+
+// קישורים לצילום צדי הרישיון
+/**
+ * One WhatsApp message asking the driver for one or both sides of the
+ * license. Each side gets its own link, so the upload is saved under that
+ * side's title and shows up in the right tile.
+ */
+export async function prepareLicenseQuickLinks(driverId: string, sides: readonly LicenseSide[]): Promise<{ phone: string; message: string }> {
+  const links = await Promise.all(
+    sides.map((side) =>
+      callFunction<Recipient & { url?: string; token?: string }>(
+        'driver-quick-link',
+        { action: 'create', kind: 'document', driverId, category: 'license_docs', title: LICENSE_SIDE_STORED_TITLE[side] },
+        t('quickLink.failed'),
+      ),
+    ),
+  );
+  const first = links[0];
+  const lines = links.map((data, i) => `${sides[i] === 'front' ? t('documents.frontSide') : t('documents.backSide')}: ${data.url ?? quickLinkUrl(data.token ?? '')}`);
+  return {
+    phone: first.phone,
+    message: t('quickLink.msgLicense', { name: first.driverName.split(/\s+/)[0] ?? '', company: first.companyName, links: lines.join('\n') }),
   };
 }
 

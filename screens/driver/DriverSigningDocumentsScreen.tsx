@@ -5,6 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui';
+import { BrandLoader } from '../../components/ui/BrandLoader';
 import { Banner, DK, DKText, DriverPage, EmptyPanel, ErrorPanel, HeroTitle, KitSheet, LoadingPanel, PrimaryAction, Pressy, Reveal, STATUS, SheetActions, Surface } from '../../components/driverKit';
 import { SigningFolders } from '../../components/driverCard/SigningFolders';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -400,23 +401,28 @@ export default function DriverSigningDocumentsScreen({ navigation, route }: Prop
             <View style={styles.footer}>
               <PrimaryAction label={t('common.view')} icon="eye-outline" tone="ghost" loading={opening === 'preview'} disabled={sending || whatsapp.busy} onPress={() => void preview()} style={styles.grow} />
               <PrimaryAction
-                label={sendLabel}
-                icon="send"
-                tone="accent"
-                loading={sending}
-                disabled={opening === 'preview' || whatsapp.busy}
-                onPress={() => void send()}
+                label={t('quickLink.sendWhatsapp')}
+                icon="logo-whatsapp"
+                tone="whatsapp"
+                loading={whatsapp.busy}
+                disabled={sending || opening === 'preview'}
+                onPress={() => void sendWhatsapp()}
                 style={styles.flex2}
               />
             </View>
-            <PrimaryAction
-              label={t('quickLink.sendWhatsapp')}
-              icon="logo-whatsapp"
-              tone="ghost"
-              loading={whatsapp.busy}
-              disabled={sending || opening === 'preview'}
-              onPress={() => void sendWhatsapp()}
-            />
+            {/* Sending through the app (email to the driver) stays, as a small link under WhatsApp. */}
+            <Pressy
+              onPress={() => void send()}
+              disabled={sending || opening === 'preview' || whatsapp.busy}
+              accessibilityLabel={sendLabel}
+              style={styles.secondarySend}
+              pressScale={0.97}
+            >
+              {sending ? <BrandLoader size={16} /> : <Ionicons name="send" size={14} color={DK.accent} />}
+              <DKText variant="caption" color={DK.accent}>
+                {sendLabel}
+              </DKText>
+            </Pressy>
           </View>
         ) : folderId && folder && canSend && !folder.template && folder.title === INSPECTION_TITLE && inspectionVehicleId ? (
           // The driver signs this one at the end of the vehicle's inspection, so a new one starts there.
@@ -574,6 +580,7 @@ const styles = StyleSheet.create({
   flex2: { flex: 2 },
   footer: { flexDirection: 'row-reverse', gap: 10 },
   footerStack: { gap: 10 },
+  secondarySend: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 36, alignSelf: 'center', paddingHorizontal: 12 },
   cancel: { backgroundColor: STATUS.expired.soft },
   request: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, padding: 14 },
   requestIcon: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },

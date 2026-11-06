@@ -1,6 +1,7 @@
 // מסך הבית של הנהג
+import { openAppLink } from '../lib/openAppLink';
 import React from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,7 +28,7 @@ export default function DriverHomeScreen({ navigation }: Props) {
   const pendingSignatures = pendingRequests.length;
   const fullName = driver?.full_name?.trim() || profile?.full_name?.trim() || ''; const firstName = fullName.split(/\s+/)[0] || ''; const managerName = company?.safety_officer_name?.trim() || ''; const managerPhone = company?.safety_officer_phone || ''; const licenseState = expiryState(driver?.license_expiry);
   const timelineItems = allItems.slice(0, 3);
-  const openManager = (kind: 'tel' | 'sms') => { if (managerPhone) Linking.openURL(`${kind}:${managerPhone}`).catch(() => undefined); };
+  const openManager = (kind: 'tel' | 'sms') => { if (managerPhone) openAppLink(`${kind}:${managerPhone}`).catch(() => undefined); };
   if (isDesktop) {
     return (
       <DesktopShell active="DriverHome" breadcrumbs={[t('nav.myHome')]}>

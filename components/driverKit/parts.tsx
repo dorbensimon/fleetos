@@ -803,6 +803,8 @@ export function KitSheet({
         <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel={t('common.close')} />
       </Animated.View>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.sheetHost, desktop && styles.sheetHostDesktop, { pointerEvents: 'box-none' }]}>
+        {/* A tap anywhere outside the sheet closes it (the scrim alone missed taps on iOS Safari). */}
+        <Pressable style={StyleSheet.absoluteFill} onPress={close} accessible={false} />
         <Animated.View
           accessibilityViewIsModal
           style={[

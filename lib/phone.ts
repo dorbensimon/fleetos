@@ -1,5 +1,5 @@
 // מספרי טלפון ישראליים
-import { Linking } from 'react-native';
+import { openAppLink } from './openAppLink';
 
 // מציג טלפון בפורמט 05X-XXXXXXX
 /**
@@ -29,5 +29,5 @@ export function isValidIsraeliPhone(raw: string | null | undefined): boolean {
 /** Opens the system dialer for a phone number, stripping everything but digits and a leading +. */
 export function dialPhone(raw: string | null | undefined): void {
   if (!raw) return;
-  Linking.openURL(`tel:${raw.replace(/[^\d+]/g, '')}`);
+  void openAppLink(`tel:${raw.replace(/[^\d+]/g, '')}`).catch(() => undefined);
 }

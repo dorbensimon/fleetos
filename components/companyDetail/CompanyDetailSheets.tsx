@@ -1,4 +1,5 @@
 // החלונות של דף החברה אצל הבעלים: פעולות על אדם, הוספת מנהל, סיסמה, הסרה ושליחת פרטים
+import { isPhoneBrowser, openAppLink } from '../../lib/openAppLink';
 import React, { useEffect, useRef, useState } from 'react';
 import { Linking, Platform, Share, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -428,6 +429,11 @@ export function whatsappNumber(phone: string | null | undefined): string | null 
 
 // פותח וואטסאפ עם הודעה
 export function openWhatsapp(number: string, message: string) {
+  // In place on the web: wa.me in a new tab shows a blank page on iPhone before WhatsApp opens.
+  if (isPhoneBrowser()) {
+    void openAppLink(`whatsapp://send?phone=${number}&text=${encodeURIComponent(message)}`);
+    return;
+  }
   void Linking.openURL(`https://wa.me/${number}?text=${encodeURIComponent(message)}`).catch(() => {});
 }
 

@@ -1,6 +1,7 @@
 // גוף של דף משפטי לקריאה
+import { openAppLink } from '../../lib/openAppLink';
 import React from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { ActionRow, DK, DKText, KitSection, ListRow, Reveal, Surface } from '../driverKit';
 import { BUSINESS, businessLine } from '../../lib/legal/business';
 import { LEGAL_DOC_ORDER, LEGAL_DOCUMENTS, type LegalDocId, type LegalDocument } from '../../lib/legal/documents';
@@ -65,8 +66,8 @@ export function LegalDocumentBody({
       ))}
 
       <KitSection title={t('legal.contact')}>
-        <ActionRow icon="call" label={t('legal.call', { phone: BUSINESS.phone })} onPress={() => void Linking.openURL(BUSINESS.phoneHref)} />
-        <ActionRow first={false} icon="mail" label={t('legal.email', { email: BUSINESS.email })} onPress={() => void Linking.openURL(`mailto:${BUSINESS.email}`)} />
+        <ActionRow icon="call" label={t('legal.call', { phone: BUSINESS.phone })} onPress={() => void openAppLink(BUSINESS.phoneHref)} />
+        <ActionRow first={false} icon="mail" label={t('legal.email', { email: BUSINESS.email })} onPress={() => void openAppLink(`mailto:${BUSINESS.email}`)} />
       </KitSection>
 
       {!!onOpenDoc && (

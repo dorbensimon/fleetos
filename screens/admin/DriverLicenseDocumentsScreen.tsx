@@ -24,6 +24,8 @@ import { DESKTOP_COLORS, DESKTOP_TONES, DESKTOP_BRAND_SHADOW, webOnly } from '..
 import { t, textEnd } from '../../lib/i18n';
 import { LICENSE_SIDE_STORED_TITLE } from '../../lib/licenseSides';
 import { errorMessage } from '../../lib/requestError';
+import { useWhatsappQuickLink } from '../../lib/useWhatsappQuickLink';
+import { prepareLicenseQuickLinks } from '../../lib/driverQuickLinks';
 
 /**
  * Dedicated license-photos screen — replaces the generic DocumentCategory
@@ -48,6 +50,13 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
   const insets = useSafeAreaInsets();
   const isDriverSelf = profile?.role === 'driver' && profile.id === driverId;
   const isDesktop = useIsDesktop();
+  // A manager can ask the driver for the photos over WhatsApp.
+  const canAskDriver = !isDriverSelf && (profile?.role === 'admin' || profile?.role === 'owner');
+  const whatsapp = useWhatsappQuickLink();
+  const askDriver = (sides: Side[]) => {
+    setSheetFor(null);
+    void whatsapp.sendPrepared(() => prepareLicenseQuickLinks(driverId, sides));
+  };
 
   const [driver, setDriver] = useState<DriverRow | null>(null);
   const [docs, setDocs] = useState<Record<Side, DocumentRow | null>>({ front: null, back: null });
@@ -295,12 +304,16 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
           icon="camera"
           title={sheetFor ? t('license.photoOfSide', { v1: SIDE_TITLE[sheetFor] }) : t('license.photo')}
           subtitle={t('license.scanHint')}
+          footer={<PrimaryAction label={t('common.cancel')} tone="ghost" onPress={() => setSheetFor(null)} />}
         >
           <Surface style={styles.kitSheetList}>
             <ActionRow icon="scan" label={t('license.scanWithDetect')} hint={t('license.scanRecommended')} onPress={() => pickAndUpload('scan')} />
             <ActionRow first={false} icon="camera-outline" label={t('license.photo')} onPress={() => pickAndUpload('camera')} />
             <ActionRow first={false} icon="images-outline" label={t('common.chooseFromPhotos')} onPress={() => pickAndUpload('gallery')} />
             <ActionRow first={false} icon="document-outline" label={t('common.chooseFromFiles')} onPress={() => pickAndUpload('file')} />
+            {canAskDriver && !!sheetFor && (
+              <ActionRow first={false} icon="logo-whatsapp" label={t('quickLink.askThisSide')} onPress={() => askDriver([sheetFor])} />
+            )}
           </Surface>
         </KitSheet>
       )}
@@ -402,7 +415,13 @@ export default function DriverLicenseDocumentsScreen({ route, navigation }: Prop
             right={!loading && !loadError ? <HeroButton icon={editMode ? 'close' : 'create-outline'} label={editMode ? t('common.cancelEdit') : t('common.edit')} onPress={toggleEdit} /> : undefined}
           />
         }
-        footer={editMode ? <PrimaryAction label={t('common.saveChangesAction')} icon="checkmark" onPress={save} loading={saving} /> : undefined}
+        footer={
+          editMode ? (
+            <PrimaryAction label={t('common.saveChangesAction')} icon="checkmark" onPress={save} loading={saving} />
+          ) : canAskDriver && !loading && !loadError ? (
+            <PrimaryAction label={t('quickLink.askBothSides')} icon="logo-whatsapp" tone="ghost" loading={whatsapp.busy} onPress={() => askDriver(['front', 'back'])} />
+          ) : undefined
+        }
         overlay={overlays}
       >
         {body}
