@@ -1,4 +1,5 @@
 // מסך הכניסה: אזור מותג כהה עם הלוגו, וטופס נקי
+import { openAppLink } from '../lib/openAppLink';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -7,7 +8,6 @@ import {
   Easing,
   Image,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -424,7 +424,7 @@ export default function LoginScreen({ navigation }: Props) {
       </Text>
       <Text style={styles.footerText}>
         {t('login.contactColon')}{' '}
-        <Text style={styles.footerLink} onPress={() => void Linking.openURL('mailto:trytolvex@gmail.com')} accessibilityRole="link">
+        <Text style={styles.footerLink} onPress={() => void openAppLink('mailto:trytolvex@gmail.com')} accessibilityRole="link">
           trytolvex@gmail.com
         </Text>
       </Text>

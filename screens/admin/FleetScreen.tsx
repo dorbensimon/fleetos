@@ -1,6 +1,7 @@
 // מסך הבית של המנהל (הדשבורד): נהגים ורכבים
+import { openAppLink } from '../../lib/openAppLink';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -193,10 +194,10 @@ export default function FleetScreen() {
 
     const url = `tel:${number}`;
     try {
-      if (!(await Linking.canOpenURL(url))) {
+      if (Platform.OS !== 'web' && !(await Linking.canOpenURL(url))) {
         throw new Error(t('fleet.callsUnsupported'));
       }
-      await Linking.openURL(url);
+      await openAppLink(url);
     } catch (error) {
       showAlert(t('fleet.cannotCall'), errorMessage(error, t('common.tryAgainLater')));
     }

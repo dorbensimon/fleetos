@@ -1,6 +1,6 @@
 // תיק נהג
+import { openAppLink } from '../../lib/openAppLink';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking } from 'react-native';
 import { showAlert } from '../../lib/platformAlert';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -458,7 +458,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
             onEdit={() => navigation.navigate('DriverForm', { driverId })}
             onResetPassword={() => setResetOpen(true)}
             onCall={() => driver?.phone && dialPhone(driver.phone)}
-            onMessage={() => driver?.phone && Linking.openURL(`sms:${driver.phone}`)}
+            onMessage={() => driver?.phone && void openAppLink(`sms:${driver.phone}`)}
             onExportReport={() => void exportReport()}
             exportingReport={exportingReport}
             archiving={archiving}
@@ -496,7 +496,7 @@ export default function DriverDetailScreen({ route, navigation }: Props) {
       onRetry={load}
       onEdit={() => navigation.navigate('DriverForm', { driverId })}
       onCall={() => driver?.phone && dialPhone(driver.phone)}
-      onMessage={() => driver?.phone && Linking.openURL(`sms:${driver.phone}`)}
+      onMessage={() => driver?.phone && void openAppLink(`sms:${driver.phone}`)}
       onOpenVehicle={(vehicleId) => navigation.navigate('VehicleDetail', { vehicleId, returnTo: 'driver', fromDriverId: driverId })}
       onRow={handleRowPress}
       onOpenSigning={(folder) => navigation.navigate('DriverSigningDocuments', { driverId, folderId: folder.id })}

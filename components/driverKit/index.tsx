@@ -646,7 +646,7 @@ export function PrimaryAction({
   loading?: boolean;
   disabled?: boolean;
   /** `danger` is the soft red for a secondary destructive choice; `destructive` the solid one that confirms it. */
-  tone?: 'accent' | 'ghost' | 'danger' | 'destructive';
+  tone?: 'accent' | 'ghost' | 'danger' | 'destructive' | 'whatsapp';
   style?: StyleProp<ViewStyle>;
 }) {
   const ghost = tone === 'ghost' || tone === 'danger';
@@ -657,7 +657,7 @@ export function PrimaryAction({
       disabled={disabled || loading}
       haptic
       accessibilityLabel={label}
-      style={[styles.action, ghost ? (tone === 'danger' ? styles.actionDanger : styles.actionGhost) : tone === 'destructive' ? styles.actionDestructive : styles.actionAccent, style]}
+      style={[styles.action, ghost ? (tone === 'danger' ? styles.actionDanger : styles.actionGhost) : tone === 'destructive' ? styles.actionDestructive : tone === 'whatsapp' ? styles.actionWhatsapp : styles.actionAccent, style]}
     >
       {loading ? (
         <BrandLoader size={22} color={ghost ? undefined : '#FFFFFF'} />
@@ -847,6 +847,14 @@ const styles = StyleSheet.create({
   actionGhost: { backgroundColor: DK.accentSoft },
   actionDanger: { backgroundColor: STATUS.expired.soft },
   actionDestructive: { backgroundColor: STATUS.expired.fg },
+  // WhatsApp's own green, so the button reads as "opens WhatsApp" at a glance.
+  actionWhatsapp: {
+    backgroundColor: '#25D366',
+    ...Platform.select({
+      web: { boxShadow: '0 10px 24px rgba(37,211,102,0.32)' } as any,
+      default: { shadowColor: '#25D366', shadowOpacity: 0.32, shadowRadius: 12, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+    }),
+  },
 });
 
 export { DK_SHADOW as SURFACE_SHADOW };
