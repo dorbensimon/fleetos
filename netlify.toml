@@ -12,6 +12,12 @@
   status = 301
   force = true
 
+# Stand-alone print-frame tool (public/stone/index.html), outside the app.
+[[redirects]]
+  from = "/stone"
+  to = "/stone/index.html"
+  status = 200
+
 # Every in-app address (e.g. /drivers/123) opens the app, which then shows the right screen.
 [[redirects]]
   from = "/*"
