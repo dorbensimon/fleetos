@@ -4,32 +4,35 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#f4f5f7">
-<title>מסגרת פוסט להדפסה</title>
+<meta name="theme-color" content="#f3f2ef">
+<title>מסגרת לאבן</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/stone/stone.jpg" as="image">
 <style>
   :root {
-    --bg: #f4f5f7;
+    --bg: #f3f2ef;
     --panel: #ffffff;
-    --line: #e3e5ea;
-    --text: #15171c;
-    --muted: #6b7080;
-    --accent: #2f5bea;
+    --line: #e4e2dd;
+    --field: #f6f5f2;
+    --text: #17171a;
+    --muted: #6d6c72;
+    --accent: #1f1f24;
     --accent-ink: #ffffff;
-    --soft: #eef1fb;
+    --soft: #ecebe7;
+    --like: #ff3040;
     --danger: #c62f3b;
     --danger-bg: #fdeced;
-    --ok: #1d7a4b;
-    --radius: 14px;
-    --shadow: 0 1px 2px rgba(16,24,40,.05), 0 8px 24px rgba(16,24,40,.06);
+    --radius: 18px;
+    --shadow: 0 1px 2px rgba(20,18,12,.04), 0 10px 30px rgba(20,18,12,.06);
+    --spring: cubic-bezier(.32,.72,0,1);
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #0f1115; --panel: #181b21; --line: #2a2e37; --text: #eef0f4;
-      --muted: #9aa0ad; --accent: #6d8dff; --accent-ink: #0b0d12; --soft: #1e2433;
-      --danger: #ff7a85; --danger-bg: #3a1c20; --ok: #5fd39a;
-      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+      --bg: #111113; --panel: #1a1a1d; --line: #2b2b30; --field: #222226; --text: #f1f0ee;
+      --muted: #9c9ba3; --accent: #f1f0ee; --accent-ink: #111113; --soft: #26262b;
+      --danger: #ff7a85; --danger-bg: #3a1c20;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.3);
       color-scheme: dark;
     }
   }
@@ -37,136 +40,222 @@
   html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0; background: var(--bg); color: var(--text);
-    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Heebo", "Assistant", Arial, sans-serif;
+    font: 15px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Heebo", Arial, sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
-  header.top {
-    max-width: 1180px; margin: 0 auto; padding: 28px 20px 8px;
-    display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-  }
-  header.top h1 { margin: 0; font-size: 24px; letter-spacing: -.01em; }
-  header.top p { margin: 4px 0 0; color: var(--muted); }
+  button, label, .chip { -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+
+  /* ---------- page ---------- */
+  header.top { max-width: 1160px; margin: 0 auto; padding: 28px 20px 6px; }
+  header.top h1 { margin: 0; font-size: 26px; line-height: 1.15; letter-spacing: -.02em; font-weight: 700; }
+  header.top p { margin: 6px 0 0; color: var(--muted); }
   .layout {
-    max-width: 1180px; margin: 0 auto; padding: 12px 20px 120px;
+    max-width: 1160px; margin: 0 auto; padding: 16px 20px 40px;
     display: grid; gap: 20px; grid-template-columns: 1fr;
   }
   @media (min-width: 920px) {
-    .layout { grid-template-columns: 400px 1fr; align-items: start; padding-bottom: 40px; }
+    .layout { grid-template-columns: 380px 1fr; align-items: start; }
     .preview-col { position: sticky; top: 20px; }
   }
+  @media (max-width: 919px) {
+    header.top { padding-top: 20px; }
+    header.top h1 { font-size: 22px; }
+    .preview-col { order: -1; }
+    .layout { padding-bottom: calc(110px + env(safe-area-inset-bottom)); gap: 14px; }
+  }
+
   .card {
     background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
     box-shadow: var(--shadow); padding: 18px;
   }
   .controls { display: grid; gap: 14px; }
-  .card h2 { margin: 0 0 12px; font-size: 13px; font-weight: 650; color: var(--muted); letter-spacing: .02em; }
+  .card h2 {
+    margin: 0 0 14px; font-size: 13px; font-weight: 600; color: var(--muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card h2 .n {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--soft); color: var(--text);
+    display: inline-grid; place-items: center; font-size: 12px; font-weight: 700;
+  }
   label.f { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
   .stack { display: grid; gap: 12px; }
   input[type=text], input[type=number], select {
     width: 100%; font: inherit; font-size: 16px; color: var(--text);
-    background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
-    padding: 10px 12px; outline: none; min-height: 44px;
+    background: var(--field); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 12px; outline: none; min-height: 46px;
+    transition: border-color .15s, box-shadow .15s;
   }
-  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
-  input.ltr { direction: ltr; text-align: right; }
+  input:focus, select:focus { border-color: var(--text); box-shadow: 0 0 0 3px color-mix(in srgb, var(--text) 12%, transparent); }
+  input.ltr { direction: ltr; text-align: left; }
+
+  /* image picker */
   .drop {
-    display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 12px;
-    border: 1.5px dashed var(--line); background: var(--bg); cursor: pointer;
-    transition: border-color .15s, background .15s;
+    display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 14px;
+    border: 1.5px dashed var(--line); background: var(--field); cursor: pointer;
+    transition: border-color .15s, background .15s, transform .12s;
   }
-  .drop:hover, .drop.over { border-color: var(--accent); background: var(--soft); }
+  .drop:hover, .drop.over { border-color: var(--text); }
+  .drop:active { transform: scale(.985); }
   .drop .thumb {
-    width: 56px; height: 56px; border-radius: 10px; flex: none; background: var(--line) center/cover no-repeat;
+    width: 58px; height: 58px; border-radius: 12px; flex: none; background: var(--soft) center/cover no-repeat;
     display: grid; place-items: center; color: var(--muted);
   }
   .drop b { display: block; font-weight: 600; }
-  .drop span { color: var(--muted); font-size: 13px; }
-  .row-mini { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
-  .row-mini input[type=range] { flex: 1; accent-color: var(--accent); }
-  .msg { margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-size: 13px; display: none; }
+  .drop span { color: var(--muted); font-size: 13px; word-break: break-all; }
+  .zoom { display: flex; align-items: center; gap: 12px; margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .zoom input { flex: 1; accent-color: var(--text); }
+  .link-btn { background: none; border: 0; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 6px 2px; text-decoration: underline; text-underline-offset: 3px; }
+
+  .avatar-pick { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); cursor: pointer; }
+  .avatar-pick .av {
+    width: 40px; height: 40px; border-radius: 50%; background: var(--soft) center/cover no-repeat;
+    display: grid; place-items: center; color: var(--muted); flex: none; border: 1px solid var(--line);
+  }
+  .avatar-pick u { color: var(--text); font-weight: 600; text-underline-offset: 3px; }
+
+  .msg { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 13px; display: none; }
   .msg.show { display: block; }
   .msg.err { background: var(--danger-bg); color: var(--danger); }
   .msg.info { background: var(--soft); color: var(--text); }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+
+  /* like toggle */
+  .like-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px 14px; border-radius: 14px; background: var(--field); border: 1px solid var(--line);
+    margin-bottom: 14px; cursor: pointer;
+  }
+  .like-row .lbl { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  .like-row .lbl small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+  .like-row svg { flex: none; overflow: visible; }
+  .like-row svg path { transition: fill .2s, stroke .2s; }
+  .like-row.on svg path { fill: var(--like); stroke: var(--like); }
+  .like-row.pop svg { animation: pop .45s var(--spring); }
+  @keyframes pop { 0% { transform: scale(1); } 35% { transform: scale(1.28); } 100% { transform: scale(1); } }
+  .switch {
+    position: relative; width: 51px; height: 31px; border-radius: 999px; flex: none;
+    background: color-mix(in srgb, var(--muted) 35%, transparent); transition: background .25s;
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 2px; right: 2px; width: 27px; height: 27px; border-radius: 50%;
+    background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.2); transition: transform .35s var(--spring);
+  }
+  .like-row.on .switch { background: var(--like); }
+  .like-row.on .switch::after { transform: translateX(-20px); }
+
+  /* sizes */
+  .size-main {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    font: inherit; color: var(--text); text-align: right; cursor: pointer;
+    padding: 14px 16px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--field);
+    transition: border-color .15s, background .15s, transform .12s;
+  }
+  .size-main:active { transform: scale(.985); }
+  .size-main b { display: block; font-size: 16px; }
+  .size-main small { display: block; color: var(--muted); font-size: 12px; }
+  .size-main .tick {
+    width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line); flex: none;
+    display: grid; place-items: center; transition: background .15s, border-color .15s;
+  }
+  .size-main[aria-pressed="true"] { border-color: var(--text); background: var(--panel); }
+  .size-main[aria-pressed="true"] .tick { background: var(--text); border-color: var(--text); }
+  .size-main[aria-pressed="true"] .tick::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--panel); }
+  details.more { margin-top: 12px; }
+  details.more summary {
+    cursor: pointer; list-style: none; font-size: 13px; font-weight: 600; padding: 6px 0;
+    display: flex; align-items: center; gap: 6px;
+  }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary::before { content: "‹"; display: inline-block; transition: transform .25s var(--spring); }
+  details.more[open] summary::before { transform: rotate(-90deg); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
   .chip {
-    font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 999px; cursor: pointer;
-    border: 1px solid var(--line); background: var(--bg); color: var(--text); min-height: 36px;
+    font: inherit; font-size: 13px; padding: 7px 13px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--field); color: var(--text); min-height: 36px;
+    transition: background .15s, color .15s, transform .12s;
   }
-  .chip-main {
-    flex: 1 0 100%; display: grid; gap: 2px; text-align: right; padding: 10px 14px; border-radius: 12px; min-height: 56px;
+  .chip:active { transform: scale(.96); }
+  .chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--panel); }
+
+  /* preview */
+  .preview-card { padding: 14px; }
+  .seg {
+    position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; margin-bottom: 14px;
+    background: var(--soft); border-radius: 12px;
   }
-  .chip-main b { font-size: 15px; font-weight: 650; }
-  .chip-main small { font-size: 12px; color: var(--muted); }
-  .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-  .chip-main[aria-pressed="true"] small { color: color-mix(in srgb, var(--accent-ink) 75%, transparent); }
-  .link-btn { background: none; border: 0; color: var(--accent); font: inherit; font-size: 13px; cursor: pointer; padding: 4px 0; }
-  .preview-card { padding: 20px; }
+  .seg .ind {
+    position: absolute; top: 3px; bottom: 3px; right: 3px; width: calc(50% - 3px); border-radius: 9px;
+    background: var(--panel); box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 3px 10px rgba(0,0,0,.05);
+    transition: transform .45s var(--spring);
+  }
+  .seg[data-v="stone"] .ind { transform: translateX(-100%); }
+  .seg button {
+    position: relative; z-index: 1; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 600;
+    color: var(--muted); padding: 9px 8px; border-radius: 9px; cursor: pointer; transition: color .2s;
+  }
+  .seg button[aria-selected="true"] { color: var(--text); }
   .stage {
-    display: grid; place-items: center; min-height: 320px; height: min(72vh, 760px);
-    background:
-      repeating-conic-gradient(color-mix(in srgb, var(--line) 55%, transparent) 0 25%, transparent 0 50%) 0 0 / 20px 20px;
-    border-radius: 12px; overflow: hidden;
+    position: relative; display: grid; place-items: center; height: min(70vh, 720px); min-height: 320px;
+    border-radius: 14px; overflow: hidden; background: var(--field);
   }
-  @media (max-width: 919px) { .preview-col { order: -1; } .stage { height: auto; min-height: 0; padding: 14px; } }
-  canvas#preview {
-    display: block; background: #fff; border-radius: 4px;
-    box-shadow: 0 2px 6px rgba(0,0,0,.12), 0 18px 40px rgba(0,0,0,.14);
-    max-width: 100%;
-  }
+  .stage.stone-bg { background: #ffffff; }
+  @media (max-width: 919px) { .stage { height: auto; min-height: 0; aspect-ratio: 1 / 1; } }
+  canvas#preview { display: block; max-width: 100%; transition: opacity .18s ease; }
+  canvas#preview.design { box-shadow: 0 2px 6px rgba(0,0,0,.10), 0 18px 40px rgba(0,0,0,.12); border-radius: 3px; background: #fff; }
   canvas#preview.can-drag { cursor: grab; touch-action: none; }
   canvas#preview.dragging { cursor: grabbing; }
-  .meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
-  .meta .dims { color: var(--muted); font-size: 13px; direction: rtl; }
-  .meta .hint { color: var(--muted); font-size: 13px; }
+  canvas#preview.fade { opacity: 0; }
+  .meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding: 0 4px; }
+  .meta .dims { color: var(--muted); font-size: 13px; }
+  .meta .hint { color: var(--muted); font-size: 12px; }
   .btn {
     font: inherit; font-weight: 600; font-size: 16px; border: 0; cursor: pointer;
-    background: var(--accent); color: var(--accent-ink); border-radius: 12px; padding: 12px 22px; min-height: 48px;
+    background: var(--accent); color: var(--accent-ink); border-radius: 14px; padding: 12px 22px; min-height: 50px;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    transition: transform .12s ease-out, opacity .15s;
   }
-  .btn:disabled { opacity: .5; cursor: not-allowed; }
-  .btn:not(:disabled):active { transform: translateY(1px); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn:not(:disabled):active { transform: scale(.97); }
   .savebar { display: none; }
   @media (max-width: 919px) {
     .meta .btn { display: none; }
     .savebar {
-      display: flex; gap: 10px; align-items: center; position: fixed; inset: auto 0 0 0; z-index: 10;
+      display: flex; position: fixed; inset: auto 0 0 0; z-index: 10;
       padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-      background: color-mix(in srgb, var(--panel) 92%, transparent);
-      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-      border-top: 1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 78%, transparent);
+      -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
+      border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
     }
     .savebar .btn { flex: 1; }
-    .savebar .dims { font-size: 12px; color: var(--muted); max-width: 40%; }
   }
   .toast {
-    position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(10px); opacity: 0;
-    background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px;
-    transition: opacity .2s, transform .2s; pointer-events: none; z-index: 20; max-width: calc(100% - 32px);
+    position: fixed; left: 50%; bottom: 100px; transform: translate(-50%, 12px) scale(.98); opacity: 0;
+    background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px;
+    transition: opacity .2s, transform .35s var(--spring); pointer-events: none; z-index: 20; max-width: calc(100% - 32px);
   }
-  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
   @media (min-width: 920px) { .toast { bottom: 28px; } }
-  input[type=file]::file-selector-button {
-    font: inherit; font-size: 13px; margin-inline-end: 10px; padding: 8px 14px; border-radius: 10px;
-    border: 1px solid var(--line); background: var(--bg); color: var(--text); cursor: pointer;
-  }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .savebar { background: var(--panel); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
 </style>
 </head>
 <body>
 <header class="top">
-  <div>
-    <h1>מסגרת פוסט להדפסה</h1>
-    <p>מעלים תמונה, ממלאים פרטים ומורידים PNG בגודל הדפסה מדויק.</p>
-  </div>
+  <h1>מסגרת פוסט לאבן</h1>
+  <p>מעלים תמונה, ממלאים פרטים, רואים איך זה ייראה על האבן — ושומרים.</p>
 </header>
 
 <main class="layout">
-  <!-- Controls (right side in RTL) -->
   <section class="controls" aria-label="הגדרות">
     <div class="card">
-      <h2>תמונה</h2>
+      <h2><span class="n">1</span>תמונה</h2>
       <label class="drop" id="drop">
         <div class="thumb" id="thumb" aria-hidden="true">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>
@@ -177,8 +266,8 @@
         </div>
         <input id="file" class="sr" type="file" accept="image/*">
       </label>
-      <div class="row-mini" id="zoomRow" hidden>
-        <span style="font-size:13px;color:var(--muted)">זום</span>
+      <div class="zoom" id="zoomRow" hidden>
+        זום
         <input id="zoom" type="range" min="1" max="3" step="0.01" value="1" aria-label="זום">
         <button class="link-btn" id="resetPos" type="button">איפוס</button>
       </div>
@@ -186,22 +275,35 @@
     </div>
 
     <div class="card">
-      <h2>פרטי הפוסט</h2>
+      <h2><span class="n">2</span>פרטי הפוסט</h2>
       <div class="stack">
-        <label class="f">שם משתמש
-          <input id="username" type="text" class="ltr" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="username">
-        </label>
-        <label class="f">מיקום
-          <input id="location" type="text" dir="auto" autocomplete="off" placeholder="New York, NY">
-        </label>
-        <label class="f">תמונת פרופיל (לא חובה)
-          <input id="avatarFile" type="file" accept="image/*" style="font-size:13px;padding:8px 0;border:0;background:none;min-height:0">
+        <div class="grid2">
+          <label class="f">שם משתמש
+            <input id="username" type="text" class="ltr" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="username">
+          </label>
+          <label class="f">מיקום
+            <input id="location" type="text" dir="auto" autocomplete="off" placeholder="New York, NY">
+          </label>
+        </div>
+        <label class="avatar-pick">
+          <span class="av" id="avThumb" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+          </span>
+          <span><u id="avLabel">הוספת תמונת פרופיל</u> · לא חובה</span>
+          <input id="avatarFile" class="sr" type="file" accept="image/*">
         </label>
       </div>
     </div>
 
     <div class="card">
-      <h2>מספרים</h2>
+      <h2><span class="n">3</span>לייקים ותגובות</h2>
+      <div class="like-row" id="likeRow" role="switch" tabindex="0" aria-checked="true">
+        <span class="lbl">
+          <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.3s-7.6-4.6-9.4-9.3C1.3 7.6 3.5 4.3 7 4.3c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.5 0 5.7 3.3 4.4 6.7-1.8 4.7-9.4 9.3-9.4 9.3z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>
+          <span>לב אדום<small>כאילו עשיתם לייק לפוסט</small></span>
+        </span>
+        <span class="switch" aria-hidden="true"></span>
+      </div>
       <div class="grid2">
         <label class="f">לייקים <input id="likes" type="text" inputmode="numeric" class="ltr"></label>
         <label class="f">תגובות <input id="comments" type="text" inputmode="numeric" class="ltr"></label>
@@ -211,24 +313,35 @@
     </div>
 
     <div class="card">
-      <h2>גודל הדפסה</h2>
-      <div class="chips" id="presets"></div>
-      <div class="grid3">
-        <label class="f">רוחב (ס״מ) <input id="wcm" type="number" min="2" max="100" step="0.1" inputmode="decimal"></label>
-        <label class="f">גובה (ס״מ) <input id="hcm" type="number" min="2" max="100" step="0.1" inputmode="decimal"></label>
-        <label class="f">DPI
-          <select id="dpi"><option>150</option><option>200</option><option>300</option><option>400</option><option>600</option></select>
-        </label>
-      </div>
-      <div class="row-mini"><button class="link-btn" id="swap" type="button">⇄ החלפת רוחב/גובה</button></div>
+      <h2><span class="n">4</span>גודל</h2>
+      <button class="size-main" id="stoneSize" type="button" aria-pressed="true">
+        <span><b>גודל אבן</b><small>6×6 ס״מ · 300 DPI</small></span>
+        <span class="tick" aria-hidden="true"></span>
+      </button>
+      <details class="more" id="more">
+        <summary>גדלים אחרים</summary>
+        <div class="chips" id="presets"></div>
+        <div class="grid3">
+          <label class="f">רוחב (ס״מ) <input id="wcm" type="number" min="2" max="100" step="0.1" inputmode="decimal"></label>
+          <label class="f">גובה (ס״מ) <input id="hcm" type="number" min="2" max="100" step="0.1" inputmode="decimal"></label>
+          <label class="f">DPI
+            <select id="dpi"><option>150</option><option>200</option><option>300</option><option>400</option><option>600</option></select>
+          </label>
+        </div>
+        <button class="link-btn" id="swap" type="button">⇄ החלפת רוחב/גובה</button>
+      </details>
       <div class="msg" id="sizeMsg"></div>
     </div>
   </section>
 
-  <!-- Preview -->
   <section class="preview-col" aria-label="תצוגה מקדימה">
     <div class="card preview-card">
-      <div class="stage" id="stage"><canvas id="preview" aria-label="תצוגה מקדימה של המסגרת"></canvas></div>
+      <div class="seg" id="seg" data-v="design" role="tablist" aria-label="סוג תצוגה">
+        <span class="ind" aria-hidden="true"></span>
+        <button type="button" role="tab" data-v="design" aria-selected="true">העיצוב</button>
+        <button type="button" role="tab" data-v="stone" aria-selected="false">על האבן</button>
+      </div>
+      <div class="stage" id="stage"><canvas id="preview" class="design" aria-label="תצוגה מקדימה"></canvas></div>
       <div class="meta">
         <div>
           <div class="dims" id="dims"></div>
@@ -240,9 +353,7 @@
   </section>
 </main>
 
-<div class="savebar">
-  <button class="btn" id="saveMobile" type="button"></button>
-</div>
+<div class="savebar"><button class="btn" id="saveMobile" type="button"></button></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -250,12 +361,16 @@
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
   var STORE_KEY = 'stone-frame:v2';
-  var PRESETS = [[6, 6, 'גודל אבן', 300], [10, 15], [13, 18], [15, 20], [20, 25], [21, 29.7], [30, 40]];
+  var STONE = [6, 6, 300];
+  var PRESETS = [[10, 15], [13, 18], [15, 20], [20, 25], [21, 29.7], [30, 40]];
   var MAX_PIXELS = 16000000; // iOS Safari canvas area limit is ~16.7M px
+  // Printable face of the stone inside stone.jpg (1024×1024), in image pixels.
+  var FACE = { x: 236, y: 218, w: 553, h: 553, r: 46 };
 
   var state = {
     username: 'username', location: '', likes: '1,234', comments: '56', shares: '12', saves: '78',
-    wcm: 6, hcm: 6, dpi: 300, img: null, avatar: null, zoom: 1, ox: 0, oy: 0
+    liked: true, wcm: STONE[0], hcm: STONE[1], dpi: STONE[2], img: null, avatar: null, zoom: 1, ox: 0, oy: 0,
+    view: 'design'
   };
 
   // ---------- persistence ----------
@@ -265,13 +380,16 @@
       if (!s) return;
       ['username', 'location', 'likes', 'comments', 'shares', 'saves'].forEach(function (k) { if (typeof s[k] === 'string') state[k] = s[k]; });
       ['wcm', 'hcm', 'dpi'].forEach(function (k) { if (typeof s[k] === 'number' && s[k] > 0) state[k] = s[k]; });
+      if (typeof s.liked === 'boolean') state.liked = s.liked;
+      if (s.view === 'stone' || s.view === 'design') state.view = s.view;
     } catch (e) { /* storage unavailable */ }
   }
   function save() {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({
         username: state.username, location: state.location, likes: state.likes, comments: state.comments,
-        shares: state.shares, saves: state.saves, wcm: state.wcm, hcm: state.hcm, dpi: state.dpi
+        shares: state.shares, saves: state.saves, liked: state.liked, wcm: state.wcm, hcm: state.hcm, dpi: state.dpi,
+        view: state.view
       }));
     } catch (e) { /* storage unavailable */ }
   }
@@ -300,13 +418,13 @@
   };
   var FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Heebo, Arial, sans-serif';
 
-  function icon(ctx, path, x, y, size, lw) {
+  function icon(ctx, path, x, y, size, lw, fill) {
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(size / 24, size / 24);
     ctx.lineWidth = lw * 24 / size;
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    ctx.stroke(path);
+    if (fill) { ctx.fillStyle = fill; ctx.fill(path); } else ctx.stroke(path);
     ctx.restore();
   }
 
@@ -383,9 +501,10 @@
     ctx.font = '600 ' + (3.4 * u) + 'px ' + FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
     var x = pad;
     [['heart', state.likes], ['comment', state.comments], ['share', state.shares]].forEach(function (it) {
-      icon(ctx, P[it[0]], x, fy, size, lw);
+      icon(ctx, P[it[0]], x, fy, size, lw, it[0] === 'heart' && state.liked ? '#ff3040' : null);
       x += size + 1.4 * u;
       var t = it[1].trim();
+      ctx.fillStyle = '#111';
       if (t) { ctx.fillText(t, x, ty); x += ctx.measureText(t).width; }
       x += 4 * u;
     });
@@ -395,28 +514,71 @@
     ctx.restore();
   }
 
+  // ---------- stone mockup ----------
+  var stoneImg = new Image();
+  stoneImg.onload = function () { if (state.view === 'stone') drawPreview(); };
+  stoneImg.src = '/stone/stone.jpg';
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function renderStone(ctx, S) {
+    var k = S / 1024;
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, S, S);
+    if (stoneImg.complete && stoneImg.naturalWidth) ctx.drawImage(stoneImg, 0, 0, S, S);
+    var fx = FACE.x * k, fy = FACE.y * k, fw = FACE.w * k, fh = FACE.h * k;
+    // Fit the design inside the face (exact fill for the 6×6 stone size).
+    var ratio = state.wcm / state.hcm, dw = fw, dh = fw / ratio;
+    if (dh > fh) { dh = fh; dw = fh * ratio; }
+    var dx = fx + (fw - dw) / 2, dy = fy + (fh - dh) / 2;
+    var off = document.createElement('canvas');
+    off.width = Math.round(dw); off.height = Math.round(dh);
+    render(off.getContext('2d'), off.width, off.height);
+    ctx.save();
+    roundRect(ctx, dx, dy, dw, dh, FACE.r * k * Math.min(1, dw / fw));
+    ctx.clip();
+    // multiply lets the marble grain show through the ink, like a real print
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.drawImage(off, dx, dy, dw, dh);
+    ctx.restore();
+    off.width = off.height = 0;
+  }
+
   // ---------- preview ----------
   var cv = $('preview'), stage = $('stage'), view = { w: 0, h: 0 };
   function outPx() {
-    var w = Math.round(state.wcm / 2.54 * state.dpi), h = Math.round(state.hcm / 2.54 * state.dpi);
-    return { w: w, h: h };
+    return { w: Math.round(state.wcm / 2.54 * state.dpi), h: Math.round(state.hcm / 2.54 * state.dpi) };
   }
+  function isStoneSize() { return state.wcm === STONE[0] && state.hcm === STONE[1]; }
   function drawPreview() {
-    var cs = getComputedStyle(stage);
-    var bw = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-    var bh = window.innerWidth >= 920 ? stage.clientHeight - 48 : Math.min(window.innerHeight * .62, 640);
-    var ratio = state.wcm / state.hcm;
-    var w = Math.min(bw - 8, bh * ratio), h = w / ratio;
-    view.w = w; view.h = h;
+    var bw = stage.clientWidth, bh = stage.clientHeight;
     var dpr = Math.min(window.devicePixelRatio || 1, 3);
-    cv.style.width = w + 'px'; cv.style.height = h + 'px';
-    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
-    render(cv.getContext('2d'), cv.width, cv.height);
+    var stoneView = state.view === 'stone';
+    stage.classList.toggle('stone-bg', stoneView);
+    cv.classList.toggle('design', !stoneView);
+    var w, h;
+    if (stoneView) {
+      w = h = Math.min(bw, bh);
+      cv.width = cv.height = Math.round(w * dpr);
+      cv.style.width = w + 'px'; cv.style.height = h + 'px';
+      renderStone(cv.getContext('2d'), cv.width);
+      // design area in CSS px, so dragging stays 1:1 with the finger
+      var k = w / 1024, ratio = state.wcm / state.hcm, fw = FACE.w * k, fh = FACE.h * k, dw = fw, dh = fw / ratio;
+      if (dh > fh) { dh = fh; dw = fh * ratio; }
+      view.w = dw; view.h = dh;
+    } else {
+      var ratio2 = state.wcm / state.hcm, pad = 32;
+      w = Math.min(bw - pad, (bh - pad) * ratio2); h = w / ratio2;
+      cv.style.width = w + 'px'; cv.style.height = h + 'px';
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      render(cv.getContext('2d'), cv.width, cv.height);
+      view.w = w; view.h = h;
+    }
 
     var o = outPx();
-    var txt = o.w + '×' + o.h + ' פיקסלים · ' + fmt(state.wcm) + '×' + fmt(state.hcm) + ' ס״מ · ' + state.dpi + ' DPI';
-    $('dims').textContent = txt;
-    $('hint').textContent = state.img ? 'גררו את התמונה כדי למקם אותה' : '';
+    $('dims').textContent = fmt(state.wcm) + '×' + fmt(state.hcm) + ' ס״מ · ' + state.dpi + ' DPI · ' + o.w + '×' + o.h + ' פיקסלים';
+    $('hint').textContent = stoneView && !isStoneSize() ? 'ההדמיה מותאמת לאבן 6×6 ס״מ' : (state.img ? 'גררו את התמונה כדי למקם אותה' : '');
     cv.classList.toggle('can-drag', !!state.img);
     var big = o.w * o.h > MAX_PIXELS;
     showMsg($('sizeMsg'), big ? 'הגודל גדול מדי לייצוא בדפדפן (' + Math.round(o.w * o.h / 1e6) + 'MP). הקטינו את ה-DPI או את המידות.' : '', 'err');
@@ -425,7 +587,22 @@
   function fmt(n) { return String(Math.round(n * 10) / 10); }
 
   var raf = 0;
-  function update() { save(); invalidate(); if (!raf) raf = requestAnimationFrame(function () { raf = 0; drawPreview(); }); }
+  function schedule() { if (!raf) raf = requestAnimationFrame(function () { raf = 0; drawPreview(); }); }
+  function update() { save(); invalidate(); schedule(); }
+
+  // view switch (design / on the stone)
+  var seg = $('seg');
+  function setView(v, animate) {
+    state.view = v; seg.dataset.v = v;
+    [].forEach.call(seg.querySelectorAll('button'), function (b) { b.setAttribute('aria-selected', b.dataset.v === v ? 'true' : 'false'); });
+    if (!animate) { drawPreview(); return; }
+    save();
+    cv.classList.add('fade');
+    setTimeout(function () { drawPreview(); cv.classList.remove('fade'); }, 160);
+  }
+  seg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (b && b.dataset.v !== state.view) setView(b.dataset.v, true);
+  });
 
   // ---------- export ----------
   var CRC = (function () { var t = [], c; for (var n = 0; n < 256; n++) { c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
@@ -466,8 +643,8 @@
     prepTimer = setTimeout(prepare, 500);
   }
   function prepare() {
-    var my = rev;
-    if (outPx().w * outPx().h > MAX_PIXELS) return Promise.resolve(null);
+    var my = rev, o = outPx();
+    if (o.w * o.h > MAX_PIXELS) return Promise.resolve(null);
     return makeBlob().then(function (b) {
       if (my !== rev) return null;
       ready = new File([b], fileName(), { type: 'image/png' });
@@ -562,10 +739,16 @@
 
   $('avatarFile').addEventListener('change', function (e) {
     var f = e.target.files[0]; if (!f) return;
-    decode(f).then(function (r) { state.avatar = r.img; update(); }, function () { toast(errText(f)); });
+    decode(f).then(function (r) {
+      state.avatar = r.img;
+      $('avThumb').style.backgroundImage = 'url("' + r.url + '")'; $('avThumb').innerHTML = '';
+      $('avLabel').textContent = 'החלפת תמונת פרופיל';
+      update();
+    }, function () { toast(errText(f)); });
+    e.target.value = '';
   });
 
-  // ---------- pan & zoom ----------
+  // ---------- pan & zoom (1:1 with the finger) ----------
   var drag = null;
   cv.addEventListener('pointerdown', function (e) {
     if (!state.img) return;
@@ -577,40 +760,52 @@
     var mx = e.clientX - drag.x, my = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
     if (R.dx > 0.5) state.ox = clamp(state.ox - 2 * mx / R.dx, -1, 1);
     if (R.dy > 0.5) state.oy = clamp(state.oy - 2 * my / R.dy, -1, 1);
-    update();
+    schedule();
   });
-  function endDrag() { drag = null; cv.classList.remove('dragging'); }
+  function endDrag() { if (drag) { drag = null; cv.classList.remove('dragging'); update(); } }
   cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
   $('zoom').addEventListener('input', function (e) { state.zoom = +e.target.value; update(); });
   $('resetPos').addEventListener('click', function () { state.zoom = 1; state.ox = state.oy = 0; $('zoom').value = 1; update(); });
   function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
 
+  // ---------- like toggle ----------
+  var likeRow = $('likeRow');
+  function syncLike(animate) {
+    likeRow.classList.toggle('on', state.liked);
+    likeRow.setAttribute('aria-checked', state.liked ? 'true' : 'false');
+    if (animate && state.liked) { likeRow.classList.remove('pop'); void likeRow.offsetWidth; likeRow.classList.add('pop'); }
+  }
+  function toggleLike() { state.liked = !state.liked; syncLike(true); update(); }
+  likeRow.addEventListener('click', toggleLike);
+  likeRow.addEventListener('keydown', function (e) { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleLike(); } });
+
   // ---------- form ----------
   ['username', 'location', 'likes', 'comments', 'shares', 'saves'].forEach(function (k) {
-    var el = $(k); el.value = state[k];
+    var el = $(k);
     el.addEventListener('input', function () { state[k] = el.value; update(); });
   });
-  function syncSize() {
-    $('wcm').value = fmt(state.wcm); $('hcm').value = fmt(state.hcm);
-    var dpiSel = $('dpi');
-    if (![].some.call(dpiSel.options, function (o) { return +o.value === state.dpi; })) dpiSel.add(new Option(String(state.dpi)));
-    dpiSel.value = String(state.dpi);
+  function syncChips() {
+    $('stoneSize').setAttribute('aria-pressed', isStoneSize() && state.dpi === STONE[2] ? 'true' : 'false');
     [].forEach.call($('presets').children, function (b) {
       var p = b._p, on = (p[0] === state.wcm && p[1] === state.hcm) || (p[1] === state.wcm && p[0] === state.hcm);
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
   }
+  function syncSize() {
+    $('wcm').value = fmt(state.wcm); $('hcm').value = fmt(state.hcm);
+    var dpiSel = $('dpi');
+    if (![].some.call(dpiSel.options, function (o) { return +o.value === state.dpi; })) dpiSel.add(new Option(String(state.dpi)));
+    dpiSel.value = String(state.dpi);
+    syncChips();
+  }
+  $('stoneSize').addEventListener('click', function () {
+    state.wcm = STONE[0]; state.hcm = STONE[1]; state.dpi = STONE[2]; syncSize(); update();
+  });
   PRESETS.forEach(function (p) {
     var b = document.createElement('button');
     b.type = 'button'; b.className = 'chip'; b._p = p;
-    if (p[2]) {
-      b.className = 'chip chip-main';
-      b.innerHTML = '<b></b><small></small>';
-      b.firstChild.textContent = p[2];
-      b.lastChild.textContent = fmt(p[0]) + '×' + fmt(p[1]) + ' ס״מ';
-    } else b.textContent = p[0] === 21 ? 'A4' : fmt(p[0]) + '×' + fmt(p[1]);
+    b.textContent = p[0] === 21 ? 'A4' : fmt(p[0]) + '×' + fmt(p[1]);
     b.addEventListener('click', function () {
-      if (p[3]) state.dpi = p[3];
       var landscape = state.wcm > state.hcm;
       state.wcm = landscape ? p[1] : p[0]; state.hcm = landscape ? p[0] : p[1];
       syncSize(); update();
@@ -620,17 +815,11 @@
   ['wcm', 'hcm'].forEach(function (k) {
     $(k).addEventListener('input', function () {
       var v = parseFloat($(k).value);
-      if (v >= 2 && v <= 100) { state[k] = v; syncSize2(); update(); }
+      if (v >= 2 && v <= 100) { state[k] = v; syncChips(); update(); }
     });
     $(k).addEventListener('blur', syncSize);
   });
-  function syncSize2() { // keep the typed field untouched, refresh chips only
-    [].forEach.call($('presets').children, function (b) {
-      var p = b._p, on = (p[0] === state.wcm && p[1] === state.hcm) || (p[1] === state.wcm && p[0] === state.hcm);
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
-    });
-  }
-  $('dpi').addEventListener('change', function () { state.dpi = +$('dpi').value; update(); });
+  $('dpi').addEventListener('change', function () { state.dpi = +$('dpi').value; syncChips(); update(); });
   $('swap').addEventListener('click', function () { var t = state.wcm; state.wcm = state.hcm; state.hcm = t; syncSize(); update(); });
 
   // ---------- ui helpers ----------
@@ -641,9 +830,11 @@
   load();
   ['username', 'location', 'likes', 'comments', 'shares', 'saves'].forEach(function (k) { $(k).value = state[k]; });
   syncSize();
-  window.addEventListener('resize', function () { if (!raf) raf = requestAnimationFrame(function () { raf = 0; drawPreview(); }); });
+  syncLike(false);
+  if (!isStoneSize()) $('more').open = true;
+  setView(state.view, false);
+  window.addEventListener('resize', schedule);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawPreview);
-  drawPreview();
   invalidate();
 })();
 </script>
