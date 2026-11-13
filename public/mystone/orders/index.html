@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#FEFDFB">
+  <title>הזמנות · Stone of Words</title>
+  <style>
+    :root {
+      --bg: #FEFDFB; --surface: #FFFFFF; --ink: #1E1B18; --ink-2: #6A625C;
+      --accent: #CF3A17; --accent-deep: #B8330F; --accent-soft: #F7B9A6; --sun: #FFC83D;
+      --line: #ECE7E1; --err: #A3123A; --ok: #1F7A4D;
+      --stone-white: #F4F2ED; --stone-cream: #E9DFC9;
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+      color-scheme: light;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 400 1rem/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 3px; border-radius: 6px; }
+    [hidden] { display: none !important; }
+    button, input { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    h1, p { margin: 0; }
+
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; max-width: 860px; margin: 0 auto; padding: max(14px, env(safe-area-inset-top)) 20px 0; }
+    .brand { font-size: .75rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--accent-deep); text-decoration: none; }
+    .linkbtn { background: none; border: 0; padding: 8px 0; font-size: .875rem; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--accent-soft); }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 16px 20px 64px; }
+    h1 { font-size: 2rem; font-weight: 900; letter-spacing: -0.02em; }
+
+    .field { display: grid; gap: 6px; }
+    .field label { font-size: .9375rem; font-weight: 600; }
+    input[type=email], input[type=password], input[type=search] {
+      width: 100%; height: 50px; padding: 0 14px; font-size: 1rem; background: var(--surface);
+      border: 1px solid var(--line); border-radius: 12px; caret-color: var(--accent-deep);
+    }
+    input:focus { outline: 2px solid var(--accent-deep); outline-offset: 1px; border-color: transparent; }
+    .msg { font-size: .875rem; color: var(--err); font-weight: 600; }
+    .msg:empty { display: none; }
+    #login { display: grid; gap: 14px; max-width: 380px; padding-top: 12px; }
+    #login p.hint { color: var(--ink-2); }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 20px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 700; white-space: nowrap; transition: transform .12s var(--ease-out), background-color .15s; }
+    .btn:active { transform: scale(.97); }
+    .btn:hover { background: var(--accent-deep); }
+    .btn.ok { background: var(--ok); }
+    .btn.ok:hover { background: #17603C; }
+    .btn.ghost { background: transparent; color: var(--ink); box-shadow: 0 0 0 1px var(--accent-soft) inset; }
+    .btn.ghost:hover { background: rgba(217,65,30,.08); }
+    .btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+    .bar { position: sticky; top: 0; z-index: 2; display: grid; gap: 10px; padding: 12px 0; background: var(--bg); }
+    .tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+    .tabs button { flex: none; min-height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--surface); box-shadow: 0 0 0 1px var(--line) inset; font-weight: 600; }
+    .tabs button i { font-style: normal; font-variant-numeric: tabular-nums; color: var(--ink-2); margin-inline-start: 6px; }
+    .tabs button[aria-pressed=true] { background: var(--ink); color: #fff; box-shadow: none; }
+    .tabs button[aria-pressed=true] i { color: #fff; opacity: .7; }
+
+    .list { display: grid; gap: 12px; }
+    .card { display: grid; grid-template-columns: 76px 1fr auto; gap: 6px 14px; align-items: center; padding: 12px; background: var(--surface); border-radius: 16px; box-shadow: 0 0 0 1px var(--line); }
+    .stone { width: 76px; aspect-ratio: 1; border-radius: 13%; background: var(--stone-white); overflow: hidden; box-shadow: 0 4px 10px -4px rgba(72,48,30,.35); }
+    .stone[data-stone=cream] { background: var(--stone-cream); }
+    .stone img { width: 100%; height: 100%; display: block; }
+    .head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .code { font-size: 1.5rem; font-weight: 900; letter-spacing: .06em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .chip { padding: 2px 10px; border-radius: 999px; font-size: .8125rem; font-weight: 700; background: var(--sun); }
+    .card[data-status=ready] .chip { background: var(--ok); color: #fff; }
+    .card[data-status=done] .chip { background: var(--line); }
+    .name { font-weight: 700; overflow-wrap: anywhere; }
+    .m { font-size: .8125rem; color: var(--ink-2); }
+    .links { display: flex; gap: 14px; flex-wrap: wrap; }
+    .links a { font-size: .875rem; font-weight: 700; color: var(--accent-deep); text-underline-offset: 4px; }
+    .links .del { background: none; border: 0; padding: 0; font-size: .875rem; font-weight: 700; color: var(--err); text-decoration: underline; text-underline-offset: 4px; }
+    .links .del[disabled] { opacity: .5; }
+    .acts { display: grid; gap: 8px; }
+    .state { padding: 40px 0; color: var(--ink-2); }
+    @media (max-width: 599px) {
+      .card { grid-template-columns: 76px 1fr; }
+      .acts { grid-column: 1 / -1; grid-auto-flow: column; grid-auto-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="brand" href="../">Stone of Words</a>
+    <button type="button" class="linkbtn" id="out" hidden>יציאה</button>
+  </div>
+
+  <main class="wrap">
+    <form id="login" hidden>
+      <h1>כניסת בעלים</h1>
+      <p class="hint">העמוד פתוח רק לך. נכנסים עם אותם פרטים של iCar.</p>
+      <div class="field"><label for="email">אימייל</label><input type="email" id="email" dir="ltr" autocomplete="username" required></div>
+      <div class="field"><label for="pass">סיסמה</label><input type="password" id="pass" dir="ltr" autocomplete="current-password" required></div>
+      <p class="msg" id="e-login" role="alert"></p>
+      <button type="submit" class="btn" id="enter">כניסה</button>
+    </form>
+
+    <section id="app" hidden>
+      <h1>הזמנות</h1>
+      <div class="bar">
+        <input type="search" id="q" placeholder="חיפוש לפי קוד או שם" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="חיפוש הזמנה">
+        <div class="tabs">
+          <button type="button" data-f="new">בהכנה<i></i></button>
+          <button type="button" data-f="ready">מוכנות לאיסוף<i></i></button>
+          <button type="button" data-f="done">נמסרו<i></i></button>
+          <button type="button" data-f="all">הכול<i></i></button>
+        </div>
+        <p class="msg" id="msg" role="alert"></p>
+      </div>
+      <div class="list" id="list"></div>
+      <p class="state" id="empty">טוען הזמנות…</p>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.115.0/dist/umd/supabase.js" integrity="sha384-CLZeq1dk8+Uzrs7TVvBUdlFoV5F0DMqgRoeHa8g5wJcuPe5SkVfEvdxB0ZuzlnBQ" crossorigin="anonymous"></script>
+  <script>
+  (() => {
+    const SB = 'https://lnflftptzrfuzfecmhho.supabase.co';
+    const KEY = 'sb_publishable_4UJaMSQubyVg7h-vD-OwEg_37kBN7Bx';
+    const BUCKET = 'stone-orders';
+    // Same saved sign-in as the iCar app on this address: signed in there means signed in here.
+    const sb = supabase.createClient(SB, KEY);
+    const $ = (id) => document.getElementById(id);
+    const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+    const LABEL = { new: 'בהכנה', ready: 'מוכנה לאיסוף', done: 'נמסרה' };
+    let orders = [], filter = 'new', owner = false;
+    const say = (text) => { $('msg').textContent = text; };
+
+    // The database is what keeps everyone else out; this only decides which screen to show.
+    async function start() {
+      const { data: { session } } = await sb.auth.getSession();
+      owner = false;
+      if (session) {
+        const { data } = await sb.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
+        owner = data?.role === 'owner';
+      }
+      $('login').hidden = owner; $('app').hidden = !owner; $('out').hidden = !session;
+      $('e-login').textContent = session && !owner ? 'למשתמש הזה אין גישה לעמוד. צא והיכנס כבעלים.' : '';
+      if (owner) load();
+    }
+    $('login').onsubmit = async (e) => {
+      e.preventDefault(); $('enter').disabled = true;
+      const { error } = await sb.auth.signInWithPassword({ email: $('email').value.trim(), password: $('pass').value });
+      $('enter').disabled = false; $('pass').value = '';
+      if (error) { $('e-login').textContent = 'האימייל או הסיסמה לא נכונים.'; return; }
+      start();
+    };
+    $('out').onclick = async () => { await sb.auth.signOut({ scope: 'local' }); orders = []; start(); };
+
+    async function load() {
+      // ponytail: newest 500 orders only. Add paging if the list ever outgrows that.
+      const { data, error } = await sb.from('stone_orders')
+        .select('id,code,customer_name,style,stone,nfc,nfc_link,image_path,status,created_at')
+        .order('created_at', { ascending: false }).limit(500);
+      if (error) { console.error(error); say('לא הצלחנו לטעון את ההזמנות. בדוק את החיבור ורענן.'); return; }
+      say(''); orders = data; render();
+    }
+
+    function render() {
+      const q = $('q').value.trim().toLowerCase();
+      for (const b of document.querySelectorAll('.tabs button')) {
+        const f = b.dataset.f;
+        b.querySelector('i').textContent = f === 'all' ? orders.length : orders.filter((o) => o.status === f).length;
+        b.setAttribute('aria-pressed', !q && f === filter);
+      }
+      // A search looks in every status, so a code is found wherever the order stands.
+      let rows = q
+        ? orders.filter((o) => o.code.toLowerCase().includes(q) || o.customer_name.toLowerCase().includes(q))
+        : orders.filter((o) => filter === 'all' || o.status === filter);
+      if (!q && filter === 'new') rows = rows.slice().reverse(); // the queue: whoever ordered first is on top
+      $('list').replaceChildren(...rows.map(card));
+      $('empty').hidden = rows.length > 0;
+      $('empty').textContent = q ? 'לא נמצאה הזמנה כזאת.' : filter === 'new' ? 'אין הזמנות שמחכות להכנה.' : 'אין כאן הזמנות.';
+    }
+
+    function card(o) {
+      const url = `${SB}/storage/v1/object/public/${BUCKET}/${encodeURIComponent(o.image_path)}`;
+      const c = el('article', 'card'); c.dataset.status = o.status;
+      const st = el('div', 'stone'), img = el('img'); st.dataset.stone = o.stone;
+      img.src = url; img.loading = 'lazy'; img.alt = ''; st.append(img);
+
+      const info = el('div'), head = el('div', 'head'), name = el('div', 'name', o.customer_name);
+      name.dir = 'auto';
+      head.append(el('span', 'code', o.code), el('span', 'chip', LABEL[o.status]));
+      const when = new Date(o.created_at).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const links = el('div', 'links'), dl = el('a', '', 'הורדת קובץ להדפסה');
+      dl.href = `${url}?download=${encodeURIComponent(o.code + '-' + o.customer_name + '.png')}`; links.append(dl);
+      if (o.nfc && /^https:\/\//.test(o.nfc_link || '')) { const a = el('a', '', 'קישור NFC'); a.href = o.nfc_link; a.target = '_blank'; a.rel = 'noopener noreferrer nofollow'; links.append(a); }
+      const del = el('button', 'del', 'מחיקה'); del.type = 'button'; del.onclick = () => remove(o, del); links.append(del);
+      info.append(head, name, el('div', 'm', `${when} · ${o.style === 'post' ? 'פוסט אינסטה' : 'תמונה מלאה'} · ${o.stone === 'cream' ? 'שיש קרם' : 'שיש לבן'}${o.nfc ? ' · תג NFC' : ''}`), links);
+
+      const acts = el('div', 'acts');
+      const act = (text, to, cls) => { const b = el('button', cls, text); b.type = 'button'; b.onclick = () => setStatus(o, to, acts); acts.append(b); };
+      if (o.status === 'new') act('מוכנה לאיסוף', 'ready', 'btn ok');
+      if (o.status === 'ready') { act('נמסרה ללקוח', 'done', 'btn'); act('חזרה לבהכנה', 'new', 'btn ghost'); }
+      if (o.status === 'done') act('חזרה למוכנה', 'ready', 'btn ghost');
+      c.append(st, info, acts);
+      return c;
+    }
+
+    async function setStatus(o, to, acts) {
+      for (const b of acts.children) b.disabled = true;
+      const { data, error } = await sb.from('stone_orders').update({ status: to }).eq('id', o.id).select('id');
+      if (error || !data.length) {
+        console.error(error); say('השינוי לא נשמר. נסה שוב.');
+        for (const b of acts.children) b.disabled = false;
+        return;
+      }
+      say(''); o.status = to; render();
+    }
+
+    // Gone for good: the print file first, then the order, so a failure never leaves a public file with no order.
+    async function remove(o, btn) {
+      if (!confirm(`למחוק לגמרי את ההזמנה ${o.code} של ${o.customer_name}?\nההזמנה והתמונה יימחקו ואי אפשר לשחזר אותן.`)) return;
+      btn.disabled = true;
+      const file = await sb.storage.from(BUCKET).remove([o.image_path]);
+      const row = file.error ? file : await sb.from('stone_orders').delete().eq('id', o.id).select('id');
+      if (row.error || !row.data.length) { console.error(row.error); say('ההזמנה לא נמחקה. נסה שוב.'); btn.disabled = false; return; }
+      say(''); orders = orders.filter((x) => x !== o); render();
+    }
+
+    for (const b of document.querySelectorAll('.tabs button')) b.onclick = () => { filter = b.dataset.f; $('q').value = ''; render(); };
+    $('q').addEventListener('input', render);
+    // New orders show up on their own while the page stays open at the counter.
+    setInterval(() => { if (owner && !document.hidden) load(); }, 20000);
+    document.addEventListener('visibilitychange', () => { if (owner && !document.hidden) load(); });
+    start();
+  })();
+  </script>
+</body>
+</html>
