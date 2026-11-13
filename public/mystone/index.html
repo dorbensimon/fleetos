@@ -47,7 +47,8 @@
       max-width: 1040px; margin: 0 auto;
     }
     .brand { font-size: .75rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--accent-deep); text-decoration: none; }
-    .top a.nav { font-size: .875rem; font-weight: 600; color: var(--ink); text-underline-offset: 4px; text-decoration-color: var(--accent-soft); padding: 8px 0; }
+    .top a.nav { font-size: .875rem; font-weight: 600; color: var(--ink); text-underline-offset: 4px; text-decoration-color: var(--accent-soft); padding: 8px 0; white-space: nowrap; }
+    .top nav { display: flex; gap: 16px; }
 
     .wrap { max-width: 1040px; margin: 0 auto; padding: 0 var(--gutter) 64px; }
     .hero { padding: 20px 0 8px; }
@@ -199,6 +200,22 @@
     .card a.dl { margin-top: 4px; }
     .state { padding: 48px 0; color: var(--ink-2); }
 
+    /* Track an order */
+    .trackform { padding-top: 16px; max-width: 420px; }
+    .trackform .field { grid-template-columns: minmax(0, 1fr); }
+    .trackform .row { flex-wrap: nowrap; }
+    .trackform .row input { flex: 1; min-width: 0; width: auto; text-transform: uppercase; font-size: 1.375rem; font-weight: 800; letter-spacing: .2em; }
+    .trackform .row input::placeholder { font-weight: 400; }
+    .result { padding: 32px 0; display: grid; gap: 10px; justify-items: start; max-width: 420px; }
+    .result .stone { width: 180px; margin-bottom: 8px; }
+    .result .stone img { width: 100%; height: 100%; display: block; }
+    .result h2 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; }
+    .result p { color: var(--ink-2); }
+    .badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: .875rem; font-weight: 700; background: var(--sun); color: var(--ink); }
+    .badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .badge[data-status="ready"] { background: #1F7A4D; color: #fff; }
+    .badge[data-status="done"] { background: var(--line); }
+
     @media (min-width: 900px) {
       :root { --gutter: 40px; }
       html { scroll-padding-top: 40px; }
@@ -222,7 +239,10 @@
 <body>
   <div class="top">
     <a class="brand" href="#">Stone of Words</a>
-    <a class="nav" id="navlink" href="#wall">See the wall</a>
+    <nav>
+      <a class="nav" href="#track">Track order</a>
+      <a class="nav" id="navlink" href="#wall">See the wall</a>
+    </nav>
   </div>
 
   <!-- ───────── Maker ───────── -->
@@ -366,10 +386,35 @@
     <div class="stone" id="donestone"><img id="doneimg" alt="Your stone design"></div>
     <p>Show this code at the counter</p>
     <div class="code" id="donecode"></div>
-    <p class="read">Your design is saved. Take a screenshot so you have the code handy.</p>
+    <p class="read">Your design is saved. Use this code to check when your stone is ready.</p>
     <div class="row">
-      <button type="button" class="btn" id="again">Make another</button>
+      <a class="btn" id="tracklink" href="#track">Track my order</a>
+      <button type="button" class="btn ghost" id="again">Make another</button>
       <a class="btn ghost" href="#wall">See the wall</a>
+    </div>
+  </main>
+
+  <!-- ───────── Track an order ───────── -->
+  <main class="wrap" id="track" hidden>
+    <div class="wallhead">
+      <h1>Track your <em>stone</em></h1>
+      <p class="read">Type the 4-character code you got when you confirmed your design.</p>
+    </div>
+    <form class="trackform" id="trackform" novalidate>
+      <div class="field" id="f-track">
+        <label for="trackcode">Order code</label>
+        <div class="row">
+          <input type="text" id="trackcode" maxlength="4" placeholder="AB12" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off" enterkeyhint="search">
+          <button type="submit" class="btn" id="trackgo">Check</button>
+        </div>
+        <p class="msg" id="e-track" role="alert"></p>
+      </div>
+    </form>
+    <div class="result" id="trackres" aria-live="polite" hidden>
+      <div class="stone" id="trackstone"><img id="trackimg" alt=""></div>
+      <span class="badge" id="trackbadge"></span>
+      <h2 id="tracktitle"></h2>
+      <p id="tracktext"></p>
     </div>
   </main>
 
@@ -660,20 +705,26 @@
         const blob = await new Promise((res) => cv.toBlob(res, 'image/png'));
         const path = crypto.randomUUID() + '.png';
         const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-        const code = [...crypto.getRandomValues(new Uint8Array(4))].map((n) => abc[n % abc.length]).join('');
         const post = state.style === 'post', nfc = post && $('nfc').checked;
         const up = await fetch(`${SB}/storage/v1/object/${BUCKET}/${path}`, { method: 'POST', headers: { ...H, 'Content-Type': 'image/png' }, body: blob });
         if (!up.ok) throw new Error('upload ' + up.status);
-        const ins = await fetch(`${SB}/rest/v1/stone_orders`, {
-          method: 'POST', headers: { ...H, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify({
-            code, customer_name: $('cname').value.trim(), style: state.style, stone: state.stone,
-            username: post ? $('username').value.trim() : null, location: post ? ($('location').value.trim() || null) : null,
-            nfc, nfc_link: nfc ? $('nfclink').value.trim() : null, image_path: path,
-          }),
-        });
+        // The code is the tracking number, so it must be unique: 409 means it's taken, draw another.
+        let code, ins;
+        for (let i = 0; i < 5; i++) {
+          code = [...crypto.getRandomValues(new Uint8Array(4))].map((n) => abc[n % abc.length]).join('');
+          ins = await fetch(`${SB}/rest/v1/stone_orders`, {
+            method: 'POST', headers: { ...H, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify({
+              code, customer_name: $('cname').value.trim(), style: state.style, stone: state.stone,
+              username: post ? $('username').value.trim() : null, location: post ? ($('location').value.trim() || null) : null,
+              nfc, nfc_link: nfc ? $('nfclink').value.trim() : null, image_path: path,
+            }),
+          });
+          if (ins.status !== 409) break;
+        }
         if (!ins.ok) throw new Error('save ' + ins.status);
-        $('donecode').textContent = code;
+        $('donecode').textContent = code; $('tracklink').href = '#track=' + code;
+        try { localStorage.setItem('stone-code', code); } catch {}
         $('donetitle').textContent = `You're all set, ${$('cname').value.trim()}`;
         $('doneimg').src = URL.createObjectURL(blob); $('donestone').dataset.stone = state.stone;
         $('notice').close(); show('done'); $('donetitle').focus(); scrollTo(0, 0);
@@ -709,17 +760,65 @@
         $('wallstate').textContent = "We couldn't load the wall. Check your connection and refresh.";
       }
     }
-    // The counter keeps this page open, so new designs show up on their own.
-    setInterval(() => { if (!$('wall').hidden && !document.hidden) loadWall(); }, 20000);
+    // ── Track an order ──
+    const STATUS = {
+      new: ['In progress', "We're making it", "Your stone isn't ready yet. Keep this page open, it updates by itself."],
+      ready: ['Ready', 'Your stone is ready!', 'Come pick it up at the counter and show us this code.'],
+      done: ['Picked up', 'Already picked up', 'This stone was collected. Enjoy it!'],
+    };
+    let tracked = null; // the order on screen, re-checked until it is picked up
+    async function track(code, quiet) {
+      if (!/^[A-Z0-9]{4}$/.test(code)) { setErr('track', 'Type the 4 letters and numbers of your code.'); return; }
+      if (!quiet) { setErr('track', ''); $('trackgo').disabled = true; }
+      try {
+        const r = await fetch(`${SB}/rest/v1/stone_orders?code=eq.${code}&select=code,customer_name,stone,status,image_path&limit=1`, { headers: H });
+        if (!r.ok) throw new Error(r.status);
+        const [o] = await r.json();
+        if ($('trackcode').value !== code) return; // the customer typed another code meanwhile
+        tracked = o || null; $('trackres').hidden = !o;
+        if (!o) { setErr('track', "We can't find that code. Check it and try again, or ask us at the counter."); return; }
+        const [badge, title, text] = STATUS[o.status] || STATUS.new;
+        $('trackbadge').textContent = badge; $('trackbadge').dataset.status = o.status;
+        $('tracktitle').textContent = title; $('tracktext').textContent = `${o.customer_name} · ${o.code}. ${text}`;
+        $('trackstone').dataset.stone = o.stone;
+        $('trackimg').src = `${SB}/storage/v1/object/public/${BUCKET}/${encodeURIComponent(o.image_path)}`;
+      } catch (err) {
+        console.error(err);
+        if (!quiet) setErr('track', "We couldn't check right now. Check your connection and try again.");
+      } finally { $('trackgo').disabled = false; }
+    }
+    $('trackcode').addEventListener('input', (e) => {
+      e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      setErr('track', ''); tracked = null; $('trackres').hidden = true;
+    });
+    $('trackform').onsubmit = (e) => { e.preventDefault(); track($('trackcode').value); };
+    // Opened from the shortcut (#track=CODE) or by someone who ordered on this phone: fill the code in for them.
+    function openTrack(fromLink) {
+      let code = fromLink.toUpperCase();
+      if (!code && !$('trackcode').value) try { code = localStorage.getItem('stone-code') || ''; } catch {}
+      if (/^[A-Z0-9]{4}$/.test(code)) { $('trackcode').value = code; track(code); }
+      else if (!$('trackcode').value) $('trackcode').focus();
+    }
+
+    // The counter keeps the wall open and a customer keeps the tracker open, so both refresh on their own.
+    setInterval(() => {
+      if (document.hidden) return;
+      if (!$('wall').hidden) loadWall();
+      if (!$('track').hidden && tracked && tracked.status !== 'done') track(tracked.code, true);
+    }, 20000);
 
     // ── Views ──
     function show(view) {
-      for (const v of ['maker', 'done', 'wall']) $(v).hidden = v !== view;
+      for (const v of ['maker', 'done', 'wall', 'track']) $(v).hidden = v !== view;
       const onWall = view === 'wall';
       $('navlink').textContent = onWall ? 'Make yours' : 'See the wall'; $('navlink').href = onWall ? '#' : '#wall';
       if (onWall) loadWall();
     }
-    const route = () => { show(location.hash === '#wall' ? 'wall' : ($('donecode').textContent ? 'done' : 'maker')); scrollTo(0, 0); };
+    const route = () => {
+      const h = location.hash, onTrack = h.startsWith('#track');
+      show(onTrack ? 'track' : h === '#wall' ? 'wall' : ($('donecode').textContent ? 'done' : 'maker')); scrollTo(0, 0);
+      if (onTrack) openTrack(h.slice(7));
+    };
     addEventListener('hashchange', route);
     applyStyle(); route();
   })();
