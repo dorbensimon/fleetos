@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#FEFDFB">
+  <title>Make your stone · Stone of Words</title>
+  <style>
+    :root {
+      --bg: #FEFDFB;
+      --surface: #FFFFFF;
+      --ink: #1E1B18;
+      --ink-2: #6A625C;
+      --accent: #CF3A17;
+      --accent-deep: #B8330F;
+      --accent-soft: #F7B9A6;
+      --sun: #FFC83D;
+      --line: #ECE7E1;
+      --err: #A3123A;
+      --stone-white: #F4F2ED;
+      --stone-cream: #E9DFC9;
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+      --gutter: 20px;
+      color-scheme: light;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-padding-top: 340px; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 400 1rem/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+    }
+    ::selection { background: var(--accent); color: #fff; }
+    :focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 3px; border-radius: 6px; }
+    [hidden] { display: none !important; }
+    button, input { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    h1, h2, h3, p { margin: 0; }
+
+    .top {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      padding: max(14px, env(safe-area-inset-top)) var(--gutter) 0;
+      max-width: 1040px; margin: 0 auto;
+    }
+    .brand { font-size: .75rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--accent-deep); text-decoration: none; }
+    .top a.nav { font-size: .875rem; font-weight: 600; color: var(--ink); text-underline-offset: 4px; text-decoration-color: var(--accent-soft); padding: 8px 0; }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 var(--gutter) 64px; }
+    .hero { padding: 20px 0 8px; }
+    h1 {
+      font-size: clamp(2.25rem, 10.5vw, 4.5rem); font-weight: 900; line-height: .95;
+      letter-spacing: -0.03em; text-transform: uppercase; text-wrap: balance;
+    }
+    h1 em { font-style: normal; color: var(--accent); }
+    .hero p { margin-top: 12px; color: var(--ink-2); font-size: 1.0625rem; max-width: 34ch; }
+
+    /* Live stone: stays in view while the form scrolls under it. */
+    .stage {
+      position: sticky; top: 0; z-index: 5;
+      margin: 0 calc(var(--gutter) * -1); padding: 14px var(--gutter) 12px;
+      background: color-mix(in srgb, var(--bg) 80%, transparent);
+      -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%);
+      display: grid; justify-items: center; gap: 8px;
+    }
+    .stone {
+      width: min(60vw, 264px); aspect-ratio: 1; border-radius: 13%;
+      background: var(--stone-white);
+      box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 -10px 18px rgba(72,48,30,.07) inset, 0 16px 28px -10px rgba(72,48,30,.38), 0 3px 6px rgba(72,48,30,.14);
+      overflow: hidden; transition: background-color .35s var(--ease-out);
+    }
+    .stone[data-stone="cream"] { background: var(--stone-cream); }
+    .stone canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+    .stone canvas:active { cursor: grabbing; }
+    .stage small { font-size: .8125rem; color: var(--ink-2); min-height: 1.2em; }
+
+    .step { padding: 28px 0 0; }
+    .step h2 { display: flex; align-items: center; gap: 12px; font-size: 1.125rem; font-weight: 800; text-transform: uppercase; letter-spacing: -0.01em; }
+    .step h2 .n {
+      flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+      background: var(--sun); color: var(--ink); font-size: 1rem; font-weight: 800; letter-spacing: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .step > .body { margin-top: 14px; display: grid; gap: 14px; }
+
+    .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .opt {
+      position: relative; display: grid; gap: 2px; justify-items: start; padding: 14px;
+      background: var(--surface); border-radius: 14px; box-shadow: 0 0 0 1px var(--line);
+      cursor: pointer; transition: transform .12s var(--ease-out), box-shadow .2s var(--ease-out);
+    }
+    .opt:active { transform: scale(.97); }
+    .opt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+    .opt:has(input:checked) { box-shadow: 0 0 0 2px var(--accent-deep); }
+    .opt:has(input:focus-visible) { outline: 2px solid var(--accent-deep); outline-offset: 3px; }
+    .opt svg { width: 56px; height: 56px; margin-bottom: 8px; }
+    .opt b { font-weight: 700; }
+    .opt span { font-size: .875rem; color: var(--ink-2); }
+    .opt.swatch { grid-template-columns: auto 1fr; align-items: center; column-gap: 12px; }
+    .opt.swatch i { width: 36px; height: 36px; border-radius: 10px; box-shadow: 0 0 0 1px rgba(72,48,30,.18) inset; }
+
+    .field { display: grid; gap: 6px; }
+    .field label, .lbl { font-size: .9375rem; font-weight: 600; }
+    .field .hint { font-size: .8125rem; color: var(--ink-2); }
+    .field input[type=text], .field input[type=url] {
+      width: 100%; height: 50px; padding: 0 14px; font-size: 1rem;
+      background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+      caret-color: var(--accent-deep); transition: border-color .15s;
+    }
+    .field input::placeholder { color: #7A7069; }
+    .field input:focus { outline: 2px solid var(--accent-deep); outline-offset: 1px; border-color: transparent; }
+    .field.bad input { border-color: var(--err); }
+    .msg { font-size: .875rem; color: var(--err); font-weight: 600; }
+    .msg:empty { display: none; }
+    .at { position: relative; }
+    .at::before { content: "@"; position: absolute; left: 14px; top: 0; line-height: 50px; color: var(--ink-2); }
+    .at input { padding-left: 32px !important; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 50px; padding: 0 22px; border: 0; border-radius: 999px;
+      background: var(--accent); color: #fff; font-weight: 700; font-size: 1rem; text-decoration: none;
+      transition: transform .12s var(--ease-out), background-color .15s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn:hover { background: var(--accent-deep); }
+    .btn.ghost { background: transparent; color: var(--ink); box-shadow: 0 0 0 1px var(--accent-soft) inset; }
+    .btn.ghost:hover { background: rgba(217,65,30,.08); }
+    .btn.big { width: 100%; min-height: 58px; font-size: 1.0625rem; text-transform: uppercase; letter-spacing: .06em; }
+    .btn[disabled] { opacity: .5; cursor: not-allowed; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+    input[type=range] { width: 100%; accent-color: var(--accent); height: 32px; }
+
+    .switch { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px; background: var(--surface); border-radius: 14px; box-shadow: 0 0 0 1px var(--line); cursor: pointer; }
+    .switch b { display: block; }
+    .switch span { font-size: .875rem; color: var(--ink-2); }
+    .switch input { appearance: none; -webkit-appearance: none; flex: none; width: 52px; height: 32px; border-radius: 999px; background: #D9D3CC; position: relative; margin: 0; cursor: pointer; transition: background-color .2s; }
+    .switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(47,33,26,.3); transition: transform .25s var(--ease-out); }
+    .switch input:checked { background: var(--accent); }
+    .switch input:checked::after { transform: translateX(20px); }
+
+    .nums { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .agree { display: flex; align-items: center; gap: 12px; }
+    .agree input { width: 24px; height: 24px; accent-color: var(--accent); flex: none; margin: 0; }
+    .agree input:disabled + label { color: var(--ink-2); }
+    .linkbtn { background: none; border: 0; padding: 0; font-weight: 700; color: var(--accent-deep); text-decoration: underline; text-underline-offset: 4px; }
+
+    .finish { padding-top: 32px; display: grid; gap: 16px; }
+
+    /* Dialogs: a sheet from the bottom on phones, centered on wide screens. */
+    dialog {
+      border: 0; padding: 0; color: var(--ink); background: var(--surface);
+      width: 100%; max-width: 560px; max-height: 88dvh; margin: auto auto 0;
+      border-radius: 22px 22px 0 0; box-shadow: 0 -18px 50px -12px rgba(47,33,26,.4);
+      opacity: 0; transform: translateY(28px);
+      transition: opacity .28s var(--ease-out), transform .38s var(--ease-out), overlay .38s allow-discrete, display .38s allow-discrete;
+    }
+    dialog[open] { opacity: 1; transform: none; display: flex; flex-direction: column; }
+    @starting-style { dialog[open] { opacity: 0; transform: translateY(28px); } }
+    dialog::backdrop { background: rgba(47,33,26,0); transition: background-color .3s, overlay .3s allow-discrete, display .3s allow-discrete; }
+    dialog[open]::backdrop { background: rgba(47,33,26,.5); }
+    @starting-style { dialog[open]::backdrop { background: rgba(47,33,26,0); } }
+    dialog header { padding: 22px 22px 12px; }
+    dialog h3 { font-size: 1.375rem; font-weight: 800; letter-spacing: -0.015em; line-height: 1.15; text-wrap: balance; }
+    dialog .scroll { overflow-y: auto; padding: 0 22px 8px; overscroll-behavior: contain; scrollbar-color: var(--accent-soft) transparent; scrollbar-width: thin; }
+    dialog .scroll:focus-visible { outline-offset: -2px; }
+    dialog .scroll h4 { margin: 20px 0 4px; font-size: 1rem; font-weight: 700; }
+    dialog .scroll p, dialog .scroll li { font-size: .9375rem; color: #3A332E; }
+    dialog .scroll ul { margin: 6px 0 0; padding-left: 20px; }
+    dialog .plain p { font-size: 1rem; margin-top: 10px; }
+    dialog footer { padding: 14px 22px max(18px, env(safe-area-inset-bottom)); display: grid; gap: 10px; border-top: 1px solid var(--line); }
+    dialog footer .note { font-size: .8125rem; color: var(--ink-2); text-align: center; }
+    @media (min-width: 640px) { dialog { margin: auto; border-radius: 22px; } }
+
+    /* Done */
+    .done { text-align: center; padding: 40px 0; display: grid; gap: 14px; justify-items: center; }
+    .done .code { font-size: clamp(4rem, 24vw, 7rem); font-weight: 900; letter-spacing: .04em; line-height: 1; color: var(--accent-deep); font-variant-numeric: tabular-nums; }
+    .done h2 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; }
+    .done p { color: var(--ink-2); max-width: 30ch; }
+    .done .row { justify-content: center; }
+    .done .stone { width: 180px; margin: 8px 0; }
+    .done .stone img { width: 100%; height: 100%; display: block; }
+
+    /* Wall */
+    .wallhead { padding: 20px 0 8px; display: grid; gap: 10px; }
+    .wallhead p { color: var(--ink-2); max-width: 46ch; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 28px 18px; padding-top: 20px; }
+    .card { display: grid; gap: 4px; align-content: start; }
+    .card .stone { width: 100%; margin-bottom: 8px; }
+    .card .stone img { width: 100%; height: 100%; display: block; }
+    .card .c { font-size: 1.25rem; font-weight: 900; letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+    .card .m { font-size: .8125rem; color: var(--ink-2); overflow-wrap: anywhere; }
+    .card a { font-size: .875rem; font-weight: 700; color: var(--accent-deep); text-underline-offset: 4px; overflow-wrap: anywhere; }
+    .card a.dl { margin-top: 4px; }
+    .state { padding: 48px 0; color: var(--ink-2); }
+
+    @media (min-width: 900px) {
+      :root { --gutter: 40px; }
+      html { scroll-padding-top: 40px; }
+      .maker { display: grid; grid-template-columns: 420px 1fr; gap: 0 72px; align-items: start; }
+      .maker .hero { grid-column: 1 / -1; padding-bottom: 24px; }
+      .stage { top: 32px; margin: 0; padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+      .stone { width: 420px; }
+      .form { max-width: 480px; }
+      .form .step:first-child { padding-top: 0; }
+      .grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; }
+      dialog, dialog[open] { transform: none; }
+    }
+    @media (prefers-reduced-transparency: reduce) {
+      .stage { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="brand" href="#">Stone of Words</a>
+    <a class="nav" id="navlink" href="#wall">See the wall</a>
+  </div>
+
+  <!-- ───────── Maker ───────── -->
+  <main class="wrap maker" id="maker">
+    <div class="hero">
+      <h1>Make your <em>stone</em></h1>
+      <p class="read">Build it on your phone. Show your code at the counter. We print it on real marble while you wait.</p>
+    </div>
+
+    <div class="stage">
+      <div class="stone" id="stone" data-stone="white">
+        <canvas id="cv" width="1200" height="1200" role="img" aria-label="Preview of your stone"></canvas>
+      </div>
+      <small id="stagehint">This is your stone. It updates as you go.</small>
+    </div>
+
+    <form class="form" id="form" novalidate>
+      <section class="step">
+        <h2><span class="n">1</span> Pick a style</h2>
+        <div class="body">
+          <div class="opts">
+            <label class="opt">
+              <input type="radio" name="style" value="post" checked>
+              <svg viewBox="0 0 56 56" fill="none" aria-hidden="true"><rect x="1" y="1" width="54" height="54" rx="9" stroke="#CF3A17" stroke-width="2"/><circle cx="11" cy="10.5" r="3.5" fill="#F7B9A6"/><rect x="18" y="8" width="18" height="2.4" rx="1.2" fill="#CF3A17"/><rect x="18" y="12" width="11" height="2" rx="1" fill="#F7B9A6"/><rect x="5" y="18" width="46" height="26" rx="2" fill="#F7B9A6"/><circle cx="9" cy="49.5" r="2.4" fill="#CF3A17"/><rect x="14" y="48.4" width="9" height="2.2" rx="1.1" fill="#F7B9A6"/><rect x="45" y="47.4" width="4.4" height="4.6" rx="1" fill="#CF3A17"/></svg>
+              <b>Insta post</b>
+              <span>Photo, username, likes</span>
+            </label>
+            <label class="opt">
+              <input type="radio" name="style" value="full">
+              <svg viewBox="0 0 56 56" fill="none" aria-hidden="true"><rect x="1" y="1" width="54" height="54" rx="9" fill="#F7B9A6" stroke="#CF3A17" stroke-width="2"/><circle cx="39" cy="17" r="5" fill="#FFFFFF"/><path d="M2 42l15-15 12 12 8-8 17 17v0a8 8 0 0 1-8 6H10a8 8 0 0 1-8-8z" fill="#CF3A17"/></svg>
+              <b>Full photo</b>
+              <span>Edge to edge</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="step">
+        <h2><span class="n">2</span> Add your photo</h2>
+        <div class="body">
+          <div class="field" id="f-photo">
+            <div class="row">
+              <button type="button" class="btn" id="pickphoto">Choose photo</button>
+              <span class="hint" id="photoname">From your camera roll</span>
+            </div>
+            <input type="file" id="photo" accept="image/*" hidden>
+            <p class="msg" id="e-photo" role="alert"></p>
+          </div>
+          <div class="field" id="zoomrow" hidden>
+            <label for="zoom">Zoom</label>
+            <input type="range" id="zoom" min="1" max="3" step="0.01" value="1">
+            <span class="hint">Drag the photo on the stone to move it.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="step" id="poststep">
+        <h2><span class="n">3</span> Make it your post</h2>
+        <div class="body">
+          <div class="field" id="f-username">
+            <label for="username">Username</label>
+            <div class="at"><input type="text" id="username" maxlength="20" placeholder="the.millers" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off"></div>
+            <span class="hint">Up to 20 characters. Printed exactly as typed.</span>
+            <p class="msg" id="e-username" role="alert"></p>
+          </div>
+          <div class="field">
+            <label for="location">Location <span class="hint">(optional)</span></label>
+            <input type="text" id="location" maxlength="30" placeholder="Aspen, Colorado" autocomplete="off">
+          </div>
+          <div class="field">
+            <span class="lbl">Profile picture <span class="hint">(optional)</span></span>
+            <div class="row">
+              <button type="button" class="btn ghost" id="pickavatar">Choose picture</button>
+              <span class="hint" id="avatarname">We use your main photo if you skip this.</span>
+            </div>
+            <input type="file" id="avatar" accept="image/*" hidden>
+          </div>
+          <div class="field">
+            <span class="lbl">Post numbers</span>
+            <span class="hint">Type any numbers you like. They print under your photo. Leave one empty to hide it.</span>
+          </div>
+          <div class="nums">
+              <div class="field"><label for="likes">Likes</label><input type="text" id="likes" maxlength="7" value="1,234" inputmode="text" autocomplete="off" enterkeyhint="done"></div>
+              <div class="field"><label for="comments">Comments</label><input type="text" id="comments" maxlength="6" value="56" inputmode="text" autocomplete="off" enterkeyhint="done"></div>
+              <div class="field"><label for="shares">Shares</label><input type="text" id="shares" maxlength="6" value="12" inputmode="text" autocomplete="off" enterkeyhint="done"></div>
+              <div class="field"><label for="saves">Saves</label><input type="text" id="saves" maxlength="6" value="78" inputmode="text" autocomplete="off" enterkeyhint="done"></div>
+            </div>
+          <label class="switch">
+            <span><b>Add an NFC tag</b>Tap a phone on the stone to open your real post.</span>
+            <input type="checkbox" id="nfc">
+          </label>
+          <div class="field" id="f-nfc" hidden>
+            <label for="nfclink">Link to your post</label>
+            <input type="url" id="nfclink" maxlength="300" placeholder="https://www.instagram.com/p/..." autocapitalize="none" autocorrect="off" spellcheck="false">
+            <span class="hint">In Instagram: open the post, tap Share, then Copy link.</span>
+            <p class="msg" id="e-nfc" role="alert"></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="step">
+        <h2><span class="n" data-n="stone">4</span> Choose your stone</h2>
+        <div class="body">
+          <div class="opts">
+            <label class="opt swatch"><input type="radio" name="stone" value="white" checked><i style="background:var(--stone-white)"></i><b>White marble</b></label>
+            <label class="opt swatch"><input type="radio" name="stone" value="cream"><i style="background:var(--stone-cream)"></i><b>Cream marble</b></label>
+          </div>
+        </div>
+      </section>
+
+      <section class="step">
+        <h2><span class="n" data-n="name">5</span> Your first name</h2>
+        <div class="body">
+          <div class="field" id="f-name">
+            <label for="cname">So we know whose stone it is</label>
+            <input type="text" id="cname" maxlength="30" placeholder="Emma" autocomplete="given-name">
+            <span class="hint">Shown next to your design on the public wall.</span>
+            <p class="msg" id="e-name" role="alert"></p>
+          </div>
+        </div>
+      </section>
+
+      <div class="finish">
+        <div class="field" id="f-agree">
+          <div class="agree">
+            <input type="checkbox" id="agree" disabled>
+            <label for="agree">I read and agree to the <button type="button" class="linkbtn" id="openterms">Terms</button></label>
+          </div>
+          <span class="hint" id="agreehint">Open the Terms and scroll to the end to check this box.</span>
+          <p class="msg" id="e-agree" role="alert"></p>
+        </div>
+        <button type="submit" class="btn big" id="send">Confirm my stone</button>
+        <p class="msg" id="e-send" role="alert"></p>
+      </div>
+    </form>
+  </main>
+
+  <!-- ───────── Done ───────── -->
+  <main class="wrap done" id="done" hidden>
+    <h2 id="donetitle" tabindex="-1">You're all set</h2>
+    <div class="stone" id="donestone"><img id="doneimg" alt="Your stone design"></div>
+    <p>Show this code at the counter</p>
+    <div class="code" id="donecode"></div>
+    <p class="read">Your design is saved. Take a screenshot so you have the code handy.</p>
+    <div class="row">
+      <button type="button" class="btn" id="again">Make another</button>
+      <a class="btn ghost" href="#wall">See the wall</a>
+    </div>
+  </main>
+
+  <!-- ───────── Public wall ───────── -->
+  <main class="wrap" id="wall" hidden>
+    <div class="wallhead">
+      <h1>The <em>wall</em></h1>
+      <p class="read">Every stone designed at our store in the last 14 days. This page is public. Want yours taken down? Ask us at the counter.</p>
+    </div>
+    <div class="grid" id="grid"></div>
+    <p class="state" id="wallstate">Loading designs…</p>
+  </main>
+
+  <!-- Terms: the box unlocks only after scrolling to the end. -->
+  <dialog id="terms" aria-labelledby="termstitle">
+    <header><h3 id="termstitle" tabindex="-1" style="outline:none">Custom Stone Terms</h3></header>
+    <div class="scroll" id="termsscroll" tabindex="0">
+      <p>Effective November 13, 2026. These terms are between you and Stone of Words ("we", "us"). By confirming a design you agree to all of them. If you do not agree, do not submit a design. Our team at the counter can help you order another way.</p>
+
+      <h4>1. This page is public</h4>
+      <p>The design you submit, including your photo, the first name, username and location you type, is posted on a public web page (the "wall") that anyone can open, inside or outside the store. Do not submit anything you would not want strangers to see. If you want a stone made without posting it publicly, do not use this page. Ask our team instead.</p>
+
+      <h4>2. You must be 18 or with a parent</h4>
+      <p>You must be at least 18 years old to submit a design. If you are under 18, a parent or legal guardian must submit it for you and agrees to these terms on your behalf.</p>
+
+      <h4>3. Your photo, your responsibility</h4>
+      <p>By submitting, you promise that:</p>
+      <ul>
+        <li>you took the photo or you have permission from the person who owns it;</li>
+        <li>every identifiable person in the photo has agreed to it being posted publicly and printed;</li>
+        <li>for any child under 18 in the photo, you are that child's parent or legal guardian, or you have that parent's or guardian's permission;</li>
+        <li>the photo, username and text do not infringe anyone's copyright, trademark, privacy or publicity rights.</li>
+      </ul>
+
+      <h4>4. What you may not submit</h4>
+      <ul>
+        <li>nudity or sexual content, and any sexualized image of a minor;</li>
+        <li>hateful, harassing, threatening or violent content;</li>
+        <li>anything illegal, or someone else's private information;</li>
+        <li>photos of celebrities, brand logos, characters or artwork you do not have rights to.</li>
+      </ul>
+      <p>We may refuse to print, and may remove from the wall, any design for any reason and without notice.</p>
+
+      <h4>5. Permission you give us</h4>
+      <p>You keep ownership of your photo. You give us a non-exclusive, royalty-free permission to store, reproduce, resize, display on the wall and print your design for the purpose of making your stone and running this service. We will not use your photo in advertising without asking you first.</p>
+
+      <h4>6. How long it stays, and how to remove it</h4>
+      <p>Designs drop off the wall automatically about 14 days after they are submitted. You can ask us to take your design down sooner, at the counter, and we will do so within a reasonable time. Because the page is public, we cannot control copies, screenshots or downloads made by other people while it was visible.</p>
+
+      <h4>7. Not affiliated with Instagram</h4>
+      <p>Stone of Words is an independent business. We are not affiliated with, sponsored by or endorsed by Instagram or Meta Platforms, Inc. The "Insta post" style is a custom keepsake layout. The username, location and numbers shown are whatever you type and do not have to match a real account.</p>
+
+      <h4>8. NFC tag</h4>
+      <p>If you add an NFC tag, it opens the link you give us. You are responsible for that link being correct and for the content it leads to. We do not control Instagram or any other website, and the link may stop working if the post is deleted, made private or moved.</p>
+
+      <h4>9. Custom made, check before you confirm</h4>
+      <p>Each stone is printed to order from exactly what you submit. Spelling, cropping and photo choice are your responsibility. Low-resolution or dark photos may print soft or dark. Marble is a natural material, so color, veining and texture vary from stone to stone and from what you see on screen. Because the product is custom made, approved designs are not returnable or refundable except where the law requires or where the stone is defective.</p>
+
+      <h4>10. Your responsibility to us</h4>
+      <p>You agree to defend and reimburse Stone of Words, its owners and staff for any claim, loss or cost (including reasonable attorney's fees) that comes from the content you submitted or from breaking the promises in sections 2, 3 and 4.</p>
+
+      <h4>11. Limits on our responsibility</h4>
+      <p>This page is provided "as is". To the fullest extent the law allows, Stone of Words is not liable for indirect, incidental or consequential damages, or for what other people do with content that was publicly visible on the wall. Our total liability for anything related to your design is limited to the price you paid for that stone. Some states do not allow certain limits, so parts of this section may not apply to you.</p>
+
+      <h4>12. General</h4>
+      <p>These terms are governed by the laws of the state where our store is located. If one part of these terms is found unenforceable, the rest still applies. Questions or removal requests: speak to our team at the counter.</p>
+      <p style="margin-top:20px;font-weight:700">End of terms.</p>
+    </div>
+    <footer>
+      <button type="button" class="btn big" id="acceptterms" disabled>I read and agree</button>
+      <span class="note" id="termsnote">Scroll to the end to continue</span>
+    </footer>
+  </dialog>
+
+  <!-- Last check before it goes public. -->
+  <dialog id="notice" aria-labelledby="noticetitle">
+    <header><h3 id="noticetitle">Everyone will be able to see this</h3></header>
+    <div class="scroll plain">
+      <p>This page is public. Once you confirm, your photo and first name go on our wall, where other customers and anyone with the link can see them.</p>
+      <p><b>Not comfortable with that? No problem.</b> Tap Go back and talk to our team at the counter. We'll make your stone without posting it.</p>
+    </div>
+    <footer>
+      <button type="button" class="btn big" id="golive">Yes, post it</button>
+      <button type="button" class="btn ghost" id="goback" autofocus>Go back</button>
+    </footer>
+  </dialog>
+
+  <script>
+  (() => {
+    const SB = 'https://lnflftptzrfuzfecmhho.supabase.co';
+    const KEY = 'sb_publishable_4UJaMSQubyVg7h-vD-OwEg_37kBN7Bx';
+    const H = { apikey: KEY, Authorization: 'Bearer ' + KEY };
+    const BUCKET = 'stone-orders';
+    const S = 1200;
+    const FONT = '-apple-system, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+    const $ = (id) => document.getElementById(id);
+
+    const cv = $('cv'), ctx = cv.getContext('2d');
+    const state = { style: 'post', stone: 'white', photo: null, avatar: null, zoom: 1, px: 0.5, py: 0.5, read: false };
+
+    // ── Drawing: the preview and the print file are the same canvas. ──
+    const area = () => state.style === 'full' ? { x: 0, y: 0, w: S, h: S } : { x: 40, y: 215, w: 1120, h: 795 };
+    const coverSize = (img, r, zoom) => {
+      const sc = Math.max(r.w / img.width, r.h / img.height) * zoom;
+      return { dw: img.width * sc, dh: img.height * sc };
+    };
+    const ICON = {
+      heart: 'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z',
+      comment: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z',
+      send: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
+      bookmark: 'M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z',
+      image: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21',
+    };
+    function icon(name, x, y, size, color, fill) {
+      ctx.save(); ctx.translate(x, y); ctx.scale(size / 24, size / 24);
+      const p = new Path2D(ICON[name]);
+      if (fill) { ctx.fillStyle = color; ctx.fill(p); }
+      else { ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke(p); }
+      ctx.restore();
+    }
+    function cover(img, r, zoom, px, py) {
+      const { dw, dh } = coverSize(img, r, zoom);
+      ctx.save(); ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, r.x + (r.w - dw) * px, r.y + (r.h - dh) * py, dw, dh);
+      ctx.restore();
+    }
+    function draw() {
+      ctx.clearRect(0, 0, S, S);
+      const r = area();
+      if (state.photo) cover(state.photo, r, state.zoom, state.px, state.py);
+      else {
+        ctx.fillStyle = 'rgba(111,69,39,.10)'; ctx.fillRect(r.x, r.y, r.w, r.h);
+        icon('image', r.x + r.w / 2 - 60, r.y + r.h / 2 - 100, 120, '#8C5B38');
+        ctx.fillStyle = '#6F4527'; ctx.font = `600 50px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('Tap to add your photo', r.x + r.w / 2, r.y + r.h / 2 + 80);
+      }
+      if (state.style === 'post') chrome();
+    }
+    function chrome() {
+      const cx = 112, cy = 122;
+      // Story-style ring around the profile picture.
+      const g = ctx.createLinearGradient(cx - 62, cy + 62, cx + 62, cy - 62);
+      g.addColorStop(0, '#F9B24A'); g.addColorStop(.5, '#E0306B'); g.addColorStop(1, '#8A3AB9');
+      ctx.strokeStyle = g; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(cx, cy, 59, 0, Math.PI * 2); ctx.stroke();
+      const av = state.avatar || state.photo;
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 50, 0, Math.PI * 2); ctx.clip();
+      if (av) { const b = { x: cx - 50, y: cy - 50, w: 100, h: 100 }; const { dw, dh } = coverSize(av, b, 1); ctx.drawImage(av, b.x + (b.w - dw) / 2, b.y + (b.h - dh) / 2, dw, dh); }
+      else { ctx.fillStyle = 'rgba(111,69,39,.16)'; ctx.fillRect(cx - 50, cy - 50, 100, 100); }
+      ctx.restore();
+
+      const user = $('username').value.trim() || 'your.username';
+      const loc = $('location').value.trim();
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = '#141110'; ctx.font = `700 46px ${FONT}`;
+      ctx.fillText(user, 192, loc ? 116 : 138);
+      if (loc) { ctx.fillStyle = '#4A413C'; ctx.font = `400 35px ${FONT}`; ctx.fillText(loc, 192, 162); }
+      ctx.fillStyle = '#141110';
+      for (const dx of [0, 24, 48]) { ctx.beginPath(); ctx.arc(1096 + dx, cy, 6, 0, Math.PI * 2); ctx.fill(); }
+
+      // Footer row
+      const y = 1070, size = 58, mid = y + size / 2 + 2;
+      ctx.font = `700 38px ${FONT}`; ctx.textBaseline = 'middle'; ctx.fillStyle = '#141110';
+      let x = 52;
+      const put = (name, text, color, fill) => {
+        icon(name, x, y, size, color, fill); x += size + 14;
+        if (text) { ctx.fillText(text, x, mid); x += ctx.measureText(text).width + 40; }
+      };
+      put('heart', $('likes').value.trim(), '#ED4956', true);
+      put('comment', $('comments').value.trim(), '#141110');
+      put('send', $('shares').value.trim(), '#141110');
+      icon('bookmark', 1148 - size, y, size, '#141110');
+      const saves = $('saves').value.trim();
+      if (saves) { ctx.textAlign = 'right'; ctx.fillText(saves, 1148 - size - 12, mid); }
+    }
+
+    // ── Photos ──
+    async function loadImage(file, max) {
+      const url = URL.createObjectURL(file);
+      try {
+        const img = new Image(); img.src = url; await img.decode();
+        const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        return c;
+      } finally { URL.revokeObjectURL(url); }
+    }
+    $('pickphoto').onclick = () => $('photo').click();
+    $('pickavatar').onclick = () => $('avatar').click();
+    $('photo').onchange = async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      try {
+        state.photo = await loadImage(f, 2400);
+        state.zoom = 1; state.px = state.py = 0.5; $('zoom').value = 1;
+        $('zoomrow').hidden = false; $('pickphoto').textContent = 'Change photo';
+        const small = Math.min(state.photo.width, state.photo.height) < 700;
+        $('photoname').textContent = small ? 'This photo is small and may print soft.' : 'Looks good.';
+        $('stagehint').textContent = 'Drag the photo to move it.';
+        setErr('photo', '');
+      } catch { setErr('photo', "We couldn't open that file. Try a different photo."); }
+      draw();
+    };
+    $('avatar').onchange = async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      try { state.avatar = await loadImage(f, 400); $('avatarname').textContent = 'Added.'; $('pickavatar').textContent = 'Change picture'; }
+      catch { $('avatarname').textContent = "We couldn't open that file. Try another."; }
+      draw();
+    };
+    $('zoom').oninput = (e) => { state.zoom = +e.target.value; draw(); };
+
+    // Drag to reposition: the photo follows the finger 1:1.
+    let last = null;
+    cv.addEventListener('pointerdown', (e) => {
+      if (!state.photo) { $('photo').click(); return; }
+      cv.setPointerCapture(e.pointerId); last = { x: e.clientX, y: e.clientY };
+    });
+    cv.addEventListener('pointermove', (e) => {
+      if (!last) return;
+      const k = S / cv.clientWidth, r = area(), { dw, dh } = coverSize(state.photo, r, state.zoom);
+      const clamp = (v) => Math.min(1, Math.max(0, v));
+      if (dw > r.w + 1) state.px = clamp(state.px - (e.clientX - last.x) * k / (dw - r.w));
+      if (dh > r.h + 1) state.py = clamp(state.py - (e.clientY - last.y) * k / (dh - r.h));
+      last = { x: e.clientX, y: e.clientY }; draw();
+    });
+    const drop = () => { last = null; };
+    cv.addEventListener('pointerup', drop); cv.addEventListener('pointercancel', drop);
+
+    // ── Form state ──
+    function applyStyle() {
+      state.style = document.querySelector('input[name=style]:checked').value;
+      const post = state.style === 'post';
+      $('poststep').hidden = !post;
+      document.querySelector('[data-n=stone]').textContent = post ? 4 : 3;
+      document.querySelector('[data-n=name]').textContent = post ? 5 : 4;
+      draw();
+    }
+    document.querySelectorAll('input[name=style]').forEach((i) => i.onchange = applyStyle);
+    document.querySelectorAll('input[name=stone]').forEach((i) => i.onchange = () => {
+      state.stone = i.value; $('stone').dataset.stone = i.value;
+    });
+    for (const id of ['username', 'location', 'likes', 'comments', 'shares', 'saves']) $(id).addEventListener('input', draw);
+    $('username').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[\s@]/g, ''); setErr('username', ''); });
+    $('cname').addEventListener('input', () => setErr('name', ''));
+    $('nfc').onchange = (e) => { $('f-nfc').hidden = !e.target.checked; setErr('nfc', ''); };
+    $('nfclink').addEventListener('input', () => setErr('nfc', ''));
+
+    function setErr(key, text) {
+      $('e-' + key).textContent = text;
+      const f = $('f-' + key); if (f) f.classList.toggle('bad', !!text);
+    }
+
+    // ── Terms: must be opened and scrolled to the end ──
+    const terms = $('terms'), sc = $('termsscroll');
+    const checkEnd = () => {
+      if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 12) { $('acceptterms').disabled = false; $('termsnote').hidden = true; }
+    };
+    sc.addEventListener('scroll', checkEnd, { passive: true });
+    $('openterms').onclick = () => { terms.showModal(); sc.scrollTop = 0; $('termstitle').focus(); checkEnd(); };
+    $('acceptterms').onclick = () => {
+      state.read = true; $('agree').disabled = false; $('agree').checked = true;
+      $('agreehint').hidden = true; setErr('agree', ''); terms.close();
+    };
+    $('agree').onchange = () => setErr('agree', '');
+    for (const d of [terms, $('notice')]) d.addEventListener('click', (e) => { if (e.target === d) d.close(); });
+
+    // ── Confirm ──
+    function validate() {
+      const post = state.style === 'post', link = $('nfclink').value.trim();
+      const errs = {
+        photo: state.photo ? '' : 'Add a photo first.',
+        username: post && !$('username').value.trim() ? 'Type the username to print.' : '',
+        nfc: post && $('nfc').checked && !/^https:\/\/\S+\.\S+/.test(link) ? 'Paste the full link to your post, starting with https://' : '',
+        name: $('cname').value.trim() ? '' : 'Add your first name.',
+        agree: $('agree').checked ? '' : (state.read ? 'Check the box to agree to the Terms.' : 'Open the Terms and read to the end first.'),
+      };
+      let first = null;
+      for (const k in errs) { setErr(k, errs[k]); if (errs[k] && !first) first = k; }
+      if (first) $('f-' + first).scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return !first;
+    }
+    $('form').onsubmit = (e) => { e.preventDefault(); setErr('send', ''); if (validate()) $('notice').showModal(); };
+    $('goback').onclick = () => $('notice').close();
+    $('golive').onclick = async () => {
+      const btn = $('golive'); btn.disabled = true; btn.textContent = 'Sending…';
+      try {
+        draw();
+        const blob = await new Promise((res) => cv.toBlob(res, 'image/png'));
+        const path = crypto.randomUUID() + '.png';
+        const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+        const code = [...crypto.getRandomValues(new Uint8Array(4))].map((n) => abc[n % abc.length]).join('');
+        const post = state.style === 'post', nfc = post && $('nfc').checked;
+        const up = await fetch(`${SB}/storage/v1/object/${BUCKET}/${path}`, { method: 'POST', headers: { ...H, 'Content-Type': 'image/png' }, body: blob });
+        if (!up.ok) throw new Error('upload ' + up.status);
+        const ins = await fetch(`${SB}/rest/v1/stone_orders`, {
+          method: 'POST', headers: { ...H, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            code, customer_name: $('cname').value.trim(), style: state.style, stone: state.stone,
+            username: post ? $('username').value.trim() : null, location: post ? ($('location').value.trim() || null) : null,
+            nfc, nfc_link: nfc ? $('nfclink').value.trim() : null, image_path: path,
+          }),
+        });
+        if (!ins.ok) throw new Error('save ' + ins.status);
+        $('donecode').textContent = code;
+        $('donetitle').textContent = `You're all set, ${$('cname').value.trim()}`;
+        $('doneimg').src = URL.createObjectURL(blob); $('donestone').dataset.stone = state.stone;
+        $('notice').close(); show('done'); $('donetitle').focus(); scrollTo(0, 0);
+      } catch (err) {
+        console.error(err); $('notice').close();
+        setErr('send', "We couldn't send your design. Check your connection and try again, or ask us at the counter.");
+      } finally { btn.disabled = false; btn.textContent = 'Yes, post it'; }
+    };
+    $('again').onclick = () => location.reload();
+
+    // ── Public wall ──
+    const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+    async function loadWall() {
+      try {
+        const r = await fetch(`${SB}/rest/v1/stone_orders?select=code,customer_name,style,stone,username,nfc,nfc_link,image_path,created_at&order=created_at.desc&limit=100`, { headers: H });
+        if (!r.ok) throw new Error(r.status);
+        const rows = await r.json(), grid = $('grid');
+        grid.replaceChildren(...rows.map((o) => {
+          const url = `${SB}/storage/v1/object/public/${BUCKET}/${encodeURIComponent(o.image_path)}`;
+          const card = el('article', 'card'), st = el('div', 'stone'), img = el('img');
+          st.dataset.stone = o.stone; img.src = url; img.loading = 'lazy'; img.alt = `Stone design by ${o.customer_name}`; st.append(img);
+          const when = new Date(o.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+          card.append(st, el('div', 'c', o.code), el('div', 'm', `${o.customer_name} · ${when}`),
+            el('div', 'm', `${o.style === 'post' ? 'Insta post' : 'Full photo'} · ${o.stone === 'cream' ? 'Cream' : 'White'}${o.nfc ? ' · NFC tag' : ''}`));
+          if (o.nfc && /^https:\/\//.test(o.nfc_link || '')) { const a = el('a', '', 'NFC link'); a.href = o.nfc_link; a.target = '_blank'; a.rel = 'noopener noreferrer nofollow'; card.append(a); }
+          const dl = el('a', 'dl', 'Download print file'); dl.href = `${url}?download=${encodeURIComponent(o.code + '-' + o.customer_name + '.png')}`; card.append(dl);
+          return card;
+        }));
+        $('wallstate').hidden = rows.length > 0;
+        $('wallstate').textContent = 'No designs yet. Be the first to make one.';
+      } catch (err) {
+        console.error(err); $('wallstate').hidden = false;
+        $('wallstate').textContent = "We couldn't load the wall. Check your connection and refresh.";
+      }
+    }
+    // The counter keeps this page open, so new designs show up on their own.
+    setInterval(() => { if (!$('wall').hidden && !document.hidden) loadWall(); }, 20000);
+
+    // ── Views ──
+    function show(view) {
+      for (const v of ['maker', 'done', 'wall']) $(v).hidden = v !== view;
+      const onWall = view === 'wall';
+      $('navlink').textContent = onWall ? 'Make yours' : 'See the wall'; $('navlink').href = onWall ? '#' : '#wall';
+      if (onWall) loadWall();
+    }
+    const route = () => { show(location.hash === '#wall' ? 'wall' : ($('donecode').textContent ? 'done' : 'maker')); scrollTo(0, 0); };
+    addEventListener('hashchange', route);
+    applyStyle(); route();
+  })();
+  </script>
+</body>
+</html>
