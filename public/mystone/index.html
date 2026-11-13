@@ -25,7 +25,7 @@
       color-scheme: light;
     }
     *, *::before, *::after { box-sizing: border-box; }
-    html { -webkit-text-size-adjust: 100%; scroll-padding-top: 340px; }
+    html { -webkit-text-size-adjust: 100%; scroll-padding-top: 290px; }
     body {
       margin: 0;
       background: var(--bg);
@@ -77,6 +77,17 @@
     .stone canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
     .stone canvas:active { cursor: grabbing; }
     .stage small { font-size: .8125rem; color: var(--ink-2); min-height: 1.2em; }
+    .mock { display: block; width: min(60vw, 264px); aspect-ratio: 1; border-radius: 14px; touch-action: none; cursor: grab; }
+    .mock:active { cursor: grabbing; }
+    .seg { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; background: var(--line); border-radius: 10px; }
+    .seg button { border: 0; background: none; padding: 4px 14px; border-radius: 8px; font-size: .8125rem; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+    .seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(72,48,30,.16); }
+    /* Phones: the pinned stone is small; a tap grows it, scrolling shrinks it back. */
+    @media (max-width: 899px) {
+      .stage { overflow-anchor: none; padding-top: 10px; padding-bottom: 8px; gap: 6px; }
+      .stage .stone, .stage .mock { width: min(42vw, 176px); transition: width .32s var(--ease-out), background-color .35s var(--ease-out); }
+      .stage.big .stone, .stage.big .mock { width: min(92vw, 62dvh, 420px); }
+    }
 
     .step { padding: 28px 0 0; }
     .step h2 { display: flex; align-items: center; gap: 12px; font-size: 1.125rem; font-weight: 800; text-transform: uppercase; letter-spacing: -0.01em; }
@@ -222,7 +233,7 @@
       .maker { display: grid; grid-template-columns: 420px 1fr; gap: 0 72px; align-items: start; }
       .maker .hero { grid-column: 1 / -1; padding-bottom: 24px; }
       .stage { top: 32px; margin: 0; padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
-      .stone { width: 420px; }
+      .stone, .mock { width: 420px; }
       .form { max-width: 480px; }
       .form .step:first-child { padding-top: 0; }
       .grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
@@ -253,7 +264,12 @@
     </div>
 
     <div class="stage">
-      <div class="stone" id="stone" data-stone="white">
+      <div class="seg" id="seg" role="tablist" aria-label="Preview">
+        <button type="button" role="tab" data-v="stone" aria-selected="true">On the stone</button>
+        <button type="button" role="tab" data-v="design" aria-selected="false">Design</button>
+      </div>
+      <canvas class="mock" id="mock" width="1460" height="1460" role="img" aria-label="Your design on the stone"></canvas>
+      <div class="stone" id="stone" data-stone="white" hidden>
         <canvas id="cv" width="1200" height="1200" role="img" aria-label="Preview of your stone"></canvas>
       </div>
       <small id="stagehint">This is your stone. It updates as you go.</small>
@@ -513,26 +529,28 @@
     const $ = (id) => document.getElementById(id);
 
     const cv = $('cv'), ctx = cv.getContext('2d');
-    const state = { style: 'post', stone: 'white', photo: null, avatar: null, zoom: 1, px: 0.5, py: 0.5, read: false };
+    const state = { style: 'post', stone: 'white', photo: null, avatar: null, zoom: 1, px: 0.5, py: 0.5, read: false, view: 'stone' };
 
     // ── Drawing: the preview and the print file are the same canvas. ──
-    const area = () => state.style === 'full' ? { x: 0, y: 0, w: S, h: S } : { x: 40, y: 215, w: 1120, h: 795 };
+    // Post layout is the same as the /stone frame page: everything is in units of 1% of the width.
+    const U = S / 100, HEAD = 15 * U, FOOT = 14 * U, PAD = 4 * U;
+    const area = () => state.style === 'full' ? { x: 0, y: 0, w: S, h: S } : { x: 0, y: HEAD, w: S, h: S - HEAD - FOOT };
     const coverSize = (img, r, zoom) => {
       const sc = Math.max(r.w / img.width, r.h / img.height) * zoom;
       return { dw: img.width * sc, dh: img.height * sc };
     };
     const ICON = {
-      heart: 'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z',
-      comment: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z',
-      send: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z',
-      bookmark: 'M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z',
+      heart: 'M12 20.3s-7.6-4.6-9.4-9.3C1.3 7.6 3.5 4.3 7 4.3c2 0 3.7 1.1 5 3 1.3-1.9 3-3 5-3 3.5 0 5.7 3.3 4.4 6.7-1.8 4.7-9.4 9.3-9.4 9.3z',
+      comment: 'M20.7 11.6a8.6 8.6 0 0 1-12.7 7.6L3 20.6l1.5-4.8a8.6 8.6 0 1 1 16.2-4.2z',
+      send: 'M21.5 3 2.8 9.4l7.4 3.3L13.6 21 21.5 3zM10.2 12.7 21.5 3',
+      bookmark: 'M18.5 20.5 12 15.6l-6.5 4.9V4.8c0-.8.7-1.5 1.5-1.5h10c.8 0 1.5.7 1.5 1.5v15.7z',
       image: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21',
     };
-    function icon(name, x, y, size, color, fill) {
+    function icon(name, x, y, size, color, fill, lw = size / 12) {
       ctx.save(); ctx.translate(x, y); ctx.scale(size / 24, size / 24);
       const p = new Path2D(ICON[name]);
       if (fill) { ctx.fillStyle = color; ctx.fill(p); }
-      else { ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke(p); }
+      else { ctx.strokeStyle = color; ctx.lineWidth = lw * 24 / size; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke(p); }
       ctx.restore();
     }
     function cover(img, r, zoom, px, py) {
@@ -547,49 +565,87 @@
       const r = area();
       if (state.photo) cover(state.photo, r, state.zoom, state.px, state.py);
       else {
-        ctx.fillStyle = 'rgba(111,69,39,.10)'; ctx.fillRect(r.x, r.y, r.w, r.h);
-        icon('image', r.x + r.w / 2 - 60, r.y + r.h / 2 - 100, 120, '#8C5B38');
-        ctx.fillStyle = '#6F4527'; ctx.font = `600 50px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('Tap to add your photo', r.x + r.w / 2, r.y + r.h / 2 + 80);
+        ctx.fillStyle = '#eef0f3'; ctx.fillRect(r.x, r.y, r.w, r.h);
+        icon('image', r.x + r.w / 2 - 50, r.y + r.h / 2 - 90, 100, '#a3a8b4');
+        ctx.fillStyle = '#8b909c'; ctx.font = `${4.2 * U}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('Tap to add your photo', r.x + r.w / 2, r.y + r.h / 2 + 60);
       }
       if (state.style === 'post') chrome();
+      if (state.view === 'stone') drawMock();
     }
     function chrome() {
-      const cx = 112, cy = 122;
-      // Story-style ring around the profile picture.
-      const g = ctx.createLinearGradient(cx - 62, cy + 62, cx + 62, cy - 62);
-      g.addColorStop(0, '#F9B24A'); g.addColorStop(.5, '#E0306B'); g.addColorStop(1, '#8A3AB9');
-      ctx.strokeStyle = g; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(cx, cy, 59, 0, Math.PI * 2); ctx.stroke();
+      // Header: story ring + profile picture + name on the left, dots on the right.
+      const r = 4.6 * U, cx = PAD + r, cy = HEAD / 2, ir = r - 1.05 * U;
+      const g = ctx.createLinearGradient(cx - r, cy + r, cx + r, cy - r);
+      g.addColorStop(0, '#f9ce34'); g.addColorStop(.5, '#ee2a7b'); g.addColorStop(1, '#6228d7');
+      ctx.strokeStyle = g; ctx.lineWidth = .55 * U; ctx.beginPath(); ctx.arc(cx, cy, r - .275 * U, 0, Math.PI * 2); ctx.stroke();
+      const user = $('username').value.trim() || 'username';
       const av = state.avatar || state.photo;
-      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, 50, 0, Math.PI * 2); ctx.clip();
-      if (av) { const b = { x: cx - 50, y: cy - 50, w: 100, h: 100 }; const { dw, dh } = coverSize(av, b, 1); ctx.drawImage(av, b.x + (b.w - dw) / 2, b.y + (b.h - dh) / 2, dw, dh); }
-      else { ctx.fillStyle = 'rgba(111,69,39,.16)'; ctx.fillRect(cx - 50, cy - 50, 100, 100); }
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, ir, 0, Math.PI * 2); ctx.clip();
+      if (av) { const b = { x: cx - ir, y: cy - ir, w: 2 * ir, h: 2 * ir }; const { dw, dh } = coverSize(av, b, 1); ctx.drawImage(av, b.x + (b.w - dw) / 2, b.y + (b.h - dh) / 2, dw, dh); }
+      else {
+        ctx.fillStyle = '#e9ebef'; ctx.fillRect(cx - ir, cy - ir, 2 * ir, 2 * ir);
+        ctx.fillStyle = '#9aa0ad'; ctx.font = `600 ${ir * 1.05}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(user[0].toUpperCase(), cx, cy + ir * .05);
+      }
       ctx.restore();
 
-      const user = $('username').value.trim() || 'your.username';
-      const loc = $('location').value.trim();
-      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-      ctx.fillStyle = '#141110'; ctx.font = `700 46px ${FONT}`;
-      ctx.fillText(user, 192, loc ? 116 : 138);
-      if (loc) { ctx.fillStyle = '#4A413C'; ctx.font = `400 35px ${FONT}`; ctx.fillText(loc, 192, 162); }
-      ctx.fillStyle = '#141110';
-      for (const dx of [0, 24, 48]) { ctx.beginPath(); ctx.arc(1096 + dx, cy, 6, 0, Math.PI * 2); ctx.fill(); }
+      const loc = $('location').value.trim(), tx = cx + r + 2.6 * U, max = S - tx - 12 * U;
+      ctx.textAlign = 'left'; ctx.fillStyle = '#111'; ctx.font = `600 ${3.6 * U}px ${FONT}`;
+      if (loc) {
+        ctx.textBaseline = 'alphabetic'; ctx.fillText(user, tx, cy - .35 * U, max);
+        ctx.font = `${3.1 * U}px ${FONT}`; ctx.fillStyle = '#333'; ctx.fillText(loc, tx, cy + 3.6 * U, max);
+      } else { ctx.textBaseline = 'middle'; ctx.fillText(user, tx, cy, max); }
+      ctx.fillStyle = '#111';
+      for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(S - PAD - U - i * 2.4 * U, cy, .55 * U, 0, Math.PI * 2); ctx.fill(); }
 
-      // Footer row
-      const y = 1070, size = 58, mid = y + size / 2 + 2;
-      ctx.font = `700 38px ${FONT}`; ctx.textBaseline = 'middle'; ctx.fillStyle = '#141110';
-      let x = 52;
+      // Footer: heart / comment / share on the left, save on the right, each with its count.
+      const size = 6.6 * U, lw = .55 * U, y = S - FOOT + (FOOT - size) / 2, mid = y + size / 2 + .15 * U;
+      ctx.font = `600 ${3.4 * U}px ${FONT}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      let x = PAD;
       const put = (name, text, color, fill) => {
-        icon(name, x, y, size, color, fill); x += size + 14;
-        if (text) { ctx.fillText(text, x, mid); x += ctx.measureText(text).width + 40; }
+        icon(name, x, y, size, color, fill, lw); x += size + 1.4 * U;
+        ctx.fillStyle = '#111';
+        if (text) { ctx.fillText(text, x, mid); x += ctx.measureText(text).width; }
+        x += 4 * U;
       };
-      put('heart', $('likes').value.trim(), '#ED4956', true);
-      put('comment', $('comments').value.trim(), '#141110');
-      put('send', $('shares').value.trim(), '#141110');
-      icon('bookmark', 1148 - size, y, size, '#141110');
+      put('heart', $('likes').value.trim(), '#ff3040', true);
+      put('comment', $('comments').value.trim(), '#111');
+      put('send', $('shares').value.trim(), '#111');
+      icon('bookmark', S - PAD - size, y, size, '#111', false, lw);
       const saves = $('saves').value.trim();
-      if (saves) { ctx.textAlign = 'right'; ctx.fillText(saves, 1148 - size - 12, mid); }
+      if (saves) { ctx.textAlign = 'right'; ctx.fillText(saves, S - PAD - size - 1.4 * U, mid); }
     }
+
+    // ── On the stone: the design printed on a photo of the real stone (same picture as /stone). ──
+    const mock = $('mock'), mctx = mock.getContext('2d');
+    const FACE = { x: 236, y: 218, w: 553, h: 553, r: 46 };   // printable face inside stone.jpg (1024×1024)
+    const CROP = { x: 150, y: 140, w: 730 };                   // the part of the picture we show
+    const stoneImg = new Image();
+    stoneImg.onload = () => draw(); stoneImg.src = '/stone/stone.jpg';
+    function drawMock() {
+      const k = mock.width / CROP.w, M = mock.width;
+      mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.globalCompositeOperation = 'source-over';
+      mctx.fillStyle = '#fff'; mctx.fillRect(0, 0, M, M);
+      mctx.setTransform(k, 0, 0, k, -CROP.x * k, -CROP.y * k);
+      if (stoneImg.complete && stoneImg.naturalWidth) mctx.drawImage(stoneImg, 0, 0, 1024, 1024);
+      // multiply lets the marble grain show through the ink, like a real print
+      mctx.globalCompositeOperation = 'multiply';
+      if (state.stone === 'cream') {
+        // ponytail: cream is the white stone photo tinted; swap in a real cream photo when there is one
+        mctx.fillStyle = '#EFE3CA'; mctx.beginPath(); mctx.roundRect(224, 207, 579, 603, 56); mctx.fill();
+      }
+      mctx.save(); mctx.beginPath(); mctx.roundRect(FACE.x, FACE.y, FACE.w, FACE.h, FACE.r); mctx.clip();
+      mctx.imageSmoothingQuality = 'high';
+      mctx.drawImage(cv, FACE.x, FACE.y, FACE.w, FACE.h);
+      mctx.restore();
+    }
+    function setView(v) {
+      state.view = v; mock.hidden = v !== 'stone'; $('stone').hidden = v === 'stone';
+      for (const b of $('seg').children) b.setAttribute('aria-selected', b.dataset.v === v);
+      draw();
+    }
+    $('seg').onclick = (e) => { const b = e.target.closest('button'); if (b) setView(b.dataset.v); };
 
     // ── Photos ──
     async function loadImage(file, max) {
@@ -613,7 +669,7 @@
         $('zoomrow').hidden = false; $('pickphoto').textContent = 'Change photo';
         const small = Math.min(state.photo.width, state.photo.height) < 700;
         $('photoname').textContent = small ? 'This photo is small and may print soft.' : 'Looks good.';
-        $('stagehint').textContent = 'Drag the photo to move it.';
+        $('stagehint').textContent = phone.matches ? 'Tap the stone to see it bigger.' : 'Drag the photo to move it.';
         setErr('photo', '');
       } catch { setErr('photo', "We couldn't open that file. Try a different photo."); }
       draw();
@@ -626,22 +682,37 @@
     };
     $('zoom').oninput = (e) => { state.zoom = +e.target.value; draw(); };
 
-    // Drag to reposition: the photo follows the finger 1:1.
-    let last = null;
-    cv.addEventListener('pointerdown', (e) => {
-      if (!state.photo) { $('photo').click(); return; }
-      cv.setPointerCapture(e.pointerId); last = { x: e.clientX, y: e.clientY };
-    });
-    cv.addEventListener('pointermove', (e) => {
-      if (!last) return;
-      const k = S / cv.clientWidth, r = area(), { dw, dh } = coverSize(state.photo, r, state.zoom);
-      const clamp = (v) => Math.min(1, Math.max(0, v));
-      if (dw > r.w + 1) state.px = clamp(state.px - (e.clientX - last.x) * k / (dw - r.w));
-      if (dh > r.h + 1) state.py = clamp(state.py - (e.clientY - last.y) * k / (dh - r.h));
-      last = { x: e.clientX, y: e.clientY }; draw();
-    });
-    const drop = () => { last = null; };
-    cv.addEventListener('pointerup', drop); cv.addEventListener('pointercancel', drop);
+    // Drag to reposition: the photo follows the finger 1:1. A tap without a drag zooms the stone (phones).
+    const phone = matchMedia('(max-width: 899px)'), stage = document.querySelector('.stage');
+    let last = null, start = null, bigAt = 0;
+    const setBig = (on) => {
+      stage.classList.toggle('big', on); bigAt = scrollY;
+      if (state.photo) $('stagehint').textContent = on ? 'Drag the photo to move it. Tap or scroll to shrink.' : 'Tap the stone to see it bigger.';
+    };
+    addEventListener('scroll', () => {
+      if (stage.classList.contains('big') && Math.abs(scrollY - bigAt) > 40) setBig(false);
+    }, { passive: true });
+    // On the mock the design only covers the stone's face, so a finger pixel is worth more design pixels.
+    const scaleOf = (c) => c === cv ? S / c.clientWidth : S / (c.clientWidth * FACE.w / CROP.w);
+    for (const c of [cv, mock]) {
+      c.addEventListener('pointerdown', (e) => {
+        if (!state.photo) { $('photo').click(); return; }
+        c.setPointerCapture(e.pointerId); last = start = { x: e.clientX, y: e.clientY };
+      });
+      c.addEventListener('pointerup', (e) => {
+        if (start && phone.matches && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 8) setBig(!stage.classList.contains('big'));
+        start = last = null;
+      });
+      c.addEventListener('pointermove', (e) => {
+        if (!last) return;
+        const k = scaleOf(c), r = area(), { dw, dh } = coverSize(state.photo, r, state.zoom);
+        const clamp = (v) => Math.min(1, Math.max(0, v));
+        if (dw > r.w + 1) state.px = clamp(state.px - (e.clientX - last.x) * k / (dw - r.w));
+        if (dh > r.h + 1) state.py = clamp(state.py - (e.clientY - last.y) * k / (dh - r.h));
+        last = { x: e.clientX, y: e.clientY }; draw();
+      });
+      c.addEventListener('pointercancel', () => { start = last = null; });
+    }
 
     // ── Form state ──
     function applyStyle() {
@@ -654,7 +725,7 @@
     }
     document.querySelectorAll('input[name=style]').forEach((i) => i.onchange = applyStyle);
     document.querySelectorAll('input[name=stone]').forEach((i) => i.onchange = () => {
-      state.stone = i.value; $('stone').dataset.stone = i.value;
+      state.stone = i.value; $('stone').dataset.stone = i.value; draw();
     });
     for (const id of ['username', 'location', 'likes', 'comments', 'shares', 'saves']) $(id).addEventListener('input', draw);
     $('username').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[\s@]/g, ''); setErr('username', ''); });
