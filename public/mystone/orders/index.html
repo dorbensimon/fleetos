@@ -66,6 +66,7 @@
     .head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .code { font-size: 1.5rem; font-weight: 900; letter-spacing: .06em; line-height: 1.1; font-variant-numeric: tabular-nums; }
     .chip { padding: 2px 10px; border-radius: 999px; font-size: .8125rem; font-weight: 700; background: var(--sun); }
+    .card[data-status=approved] .chip { background: var(--ink); color: #fff; }
     .card[data-status=ready] .chip { background: var(--ok); color: #fff; }
     .card[data-status=done] .chip { background: var(--line); }
     .name { font-weight: 700; overflow-wrap: anywhere; }
@@ -76,6 +77,13 @@
     .links .del[disabled] { opacity: .5; }
     .acts { display: grid; gap: 8px; }
     .state { padding: 40px 0; color: var(--ink-2); }
+    /* One customer's order: a header over that customer's stones. */
+    .order { display: grid; gap: 8px; }
+    .order + .order, .order + .card, .card + .order { margin-top: 8px; }
+    .ohead { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 4px 4px 0; }
+    .ohead b { font-size: 1.0625rem; overflow-wrap: anywhere; }
+    .ohead .m { margin-inline-end: auto; }
+    .ohead .btn { min-height: 38px; padding: 0 14px; font-size: .875rem; }
     @media (max-width: 599px) {
       .card { grid-template-columns: 76px 1fr; }
       .acts { grid-column: 1 / -1; grid-auto-flow: column; grid-auto-columns: 1fr; }
@@ -103,7 +111,8 @@
       <div class="bar">
         <input type="search" id="q" placeholder="חיפוש לפי קוד או שם" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="חיפוש הזמנה">
         <div class="tabs">
-          <button type="button" data-f="new">בהכנה<i></i></button>
+          <button type="button" data-f="new">ממתינות לאישור<i></i></button>
+          <button type="button" data-f="approved">בהכנה<i></i></button>
           <button type="button" data-f="ready">מוכנות לאיסוף<i></i></button>
           <button type="button" data-f="done">נמסרו<i></i></button>
           <button type="button" data-f="all">הכול<i></i></button>
@@ -125,7 +134,7 @@
     const sb = supabase.createClient(SB, KEY);
     const $ = (id) => document.getElementById(id);
     const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
-    const LABEL = { new: 'בהכנה', ready: 'מוכנה לאיסוף', done: 'נמסרה' };
+    const LABEL = { new: 'ממתינה לאישור', approved: 'בהכנה', ready: 'מוכנה לאיסוף', done: 'נמסרה' };
     let orders = [], filter = 'new', owner = false;
     const say = (text) => { $('msg').textContent = text; };
 
@@ -153,7 +162,7 @@
     async function load() {
       // ponytail: newest 500 orders only. Add paging if the list ever outgrows that.
       const { data, error } = await sb.from('stone_orders')
-        .select('id,code,customer_name,style,stone,nfc,nfc_link,image_path,status,created_at')
+        .select('id,code,customer_name,style,stone,nfc,nfc_link,image_path,status,created_at,customer_ref,closed_at')
         .order('created_at', { ascending: false }).limit(500);
       if (error) { console.error(error); say('לא הצלחנו לטעון את ההזמנות. בדוק את החיבור ורענן.'); return; }
       say(''); orders = data; render();
@@ -171,9 +180,45 @@
         ? orders.filter((o) => o.code.toLowerCase().includes(q) || o.customer_name.toLowerCase().includes(q))
         : orders.filter((o) => filter === 'all' || o.status === filter);
       if (!q && filter === 'new') rows = rows.slice().reverse(); // the queue: whoever ordered first is on top
-      $('list').replaceChildren(...rows.map(card));
+      // One order = one customer's stones until the order is closed. Orders from before
+      // customers had their own page have no customer, so each stays on its own.
+      const groups = new Map();
+      for (const o of rows) {
+        const k = o.customer_ref ? o.customer_ref + '|' + (o.closed_at || '') : o.id;
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(o);
+      }
+      $('list').replaceChildren(...[...groups.values()].map((g) => {
+        if (!g[0].customer_ref) return card(g[0]);
+        const box = el('section', 'order'); box.append(orderHead(g[0]), ...g.map(card));
+        return box;
+      }));
       $('empty').hidden = rows.length > 0;
-      $('empty').textContent = q ? 'לא נמצאה הזמנה כזאת.' : filter === 'new' ? 'אין הזמנות שמחכות להכנה.' : 'אין כאן הזמנות.';
+      $('empty').textContent = q ? 'לא נמצאה הזמנה כזאת.' : filter === 'new' ? 'אין אבנים שמחכות לאישור.' : 'אין כאן הזמנות.';
+    }
+
+    // The header counts the whole order, not only the stones the current tab shows.
+    function orderHead(first) {
+      const { customer_ref: ref, closed_at: closed } = first;
+      const all = orders.filter((o) => o.customer_ref === ref && o.closed_at === closed);
+      const waiting = all.filter((o) => o.status === 'new').length;
+      const head = el('div', 'ohead'), name = el('b', '', `ההזמנה של ${first.customer_name}`); name.dir = 'auto';
+      head.append(name, el('span', 'm', `${all.length === 1 ? 'אבן אחת' : all.length + ' אבנים'}${closed ? ' · סגורה' : ''}`));
+      const act = (text, cls, patch, where) => {
+        const b = el('button', cls, text); b.type = 'button'; head.append(b);
+        b.onclick = async () => {
+          for (const x of head.querySelectorAll('button')) x.disabled = true;
+          let q = sb.from('stone_orders').update(patch).eq('customer_ref', ref);
+          q = closed ? q.eq('closed_at', closed) : q.is('closed_at', null);
+          const { error } = await (where ? q.eq('status', where) : q).select('id');
+          say(error ? 'השינוי לא נשמר. נסה שוב.' : ''); if (error) console.error(error);
+          load();
+        };
+      };
+      if (waiting) act(waiting === 1 ? 'אישור האבן' : `אישור ${waiting} האבנים`, 'btn ok', { status: 'approved' }, 'new');
+      if (closed) act('פתיחה מחדש', 'btn ghost', { closed_at: null });
+      else act('סגירת הזמנה', 'btn ghost', { closed_at: new Date().toISOString() });
+      return head;
     }
 
     function card(o) {
@@ -194,8 +239,9 @@
 
       const acts = el('div', 'acts');
       const act = (text, to, cls) => { const b = el('button', cls, text); b.type = 'button'; b.onclick = () => setStatus(o, to, acts); acts.append(b); };
-      if (o.status === 'new') act('מוכנה לאיסוף', 'ready', 'btn ok');
-      if (o.status === 'ready') { act('נמסרה ללקוח', 'done', 'btn'); act('חזרה לבהכנה', 'new', 'btn ghost'); }
+      if (o.status === 'new') act('אישור', 'approved', 'btn ok');
+      if (o.status === 'approved') { act('מוכנה לאיסוף', 'ready', 'btn ok'); act('ביטול אישור', 'new', 'btn ghost'); }
+      if (o.status === 'ready') { act('נמסרה ללקוח', 'done', 'btn'); act('חזרה לבהכנה', 'approved', 'btn ghost'); }
       if (o.status === 'done') act('חזרה למוכנה', 'ready', 'btn ghost');
       c.append(st, info, acts);
       return c;

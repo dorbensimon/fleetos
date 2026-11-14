@@ -229,8 +229,13 @@
     .result p { color: var(--ink-2); }
     .badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: .875rem; font-weight: 700; background: var(--ink); color: #fff; }
     .badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .badge[data-status="new"] { background: transparent; color: var(--ink); box-shadow: 0 0 0 1.5px var(--ink) inset; }
     .badge[data-status="ready"] { background: #1F7A4D; color: #fff; }
     .badge[data-status="done"] { background: var(--line); color: var(--ink); }
+
+    /* My stones */
+    .card .badge { justify-self: start; margin: 2px 0; }
+    .card .linkbtn { justify-self: start; font-size: .875rem; padding: 6px 0; }
 
     @media (min-width: 900px) {
       :root { --gutter: 40px; }
@@ -257,7 +262,7 @@
   <div class="top">
     <a class="brand" href="#">Stone of Words</a>
     <nav>
-      <a class="nav" href="#track">Track order</a>
+      <a class="nav" id="navmine" href="#track">Track order</a>
       <a class="nav" id="navlink" href="#wall">See the wall</a>
     </nav>
   </div>
@@ -408,12 +413,30 @@
     <div class="stone" id="donestone"><img id="doneimg" alt="Your stone design"></div>
     <p>Show this code at the counter</p>
     <div class="code" id="donecode"></div>
-    <p class="read">Your design is saved. Use this code to check when your stone is ready.</p>
+    <p class="read">Your design is saved. We'll approve it shortly. Follow it under My stones.</p>
     <div class="row">
-      <a class="btn" id="tracklink" href="#track">Track my order</a>
+      <a class="btn" href="#mine">My stones</a>
       <button type="button" class="btn ghost" id="again">Make another</button>
+      <button type="button" class="btn ghost" data-share>Save my link</button>
       <a class="btn ghost" href="#wall">See the wall</a>
     </div>
+    <p class="read" data-sharenote>Your link opens your stones on any phone. Keep it to yourself.</p>
+  </main>
+
+  <!-- ───────── My stones ───────── -->
+  <main class="wrap" id="mine" hidden>
+    <div class="wallhead">
+      <h1>Your <em>stones</em></h1>
+      <p class="read">Every stone you sent. This page updates by itself, no need to refresh.</p>
+      <div class="row">
+        <a class="btn" href="#make">Add a stone</a>
+        <button type="button" class="btn ghost" data-share>Save my link</button>
+      </div>
+      <p class="read" data-sharenote>Your link opens your stones on any phone. Keep it to yourself.</p>
+      <p class="msg" id="e-mine" role="alert"></p>
+    </div>
+    <div class="grid" id="minegrid" aria-live="polite"></div>
+    <p class="state" id="minestate">Loading your stones…</p>
   </main>
 
   <!-- ───────── Track an order ───────── -->
@@ -533,6 +556,9 @@
     const S = 1200;
     const FONT = '-apple-system, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
     const $ = (id) => document.getElementById(id);
+    // The customer's secret key: made on the first stone, kept in this browser, never shown on the wall.
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+    let myKey = ''; try { const k = localStorage.getItem('stone-key'); if (UUID.test(k)) myKey = k; } catch {}
 
     const cv = $('cv'), ctx = cv.getContext('2d');
     const state = { style: 'post', stone: 'white', photo: null, avatar: null, zoom: 1, px: 0.5, py: 0.5, read: false, view: 'stone' };
@@ -868,6 +894,7 @@
         const path = crypto.randomUUID() + '.png';
         const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
         const post = state.style === 'post', nfc = post && $('nfc').checked;
+        if (!myKey) { myKey = crypto.randomUUID(); try { localStorage.setItem('stone-key', myKey); } catch {} }
         const up = await fetch(`${SB}/storage/v1/object/${BUCKET}/${path}`, { method: 'POST', headers: { ...H, 'Content-Type': 'image/png' }, body: blob });
         if (!up.ok) throw new Error('upload ' + up.status);
         // The code is the tracking number, so it must be unique: 409 means it's taken, draw another.
@@ -879,13 +906,13 @@
             body: JSON.stringify({
               code, customer_name: $('cname').value.trim(), style: state.style, stone: state.stone,
               username: post ? $('username').value.trim() : null, location: post ? ($('location').value.trim() || null) : null,
-              nfc, nfc_link: nfc ? $('nfclink').value.trim() : null, image_path: path,
+              nfc, nfc_link: nfc ? $('nfclink').value.trim() : null, image_path: path, customer_key: myKey,
             }),
           });
           if (ins.status !== 409) break;
         }
         if (!ins.ok) throw new Error('save ' + ins.status);
-        $('donecode').textContent = code; $('tracklink').href = '#track=' + code;
+        $('donecode').textContent = code;
         try { localStorage.setItem('stone-code', code); } catch {}
         $('donetitle').textContent = `You're all set, ${$('cname').value.trim()}`;
         $('doneimg').src = URL.createObjectURL(blob); $('donestone').dataset.stone = state.stone;
@@ -895,7 +922,8 @@
         setErr('send', "We couldn't send your design. Check your connection and try again, or ask us at the counter.");
       } finally { btn.disabled = false; btn.textContent = 'Yes, post it'; }
     };
-    $('again').onclick = () => location.reload();
+    // A clean form for the next stone. Already on #make means no hashchange would fire, so reload directly.
+    $('again').onclick = () => { if (location.hash === '#make') location.reload(); else location.hash = '#make'; };
 
     // ── Public wall ──
     const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
@@ -924,7 +952,8 @@
     }
     // ── Track an order ──
     const STATUS = {
-      new: ['In progress', "We're making it", "Your stone isn't ready yet. Keep this page open, it updates by itself."],
+      new: ['Waiting', 'Waiting for approval', "We got your design and will approve it shortly. This page updates by itself."],
+      approved: ['Approved', "We're making it", 'Your design is approved and your stone is being made.'],
       ready: ['Ready', 'Your stone is ready!', 'Come pick it up at the counter and show us this code.'],
       done: ['Picked up', 'Already picked up', 'This stone was collected. Enjoy it!'],
     };
@@ -962,6 +991,64 @@
       else if (!$('trackcode').value) $('trackcode').focus();
     }
 
+    // ── My stones: everything sent with this phone's secret key ──
+    const rpc = (fn, body) => fetch(`${SB}/rest/v1/rpc/${fn}`, { method: 'POST', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    let mineJson = null; // what is on screen, so an unchanged check doesn't redraw the pictures
+    // Returns how many stones the customer has, or undefined when the check failed.
+    async function loadMine() {
+      try {
+        let text = '[]';
+        if (myKey) {
+          const r = await rpc('stone_my_orders', { p_key: myKey });
+          if (!r.ok) throw new Error(r.status);
+          text = await r.text();
+        }
+        const rows = JSON.parse(text);
+        if (text === mineJson) return rows.length;
+        mineJson = text;
+        $('minegrid').replaceChildren(...rows.map((o) => {
+          const card = el('article', 'card'), st = el('div', 'stone'), img = el('img');
+          st.dataset.stone = o.stone; img.src = `${SB}/storage/v1/object/public/${BUCKET}/${encodeURIComponent(o.image_path)}`;
+          img.loading = 'lazy'; img.alt = `Your stone ${o.code}`; st.append(img);
+          const [badge, , text] = STATUS[o.status] || STATUS.new;
+          const b = el('span', 'badge', badge); b.dataset.status = o.status;
+          card.append(st, el('div', 'c', o.code), b, el('div', 'm', text));
+          if (o.status === 'new') { const rm = el('button', 'linkbtn', 'Remove this stone'); rm.type = 'button'; rm.onclick = () => removeMine(o, rm); card.append(rm); }
+          return card;
+        }));
+        $('minestate').hidden = rows.length > 0;
+        $('minestate').textContent = 'No stones here yet. Tap Add a stone to make your first one.';
+        return rows.length;
+      } catch (err) {
+        console.error(err);
+        if (mineJson === null) { $('minestate').hidden = false; $('minestate').textContent = "We couldn't load your stones. Check your connection and refresh."; }
+      }
+    }
+    // Only a stone that still waits for approval can go; the database checks that again.
+    async function removeMine(o, btn) {
+      if (!confirm(`Remove stone ${o.code}? This can't be undone.`)) return;
+      btn.disabled = true; setErr('mine', '');
+      try {
+        const r = await fetch(`${SB}/functions/v1/stone-remove`, { method: 'POST', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify({ key: myKey, code: o.code }) });
+        if (!r.ok) throw new Error(r.status);
+        if (!(await r.json()).removed) setErr('mine', "This stone was already approved, so it can't be removed here. Ask us at the counter.");
+      } catch (err) {
+        console.error(err); setErr('mine', "We couldn't remove it. Check your connection and try again.");
+      }
+      loadMine();
+    }
+    // The personal link carries the key, so the same stones open on another phone or browser.
+    for (const b of document.querySelectorAll('[data-share]')) b.onclick = async () => {
+      const url = `${location.origin}${location.pathname}#me=${myKey}`;
+      const note = (t) => { for (const n of document.querySelectorAll('[data-sharenote]')) n.textContent = t; };
+      try {
+        if (navigator.share) await navigator.share({ title: 'My stones · Stone of Words', url });
+        else { await navigator.clipboard.writeText(url); note('Link copied. Paste it somewhere safe, like a note or a message to yourself.'); }
+      } catch (err) { if (err.name !== 'AbortError') note(url); }
+    };
+    setInterval(() => { if (!document.hidden && !$('mine').hidden) loadMine(); }, 8000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && !$('mine').hidden) loadMine(); });
+
     // The counter keeps the wall open and a customer keeps the tracker open, so both refresh on their own.
     setInterval(() => {
       if (document.hidden) return;
@@ -971,15 +1058,27 @@
 
     // ── Views ──
     function show(view) {
-      for (const v of ['maker', 'done', 'wall', 'track']) $(v).hidden = v !== view;
+      for (const v of ['maker', 'done', 'wall', 'track', 'mine']) $(v).hidden = v !== view;
       const onWall = view === 'wall';
-      $('navlink').textContent = onWall ? 'Make yours' : 'See the wall'; $('navlink').href = onWall ? '#' : '#wall';
+      $('navlink').textContent = onWall ? 'Make yours' : 'See the wall'; $('navlink').href = onWall ? '#make' : '#wall';
+      $('navmine').textContent = myKey ? 'My stones' : 'Track order'; $('navmine').href = myKey ? '#mine' : '#track';
       if (onWall) loadWall();
     }
     const route = () => {
-      const h = location.hash, onTrack = h.startsWith('#track');
-      show(onTrack ? 'track' : h === '#wall' ? 'wall' : ($('donecode').textContent ? 'done' : 'maker')); scrollTo(0, 0);
+      let h = location.hash;
+      if (h.startsWith('#me=')) { // opened from a personal link: this browser now belongs to that customer
+        const k = h.slice(4).toLowerCase();
+        if (UUID.test(k)) { myKey = k; mineJson = null; try { localStorage.setItem('stone-key', k); } catch {} }
+        history.replaceState(null, '', '#mine'); h = '#mine';
+      }
+      // A design was already sent from this page: start the next one from a clean form.
+      if (h === '#make' && $('donecode').textContent) { location.reload(); return; }
+      const onTrack = h.startsWith('#track'), home = h === '' || h === '#';
+      // Someone who already has stones lands on them; everyone else lands on the maker.
+      const view = onTrack ? 'track' : h === '#wall' ? 'wall' : h === '#mine' || (home && myKey) ? 'mine' : 'maker';
+      show(view); scrollTo(0, 0);
       if (onTrack) openTrack(h.slice(7));
+      if (view === 'mine') loadMine().then((n) => { if (n === 0 && home && !$('mine').hidden) show('maker'); });
     };
     addEventListener('hashchange', route);
     applyStyle(); route();
