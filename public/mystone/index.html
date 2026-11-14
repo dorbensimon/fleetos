@@ -79,6 +79,7 @@
     .stage small { font-size: .8125rem; color: var(--ink-2); min-height: 1.2em; }
     .mock { display: block; width: min(60vw, 264px); aspect-ratio: 1; border-radius: 14px; touch-action: none; cursor: grab; }
     .mock:active { cursor: grabbing; }
+    #mock3d { border-radius: 0; filter: drop-shadow(0 12px 14px rgba(72,48,30,.26)); }
     .seg { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; background: var(--line); border-radius: 10px; }
     .seg button { border: 0; background: none; padding: 4px 14px; border-radius: 8px; font-size: .8125rem; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
     .seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(72,48,30,.16); }
@@ -269,6 +270,7 @@
         <button type="button" role="tab" data-v="design" aria-selected="false">Design</button>
       </div>
       <canvas class="mock" id="mock" width="1460" height="1460" role="img" aria-label="Your design on the stone"></canvas>
+      <canvas class="mock" id="mock3d" hidden role="img" aria-label="Your stone in 3D. Drag to spin it."></canvas>
       <div class="stone" id="stone" data-stone="white" hidden>
         <canvas id="cv" width="1200" height="1200" role="img" aria-label="Preview of your stone"></canvas>
       </div>
@@ -310,7 +312,7 @@
           <div class="field" id="zoomrow" hidden>
             <label for="zoom">Zoom</label>
             <input type="range" id="zoom" min="1" max="3" step="0.01" value="1">
-            <span class="hint">Drag the photo on the stone to move it.</span>
+            <span class="hint">Drag the photo in the Design view to move it.</span>
           </div>
         </div>
       </section>
@@ -571,7 +573,7 @@
         ctx.fillText('Tap to add your photo', r.x + r.w / 2, r.y + r.h / 2 + 60);
       }
       if (state.style === 'post') chrome();
-      if (state.view === 'stone') drawMock();
+      if (state.view === 'stone') (stone3d ? stone3d.paint() : drawMock());
     }
     function chrome() {
       // Header: story ring + profile picture + name on the left, dots on the right.
@@ -641,11 +643,94 @@
       mctx.restore();
     }
     function setView(v) {
-      state.view = v; mock.hidden = v !== 'stone'; $('stone').hidden = v === 'stone';
+      state.view = v; mock.hidden = v !== 'stone' || !!stone3d; cv3.hidden = v !== 'stone' || !stone3d; $('stone').hidden = v === 'stone';
       for (const b of $('seg').children) b.setAttribute('aria-selected', b.dataset.v === v);
-      draw();
+      hint(); draw();
     }
     $('seg').onclick = (e) => { const b = e.target.closest('button'); if (b) setView(b.dataset.v); };
+    function hint() {
+      const spin = stone3d && state.view === 'stone', big = stage.classList.contains('big');
+      $('stagehint').textContent = !state.photo ? (spin ? 'This is your stone. Drag to spin it.' : 'This is your stone. It updates as you go.')
+        : spin ? 'Drag to spin the stone. Use Design to move the photo.'
+        : !phone.matches ? 'Drag the photo to move it.'
+        : big ? 'Drag the photo to move it. Tap or scroll to shrink.' : 'Tap the stone to see it bigger.';
+    }
+
+    // ── 3D stone: the same picture wrapped on a marble slab you can spin. The flat mock above stays as the fallback. ──
+    const cv3 = $('mock3d'); let stone3d = null;
+    import('https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.min.js').then((THREE) => {
+      const renderer = new THREE.WebGLRenderer({ canvas: cv3, antialias: true, alpha: true });
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50); camera.position.z = 5.6;
+      scene.add(new THREE.AmbientLight(0xffffff, 2.1));
+      const sun = new THREE.DirectionalLight(0xffffff, 1.3); sun.position.set(-2, 3, 5); scene.add(sun);
+
+      // Both textures are the stone's top as seen in stone.jpg (TOP), so one flat mapping fits the slab and the print.
+      const TOP = { x: 223, y: 205, w: 579 }, T = 1024, k = T / TOP.w;
+      const tex = () => {
+        const c = document.createElement('canvas'); c.width = c.height = T;
+        const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+      };
+      const marble = tex(), print = tex();
+      const rounded = (h, r) => {
+        const s = new THREE.Shape(), q = Math.PI / 2;
+        s.absarc(h - r, h - r, r, 0, q); s.absarc(r - h, h - r, r, q, 2 * q);
+        s.absarc(r - h, r - h, r, 2 * q, 3 * q); s.absarc(h - r, r - h, r, 3 * q, 4 * q);
+        return s;
+      };
+      const flatUV = (g) => {
+        const p = g.attributes.position, uv = g.attributes.uv;
+        for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) + 1) / 2, (p.getY(i) + 1) / 2);
+        return g;
+      };
+      const BEVEL = .045, DEPTH = .2;   // the slab is 2 wide and 0.29 thick
+      const edge = new THREE.MeshStandardMaterial({ roughness: .8 });   // plain: the photo has no picture of the sides
+      const body = new THREE.Mesh(
+        flatUV(new THREE.ExtrudeGeometry(rounded(1 - BEVEL, .15), { depth: DEPTH, bevelThickness: BEVEL, bevelSize: BEVEL, bevelSegments: 4, curveSegments: 16 }).center()),
+        [new THREE.MeshStandardMaterial({ map: marble, roughness: .8 }), edge]);
+      const face = new THREE.Mesh(
+        flatUV(new THREE.ShapeGeometry(rounded(FACE.w / TOP.w, 2 * FACE.r / TOP.w), 16)),
+        new THREE.MeshStandardMaterial({ map: print, roughness: .8 }));
+      face.position.z = DEPTH / 2 + BEVEL + .002;
+      const stone = new THREE.Group(); stone.add(body, face); stone.rotation.set(-.2, .4, 0); scene.add(stone);
+
+      const render = () => renderer.render(scene, camera);
+      const paint = () => {
+        for (const t of [marble, print]) {
+          const c = t.image.getContext('2d');
+          c.globalCompositeOperation = 'source-over'; c.fillStyle = '#fff'; c.fillRect(0, 0, T, T);
+          if (stoneImg.complete && stoneImg.naturalWidth) c.drawImage(stoneImg, TOP.x, TOP.y, TOP.w, TOP.w, 0, 0, T, T);
+          c.globalCompositeOperation = 'multiply';   // the marble grain shows through the ink, like a real print
+          if (state.stone === 'cream') { c.fillStyle = '#EFE3CA'; c.fillRect(0, 0, T, T); }
+          if (t === print) c.drawImage(cv, (FACE.x - TOP.x) * k, (FACE.y - TOP.y) * k, FACE.w * k, FACE.h * k);
+          t.needsUpdate = true;
+        }
+        edge.color.set(state.stone === 'cream' ? '#DDD0B5' : '#ECE9E4');
+        render();
+      };
+      new ResizeObserver(() => {
+        const w = cv3.clientWidth; if (!w) return;
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(w, w, false); render();
+      }).observe(cv3);
+
+      // Drag spins the stone. A tap without a drag adds a photo, or grows the stone on phones.
+      let at = null, moved = 0;
+      cv3.addEventListener('pointerdown', (e) => { cv3.setPointerCapture(e.pointerId); at = { x: e.clientX, y: e.clientY }; moved = 0; });
+      cv3.addEventListener('pointermove', (e) => {
+        if (!at) return;
+        const dx = e.clientX - at.x, dy = e.clientY - at.y; moved += Math.hypot(dx, dy); at = { x: e.clientX, y: e.clientY };
+        stone.rotation.y += dx * .01;
+        stone.rotation.x = Math.min(1.3, Math.max(-1.3, stone.rotation.x + dy * .01));
+        render();
+      });
+      for (const ev of ['pointerup', 'pointercancel']) cv3.addEventListener(ev, () => { at = null; });
+      cv3.addEventListener('click', () => {
+        if (moved > 8) return;
+        if (!state.photo) $('photo').click(); else if (phone.matches) setBig(!stage.classList.contains('big'));
+      });
+
+      stone3d = { paint }; setView(state.view);
+    }).catch(() => {});   // no WebGL or no network: the flat mock keeps working
 
     // ── Photos ──
     async function loadImage(file, max) {
@@ -669,7 +754,7 @@
         $('zoomrow').hidden = false; $('pickphoto').textContent = 'Change photo';
         const small = Math.min(state.photo.width, state.photo.height) < 700;
         $('photoname').textContent = small ? 'This photo is small and may print soft.' : 'Looks good.';
-        $('stagehint').textContent = phone.matches ? 'Tap the stone to see it bigger.' : 'Drag the photo to move it.';
+        hint();
         setErr('photo', '');
       } catch { setErr('photo', "We couldn't open that file. Try a different photo."); }
       draw();
@@ -687,7 +772,7 @@
     let last = null, start = null, bigAt = 0;
     const setBig = (on) => {
       stage.classList.toggle('big', on); bigAt = scrollY;
-      if (state.photo) $('stagehint').textContent = on ? 'Drag the photo to move it. Tap or scroll to shrink.' : 'Tap the stone to see it bigger.';
+      hint();
     };
     addEventListener('scroll', () => {
       if (stage.classList.contains('big') && Math.abs(scrollY - bigAt) > 40) setBig(false);
