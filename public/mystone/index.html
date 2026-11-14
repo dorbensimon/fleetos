@@ -4,19 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#FEFDFB">
+  <meta name="theme-color" content="#111111">
   <title>Make your stone · Stone of Words</title>
   <style>
     :root {
       --bg: #FEFDFB;
       --surface: #FFFFFF;
-      --ink: #1E1B18;
+      --ink: #111111;
       --ink-2: #6A625C;
-      --accent: #CF3A17;
-      --accent-deep: #B8330F;
-      --accent-soft: #F7B9A6;
-      --sun: #FFC83D;
-      --line: #ECE7E1;
+      --accent: #111111;
+      --accent-deep: #000000;
+      --accent-soft: #D8D4CD;
+      --display: "Bodoni 72", Didot, "Bodoni MT", Georgia, "Noto Serif", serif;
+      --line: #E4E0DA;
       --err: #A3123A;
       --stone-white: #F4F2ED;
       --stone-cream: #E9DFC9;
@@ -43,20 +43,27 @@
 
     .top {
       display: flex; justify-content: space-between; align-items: center; gap: 12px;
-      padding: max(14px, env(safe-area-inset-top)) var(--gutter) 0;
+      padding: 14px var(--gutter) 0;
       max-width: 1040px; margin: 0 auto;
     }
-    .brand { font-size: .75rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--accent-deep); text-decoration: none; }
-    .top a.nav { font-size: .875rem; font-weight: 600; color: var(--ink); text-underline-offset: 4px; text-decoration-color: var(--accent-soft); padding: 8px 0; white-space: nowrap; }
-    .top nav { display: flex; gap: 16px; }
+    /* The kiosk's sign: one black band, white serif caps. */
+    .strip {
+      background: var(--ink); color: #fff; text-align: center; white-space: nowrap; overflow: hidden;
+      padding: max(7px, env(safe-area-inset-top)) 12px 7px;
+      font: 700 clamp(.5625rem, 2.5vw, .75rem)/1.2 var(--display); letter-spacing: .14em; text-transform: uppercase;
+    }
+    /* Circled like a word found in a word search. The same ring marks the key word of every headline. */
+    .brand { font: 700 .6875rem/1 var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--ink); text-decoration: none; border: 1.5px solid var(--ink); border-radius: 999px; padding: 6px 10px 5px; white-space: nowrap; }
+    .top a.nav { font-size: .8125rem; font-weight: 600; color: var(--ink); text-underline-offset: 4px; text-decoration-color: var(--accent-soft); padding: 8px 0; white-space: nowrap; }
+    .top nav { display: flex; gap: 14px; }
 
     .wrap { max-width: 1040px; margin: 0 auto; padding: 0 var(--gutter) 64px; }
     .hero { padding: 20px 0 8px; }
     h1 {
-      font-size: clamp(2.25rem, 10.5vw, 4.5rem); font-weight: 900; line-height: .95;
-      letter-spacing: -0.03em; text-transform: uppercase; text-wrap: balance;
+      font-family: var(--display); font-size: clamp(2.5rem, 12vw, 5rem); font-weight: 900; line-height: 1.08;
+      letter-spacing: -0.015em; text-transform: uppercase; text-wrap: balance;
     }
-    h1 em { font-style: normal; color: var(--accent); }
+    h1 em { font-style: normal; display: inline-block; line-height: 1; border: .055em solid var(--ink); border-radius: .26em; padding: .06em .16em 0; margin-left: -.04em; }
     .hero p { margin-top: 12px; color: var(--ink-2); font-size: 1.0625rem; max-width: 34ch; }
 
     /* Live stone: stays in view while the form scrolls under it. */
@@ -80,9 +87,6 @@
     .mock { display: block; width: min(60vw, 264px); aspect-ratio: 1; border-radius: 14px; touch-action: none; cursor: grab; }
     .mock:active { cursor: grabbing; }
     #mock3d { border-radius: 0; filter: drop-shadow(0 12px 14px rgba(72,48,30,.26)); }
-    .seg { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; background: var(--line); border-radius: 10px; }
-    .seg button { border: 0; background: none; padding: 4px 14px; border-radius: 8px; font-size: .8125rem; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
-    .seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(72,48,30,.16); }
     /* Phones: the pinned stone is small; a tap grows it, scrolling shrinks it back. */
     @media (max-width: 899px) {
       .stage { overflow-anchor: none; padding-top: 10px; padding-bottom: 8px; gap: 6px; }
@@ -90,11 +94,11 @@
       .stage.big .stone, .stage.big .mock { width: min(92vw, 62dvh, 420px); }
     }
 
-    .step { padding: 28px 0 0; }
-    .step h2 { display: flex; align-items: center; gap: 12px; font-size: 1.125rem; font-weight: 800; text-transform: uppercase; letter-spacing: -0.01em; }
+    .step { padding: 26px 0 0; margin-top: 26px; border-top: 1px solid var(--line); }
+    .step h2 { display: flex; align-items: center; gap: 12px; font-family: var(--display); font-size: 1.3125rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; line-height: 1.1; }
     .step h2 .n {
       flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
-      background: var(--sun); color: var(--ink); font-size: 1rem; font-weight: 800; letter-spacing: 0;
+      border: 1.5px solid var(--ink); font-size: 1.0625rem; font-weight: 700; letter-spacing: 0; padding-top: 2px;
       font-variant-numeric: tabular-nums;
     }
     .step > .body { margin-top: 14px; display: grid; gap: 14px; }
@@ -140,9 +144,9 @@
     }
     .btn:active { transform: scale(.97); }
     .btn:hover { background: var(--accent-deep); }
-    .btn.ghost { background: transparent; color: var(--ink); box-shadow: 0 0 0 1px var(--accent-soft) inset; }
-    .btn.ghost:hover { background: rgba(217,65,30,.08); }
-    .btn.big { width: 100%; min-height: 58px; font-size: 1.0625rem; text-transform: uppercase; letter-spacing: .06em; }
+    .btn.ghost { background: transparent; color: var(--ink); box-shadow: 0 0 0 1.5px var(--ink) inset; }
+    .btn.ghost:hover { background: rgba(0,0,0,.06); }
+    .btn.big { width: 100%; min-height: 58px; font: 700 1.125rem/1 var(--display); text-transform: uppercase; letter-spacing: .1em; padding-top: 3px; }
     .btn[disabled] { opacity: .5; cursor: not-allowed; }
     .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 
@@ -163,7 +167,7 @@
     .agree input:disabled + label { color: var(--ink-2); }
     .linkbtn { background: none; border: 0; padding: 0; font-weight: 700; color: var(--accent-deep); text-decoration: underline; text-underline-offset: 4px; }
 
-    .finish { padding-top: 32px; display: grid; gap: 16px; }
+    .finish { padding-top: 26px; margin-top: 26px; border-top: 1px solid var(--line); display: grid; gap: 16px; }
 
     /* Dialogs: a sheet from the bottom on phones, centered on wide screens. */
     dialog {
@@ -179,7 +183,7 @@
     dialog[open]::backdrop { background: rgba(47,33,26,.5); }
     @starting-style { dialog[open]::backdrop { background: rgba(47,33,26,0); } }
     dialog header { padding: 22px 22px 12px; }
-    dialog h3 { font-size: 1.375rem; font-weight: 800; letter-spacing: -0.015em; line-height: 1.15; text-wrap: balance; }
+    dialog h3 { font-family: var(--display); font-size: 1.5rem; font-weight: 700; letter-spacing: 0; line-height: 1.15; text-wrap: balance; }
     dialog .scroll { overflow-y: auto; padding: 0 22px 8px; overscroll-behavior: contain; scrollbar-color: var(--accent-soft) transparent; scrollbar-width: thin; }
     dialog .scroll:focus-visible { outline-offset: -2px; }
     dialog .scroll h4 { margin: 20px 0 4px; font-size: 1rem; font-weight: 700; }
@@ -192,8 +196,8 @@
 
     /* Done */
     .done { text-align: center; padding: 40px 0; display: grid; gap: 14px; justify-items: center; }
-    .done .code { font-size: clamp(4rem, 24vw, 7rem); font-weight: 900; letter-spacing: .04em; line-height: 1; color: var(--accent-deep); font-variant-numeric: tabular-nums; }
-    .done h2 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; }
+    .done .code { font-size: clamp(4rem, 24vw, 7rem); font-weight: 900; letter-spacing: .04em; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; border: 3px solid var(--ink); outline: 1px solid var(--ink); outline-offset: 5px; padding: .12em .22em .1em .26em; margin: 10px 0; }
+    .done h2 { font-family: var(--display); font-size: 2rem; font-weight: 700; letter-spacing: 0; line-height: 1.1; text-wrap: balance; }
     .done p { color: var(--ink-2); max-width: 30ch; }
     .done .row { justify-content: center; }
     .done .stone { width: 180px; margin: 8px 0; }
@@ -221,12 +225,12 @@
     .result { padding: 32px 0; display: grid; gap: 10px; justify-items: start; max-width: 420px; }
     .result .stone { width: 180px; margin-bottom: 8px; }
     .result .stone img { width: 100%; height: 100%; display: block; }
-    .result h2 { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; text-wrap: balance; }
+    .result h2 { font-family: var(--display); font-size: 2rem; font-weight: 700; letter-spacing: 0; line-height: 1.1; text-wrap: balance; }
     .result p { color: var(--ink-2); }
-    .badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: .875rem; font-weight: 700; background: var(--sun); color: var(--ink); }
+    .badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: .875rem; font-weight: 700; background: var(--ink); color: #fff; }
     .badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
     .badge[data-status="ready"] { background: #1F7A4D; color: #fff; }
-    .badge[data-status="done"] { background: var(--line); }
+    .badge[data-status="done"] { background: var(--line); color: var(--ink); }
 
     @media (min-width: 900px) {
       :root { --gutter: 40px; }
@@ -236,7 +240,7 @@
       .stage { top: 32px; margin: 0; padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
       .stone, .mock { width: 420px; }
       .form { max-width: 480px; }
-      .form .step:first-child { padding-top: 0; }
+      .form .step:first-child { padding-top: 0; margin-top: 0; border-top: 0; }
       .grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -249,6 +253,7 @@
   </style>
 </head>
 <body>
+  <div class="strip">Luxury marble stones. Personalized for you.</div>
   <div class="top">
     <a class="brand" href="#">Stone of Words</a>
     <nav>
@@ -260,15 +265,11 @@
   <!-- ───────── Maker ───────── -->
   <main class="wrap maker" id="maker">
     <div class="hero">
-      <h1>Make your <em>stone</em></h1>
+      <h1>Make it <em>yours</em></h1>
       <p class="read">Build it on your phone. Show your code at the counter. We print it on real marble while you wait.</p>
     </div>
 
     <div class="stage">
-      <div class="seg" id="seg" role="tablist" aria-label="Preview">
-        <button type="button" role="tab" data-v="stone" aria-selected="true">On the stone</button>
-        <button type="button" role="tab" data-v="design" aria-selected="false">Design</button>
-      </div>
       <canvas class="mock" id="mock" width="1460" height="1460" role="img" aria-label="Your design on the stone"></canvas>
       <canvas class="mock" id="mock3d" hidden role="img" aria-label="Your stone in 3D. Drag to spin it."></canvas>
       <div class="stone" id="stone" data-stone="white" hidden>
@@ -284,13 +285,13 @@
           <div class="opts">
             <label class="opt">
               <input type="radio" name="style" value="post" checked>
-              <svg viewBox="0 0 56 56" fill="none" aria-hidden="true"><rect x="1" y="1" width="54" height="54" rx="9" stroke="#CF3A17" stroke-width="2"/><circle cx="11" cy="10.5" r="3.5" fill="#F7B9A6"/><rect x="18" y="8" width="18" height="2.4" rx="1.2" fill="#CF3A17"/><rect x="18" y="12" width="11" height="2" rx="1" fill="#F7B9A6"/><rect x="5" y="18" width="46" height="26" rx="2" fill="#F7B9A6"/><circle cx="9" cy="49.5" r="2.4" fill="#CF3A17"/><rect x="14" y="48.4" width="9" height="2.2" rx="1.1" fill="#F7B9A6"/><rect x="45" y="47.4" width="4.4" height="4.6" rx="1" fill="#CF3A17"/></svg>
+              <svg viewBox="0 0 56 56" fill="none" aria-hidden="true"><rect x="1" y="1" width="54" height="54" rx="9" stroke="#111111" stroke-width="2"/><circle cx="11" cy="10.5" r="3.5" fill="#D8D4CD"/><rect x="18" y="8" width="18" height="2.4" rx="1.2" fill="#111111"/><rect x="18" y="12" width="11" height="2" rx="1" fill="#D8D4CD"/><rect x="5" y="18" width="46" height="26" rx="2" fill="#D8D4CD"/><circle cx="9" cy="49.5" r="2.4" fill="#111111"/><rect x="14" y="48.4" width="9" height="2.2" rx="1.1" fill="#D8D4CD"/><rect x="45" y="47.4" width="4.4" height="4.6" rx="1" fill="#111111"/></svg>
               <b>Insta post</b>
               <span>Photo, username, likes</span>
             </label>
             <label class="opt">
               <input type="radio" name="style" value="full">
-              <svg viewBox="0 0 56 56" fill="none" aria-hidden="true"><rect x="1" y="1" width="54" height="54" rx="9" fill="#F7B9A6" stroke="#CF3A17" stroke-width="2"/><circle cx="39" cy="17" r="5" fill="#FFFFFF"/><path d="M2 42l15-15 12 12 8-8 17 17v0a8 8 0 0 1-8 6H10a8 8 0 0 1-8-8z" fill="#CF3A17"/></svg>
+              <svg viewBox="0 0 56 56" fill="none" aria-hidden="true"><rect x="1" y="1" width="54" height="54" rx="9" fill="#D8D4CD" stroke="#111111" stroke-width="2"/><circle cx="39" cy="17" r="5" fill="#FFFFFF"/><path d="M2 42l15-15 12 12 8-8 17 17v0a8 8 0 0 1-8 6H10a8 8 0 0 1-8-8z" fill="#111111"/></svg>
               <b>Full photo</b>
               <span>Edge to edge</span>
             </label>
@@ -312,7 +313,10 @@
           <div class="field" id="zoomrow" hidden>
             <label for="zoom">Zoom</label>
             <input type="range" id="zoom" min="1" max="3" step="0.01" value="1">
-            <span class="hint">Drag the photo in the Design view to move it.</span>
+            <label for="posx">Move left or right</label>
+            <input type="range" id="posx" min="0" max="1" step="0.005" value="0.5">
+            <label for="posy">Move up or down</label>
+            <input type="range" id="posy" min="0" max="1" step="0.005" value="0.5">
           </div>
         </div>
       </section>
@@ -573,6 +577,7 @@
         ctx.fillText('Tap to add your photo', r.x + r.w / 2, r.y + r.h / 2 + 60);
       }
       if (state.style === 'post') chrome();
+      $('posx').value = 1 - state.px; $('posy').value = 1 - state.py;
       if (state.view === 'stone') (stone3d ? stone3d.paint() : drawMock());
     }
     function chrome() {
@@ -644,14 +649,12 @@
     }
     function setView(v) {
       state.view = v; mock.hidden = v !== 'stone' || !!stone3d; cv3.hidden = v !== 'stone' || !stone3d; $('stone').hidden = v === 'stone';
-      for (const b of $('seg').children) b.setAttribute('aria-selected', b.dataset.v === v);
       hint(); draw();
     }
-    $('seg').onclick = (e) => { const b = e.target.closest('button'); if (b) setView(b.dataset.v); };
     function hint() {
       const spin = stone3d && state.view === 'stone', big = stage.classList.contains('big');
       $('stagehint').textContent = !state.photo ? (spin ? 'This is your stone. Drag to spin it.' : 'This is your stone. It updates as you go.')
-        : spin ? 'Drag to spin the stone. Use Design to move the photo.'
+        : spin ? (phone.matches && !big ? 'Drag to spin it. Tap to see it bigger.' : 'Drag to spin your stone.')
         : !phone.matches ? 'Drag the photo to move it.'
         : big ? 'Drag the photo to move it. Tap or scroll to shrink.' : 'Tap the stone to see it bigger.';
     }
@@ -766,6 +769,9 @@
       draw();
     };
     $('zoom').oninput = (e) => { state.zoom = +e.target.value; draw(); };
+    // Dragging spins the stone, so the photo is moved with sliders: right and down move the photo right and down.
+    $('posx').oninput = (e) => { state.px = 1 - e.target.value; draw(); };
+    $('posy').oninput = (e) => { state.py = 1 - e.target.value; draw(); };
 
     // Drag to reposition: the photo follows the finger 1:1. A tap without a drag zooms the stone (phones).
     const phone = matchMedia('(max-width: 899px)'), stage = document.querySelector('.stage');
