@@ -2210,6 +2210,9 @@
     "typeNameToConfirm": "כדי לאשר, הקלד את שם החברה:",
     "updatesAcrossCompanies": "עדכונים בכל החברות",
     "vehicleIssuesCount": "{{vehicleIssues}} בלי ביטוח או רישיון בתוקף",
+    "viewCompanies": "חברות",
+    "viewRevenue": "הכנסות",
+    "viewSystem": "מערכת",
     "whatsComing": "מה מתקרב",
     "withoutDriver": "בלי נהג",
     "sort": {

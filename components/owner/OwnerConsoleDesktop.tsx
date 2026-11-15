@@ -21,12 +21,17 @@ import { companyTypeLabel } from '../../lib/companyType';
 
 /**
  * The owner's control room on desktop. One band of business vitals on top
- * (companies, monthly revenue, trials, people, use); below, every
- * company as a row that says at a glance whether it is healthy, where it
- * stands as a customer and when it was last used, with the revenue picture
- * and the problems that need the owner beside it. Counts only: people's
- * details stay inside each company's own page.
+ * (companies, monthly revenue, trials, people, use), each a shortcut into
+ * the view that explains it; below, three views instead of one long page:
+ * companies (every company as a row that says at a glance whether it is
+ * healthy, where it stands as a customer and when it was last used, with
+ * the problems that need the owner beside it), revenue (subscriptions and
+ * money collected) and system (use, security, the announcement). Counts
+ * only: people's details stay inside each company's own page.
  */
+
+// שלוש התצוגות של חדר הבקרה
+type ConsoleView = 'companies' | 'revenue' | 'system';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -61,6 +66,7 @@ export function OwnerConsoleDesktop(p: Props) {
   const [search, setSearch] = useState('');
   const [menu, setMenu] = useState<CompanyHealth | null>(null);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [view, setView] = useState<ConsoleView>('companies');
 
   const companies = useMemo(() => p.overview?.companies ?? [], [p.overview]);
   const rows = useMemo(() => filterCompanies(companies, filter, search, sort), [companies, filter, search, sort]);
@@ -100,10 +106,43 @@ export function OwnerConsoleDesktop(p: Props) {
         </View>
       ) : p.overview ? (
         <>
-          <Vitals overview={p.overview} />
+          <Vitals
+            overview={p.overview}
+            onCompanies={() => {
+              setView('companies');
+              setFilter('all');
+              setSort('health');
+            }}
+            onTeam={() => {
+              setView('companies');
+              setFilter('all');
+              setSort('size');
+            }}
+            onRevenue={() => setView('revenue')}
+            onSystem={() => setView('system')}
+          />
 
-          <View style={[styles.columns, !wide && styles.columnsStacked]}>
-            <View style={[styles.mainColumn, enter(2)]}>
+          <ViewTabs
+            view={view}
+            onChange={setView}
+            companies={companies.length}
+            issues={p.overview.issues.length}
+            overdue={p.overview.totals.overdue}
+          />
+
+          {/* All three stay mounted, so a half-written announcement and the table's place survive a switch. */}
+          <View style={[styles.columns, !wide && styles.columnsStacked, view !== 'companies' && styles.hidden, enter(3)]}>
+            <View style={styles.mainColumn}>
+              {/* Nothing waiting: one quiet line, and the table keeps the whole width. */}
+              {p.overview.issues.length === 0 && companies.length > 0 && (
+                <View style={styles.clearBanner}>
+                  <Ionicons name="checkmark-circle" size={20} color={TONE_DOT.ok} />
+                  <DText weight="bold" style={styles.cellMain}>
+                    {t('owner.allCompaniesOk')}
+                  </DText>
+                  <DText style={styles.cellSub}>{t('owner.nothingWaiting')}</DText>
+                </View>
+              )}
               <View style={styles.panel}>
                 <View style={styles.toolbar}>
                   <View style={styles.filters} accessibilityRole="tablist">
@@ -151,20 +190,32 @@ export function OwnerConsoleDesktop(p: Props) {
                   onAdd={p.onAddCompany}
                 />
               </View>
-              <View style={styles.pair}>
-                <View style={styles.pairItem}>
-                  <ActivityChart days={p.overview.activityByDay} />
-                </View>
-                <View style={styles.pairItem}>
-                  <SecurityPanel overview={p.overview} />
-                </View>
-              </View>
             </View>
 
-            <View style={[styles.sideColumn, !wide && styles.sideColumnStacked, enter(3)]}>
-              <AttentionQueue issues={p.overview.issues} onOpen={p.onOpenCompany} />
+            {p.overview.issues.length > 0 && (
+              <View style={[styles.sideColumn, !wide && styles.sideColumnStacked]}>
+                <AttentionQueue issues={p.overview.issues} onOpen={p.onOpenCompany} />
+              </View>
+            )}
+          </View>
+
+          <View style={[styles.pair, view !== 'revenue' && styles.hidden, enter(3)]}>
+            <View style={styles.pairItem}>
               <BusinessPanel overview={p.overview} onOpen={p.onOpenCompany} />
+            </View>
+            <View style={styles.pairItem}>
               <CollectedPanel expected={p.overview.totals.mrr} />
+            </View>
+          </View>
+
+          <View style={[styles.pair, view !== 'system' && styles.hidden, enter(3)]}>
+            <View style={styles.pairItem}>
+              <ActivityChart days={p.overview.activityByDay} />
+            </View>
+            <View style={styles.pairItem}>
+              <SecurityPanel overview={p.overview} />
+            </View>
+            <View style={styles.pairItem}>
               <AnnouncementPanel />
             </View>
           </View>
@@ -226,16 +277,29 @@ export function OwnerConsoleDesktop(p: Props) {
 /* ------------------------------------------------------------------ */
 
 // שורת המספרים העליונה
-function Vitals({ overview }: { overview: PlatformOverview }) {
+function Vitals({
+  overview,
+  onCompanies,
+  onTeam,
+  onRevenue,
+  onSystem,
+}: {
+  overview: PlatformOverview;
+  onCompanies: () => void;
+  onTeam: () => void;
+  onRevenue: () => void;
+  onSystem: () => void;
+}) {
   const totals = overview.totals;
-  const cells: { label: string; value: string; sub: string; tone?: 'bad' | 'warn'; icon: IconName }[] = [
-    { label: t('owner.activeCompanies'), value: totals.activeCompanies.toLocaleString(getLocale()), sub: t('owner.ofCompanies', { companies: totals.companies }), icon: 'business-outline' },
+  const cells: { label: string; value: string; sub: string; tone?: 'bad' | 'warn'; icon: IconName; onPress: () => void }[] = [
+    { label: t('owner.activeCompanies'), value: totals.activeCompanies.toLocaleString(getLocale()), sub: t('owner.ofCompanies', { companies: totals.companies }), icon: 'business-outline', onPress: onCompanies },
     {
       label: t('owner.monthlyRevenue'),
       value: formatMoney(totals.mrr),
       sub: totals.overdue ? t('owner.overduePayment', { overdue: totals.overdue }) : totals.paying === 1 ? t('owner.fromOnePaying') : t('owner.fromPaying', { paying: totals.paying }),
       tone: totals.overdue ? 'bad' : undefined,
       icon: 'cash-outline',
+      onPress: onRevenue,
     },
     {
       label: t('owner.inTrial'),
@@ -243,33 +307,110 @@ function Vitals({ overview }: { overview: PlatformOverview }) {
       sub: totals.trialsEndingSoon ? t('owner.trialsEndingWeek', { trialsEndingSoon: totals.trialsEndingSoon }) : t('owner.noTrialEndingWeek'),
       tone: totals.trialsEndingSoon ? 'warn' : undefined,
       icon: 'timer-outline',
+      onPress: onRevenue,
     },
     {
       label: t('common.drivers'),
       value: totals.drivers.toLocaleString(getLocale()),
       sub: t('owner.fleetManagers', { admins: totals.admins }),
       icon: 'people-outline',
+      onPress: onTeam,
     },
-    { label: t('owner.actionsThisWeek'), value: totals.activity7d.toLocaleString(getLocale()), sub: t('owner.updatesAcrossCompanies'), icon: 'pulse-outline' },
+    { label: t('owner.actionsThisWeek'), value: totals.activity7d.toLocaleString(getLocale()), sub: t('owner.updatesAcrossCompanies'), icon: 'pulse-outline', onPress: onSystem },
   ];
   return (
     <View style={[styles.vitals, enter(1)]}>
-      {cells.map((c, i) => (
-        <View key={c.label} style={[styles.vital, i > 0 && styles.vitalDivider]} accessible accessibilityLabel={`${c.label}: ${c.value}. ${c.sub}`}>
-          <View style={styles.vitalLabelRow}>
-            <Ionicons name={c.icon} size={15} color={DESKTOP_COLORS.inkMuted} />
-            <DText weight="semiBold" style={styles.vitalLabel} numberOfLines={1}>
-              {c.label}
+      {cells.map((c, i) => {
+        const tone = c.tone ? DESKTOP_TONES[c.tone] : null;
+        return (
+          <React.Fragment key={c.label}>
+            {i > 0 && <View style={styles.vitalDivider} />}
+            <HoverPressable
+              style={styles.vital}
+              hoverStyle={styles.vitalHover}
+              onPress={c.onPress}
+              accessibilityRole="button"
+              accessibilityLabel={`${c.label}: ${c.value}. ${c.sub}`}
+            >
+              <View style={styles.vitalLabelRow}>
+                <View style={[styles.vitalIcon, tone && { backgroundColor: tone.bg }]}>
+                  <Ionicons name={c.icon} size={16} color={tone ? tone.fg : DESKTOP_COLORS.brand} />
+                </View>
+                <DText weight="semiBold" style={styles.vitalLabel} numberOfLines={1}>
+                  {c.label}
+                </DText>
+              </View>
+              <DText weight="extraBold" style={[styles.vitalValue, TABULAR]} numberOfLines={1}>
+                {c.value}
+              </DText>
+              <DText weight={tone ? 'semiBold' : 'regular'} style={[styles.vitalSub, tone && { color: tone.fg }]} numberOfLines={1}>
+                {c.sub}
+              </DText>
+            </HoverPressable>
+          </React.Fragment>
+        );
+      })}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* View tabs                                                           */
+/* ------------------------------------------------------------------ */
+
+// המעבר בין חברות, הכנסות ומערכת
+function ViewTabs({
+  view,
+  onChange,
+  companies,
+  issues,
+  overdue,
+}: {
+  view: ConsoleView;
+  onChange: (v: ConsoleView) => void;
+  companies: number;
+  issues: number;
+  overdue: number;
+}) {
+  const tabs: { value: ConsoleView; label: string; icon: IconName; count?: number; alert?: number }[] = [
+    { value: 'companies', label: t('owner.viewCompanies'), icon: 'business-outline', count: companies, alert: issues },
+    { value: 'revenue', label: t('owner.viewRevenue'), icon: 'cash-outline', alert: overdue },
+    { value: 'system', label: t('owner.viewSystem'), icon: 'pulse-outline' },
+  ];
+  return (
+    <View style={[styles.tabs, enter(2)]} accessibilityRole="tablist">
+      {tabs.map((tab) => {
+        const on = tab.value === view;
+        return (
+          <HoverPressable
+            key={tab.value}
+            onPress={() => onChange(tab.value)}
+            style={[styles.tab, on && styles.tabOn]}
+            hoverStyle={on ? undefined : styles.tabHover}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            aria-selected={on}
+            accessibilityLabel={[tab.label, tab.count, tab.alert ? `${t('owner.needsYourAttention')}: ${tab.alert}` : null].filter((x) => x != null).join(', ')}
+          >
+            <Ionicons name={tab.icon} size={17} color={on ? DESKTOP_COLORS.brand : DESKTOP_COLORS.inkMuted} />
+            <DText weight={on ? 'bold' : 'semiBold'} style={[styles.tabText, on && styles.tabTextOn]}>
+              {tab.label}
             </DText>
-          </View>
-          <DText weight="extraBold" style={[styles.vitalValue, TABULAR]} numberOfLines={1}>
-            {c.value}
-          </DText>
-          <DText weight={c.tone ? 'semiBold' : 'regular'} style={[styles.vitalSub, c.tone && { color: DESKTOP_TONES[c.tone].fg }]} numberOfLines={1}>
-            {c.sub}
-          </DText>
-        </View>
-      ))}
+            {tab.count != null && (
+              <DText weight="bold" style={[styles.filterCount, TABULAR]}>
+                {tab.count}
+              </DText>
+            )}
+            {!!tab.alert && (
+              <View style={[styles.countBadge, { backgroundColor: DESKTOP_TONES.bad.bg }]}>
+                <DText weight="bold" style={[styles.countBadgeText, TABULAR, { color: DESKTOP_TONES.bad.fg }]}>
+                  {tab.alert}
+                </DText>
+              </View>
+            )}
+          </HoverPressable>
+        );
+      })}
     </View>
   );
 }
@@ -438,7 +579,7 @@ function CompanyRowView({
         accessibilityLabel={`${c.name}, ${TONE_LABEL[row.tone]}${issueLine ? `: ${issueLine}` : ''}`}
       >
         <View style={[styles.cellCompany, { flex: 1, minWidth: 200 }]}>
-          <CompanyAvatar row={row} />
+          <CompanyAvatar row={row} size={40} />
           <View style={styles.cellText}>
             <DText weight="bold" style={[styles.companyName, !row.active && styles.muted]} numberOfLines={1}>
               {c.name}
@@ -785,6 +926,7 @@ const styles = StyleSheet.create({
   // הדף
   page: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 48, gap: 16, width: '100%', maxWidth: 1480, alignSelf: 'center' },
   center: { alignItems: 'center', justifyContent: 'center' },
+  hidden: { display: 'none' },
 
   // הכותרת
   headerActions: { flexDirection: 'row-reverse', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
@@ -808,21 +950,64 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: DESKTOP_COLORS.border,
-    paddingVertical: 18,
+    padding: 6,
   },
-  vital: { flex: 1, minWidth: 0, paddingHorizontal: 20, gap: 4 },
-  vitalDivider: { borderEndWidth: 1, borderEndColor: DESKTOP_COLORS.borderSoft },
-  vitalLabelRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6 },
-  vitalLabel: { fontSize: 13, color: DESKTOP_COLORS.inkMuted },
+  vital: {
+    flex: 1,
+    minWidth: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 6,
+    borderRadius: 10,
+    ...webOnly({ transition: 'background-color 160ms ease-out' }),
+  },
+  vitalHover: { backgroundColor: DESKTOP_COLORS.rowHover },
+  vitalDivider: { width: 1, marginVertical: 14, marginHorizontal: 2, backgroundColor: DESKTOP_COLORS.borderSoft },
+  vitalLabelRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8 },
+  vitalIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: DESKTOP_COLORS.brandFocusRing },
+  vitalLabel: { flex: 1, fontSize: 13.5, color: DESKTOP_COLORS.inkMuted },
   vitalValue: { fontSize: 30, lineHeight: 36, color: DESKTOP_COLORS.ink, letterSpacing: -0.6 },
-  vitalSub: { fontSize: 12.5, color: DESKTOP_COLORS.inkFaint },
+  vitalSub: { fontSize: 13, color: DESKTOP_COLORS.inkFaint },
+
+  // המעבר בין התצוגות
+  tabs: {
+    flexDirection: 'row-reverse',
+    alignSelf: 'flex-end',
+    gap: 4,
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: '#E9EDF1',
+  },
+  tab: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 8,
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 9,
+    ...webOnly({ transition: 'background-color 160ms ease-out' }),
+  },
+  tabHover: { backgroundColor: 'rgba(255,255,255,0.6)' },
+  tabOn: { backgroundColor: DESKTOP_COLORS.surface, ...webOnly({ boxShadow: '0 1px 3px rgba(16,34,50,0.12)' }) },
+  tabText: { fontSize: 14.5, color: DESKTOP_COLORS.inkMuted },
+  tabTextOn: { color: DESKTOP_COLORS.ink },
+  clearBanner: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: DESKTOP_TONES.ok.bg,
+  },
 
   // העמודות
   columns: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 20 },
   columnsStacked: { flexDirection: 'column', alignItems: 'stretch' },
   mainColumn: { flex: 1, minWidth: 0, gap: 20 },
   pair: { flexDirection: 'row-reverse', gap: 20, flexWrap: 'wrap' },
-  pairItem: { flex: 1, minWidth: 320 },
+  pairItem: { flex: 1, minWidth: 340 },
   sideColumn: { width: 340, gap: 20 },
   sideColumnStacked: { width: '100%' },
 
@@ -883,19 +1068,19 @@ const styles = StyleSheet.create({
   thCell: { paddingHorizontal: 6 },
   thButton: { flexDirection: 'row-reverse', alignItems: 'center', gap: 4, alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 4, marginHorizontal: -4, borderRadius: 6 },
   thButtonHover: { backgroundColor: '#EBEFF2' },
-  th: { fontSize: 12.5, color: DESKTOP_COLORS.inkMuted },
+  th: { fontSize: 13, color: DESKTOP_COLORS.inkMuted },
   thOn: { color: DESKTOP_COLORS.ink },
 
   row: { flexDirection: 'row-reverse', alignItems: 'center', paddingHorizontal: 14 },
   rowDivider: { borderBottomWidth: 1, borderBottomColor: DESKTOP_COLORS.borderSoft },
-  rowMain: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', minHeight: 66, borderRadius: 10, marginVertical: 4 },
+  rowMain: { flex: 1, flexDirection: 'row-reverse', alignItems: 'center', minHeight: 72, borderRadius: 10, marginVertical: 4 },
   rowHover: { backgroundColor: DESKTOP_COLORS.rowHover },
   cellCompany: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, paddingHorizontal: 6 },
   cell: { paddingHorizontal: 6, gap: 3, alignItems: 'flex-end' },
   cellText: { flex: 1, minWidth: 0, gap: 2 },
-  companyName: { fontSize: 15, color: DESKTOP_COLORS.ink },
+  companyName: { fontSize: 15.5, color: DESKTOP_COLORS.ink },
   cellMain: { fontSize: 14, color: DESKTOP_COLORS.ink },
-  cellSub: { fontSize: 12.5, lineHeight: 18, color: DESKTOP_COLORS.inkFaint },
+  cellSub: { fontSize: 13, lineHeight: 19, color: DESKTOP_COLORS.inkFaint },
   muted: { color: DESKTOP_COLORS.inkMuted },
   faint: { color: DESKTOP_COLORS.inkFaint },
   avatar: { backgroundColor: DESKTOP_COLORS.surfaceMuted, borderWidth: 1, borderColor: DESKTOP_COLORS.borderSoft },
@@ -904,8 +1089,8 @@ const styles = StyleSheet.create({
   avatarInitialOff: { backgroundColor: DESKTOP_COLORS.surfaceMuted },
   avatarText: { fontSize: 16, color: DESKTOP_COLORS.brand },
   avatarTextOff: { color: DESKTOP_COLORS.inkFaint },
-  stateChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, height: 24, paddingHorizontal: 9, borderRadius: 12 },
-  stateText: { fontSize: 12.5 },
+  stateChip: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, height: 26, paddingHorizontal: 9, borderRadius: 12 },
+  stateText: { fontSize: 13 },
   menuButton: { width: 36, height: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   menuButtonHover: { backgroundColor: '#EBEFF2' },
 
