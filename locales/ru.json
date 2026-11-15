@@ -2210,6 +2210,9 @@
     "typeNameToConfirm": "Для подтверждения введите название компании:",
     "updatesAcrossCompanies": "Обновления во всех компаниях",
     "vehicleIssuesCount": "Без действующей страховки или техпаспорта: {{vehicleIssues}}",
+    "viewCompanies": "Компании",
+    "viewRevenue": "Доходы",
+    "viewSystem": "Система",
     "whatsComing": "Что приближается",
     "withoutDriver": "без водителя",
     "sort": {

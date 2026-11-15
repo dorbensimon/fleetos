@@ -23,6 +23,7 @@ import {
   NightUnderlay,
   Pressy,
   Reveal,
+  Segmented,
   STATUS,
   Surface,
   useTabBarReset,
@@ -42,13 +43,17 @@ import { fontStack } from '../../lib/fontStack';
 
 /**
  * The owner's control room on the phone: the night carries the business at a
- * glance (what needs the owner, companies, monthly revenue,
- * search); below, every company as a card that says whether it is healthy,
- * where it stands as a customer and why (filters and order pinned, the add
- * button at the end, floating like the manager's); then revenue, money
- * collected, the announcement to every company, templates, how the system
- * is being used and its security state. Counts only, like desktop.
+ * glance (what needs the owner, companies, monthly revenue, search); below,
+ * a pinned switch between three views, so nothing sits under a long list:
+ * companies (every company as a card that says whether it is healthy, where
+ * it stands as a customer and why; filters and order pinned, the add button
+ * at the end, floating like the manager's), revenue (subscriptions and money
+ * collected) and system (the announcement to every company, templates, how
+ * the system is being used and its security state). Counts only, like desktop.
  */
+
+// שלוש התצוגות של חדר הבקרה
+type ConsoleView = 'companies' | 'revenue' | 'system';
 
 // צבע מילוי לכל מצב
 const TONE_FILL: Record<Tone, string> = { ok: STATUS.ok.fill, warn: STATUS.soon.fill, bad: STATUS.expired.fill, off: STATUS.missing.fill };
@@ -87,7 +92,9 @@ type Entry =
   | { kind: 'error' }
   | { kind: 'empty' }
   | { kind: 'company'; row: CompanyHealth; index: number }
-  | { kind: 'add' };
+  | { kind: 'add' }
+  | { kind: 'revenue' }
+  | { kind: 'system' };
 
 // סדרי הרשימה
 const SORTS: { value: CompanySort; label: () => string; hint: () => string; icon: React.ComponentProps<typeof Ionicons>['name'] }[] = [
@@ -103,25 +110,37 @@ export function OwnerConsoleMobile(p: Props) {
   const [sort, setSort] = useState<CompanySort>('health');
   const [sortOpen, setSortOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [view, setView] = useState<ConsoleView>('companies');
   const tabBarScroll = useTabBarScroll();
   const tabBarSpace = useTabBarSpace();
   const resetTabBar = useTabBarReset();
   const listRef = useRef<FlatList<Entry>>(null);
   const heroHeight = useRef(0);
-  const [footerHeight, setFooterHeight] = useState(0);
+  const scrollY = useRef(0);
 
   const companies = useMemo(() => p.overview?.companies ?? [], [p.overview]);
   const rows = useMemo(() => filterCompanies(companies, filter, search, sort), [companies, filter, search, sort]);
   const loading = p.loading && !p.overview;
   const bottomPadding = p.insetBottom + 24 + tabBarSpace;
-  // The footer sits under the list's end, so it counts as room below it.
-  const floatingAdd = useFloatingAdd(rows.length, bottomPadding + footerHeight);
+  const floatingAdd = useFloatingAdd(rows.length, bottomPadding);
+
+  // Brings the pinned switch (and what is under it) to the top of the screen.
+  const scrollToViews = (animated: boolean) => listRef.current?.scrollToOffset({ offset: heroHeight.current, animated });
+
+  // A view opened from the night glides up to it; switching between views
+  // from the pinned bar only drops back to the view's start.
+  const showView = (next: ConsoleView, reveal = false) => {
+    setView(next);
+    if (reveal) setTimeout(() => scrollToViews(true), 60);
+    else if (scrollY.current > heroHeight.current) scrollToViews(false);
+  };
 
   // The bar's companies tab brings the list (its filters pinned) to the top
   // in one jump, keeping the bar in place; home glides back up.
   useEffect(() => {
     if (!p.scrollTo) return;
     const toList = p.scrollTo === 'list';
+    if (toList) setView('companies');
     const timer = setTimeout(() => {
       if (toList) resetTabBar();
       listRef.current?.scrollToOffset({ offset: toList ? heroHeight.current : 0, animated: !toList });
@@ -135,9 +154,11 @@ export function OwnerConsoleMobile(p: Props) {
       ? [{ kind: 'loading' as const }]
       : p.error && !p.overview
         ? [{ kind: 'error' as const }]
-        : rows.length
-          ? [...rows.map((row, index) => ({ kind: 'company' as const, row, index })), { kind: 'add' as const }]
-          : [{ kind: 'empty' as const }]),
+        : view !== 'companies'
+          ? [{ kind: view }]
+          : rows.length
+            ? [...rows.map((row, index) => ({ kind: 'company' as const, row, index })), { kind: 'add' as const }]
+            : [{ kind: 'empty' as const }]),
   ];
 
   const sortLabel = SORTS.find((s) => s.value === sort)!.label();
@@ -147,24 +168,37 @@ export function OwnerConsoleMobile(p: Props) {
       case 'bar':
         return (
           <View style={styles.bar}>
-            <FilterPills<CompanyFilter>
-              value={filter}
-              onChange={setFilter}
-              options={COMPANY_FILTERS.map((f) => ({
-                value: f.value,
-                label: f.label,
-                count: p.overview ? filterCompanies(companies, f.value, '', 'health').length : undefined,
-                tone: f.tone === 'bad' ? 'expired' : f.tone === 'ok' ? 'ok' : f.tone === 'off' ? 'missing' : undefined,
-              }))}
-              trailing={
-                <Pressy onPress={() => setSortOpen(true)} accessibilityLabel={t('owner.sortBy', { label: sortLabel })} style={styles.sortPill} pressScale={0.95}>
-                  <Ionicons name="swap-vertical" size={16} color={DK.inkSoft} />
-                  <DKText variant="label" color={DK.inkSoft}>
-                    {sortLabel}
-                  </DKText>
-                </Pressy>
-              }
-            />
+            <View style={styles.viewSwitch}>
+              <Segmented<ConsoleView>
+                value={view}
+                onChange={(next) => showView(next)}
+                options={[
+                  { value: 'companies', label: t('owner.viewCompanies'), count: p.overview ? companies.length : undefined },
+                  { value: 'revenue', label: t('owner.viewRevenue') },
+                  { value: 'system', label: t('owner.viewSystem') },
+                ]}
+              />
+            </View>
+            {view === 'companies' && (
+              <FilterPills<CompanyFilter>
+                value={filter}
+                onChange={setFilter}
+                options={COMPANY_FILTERS.map((f) => ({
+                  value: f.value,
+                  label: f.label,
+                  count: p.overview ? filterCompanies(companies, f.value, '', 'health').length : undefined,
+                  tone: f.tone === 'bad' ? 'expired' : f.tone === 'ok' ? 'ok' : f.tone === 'off' ? 'missing' : undefined,
+                }))}
+                trailing={
+                  <Pressy onPress={() => setSortOpen(true)} accessibilityLabel={t('owner.sortBy', { label: sortLabel })} style={styles.sortPill} pressScale={0.95}>
+                    <Ionicons name="swap-vertical" size={16} color={DK.inkSoft} />
+                    <DKText variant="label" color={DK.inkSoft}>
+                      {sortLabel}
+                    </DKText>
+                  </Pressy>
+                }
+              />
+            )}
           </View>
         );
       case 'loading':
@@ -223,6 +257,19 @@ export function OwnerConsoleMobile(p: Props) {
             <ListEndAction label={t('owner.newCompany')} onPress={p.onAddCompany} />
           </View>
         );
+      case 'revenue':
+        return p.overview ? (
+          <Reveal style={styles.viewBody}>
+            <Revenue overview={p.overview} onOpen={p.onOpenCompany} onExport={p.onExport} />
+            <CollectedSection expected={p.overview.totals.mrr} style={styles.sectionGap} />
+          </Reveal>
+        ) : null;
+      case 'system':
+        return p.overview ? (
+          <Reveal style={styles.viewBody}>
+            <SystemView overview={p.overview} />
+          </Reveal>
+        ) : null;
     }
   };
 
@@ -238,6 +285,7 @@ export function OwnerConsoleMobile(p: Props) {
           keyExtractor={(e) => (e.kind === 'company' ? e.row.company.id : e.kind)}
           renderItem={renderItem}
           onScroll={(event) => {
+            scrollY.current = event.nativeEvent.contentOffset.y;
             tabBarScroll.onScroll?.(event);
             floatingAdd.onScroll(event);
           }}
@@ -251,15 +299,24 @@ export function OwnerConsoleMobile(p: Props) {
                 floatingAdd.measureHeader(event);
               }}
             >
-              <Hero {...p} search={search} onSearch={setSearch} onAttention={() => setFilter('attention')} />
+              <Hero
+                {...p}
+                search={search}
+                onSearch={(value) => {
+                  setSearch(value);
+                  if (view !== 'companies') setView('companies');
+                }}
+                onAttention={() => {
+                  setFilter('attention');
+                  showView('companies', true);
+                }}
+                onCompanies={() => {
+                  setFilter('all');
+                  showView('companies', true);
+                }}
+                onRevenue={() => showView('revenue', true)}
+              />
             </View>
-          }
-          ListFooterComponent={
-            p.overview ? (
-              <View onLayout={(event) => setFooterHeight(event.nativeEvent.layout.height)}>
-                <Footer overview={p.overview} onOpen={p.onOpenCompany} onExport={p.onExport} />
-              </View>
-            ) : null
           }
           stickyHeaderIndices={[1]}
           style={styles.flex}
@@ -270,7 +327,7 @@ export function OwnerConsoleMobile(p: Props) {
           refreshControl={<RefreshControl refreshing={p.refreshing} onRefresh={p.onRefresh} tintColor="#FFFFFF" colors={[DK.accent]} />}
         />
       </View>
-      <Fab label={t('owner.newCompany')} onPress={p.onAddCompany} bottom={p.insetBottom + 18} visible={floatingAdd.floating} />
+      <Fab label={t('owner.newCompany')} onPress={p.onAddCompany} bottom={p.insetBottom + 18} visible={view === 'companies' && floatingAdd.floating} />
       <KitSheet visible={sortOpen} onClose={() => setSortOpen(false)} title={t('owner.sort.title')} icon="swap-vertical">
         <Surface>
           {SORTS.map((option, index) => (
@@ -295,7 +352,7 @@ export function OwnerConsoleMobile(p: Props) {
 }
 
 // הכותרת עם חיפוש ומספרים
-function Hero(p: Props & { search: string; onSearch: (v: string) => void; onAttention: () => void }) {
+function Hero(p: Props & { search: string; onSearch: (v: string) => void; onAttention: () => void; onCompanies: () => void; onRevenue: () => void }) {
   const totals = p.overview?.totals;
   const issues = p.overview?.issues ?? [];
   const bad = issues.some((i) => i.tone === 'bad');
@@ -353,8 +410,8 @@ function Hero(p: Props & { search: string; onSearch: (v: string) => void; onAtte
       )}
 
       <Reveal index={2} style={styles.stats}>
-        <HeroStat value={totals ? `${totals.activeCompanies}/${totals.companies}` : '–'} label={t('owner.activeCompanies')} />
-        <HeroStat value={totals ? formatMoneyCompact(totals.mrr) : '–'} label={t('owner.monthlyRevenue')} />
+        <HeroStat value={totals ? `${totals.activeCompanies}/${totals.companies}` : '–'} label={t('owner.activeCompanies')} onPress={totals ? p.onCompanies : undefined} />
+        <HeroStat value={totals ? formatMoneyCompact(totals.mrr) : '–'} label={t('owner.monthlyRevenue')} onPress={totals ? p.onRevenue : undefined} />
       </Reveal>
 
       <Reveal index={3} style={styles.block}>
@@ -431,8 +488,8 @@ function CompanyCard({ row, onPress, onMenu }: { row: CompanyHealth; onPress: ()
   );
 }
 
-// תחתית: הכנסות ואבטחה
-function Footer({ overview, onOpen, onExport }: { overview: PlatformOverview; onOpen: (id: string) => void; onExport: () => void }) {
+// תצוגת המערכת: הודעה, תבניות, שימוש ואבטחה
+function SystemView({ overview }: { overview: PlatformOverview }) {
   const days = overview.activityByDay;
   const max = Math.max(1, ...days.map((d) => d.count));
   const total = days.reduce((n, d) => n + d.count, 0);
@@ -440,10 +497,8 @@ function Footer({ overview, onOpen, onExport }: { overview: PlatformOverview; on
   const notActivated = overview.totals.notActivated;
   const [templatesOpen, setTemplatesOpen] = useState(false);
   return (
-    <View style={styles.footer}>
-      <Revenue overview={overview} onOpen={onOpen} onExport={onExport} />
-      <CollectedSection expected={overview.totals.mrr} style={styles.sectionGap} />
-      <AnnouncementSection style={styles.sectionGap} />
+    <View>
+      <AnnouncementSection />
 
       <KitSection title={t('templates.managerTitle')} style={styles.sectionGap}>
         <Pressy onPress={() => setTemplatesOpen(true)} accessibilityLabel={t('templates.managerTitle')} pressScale={0.985}>
@@ -645,7 +700,8 @@ const styles = StyleSheet.create({
   attentionDot: { width: 10, height: 10, borderRadius: 5 },
   attentionValue: { fontFamily: fontStack('Heebo_800ExtraBold'), fontSize: 34, lineHeight: 38, letterSpacing: -1, fontVariant: ['tabular-nums'] },
 
-  bar: { backgroundColor: DK.canvas, paddingTop: 14, paddingBottom: 12 },
+  bar: { backgroundColor: DK.canvas, paddingTop: 14, paddingBottom: 12, gap: 12 },
+  viewSwitch: { paddingHorizontal: DK_SPACE.md },
   sortPill: { flexDirection: 'row-reverse', alignItems: 'center', gap: 6, height: 42, paddingHorizontal: 15, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(10,22,38,0.12)', backgroundColor: '#FFFFFF' },
   chartBar: { width: '100%', borderRadius: 3, backgroundColor: '#A9BCFF' },
   cell: { paddingHorizontal: DK_SPACE.md, paddingBottom: 12 },
@@ -672,7 +728,7 @@ const styles = StyleSheet.create({
   footItem: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, flexShrink: 1 },
   more: { marginEnd: 'auto', width: 44, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: DK.surfaceSunk },
 
-  footer: { paddingHorizontal: DK_SPACE.md, paddingTop: 16 },
+  viewBody: { paddingHorizontal: DK_SPACE.md, paddingTop: 4 },
   sectionGap: { marginTop: 22 },
   chartBox: { padding: DK_SPACE.md },
   chartHead: { gap: 2 },

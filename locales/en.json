@@ -2210,6 +2210,9 @@
     "typeNameToConfirm": "To confirm, type the company name:",
     "updatesAcrossCompanies": "Updates across all companies",
     "vehicleIssuesCount": "{{vehicleIssues}} without valid insurance or license",
+    "viewCompanies": "Companies",
+    "viewRevenue": "Revenue",
+    "viewSystem": "System",
     "whatsComing": "What's coming up",
     "withoutDriver": "without driver",
     "sort": {

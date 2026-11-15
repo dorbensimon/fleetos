@@ -2210,6 +2210,9 @@
     "typeNameToConfirm": "للتأكيد، اكتب اسم الشركة:",
     "updatesAcrossCompanies": "تحديثات في جميع الشركات",
     "vehicleIssuesCount": "{{vehicleIssues}} بلا تأمين أو رخصة سارية",
+    "viewCompanies": "الشركات",
+    "viewRevenue": "الإيرادات",
+    "viewSystem": "النظام",
     "whatsComing": "ما الذي يقترب",
     "withoutDriver": "بلا سائق",
     "sort": {
